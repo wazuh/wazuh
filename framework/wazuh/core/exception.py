@@ -586,7 +586,8 @@ class WazuhException(Exception):
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
         # Engine
-        9001: {'message': 'Asset syntax error: The provided {resource_type} asset data does not match the required format : {cause}.',
+        9001: {'message': 'Asset syntax error: '
+        '            The provided {resource_type} asset data does not match the required format: {cause}.',
               'remediation': 'Please check the resouce data and ensure it meets the required format'},
         9002: {'message': 'Engine error: Unable to validate the {resource_type}: {cause}.',
                'remediation': 'Please check the resouce data and ensure it meets the required format.'},

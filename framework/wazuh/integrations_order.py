@@ -18,11 +18,12 @@ from wazuh.core.engine.utils import validate_response_or_raise
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import full_copy, safe_move
 
-DEFAULT_INTEGRATIONS_ORDER_FILENAME = 'integrations_order'
-DEFAULT_USER_NAMESPACE = 'user'
+DEFAULT_INTEGRATIONS_ORDER_FILENAME = "integrations_order"
+DEFAULT_USER_NAMESPACE = "user"
 
-@expose_resources(actions=['integrations:create', 'integrations:update'], resources=["*:*:*"])
-async def upsert_integrations_order(order: IntegrationsOrder, policy_type: PolicyType) -> AffectedItemsWazuhResult:
+
+@expose_resources(actions=["integrations:create", "integrations:update"], resources=["*:*:*"])
+async def upsert_integrations_order(order: IntegrationsOrder, policy_type: str) -> AffectedItemsWazuhResult:
     """Create or update an integrations order resource.
 
     This function will create a new integrations order if it does not exist,
@@ -46,7 +47,7 @@ async def upsert_integrations_order(order: IntegrationsOrder, policy_type: Polic
         If engine validation fails or file operations fail.
     """
     filename = DEFAULT_INTEGRATIONS_ORDER_FILENAME
-    asset_file_path = generate_asset_file_path(filename, policy_type, ResourceType.INTEGRATION)
+    asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.INTEGRATIONS_ORDER)
     backup_file = None
     mode = None
     result = AffectedItemsWazuhResult(none_msg="Could not upload integrations order")
@@ -76,14 +77,12 @@ async def upsert_integrations_order(order: IntegrationsOrder, policy_type: Polic
         async with get_engine_client() as client:
             if mode == "create":
                 creation_results = await client.integrations_order.create_order(
-                    content=file_contents_json,
-                    policy_type=policy_type
+                    content=file_contents_json, policy_type=policy_type
                 )
                 validate_response_or_raise(creation_results, 9004, ResourceType.INTEGRATIONS_ORDER)
             else:
                 update_results = await client.integrations_order.update_order(
-                    content=file_contents_json,
-                    policy_type=policy_type
+                    content=file_contents_json, policy_type=policy_type
                 )
                 validate_response_or_raise(update_results, 9005, ResourceType.INTEGRATIONS_ORDER)
 
@@ -105,8 +104,9 @@ async def upsert_integrations_order(order: IntegrationsOrder, policy_type: Polic
     result.total_affected_items = len(result.affected_items)
     return result
 
-@expose_resources(actions=['integrations:read'], resources=["*:*:*"])
-async def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
+
+@expose_resources(actions=["integrations:read"], resources=["*:*:*"])
+async def get_integrations_order(policy_type: str) -> AffectedItemsWazuhResult:
     """Retrieve the integrations order resource.
 
     Parameters
@@ -124,22 +124,25 @@ async def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhR
     WazuhError
         If retrieval or validation fails (code: 9003).
     """
-    results = AffectedItemsWazuhResult(none_msg='No integrations order was returned',
-                                      some_msg='Some integrations order were not returned',
-                                      all_msg='All selected integrations order were returned')
+    results = AffectedItemsWazuhResult(
+        none_msg="No integrations order was returned",
+        some_msg="Some integrations order were not returned",
+        all_msg="All selected integrations order were returned",
+    )
 
     async with get_engine_client() as client:
         integrations_order_response = await client.integrations_order.get_order(policy_type=policy_type)
 
         validate_response_or_raise(integrations_order_response, 9003, ResourceType.INTEGRATIONS_ORDER)
 
-        results.affected_items = integrations_order_response['content']
-        results.total_affected_items = len(integrations_order_response['content'])
+        results.affected_items = integrations_order_response["content"]
+        results.total_affected_items = len(integrations_order_response["content"])
 
     return results
 
-@expose_resources(actions=['integrations:delete'], resources=["*:*:*"])
-async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
+
+@expose_resources(actions=["integrations:delete"], resources=["*:*:*"])
+async def delete_integrations_order(policy_type: str) -> AffectedItemsWazuhResult:
     """Delete the integrations order resource.
 
     Parameters
@@ -157,19 +160,23 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
     WazuhError
         If the file does not exist or file/engine operations fail (codes: 9006, 1019, 1907).
     """
-    result = AffectedItemsWazuhResult(all_msg='Integrations order file was successfully deleted',
-                                      some_msg='Some integrations order were not returned',
-                                      none_msg='Could not delete integrations order file')
+    result = AffectedItemsWazuhResult(
+        all_msg="Integrations order file was successfully deleted",
+        some_msg="Some integrations order were not returned",
+        none_msg="Could not delete integrations order file",
+    )
 
-    backup_file = ''
-    integration_order_path_file = generate_asset_file_path(DEFAULT_INTEGRATIONS_ORDER_FILENAME, policy_type, ResourceType.INTEGRATION)
+    backup_file = ""
+    integration_order_path_file = generate_asset_file_path(
+        DEFAULT_INTEGRATIONS_ORDER_FILENAME, PolicyType(policy_type), ResourceType.INTEGRATIONS_ORDER
+    )
 
     try:
         if not exists(integration_order_path_file):
             raise WazuhError(9006)
 
         # Creates a backup copy
-        backup_file = f'{integration_order_path_file}.bak'
+        backup_file = f"{integration_order_path_file}.bak"
         try:
             full_copy(integration_order_path_file, backup_file)
         except IOError as exc:
@@ -183,9 +190,7 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
 
         # Delete integrations order
         async with get_engine_client() as client:
-            delete_results = await client.integrations_order.delete_order(
-                policy_type=policy_type
-            )
+            delete_results = await client.integrations_order.delete_order(policy_type=policy_type)
 
             validate_response_or_raise(delete_results, 9006, ResourceType.INTEGRATIONS_ORDER)
 

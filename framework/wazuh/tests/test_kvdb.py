@@ -5,15 +5,14 @@ from wazuh import WazuhError, kvdb
 from wazuh.core.engine.models.resources import Status
 from wazuh.core.results import AffectedItemsWazuhResult
 
+
 @pytest.mark.asyncio
 @patch("wazuh.kvdb.Resource.from_dict")
 @patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
 @patch("wazuh.kvdb.exists", return_value=False)
 @patch("wazuh.kvdb.save_asset_file")
 @patch("wazuh.kvdb.get_engine_client")
-async def test_upsert_kvdb_create_success(
-    mock_get_engine, mock_save, mock_exists, mock_path, mock_resource
-):
+async def test_upsert_kvdb_create_success(mock_get_engine, mock_save, mock_exists, mock_path, mock_resource):
     """Test creating a new kvdb successfully."""
     mock_catalog = AsyncMock()
     mock_catalog.validate_resource.return_value = {"status": "OK"}
@@ -101,9 +100,7 @@ async def test_upsert_kvdb_update_success(
 @patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
 @patch("wazuh.kvdb.exists", side_effect=[True, False, False])
 @patch("wazuh.kvdb.full_copy", side_effect=IOError)
-async def test_upsert_kvdb_backup_fail(
-    mock_full_copy, mock_exists, mock_path, mock_resource
-):
+async def test_upsert_kvdb_backup_fail(mock_full_copy, mock_exists, mock_path, mock_resource):
     """Test failure during backup when updating."""
     fake_resource = MagicMock()
     fake_resource.id = "my_kvdb"
@@ -125,12 +122,7 @@ async def test_upsert_kvdb_backup_fail(
 @patch("wazuh.kvdb.remove")
 @patch("wazuh.kvdb.get_engine_client")
 async def test_upsert_kvdb_remove_on_create_fail(
-    mock_get_engine,
-    mock_remove,
-    mock_save,
-    mock_exists,
-    mock_path,
-    mock_resource
+    mock_get_engine, mock_remove, mock_save, mock_exists, mock_path, mock_resource
 ):
     """Test that newly created file is removed if creation fails."""
     fake_resource = MagicMock()
@@ -192,9 +184,7 @@ async def test_get_kvdb_success(mock_get_engine, mock_validate, mock_process):
     mock_get_engine.return_value.__aenter__.return_value = mock_client
     mock_get_engine.return_value.__aexit__.return_value = AsyncMock()
 
-    result = await kvdb.get_kvdb(
-        ids=["my_kvdb"], policy_type="testing"
-    )
+    result = await kvdb.get_kvdb(ids=["my_kvdb"], policy_type="testing")
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.affected_items == [{"id": "my_kvdb"}]
@@ -216,9 +206,7 @@ async def test_get_kvdb_failure(mock_get_engine):
 
     mock_get_engine.return_value.__aenter__.return_value = mock_client
 
-    results = await kvdb.get_kvdb(
-        ids=["invalid"], policy_type="testing"
-    )
+    results = await kvdb.get_kvdb(ids=["invalid"], policy_type="testing")
 
     assert isinstance(results, AffectedItemsWazuhResult)
     assert results.total_affected_items == 0
@@ -232,9 +220,7 @@ async def test_get_kvdb_failure(mock_get_engine):
 @patch("wazuh.kvdb.full_copy")
 @patch("wazuh.kvdb.safe_move")
 @patch("wazuh.kvdb.get_engine_client")
-async def test_delete_kvdb_success(
-    mock_get_engine, mock_safe, mock_copy, mock_remove, mock_exists, mock_path
-):
+async def test_delete_kvdb_success(mock_get_engine, mock_safe, mock_copy, mock_remove, mock_exists, mock_path):
     mock_client = AsyncMock()
     mock_client.content.delete_resource.return_value = {"status": "OK"}
 
@@ -265,9 +251,7 @@ async def test_delete_kvdb_backup_fail(mock_exists, mock_path, mock_full_copy):
 @patch("wazuh.kvdb.full_copy")
 @patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
 @patch("wazuh.kvdb.exists", side_effect=[True, True, True])
-async def test_delete_kvdb_delete_fail(
-    mock_exists, mock_path, mock_full_copy, mock_remove, mock_safe_move
-):
+async def test_delete_kvdb_delete_fail(mock_exists, mock_path, mock_full_copy, mock_remove, mock_safe_move):
     result = await kvdb.delete_kvdb(ids=["not_found"], policy_type="testing")
 
     assert isinstance(result, AffectedItemsWazuhResult)

@@ -23,9 +23,7 @@ class ContentModule(BaseModule):
     def __init__(self, client: AsyncClient):
         super().__init__(client)
 
-    async def create_resource(
-        self, resource: Resource, type: ResourceType, policy_type: PolicyType
-    ) -> dict:
+    async def create_resource(self, resource: Resource, type: ResourceType, policy_type: PolicyType) -> dict:
         """Create a new content resource."""
         key = (type, policy_type, resource.id)
         async with self._lock:
@@ -40,16 +38,18 @@ class ContentModule(BaseModule):
         async with self._lock:
             # Get every resource
             if id_ is None:
-                resources = [resource.to_dict() for resource in self._db.values()]
+                resources = [
+                    resource.to_dict()
+                    for (res_type, res_policy, _), resource in self._db.items()
+                    if res_type == type and res_policy == policy_type
+                ]
             elif key in self._db:
-                resources = [self._db[key].to_dict]
-            else: 
+                resources = [self._db[key].to_dict()]
+            else:
                 return {"status": "ERROR", "error": f"Resource '{id_}' not found"}
         return {"status": "OK", "error": None, "content": resources}
 
-    async def update_resource(
-        self, resource: Resource, type: ResourceType, policy_type: PolicyType
-    ) -> dict:
+    async def update_resource(self, resource: Resource, type: ResourceType, policy_type: PolicyType) -> dict:
         """Update an existing content resource."""
         key = (type, policy_type, resource.id)
         async with self._lock:

@@ -9,43 +9,49 @@ from typing import List, Dict, Any
 
 from wazuh.core.exception import WazuhError
 
+
 class ResourceType(str, Enum):
     """Enumeration for resource types in the catalog."""
-    DECODER = 'decoder'
-    KVDB = 'kvdb'
-    INTEGRATION = 'integration'
-    INTEGRATIONS_ORDER = 'integrations_order'
+
+    DECODER = "decoder"
+    KVDB = "kvdb"
+    INTEGRATION = "integration"
+    INTEGRATIONS_ORDER = "integrations_order"
 
     def dirname(self) -> str:
         """Return the directory name corresponding to the resource type."""
-        mapping = {
-            self.DECODER: 'decoders',
-            self.INTEGRATION: 'integrations'
-        }
+        mapping = {self.DECODER: "decoders", self.INTEGRATION: "integrations", self.INTEGRATIONS_ORDER: "integrations"}
         return mapping.get(self)
 
 
 class ResourceFormat(str, Enum):
     """Enumeration for resource formats in the catalog."""
-    JSON = 'json'
-    YAML = 'yaml'
-    YML = 'yml'
-    XML = 'xml'
+
+    JSON = "json"
+    YAML = "yaml"
+    YML = "yml"
+    XML = "xml"
+
 
 class Status(str, Enum):
     """Enumeration for resource status values."""
-    ENABLED = 'enabled'
-    DISABLED = 'disabled'
+
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+
 
 @dataclass
 class Author:
     """Class representing the author of a resource."""
+
     date: str
     name: str
+
 
 @dataclass
 class Metadata:
     """Class representing metadata for a resource."""
+
     author: Author
     compatibility: str
     description: str
@@ -54,14 +60,18 @@ class Metadata:
     title: str
     versions: List[str]
 
+
 @dataclass
 class Document:
     """Class representing the document structure of a resource."""
+
     metadata: Metadata
+
 
 @dataclass
 class Resource:
     """Base resource model."""
+
     type: ResourceType
     id: str
     name: str
@@ -69,7 +79,7 @@ class Resource:
     @classmethod
     def from_dict(cls, data: Dict) -> "Resource":
         """Create a Resource (or subclass) instance from a dictionary.
-        
+
         Raises
         ------
         WazuhError
@@ -105,7 +115,7 @@ class Resource:
                         id=data["id"],
                         name=data["name"],
                         integration_id=data["integration_id"],
-                        content=data["content"]
+                        content=data["content"],
                     )
                 case ResourceType.INTEGRATION:
                     return IntegrationResource(
@@ -113,15 +123,16 @@ class Resource:
                         id=data["id"],
                         name=data["name"],
                         description=data["description"],
+                        documentation=data["documentation"],
                         status=data["status"],
                         kvdbs=data["kvdbs"],
-                        decoders=data["decoders"]
+                        decoders=data["decoders"],
                     )
         except KeyError as e:
-            raise WazuhError(9001, extra_message={'resource_type': type_}) from e
+            raise WazuhError(9001, extra_message={"resource_type": type_, "cause": str(e)}) from e
         except ValueError as e:
-            raise WazuhError(9001, extra_message={'resource_type': type_}) from e
-        
+            raise WazuhError(9001, extra_message={"resource_type": type_, "cause": str(e)}) from e
+
     def to_dict(self) -> Dict:
         """Convert Resource (including nested dataclasses and enums) to a dictionary."""
 
@@ -139,23 +150,30 @@ class Resource:
 
         return serialize(self)
 
+
 @dataclass
 class WithIntegrationId:
     """Adds integration_id to resources."""
+
     integration_id: str
+
 
 @dataclass
 class KVDBResource(Resource, WithIntegrationId):
     """KVDB resource."""
+
     content: Dict[str, Any]
+
 
 @dataclass
 class DecoderResource(Resource, WithIntegrationId):
     """Decoder resource."""
+
     status: Status
     document: Document
 
-@dataclass 
+
+@dataclass
 class IntegrationResource(Resource):
     description: str
     documentation: str

@@ -43,7 +43,7 @@ async def get_kvdb(
         all_msg="All selected KVDBs were returned",
     )
     retrieved_kvdbs = []
-    for id_ in (ids or [None]):
+    for id_ in ids or [None]:
         try:
             async with get_engine_client() as client:
                 kvdb_response = await client.content.get_resources(
@@ -72,6 +72,7 @@ async def get_kvdb(
     results.affected_items = parsed_kvdbs["items"]
     results.total_affected_items = parsed_kvdbs["totalItems"]
     return results
+
 
 @expose_resources(actions=["kvdbs:delete"], resources=["*:*:*"])
 async def delete_kvdb(ids: List[str], policy_type: str):
@@ -143,9 +144,7 @@ async def upsert_kvdb(kvdb_content: dict, policy_type: str) -> AffectedItemsWazu
     try:
         kvdb_resource = Resource.from_dict(kvdb_content)
         filename = kvdb_resource.id
-        asset_file_path = generate_asset_file_path(
-            filename, PolicyType(policy_type), ResourceType.KVDB
-        )
+        asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.KVDB)
         file_contents_json = json.dumps(kvdb_content)
 
         # Determine operation mode

@@ -5144,7 +5144,7 @@ components:
       in: query
       name: status
       description: "Filter by resource status"
-      required: true
+      required: false
       schema:
         type: string
         enum:
@@ -10433,12 +10433,18 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/integrations:read'
       parameters:
+        - $ref: '#/components/parameters/integration_id'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/status_resource'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/integration_id'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: List of integrations

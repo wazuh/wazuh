@@ -20,6 +20,7 @@ from wazuh.core.utils import process_array, full_copy, safe_move
 DEFAULT_DECODER_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = "user"
 
+
 @expose_resources(actions=["decoders:read"], resources=["*:*:*"])
 async def get_decoder(
     ids: list,
@@ -43,7 +44,7 @@ async def get_decoder(
         all_msg="All selected decoders were returned",
     )
     retrieved_decoders = []
-    for id_ in (ids or [None]):
+    for id_ in ids or [None]:
         try:
             async with get_engine_client() as client:
                 decoder_response = await client.content.get_resources(
@@ -72,6 +73,7 @@ async def get_decoder(
     results.affected_items = parsed_decoders["items"]
     results.total_affected_items = parsed_decoders["totalItems"]
     return results
+
 
 @expose_resources(actions=["decoders:delete"], resources=["*:*:*"])
 async def delete_decoder(ids: List[str], policy_type: str):
@@ -143,9 +145,7 @@ async def upsert_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
     try:
         decoder_resource = Resource.from_dict(decoder_content)
         filename = decoder_resource.id
-        asset_file_path = generate_asset_file_path(
-            filename, PolicyType(policy_type), ResourceType.DECODER
-        )
+        asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.DECODER)
         file_contents_json = json.dumps(decoder_content)
 
         # Determine operation mode
@@ -213,4 +213,3 @@ async def upsert_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
     result.total_affected_items = len(result.affected_items)
     return result
-

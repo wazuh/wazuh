@@ -5,15 +5,14 @@ from wazuh import WazuhError, integration
 from wazuh.core.engine.models.resources import Status
 from wazuh.core.results import AffectedItemsWazuhResult
 
+
 @pytest.mark.asyncio
 @patch("wazuh.integration.Resource.from_dict")
 @patch("wazuh.integration.generate_asset_file_path", return_value="/fake/path/integration.json")
 @patch("wazuh.integration.exists", return_value=False)
 @patch("wazuh.integration.save_asset_file")
 @patch("wazuh.integration.get_engine_client")
-async def test_upsert_integration_create_success(
-    mock_get_engine, mock_save, mock_exists, mock_path, mock_resource
-):
+async def test_upsert_integration_create_success(mock_get_engine, mock_save, mock_exists, mock_path, mock_resource):
     """Test creating a new integration successfully."""
     mock_catalog = AsyncMock()
     mock_catalog.validate_resource.return_value = {"status": "OK"}
@@ -101,9 +100,7 @@ async def test_upsert_integration_update_success(
 @patch("wazuh.integration.generate_asset_file_path", return_value="/fake/path/integration.json")
 @patch("wazuh.integration.exists", side_effect=[True, False, False])
 @patch("wazuh.integration.full_copy", side_effect=IOError)
-async def test_upsert_integration_backup_fail(
-    mock_full_copy, mock_exists, mock_path, mock_resource
-):
+async def test_upsert_integration_backup_fail(mock_full_copy, mock_exists, mock_path, mock_resource):
     """Test failure during backup when updating."""
     fake_resource = MagicMock()
     fake_resource.id = "my_integration"
@@ -125,12 +122,7 @@ async def test_upsert_integration_backup_fail(
 @patch("wazuh.integration.remove")
 @patch("wazuh.integration.get_engine_client")
 async def test_upsert_integration_remove_on_create_fail(
-    mock_get_engine,
-    mock_remove,
-    mock_save,
-    mock_exists,
-    mock_path,
-    mock_resource
+    mock_get_engine, mock_remove, mock_save, mock_exists, mock_path, mock_resource
 ):
     """Test that newly created file is removed if creation fails."""
     fake_resource = MagicMock()
@@ -192,9 +184,7 @@ async def test_get_integration_success(mock_get_engine, mock_validate, mock_proc
     mock_get_engine.return_value.__aenter__.return_value = mock_client
     mock_get_engine.return_value.__aexit__.return_value = AsyncMock()
 
-    result = await integration.get_integration(
-        ids=["my_integration"], policy_type="testing", status=Status.ENABLED
-    )
+    result = await integration.get_integration(ids=["my_integration"], policy_type="testing", status=Status.ENABLED)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.affected_items == [{"id": "my_integration"}]
@@ -216,9 +206,7 @@ async def test_get_integration_failure(mock_get_engine):
 
     mock_get_engine.return_value.__aenter__.return_value = mock_client
 
-    results = await integration.get_integration(
-        ids=["invalid"], policy_type="testing", status=Status("enabled")
-    )
+    results = await integration.get_integration(ids=["invalid"], policy_type="testing", status=Status("enabled"))
 
     assert isinstance(results, AffectedItemsWazuhResult)
     assert results.total_affected_items == 0
@@ -232,9 +220,7 @@ async def test_get_integration_failure(mock_get_engine):
 @patch("wazuh.integration.full_copy")
 @patch("wazuh.integration.safe_move")
 @patch("wazuh.integration.get_engine_client")
-async def test_delete_integration_success(
-    mock_get_engine, mock_safe, mock_copy, mock_remove, mock_exists, mock_path
-):
+async def test_delete_integration_success(mock_get_engine, mock_safe, mock_copy, mock_remove, mock_exists, mock_path):
     mock_client = AsyncMock()
     mock_client.content.delete_resource.return_value = {"status": "OK"}
 
@@ -265,9 +251,7 @@ async def test_delete_integration_backup_fail(mock_exists, mock_path, mock_full_
 @patch("wazuh.integration.full_copy")
 @patch("wazuh.integration.generate_asset_file_path", return_value="/fake/path/integration.json")
 @patch("wazuh.integration.exists", side_effect=[True, True, True])
-async def test_delete_integration_delete_fail(
-    mock_exists, mock_path, mock_full_copy, mock_remove, mock_safe_move
-):
+async def test_delete_integration_delete_fail(mock_exists, mock_path, mock_full_copy, mock_remove, mock_safe_move):
     result = await integration.delete_integration(ids=["not_found"], policy_type="testing")
 
     assert isinstance(result, AffectedItemsWazuhResult)
