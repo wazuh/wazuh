@@ -2185,6 +2185,9 @@ unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
 unit_tests/wrappers/wazuh/remoted/%.o: unit_tests/wrappers/wazuh/remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
+unit_tests/wrappers/wazuh/shared_modules/%.o: unit_tests/wrappers/wazuh/shared_modules/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
 .PHONY: test
 
 ####################
@@ -2427,6 +2430,7 @@ clean-unit-tests:
 	rm -f ${wrappers_wazuh_os_regex_o}
 	rm -f ${wrappers_wazuh_os_xml_o}
 	rm -f ${wrappers_wazuh_shared_o}
+	rm -f ${wrappers_wazuh_shared_modules_o}
 	rm -f ${wrappers_wazuh_syscheckd_o}
 	rm -f ${wrappers_wazuh_wazuh_db_o}
 	rm -f ${wrappers_wazuh_wazuh_modules_o}
