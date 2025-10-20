@@ -82,6 +82,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/framework/wazuh/core/cluster/worker.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/decoder.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/kvdb.py,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/framework/wazuh/integration.py,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/framework/wazuh/integrations_order.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/event.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/logtest.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/manager.py,root,wazuh,640,file,-rw-r-----,,

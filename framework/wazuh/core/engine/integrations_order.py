@@ -29,10 +29,28 @@ class IntegrationsOrderModule(BaseModule):
         dict
             Dictionary with the status and error information.
         """
-        """Create a new content resource."""
         async with self._lock:
             if policy_type in self._db:
                 return {"status": "ERROR", "error": "Integration order already exists"}
+            self._db[policy_type] = content
+        return {"status": "OK", "error": None}
+    
+    async def update_order(self, content: str, policy_type: PolicyType):
+        """Update integrations order resource.
+
+        Parameters
+        ----------
+        content : str
+            The JSON string representing the integrations order.
+        policy_type : PolicyType
+            The policy type for the integrations order.
+
+        Returns
+        -------
+        dict
+            Dictionary with the status and error information.
+        """
+        async with self._lock:
             self._db[policy_type] = content
         return {"status": "OK", "error": None}
 

@@ -25,7 +25,7 @@ ENGINE_USER_NAMESPACE = "user"
 async def get_decoder(
     ids: list,
     policy_type: str,
-    status: Status,
+    status: Optional[Status] = None,
     offset: Optional[int] = 0,
     limit: Optional[int] = 0,
     select: Optional[list] = None,

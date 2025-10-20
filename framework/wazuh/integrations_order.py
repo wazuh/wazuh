@@ -135,8 +135,8 @@ async def get_integrations_order(policy_type: str) -> AffectedItemsWazuhResult:
 
         validate_response_or_raise(integrations_order_response, 9003, ResourceType.INTEGRATIONS_ORDER)
 
-        results.affected_items = integrations_order_response["content"]
-        results.total_affected_items = len(integrations_order_response["content"])
+        results.affected_items.append(integrations_order_response["content"])
+        results.total_affected_items = len(results.affected_items)
 
     return results
 

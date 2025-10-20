@@ -10379,7 +10379,7 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /integrations:
-    get:
+    post:
       tags:
         - Integrations
       summary: "Create a new integration"
