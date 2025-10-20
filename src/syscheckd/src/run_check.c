@@ -608,13 +608,49 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         minfo("Running FIM synchronization.");
 
-        bool has_been_synched = fim_db_check_if_first_scan_has_been_synched();
-        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, has_been_synched);
-        if (!has_been_synched) {
-            fim_db_set_first_scan_has_been_synched();
-            mdebug2("db's first scan has been synched");
-        }
+        bool first_scan_has_been_synched = fim_db_check_if_first_scan_has_been_synched();
+        bool sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, first_scan_has_been_synched);
+        if (sync_result) {
+            minfo("Synchronization succeeded");
+            if (!first_scan_has_been_synched) {
+                fim_db_set_first_scan_has_been_synched();
+                mdebug2("db's first scan has been synched");
+            }
 
+            // Recovery process
+            minfo("Attempting to get file table checksums...");
+
+#ifdef WIN32
+            int table_count = 3;
+            char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
+#else
+            int table_count = 1;
+            char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
+#endif
+            for (int i = 0; i < table_count; i++) {
+                char* concatenated_checksums = NULL;
+
+                FIMDBErrorCode result = fim_db_get_table_concatenated_checksums(&concatenated_checksums, table_names[i]);
+
+                if (result != FIMDB_OK || !concatenated_checksums)
+                {
+                    merror("Error: Failed to get concatenated checksums from database.");
+                    if (concatenated_checksums){
+                        free(concatenated_checksums);
+                    }
+                    continue;
+                }
+
+                char final_checksum[OS_SHA1_HEXDIGEST_SIZE + 1];
+                OS_SHA1_Str(concatenated_checksums, -1, final_checksum);
+
+                free(concatenated_checksums);
+
+                minfo("Success! Final file table checksum is: %s", final_checksum);
+            }
+        } else {
+            minfo("Synchronization failed");
+        }
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
         minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);

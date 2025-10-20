@@ -145,12 +145,19 @@ class EXPORTED DB final
         *
         * @return true if first scan has been synched, false otherwise.
         */
-       bool checkIfFirstScanHasBeenSynched() const;
+        bool checkIfFirstScanHasBeenSynched() const;
 
         /**
         * @brief Set the first_scan_has_been_synched flag.
         */
-       void setFirstScanHasBeenSynched();
+        void setFirstScanHasBeenSynched();
+
+        /**
+        * @brief Gets the concatenated checksums from all the elements of a table
+        * @return the concatenated checksum
+        */
+        std::string getConcatenatedChecksums(const std::string& tableName);
+
 
     private:
         DB() = default;

@@ -13,9 +13,11 @@
 #include "db.h"
 #include "db.hpp"
 #include "dbFileItem.hpp"
+#include "debug_op.h"
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "json.hpp"
+#include <cstring>
 
 enum SEARCH_FIELDS
 {
@@ -369,6 +371,35 @@ FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_
     }
 
     return retVal;
+}
+
+// Caller must free(*out_string_ptr) when done.
+FIMDBErrorCode fim_db_get_table_concatenated_checksums(char** out_string_ptr, char* table_name)
+{
+    if (!out_string_ptr | !table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return FIMDB_ERR;
+    }
+
+    try
+    {
+        std::string concatenated = DB::instance().getConcatenatedChecksums(table_name);
+
+        *out_string_ptr = static_cast<char*>(malloc(concatenated.length() + 1));
+        if (!*out_string_ptr) {
+            return FIMDB_ERR;
+        }
+
+        strcpy(*out_string_ptr, concatenated.c_str());
+
+        return FIMDB_OK;
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, std::string("Failed to get concatenated checksums: ") + err.what());
+        return FIMDB_ERR;
+    }
 }
 
 #ifdef __cplusplus

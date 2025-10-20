@@ -91,6 +91,36 @@ void DB::setFirstScanHasBeenSynched(){
     DB::instance().first_scan_has_been_synched = true;
 }
 
+std::string DB::getConcatenatedChecksums(const std::string& tableName)
+{
+    if (TABLE_PRIMARY_KEYS.find(tableName) == TABLE_PRIMARY_KEYS.end())
+    {
+        throw std::runtime_error("Unknown table name for checksum calculation: " + tableName);
+    }
+
+    std::string concatenatedChecksums;
+
+    auto callback {[&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json& jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            concatenatedChecksums += jsonResult.at("checksum").get<std::string>();
+        }
+    }};
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"checksum"})
+                      .rowFilter("")
+                      .orderByOpt(TABLE_PRIMARY_KEYS.at(tableName))
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    return concatenatedChecksums;
+}
+
 #ifdef __cplusplus
 extern "C"
 {
