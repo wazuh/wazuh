@@ -4,8 +4,12 @@
     {
       "type": "start",
       "data": {
+        "module": "inventory_sync",
         "mode": 0,
-        "size": 5
+        "size": 5,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
       },
       "description": "Start synchronization session expecting 5 messages (seq 0-4)",
       "delay": 0.5,
