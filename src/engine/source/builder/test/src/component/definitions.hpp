@@ -173,13 +173,13 @@ auto constexpr DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_SEPARATOR = R"x({
     "name": "decoder/test/0",
     "normalize": [
       {
+        "parse": [
+            "<event.code>"
+        ],
         "map": [
           {
             "event.code": "2"
           }
-        ],
-        "parse": [
-            "<event.code>"
         ]
       }
     ]

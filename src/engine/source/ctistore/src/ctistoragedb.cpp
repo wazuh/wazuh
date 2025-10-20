@@ -12,6 +12,7 @@
 #include <rocksDBSharedBuffers.hpp>
 #include <rocksdb/slice_transform.h>
 #include <base/logging.hpp>
+#include <json.hpp>
 
 namespace cti::store
 {
@@ -62,9 +63,15 @@ namespace constants
     constexpr std::string_view JSON_PAYLOAD = "/payload";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT = "/payload/document";
     constexpr std::string_view JSON_PAYLOAD_INTEGRATIONS = "/payload/integrations";
+    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_INTEGRATIONS = "/payload/document/integrations";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_DECODERS = "/payload/document/decoders";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_KVDBS = "/payload/document/kvdbs";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_CONTENT = "/payload/document/content";
+
+    // JSON paths for unwrapped documents (after getByIdOrName strips /payload)
+    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_TITLE = "/document/title";
+    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_NAME = "/document/name";
+    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_CONTENT = "/document/content";
 
     // Memory configuration
     constexpr size_t READ_CACHE_SIZE = 32 * 1024 * 1024;  // LRU cache size for reading blocks from SST files (32MB)
@@ -375,6 +382,28 @@ struct CTIStorageDB::Impl
     void storeKVDB(const json::Json& kvdbDoc);
 
     /**
+     * @brief Deletes an asset by resource ID across all column families.
+     * @param resourceId The UUID resource identifier
+     * @return true if found and deleted, false if not found
+     */
+    bool deleteAsset(const std::string& resourceId);
+
+    /**
+     * @brief Updates an asset by resource ID with JSON Patch operations.
+     * @param resourceId The UUID resource identifier
+     * @param operations JSON array of patch operations
+     * @return true if found and updated, false if not found
+     */
+    bool updateAsset(const std::string& resourceId, const json::Json& operations);
+
+    /**
+     * @brief Finds which column family contains an asset with the given resource ID.
+     * @param resourceId The UUID resource identifier
+     * @return Optional pair of {ColumnFamily, assetType string} if found
+     */
+    std::optional<std::pair<CTIStorageDB::ColumnFamily, std::string>> findAssetColumnFamily(const std::string& resourceId) const;
+
+    /**
      * @brief Lists all asset names of a specific type.
      * @param assetType "integration", "decoder", or "policy"
      * @return Vector of base::Name objects
@@ -396,6 +425,9 @@ struct CTIStorageDB::Impl
      * @return true if exists, false otherwise
      */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
+
+
+    std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
 
     /**
      * @brief Lists all KVDB names.
@@ -431,10 +463,24 @@ struct CTIStorageDB::Impl
     std::vector<base::Name> getPolicyIntegrationList() const;
 
     /**
-     * @brief Gets the default parent namespace for policies.
-     * @return Default parent name (typically "wazuh")
+     * @brief Gets a policy document by ID or title.
+     * @param name Policy identifier
+     * @return JSON policy document
      */
-    base::Name getPolicyDefaultParent() const;
+    json::Json getPolicy(const base::Name& name) const;
+
+    /**
+     * @brief Lists all available policy names.
+     * @return Vector of policy names
+     */
+    std::vector<base::Name> getPolicyList() const;
+
+    /**
+     * @brief Checks if a policy exists.
+     * @param name Policy identifier
+     * @return true if exists, false otherwise
+     */
+    bool policyExists(const base::Name& name) const;
 
     /**
      * @brief Deletes all data from all column families.
@@ -462,7 +508,8 @@ const std::unordered_map<std::string, CTIStorageDB::ColumnFamily>& CTIStorageDB:
     static const std::unordered_map<std::string, ColumnFamily> s_map = {
         {std::string(constants::INTEGRATION_TYPE), ColumnFamily::INTEGRATION},
         {std::string(constants::DECODER_TYPE), ColumnFamily::DECODER},
-        {std::string(constants::POLICY_TYPE), ColumnFamily::POLICY}
+        {std::string(constants::POLICY_TYPE), ColumnFamily::POLICY},
+        {std::string(constants::KVDB_TYPE), ColumnFamily::KVDB}
     };
     return s_map;
 }
@@ -472,7 +519,8 @@ const std::unordered_map<std::string, std::string>& CTIStorageDB::getAssetTypeTo
     static const std::unordered_map<std::string, std::string> s_map = {
         {std::string(constants::INTEGRATION_TYPE), std::string(constants::INTEGRATION_PREFIX)},
         {std::string(constants::DECODER_TYPE), std::string(constants::DECODER_PREFIX)},
-        {std::string(constants::POLICY_TYPE), std::string(constants::POLICY_PREFIX)}
+        {std::string(constants::POLICY_TYPE), std::string(constants::POLICY_PREFIX)},
+        {std::string(constants::KVDB_TYPE), std::string(constants::KVDB_PREFIX)}
     };
     return s_map;
 }
@@ -482,7 +530,8 @@ const std::unordered_map<std::string, std::string>& CTIStorageDB::getAssetTypeTo
     static const std::unordered_map<std::string, std::string> s_map = {
         {std::string(constants::INTEGRATION_TYPE), std::string(constants::NAME_INTEGRATION_PREFIX)},
         {std::string(constants::DECODER_TYPE), std::string(constants::NAME_DECODER_PREFIX)},
-        {std::string(constants::POLICY_TYPE), std::string(constants::NAME_POLICY_PREFIX)}
+        {std::string(constants::POLICY_TYPE), std::string(constants::NAME_POLICY_PREFIX)},
+        {std::string(constants::KVDB_TYPE), std::string(constants::NAME_KVDB_PREFIX)}
     };
     return s_map;
 }
@@ -701,7 +750,6 @@ void CTIStorageDB::Impl::shutdown()
     }
 
     // Destroy column family handles before closing the database
-    // This prevents the CFHandle destructor from trying to destroy handles after DB is closed
     m_cfHandles.defaultCF = CFHandle();
     m_cfHandles.metadata = CFHandle();
     m_cfHandles.policy = CFHandle();
@@ -744,7 +792,7 @@ std::string CTIStorageDB::Impl::extractNameFromJson(const json::Json& doc) const
         return *name;
     }
 
-    // Policy new format uses /payload/title
+    // Fallback to legacy flat format for backward compatibility
     title = doc.getString(constants::JSON_PAYLOAD_TITLE);
     if (title)
     {
@@ -846,6 +894,16 @@ void CTIStorageDB::storeKVDB(const json::Json& kvdbDoc)
     m_pImpl->storeKVDB(kvdbDoc);
 }
 
+bool CTIStorageDB::deleteAsset(const std::string& resourceId)
+{
+    return m_pImpl->deleteAsset(resourceId);
+}
+
+bool CTIStorageDB::updateAsset(const std::string& resourceId, const json::Json& operations)
+{
+    return m_pImpl->updateAsset(resourceId, operations);
+}
+
 void CTIStorageDB::Impl::updateRelationshipIndexes(const json::Json& integrationDoc)
 {
     std::string integrationId = extractIdFromJson(integrationDoc);
@@ -931,7 +989,10 @@ json::Json CTIStorageDB::Impl::getByIdOrName(const std::string& identifier,
 
     try
     {
-        return json::Json(value.c_str());
+        // Return the document exactly as stored in RocksDB (raw data)
+        // No transformations - let the adapter handle that
+        json::Json doc(value.c_str());
+        return doc;
     }
     catch (const std::exception& e)
     {
@@ -975,6 +1036,11 @@ json::Json CTIStorageDB::getAsset(const base::Name& name, const std::string& ass
 bool CTIStorageDB::assetExists(const base::Name& name, const std::string& assetType) const
 {
     return m_pImpl->assetExists(name, assetType);
+}
+
+std::string CTIStorageDB::resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const
+{
+    return m_pImpl->resolveNameFromUUID(uuid, assetType);
 }
 
 std::vector<std::string> CTIStorageDB::getKVDBList() const
@@ -1047,9 +1113,20 @@ std::vector<base::Name> CTIStorageDB::getPolicyIntegrationList() const
     return m_pImpl->getPolicyIntegrationList();
 }
 
-base::Name CTIStorageDB::getPolicyDefaultParent() const
+
+json::Json CTIStorageDB::getPolicy(const base::Name& name) const
 {
-    return m_pImpl->getPolicyDefaultParent();
+    return m_pImpl->getPolicy(name);
+}
+
+std::vector<base::Name> CTIStorageDB::getPolicyList() const
+{
+    return m_pImpl->getPolicyList();
+}
+
+bool CTIStorageDB::policyExists(const base::Name& name) const
+{
+    return m_pImpl->policyExists(name);
 }
 
 void CTIStorageDB::clearAll()
@@ -1192,6 +1269,49 @@ bool CTIStorageDB::Impl::assetExists(const base::Name& name, const std::string& 
     return existsByIdOrName(name.fullName(), cfIt->second, keyPrefixIt->second, namePrefixIt->second);
 }
 
+std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const
+{
+   std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    auto cfIt = CTIStorageDB::getAssetTypeToColumnFamily().find(assetType);
+    if (cfIt == CTIStorageDB::getAssetTypeToColumnFamily().end())
+    {
+        throw std::invalid_argument("Invalid asset type: " + assetType);
+    }
+
+    auto keyPrefixIt = CTIStorageDB::getAssetTypeToKeyPrefix().find(assetType);
+    auto namePrefixIt = CTIStorageDB::getAssetTypeToNamePrefix().find(assetType);
+    if (keyPrefixIt == CTIStorageDB::getAssetTypeToKeyPrefix().end() || namePrefixIt == CTIStorageDB::getAssetTypeToNamePrefix().end())
+    {
+        throw std::invalid_argument("No prefix configuration for asset type: " + assetType);
+    }
+
+    try
+    {
+        json::Json doc = getByIdOrName(uuid, cfIt->second, keyPrefixIt->second, namePrefixIt->second);
+
+        // Try /document/title first (integrations, policies)
+        auto title = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_TITLE);
+        if (title && !title->empty())
+        {
+            return *title;
+        }
+
+        // Try /document/name (decoders)
+        auto name = doc.getString(constants::JSON_DOCUMENT_NAME);
+        if (name && !name->empty())
+        {
+            return *name;
+        }
+
+        throw std::runtime_error(fmt::format("Document for UUID '{}' missing title/name field", uuid));
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error("Failed to resolve name from UUID: " + std::string(e.what()));
+    }
+}
+
 std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
 {
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
@@ -1253,9 +1373,13 @@ bool CTIStorageDB::Impl::kvdbExists(const std::string& kvdbName) const
 
 json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex);
 
-    return getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
+    // Return raw KVDB document - adapter will extract content if needed
+    return getByIdOrName(kvdbName,
+                        CTIStorageDB::ColumnFamily::KVDB,
+                        std::string(constants::KVDB_PREFIX),
+                        std::string(constants::NAME_KVDB_PREFIX));
 }
 
 std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
@@ -1274,41 +1398,51 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
         try
         {
             json::Json doc(it->value().ToString().c_str());
-            if (doc.exists(constants::JSON_PAYLOAD_INTEGRATIONS))
+
+            std::optional<std::vector<json::Json>> integrationArray;
+
+            // Try nested format first
+            if (doc.exists(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS))
             {
-                auto integrationArray = doc.getArray(constants::JSON_PAYLOAD_INTEGRATIONS);
-                if (integrationArray)
+                integrationArray = doc.getArray(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS);
+            }
+            // Fallback to legacy flat format
+            else if (doc.exists(constants::JSON_PAYLOAD_INTEGRATIONS))
+            {
+                integrationArray = doc.getArray(constants::JSON_PAYLOAD_INTEGRATIONS);
+            }
+
+            if (integrationArray && !integrationArray->empty())
+            {
+                for (const auto& integration : *integrationArray)
                 {
-                    for (const auto& integration : *integrationArray)
+                    if (auto integrationId = integration.getString())
                     {
-                        if (auto integrationId = integration.getString())
+                        // Resolve integration ID to title/name
+                        try
                         {
-                            // Resolve integration ID to title/name
-                            try
+                            std::string value;
+                            auto status = m_db->Get(ro, getColumnFamily(CTIStorageDB::ColumnFamily::INTEGRATION),
+                                                   std::string(constants::INTEGRATION_PREFIX) + *integrationId, &value);
+                            if (status.ok())
                             {
-                                std::string value;
-                                auto status = m_db->Get(ro, getColumnFamily(CTIStorageDB::ColumnFamily::INTEGRATION),
-                                                       std::string(constants::INTEGRATION_PREFIX) + *integrationId, &value);
-                                if (status.ok())
+                                json::Json integrationDoc(value.c_str());
+                                std::string title = extractNameFromJson(integrationDoc);
+                                if (!title.empty())
                                 {
-                                    json::Json integrationDoc(value.c_str());
-                                    std::string title = extractNameFromJson(integrationDoc);
-                                    if (!title.empty())
-                                    {
-                                        integrations.emplace_back(title);
-                                    }
-                                    else
-                                    {
-                                        // Fallback to ID if no title
-                                        integrations.emplace_back(*integrationId);
-                                    }
+                                    integrations.emplace_back(title);
+                                }
+                                else
+                                {
+                                    // Fallback to ID if no title
+                                    integrations.emplace_back(*integrationId);
                                 }
                             }
-                            catch (const std::exception& e)
-                            {
-                                LOG_WARNING("Failed to resolve integration ID {}: {}", *integrationId, e.what());
-                                integrations.emplace_back(*integrationId);
-                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOG_WARNING("Failed to resolve integration ID {}: {}", *integrationId, e.what());
+                            integrations.emplace_back(*integrationId);
                         }
                     }
                 }
@@ -1323,11 +1457,55 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
     return integrations;
 }
 
-base::Name CTIStorageDB::Impl::getPolicyDefaultParent() const
+
+json::Json CTIStorageDB::Impl::getPolicy(const base::Name& name) const
 {
-    // Note: This is a constant value, no lock needed but added for consistency
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
-    return base::Name(std::string(constants::DEFAULT_PARENT));
+    return getByIdOrName(name.fullName(),
+                        CTIStorageDB::ColumnFamily::POLICY,
+                        std::string(constants::POLICY_PREFIX),
+                        std::string(constants::NAME_POLICY_PREFIX));
+}
+
+std::vector<base::Name> CTIStorageDB::Impl::getPolicyList() const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    std::vector<base::Name> policies;
+    rocksdb::ReadOptions ro;
+    ro.total_order_seek = true;
+    auto it = std::unique_ptr<rocksdb::Iterator>(
+        m_db->NewIterator(ro, getColumnFamily(CTIStorageDB::ColumnFamily::POLICY)));
+    constexpr auto prefix = constants::POLICY_PREFIX;
+
+    for (it->Seek(prefix); it->Valid() &&
+         it->key().ToString().compare(0, prefix.size(), prefix) == 0; it->Next())
+    {
+        try
+        {
+            json::Json doc(it->value().ToString().c_str());
+            std::string title = extractNameFromJson(doc);
+            if (!title.empty())
+            {
+                policies.emplace_back(title);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("Failed to parse policy document while listing: {}", e.what());
+        }
+    }
+
+    return policies;
+}
+
+bool CTIStorageDB::Impl::policyExists(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+    return existsByIdOrName(name.fullName(),
+                           CTIStorageDB::ColumnFamily::POLICY,
+                           std::string(constants::POLICY_PREFIX),
+                           std::string(constants::NAME_POLICY_PREFIX));
 }
 
 void CTIStorageDB::Impl::clearAll()
@@ -1374,8 +1552,6 @@ size_t CTIStorageDB::Impl::getStorageStats(CTIStorageDB::ColumnFamily cf) const
 
 bool CTIStorageDB::Impl::validateDocument(const json::Json& doc, const std::string& expectedType) const
 {
-    // Note: validateDocument is a pure function that doesn't access database state
-    // No lock needed, but we could add shared lock for consistency if needed
     if (!doc.exists(constants::JSON_NAME) || extractIdFromJson(doc).empty())
     {
         return false;
@@ -1400,6 +1576,281 @@ bool CTIStorageDB::Impl::validateDocument(const json::Json& doc, const std::stri
         return false;
     }
 
+    return true;
+}
+
+std::optional<std::pair<CTIStorageDB::ColumnFamily, std::string>>
+CTIStorageDB::Impl::findAssetColumnFamily(const std::string& resourceId) const
+{
+    struct AssetTypeInfo {
+        CTIStorageDB::ColumnFamily cf;
+        std::string_view prefix;
+        std::string_view type;
+    };
+
+    constexpr std::array<AssetTypeInfo, 4> assetTypes = {{
+        {CTIStorageDB::ColumnFamily::INTEGRATION, constants::INTEGRATION_PREFIX, constants::INTEGRATION_TYPE},
+        {CTIStorageDB::ColumnFamily::DECODER, constants::DECODER_PREFIX, constants::DECODER_TYPE},
+        {CTIStorageDB::ColumnFamily::POLICY, constants::POLICY_PREFIX, constants::POLICY_TYPE},
+        {CTIStorageDB::ColumnFamily::KVDB, constants::KVDB_PREFIX, constants::KVDB_TYPE}
+    }};
+
+    rocksdb::ReadOptions ro;
+    for (const auto& assetType : assetTypes)
+    {
+        const std::string key = std::string(assetType.prefix) + resourceId;
+        std::string value;
+        auto status = m_db->Get(ro, getColumnFamily(assetType.cf), key, &value);
+
+        if (status.ok())
+        {
+            return std::make_pair(assetType.cf, std::string(assetType.type));
+        }
+    }
+
+    return std::nullopt;
+}
+
+bool CTIStorageDB::Impl::deleteAsset(const std::string& resourceId)
+{
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
+
+    LOG_TRACE("Attempting to delete asset with resource ID: {}", resourceId);
+
+    // First, find which column family contains this asset
+    auto cfInfo = findAssetColumnFamily(resourceId);
+    if (!cfInfo)
+    {
+        LOG_DEBUG("Asset with resource ID '{}' not found in any column family", resourceId);
+        return false;
+    }
+
+    const auto& [cf, assetType] = *cfInfo;
+
+    // Get the corresponding prefixes for this asset type
+    auto keyPrefixIt = CTIStorageDB::getAssetTypeToKeyPrefix().find(assetType);
+    auto namePrefixIt = CTIStorageDB::getAssetTypeToNamePrefix().find(assetType);
+
+    if (keyPrefixIt == CTIStorageDB::getAssetTypeToKeyPrefix().end() ||
+        namePrefixIt == CTIStorageDB::getAssetTypeToNamePrefix().end())
+    {
+        throw std::runtime_error("Internal error: missing prefix configuration for asset type: " + assetType);
+    }
+
+    const std::string& keyPrefix = keyPrefixIt->second;
+    const std::string& namePrefix = namePrefixIt->second;
+    const std::string primaryKey = keyPrefix + resourceId;
+
+    // Read the document to get its name for secondary index deletion
+    std::string docValue;
+    rocksdb::ReadOptions ro;
+    auto status = m_db->Get(ro, getColumnFamily(cf), primaryKey, &docValue);
+
+    if (!status.ok())
+    {
+        LOG_WARNING("Failed to read asset document before deletion: {}", status.ToString());
+        return false;
+    }
+
+    std::string assetName;
+    try
+    {
+        json::Json doc(docValue.c_str());
+        assetName = extractNameFromJson(doc);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to parse asset document for name extraction: {}", e.what());
+        // Continue with deletion even if we can't extract the name
+    }
+
+    rocksdb::WriteBatch batch;
+    rocksdb::WriteOptions wo;
+
+    // Delete primary key (from asset column family)
+    batch.Delete(getColumnFamily(cf), primaryKey);
+
+    // Delete secondary name index (from metadata column family)
+    if (!assetName.empty())
+    {
+        const std::string nameKey = namePrefix + assetName;
+        batch.Delete(getColumnFamily(CTIStorageDB::ColumnFamily::METADATA), nameKey);
+    }
+
+    // If it's an integration, also delete relationship indexes
+    if (assetType == constants::INTEGRATION_TYPE)
+    {
+        const std::string decodersKey = std::string(constants::IDX_INTEGRATION_DECODERS) + resourceId;
+        const std::string kvdbsKey = std::string(constants::IDX_INTEGRATION_KVDBS) + resourceId;
+        batch.Delete(getColumnFamily(CTIStorageDB::ColumnFamily::METADATA), decodersKey);
+        batch.Delete(getColumnFamily(CTIStorageDB::ColumnFamily::METADATA), kvdbsKey);
+    }
+
+    // Execute the batch
+    status = m_db->Write(wo, &batch);
+    if (!status.ok())
+    {
+        throw std::runtime_error("Failed to delete asset: " + status.ToString());
+    }
+
+    LOG_INFO("Successfully deleted asset type='{}' resource_id='{}'", assetType, resourceId);
+    return true;
+}
+
+bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::Json& operations)
+{
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
+
+    LOG_TRACE("Attempting to update asset with resource ID: {}", resourceId);
+
+    // Validate operations is an array
+    auto opsArray = operations.getArray();
+    if (!opsArray || opsArray->empty())
+    {
+        throw std::invalid_argument("operations must be a non-empty JSON array");
+    }
+
+    // Find which column family contains this asset
+    auto cfInfo = findAssetColumnFamily(resourceId);
+    if (!cfInfo)
+    {
+        LOG_DEBUG("Asset with resource ID '{}' not found in any column family", resourceId);
+        return false;
+    }
+
+    const auto& [cf, assetType] = *cfInfo;
+
+    // Get the corresponding prefixes for this asset type
+    auto keyPrefixIt = CTIStorageDB::getAssetTypeToKeyPrefix().find(assetType);
+    if (keyPrefixIt == CTIStorageDB::getAssetTypeToKeyPrefix().end())
+    {
+        throw std::runtime_error("Internal error: missing prefix configuration for asset type: " + assetType);
+    }
+
+    const std::string& keyPrefix = keyPrefixIt->second;
+    const std::string primaryKey = keyPrefix + resourceId;
+
+    // Read the current document
+    std::string docValue;
+    rocksdb::ReadOptions ro;
+    auto status = m_db->Get(ro, getColumnFamily(cf), primaryKey, &docValue);
+
+    if (!status.ok())
+    {
+        LOG_WARNING("Failed to read asset document for update: {}", status.ToString());
+        return false;
+    }
+
+    // Parse the document using nlohmann::json for RFC 6902 JSON Patch support
+    nlohmann::json jsonData;
+    try
+    {
+        jsonData = nlohmann::json::parse(docValue);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error("Failed to parse existing asset document: " + std::string(e.what()));
+    }
+
+    // Convert operations from base::json::Json to nlohmann::json
+    nlohmann::json patchOperations;
+    try
+    {
+        // Serialize base::json::Json operations to string and parse with nlohmann::json
+        std::string opsStr = operations.str();
+        patchOperations = nlohmann::json::parse(opsStr);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error("Failed to convert patch operations: " + std::string(e.what()));
+    }
+
+    // Adjust patch operation paths to account for /payload wrapper
+    // Operations come with paths like /document/... but we store /payload/document/...
+    for (auto& op : patchOperations)
+    {
+        if (op.contains("path") && op["path"].is_string())
+        {
+            std::string path = op["path"].get<std::string>();
+
+            // Special case: empty path with replace means replacing entire payload
+            if (path.empty() && op.contains("op") && op["op"].get<std::string>() == "replace")
+            {
+                // If value contains the new payload structure, wrap it properly
+                if (op.contains("value") && op["value"].is_object())
+                {
+                    op["path"] = "/payload";
+                    LOG_TRACE("Adjusted empty patch path to /payload for full replace");
+                }
+            }
+            // If path starts with /document, prefix it with /payload
+            else if (path.rfind("/document", 0) == 0)
+            {
+                op["path"] = "/payload" + path;
+                LOG_TRACE("Adjusted patch path: {} -> {}", path, op["path"].get<std::string>());
+            }
+        }
+        // Also adjust "from" field for move/copy operations
+        if (op.contains("from") && op["from"].is_string())
+        {
+            std::string fromPath = op["from"].get<std::string>();
+            if (fromPath.rfind("/document", 0) == 0)
+            {
+                op["from"] = "/payload" + fromPath;
+                LOG_TRACE("Adjusted patch 'from' path: {} -> {}", fromPath, op["from"].get<std::string>());
+            }
+        }
+    }
+
+    // Apply JSON Patch operations (RFC 6902)
+    try
+    {
+        jsonData.patch_inplace(patchOperations);
+        LOG_TRACE("Successfully applied {} patch operations to asset", opsArray->size());
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed to apply JSON Patch operations: {}", e.what());
+        throw std::runtime_error("JSON Patch application failed: " + std::string(e.what()));
+    }
+
+    // Convert back to base::json::Json for validation and storage
+    json::Json doc;
+    try
+    {
+        std::string updatedJsonStr = jsonData.dump();
+        doc = json::Json(updatedJsonStr.c_str());
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error("Failed to convert patched document back to base::json: " + std::string(e.what()));
+    }
+
+    // Validate the updated document
+    if (!validateDocument(doc, assetType))
+    {
+        throw std::invalid_argument("Updated document failed validation for type: " + assetType);
+    }
+
+    // Store the updated document back (reusing storeWithIndex logic would be ideal,
+    // but we need to handle it directly here to maintain the lock)
+    const std::string updatedDoc = jsonData.dump();
+    rocksdb::WriteOptions wo;
+    status = m_db->Put(wo, getColumnFamily(cf), primaryKey, updatedDoc);
+
+    if (!status.ok())
+    {
+        throw std::runtime_error("Failed to write updated asset: " + status.ToString());
+    }
+
+    // Update relationship indexes if it's an integration
+    if (assetType == constants::INTEGRATION_TYPE)
+    {
+        updateRelationshipIndexes(doc);
+    }
+
+    LOG_INFO("Successfully updated asset type='{}' resource_id='{}' with {} operations",
+             assetType, resourceId, opsArray->size());
     return true;
 }
 
