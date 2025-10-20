@@ -152,8 +152,9 @@ public:
      *
      * @param data Parsed flatbuffer metadata (e.g., sequence number).
      * @param dataRaw Raw binary payload of the chunk.
+     * @param dataSize Size of the raw payload.
      */
-    void handleData(Wazuh::SyncSchema::DataValue const* data, flatbuffers::Vector<uint8_t> const* dataRaw)
+    void handleData(Wazuh::SyncSchema::DataValue const* data, const uint8_t* dataRaw, size_t dataSize)
     {
         if (data == nullptr)
         {
@@ -168,7 +169,7 @@ public:
         logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
         m_store.put(std::format("{}_{}", session, seq),
-                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw->data()), dataRaw->size()));
+                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
 
         m_gapSet->observe(data->seq());
 

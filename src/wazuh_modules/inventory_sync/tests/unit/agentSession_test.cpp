@@ -149,7 +149,7 @@ TEST_F(AgentSessionTest, HandleData_Success)
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
 
-    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
+    session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
 }
 
 TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
@@ -179,7 +179,7 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0); // End not received, should not push
 
-    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
+    session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
 }
 
 TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
@@ -212,7 +212,7 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
 
-    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
+    session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
 }
 
 TEST_F(AgentSessionTest, HandleEnd_GapSetNotEmpty)
@@ -255,7 +255,7 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
     auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::DataValue>(dataBuilder.GetBufferPointer());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
-    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
+    session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
 
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
     EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(0);

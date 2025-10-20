@@ -103,13 +103,8 @@ class InventorySyncFacadeImpl final
             }
             else
             {
-                // Handle data - wrap the raw flatbuffer bytes in a Vector
-                flatbuffers::FlatBufferBuilder builder(dataRaw.size());
-                auto vec = builder.CreateVector(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                builder.Finish(vec);
-
-                it->second.handleData(data,
-                                      flatbuffers::GetRoot<flatbuffers::Vector<uint8_t>>(builder.GetBufferPointer()));
+                // Handle data - pass the raw flatbuffer bytes directly
+                it->second.handleData(data, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
                 logDebug2(
                     LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Data handled for session %llu", data->session());
             }
