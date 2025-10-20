@@ -39,5 +39,7 @@ target_link_libraries(extended_sources_browser_extensions_unit_test
   gtest_maind
   gmock_maind
   pthread
+  $<$<PLATFORM_ID:Windows>:-static-libgcc>
+  $<$<PLATFORM_ID:Windows>:-static-libstdc++>
 )
 add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)

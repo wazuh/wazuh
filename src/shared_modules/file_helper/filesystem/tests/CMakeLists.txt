@@ -15,6 +15,8 @@ target_link_libraries(filesystem_unit_test PRIVATE FilesystemWrapper
     optimized gmock
     optimized gtest_main
     optimized gmock_main
+    $<$<PLATFORM_ID:Windows>:-static-libgcc>
+    $<$<PLATFORM_ID:Windows>:-static-libstdc++>
 )
 add_test(NAME Filesystem COMMAND filesystem_unit_test)
 set_tests_properties(Filesystem PROPERTIES LABELS file_helper_utest)
