@@ -65,6 +65,7 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/private/var/db/receipts", RCP},
     { "/Library/Apple/System/Library/Receipts", RCP},
     { "/usr/local/Cellar", BREW},
+    { "/opt/homebrew/Cellar", BREW},
     { "/opt/local/var/macports/registry", MACPORTS}
 };
 
