@@ -296,6 +296,37 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Builds a helper that turns an array of objects into a key/value map.
+ *
+ * @param opArgs Operation arguments:
+ *        - `opArgs[0]`: reference to the array to iterate.
+ *        - `opArgs[1]`: string JSON Pointer used to extract the key from each element.
+ *        - `opArgs[2]`: string JSON Pointer used to extract the value.
+ *        - `opArgs[3]` (optional): boolean flag `skipSerializer`; when true keeps the key verbatim,
+ *          otherwise it is normalized to lowercase snake_case.
+ * @param buildCtx Build context.
+ * @return MapOp mapper that emits the resulting object.
+ */
+MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs,
+                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Builds a helper that turns an array of objects representing changes into a map of old/new values.
+ *
+ * @param opArgs Operation arguments:
+ *        - `opArgs[0]`: reference to the array to iterate.
+ *        - `opArgs[1]`: string JSON Pointer used to extract the key from each element.
+ *        - `opArgs[2]`: string JSON Pointer used to extract the new value.
+ *        - `opArgs[3]`: string JSON Pointer used to extract the old value.
+ *        - `opArgs[4]` (optional): boolean flag `skipSerializer`; when true keeps the key verbatim,
+ *          otherwise it is normalized to lowercase snake_case.
+ * @param buildCtx Build context.
+ * @return MapOp mapper that emits the resulting object.
+ */
+MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
+
 //*************************************************
 //*              IP tranform                      *
 //*************************************************

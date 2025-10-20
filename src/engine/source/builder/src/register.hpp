@@ -248,6 +248,12 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "split",
         {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperAppendSplitString});
     registry->template add<builders::OpBuilderEntry>(
+        "array_obj_to_mapkv",
+        {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperArrayObjToMapkv});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_extract_key_obj",
+        {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperArrayExtractKeyObj});
+    registry->template add<builders::OpBuilderEntry>(
         "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
     registry->template add<builders::OpBuilderEntry>(
         "concat_any",
