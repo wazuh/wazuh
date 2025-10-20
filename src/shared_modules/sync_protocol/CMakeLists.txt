@@ -115,8 +115,8 @@ target_include_directories(agent_sync_protocol
 
 target_link_libraries(agent_sync_protocol
   PRIVATE
-    flatbuffers
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a
+  flatbuffers
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
