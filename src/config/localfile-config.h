@@ -201,7 +201,6 @@ typedef struct _logreader {
     dev_t dev;
 
 #ifdef WIN32
-    HANDLE h;
     DWORD fd;
 #else
     ino_t fd;

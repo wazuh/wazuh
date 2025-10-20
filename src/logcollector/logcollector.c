@@ -1131,10 +1131,6 @@ void close_file(logreader * lf) {
     fgetpos(lf->fp, &lf->position);
     fclose(lf->fp);
     lf->fp = NULL;
-
-#ifdef WIN32
-    lf->h = NULL;
-#endif
 }
 
 #ifdef WIN32
@@ -2176,7 +2172,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         mdebug1("Ignoring file '%s' due to modification time",current->file);
                         fclose(current->fp);
                         current->fp = NULL;
-                        current->h = NULL;
                         w_mutex_unlock(&current->mutex);
                         rwlock_unlock(&files_update_rwlock);
                         continue;
