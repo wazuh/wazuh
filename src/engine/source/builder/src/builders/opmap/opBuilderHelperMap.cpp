@@ -19,7 +19,7 @@
 #include <base/error.hpp>
 #include <base/utils/communityId.hpp>
 #include <base/utils/ipUtils.hpp>
-#include "base/utils/sanitizers.hpp"
+#include <base/utils/sanitizers.hpp>
 #include <base/utils/stringUtils.hpp>
 
 #include "base/error.hpp"
@@ -2010,7 +2010,7 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
     // Return Op
-    return [runState = buildCtx->runState(), targetField = targetField.jsonPath(), successTrace](
+    return [runState = buildCtx->runState(), targetField = targetField.jsonPath(), successTrace, name](
                base::Event event) -> TransformResult
     {
         try
@@ -2020,7 +2020,8 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
         }
         catch (const std::exception& e)
         {
-            RETURN_FAILURE(runState, event, e.what());
+            RETURN_FAILURE(
+                runState, event, fmt::format("{} -> An error has occurred during sanitization: '{}'", name, e.what()));
         }
     };
 }
