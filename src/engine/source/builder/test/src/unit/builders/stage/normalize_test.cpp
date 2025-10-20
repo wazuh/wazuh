@@ -60,8 +60,8 @@ INSTANTIATE_TEST_SUITE_P(
                        const auto& innerRegistry = mocks.registry->template getRegistry<StageBuilder>();
                        EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
                        EXPECT_CALL(innerRegistry, get("map")).WillOnce(testing::Return(dummyStageBuilder()));
-                       return base::Chain::create("normalize",
-                                                  {base::And::create("subblock", {base::And::create("dummy", {})})});
+                       return base::Chain::create(
+                           "normalize", {base::And::create("normalize-item", {base::And::create("dummy", {})})});
                    })),
         StageT(R"z([{"parse|key": []}])z",
                normalizeBuilder,
@@ -71,8 +71,8 @@ INSTANTIATE_TEST_SUITE_P(
                        const auto& innerRegistry = mocks.registry->template getRegistry<StageBuilder>();
                        EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
                        EXPECT_CALL(innerRegistry, get("parse")).WillOnce(testing::Return(dummyStageBuilder()));
-                       return base::Chain::create("normalize",
-                                                  {base::And::create("subblock", {base::And::create("dummy", {})})});
+                       return base::Chain::create(
+                           "normalize", {base::And::create("normalize-item", {base::And::create("dummy", {})})});
                    })),
         StageT(R"z([{"check": []}])z",
                normalizeBuilder,
@@ -82,8 +82,8 @@ INSTANTIATE_TEST_SUITE_P(
                        const auto& innerRegistry = mocks.registry->template getRegistry<StageBuilder>();
                        EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
                        EXPECT_CALL(innerRegistry, get("check")).WillOnce(testing::Return(dummyStageBuilder()));
-                       return base::Chain::create("normalize",
-                                                  {base::And::create("subblock", {base::And::create("dummy", {})})});
+                       return base::Chain::create(
+                           "normalize", {base::And::create("normalize-item", {base::And::create("dummy", {})})});
                    })),
         StageT(R"z([{"map": []}, {"parse|key": []}, {"check": []}])z",
                normalizeBuilder,
@@ -95,26 +95,20 @@ INSTANTIATE_TEST_SUITE_P(
                        EXPECT_CALL(innerRegistry, get("map")).WillOnce(testing::Return(dummyStageBuilder()));
                        EXPECT_CALL(innerRegistry, get("parse")).WillOnce(testing::Return(dummyStageBuilder()));
                        EXPECT_CALL(innerRegistry, get("check")).WillOnce(testing::Return(dummyStageBuilder()));
-                       return base::Chain::create("normalize",
-                                                  {base::And::create("subblock", {base::And::create("dummy", {})}),
-                                                   base::And::create("subblock", {base::And::create("dummy", {})}),
-                                                   base::And::create("subblock", {base::And::create("dummy", {})})});
+                       return base::Chain::create(
+                           "normalize",
+                           {base::And::create("normalize-item", {base::And::create("dummy", {})}),
+                            base::And::create("normalize-item", {base::And::create("dummy", {})}),
+                            base::And::create("normalize-item", {base::And::create("dummy", {})})});
                    })),
+        // Incorrect order of subblocks
         StageT(R"z([{"map": [], "parse|key": [], "check": []}])z",
                normalizeBuilder,
-               SUCCESS(
-                   [](const auto& mocks)
-                   {
-                       const auto& innerRegistry = mocks.registry->template getRegistry<StageBuilder>();
-                       EXPECT_CALL(*mocks.ctx, registry()).WillRepeatedly(testing::ReturnRef(*mocks.registry));
-                       EXPECT_CALL(innerRegistry, get("map")).WillOnce(testing::Return(dummyStageBuilder()));
-                       EXPECT_CALL(innerRegistry, get("parse")).WillOnce(testing::Return(dummyStageBuilder()));
-                       EXPECT_CALL(innerRegistry, get("check")).WillOnce(testing::Return(dummyStageBuilder()));
-                       return base::Chain::create("normalize",
-                                                  {base::And::create("subblock",
-                                                                     {base::And::create("dummy", {}),
-                                                                      base::And::create("dummy", {}),
-                                                                      base::And::create("dummy", {})})});
-                   }))),
+               FAILURE([](const auto& mocks) { return None {}; })),
+        StageT(R"z([{"check": [], "map": [], "parse|key": []}])z",
+               normalizeBuilder,
+               FAILURE([](const auto& mocks) { return None {}; }))
+        // END VALUES
+        ),
     testNameFormatter<StageBuilderTest>("Normalize"));
 } // namespace stagebuildtest

@@ -186,8 +186,11 @@ if (NOT SHARED_MODULES)
 endif()
 include_directories(${SHARED_MODULES}/utils)
 
-# Set de indexer connector build directory
+# Set the indexer connector build directory
 set(INDEXERCONNECTOR_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/shared_modules/indexer_connector")
+
+# Set the content manager build directory
+set(CONTENTMANAGER_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/shared_modules/content_manager")
 
 ####################################################################################################
 # Rocksdb dynamic link
@@ -216,6 +219,7 @@ set(_new_paths
   ${CMAKE_SOURCE_DIR}               # For shared libwazuhext.so
   ${ROCKSDB_LIB_BUILD_DIR}          # External precompiled rocksdb lib
   ${INDEXERCONNECTOR_LIB_BUILD_DIR} # Internal precompiled indexer connector lib
+  ${CONTENTMANAGER_LIB_BUILD_DIR}   # Internal precompiled content manager lib
   "$ORIGIN/../lib"
   "$ORIGIN/lib"
 )
@@ -300,6 +304,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/ctistore)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
 
 
 target_link_libraries(wazuh-engine
@@ -328,6 +333,8 @@ target_link_libraries(wazuh-engine
     api::event
     queue
     archiver::archive
+    ctistore::ctistore
+    cmsync::cmsync
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries

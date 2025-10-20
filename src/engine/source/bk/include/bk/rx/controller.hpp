@@ -42,7 +42,7 @@ public:
     Controller() = delete;
     Controller(const Controller&) = delete;
 
-    ~Controller() = default;
+    ~Controller() { stop(); }
 
     /**
      * @brief Construct a new Controller from an expression and a set of traceables
@@ -116,7 +116,7 @@ public:
     const std::unordered_set<std::string>& getTraceables() const override { return m_traceables; }
 
     /**
-     * @copydoc bk::IController::getTraces
+     * @copydoc bk::IController::subscribe
      */
     base::RespOrError<Subscription> subscribe(const std::string& traceable, const Subscriber& subscriber) override;
 

@@ -5,7 +5,7 @@ project(agent_sync_protocol_tests)
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,leak,undefined")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
 message(STATUS "SRC_FOLDER is: ${SRC_FOLDER}")
@@ -35,7 +35,6 @@ target_include_directories(agent_sync_protocol_tests PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/..
 )
 
-# Link test executable to the main library and GTest
 target_link_libraries(agent_sync_protocol_tests
     PRIVATE
     agent_sync_protocol
@@ -45,5 +44,14 @@ target_link_libraries(agent_sync_protocol_tests
     optimized gmock
     pthread
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_custom_command(TARGET agent_sync_protocol_tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_BINARY_DIR}/../bin/libagent_sync_protocol.dll"
+        "$<TARGET_FILE_DIR:agent_sync_protocol_tests>/libagent_sync_protocol.dll"
+        COMMENT "Copying libagent_sync_protocol.dll to test directory"
+    )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME agent_sync_protocol_tests COMMAND agent_sync_protocol_tests)

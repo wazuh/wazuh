@@ -204,10 +204,10 @@ jobs:
         run: |
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
-          
+
           CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec \
             --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
-          
+
           sudo docker exec $CONTAINER_ID /tests/install_component.sh $PACKAGE_NAME manager
 
           # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
@@ -217,7 +217,7 @@ jobs:
             echo "The installation could not be completed. The package will not be uploaded.";
             exit 1;
           fi
-          
+
           echo "CONTAINER_ID=$CONTAINER_ID" >> $GITHUB_ENV
           echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
           echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
@@ -233,7 +233,7 @@ jobs:
 
       - name: Test uninstall built manager
         run: |
-          if [ -z "${{ env.PACKAGE_NAME }}" ] || [ -z "${{ env.CONTAINER_ID }}" ]; then 
+          if [ -z "${{ env.PACKAGE_NAME }}" ] || [ -z "${{ env.CONTAINER_ID }}" ]; then
             echo "No package or container found!";
             exit 1;
           fi
@@ -249,7 +249,7 @@ jobs:
           CURRENT_TAG="${{ env.TAG }}"
           PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | \
           grep -v "^${CURRENT_TAG}$" | sort -V | awk -v current="$CURRENT_TAG" '$0 < current' | tail -n1)
-          
+
           echo "Latest release detected: $PREVIOUS_TAG"
           echo "PUBLIC_RELEASE_VERSION=$PREVIOUS_TAG" >> $GITHUB_ENV
 

@@ -1,7 +1,9 @@
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
+#include <iterator>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -14,9 +16,13 @@
 #include <openssl/sha.h>
 #include <re2/re2.h>
 
+#include <base/error.hpp>
+#include <base/utils/communityId.hpp>
 #include <base/utils/ipUtils.hpp>
 #include <base/utils/stringUtils.hpp>
 
+#include "base/error.hpp"
+#include "builders/builders.hpp"
 #include "syntax.hpp"
 
 namespace
@@ -1012,7 +1018,7 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
         if (!buildCtx->validator().isArray(arrayRef.dotPath()))
         {
             throw std::runtime_error(fmt::format(
-                "Expected 'array' reference but got reference '{}' wich is not an array", arrayRef.dotPath()));
+                "Expected 'array' reference but got reference '{}' which is not an array", arrayRef.dotPath()));
         }
 
         auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
@@ -1220,6 +1226,425 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
         json::Json resultJson;
         resultJson.setInt64(result);
         RETURN_SUCCESS(runState, resultJson, successTrace);
+    };
+}
+
+// field: +array_obj_to_mapkv/$<array_reference>
+MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 3, 4);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto arrayRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+
+    if (buildCtx->validator().hasField(arrayRef.dotPath()))
+    {
+        if (!buildCtx->validator().isArray(arrayRef.dotPath()))
+        {
+            throw std::runtime_error(fmt::format(
+                "Expected 'array' reference but got reference '{}' which is not an array", arrayRef.dotPath()));
+        }
+
+        auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
+        if (jType != json::Json::Type::Object)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected array of 'object' but got array of '{}'", json::Json::typeToStr(jType)));
+        }
+    }
+
+    builder::builders::utils::assertValue(opArgs, 1);
+    const auto keyValue = std::static_pointer_cast<Value>(opArgs[1])->value();
+    if (!keyValue.isString())
+    {
+        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'", keyValue.typeName()));
+    }
+
+    const auto keyName = keyValue.getString().value();
+    if (keyName.empty() || keyName.front() != '/')
+    {
+        throw std::runtime_error("Key path cannot be an empty string and must start with '/' (JSON Pointer)");
+    }
+
+    builder::builders::utils::assertValue(opArgs, 2);
+    const auto fieldValueJson = std::static_pointer_cast<Value>(opArgs[2])->value();
+    if (!fieldValueJson.isString())
+    {
+        throw std::runtime_error(
+            fmt::format("Expected 'string' parameter but got type '{}'", fieldValueJson.typeName()));
+    }
+    const auto fieldValue = fieldValueJson.getString().value();
+    if (fieldValue.empty() || fieldValue.front() != '/')
+    {
+        throw std::runtime_error("Value path cannot be an empty string and must start with '/' (JSON Pointer)");
+    }
+
+    bool skipSerializer = false;
+    if (opArgs.size() == 4)
+    {
+        builder::builders::utils::assertValue(opArgs, 3);
+        const auto valueFlag = std::static_pointer_cast<Value>(opArgs[3])->value().getBool();
+        if (!valueFlag.has_value())
+        {
+            throw std::runtime_error("Expected 'boolean' parameter for skipSerializer");
+        }
+        skipSerializer = valueFlag.value();
+    }
+
+    const auto normalizeStr = [](std::string_view in) -> std::string
+    {
+        std::string out;
+        out.reserve(in.size());
+        bool lastUnderscore = false;
+
+        auto push_underscore = [&]()
+        {
+            if (!out.empty() && !lastUnderscore)
+            {
+                out.push_back('_');
+                lastUnderscore = true;
+            }
+        };
+
+        for (unsigned char c : std::string(in))
+        {
+            if (c >= 'A' && c <= 'Z')
+            {
+                c = static_cast<unsigned char>(c + 32);
+            }
+
+            if (std::isalnum(c) || c == '_')
+            {
+                if (c == '_')
+                {
+                    if (!out.empty() && !lastUnderscore)
+                    {
+                        out.push_back('_');
+                        lastUnderscore = true;
+                    }
+                }
+                else
+                {
+                    out.push_back(static_cast<char>(c));
+                    lastUnderscore = false;
+                }
+                continue;
+            }
+
+            if (c == ' ' || c == '/' || c == '.' || c == '-' || c == '\\' || c == ':')
+            {
+                push_underscore();
+            }
+        }
+
+        if (!out.empty() && out.back() == '_')
+        {
+            out.pop_back();
+        }
+
+        return out;
+    };
+
+    const std::string traceName = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
+    const std::string failureArrNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, arrayRef.dotPath());
+    const std::string failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
+
+    return [normalizeStr,
+            keyName,
+            fieldValue,
+            skipSerializer,
+            traceName,
+            successTrace,
+            failureArrNotFound,
+            failureTrace,
+            runState = buildCtx->runState(),
+            arrayPath = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
+    {
+        const auto arrayOpt = event->getArray(arrayPath);
+        if (!arrayOpt.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureArrNotFound);
+        }
+
+        json::Json result;
+        result.setObject();
+
+        size_t inserts {0};
+
+        try
+        {
+            for (const auto& element : arrayOpt.value())
+            {
+                if (!element.isObject())
+                {
+                    continue;
+                }
+
+                const auto keyOpt = element.getString(keyName);
+                if (!keyOpt.has_value() || keyOpt->empty())
+                {
+                    continue;
+                }
+
+                const auto valueOpt = fieldValue == "/" ? element.getJson() : element.getJson(fieldValue);
+                if (!valueOpt.has_value())
+                {
+                    continue;
+                }
+
+                const std::string normalizedKey =
+                    skipSerializer ? std::string {*keyOpt} : normalizeStr(std::string_view {*keyOpt});
+                if (normalizedKey.empty())
+                {
+                    continue;
+                }
+
+                const std::string basePath = json::Json::formatJsonPath(normalizedKey, /*skipDot=*/true);
+
+                result.set(basePath, valueOpt.value());
+                ++inserts;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(runState,
+                           json::Json {},
+                           fmt::format("[{}] -> Failure: Failed to build object from array: {}", traceName, e.what()));
+        }
+
+        if (inserts == 0)
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
+        }
+
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
+// field: +array_extract_key_obj/$<array_reference>
+MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 4, 5);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto arrayRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+
+    if (buildCtx->validator().hasField(arrayRef.dotPath()))
+    {
+        if (!buildCtx->validator().isArray(arrayRef.dotPath()))
+        {
+            throw std::runtime_error(fmt::format(
+                "Expected 'array' reference but got reference '{}' which is not an array", arrayRef.dotPath()));
+        }
+
+        auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
+        if (jType != json::Json::Type::Object)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected array of 'object' but got array of '{}'", json::Json::typeToStr(jType)));
+        }
+    }
+
+    builder::builders::utils::assertValue(opArgs, 1);
+    const auto keyValue = std::static_pointer_cast<Value>(opArgs[1])->value();
+    if (!keyValue.isString())
+    {
+        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'", keyValue.typeName()));
+    }
+    const auto keyName = keyValue.getString().value();
+    if (keyName.empty() || keyName.front() != '/')
+    {
+        throw std::runtime_error("Key path cannot be an empty string and must start with '/' (JSON Pointer)");
+    }
+
+    builder::builders::utils::assertValue(opArgs, 2);
+    const auto newValueJson = std::static_pointer_cast<Value>(opArgs[2])->value();
+    if (!newValueJson.isString())
+    {
+        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'", newValueJson.typeName()));
+    }
+    const auto newValuePath = newValueJson.getString().value();
+    if (newValuePath.empty() || newValuePath.front() != '/')
+    {
+        throw std::runtime_error("New value path cannot be an empty string and must start with '/' (JSON Pointer)");
+    }
+
+    builder::builders::utils::assertValue(opArgs, 3);
+    const auto oldValueJson = std::static_pointer_cast<Value>(opArgs[3])->value();
+    if (!oldValueJson.isString())
+    {
+        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'", oldValueJson.typeName()));
+    }
+    const auto oldValuePath = oldValueJson.getString().value();
+    if (oldValuePath.empty() || oldValuePath.front() != '/')
+    {
+        throw std::runtime_error("Old value path cannot be an empty string and must start with '/' (JSON Pointer)");
+    }
+
+    bool skipSerializer = false;
+    if (opArgs.size() == 5)
+    {
+        builder::builders::utils::assertValue(opArgs, 4);
+        const auto valueFlag = std::static_pointer_cast<Value>(opArgs[4])->value().getBool();
+        if (!valueFlag.has_value())
+        {
+            throw std::runtime_error("Expected 'boolean' parameter for skipSerializer");
+        }
+        skipSerializer = valueFlag.value();
+    }
+
+    const auto normalizeStr = [](std::string_view in) -> std::string
+    {
+        std::string out;
+        out.reserve(in.size());
+        bool lastUnderscore = false;
+
+        auto push_underscore = [&]()
+        {
+            if (!out.empty() && !lastUnderscore)
+            {
+                out.push_back('_');
+                lastUnderscore = true;
+            }
+        };
+
+        for (unsigned char c : std::string(in))
+        {
+            if (c >= 'A' && c <= 'Z')
+            {
+                c = static_cast<unsigned char>(c + 32);
+            }
+
+            if (std::isalnum(c) || c == '_')
+            {
+                if (c == '_')
+                {
+                    if (!out.empty() && !lastUnderscore)
+                    {
+                        out.push_back('_');
+                        lastUnderscore = true;
+                    }
+                }
+                else
+                {
+                    out.push_back(static_cast<char>(c));
+                    lastUnderscore = false;
+                }
+                continue;
+            }
+
+            if (c == ' ' || c == '/' || c == '.' || c == '-' || c == '\\' || c == ':')
+            {
+                push_underscore();
+            }
+        }
+
+        if (!out.empty() && out.back() == '_')
+        {
+            out.pop_back();
+        }
+
+        return out;
+    };
+
+    const std::string traceName = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
+    const std::string failureArrNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, arrayRef.dotPath());
+    const std::string failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
+
+    return [normalizeStr,
+            keyName,
+            newValuePath,
+            oldValuePath,
+            skipSerializer,
+            traceName,
+            successTrace,
+            failureArrNotFound,
+            failureTrace,
+            runState = buildCtx->runState(),
+            arrayPath = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
+    {
+        const auto arrayOpt = event->getArray(arrayPath);
+        if (!arrayOpt.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureArrNotFound);
+        }
+
+        json::Json result;
+        result.setObject();
+
+        size_t inserts {0};
+
+        try
+        {
+            for (const auto& element : arrayOpt.value())
+            {
+                if (!element.isObject())
+                {
+                    continue;
+                }
+
+                const auto keyOpt = element.getString(keyName);
+                if (!keyOpt.has_value() || keyOpt->empty())
+                {
+                    continue;
+                }
+
+                const auto newValueOpt = newValuePath == "/" ? element.getJson() : element.getJson(newValuePath);
+                if (!newValueOpt.has_value())
+                {
+                    continue;
+                }
+
+                const auto oldValueOpt = oldValuePath == "/" ? element.getJson() : element.getJson(oldValuePath);
+
+                const std::string normalizedKey =
+                    skipSerializer ? std::string {*keyOpt} : normalizeStr(std::string_view {*keyOpt});
+                if (normalizedKey.empty())
+                {
+                    continue;
+                }
+
+                const std::string basePath = json::Json::formatJsonPath(normalizedKey, /*skipDot=*/true);
+
+                const auto setValue = [&](std::string_view relPath, const json::Json& value)
+                {
+                    if (relPath == "/")
+                    {
+                        result.set(basePath, value);
+                    }
+                    else
+                    {
+                        result.set(fmt::format("{}{}", basePath, relPath), value);
+                    }
+                };
+
+                setValue(newValuePath, newValueOpt.value());
+                if (oldValueOpt.has_value()
+                    && !(oldValueOpt->isString()
+                         && base::utils::string::trim(oldValueOpt->getString().value_or("")).empty()))
+                {
+                    setValue(oldValuePath, *oldValueOpt);
+                }
+
+                ++inserts;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(runState,
+                           json::Json {},
+                           fmt::format("[{}] -> Failure: Failed to build object from array: {}", traceName, e.what()));
+        }
+
+        if (inserts == 0)
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
+        }
+
+        RETURN_SUCCESS(runState, result, successTrace);
     };
 }
 
@@ -2012,7 +2437,181 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
         RETURN_SUCCESS(runState, resultJson, successTrace);
     };
 }
+// field: + community.id
+MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 5);
+    builder::builders::utils::assertRef(opArgs, 0, 1, 2, 3);
 
+    constexpr uint16_t defaultSeed = 0;
+
+    auto saddrRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    auto daddrRef = *std::static_pointer_cast<Reference>(opArgs[1]);
+    auto sportRef = *std::static_pointer_cast<Reference>(opArgs[2]);
+    auto dportRef = *std::static_pointer_cast<Reference>(opArgs[3]);
+
+    const auto& validator = buildCtx->validator();
+
+    auto ensureStringRef = [&validator](const Reference& ref)
+    {
+        if (validator.hasField(ref.dotPath()))
+        {
+            const auto type = validator.getJsonType(ref.dotPath());
+            if (type != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     json::Json::typeToStr(type)));
+            }
+        }
+    };
+
+    auto ensureNumericRef = [&validator](const Reference& ref)
+    {
+        if (validator.hasField(ref.dotPath()))
+        {
+            const auto type = validator.getType(ref.dotPath());
+            if (type != schemf::Type::INTEGER && type != schemf::Type::SHORT && type != schemf::Type::LONG)
+            {
+                throw std::runtime_error(fmt::format("Expected numeric reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     schemf::typeToStr(type)));
+            }
+        }
+    };
+
+    ensureStringRef(saddrRef);
+    ensureStringRef(daddrRef);
+    ensureNumericRef(sportRef);
+    ensureNumericRef(dportRef);
+
+    const std::string saddrRefPath = saddrRef.jsonPath();
+    const std::string daddrRefPath = daddrRef.jsonPath();
+    const std::string sportRefPath = sportRef.jsonPath();
+    const std::string dportRefPath = dportRef.jsonPath();
+
+    std::string protoRefPath;
+    std::optional<uint8_t> protoLiteral {};
+
+    if (opArgs[4]->isReference())
+    {
+        const auto ref = *std::static_pointer_cast<Reference>(opArgs[4]);
+        if (validator.hasField(ref.dotPath()))
+        {
+            ensureNumericRef(ref);
+        }
+        protoRefPath = ref.jsonPath();
+    }
+    else
+    {
+        const auto protoOpt = std::static_pointer_cast<Value>(opArgs[4])->value().getIntAsInt64();
+
+        if (!protoOpt.has_value())
+        {
+            throw std::runtime_error("Expected 'network.iana_number' argument to be a number");
+        }
+
+        const auto proto64 = protoOpt.value();
+        if (proto64 < 0 || proto64 > std::numeric_limits<uint8_t>::max())
+        {
+            throw std::runtime_error("network.iana_number out of range (expected 0..255)");
+        }
+
+        protoLiteral = static_cast<uint8_t>(proto64);
+    }
+
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+
+    const auto missingTrace = [name](const std::string& path)
+    {
+        return fmt::format("{} -> Reference '{}' not found", name, path);
+    };
+    const auto numberTrace = [name](const std::string& path)
+    {
+        return fmt::format("{} -> Reference '{}' must be a number", name, path);
+    };
+
+    const auto protoOutOfRangeTrace = fmt::format("{} -> network.iana_number out of range (expected 0..255)", name);
+
+    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        std::string saddr;
+        std::string daddr;
+
+        const std::optional<std::string> saddrOpt = event->getString(saddrRefPath);
+        if (!saddrOpt)
+        {
+            RETURN_FAILURE(runState, json::Json {}, missingTrace(saddrRefPath));
+        }
+        saddr = saddrOpt.value();
+
+        const std::optional<std::string> daddrOpt = event->getString(daddrRefPath);
+        if (!daddrOpt)
+        {
+            RETURN_FAILURE(runState, json::Json {}, missingTrace(daddrRefPath));
+        }
+        daddr = daddrOpt.value();
+
+        uint8_t proto = 0;
+        if (protoLiteral)
+        {
+            proto = protoLiteral.value();
+        }
+        else
+        {
+            const auto opt64 = event->getIntAsInt64(protoRefPath);
+            if (!opt64)
+            {
+                RETURN_FAILURE(runState, json::Json {}, missingTrace(protoRefPath));
+            }
+
+            const auto value = opt64.value();
+            if (value < 0 || value > std::numeric_limits<uint8_t>::max())
+            {
+                RETURN_FAILURE(runState, json::Json {}, protoOutOfRangeTrace);
+            }
+
+            proto = static_cast<uint8_t>(value);
+        }
+
+        int64_t sport = 0;
+        int64_t dport = 0;
+
+        if (const auto sportOpt = event->getIntAsInt64(sportRefPath))
+        {
+            sport = sportOpt.value();
+        }
+        // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
+        else if (event->exists(sportRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, numberTrace(sportRefPath));
+        }
+
+        if (const auto dportOpt = event->getIntAsInt64(dportRefPath))
+        {
+            dport = dportOpt.value();
+        }
+        // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
+        else if (event->exists(dportRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, numberTrace(dportRefPath));
+        }
+
+        const auto cid = base::utils::CommunityId::getCommunityIdV1(saddr, daddr, sport, dport, proto, defaultSeed);
+
+        if (base::isError(cid))
+        {
+            const auto failureTrace = fmt::format("{} -> {}", name, base::getError(cid).message);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
+        }
+
+        json::Json result;
+        result.setString(std::get<std::string>(cid));
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
 //*************************************************
 //*              Time tranform                    *
 //*************************************************

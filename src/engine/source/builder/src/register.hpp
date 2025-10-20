@@ -197,6 +197,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "ip_version",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperIPVersionFromIPStr});
     registry->template add<builders::OpBuilderEntry>(
+        "network_community_id",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperNetworkCommunityId});
+    registry->template add<builders::OpBuilderEntry>(
         "join", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringFromArray});
     registry->template add<builders::OpBuilderEntry>(
         "decode_base16",
@@ -244,6 +247,12 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "split",
         {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperAppendSplitString});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_obj_to_mapkv",
+        {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperArrayObjToMapkv});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_extract_key_obj",
+        {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperArrayExtractKeyObj});
     registry->template add<builders::OpBuilderEntry>(
         "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
     registry->template add<builders::OpBuilderEntry>(

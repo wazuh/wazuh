@@ -595,12 +595,21 @@ def runTests(moduleName):
                     os.path.join(utils.moduleDirPathBuild("data_provider"), "build", "bin"),
                 ]
 
+                # Add GCC runtime DLL paths - prioritize -posix variant
                 gcc_root = "/usr/lib/gcc/i686-w64-mingw32"
                 if os.path.isdir(gcc_root):
-                    for sub in os.listdir(gcc_root):
-                        p = os.path.join(gcc_root, sub)
-                        if os.path.isdir(p):
-                            dll_dirs.append(p)
+                    # First add -posix variants (higher priority)
+                    for sub in sorted(os.listdir(gcc_root), reverse=True):
+                        if "-posix" in sub:
+                            p = os.path.join(gcc_root, sub)
+                            if os.path.isdir(p):
+                                dll_dirs.append(p)
+                    # Then add others as fallback
+                    for sub in sorted(os.listdir(gcc_root), reverse=True):
+                        if "-posix" not in sub:
+                            p = os.path.join(gcc_root, sub)
+                            if os.path.isdir(p):
+                                dll_dirs.append(p)
 
                 for _name in ("libstdc++-6.dll", "libgcc_s_dw2-1.dll", "libwinpthread-1.dll",
                               "dbsync.dll", "sysinfo.dll", "libwazuhext.dll", "libagent_sync_protocol.dll"):
@@ -619,16 +628,14 @@ def runTests(moduleName):
                         seen.add(d)
                         uniq_dirs.append(d)
 
-                # Convert to Windows-style paths for Wine's %PATH% (Z:\… and backslashes)
-                win_path = ";".join(
-                    "Z:" + d.replace("/", "\\\\")
-                    for d in uniq_dirs
-                )
+                # Use WINEPATH instead of Windows PATH for proper DLL search order
+                winepath_str = ";".join(uniq_dirs)
 
                 command = (
+                    f'WINEPATH="{winepath_str}" '
                     f'WINEARCH=win64 '
                     'wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f & '
-                    f'wine cmd /c "set PATH={win_path};%PATH% & {os.path.basename(path)}"'
+                    f'WINEPATH="{winepath_str}" wine {os.path.basename(path)}'
                 )
             else:
                 command = path

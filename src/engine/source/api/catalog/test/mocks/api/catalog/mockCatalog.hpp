@@ -27,6 +27,8 @@ public:
                 (const Resource& item, const std::string& namespaceId, const std::string& content),
                 (const, override));
     MOCK_METHOD(std::vector<store::NamespaceId>, getAllNamespaces, (), (const, override));
+    MOCK_METHOD(bool, collectionExists, (const Resource& resource, const std::string& namespaceId), (const, override));
+    MOCK_METHOD(bool, existAsset, (const base::Name& name, const std::string& namespaceId), (const, override));
 };
 } // namespace api::catalog::mocks
 

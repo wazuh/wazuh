@@ -6,6 +6,7 @@ set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
 add_library(base STATIC
+    ${SRC_DIR}/utils/communityId.cpp
     ${SRC_DIR}/utils/ipUtils.cpp
     ${SRC_DIR}/utils/stringUtils.cpp
     ${SRC_DIR}/utils/timeUtils.cpp
@@ -54,6 +55,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/result_test.cpp
     ${UNIT_SRC_DIR}/graph_test.cpp
     ${UNIT_SRC_DIR}/name_test.cpp
+    ${UNIT_SRC_DIR}/utils/communityId_test.cpp
     ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
     ${UNIT_SRC_DIR}/eventParser_test.cpp

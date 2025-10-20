@@ -1,4 +1,5 @@
 name: 5.X - Package - Build multiple Wazuh Manager Packages
+
 on:
   workflow_dispatch:
     inputs:
@@ -29,9 +30,11 @@ on:
         required: false
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
-    branches:
-      - 'main'
-      - '5.[0-9]+.[0-9]+'
+    paths:
+      - "api/**"
+      - "framework/**"
+      - "src/**"
+      - ".github/workflows/5_builderpackage_manager-multiples.yml"
 
 jobs:
   select-targets:
@@ -64,7 +67,7 @@ jobs:
         fail-fast: false
     uses: ./.github/workflows/5_builderpackage_manager.yml
     with:
-      docker_image_tag: auto  
+      docker_image_tag: auto
       architecture:  ${{ matrix.architecture }}
       system:  ${{ matrix.system }}
       revision: ${{ inputs.revision || '0' }}

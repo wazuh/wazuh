@@ -192,25 +192,23 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         Dictionary with cluster configuration.
     """
     cluster_default_configuration = {
-        'disabled': False,
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
-        'key': '',
+        'key': 'fd3350b86d239654e34866ab3c4988a8',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['NODE_IP'],
+        'bind_addr': '127.0.0.1',
+        'nodes': ['127.0.0.1'],
         'hidden': 'no'
     }
 
     try:
         config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
-        if e.code == 1106:
-            # If no cluster configuration is present in ossec.conf, return default configuration but disabling it.
-            cluster_default_configuration['disabled'] = True
-            return cluster_default_configuration
-        else:
+            if e.code == 1106:
+                # If no cluster configuration is present in ossec.conf, return the default configuration.
+                return cluster_default_configuration
+
             raise WazuhError(3006, extra_message=e.message)
     except Exception as e:
         raise WazuhError(3006, extra_message=str(e))
@@ -223,14 +221,6 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         raise WazuhError(3004, extra_message="Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster[DISABLED] == NO:
-        config_cluster[DISABLED] = False
-    elif config_cluster[DISABLED] == YES:
-        config_cluster[DISABLED] = True
-    elif not isinstance(config_cluster[DISABLED], bool):
-        raise WazuhError(3004,
-                         extra_message=f"Allowed values for 'disabled' field are 'yes' and 'no'. "
-                                       f"Found: '{config_cluster['disabled']}'")
 
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")
@@ -300,11 +290,10 @@ def get_cluster_status() -> typing.Dict:
     dict
         Cluster status.
     """
-    cluster_status = {"enabled": "no" if read_cluster_config()['disabled'] else "yes"}
     try:
-        cluster_status |= {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
+        cluster_status = {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
     except WazuhInternalError:
-        cluster_status |= {"running": "no"}
+        cluster_status = {"running": "no"}
 
     return cluster_status
 
@@ -532,16 +521,16 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
 
 
 def running_in_master_node() -> bool:
-    """Determine if cluster is disabled or API is running in a master node.
+    """Determine if the API is running in a master node.
 
     Returns
     -------
     bool
-        True if API is running in master node or if cluster is disabled else False.
+        True if the API is running in the master node.
     """
     cluster_config = read_cluster_config()
 
-    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
+    return cluster_config['node_type'] == 'master'
 
 
 def raise_if_exc(result: object) -> None:

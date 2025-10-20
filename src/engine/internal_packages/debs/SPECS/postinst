@@ -1,0 +1,173 @@
+#!/bin/sh
+# postinst script for wazuh-internal-tools
+# Wazuh, Inc.
+
+set -eu
+
+PREFIX="/opt/wazuh-internal-tools"
+VENV="$PREFIX/venv"
+BIN="$VENV/bin"
+PY="$BIN/python"
+EMBEDDED_RT="$PREFIX/runtime/python"      # If absent, fall back to system venv Python
+WHEELS_DIR="$PREFIX/wheels"               # Optional: vendored wheels for offline repairs
+
+# ------------------------------------------------------------------------------
+# Fix mismatched 'site-packages' when Python minor version differs on target.
+# Example: venv/lib/python3.10/site-packages but host Python is now 3.11.
+# ------------------------------------------------------------------------------
+fix_site_packages_alignment() {
+  ver="$("$PY" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')" || return 0
+  want="$VENV/lib/python$ver"
+
+  # Nothing to do if target path exists
+  if [ -d "$want" ]; then
+    return 0
+  fi
+
+  # Try to rename an existing python3.* directory to the expected one
+  found="$(ls -1d "$VENV"/lib/python3.* 2>/dev/null | head -n1 || true)"
+  if [ -n "$found" ] && [ -d "$found" ]; then
+    echo "[postinst] Adjusting site-packages alignment: $(basename "$found") -> python$ver"
+    mv "$found" "$want" || true
+  fi
+
+  # Safety fallback: inject the old path via sitecustomize.py
+  if [ ! -d "$want" ] || ! "$PY" -c "import sys; print(any('site-packages' in p for p in sys.path))" >/dev/null 2>&1; then
+    old="$(ls -1d "$VENV"/lib/python3.* 2>/dev/null | head -n1 || true)"
+    if [ -n "$old" ] && [ -d "$old/site-packages" ]; then
+      sp="$old/site-packages"
+      echo "[postinst] Injecting $sp into sys.path via sitecustomize.py"
+      mkdir -p "$want/site-packages" || true
+      cat >"$want/site-packages/sitecustomize.py" <<EOF
+import sys
+p = r"$sp"
+if p not in sys.path:
+    sys.path.insert(0, p)
+EOF
+      chmod 0644 "$want/site-packages/sitecustomize.py" || true
+    fi
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Rebuild/refresh pyvenv.cfg to match the interpreter actually used.
+# Also ensure a python3 symlink exists in $VENV/bin.
+# ------------------------------------------------------------------------------
+fix_pyvenv_cfg() {
+  full_ver="$("$PY" -c 'import sys; print("{}.{}.{}".format(*sys.version_info[:3]))')" || full_ver="3.x.x"
+  xy_ver="$("$PY" -c 'import sys; print("{}.{}".format(sys.version_info[0], sys.version_info[1]))')" || xy_ver="3.x"
+
+  if [ -x "$EMBEDDED_RT/bin/python$xy_ver" ]; then
+    home="$EMBEDDED_RT/bin"
+    exe="$EMBEDDED_RT/bin/python$xy_ver"
+  elif [ -x "$EMBEDDED_RT/bin/python3" ]; then
+    home="$EMBEDDED_RT/bin"
+    exe="$EMBEDDED_RT/bin/python3"
+  else
+    home="$(dirname "$PY")"
+    exe="$PY"
+  fi
+
+  cat >"$VENV/pyvenv.cfg" <<EOF
+home = $home
+include-system-site-packages = false
+version = $full_ver
+executable = $exe
+EOF
+
+  # Ensure python3 symlink for compatibility
+  if [ ! -x "$BIN/python3" ] && [ -x "$PY" ]; then
+    ln -sf "python" "$BIN/python3" 2>/dev/null || true
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Ensure C-extensions (lxml / PyYAML) match the interpreter ABI.
+# If mismatch or import failure is detected, reinstall from vendored wheels
+# (offline) when available, otherwise from PyPI (binary only).
+# ------------------------------------------------------------------------------
+ensure_c_ext_abi() {
+  CP_TAG="$("$PY" - <<'PY'
+import sys
+print(f"cp{sys.version_info[0]}{sys.version_info[1]}")
+PY
+)" || CP_TAG="cpXX"
+  echo "[postinst] Detected CP_TAG: ${CP_TAG}"
+
+  fix_lxml=""
+  # Try import first
+  if ! "$PY" -c "from lxml import etree; print(etree.LXML_VERSION)" >/dev/null 2>&1; then
+    fix_lxml="yes"
+    echo "[postinst] lxml import failed; will reinstall to match ABI."
+  else
+    so_path="$("$PY" - <<'PY'
+import os, importlib, lxml
+d = os.path.dirname(lxml.__file__)
+c = [x for x in os.listdir(d) if x.startswith("etree") and x.endswith(".so")]
+print(os.path.join(d, c[0]) if c else "")
+PY
+)" || so_path=""
+    if [ -n "$so_path" ] && ! echo "$so_path" | grep -q "$CP_TAG"; then
+      fix_lxml="yes"
+      echo "[postinst] lxml .so ABI mismatch: $so_path (expected ${CP_TAG})."
+    fi
+  fi
+
+  if [ -n "$fix_lxml" ]; then
+    if [ -d "$WHEELS_DIR" ] && ls -1 "$WHEELS_DIR"/lxml-*-"$CP_TAG"-*.whl >/dev/null 2>&1; then
+      echo "[postinst] Reinstalling lxml from vendored wheels..."
+      "$PY" -m pip install --no-index --find-links "$WHEELS_DIR" --upgrade lxml
+    else
+      echo "[postinst] Reinstalling lxml from PyPI (binary only)..."
+      "$PY" -m pip install --only-binary=:all: --upgrade "lxml>=4.9,<6"
+    fi
+  fi
+
+  # PyYAML: if libyaml extension is needed, ensure the wheel matches ABI
+  if ! "$PY" -c "import yaml" >/dev/null 2>&1; then
+    if [ -d "$WHEELS_DIR" ] && ls -1 "$WHEELS_DIR"/PyYAML-*-"$CP_TAG"-*.whl >/dev/null 2>&1; then
+      echo "[postinst] Reinstalling PyYAML from vendored wheels..."
+      "$PY" -m pip install --no-index --find-links "$WHEELS_DIR" --upgrade PyYAML
+    else
+      echo "[postinst] Reinstalling PyYAML from PyPI (binary only)..."
+      "$PY" -m pip install --only-binary=:all: --upgrade "PyYAML==6.0.1"
+    fi
+  fi
+
+  # Non-fatal final verification
+  "$PY" - <<'PY' || echo "[postinst] WARNING: C-extension verification failed."
+import importlib
+importlib.import_module("lxml.etree")
+importlib.import_module("yaml")
+print("[postinst] C-extensions OK")
+PY
+}
+
+# ------------------------------------------------------------------------------
+# Main
+# ------------------------------------------------------------------------------
+case "${1:-configure}" in
+  configure)
+    # Ensure CLI wrappers are executable
+    for c in engine-catalog engine-archiver engine-decoder engine-geo \
+             engine-policy engine-router engine-schema engine-test \
+             engine-it engine-helper-test engine-health-test; do
+      [ -f "/usr/bin/$c" ] && chmod 0755 "/usr/bin/$c" || true
+    done
+
+    # If Python inside the venv is missing, skip (likely partial install)
+    if [ ! -x "$PY" ]; then
+      echo "[postinst] WARNING: $PY not found; skipping venv checks."
+      exit 0
+    fi
+
+    # Align site-packages & refresh pyvenv.cfg
+    fix_site_packages_alignment
+    fix_pyvenv_cfg
+
+    # Ensure C-extension ABIs match (lxml / PyYAML)
+    ensure_c_ext_abi
+    ;;
+esac
+
+exit 0

@@ -115,6 +115,34 @@ public:
     void storeKVDB(const json::Json& kvdbDoc);
 
     /**
+     * @brief Delete an asset by its UUID resource identifier.
+     *
+     * Searches across all asset column families (policy, integration, decoder, kvdb)
+     * to find and delete the asset with the given resource ID. Also removes associated
+     * name indexes and relationship metadata.
+     *
+     * @param resourceId The UUID resource identifier of the asset to delete.
+     * @return true if the asset was found and deleted; false if not found.
+     * @throw std::runtime_error on write error.
+     */
+    bool deleteAsset(const std::string& resourceId);
+
+    /**
+     * @brief Update an asset by its UUID resource identifier using JSON Patch operations.
+     *
+     * Searches across all asset column families (policy, integration, decoder, kvdb)
+     * to find the asset with the given resource ID, applies the JSON Patch operations,
+     * and stores the updated document back.
+     *
+     * @param resourceId The UUID resource identifier of the asset to update.
+     * @param operations JSON array of JSON Patch operations (RFC 6902 format).
+     *                   Each operation has: {"op": "replace|add|remove", "path": "/field/path", "value": ...}
+     * @return true if the asset was found and updated; false if not found.
+     * @throw std::runtime_error on validation, patch application error, or write error.
+     */
+    bool updateAsset(const std::string& resourceId, const json::Json& operations);
+
+    /**
      * @brief List available assets by type.
      *
      * @param assetType One of: "policy", "integration", "decoder".
@@ -142,6 +170,9 @@ public:
      * @throw std::runtime_error on invalid type or read error.
      */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
+
+
+    std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
 
     /**
      * @brief List all KVDB names.
@@ -189,14 +220,30 @@ public:
     std::vector<base::Name> getPolicyIntegrationList() const;
 
     /**
-     * @brief Get the default parent integration used by the policy.
+     * @brief Get a policy document by its ID or title.
      *
-     * Returned when a policy item does not specify an explicit parent.
-     *
-     * @return Default parent integration Name.
-     * @throw std::runtime_error on read error or if undefined.
+     * @param name Policy identifier (can be an ID or a title).
+     * @return Parsed JSON policy document.
+     * @throw std::runtime_error if not found or on read error.
      */
-    base::Name getPolicyDefaultParent() const;
+    json::Json getPolicy(const base::Name& name) const;
+
+    /**
+     * @brief List all available policy names (titles).
+     *
+     * @return Vector of policy Names (titles).
+     * @throw std::runtime_error on read error.
+     */
+    std::vector<base::Name> getPolicyList() const;
+
+    /**
+     * @brief Check if a policy exists by ID or title.
+     *
+     * @param name Policy identifier (can be an ID or a title).
+     * @return true if the policy exists; false otherwise.
+     * @throw std::runtime_error on read error.
+     */
+    bool policyExists(const base::Name& name) const;
 
     /**
      * @brief Remove all data from all column families.

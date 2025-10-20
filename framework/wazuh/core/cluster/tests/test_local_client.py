@@ -156,11 +156,11 @@ async def test_localclient_start_ko(mock_get_running_loop):
             await LocalClient().start()
 
     with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=FileNotFoundError):
-        with pytest.raises(WazuhInternalError, match=r'.* 3012 .*'):
+        with pytest.raises(WazuhInternalError, match=r'.* 3009 .*'):
             await LocalClient().start()
 
     with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=ConnectionRefusedError):
-        with pytest.raises(WazuhInternalError, match=r'.* 3012 .*'):
+        with pytest.raises(WazuhInternalError, match=r'.* 3009 .*'):
             await LocalClient().start()
 
 @pytest.mark.asyncio

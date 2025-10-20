@@ -25,7 +25,7 @@
 
 namespace builder::builders::utils
 {
-auto constexpr MAX_OP_ARGS = 40;
+auto constexpr MAX_OP_ARGS = 150; // TODO: Revert to 40 after CMSync optimization
 
 inline void assertSize(const std::vector<OpArg>& args, size_t minSize, size_t maxSize = 0)
 {

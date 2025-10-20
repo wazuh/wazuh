@@ -26,6 +26,8 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
+
 #include "cJSON.h"
 
 /* redefinitons/wrapping */

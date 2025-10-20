@@ -25,6 +25,7 @@
 #include <builder/builder.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
+#include <cmsync/cmsync.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -37,6 +38,7 @@
 #include <streamlog/logger.hpp>
 #include <udgramsrv/udsrv.hpp>
 #include <wiconnector/windexerconnector.hpp>
+#include <ctistore/cm.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
@@ -230,7 +232,9 @@ int main(int argc, char* argv[])
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
+    std::shared_ptr<cm::sync::CMSync> cmsync;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
+    std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
 
     try
     {
@@ -526,6 +530,51 @@ int main(int argc, char* argv[])
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
+        }
+
+        // TODO: This modules should be initialized before the API server to be able to
+        // provide their API endpoints, this need a improvement on wazuh-control start
+        // Content Manager
+        {
+            cmsync = std::make_shared<cm::sync::CMSync>(catalog,
+                                                        kvdbManager,
+                                                        policyManager,
+                                                        orchestrator,
+                                                        confManager.get<std::string>(conf::key::CMSYNC_OUTPUT_PATH));
+            LOG_INFO("Content Manager Sync initialized.");
+
+        }
+
+        // CTI Store (initialized after CMSync to pass deploy callback)
+        if (confManager.get<bool>(conf::key::CTI_ENABLED)) {
+            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
+            cti::store::ContentManagerConfig ctiCfg;
+            ctiCfg.basePath = baseCtiPath;
+
+            auto deployCallback = [cmsync](const std::shared_ptr<cti::store::ICMReader>& cmstore)
+            {
+                cmsync->deploy(cmstore);
+            };
+
+            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, deployCallback);
+            LOG_INFO("CTI Store initialized");
+
+            // TODO: Find a better way to do this - This cannot going to production
+            if (orchestrator->getEntries().empty())
+            {
+                try
+                {
+                    LOG_WARNING("No environments found, deploying CTI content at startup. This may take a while...");
+                    cmsync->deploy(ctiStoreManager);
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
+                }
+            }
+
+            ctiStoreManager->startSync();
+            exitHandler.add([ctiStoreManager]() { ctiStoreManager->shutdown(); });
         }
 
         // Create and configure the api endpints

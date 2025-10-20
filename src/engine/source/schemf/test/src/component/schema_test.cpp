@@ -168,3 +168,50 @@ TEST(SchemaTest, ArrayItem)
     ASSERT_THROW(schema.getType("a.n"), std::runtime_error);
     ASSERT_THROW(schema.getJsonType("a.n"), std::runtime_error);
 }
+
+TEST(SchemaTest, HasField_UnknownLeafUnderKnownContainer_ReturnsFalse)
+{
+    Schema schema;
+    schema.addField("dns", {Type::OBJECT});
+
+    ASSERT_NO_THROW({
+        bool exists = schema.hasField("dns.test");
+        ASSERT_FALSE(exists);
+    });
+}
+
+TEST(SchemaTest, HasField_KnownECSLeaf_ReturnsTrue)
+{
+    Schema schema;
+    schema.addField("dns", {Type::OBJECT});
+    schema.addField("dns.answers", {Type::OBJECT, true});  // array of objects in ECS
+    schema.addField("dns.answers.class", {Type::KEYWORD}); // leaf field
+
+    ASSERT_TRUE(schema.hasField("dns.answers.class"));
+}
+
+TEST(SchemaTest, HasField_UnknownTopLevel_ReturnsFalse)
+{
+    Schema schema;
+
+    ASSERT_NO_THROW({
+        bool exists = schema.hasField("qwer.test");
+        ASSERT_FALSE(exists);
+    });
+}
+
+TEST(SchemaTest, HasField_UnknownUnderScalar_ReturnsFalse)
+{
+    Schema schema;
+    schema.addField("event.code", {Type::KEYWORD}); // escalar
+    ASSERT_NO_THROW({ EXPECT_FALSE(schema.hasField("event.code.foo")); });
+}
+
+TEST(SchemaTest, HasField_UnknownChildUnderArrayItem_ReturnsFalse)
+{
+    Schema schema;
+    schema.addField("dns", {Type::OBJECT});
+    schema.addField("dns.answers", {Type::OBJECT, true});
+    ASSERT_TRUE(schema.hasField("dns.answers.0"));
+    ASSERT_NO_THROW({ EXPECT_FALSE(schema.hasField("dns.answers.0.foo")); });
+}

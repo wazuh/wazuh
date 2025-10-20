@@ -46,6 +46,13 @@
             </eps>
           </limits>
         </global>
+        <cluster>
+          <key>9d273b53510fef702b54a92e9cffc82e</key>
+          <bind_addr>127.0.0.1</bind_addr>
+          <nodes>
+              <node>node01</node>
+          </nodes>
+        </cluster>
       </ossec_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_FIRST_BLOCK_NOT_ALLOWED
@@ -102,6 +109,13 @@
           <connection>secure</connection>
           <port>1514</port>
         </remote>
+        <cluster>
+          <key>9d273b53510fef702b54a92e9cffc82e</key>
+          <bind_addr>127.0.0.1</bind_addr>
+          <nodes>
+              <node>node01</node>
+          </nodes>
+        </cluster>
       </ossec_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_SECOND_NOT_ALLOWED
@@ -158,4 +172,11 @@
             </eps>
           </limits>
         </global>
+        <cluster>
+          <key>9d273b53510fef702b54a92e9cffc82e</key>
+          <bind_addr>127.0.0.1</bind_addr>
+          <nodes>
+              <node>node01</node>
+          </nodes>
+        </cluster>
       </ossec_config>
