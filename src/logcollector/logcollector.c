@@ -2157,8 +2157,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
 #ifdef WIN32
             if(current->age) {
-                if (current->h && (GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
-                    merror("Unable to get file information by handle.");
+                if (current->fp == NULL || (get_fp_file_information(current->fp, &lpFileInformation) == 0)) {
+                    merror("Unable to get file information.");
                     w_mutex_unlock(&current->mutex);
                     rwlock_unlock(&files_update_rwlock);
                     continue;
