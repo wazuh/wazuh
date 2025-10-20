@@ -19,6 +19,7 @@
 #include <base/error.hpp>
 #include <base/utils/communityId.hpp>
 #include <base/utils/ipUtils.hpp>
+#include "base/utils/sanitizers.hpp"
 #include <base/utils/stringUtils.hpp>
 
 #include "base/error.hpp"
@@ -1992,6 +1993,35 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
         // Erase custom fields
         event->eraseIfKey(isCustomField, false, targetField);
         RETURN_SUCCESS(runState, event, successTrace);
+    };
+}
+
+// event: +sanitize_fields
+TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 0);
+
+    const auto name = buildCtx->context().opName;
+
+    // Tracing
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+
+    // Return Op
+    return [runState = buildCtx->runState(), targetField = targetField.jsonPath(), successTrace](
+               base::Event event) -> TransformResult
+    {
+        try
+        {
+            event->renameIfKey(&sanitizer::basicNormalize, true, targetField);
+            RETURN_SUCCESS(runState, event, successTrace);
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(runState, event, e.what());
+        }
     };
 }
 
