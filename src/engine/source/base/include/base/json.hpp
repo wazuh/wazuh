@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 
+#include <fmt/format.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <rapidjson/pointer.h>
@@ -849,6 +850,230 @@ public:
      * @throws std::runtime_error if the given path is invalid.
      */
     bool eraseIfKey(const std::function<bool(const std::string&)>&, bool recursive = false, const std::string& = "");
+
+    /**
+     * @brief In-place transformation of JSON keys and/or string values at a node selected by a RapidJSON Pointer.
+     *
+     * @tparam Transform Callable with signature `void(std::string_view in, std::string& out)` used to produce
+     *                   the transformed key/value text into @p out.
+     *
+     * @param transform  Function/lambda applied to: (1) every key of an object, (2) every string inside an array
+     *                   (recursively when @p recursive is true), or (3) the node itself if it is a string.
+     * @param recursive  When true, recursively traverses nested objects/arrays beneath the target node to apply
+     *                   the transformation.
+     * @param path       RapidJSON Pointer to the target node (e.g., "", "/a/b/0"). Empty string selects the root.
+     *
+     * @return true if at least one key or string value was modified; false otherwise.
+     *
+     * @throws std::runtime_error If:
+     *         - @p path is not a valid RapidJSON Pointer.
+     *         - @p path does not resolve to any node in the document.
+     *         - The target node is not an object, array, or string.
+     *         - A transformed key becomes empty.
+     *         - Two distinct keys transform to the same resulting key (collision).
+     *         - An array contains an unsupported element type (non-object/array/string) when processing arrays.
+     *         - A transformed string becomes empty.
+     */
+    template<typename Transform>
+    bool renameIfKey(Transform&& transform, bool recursive, std::string_view path)
+    {
+        static_assert(std::is_invocable_v<Transform&, std::string_view, std::string&>,
+                      "Transform must be callable as void(std::string_view, std::string&).");
+
+        const rapidjson::Pointer pp(path.data(), static_cast<rapidjson::SizeType>(path.size()));
+        if (!pp.IsValid())
+            throw std::runtime_error(fmt::format("Invalid pointer path '{}'", std::string(path)));
+
+        auto* node = const_cast<rapidjson::Value*>(pp.Get(m_document));
+        if (!node)
+            throw std::runtime_error(fmt::format("Path '{}' not found", std::string(path)));
+
+        auto& alloc = m_document.GetAllocator();
+
+        struct StringEdit
+        {
+            rapidjson::Value* v;
+            std::string text;
+        };
+        struct KeyEdit
+        {
+            rapidjson::Value* name;
+            std::string text;
+        };
+
+        std::vector<StringEdit> stringEdits;
+        std::vector<KeyEdit> keyEdits;
+        stringEdits.reserve(64);
+        keyEdits.reserve(64);
+
+        std::string scratch;
+        scratch.reserve(128);
+
+        auto apply_to_scratch = [&](std::string_view sv) -> std::string_view
+        {
+            scratch.clear();
+            if (scratch.capacity() < sv.size())
+                scratch.reserve(sv.size());
+            transform(sv, scratch);
+            return std::string_view {scratch.data(), scratch.size()};
+        };
+
+        auto bytes_equal = [](std::string_view a, std::string_view b) noexcept
+        {
+            return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
+        };
+
+        // Validation DFS + edit collection (without writing to the DOM)
+        // array_is_obj_value: true if the current array is an object value (do not transform its strings)
+        auto preflight = [&](auto&& self, rapidjson::Value& v, bool array_is_obj_value) -> bool
+        {
+            bool changed = false;
+
+            if (v.IsObject())
+            {
+                const auto count = v.MemberCount();
+                if (count == 0)
+                    return false;
+
+                // Transform keys and check for collisions (without writing yet)
+                std::vector<std::string_view> oldNames;
+                oldNames.reserve(count);
+                std::vector<std::string> newNames;
+                newNames.reserve(count);
+                std::unordered_map<std::string, std::string> seen; // newName -> first oldName
+                seen.reserve(count * 2);
+
+                for (auto it = v.MemberBegin(); it != v.MemberEnd(); ++it)
+                {
+                    std::string_view oldName(it->name.GetString(), it->name.GetStringLength());
+                    oldNames.emplace_back(oldName);
+
+                    const auto out = apply_to_scratch(oldName);
+                    if (out.empty())
+                        throw std::runtime_error(fmt::format("Sanitized key for '{}' is empty.", std::string(oldName)));
+
+                    newNames.emplace_back(out.data(), out.size());
+
+                    auto [slot, inserted] = seen.emplace(newNames.back(), std::string(oldName));
+                    if (!inserted)
+                    {
+                        const std::string& other = slot->second;
+                        if (other != oldName)
+                        {
+                            throw std::runtime_error(fmt::format("Key collision: '{}' and '{}' both map to '{}'",
+                                                                 other,
+                                                                 std::string(oldName),
+                                                                 newNames.back()));
+                        }
+                    }
+                }
+
+                // Schedule key edits
+                size_t idx = 0;
+                for (auto it = v.MemberBegin(); it != v.MemberEnd(); ++it, ++idx)
+                {
+                    if (!bytes_equal(newNames[idx], oldNames[idx]))
+                    {
+                        keyEdits.push_back(KeyEdit {&it->name, std::move(newNames[idx])});
+                        changed = true;
+                    }
+                }
+
+                // Recursion: go down to objects/arrays only (NOT object value strings)
+                if (recursive)
+                {
+                    for (auto it = v.MemberBegin(); it != v.MemberEnd(); ++it)
+                    {
+                        auto& child = it->value;
+                        if (child.IsObject())
+                        {
+                            changed |= self(self, child, /*array_is_obj_value=*/false);
+                        }
+                        else if (child.IsArray())
+                        {
+                            // This array is the value of an object → do not transform its strings
+                            changed |= self(self, child, /*array_is_obj_value=*/true);
+                        }
+                    }
+                }
+            }
+            else if (v.IsArray())
+            {
+                const auto n = v.Size();
+                if (n == 0)
+                    return false;
+
+                for (rapidjson::SizeType i = 0; i < n; ++i)
+                {
+                    auto& el = v[i];
+
+                    if (el.IsString())
+                    {
+                        // Transform strings ONLY if the array is NOT an object value
+                        if (!array_is_obj_value)
+                        {
+                            std::string_view sv(el.GetString(), el.GetStringLength());
+                            const auto out = apply_to_scratch(sv);
+                            if (out.empty())
+                                throw std::runtime_error(fmt::format("Sanitized string at array index {} became empty",
+                                                                     static_cast<size_t>(i)));
+                            if (!bytes_equal(out, sv))
+                            {
+                                stringEdits.push_back(StringEdit {&el, std::string(out.data(), out.size())});
+                                changed = true;
+                            }
+                        }
+                    }
+                    else if (el.IsObject())
+                    {
+                        changed |= self(self, el, /*array_is_obj_value=*/false);
+                    }
+                    else if (el.IsArray())
+                    {
+                        // Array inside array: not object value → transform strings inside
+                        changed |= self(self, el, /*array_is_obj_value=*/false);
+                    }
+                    else
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Array element at index {} has unsupported type", static_cast<size_t>(i)));
+                    }
+                }
+            }
+            else if (v.IsString())
+            {
+                // Only if the Pointer points directly to a string
+                std::string_view sv(v.GetString(), v.GetStringLength());
+                const auto out = apply_to_scratch(sv);
+                if (out.empty())
+                    throw std::runtime_error("Sanitized string became empty.");
+                if (!bytes_equal(out, sv))
+                {
+                    stringEdits.push_back(StringEdit {&v, std::string(out.data(), out.size())});
+                    changed = true;
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Target must be object, array, or string");
+            }
+
+            return changed;
+        };
+
+        // PRE: if launched, nothing is written (atomicity)
+        bool changed = preflight(preflight, *node, /*array_is_obj_value=*/false);
+        if (!changed)
+            return false;
+
+        for (auto& k : keyEdits)
+            k.name->SetString(k.text.c_str(), static_cast<rapidjson::SizeType>(k.text.size()), alloc);
+
+        for (auto& s : stringEdits)
+            s.v->SetString(s.text.c_str(), static_cast<rapidjson::SizeType>(s.text.size()), alloc);
+
+        return true;
+    }
 
     static Json makeObjectJson(const std::string& key, const json::Json& value);
 };
