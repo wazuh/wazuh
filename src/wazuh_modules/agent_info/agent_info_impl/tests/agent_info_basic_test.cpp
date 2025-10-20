@@ -7,6 +7,7 @@
 #include <mock_dbsync.hpp>
 #include <mock_sysinfo.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <memory>
@@ -32,7 +33,10 @@ class AgentInfoImplTest : public ::testing::Test
             // Create the logging function to capture log messages
             m_logFunction = [this](const modules_log_level_t /* level */, const std::string & log)
             {
-                m_logOutput += log;
+                // Normalize line endings by removing carriage returns to avoid Windows compatibility issues
+                std::string normalized = log;
+                normalized.erase(std::remove(normalized.begin(), normalized.end(), '\r'), normalized.end());
+                m_logOutput += normalized;
                 m_logOutput += "\n";
             };
 
