@@ -69,6 +69,7 @@ class EXPORTED Syscollector final
                   const bool browserExtensions = true,
                   const bool notifyOnFirstScan = false);
 
+        void start();
         void destroy();
 
         // Sync protocol methods
@@ -76,6 +77,8 @@ class EXPORTED Syscollector final
         bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
+        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+        void deleteDatabase();
     private:
         Syscollector();
         ~Syscollector() = default;

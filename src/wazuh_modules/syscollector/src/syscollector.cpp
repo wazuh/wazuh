@@ -19,27 +19,27 @@ extern "C" {
 #endif
 #include "../../wm_syscollector.h"
 
-void syscollector_start(const unsigned int inverval,
-                        send_data_callback_t callbackDiff,
-                        persist_data_callback_t callbackPersistDiff,
-                        log_callback_t callbackLog,
-                        const char* dbPath,
-                        const char* normalizerConfigPath,
-                        const char* normalizerType,
-                        const bool scanOnStart,
-                        const bool hardware,
-                        const bool os,
-                        const bool network,
-                        const bool packages,
-                        const bool ports,
-                        const bool portsAll,
-                        const bool processes,
-                        const bool hotfixes,
-                        const bool groups,
-                        const bool users,
-                        const bool services,
-                        const bool browserExtensions,
-                        const bool notifyOnFirstScan)
+void syscollector_init(const unsigned int inverval,
+                       send_data_callback_t callbackDiff,
+                       persist_data_callback_t callbackPersistDiff,
+                       log_callback_t callbackLog,
+                       const char* dbPath,
+                       const char* normalizerConfigPath,
+                       const char* normalizerType,
+                       const bool scanOnStart,
+                       const bool hardware,
+                       const bool os,
+                       const bool network,
+                       const bool packages,
+                       const bool ports,
+                       const bool portsAll,
+                       const bool processes,
+                       const bool hotfixes,
+                       const bool groups,
+                       const bool users,
+                       const bool services,
+                       const bool browserExtensions,
+                       const bool notifyOnFirstScan)
 {
     std::function<void(const std::string&)> callbackDiffWrapper
     {
@@ -105,6 +105,12 @@ void syscollector_start(const unsigned int inverval,
         callbackErrorLogWrapper(ex.what());
     }
 }
+
+void syscollector_start()
+{
+    Syscollector::instance().start();
+}
+
 void syscollector_stop()
 {
     Syscollector::instance().destroy();
@@ -143,6 +149,35 @@ bool syscollector_parse_response(const unsigned char* data, size_t length)
     }
 
     return false;
+}
+
+bool syscollector_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps)
+{
+    if (indices && indices_count > 0)
+    {
+        std::vector<std::string> indicesVec;
+        indicesVec.reserve(indices_count);
+
+        for (size_t i = 0; i < indices_count; ++i)
+        {
+            if (indices[i])
+            {
+                indicesVec.emplace_back(indices[i]);
+            }
+        }
+
+        if (!indicesVec.empty())
+        {
+            return Syscollector::instance().notifyDataClean(indicesVec, std::chrono::seconds(timeout), retries, max_eps);
+        }
+    }
+
+    return false;
+}
+
+void syscollector_delete_database()
+{
+    Syscollector::instance().deleteDatabase();
 }
 
 #ifdef __cplusplus

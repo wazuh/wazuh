@@ -70,19 +70,19 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
 static const std::map<std::string, std::string> INDEX_MAP
 {
     // LCOV_EXCL_START
-    {OS_TABLE, "wazuh-states-inventory-system"},
-    {HW_TABLE, "wazuh-states-inventory-hardware"},
-    {HOTFIXES_TABLE, "wazuh-states-inventory-hotfixes"},
-    {PACKAGES_TABLE, "wazuh-states-inventory-packages"},
-    {PROCESSES_TABLE, "wazuh-states-inventory-processes"},
-    {PORTS_TABLE, "wazuh-states-inventory-ports"},
-    {NET_IFACE_TABLE, "wazuh-states-inventory-interfaces"},
-    {NET_PROTOCOL_TABLE, "wazuh-states-inventory-protocols"},
-    {NET_ADDRESS_TABLE, "wazuh-states-inventory-networks"},
-    {USERS_TABLE, "wazuh-states-inventory-users"},
-    {GROUPS_TABLE, "wazuh-states-inventory-groups"},
-    {SERVICES_TABLE, "wazuh-states-inventory-services"},
-    {BROWSER_EXTENSIONS_TABLE, "wazuh-states-inventory-browser-extensions"},
+    {OS_TABLE, SYSCOLLECTOR_SYNC_INDEX_SYSTEM},
+    {HW_TABLE, SYSCOLLECTOR_SYNC_INDEX_HARDWARE},
+    {HOTFIXES_TABLE, SYSCOLLECTOR_SYNC_INDEX_HOTFIXES},
+    {PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES},
+    {PROCESSES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PROCESSES},
+    {PORTS_TABLE, SYSCOLLECTOR_SYNC_INDEX_PORTS},
+    {NET_IFACE_TABLE, SYSCOLLECTOR_SYNC_INDEX_INTERFACES},
+    {NET_PROTOCOL_TABLE, SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS},
+    {NET_ADDRESS_TABLE, SYSCOLLECTOR_SYNC_INDEX_NETWORKS},
+    {USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS},
+    {GROUPS_TABLE, SYSCOLLECTOR_SYNC_INDEX_GROUPS},
+    {SERVICES_TABLE, SYSCOLLECTOR_SYNC_INDEX_SERVICES},
+    {BROWSER_EXTENSIONS_TABLE, SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS},
     // LCOV_EXCL_STOP
 };
 
@@ -344,11 +344,15 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
-    std::unique_lock<std::mutex> lock{m_mutex};
-    m_stopping = false;
-
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
+
+}
+
+void Syscollector::start()
+{
+    std::unique_lock<std::mutex> lock{m_mutex};
+    m_stopping = false;
 
     syncLoop(lock);
 }
@@ -1547,4 +1551,22 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
     }
 
     return false;
+}
+
+bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void Syscollector::deleteDatabase()
+{
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->deleteDatabase();
+    }
 }

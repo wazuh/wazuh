@@ -316,6 +316,8 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                           "",
                                           "",
                                           5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -364,6 +366,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
                                           "",
                                           1, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
 
+            Syscollector::instance().start();
         }
     };
 
@@ -401,6 +404,8 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
                                           "",
                                           "",
                                           3600, false);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -520,6 +525,8 @@ TEST_F(SyscollectorImpTest, noHardware)
                                           "",
                                           "",
                                           3600, true, false, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -640,6 +647,8 @@ TEST_F(SyscollectorImpTest, noOs)
                                           "",
                                           "",
                                           3600, true, true, false, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -751,6 +760,8 @@ TEST_F(SyscollectorImpTest, noNetwork)
                                           "",
                                           "",
                                           3600, true, true, true, false, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -865,6 +876,8 @@ TEST_F(SyscollectorImpTest, noPackages)
                                           "",
                                           "",
                                           3600, true, true, true, true, false, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -984,6 +997,8 @@ TEST_F(SyscollectorImpTest, noPorts)
                                           "",
                                           "",
                                           5, true, true, true, true, true, false, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1108,6 +1123,8 @@ TEST_F(SyscollectorImpTest, noPortsAll)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, false, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1222,6 +1239,8 @@ TEST_F(SyscollectorImpTest, noProcesses)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, false, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1341,6 +1360,8 @@ TEST_F(SyscollectorImpTest, noHotfixes)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, false, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1460,6 +1481,8 @@ TEST_F(SyscollectorImpTest, noUsers)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, true, false, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1579,6 +1602,8 @@ TEST_F(SyscollectorImpTest, noGroups)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, false, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1698,6 +1723,8 @@ TEST_F(SyscollectorImpTest, noServices)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, true, true, false, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1817,6 +1844,8 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, true, true, true, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -2003,6 +2032,8 @@ TEST_F(SyscollectorImpTest, portAllEnable)
                                           "",
                                           "",
                                           3600, true, false, false, false, false, true, true, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -2177,6 +2208,8 @@ TEST_F(SyscollectorImpTest, portAllDisable)
                                           "",
                                           "",
                                           3600, true, false, false, false, false, true, false, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -2257,6 +2290,8 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
                                           "",
                                           "",
                                           3600, true, false, false, false, true, false, false, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -2385,6 +2420,8 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           "",
                                           "",
                                           5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
