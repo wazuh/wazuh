@@ -800,7 +800,7 @@ char *gen_diff_str(const diff_data *diff){
 
 void save_compress_file(const diff_data *diff){
     if (rename_ex(diff->compress_tmp_file, diff->compress_file) != 0) {
-        merror(RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
+        mdebug2(RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
         return;
     }
     if (syscheck.disk_quota_enabled){

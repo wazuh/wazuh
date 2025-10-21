@@ -30,7 +30,6 @@
 #endif
 
 /* Global variables */
-int sender_pool;
 w_indexed_queue_t *control_msg_queue = NULL;
 w_rr_queue_t *events_queue = NULL;
 
@@ -203,7 +202,6 @@ void HandleSecure()
 
     agent_metadata_init();
 
-    size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
     indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
@@ -269,8 +267,6 @@ void HandleSecure()
 
     /* Create wait_for_msgs threads */
     {
-        sender_pool = getDefine_Int("remoted", "sender_pool", 1, 64);
-
         mdebug2("Creating %d sender threads.", sender_pool);
 
         for (int i = 0; i < sender_pool; i++) {
@@ -307,13 +303,11 @@ void HandleSecure()
     worker_args->events_queue      = events_queue;
     // Create message handler thread pool
     {
-        int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
         // Initialize FD list and counter.
         global_counter = 0;
         rem_initList(FD_LIST_INIT_VALUE);
-        while (worker_pool > 0) {
+        for (int i = 0; i < worker_pool; i++) {
             w_create_thread(rem_handler_main, worker_args);
-            worker_pool--;
         }
     }
 
@@ -528,17 +522,14 @@ void * rem_handler_main(void * args) {
 
 // Key reloader thread
 void * rem_keyupdate_main(__attribute__((unused)) void * args) {
-    int seconds;
-
     mdebug1("Key reloader thread started.");
-    seconds = getDefine_Int("remoted", "keyupdate_interval", 1, 3600);
 
     while (1) {
         mdebug2("Checking for keys file changes.");
         if (check_keyupdate() == 1) {
             rem_inc_keys_reload();
         }
-        sleep(seconds);
+        sleep(keyupdate_interval);
     }
 }
 
@@ -981,7 +972,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
     }
 
-    if(getDefine_Int("remoted", "router_forwarding_disabled", 0, 1) == 1) {
+    if(router_forwarding_disabled == 1) {
         // If router forwarding is disabled, do not forward events to subscribers
         mdebug2("Router forwarding is disabled, not forwarding message from agent '%s'.", agentid_str);
         os_free(agentid_str);

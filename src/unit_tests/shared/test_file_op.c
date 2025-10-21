@@ -1028,7 +1028,7 @@ void test_get_UTC_modification_time_fail_get_handle(void **state) {
     will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
 
     snprintf(buffer, OS_SIZE_128, FIM_WARN_OPEN_HANDLE_FILE, path, 2);
-    expect_string(__wrap__mferror, formatted_msg, buffer);
+    expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
     time_t ret = get_UTC_modification_time(path);
     assert_int_equal(ret, 0);
@@ -1051,7 +1051,7 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
     will_return(wrap_GetFileTime, 0);
 
     snprintf(buffer, OS_SIZE_128, FIM_WARN_GET_FILETIME, path, 2);
-    expect_string(__wrap__mferror, formatted_msg, buffer);
+    expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)1234);
     will_return(wrap_CloseHandle, 0);

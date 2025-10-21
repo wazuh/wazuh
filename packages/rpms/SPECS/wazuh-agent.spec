@@ -646,7 +646,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
-%attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/etc/ossec.conf
+%attr(660, root, wazuh) %ghost %{_localstatedir}/etc/ossec.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/wpk_root.pem
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
 %dir %attr(750, root, wazuh) %{_localstatedir}/lib

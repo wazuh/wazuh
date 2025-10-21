@@ -1082,6 +1082,33 @@ void test_print_hex_string_null_dst_err(void ** state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_os_substr_failure(void **state) {
+    char *srcs[] = {"TEST STRING", NULL, "SHORT"};
+    int expected_results[] = {-3, -2, -1};
+    int length[] = {-5, 3, 10};
+    char dest[20];
+
+    for (int i = 0; i < sizeof(srcs)/sizeof(srcs[0]); i++) {
+        dest[0] = '\0';
+        int result = os_substr(dest, srcs[i], 6, length[i]);
+        assert_int_equal(result, expected_results[i]);
+        assert_string_equal(dest, "");
+    }
+}
+
+void test_os_substr_success(void **state) {
+    char *srcs[] = {"TEST STRING", "ANOTHER TEST STRING", NULL};
+    char *expected_dests[] = {"STRING", "ER TES"};
+    char dest[20];
+
+    for (int i = 0; srcs[i] != NULL; i++) {
+        dest[0] = '\0';
+        int result = os_substr(dest, srcs[i], 5, 6);
+        assert_int_equal(result, 0);
+        assert_string_equal(dest, expected_dests[i]);
+    }
+}
+
 /* Tests */
 
 int main(void) {
@@ -1095,6 +1122,9 @@ int main(void) {
         cmocka_unit_test(test_os_snprintf_short),
         cmocka_unit_test(test_os_snprintf_long),
         cmocka_unit_test(test_os_snprintf_more_parameters),
+        // Test os_substr
+        cmocka_unit_test(test_os_substr_success),
+        cmocka_unit_test(test_os_substr_failure),
         // Tests w_remove_substr
         cmocka_unit_test(test_w_remove_substr_null_sub),
         cmocka_unit_test(test_w_remove_substr_success),
@@ -1199,8 +1229,7 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_equal_dest_ok),
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
-        cmocka_unit_test(test_print_hex_string_null_dst_err),
-
+        cmocka_unit_test(test_print_hex_string_null_dst_err)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

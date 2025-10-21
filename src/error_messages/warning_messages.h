@@ -34,7 +34,7 @@
 #define FIM_WARN_WHODATA_EVENT_OVERFLOW         "(6917): Real-time Whodata events queue for Windows has more than %d elements."
 #define FIM_WARN_NFS_INOTIFY                    "(6918): '%s' NFS Directories do not support iNotify."
 #define FIM_INV_REG                             "(6919): Invalid syscheck registry entry: '%s' arch: '%s'."
-#define FIM_REG_OPEN                            "(6920): Unable to open registry key: '%s' arch: '%s'."
+#define FIM_REG_OPEN                            "(6920): Failed to open registry key: '%s' (arch: '%s'). Error code: %ld."
 #define FIM_WARN_FILE_REALTIME                  "(6921): Unable to configure real-time option for file: '%s'"
 #define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
 

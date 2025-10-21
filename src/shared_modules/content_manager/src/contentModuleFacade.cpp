@@ -14,7 +14,7 @@ namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
-};
+}; // namespace Log
 
 void ContentModuleFacade::start(
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&

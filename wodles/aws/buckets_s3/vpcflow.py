@@ -34,9 +34,15 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         kwargs['db_table_name'] = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
+
         self.access_key = kwargs['access_key']
         self.secret_key = kwargs['secret_key']
-        self.profile_name = kwargs['profile']
+        self.profile = kwargs['profile']
+        self.sts_endpoint = kwargs['sts_endpoint']
+        self.service_endpoint = kwargs['service_endpoint']
+        self.iam_role_arn = kwargs['iam_role_arn']
+        self.iam_role_duration = kwargs['iam_role_duration']
+
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
             SELECT
@@ -145,32 +151,25 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
             return result
 
-    def get_ec2_client(self, access_key, secret_key, region, profile_name=None):
-        conn_args = {}
-        conn_args['region_name'] = region
+    def get_ec2_client(self, region):
 
-        if access_key is not None and secret_key is not None:
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
-        elif profile_name is not None:
-            conn_args['profile_name'] = profile_name
-
-        boto_session = boto3.Session(**conn_args)
-
-        if region not in aws_tools.ALL_REGIONS:
-            raise ValueError(f"Invalid region '{region}'")
-
-        try:
-            ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
-        except Exception as e:
-            aws_tools.error("Error getting EC2 client: {}".format(e))
-            sys.exit(3)
+        ec2_client = self.get_client(
+            self.access_key,
+            self.secret_key,
+            self.profile,
+            self.iam_role_arn,
+            'ec2',
+            region,
+            self.sts_endpoint,
+            self.service_endpoint,
+            self.iam_role_duration
+        )
 
         return ec2_client
 
-    def get_flow_logs_ids(self, access_key, secret_key, region, account_id, profile_name=None):
+    def get_flow_logs_ids(self, region, account_id):
         try:
-            ec2_client = self.get_ec2_client(access_key, secret_key, region, profile_name=profile_name)
+            ec2_client = self.get_ec2_client(region)
             return list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         except ValueError:
             aws_tools.debug(
@@ -204,9 +203,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             for aws_region in regions:
                 aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # get flow log ids for the current region
-                flow_logs_ids = self.get_flow_logs_ids(
-                    self.access_key, self.secret_key, aws_region, aws_account_id, profile_name=self.profile_name
-                )
+                flow_logs_ids = self.get_flow_logs_ids(aws_region, aws_account_id)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
                     self.iter_files_in_bucket(aws_account_id, aws_region, flow_log_id=flow_log_id)
