@@ -61,6 +61,7 @@ class EXPORTED IndexerConnector final
     bool m_error413FirstTime {false};
     const bool m_useSeekDelete;
     bool m_blockedIndex {false};
+    bool m_deletedIndex {false};
 
     /**
      * @brief Intialize method used to load template data and initialize the index.

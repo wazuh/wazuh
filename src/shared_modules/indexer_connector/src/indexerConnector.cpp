@@ -556,12 +556,16 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
 
             // Delete index
             logDebug2(IC_NAME, "Deleting index '%s'.", m_indexName.c_str());
-            HTTPRequest::instance().delete_(
-                RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
-                                   .secureCommunication = secureCommunication},
-                PostRequestParameters {.onSuccess = [this](const std::string& response) { m_blockedIndex = false; },
-                                       .onError = onError},
-                ConfigurationParameters {});
+            HTTPRequest::instance().delete_(RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                                               .secureCommunication = secureCommunication},
+                                            PostRequestParameters {.onSuccess =
+                                                                       [this](const std::string& response)
+                                                                   {
+                                                                       m_blockedIndex = false;
+                                                                       m_deletedIndex = true;
+                                                                   },
+                                                                   .onError = onError},
+                                            ConfigurationParameters {});
 
             // Reindex data.
             std::string reindexData = R"({"source":{"index":")" + m_indexName + "-backup" + R"("},"dest":{"index":")" +
@@ -593,29 +597,6 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                 ConfigurationParameters {});
         }
-
-        // Re-initialize Index in case no documents where reindexed.
-        HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
-                                                           .data = templateData.at("template"),
-                                                           .secureCommunication = secureCommunication},
-                                    PostRequestParameters {
-                                        .onSuccess = onSuccess,
-                                        .onError =
-                                            [](const std::string& error, const long statusCode)
-                                        {
-                                            if (statusCode != HTTP_BAD_REQUEST)
-                                            {
-                                                std::string errorMessage = error;
-                                                if (statusCode != NOT_USED)
-                                                {
-                                                    logError(
-                                                        IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-                                                    throw std::runtime_error(error);
-                                                }
-                                            }
-                                        },
-                                    },
-                                    ConfigurationParameters {});
     }
     else
     {
@@ -696,8 +677,13 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     // At this point the template is already created or updated and the index initialized.
     try
     {
-        // Check if reindex is required.
         validateMappings(templateData, selector, secureCommunication);
+        // Re-initialize Index in case no documents where reindexed.
+        HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                                           .data = templateData.at("template"),
+                                                           .secureCommunication = secureCommunication},
+                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    ConfigurationParameters {});
     }
     catch (const std::exception& e)
     {
@@ -706,6 +692,15 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                 m_indexName.c_str(),
                 e.what());
         rollbackIndexChanges(selector, secureCommunication);
+        // Re-initialize Index if it was not recreated during reindexing.
+        if (m_deletedIndex)
+        {
+            HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                                               .data = templateData.at("template"),
+                                                               .secureCommunication = secureCommunication},
+                                        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                        ConfigurationParameters {});
+        }
         // Fallback legacy mechanism. Create new mappings after update.
         if (!updateMappingsData.empty())
         {
