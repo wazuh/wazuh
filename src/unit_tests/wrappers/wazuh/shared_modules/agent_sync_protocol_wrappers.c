@@ -25,12 +25,14 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* id,
                              int operation,
                              const char* index,
-                             const char* data) {
+                             const char* data,
+                             uint64_t version) {
     check_expected_ptr(handle);
     check_expected_ptr(id);
     check_expected(operation);
     check_expected_ptr(index);
     check_expected_ptr(data);
+    check_expected(version);
 }
 
 bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,

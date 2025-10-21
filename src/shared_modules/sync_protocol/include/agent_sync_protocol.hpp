@@ -35,13 +35,15 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         void persistDifference(const std::string& id,
                                Operation operation,
                                const std::string& index,
-                               const std::string& data) override;
+                               const std::string& data,
+                               uint64_t version) override;
 
         /// @copydoc IAgentSyncProtocol::persistDifferenceInMemory
         void persistDifferenceInMemory(const std::string& id,
                                        Operation operation,
                                        const std::string& index,
-                                       const std::string& data) override;
+                                       const std::string& data,
+                                       uint64_t version) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;

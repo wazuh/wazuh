@@ -175,7 +175,7 @@ void SecurityConfigurationAssessment::SetPushStatelessMessageFunction(const std:
     m_pushStatelessMessage = pushMessage;
 }
 
-void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)>& pushMessage)
+void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>& pushMessage)
 {
     m_pushStatefulMessage = pushMessage;
 }
@@ -221,11 +221,11 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode, std::chrono::seconds
     return false;
 }
 
-void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_spSyncProtocol)
     {
-        m_spSyncProtocol->persistDifference(id, operation, index, data);
+        m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
 

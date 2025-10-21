@@ -40,11 +40,13 @@ void asp_destroy(AgentSyncProtocolHandle* handle);
 /// @param operation Type of operation (create, modify, delete).
 /// @param index Target index or destination for the diff.
 /// @param data JSON string representing the data to persist.
+/// @param version Version of the data (64-bit unsigned integer).
 void asp_persist_diff(AgentSyncProtocolHandle* handle,
                       const char* id,
                       Operation_t operation,
                       const char* index,
-                      const char* data);
+                      const char* data,
+                      uint64_t version);
 
 /// @brief Persists a difference to in-memory vector instead of database.
 ///
@@ -54,11 +56,13 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 /// @param operation Type of operation (create, modify, delete).
 /// @param index Logical index for the data item.
 /// @param data Serialized content of the message.
+/// @param version Version of the data (64-bit unsigned integer).
 void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
                                 const char* id,
                                 Operation_t operation,
                                 const char* index,
-                                const char* data);
+                                const char* data,
+                                uint64_t version);
 
 // @brief Triggers synchronization of a module.
 ///

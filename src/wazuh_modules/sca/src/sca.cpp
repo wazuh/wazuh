@@ -215,11 +215,11 @@ void SCA::init()
 
         m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
 
-        auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message) -> int
+        auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
         {
             if (g_push_stateful_func)
             {
-                return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str());
+                return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str(), version);
             }
 
             LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
@@ -317,11 +317,11 @@ bool SCA::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retri
     return false;
 }
 
-void SCA::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void SCA::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_sca)
     {
-        m_sca->persistDifference(id, operation, index, data);
+        m_sca->persistDifference(id, operation, index, data, version);
     }
 }
 
@@ -360,14 +360,15 @@ bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, un
 /// @param operation Type of operation performed (CREATE, MODIFY, DELETE)
 /// @param index Index or key associated with the change
 /// @param data Serialized data content of the change
-void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data)
+/// @param version Version of the data
+void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)
 {
     if (id && index && data)
     {
         Operation cppOperation = (operation == OPERATION_CREATE) ? Operation::CREATE :
                                  (operation == OPERATION_MODIFY) ? Operation::MODIFY :
                                  (operation == OPERATION_DELETE) ? Operation::DELETE_ : Operation::NO_OP;
-        SCA::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data));
+        SCA::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data), version);
     }
 }
 

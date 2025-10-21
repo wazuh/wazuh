@@ -57,6 +57,9 @@ struct PersistedData
 
     /// @brief Type of operation (CREATE, MODIFY, DELETE).
     Operation operation;
+
+    /// @brief Version of the data.
+    uint64_t version;
 };
 
 /// @brief Interface for persistent message queues.
@@ -75,10 +78,12 @@ class IPersistentQueue
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (CREATE, MODIFY, DELETE).
+        /// @param version Version of the data.
         virtual void submit(const std::string& id,
                             const std::string& index,
                             const std::string& data,
-                            Operation operation) = 0;
+                            Operation operation,
+                            uint64_t version) = 0;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @return A vector of messages now marked as SYNCING.

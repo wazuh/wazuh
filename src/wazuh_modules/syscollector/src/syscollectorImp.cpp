@@ -183,18 +183,16 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 
 void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
-    nlohmann::json newData;
-
     nlohmann::json aux = result == MODIFIED && data.contains("new") ? data["new"] : data;
 
-    newData = ecsData(aux, table);
+    auto [newData, version] = ecsData(aux, table);
 
     const auto statefulToSend{newData.dump()};
     auto indexIt = INDEX_MAP.find(table);
 
     if (indexIt != INDEX_MAP.end())
     {
-        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend);
+        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -211,12 +209,11 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     if (m_notify)
     {
         nlohmann::json stateless;
-        nlohmann::json oldData;
 
         stateless["collector"] = table;
         stateless["module"] = "inventory";
 
-        oldData = (result == MODIFIED) ? ecsData(data["old"], table, false) : nlohmann::json {};
+        auto [oldData, oldVersion] = (result == MODIFIED) ? ecsData(data["old"], table, false) : std::make_pair(nlohmann::json{}, uint64_t(0));
 
         auto changedFields = addPreviousFields(newData, oldData);
 
@@ -303,7 +300,7 @@ std::string Syscollector::getCreateStatement() const
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
-                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> persistDiffFunction,
+                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
                         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
@@ -364,9 +361,10 @@ void Syscollector::destroy()
     lock.unlock();
 }
 
-nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
+std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
 {
     nlohmann::json ret;
+    uint64_t document_version = 0;
 
     if (table == OS_TABLE)
     {
@@ -432,13 +430,14 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
         // Include document_version field in state for synchronization
         if (data.contains("version"))
         {
-            state["document_version"] = data["version"];
+            document_version = data["version"].get<uint64_t>();
+            state["document_version"] = document_version;
         }
 
         ret["state"] = state;
     }
 
-    return ret;
+    return {ret, document_version};
 }
 
 nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, bool createFields)
@@ -1532,11 +1531,11 @@ bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned 
     return false;
 }
 
-void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_spSyncProtocol)
     {
-        m_spSyncProtocol->persistDifference(id, operation, index, data);
+        m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
 

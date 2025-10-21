@@ -41,11 +41,12 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
 void AgentSyncProtocol::persistDifference(const std::string& id,
                                           Operation operation,
                                           const std::string& index,
-                                          const std::string& data)
+                                          const std::string& data,
+                                          uint64_t version)
 {
     try
     {
-        m_persistentQueue->submit(id, index, data, operation);
+        m_persistentQueue->submit(id, index, data, operation, version);
     }
     catch (const std::exception& e)
     {
@@ -56,7 +57,8 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
 void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
                                                   Operation operation,
                                                   const std::string& index,
-                                                  const std::string& data)
+                                                  const std::string& data,
+                                                  uint64_t version)
 {
     try
     {
@@ -66,6 +68,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
         persistedData.index = index;
         persistedData.data = data;
         persistedData.operation = operation;
+        persistedData.version = version;
 
         m_inMemoryData.push_back(persistedData);
     }
@@ -362,7 +365,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto agentname = builder.CreateString("hardcoded_agentname");
         auto agentid = builder.CreateString("hardcoded_agentid");
         auto checksum_metadata = builder.CreateString("hardcoded_checksum_metadata");
-        auto global_version = builder.CreateString("hardcoded_global_version");
+        uint64_t global_version = 1000; // Hardcoded global version as ulong
 
         // Create groups vector
         std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
@@ -474,6 +477,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
             dataValueBuilder.add_session(session);
             dataValueBuilder.add_id(idStr);
             dataValueBuilder.add_index(idxStr);
+            dataValueBuilder.add_version(item.version);
 
             // Translate DB operation to Schema operation
             const auto protocolOperation = (item.operation == Operation::DELETE_)

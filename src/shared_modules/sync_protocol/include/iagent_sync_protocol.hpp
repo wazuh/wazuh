@@ -24,10 +24,12 @@ class IAgentSyncProtocol
         /// @param operation Operation type
         /// @param index Index where to send the difference
         /// @param data Difference data
+        /// @param version Version of the data.
         virtual void persistDifference(const std::string& id,
                                        Operation operation,
                                        const std::string& index,
-                                       const std::string& data) = 0;
+                                       const std::string& data,
+                                       uint64_t version) = 0;
 
         /// @brief Persist a difference to in-memory vector instead of database.
         /// This method is used for recovery scenarios where data should be kept in memory.
@@ -35,10 +37,12 @@ class IAgentSyncProtocol
         /// @param operation Type of operation (CREATE, MODIFY, DELETE).
         /// @param index Logical index for the data item.
         /// @param data Serialized content of the message.
+        /// @param version Version of the data.
         virtual void persistDifferenceInMemory(const std::string& id,
                                                Operation operation,
                                                const std::string& index,
-                                               const std::string& data) = 0;
+                                               const std::string& data,
+                                               uint64_t version) = 0;
 
         /// @brief Synchronize a module with the server
         /// @param mode Sync mode

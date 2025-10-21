@@ -312,8 +312,9 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
  * @param operation The type of operation.
  * @param index The index for the event.
  * @param _msg The message to be persisted
+ * @param version The document version (64-bit unsigned integer)
  */
-void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg) __attribute__((nonnull));
+void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1,3,4)));
 
 /**
  * @brief Send a log message

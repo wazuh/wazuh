@@ -47,7 +47,7 @@ long sca_sync_max_eps = 10;                      // Database synchronization num
 // Forward declarations
 static bool wm_sca_is_shutting_down(void);
 static int wm_sca_send_stateless(const char* message);
-static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message);
+static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version);
 static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path);
 
 #undef minfo
@@ -353,14 +353,14 @@ static int wm_sca_send_stateless(const char* message) {
     return 0;
 }
 
-static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message) {
+static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version) {
     if (!message) {
         return -1;
     }
 
     if (sca_enable_synchronization && sca_persist_diff_ptr) {
         mdebug2("Persisting SCA event: %s", message);
-        sca_persist_diff_ptr(id, operation, index, message);
+        sca_persist_diff_ptr(id, operation, index, message, version);
     } else {
         mdebug2("SCA synchronization is disabled or function not available");
     }

@@ -28,7 +28,8 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, submit, (const std::string& id,
                                    const std::string& index,
                                    const std::string& data,
-                                   Operation operation), (override));
+                                   Operation operation,
+                                   uint64_t version), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
         MOCK_METHOD(void, clearSyncedItems, (), (override));
         MOCK_METHOD(void, resetSyncingItems, (), (override));
@@ -91,11 +92,12 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
     const std::string testIndex = "test_index";
     const std::string testData = "test_data";
     const Operation testOperation = Operation::CREATE; // Any value
+    const uint64_t testVersion = 123;
 
-    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation))
+    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion))
     .Times(1);
 
-    protocol->persistDifference(testId, testOperation, testIndex, testData);
+    protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion);
 }
 
 TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
@@ -116,11 +118,12 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
     const std::string testIndex = "test_index";
     const std::string testData = "test_data";
     const Operation testOperation = Operation::CREATE; // Any value
+    const uint64_t testVersion = 123;
 
-    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation))
+    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion))
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
-    EXPECT_NO_THROW(protocol->persistDifference(testId, testOperation, testIndex, testData));
+    EXPECT_NO_THROW(protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion));
 }
 
 TEST_F(AgentSyncProtocolTest, PersistDifferenceInMemorySuccess)
@@ -141,8 +144,9 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceInMemorySuccess)
     const std::string testIndex = "memory_test_index";
     const std::string testData = "memory_test_data";
     const Operation testOperation = Operation::CREATE;
+    const uint64_t testVersion = 456;
 
-    EXPECT_NO_THROW(protocol->persistDifferenceInMemory(testId, testOperation, testIndex, testData));
+    EXPECT_NO_THROW(protocol->persistDifferenceInMemory(testId, testOperation, testIndex, testData, testVersion));
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
@@ -268,8 +272,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     // Add some in-memory data
-    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1");
-    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2");
+    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
+    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
 
     // Expect NO calls to fetchAndMarkForSync since FULL mode uses in-memory data
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -349,7 +353,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     // Add some in-memory data
-    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1");
+    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
 
     // Expect NO calls to database methods since FULL mode uses in-memory data
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -368,7 +372,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
     EXPECT_FALSE(result);  // Should fail due to timeout
 
     // In-memory data should be kept for potential retry, so we can add more data
-    EXPECT_NO_THROW(protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2"));
+    EXPECT_NO_THROW(protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2));
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
@@ -422,8 +426,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -458,8 +462,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -519,8 +523,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartAckTimeout)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -564,8 +568,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -634,8 +638,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -695,8 +699,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -776,8 +780,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -857,8 +861,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -960,8 +964,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1050,8 +1054,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1112,8 +1116,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1194,8 +1198,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1358,7 +1362,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1416,7 +1420,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1474,7 +1478,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1565,7 +1569,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1643,7 +1647,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1721,7 +1725,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1838,7 +1842,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -1916,7 +1920,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
     {
         std::vector<PersistedData> testData =
         {
-            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -2276,9 +2280,9 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataWithData)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     // Add some in-memory data
-    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1");
-    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2");
-    protocol->persistDifferenceInMemory("memory_id_3", Operation::DELETE_, "memory_index_3", "memory_data_3");
+    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
+    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
+    protocol->persistDifferenceInMemory("memory_id_3", Operation::DELETE_, "memory_index_3", "memory_data_3", 3);
 
     // Clear in-memory data should not throw
     EXPECT_NO_THROW(protocol->clearInMemoryData());
@@ -2299,8 +2303,8 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     // Add some in-memory data
-    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1");
-    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2");
+    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
+    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
 
     // Expect NO calls to database methods since FULL mode uses in-memory data
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -2322,7 +2326,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
     EXPECT_NO_THROW(protocol->clearInMemoryData());
 
     // Verify data is cleared by attempting to add new data and sync with empty state
-    protocol->persistDifferenceInMemory("memory_id_3", Operation::CREATE, "memory_index_3", "memory_data_3");
+    protocol->persistDifferenceInMemory("memory_id_3", Operation::CREATE, "memory_index_3", "memory_data_3", 3);
 
     // This should work without issues
     EXPECT_NO_THROW(protocol->clearInMemoryData());
@@ -2343,13 +2347,13 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataMultipleTimes)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     // Add data and clear multiple times
-    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1");
+    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
     EXPECT_NO_THROW(protocol->clearInMemoryData());
 
-    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2");
+    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
     EXPECT_NO_THROW(protocol->clearInMemoryData());
 
-    protocol->persistDifferenceInMemory("memory_id_3", Operation::DELETE_, "memory_index_3", "memory_data_3");
+    protocol->persistDifferenceInMemory("memory_id_3", Operation::DELETE_, "memory_index_3", "memory_data_3", 3);
     EXPECT_NO_THROW(protocol->clearInMemoryData());
 
     // Clear on already empty data

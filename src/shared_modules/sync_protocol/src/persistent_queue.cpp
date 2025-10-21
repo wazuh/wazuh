@@ -37,10 +37,11 @@ PersistentQueue::~PersistentQueue() = default;
 void PersistentQueue::submit(const std::string& id,
                              const std::string& index,
                              const std::string& data,
-                             Operation operation)
+                             Operation operation,
+                             uint64_t version)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    PersistedData msg{0, id, index, data, operation};
+    PersistedData msg{0, id, index, data, operation, version};
 
     try
     {

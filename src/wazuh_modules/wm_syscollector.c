@@ -102,11 +102,11 @@ static void wm_sys_send_diff_message(const void* data) {
     wm_sys_send_message(data, SYSCOLLECTOR_MQ);
 }
 
-static void wm_sys_persist_diff_message(const char *id, Operation_t operation, const char *index, const void* data) {
+static void wm_sys_persist_diff_message(const char *id, Operation_t operation, const char *index, const void* data, uint64_t version) {
     if (enable_synchronization && syscollector_persist_diff_ptr) {
         const char* msg = (const char*)data;
         mtdebug2(WM_SYS_LOGTAG, "Persisting Inventory event: %s", msg);
-        syscollector_persist_diff_ptr(id, operation, index, msg);
+        syscollector_persist_diff_ptr(id, operation, index, msg, version);
     } else {
         mtdebug2(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
     }

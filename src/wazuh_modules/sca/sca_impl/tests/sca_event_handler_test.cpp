@@ -312,8 +312,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
     };
 
     const auto result = handler->ProcessStateful(input);
-    const auto& output = result.first;
-    const auto& operation = result.second;
+    const auto& output = std::get<0>(result);
+    const auto& operation = std::get<1>(result);
 
     // Validate the operation type
     EXPECT_EQ(operation, MODIFIED);
@@ -368,8 +368,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
     };
 
     const auto result = handler->ProcessStateful(input);
-    const auto& output = result.first;
-    const auto& operation = result.second;
+    const auto& output = std::get<0>(result);
+    const auto& operation = std::get<1>(result);
 
     // Validate the operation type
     EXPECT_EQ(operation, INSERTED);
@@ -424,8 +424,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_WithVersion)
     };
 
     const auto result = handler->ProcessStateful(input);
-    const auto& output = result.first;
-    const auto& operation = result.second;
+    const auto& output = std::get<0>(result);
+    const auto& operation = std::get<1>(result);
 
     // Validate the operation type
     EXPECT_EQ(operation, MODIFIED);
@@ -467,8 +467,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput1)
     const nlohmann::json input = {{"result", "invalid_result"}};
 
     const auto result = handler->ProcessStateful(input);
-    const auto& output = result.first;
-    const auto& operation = result.second;
+    const auto& output = std::get<0>(result);
+    const auto& operation = std::get<1>(result);
 
     // Validate the operation type for error cases
     EXPECT_EQ(operation, SELECTED);
@@ -490,8 +490,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput2)
     };
 
     const auto result = handler->ProcessStateful(input);
-    const auto& output = result.first;
-    const auto& operation = result.second;
+    const auto& output = std::get<0>(result);
+    const auto& operation = std::get<1>(result);
 
     // Validate the operation type for error cases
     EXPECT_EQ(operation, SELECTED);
@@ -744,7 +744,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_EmptyInput)
     std::vector<std::string> statefulMessages;
     std::vector<std::string> statelessMessages;
 
-    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message) -> int
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
     {
         statefulMessages.push_back(message);
         return 0;
@@ -776,7 +776,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidInput)
     std::vector<std::string> statefulMessages;
     std::vector<std::string> statelessMessages;
 
-    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message) -> int
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
     {
         statefulMessages.push_back(message);
         return 0;
@@ -905,7 +905,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
     std::vector<std::string> statefulMessages;
     std::vector<std::string> statelessMessages;
 
-    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message) -> int
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
     {
         statefulMessages.push_back(message);
         return 0;

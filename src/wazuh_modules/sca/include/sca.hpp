@@ -95,7 +95,8 @@ class EXPORTED SCA final
         /// @param operation Type of operation (CREATE, MODIFY, DELETE, NO_OP)
         /// @param index Index or key associated with the change
         /// @param data Serialized data content of the change
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+        /// @param version Version of the data
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
 
         /// @brief Parses a response buffer from synchronization operations.
         ///

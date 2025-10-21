@@ -48,7 +48,7 @@ class EXPORTED Syscollector final
 
         void init(const std::shared_ptr<ISysInfo>& spInfo,
                   const std::function<void(const std::string&)> reportDiffFunction,
-                  const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> persistDiffFunction,
+                  const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
                   const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                   const std::string& dbPath,
                   const std::string& normalizerConfigPath,
@@ -74,7 +74,7 @@ class EXPORTED Syscollector final
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs);
         bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
     private:
         Syscollector();
@@ -92,7 +92,7 @@ class EXPORTED Syscollector final
         nlohmann::json getServicesData();
         nlohmann::json getBrowserExtensionsData();
 
-        nlohmann::json ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
+        std::pair<nlohmann::json, uint64_t> ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
         nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
@@ -148,7 +148,7 @@ class EXPORTED Syscollector final
 
         std::shared_ptr<ISysInfo>                                                m_spInfo;
         std::function<void(const std::string&)>                                  m_reportDiffFunction;
-        std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> m_persistDiffFunction;
+        std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_persistDiffFunction;
         std::function<void(const modules_log_level_t, const std::string&)>       m_logFunction;
         unsigned int                                                             m_intervalValue;
         bool                                                                     m_scanOnStart;

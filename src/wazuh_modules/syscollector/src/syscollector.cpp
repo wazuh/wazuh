@@ -49,11 +49,11 @@ void syscollector_start(const unsigned int inverval,
         }
     };
 
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackPersistDiffWrapper
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackPersistDiffWrapper
     {
-        [callbackPersistDiff](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [callbackPersistDiff](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
-            callbackPersistDiff(id.c_str(), operation, index.c_str(), data.c_str());
+            callbackPersistDiff(id.c_str(), operation, index.c_str(), data.c_str(), version);
         }
     };
 
@@ -124,14 +124,14 @@ bool syscollector_sync_module(Mode_t mode, unsigned int timeout, unsigned int re
     return Syscollector::instance().syncModule(syncMode, std::chrono::seconds(timeout), retries, maxEps);
 }
 
-void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data)
+void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)
 {
     if (id && index && data)
     {
         Operation cppOperation = (operation == OPERATION_CREATE) ? Operation::CREATE :
                                  (operation == OPERATION_MODIFY) ? Operation::MODIFY :
                                  (operation == OPERATION_DELETE) ? Operation::DELETE_ : Operation::NO_OP;
-        Syscollector::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data));
+        Syscollector::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data), version);
     }
 }
 

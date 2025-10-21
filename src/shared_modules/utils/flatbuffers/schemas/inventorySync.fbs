@@ -28,7 +28,7 @@ table DataValue {
     operation: Operation;
     id: string;
     index: string;
-    version: string;
+    version: ulong;
     data: [byte];
 }
 
@@ -48,7 +48,7 @@ table Start {
     agentid: string;
     groups: [string];
     checksum_metadata: string;
-    global_version: string;
+    global_version: ulong;
 }
 
 table StartAck {

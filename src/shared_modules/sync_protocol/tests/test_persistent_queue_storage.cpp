@@ -102,7 +102,7 @@ INSTANTIATE_TEST_SUITE_P(
         QueueScenario
 {
     "Case 1",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     false, {}, false, false,
     1, Operation::CREATE
 },
@@ -111,8 +111,8 @@ QueueScenario
 {
     "Case 2",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY}
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0}
     },
     false, {}, false, false,
     1, Operation::MODIFY
@@ -122,8 +122,8 @@ QueueScenario
 {
     "Case 3",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_}
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0}
     },
     false, {}, false, false,
     0, Operation::CREATE
@@ -133,8 +133,8 @@ QueueScenario
 {
     "Case 4",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_}
+        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY, 0},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0}
     },
     false, {}, false, false,
     1, Operation::DELETE_
@@ -143,7 +143,7 @@ QueueScenario
 QueueScenario
 {
     "Case 5",
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
     false, {}, false, false,
     1, Operation::DELETE_
 },
@@ -151,9 +151,9 @@ QueueScenario
 QueueScenario
 {
     "Case 6",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     true,
-    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY} },
+    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0} },
     true, false,
     1, Operation::MODIFY
 },
@@ -161,9 +161,9 @@ QueueScenario
 QueueScenario
 {
     "Case 7",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     true,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
     true, false,
     1, Operation::DELETE_
 },
@@ -171,9 +171,9 @@ QueueScenario
 QueueScenario
 {
     "Case 8",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     true,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
     false, true,
     0, Operation::DELETE_
 },
@@ -181,9 +181,9 @@ QueueScenario
 QueueScenario
 {
     "Case 9",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     true,
-    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY} },
+    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0} },
     false, true,
     1, Operation::MODIFY
 },
@@ -192,8 +192,8 @@ QueueScenario
 {
     "Case 10",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY}
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0}
     },
     false, {}, false, false,
     1, Operation::MODIFY
@@ -202,7 +202,7 @@ QueueScenario
 QueueScenario
 {
     "Case 11",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     true, {}, true, false,
     0, Operation::CREATE
 },
@@ -211,8 +211,8 @@ QueueScenario
 {
     "Case 12",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY},
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY},
+        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY, 0},
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0},
     },
     false, {}, false, false,
     1, Operation::MODIFY
@@ -222,8 +222,8 @@ QueueScenario
 {
     "Case 13",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id2", "idx", "{}", Operation::MODIFY}
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
+        PersistedData{0, "id2", "idx", "{}", Operation::MODIFY, 0}
     },
     false, {}, false, false,
     2, Operation::CREATE
@@ -232,12 +232,12 @@ QueueScenario
 QueueScenario
 {
     "Case 14",
-    { PersistedData{0, "id1", "idx", "{}", Operation::MODIFY} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::MODIFY, 0} },
     true,
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_}
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0}
     },
     false, true,
     1, Operation::DELETE_
@@ -247,9 +247,9 @@ QueueScenario
 {
     "Case 15",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
-        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE}
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
+        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE, 0}
     },
     false, {}, false, false,
     1, Operation::CREATE
@@ -258,12 +258,12 @@ QueueScenario
 QueueScenario
 {
     "Case 16",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     true,
     {
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
-        PersistedData{0, "id1", "idx3", "{}", Operation::MODIFY}
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
+        PersistedData{0, "id1", "idx3", "{}", Operation::MODIFY, 0}
     },
     true, false,
     1, Operation::MODIFY
@@ -272,11 +272,11 @@ QueueScenario
 QueueScenario
 {
     "Case 17",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
     true,
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
-        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE}
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
+        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE, 0}
     },
     false, true,
     1, Operation::CREATE

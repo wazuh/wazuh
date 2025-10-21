@@ -63,7 +63,7 @@ class SecurityConfigurationAssessment
 
         /// @brief Set the function to be called for stateful messages
         /// @param pushMessage Function to push stateful messages
-        void SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)>& pushMessage);
+        void SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>& pushMessage);
 
         /// @brief Set the global wm_exec function pointer (static)
         /// @param wmExecFunc Function pointer to wm_exec
@@ -92,7 +92,8 @@ class SecurityConfigurationAssessment
         /// @param operation Operation type
         /// @param index Index of the record
         /// @param data Data to be persisted
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+        /// @param version Version of the data
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
 
         /// @brief Parse a sync response buffer
         /// @param data Pointer to the data buffer
@@ -118,7 +119,7 @@ class SecurityConfigurationAssessment
         std::function<int(const std::string&)> m_pushStatelessMessage;
 
         /// @brief Function for pushing stateful event messages
-        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> m_pushStatefulMessage;
+        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_pushStatefulMessage;
 
         /// @brief Pointer to a file system wrapper
         std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;

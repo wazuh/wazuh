@@ -42,7 +42,7 @@ TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
-    queue.submit("id1", "index1", "{}", Operation::CREATE);
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
 }
 
 TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
@@ -56,9 +56,9 @@ TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
-    EXPECT_THROW(queue.submit("id1", "idx1", "{}", Operation::CREATE), std::exception);
+    EXPECT_THROW(queue.submit("id1", "idx1", "{}", Operation::CREATE, 1), std::exception);
 
-    EXPECT_NO_THROW(queue.submit("id2", "idx2", "{}", Operation::CREATE));
+    EXPECT_NO_THROW(queue.submit("id2", "idx2", "{}", Operation::CREATE, 2));
 }
 
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
@@ -67,8 +67,8 @@ TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 
     std::vector<PersistedData> fakeData =
     {
-        {0, "id1", "idx", "{}", Operation::CREATE},
-        {0, "id2", "idx", "{}", Operation::MODIFY}
+        {0, "id1", "idx", "{}", Operation::CREATE, 0},
+        {0, "id2", "idx", "{}", Operation::MODIFY, 0}
     };
 
     EXPECT_CALL(*mockStorage, fetchAndMarkForSync())

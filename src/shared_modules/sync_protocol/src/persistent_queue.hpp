@@ -46,10 +46,12 @@ class PersistentQueue : public IPersistentQueue
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (e.g., Upsert, Delete).
+        /// @param version Version of the data.
         void submit(const std::string& id,
                     const std::string& index,
                     const std::string& data,
-                    Operation operation) override;
+                    Operation operation,
+                    uint64_t version) override;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @return A vector of messages now marked as SYNCING.
