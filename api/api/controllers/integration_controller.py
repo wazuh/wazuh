@@ -4,21 +4,60 @@
 
 import logging
 
+from typing import List, Optional
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
 from api.controllers.util import json_response, JSON_CONTENT_TYPE
-from api.models.decoders_model import DecodersModel
-from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
-from wazuh import decoder as decoder_framework
+from api.models.base_model_ import Body
+from api.models.integration_model import IntegrationCreateModel
+from wazuh import integration
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger("wazuh-api")
 
 
-async def get_decoder(
-    decoder_id: list = None,
+async def upsert_integration(
+    body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False
+) -> ConnexionResponse:
+    """Create a new integration.
+
+    Parameters
+    ----------
+    type_ : str
+        Policy type.
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`.
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
+    parsed_body = await IntegrationCreateModel.get_kwargs(body)
+
+    f_kwargs = {"integration_content": parsed_body, "policy_type": type_}
+
+    dapi = DistributedAPI(
+        f=integration.upsert_integration,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type="local_master",
+        is_async=True,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request.context["token_info"]["rbac_policies"],
+    )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def get_integration(
+    integration_id: list = None,
     type_: str = None,
     status: str = None,
     pretty: bool = False,
@@ -35,8 +74,8 @@ async def get_decoder(
 
     Parameters
     ----------
-    decoder_id : list
-        Filters by decoder id.
+    integration_id : list
+        Filters by integration id.
     type_: str
         Policy type.
     status : str
@@ -65,7 +104,9 @@ async def get_decoder(
     ConnexionResponse
         API response.
     """
-    ids = decoder_id or []
+
+    ids = integration_id or []
+
     f_kwargs = {
         "ids": ids,
         "offset": offset,
@@ -82,7 +123,7 @@ async def get_decoder(
     }
 
     dapi = DistributedAPI(
-        f=decoder_framework.get_decoder,
+        f=integration.get_integration,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type="local_any",
         is_async=True,
@@ -95,72 +136,31 @@ async def get_decoder(
     return json_response(data, pretty=pretty)
 
 
-async def upsert_decoder(
-    body: bytes, type_: str = None, pretty: bool = False, wait_for_complete: bool = False
+async def delete_integration(
+    type_: str, integration_id: List[str], pretty: bool = False, wait_for_complete: bool = False
 ) -> ConnexionResponse:
-    """Upload a decoder file.
+    """Delete one or more integrations.
 
     Parameters
     ----------
-    body : bytes
-        Body request with the file content to be uploaded.
-    type_: str
+    type_ : str
         Policy type.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
+    integration_id : List[str]
+        List of integration names to delete.
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`.
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`.
 
     Returns
     -------
     ConnexionResponse
         API response.
     """
-    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    parsed_body = await DecodersModel.get_kwargs(body)
-
-    f_kwargs = {"decoder_content": parsed_body, "policy_type": type_}
+    f_kwargs = {"policy_type": type_, "ids": integration_id}
 
     dapi = DistributedAPI(
-        f=decoder_framework.upsert_decoder,
-        f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type="local_master",
-        is_async=True,
-        wait_for_complete=wait_for_complete,
-        logger=logger,
-        rbac_permissions=request.context["token_info"]["rbac_policies"],
-    )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def delete_decoder(
-    decoder_id: list = None, type_: str = None, pretty: bool = False, wait_for_complete: bool = False
-) -> ConnexionResponse:
-    """Delete a decoder file.
-
-    Parameters
-    ----------
-    decoder_id : list
-        Filters by decoder id.
-    type_: str
-        Policy type.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    ids = decoder_id or []
-    f_kwargs = {"ids": ids, "policy_type": type_}
-
-    dapi = DistributedAPI(
-        f=decoder_framework.delete_decoder,
+        f=integration.delete_integration,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type="local_master",
         is_async=True,
