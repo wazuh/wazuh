@@ -39,7 +39,8 @@ class BrewWrapper final : public IPackageWrapper
             const std::string installReceiptPath = packagePath + "/INSTALL_RECEIPT.json";
             const std::string legacyBrewPath = packagePath + "/.brew/" + ctx.package + ".rb";
 
-            // Try modern INSTALL_RECEIPT.json format first (Homebrew 2.0+)
+            // Try modern INSTALL_RECEIPT.json format (Homebrew 2.0+)
+            // Extract architecture, install time, vendor, and version information
             if (Utils::existsRegular(installReceiptPath))
             {
                 try
@@ -81,8 +82,10 @@ class BrewWrapper final : public IPackageWrapper
                     // If JSON parsing fails, continue with default values
                 }
             }
-            // Fallback to legacy .brew/*.rb format for older Homebrew versions
-            else if (Utils::existsRegular(legacyBrewPath))
+
+            // Also check legacy .brew/*.rb format for description field
+            // Both formats can coexist, and .rb provides description not available in JSON
+            if (Utils::existsRegular(legacyBrewPath))
             {
                 const auto rows { Utils::split(Utils::getFileContent(legacyBrewPath), '\n')};
 
