@@ -166,13 +166,19 @@ namespace Utils
         if (base.empty()) return relative;
         if (relative.empty()) return base;
 
-        if (base.back() == '/' && relative.front() == '/')
+#ifdef _WIN32
+        const char separator = '\\';
+#else
+        const char separator = '/';
+#endif
+
+        if (base.back() == separator && relative.front() == separator)
         {
             return base + relative.substr(1); // Remove extra slash
         }
-        else if (base.back() != '/' && relative.front() != '/')
+        else if (base.back() != separator && relative.front() != separator)
         {
-            return base + "/" + relative; // Add missing slash
+            return base + separator + relative; // Add missing slash
         }
         else
         {
