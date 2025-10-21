@@ -122,6 +122,7 @@ set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckC
                            -Wl,--wrap,fim_db_file_pattern_search -Wl,--wrap,fim_db_transaction_deleted_rows \
                            -Wl,--wrap,fim_db_get_count_file_entry -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_file_inode_search \
                            -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start \
+                           -Wl,--wrap,fim_db_close_and_delete_database \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database ${DEBUG_OP_WRAPPERS}")
 
@@ -151,7 +152,7 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                  -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                  -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
-                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
+                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,popen \
                                  -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                  -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                  ${DEBUG_OP_WRAPPERS}")
@@ -176,6 +177,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_get_count_file_entry \
                              -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                             -Wl,--wrap,fim_db_close_and_delete_database \
                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                              ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
@@ -208,6 +210,7 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthr
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                                 -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                                -Wl,--wrap,fim_db_close_and_delete_database \
                                 -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                 -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                 ${DEBUG_OP_WRAPPERS}")
@@ -233,6 +236,7 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--w
                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                          -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                         -Wl,--wrap,fim_db_close_and_delete_database \
                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                          ${DEBUG_OP_WRAPPERS}")
@@ -268,6 +272,7 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                          -Wl,--wrap,fim_db_close_and_delete_database \
                           -Wl,--wrap=fim_generate_delete_event -Wl,--wrap=asp_sync_module \
                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
@@ -388,6 +393,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_sysche
                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                          -Wl,--wrap,fim_db_close_and_delete_database \
                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           ${DEBUG_OP_WRAPPERS}")
