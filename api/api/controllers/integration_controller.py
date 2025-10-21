@@ -14,11 +14,13 @@ from api.models.base_model_ import Body
 from api.models.integration_model import IntegrationCreateModel
 from wazuh import integration
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.engine.models.integration import Integration
 
-logger = logging.getLogger('wazuh-api')
+logger = logging.getLogger("wazuh-api")
 
-async def create_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+
+async def upsert_integration(
+    body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False
+) -> ConnexionResponse:
     """Create a new integration.
 
     Parameters
@@ -36,111 +38,107 @@ async def create_integration(body: dict, type_: str, pretty: bool = False, wait_
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_kwargs = await IntegrationCreateModel.get_kwargs(body)
-    model = Integration(**body_kwargs)
+    parsed_body = await IntegrationCreateModel.get_kwargs(body)
 
-    f_kwargs = {
-        'integration': model,
-        'type_': type_
-    }
+    f_kwargs = {"integration_content": parsed_body, "policy_type": type_}
 
     dapi = DistributedAPI(
-        f=integration.create_integration,
+        f=integration.upsert_integration,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
+        request_type="local_master",
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
+        rbac_permissions=request.context["token_info"]["rbac_policies"],
     )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
 
-async def get_integrations(type_: str, integration_id: List[str] = None, status: Optional[str] = None,
-                           search: Optional[str] = None, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get integrations.
+
+async def get_integration(
+    integration_id: list = None,
+    type_: str = None,
+    status: str = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = None,
+    select: list = None,
+    sort: str = None,
+    search: str = None,
+    q: str = None,
+    distinct: bool = False,
+) -> ConnexionResponse:
+    """Get all decoders.
 
     Parameters
     ----------
-    type_ : str
+    integration_id : list
+        Filters by integration id.
+    type_: str
         Policy type.
-    integration_id : List[str]
-        List of integration names to retrieve.
-    status : str, optional
-        Filter by integration status.
-    search : str, optional
-        Search string to filter integrations.
-    pretty : bool, optional
-        Show results in human-readable format. Default `False`.
-    wait_for_complete : bool, optional
-        Disable timeout response. Default `False`.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the list of integrations.
-    """
-    f_kwargs = {
-        'type_': type_,
-        'names': integration_id,
-        'status': status,
-        'search': parse_api_param(search, 'search')['value'] if search is not None else None,
-    }
-
-    dapi = DistributedAPI(
-        f=integration.get_integrations,
-        f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_any',
-        is_async=True,
-        wait_for_complete=wait_for_complete,
-        logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
-    )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-async def update_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Update an existing integration.
-
-    Parameters
-    ----------
-    type_ : str
-        Policy type.
-    pretty : bool, optional
-        Show results in human-readable format. Default `False`.
-    wait_for_complete : bool, optional
-        Disable timeout response. Default `False`.
-
+    status : str
+        Filters by status.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+    distinct : bool
+        Look for distinct values.
     Returns
     -------
     ConnexionResponse
         API response.
     """
-    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_kwargs = await IntegrationCreateModel.get_kwargs(body)
-    model = Integration(**body_kwargs)
+
+    ids = integration_id or []
 
     f_kwargs = {
-        'integration': model,
-        'type_': type_
+        "ids": ids,
+        "offset": offset,
+        "limit": limit,
+        "select": select,
+        "sort_by": parse_api_param(sort, "sort")["fields"] if sort is not None else ["id"],
+        "sort_ascending": True if sort is None or parse_api_param(sort, "sort")["order"] == "asc" else False,
+        "search_text": parse_api_param(search, "search")["value"] if search is not None else None,
+        "complementary_search": parse_api_param(search, "search")["negation"] if search is not None else None,
+        "q": q,
+        "status": status,
+        "distinct": distinct,
+        "policy_type": type_,
     }
 
     dapi = DistributedAPI(
-        f=integration.update_integration,
+        f=integration.get_integration,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
+        request_type="local_any",
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
+        rbac_permissions=request.context["token_info"]["rbac_policies"],
     )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
 
-async def delete_integration(type_: str, integration_id: List[str], pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+
+async def delete_integration(
+    type_: str, integration_id: List[str], pretty: bool = False, wait_for_complete: bool = False
+) -> ConnexionResponse:
     """Delete one or more integrations.
 
     Parameters
@@ -159,19 +157,16 @@ async def delete_integration(type_: str, integration_id: List[str], pretty: bool
     ConnexionResponse
         API response.
     """
-    f_kwargs = {
-        'type_': type_,
-        'names': integration_id
-    }
+    f_kwargs = {"policy_type": type_, "ids": integration_id}
 
     dapi = DistributedAPI(
         f=integration.delete_integration,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
+        request_type="local_master",
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
+        rbac_permissions=request.context["token_info"]["rbac_policies"],
     )
     data = raise_if_exc(await dapi.distribute_function())
 

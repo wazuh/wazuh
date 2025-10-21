@@ -15,10 +15,13 @@ from wazuh import integrations_order
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.engine.models.integrations_order import IntegrationsOrder, IntegrationInfo
 
-logger = logging.getLogger('wazuh-api')
+logger = logging.getLogger("wazuh-api")
 
-async def update_integrations_order(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Create a new integrations order.
+
+async def upsert_integrations_order(
+    body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False
+) -> ConnexionResponse:
+    """Upsert integrations order.
 
     Parameters
     ----------
@@ -35,26 +38,28 @@ async def update_integrations_order(body: dict, type_: str, pretty: bool = False
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    orders_create_model = IntegrationsOrderModel(order=[IntegrationInfoModel(id=order["id"], name=order["name"]) for order in body])
-    model = IntegrationsOrder(order=[IntegrationInfo(id=order.id, name=order.name) for order in orders_create_model.order])
+    orders_create_model = IntegrationsOrderModel(
+        order=[IntegrationInfoModel(id=order["id"], name=order["name"]) for order in body]
+    )
+    model = IntegrationsOrder(
+        order=[IntegrationInfo(id=order.id, name=order.name) for order in orders_create_model.order]
+    )
 
-    f_kwargs = {
-        'order': model,
-        'type_': type_
-    }
+    f_kwargs = {"order": model, "policy_type": type_}
 
     dapi = DistributedAPI(
-        f=integrations_order.update_integrations_order,
+        f=integrations_order.upsert_integrations_order,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
+        request_type="local_master",
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
+        rbac_permissions=request.context["token_info"]["rbac_policies"],
     )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
+
 
 async def get_integrations_order(type_: str, pretty: bool = False, wait_for_complete: bool = False):
     """Get the integrations order.
@@ -73,22 +78,21 @@ async def get_integrations_order(type_: str, pretty: bool = False, wait_for_comp
     ConnexionResponse
         API response with the integrations order.
     """
-    f_kwargs = {
-        'type_': type_
-    }
+    f_kwargs = {"policy_type": type_}
 
     dapi = DistributedAPI(
         f=integrations_order.get_integrations_order,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_any',
+        request_type="local_any",
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
+        rbac_permissions=request.context["token_info"]["rbac_policies"],
     )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
+
 
 async def delete_integrations_order(type_: str, pretty: bool = False, wait_for_complete: bool = False):
     """Delete the integrations order.
@@ -108,17 +112,17 @@ async def delete_integrations_order(type_: str, pretty: bool = False, wait_for_c
         API response.
     """
     f_kwargs = {
-        'type_': type_,
+        "policy_type": type_,
     }
 
     dapi = DistributedAPI(
         f=integrations_order.delete_integrations_order,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
+        request_type="local_master",
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
+        rbac_permissions=request.context["token_info"]["rbac_policies"],
     )
     data = raise_if_exc(await dapi.distribute_function())
 

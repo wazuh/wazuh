@@ -5144,7 +5144,7 @@ components:
       in: query
       name: status
       description: "Filter by resource status"
-      required: true
+      required: false
       schema:
         type: string
         enum:
@@ -5950,7 +5950,6 @@ components:
           - 'agent:id'
           - 'group:id'
           - 'node:id'
-          - 'kvdbs'
           - 'rule:file'
           - 'policy:id'
           - 'role:id'
@@ -10380,12 +10379,12 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /integrations:
-    get:
+    post:
       tags:
         - Integrations
       summary: "Create a new integration"
       description: "Creates a new integration asset"
-      operationId: api.controllers.integration_controller.create_integration
+      operationId: api.controllers.integration_controller.upsert_integration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/integrations:create'
       parameters:
@@ -10430,16 +10429,22 @@ paths:
         - Integrations
       summary: "Get integrations"
       description: "Get a list of integrations"
-      operationId: api.controllers.integration_controller.get_integrations
+      operationId: api.controllers.integration_controller.get_integration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/integrations:read'
       parameters:
+        - $ref: '#/components/parameters/integration_id'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/status_resource'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/integration_id'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: List of integrations
@@ -10468,7 +10473,7 @@ paths:
         - Integrations
       summary: "Update integrations"
       description: "Updates the contents of an Integration"
-      operationId: api.controllers.integration_controller.update_integration
+      operationId: api.controllers.integration_controller.upsert_integration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/integrations:update'
       parameters:
@@ -10583,7 +10588,7 @@ paths:
         - Integrations_order
       summary: "Create integrations orders"
       description: "Create a list of integrations orders"
-      operationId: api.controllers.integrations_order_controller.update_integrations_order
+      operationId: api.controllers.integrations_order_controller.upsert_integrations_order
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/integrations:create'
       parameters:
@@ -10666,7 +10671,7 @@ paths:
         - KVDBs
       summary: "List KVDB resources"
       description: "Return KVDBs."
-      operationId: api.controllers.kvdb_controller.get_kvdbs
+      operationId: api.controllers.kvdb_controller.get_kvdb
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:read'
       parameters:
@@ -10720,7 +10725,7 @@ paths:
         - KVDBs
       summary: "Create a KVDB"
       description: "Create a KVDB."
-      operationId: api.controllers.kvdb_controller.post_kvdbs
+      operationId: api.controllers.kvdb_controller.upsert_kvdb
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:create'
       parameters:
@@ -10774,7 +10779,7 @@ paths:
         - KVDBs
       summary: "Update a KVDB"
       description: "Update a KVDB."
-      operationId: api.controllers.kvdb_controller.put_kvdbs
+      operationId: api.controllers.kvdb_controller.upsert_kvdb
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:update'
       parameters:
@@ -10832,7 +10837,7 @@ paths:
         - KVDBs
       summary: "Delete KVDBs"
       description: "Delete one or more KVDBs."
-      operationId: api.controllers.kvdb_controller.delete_kvdbs
+      operationId: api.controllers.kvdb_controller.delete_kvdb
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:delete'
       parameters:
@@ -12153,7 +12158,7 @@ paths:
         - Decoders
       summary: "Update decoders"
       description: "Update decoders"
-      operationId: api.controllers.decoder_controller.update_decoder
+      operationId: api.controllers.decoder_controller.upsert_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:update'
       parameters:
@@ -12210,7 +12215,7 @@ paths:
         - Decoders
       summary: "Create decoders"
       description: "Create decoders"
-      operationId: api.controllers.decoder_controller.create_decoder
+      operationId: api.controllers.decoder_controller.upsert_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:create'
       parameters:

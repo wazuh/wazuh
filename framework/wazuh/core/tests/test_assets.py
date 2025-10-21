@@ -13,7 +13,6 @@ from wazuh import WazuhError, WazuhInternalError
 from wazuh.core.assets import (
     generate_asset_filename,
     generate_asset_file_path,
-    generate_integrations_file_path,
     save_asset_file,
     DEFAULT_PERMISSIONS
 )
@@ -51,30 +50,14 @@ def test_generate_asset_file_path(filename, has_ext):
     base_path = "/tmp/test_assets_base"
     with patch('wazuh.core.common.USER_ASSETS_PATH', base_path), \
          patch.object(PolicyType.TESTING, "dirname", return_value="testing"), \
-         patch.object(ResourceType.RULE, "dirname", return_value="rules"):
-        result = generate_asset_file_path(filename, PolicyType.TESTING, ResourceType.RULE)
+         patch.object(ResourceType.DECODER, "dirname", return_value="rules"):
+        result = generate_asset_file_path(filename, PolicyType.TESTING, ResourceType.DECODER)
     assert result.startswith(base_path + os.sep)
     if has_ext:
         assert result.endswith(".json")
     else:
         assert result.endswith(".json")
         assert not result[:-5].endswith(".json")  # only one extension
-
-
-@patch('wazuh.core.assets.USER_PRODUCTION_INTEGRATIONS_PATH', '/tmp/production_integrations')
-@patch('wazuh.core.assets.USER_TESTING_INTEGRATIONS_PATH', '/tmp/testing_integrations')
-@pytest.mark.parametrize(
-    "policy_type,expected_base",
-    [
-        (PolicyType.TESTING, "/tmp/testing_integrations"),
-        (PolicyType.PRODUCTION, "/tmp/production_integrations"),
-    ]
-)
-def test_generate_integrations_file_path(policy_type, expected_base):
-    """Test `generate_integrations_file_path` uses the correct base path per policy type."""
-    result = generate_integrations_file_path("integrationX", policy_type)
-    assert result.startswith(expected_base + os.sep)
-    assert result.endswith(".json")
 
 
 def test_save_asset_file(tmp_path):

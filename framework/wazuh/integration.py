@@ -5,283 +5,196 @@
 import json
 from os import remove
 from os.path import exists
-from dataclasses import asdict
-from typing import Optional, List
+from typing import List, Optional
 
-from wazuh import WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.assets import generate_integrations_file_path, save_asset_file, generate_asset_filename
+from wazuh.core.exception import WazuhError
 from wazuh.core.engine import get_engine_client
-from wazuh.core.engine.models.integration import Integration
-from wazuh.core.engine.models.policies import PolicyType
-from wazuh.core.engine.models.resources import ResourceType, Status
 from wazuh.core.engine.utils import validate_response_or_raise
+from wazuh.core.engine.models.resources import ResourceFormat, Status, ResourceType, Resource
+from wazuh.core.engine.models.policies import PolicyType
+from wazuh.core.assets import save_asset_file, generate_asset_file_path
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array, full_copy, safe_move
 
-DEFAULT_INTEGRATION_FORMAT = 'json'
-ENGINE_USER_NAMESPACE = 'user'
+DEFAULT_INTEGRATION_FORMAT = ResourceFormat.JSON
+ENGINE_USER_NAMESPACE = "user"
 
-@expose_resources(actions=['integrations:create'], resources=["*:*:*"])
-async def create_integration(integration: Integration, policy_type: PolicyType) -> AffectedItemsWazuhResult:
-    """Create a new integration resource.
-
-    Parameters
-    ----------
-    integration : Integration
-        The integration object to be created.
-    policy_type : PolicyType
-        The policy type for the integration.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object with affected or failed items.
-
-    Raises
-    ------
-    WazuhError
-        If file operations or engine validation fail (codes: 8002, 8003).
-    """
-    result = AffectedItemsWazuhResult(all_msg='Integration was successfully uploaded',
-                                      none_msg='Could not upload Integration'
-                                      )
-
-    filename = generate_asset_filename(integration.id)
-    file_contents_json = json.dumps(asdict(integration))
-    integration_path_file = generate_integrations_file_path(filename, policy_type)
-
-
-    try:
-        # Create file
-        save_asset_file(integration_path_file, file_contents_json)
-
-        async with get_engine_client() as client:
-
-            # Validate contents
-            validation_results = await client.catalog.validate_resource(
-                name=integration.name,
-                format=DEFAULT_INTEGRATION_FORMAT,
-                content=file_contents_json,
-                namespace_id=ENGINE_USER_NAMESPACE
-            )
-
-            validate_response_or_raise(validation_results, 9002)
-
-            # Create the new integration
-            creation_results = await client.content.create_resource(
-                resource=integration,
-                type=ResourceType.INTEGRATION,
-                format=DEFAULT_INTEGRATION_FORMAT,
-                policy_type=policy_type
-            )
-
-            validate_response_or_raise(creation_results, 9003)
-
-        result.affected_items.append(filename)
-        result.total_affected_items = len(result.affected_items)
-    except WazuhError as exc:
-        if exists(integration_path_file):
-            remove(integration_path_file)
-        result.add_failed_item(id_=filename, error=exc)
-
-    return result
-
-@expose_resources(actions=['integrations:read'], resources=["*:*:*"])
-async def get_integrations(policy_type:PolicyType, names: List[str] = None, search: Optional[str] = None, status: Optional[Status] = None) -> AffectedItemsWazuhResult:
-    """Retrieve integration resources.
-
-    Parameters
-    ----------
-    names : List[str]
-        Names of the integrations to retrieve.
-    search : Optional[str]
-        Search string to filter integrations.
-    status : Optional[Status]
-        Status to filter integrations.
-    policy_type : PolicyType
-        The policy type for the integrations.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object with affected or failed items.
-
-    Raises
-    ------
-    WazuhError
-        If retrieval or validation fails (code: 8007).
-    """
-    results = AffectedItemsWazuhResult(none_msg='No integration was returned',
-                                      some_msg='Some integrations were not returned',
-                                      all_msg='All selected integrations were returned')
-
-    async with get_engine_client() as client:
-        integrations_response = await client.content.get_multiple_resources(
-            type=ResourceType.INTEGRATION,
-            names=names,
-            policy_type=policy_type
-        )
-
-        validate_response_or_raise(integrations_response, 9008)
-
-        parsed_decoders = process_array(
-            integrations_response['content'],
-            search_text=search,
-            filters={'status': status} if status else None
-        )
-        results.affected_items = parsed_decoders['items']
-        results.total_affected_items = parsed_decoders['totalItems']
-
-        return results
-
-@expose_resources(actions=['integrations:update'], resources=["*:*:*"])
-async def update_integration(integration: Integration, policy_type: PolicyType):
-    """Update an existing integration resource.
-
-    Parameters
-    ----------
-    integration : Integration
-        The updated integration object.
-    policy_type : PolicyType
-        The policy type for the integration.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object with affected or failed items.
-
-    Raises
-    ------
-    WazuhError
-        If the integration does not exist or file/engine operations fail (codes: 8005, 1019, 1907, 8002, 8008).
-    """
-    result = AffectedItemsWazuhResult(all_msg='Integration was successfully uploaded',
-                                      none_msg='Could not upload integration'
-                                      )
-
-    backup_file = ''
-    filename = generate_asset_filename(integration.id)
-    integration_file_path = generate_integrations_file_path(filename, policy_type)
-    try:
-        if not exists(integration_file_path):
-            raise WazuhError(8005)
-
-        # Creates a backup copy
-        backup_file = f'{integration_file_path}.backup'
+@expose_resources(actions=["integrations:read"], resources=["*:*:*"])
+async def get_integration(
+    ids: list,
+    policy_type: str,
+    status: Optional[Status] = None,
+    offset: Optional[int] = 0,
+    limit: Optional[int] = 0,
+    select: Optional[list] = None,
+    sort_by: Optional[list] = None,
+    sort_ascending: Optional[bool] = True,
+    search_text: Optional[str] = None,
+    complementary_search: Optional[bool] = False,
+    search_in_fields: Optional[list] = None,
+    q: Optional[str] = "",
+    distinct: Optional[bool] = False,
+) -> AffectedItemsWazuhResult:
+    """Get a list of available integrations."""
+    results = AffectedItemsWazuhResult(
+        none_msg="No integration was returned",
+        some_msg="Some integrations were not returned",
+        all_msg="All selected integrations were returned",
+    )
+    retrieved_integrations = []
+    for id_ in (ids or [None]):
         try:
-            full_copy(integration_file_path, backup_file)
-        except IOError as exc:
-            raise WazuhError(1019) from exc
+            async with get_engine_client() as client:
+                integration_response = await client.content.get_resources(
+                    id_=id_,
+                    type=ResourceType.INTEGRATION,
+                    policy_type=PolicyType(policy_type),
+                )
+                validate_response_or_raise(integration_response, 9003, ResourceType.INTEGRATION)
+                retrieved_integrations.extend(integration_response["content"])
+        except WazuhError as exc:
+            results.add_failed_item(id_="all" if id_ is None else id_, error=exc)
 
-        # Deletes the file
+    parsed_integrations = process_array(
+        retrieved_integrations,
+        search_text=search_text,
+        search_in_fields=search_in_fields,
+        complementary_search=complementary_search,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending,
+        offset=offset,
+        select=select,
+        limit=limit,
+        q=q,
+        distinct=distinct,
+    )
+    results.affected_items = parsed_integrations["items"]
+    results.total_affected_items = parsed_integrations["totalItems"]
+    return results
+
+
+@expose_resources(actions=["integrations:delete"], resources=["*:*:*"])
+async def delete_integration(ids: List[str], policy_type: str):
+    """Delete integration resources."""
+    result = AffectedItemsWazuhResult(
+        all_msg="Integration file was successfully deleted",
+        some_msg="Some integrations were not returned",
+        none_msg="Could not delete integration file",
+    )
+    for id_ in ids:
+        backup_file = ""
+        asset_file_path = generate_asset_file_path(id_, PolicyType(policy_type), ResourceType.INTEGRATION)
         try:
-            remove(integration_file_path)
-        except IOError as exc:
-            raise WazuhError(1907) from exc
-
-        # Uploads the new file contents
-        file_contents_json =  json.dumps(asdict(integration))
-        save_asset_file(integration_file_path, file_contents_json)
-
-        # Upload to Engine
-        async with get_engine_client() as client:
-            # Validate contents
-            validation_results = await client.catalog.validate_resource(
-                name=integration.name,
-                format=DEFAULT_INTEGRATION_FORMAT,
-                content=file_contents_json,
-                namespace_id=ENGINE_USER_NAMESPACE
-            )
-
-            validate_response_or_raise(validation_results, 9002)
-
-            # Update contents
-            update_results = await client.content.update_resource(
-                resource=integration,
-                type=ResourceType.INTEGRATION,
-                format=DEFAULT_INTEGRATION_FORMAT,
-                policy_type=policy_type
-            )
-
-            validate_response_or_raise(update_results, 9009)
-
-        result.affected_items.append(filename)
-    except WazuhError as exc:
-        if backup_file and exists(backup_file):
-            safe_move(backup_file, integration_file_path)
-        result.add_failed_item(id_=filename, error=exc)
-    else:
-        if backup_file and exists(backup_file):
-            remove(backup_file)
-
+            if not exists(asset_file_path):
+                raise WazuhError(9005)
+            backup_file = f"{asset_file_path}.backup"
+            try:
+                full_copy(asset_file_path, backup_file)
+            except IOError as exc:
+                raise WazuhError(1019) from exc
+            try:
+                remove(asset_file_path)
+            except IOError as exc:
+                raise WazuhError(1907) from exc
+            async with get_engine_client() as client:
+                delete_results = await client.content.delete_resource(id_=id_, policy_type=PolicyType(policy_type))
+                validate_response_or_raise(delete_results, 9007, ResourceType.INTEGRATION)
+            result.affected_items.append(id_)
+        except WazuhError as exc:
+            # Restore the backup
+            backup_file and exists(backup_file) and safe_move(backup_file, asset_file_path)
+            result.add_failed_item(id_=id_, error=exc)
+        finally:
+            # Remove the backup
+            backup_file and exists(backup_file) and remove(backup_file)
 
     result.total_affected_items = len(result.affected_items)
     return result
 
-@expose_resources(actions=['integrations:delete'], resources=["*:*:*"])
-async def delete_integration(names: List[str], policy_type: PolicyType):
-    """Delete one or more integration resources.
 
-    Parameters
-    ----------
-    names : List[str]
-        List of integration names to delete.
-    policy_type : PolicyType
-        The policy type for the integrations.
+@expose_resources(actions=["integrations:create", "integrations:update"], resources=["*:*:*"])
+async def upsert_integration(integration_content: dict, policy_type: str) -> AffectedItemsWazuhResult:
+    """Create or update an integration resource."""
+    filename = None
+    asset_file_path = None
+    backup_file = None
+    mode = None
 
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object with affected or failed items.
+    result = AffectedItemsWazuhResult(
+        none_msg="Error during integration handling",
+    )
 
-    Raises
-    ------
-    WazuhError
-        If the integration does not exist or file/engine operations fail (codes: 8005, 1019, 1907, 8007).
-    """
-    result = AffectedItemsWazuhResult(all_msg='Integration file was successfully deleted',
-                                      some_msg='Some integrations were not returned',
-                                      none_msg='Could not delete integration file')
+    try:
+        integration_resource = Resource.from_dict(integration_content)
+        filename = integration_resource.id
+        asset_file_path = generate_asset_file_path(
+            filename, PolicyType(policy_type), ResourceType.INTEGRATION
+        )
+        file_contents_json = json.dumps(integration_content)
 
-    for name in names:
-        backup_file = ''
-        integration_file_path = generate_integrations_file_path(name, policy_type)
+        # Determine operation mode
+        mode = "create" if not exists(asset_file_path) else "update"
 
-        try:
-            if not exists(integration_file_path):
-                raise WazuhError(8005)
+        result = AffectedItemsWazuhResult(
+            all_msg=f"Integration was successfully {mode}d",
+            none_msg=f"Could not {mode} integration",
+        )
 
-            # Creates a backup copy
-            backup_file = f'{integration_file_path}.backup'
+        if mode == "update":
+            backup_file = f"{asset_file_path}.bak"
             try:
-                full_copy(integration_file_path, backup_file)
+                full_copy(asset_file_path, backup_file)
             except IOError as exc:
                 raise WazuhError(1019) from exc
 
-            # Deletes the file
             try:
-                remove(integration_file_path)
+                remove(asset_file_path)
             except IOError as exc:
                 raise WazuhError(1907) from exc
 
-            # Delete asset
-            async with get_engine_client() as client:
-                delete_results = await client.content.delete_resource(
-                    name=name,
-                    policy_type=policy_type
+        # Write new integration content
+        save_asset_file(asset_file_path, file_contents_json)
+
+        # Validate and push to engine
+        async with get_engine_client() as client:
+            validation_results = await client.catalog.validate_resource(
+                id_=integration_resource.id,
+                content=file_contents_json,
+                namespace_id=ENGINE_USER_NAMESPACE,
+            )
+            validate_response_or_raise(validation_results, 9002, ResourceType.INTEGRATION)
+
+            if mode == "create":
+                creation_results = await client.content.create_resource(
+                    type=ResourceType.INTEGRATION,
+                    resource=integration_resource,
+                    policy_type=policy_type,
                 )
+                validate_response_or_raise(creation_results, 9004, ResourceType.INTEGRATION)
+            else:
+                update_results = await client.content.update_resource(
+                    type=ResourceType.INTEGRATION,
+                    resource=integration_resource,
+                    policy_type=policy_type,
+                )
+                validate_response_or_raise(update_results, 9005, ResourceType.INTEGRATION)
 
-                validate_response_or_raise(delete_results, 9008)
+        result.affected_items.append(filename)
 
-            result.affected_items.append(name)
-        except WazuhError as exc:
-            if backup_file and exists(backup_file):
-                safe_move(backup_file, integration_file_path)
-            result.add_failed_item(id_=name, error=exc)
-        else:
-            if backup_file and exists(backup_file):
-                remove(backup_file)
+    except WazuhError as exc:
+        # Restore previous backup if it exists
+        if backup_file and exists(backup_file):
+            safe_move(backup_file, asset_file_path)
+        elif mode == "create" and asset_file_path and exists(asset_file_path):
+            remove(asset_file_path)
+
+        result.add_failed_item(id_=filename or "unknown", error=exc)
+
+    finally:
+        # Remove leftover backup safely
+        if backup_file and exists(backup_file):
+            remove(backup_file)
 
     result.total_affected_items = len(result.affected_items)
     return result

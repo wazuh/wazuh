@@ -8,7 +8,7 @@ from httpx import AsyncClient
 
 from wazuh.core.engine.base import BaseModule
 from wazuh.core.engine.models.policies import PolicyType
-from wazuh.core.engine.models.resources import ResourceType, ResourceFormat, Resource
+from wazuh.core.engine.models.resources import ResourceType, Resource
 
 
 class ContentModule(BaseModule):
@@ -23,9 +23,7 @@ class ContentModule(BaseModule):
     def __init__(self, client: AsyncClient):
         super().__init__(client)
 
-    async def create_resource(
-        self, resource: Resource, type: ResourceType, policy_type: PolicyType
-    ) -> dict:
+    async def create_resource(self, resource: Resource, type: ResourceType, policy_type: PolicyType) -> dict:
         """Create a new content resource."""
         key = (type, policy_type, resource.id)
         async with self._lock:
@@ -38,34 +36,20 @@ class ContentModule(BaseModule):
         """Retrieve a list of content resources."""
         key = (type, policy_type, id_)
         async with self._lock:
-            if key not in self._db:
+            # Get every resource
+            if id_ is None:
+                resources = [
+                    resource.to_dict()
+                    for (res_type, res_policy, _), resource in self._db.items()
+                    if res_type == type and res_policy == policy_type
+                ]
+            elif key in self._db:
+                resources = [self._db[key].to_dict()]
+            else:
                 return {"status": "ERROR", "error": f"Resource '{id_}' not found"}
-            resource = self._db[key]
-        return {"status": "OK", "error": None, "content": resource.to_dict()}
+        return {"status": "OK", "error": None, "content": resources}
 
-    async def get_multiple_resources(self, type: ResourceType, names: list[str], policy_type: PolicyType) -> dict:
-        """
-        Retrieve multiple content resources by their names.
-
-        Parameters
-        ----------
-        type : ResourceType
-            The type of the resource.
-        names : list[str]
-            List of resource names to retrieve.
-        policy_type : PolicyType
-            The policy type associated with the resources.
-
-        Returns
-        -------
-        dict
-            Dictionary with the status, error, and a list of found resources.
-        """
-        return {"status": "OK", "error": None, "content": []}
-
-    async def update_resource(
-        self, resource: Resource, type: ResourceType, policy_type: PolicyType
-    ) -> dict:
+    async def update_resource(self, resource: Resource, type: ResourceType, policy_type: PolicyType) -> dict:
         """Update an existing content resource."""
         key = (type, policy_type, resource.id)
         async with self._lock:
