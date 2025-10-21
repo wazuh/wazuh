@@ -1,8 +1,8 @@
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <iterator>
 #include <numeric>
@@ -39,9 +39,9 @@ constexpr auto TRACE_REFERENCE_NOT_FOUND = "[{}] -> Failure: Parameter '{}' refe
 constexpr auto TRACE_REFERENCE_TYPE_IS_NOT = "[{}] -> Failure: Parameter '{}' type is not ";
 
 constexpr std::array<std::string_view, 24> SYSLOG_FACILITY_NAMES = {
-    "kernel",   "user",   "mail",     "daemon", "auth",   "syslog", "lpr",    "news",
-    "uucp",   "cron",  "authpriv", "ftp",    "ntp",    "logaudit",  "logalert",  "solaris-cron",
-    "local0", "local1", "local2",   "local3", "local4", "local5", "local6", "local7"};
+    "kernel", "user",   "mail",     "daemon", "auth",   "syslog",   "lpr",      "news",
+    "uucp",   "cron",   "authpriv", "ftp",    "ntp",    "logaudit", "logalert", "solaris-cron",
+    "local0", "local1", "local2",   "local3", "local4", "local5",   "local6",   "local7"};
 
 constexpr std::array<std::string_view, 8> SYSLOG_SEVERITY_NAMES = {
     "emergency", "alert", "critical", "error", "warning", "notice", "informational", "debug"};
