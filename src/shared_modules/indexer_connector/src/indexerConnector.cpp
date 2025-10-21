@@ -201,6 +201,68 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
+/**
+ * @brief Fast check if error is resource_already_exists_exception
+ */
+static inline bool isResourceAlreadyExists(std::string_view errorBody) noexcept
+{
+    return errorBody.find("resource_already_exists_exception") != std::string_view::npos;
+}
+
+/**
+ * @brief Fast check if error is validation_exception with shard limit
+ */
+static inline bool isShardLimitError(std::string_view errorBody) noexcept
+{
+    return errorBody.find("validation_exception") != std::string_view::npos &&
+           errorBody.find("maximum shards open") != std::string_view::npos;
+}
+
+static inline void extractErrorInfo(const std::string& errorBody, std::string& type, std::string& reason) noexcept
+{
+    try
+    {
+        const auto errorJson = nlohmann::json::parse(errorBody);
+        if (errorJson.contains("error"))
+        {
+            const auto& error = errorJson.at("error");
+            if (error.contains("type"))
+            {
+                type = error.at("type").get_ref<const std::string&>();
+            }
+            if (error.contains("reason"))
+            {
+                reason = error.at("reason").get_ref<const std::string&>();
+            }
+        }
+    }
+    catch (const nlohmann::json::exception&)
+    {
+        logError(IC_NAME, "Failed to parse error body JSON.");
+    }
+}
+
+// ------- IndexerConnector methods implementation -------
+
+bool IndexerConnector::abuseControl(const std::string& agentId)
+{
+    const auto currentTime = std::chrono::system_clock::now();
+    // If the agent is in the map, check if the last sync was less than MINIMAL_SYNC_TIME minutes ago.
+    if (const auto lastSync = m_lastSync.find(agentId); lastSync != m_lastSync.end())
+    {
+        const auto diff = std::chrono::duration_cast<std::chrono::minutes>(currentTime - lastSync->second);
+        // If the last sync was less than MINIMAL_SYNC_TIME minutes ago, return true.
+        if (diff.count() < MINIMAL_SYNC_TIME)
+        {
+            logDebug2(IC_NAME, "Agent '%s' sync omitted due to abuse control.", agentId.c_str());
+            return true;
+        }
+    }
+    // If the agent is not in the map, add it to the map with the current time.
+    m_lastSync[agentId] = currentTime;
+    return false;
+}
+
 nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
                                                       const std::string& agentId,
                                                       const SecureCommunication& secureCommunication) const
@@ -221,9 +283,21 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
             scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
         };
 
-        const auto onError = [](const std::string& error, const long statusCode)
+        const auto onError = [](const std::string& error, const long statusCode, const std::string& errorBody)
         {
-            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+            if (statusCode >= 400 && statusCode < 500)
+            {
+                std::string type, reason;
+                extractErrorInfo(errorBody, type, reason);
+
+                if (!type.empty() && !reason.empty())
+                {
+                    logWarn(IC_NAME,
+                            "Failed to retrieve agent documents - type: '%s', reason: '%s'",
+                            type.c_str(),
+                            reason.c_str());
+                }
+            }
             throw std::runtime_error(error);
         };
 
@@ -241,7 +315,7 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
         const auto scrollUrl = url + "/_search/scroll";
         const auto scrollData = R"({"scroll":"1m","scroll_id":")" + scrollId + "\"}";
 
-        const auto onError = [](const std::string& error, const long)
+        const auto onError = [](const std::string& error, const long, const std::string& /*errorBody*/)
         {
             throw std::runtime_error(error);
         };
@@ -268,7 +342,7 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
     // Delete the scroll id.
     const auto deleteScrollUrl = url + "/_search/scroll/" + scrollId;
 
-    const auto onError = [&](const std::string& error, const long statusCode)
+    const auto onError = [&](const std::string& error, const long statusCode, const std::string& errorBody)
     {
         logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
         // print payload
@@ -325,9 +399,25 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
             logDebug2(IC_NAME, "Response: %s", response.c_str());
         };
 
-        const auto onError =
-            [this, &actions, &url, &secureCommunication, depth](const std::string& error, const long statusCode)
+        const auto onError = [this, &actions, &url, &secureCommunication, depth](
+                                 const std::string& error, const long statusCode, const std::string& errorBody)
         {
+            // Handle 4xx errors with detailed logging
+            if (statusCode >= 400 && statusCode < 500)
+            {
+                std::string type, reason;
+                extractErrorInfo(errorBody, type, reason);
+
+                if (!type.empty() && !reason.empty())
+                {
+                    logWarn(IC_NAME,
+                            "Sync operation failed for index '%s' - type: '%s', reason: '%s'",
+                            m_indexName.c_str(),
+                            type.c_str(),
+                            reason.c_str());
+                }
+            }
+
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 logWarn(IC_NAME, "The request is too large. Splitting the bulk data.");
@@ -429,18 +519,73 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                   const SecureCommunication& secureCommunication)
 {
     // Define the error callback
-    auto onError = [](const std::string& error, const long statusCode)
+    auto onError = [this](const std::string& error, const long statusCode, const std::string& errorBody)
     {
-        if (statusCode != HTTP_BAD_REQUEST) // Assuming 400 is for bad requests which we expect to handle differently
+        // Special case: Resource already exists during initialization - SILENCE
+        if (statusCode == HTTP_BAD_REQUEST && isResourceAlreadyExists(errorBody))
         {
+            logDebug2(IC_NAME, "Index or template already exists (expected during initialization)");
+            return; // Silently continue, don't throw
+        }
+
+        // Extract error info once for all 4xx cases
+        std::string type, reason;
+        if (statusCode >= 400 && statusCode < 500)
+        {
+            extractErrorInfo(errorBody, type, reason);
+        }
+
+        // Special case: Shard limit exceeded - LOG WITH RECOMMENDATION
+        if (statusCode == HTTP_BAD_REQUEST && isShardLimitError(errorBody))
+        {
+            logWarn(IC_NAME,
+                    "Indexer request failed - type: '%s', reason: '%s' - Consider increasing "
+                    "cluster.max_shards_per_node setting",
+                    type.c_str(),
+                    reason.c_str());
+
             std::string errorMessage = error;
             if (statusCode != NOT_USED)
             {
                 errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
             }
-
             throw std::runtime_error(errorMessage);
         }
+
+        // Generic 4xx errors - LOG WITH DETAILS
+        if (statusCode >= 400 && statusCode < 500)
+        {
+            if (!type.empty() && !reason.empty())
+            {
+                logWarn(IC_NAME, "Indexer request failed - type: '%s', reason: '%s'", type.c_str(), reason.c_str());
+            }
+            else
+            {
+                // Log with raw body for debugging when JSON parsing fails
+                logWarn(IC_NAME,
+                        "Indexer request failed - status: %ld, response: %s",
+                        statusCode,
+                        errorBody.empty() ? error.c_str() : errorBody.c_str());
+            }
+        }
+        else if (statusCode >= 500)
+        {
+            // 5xx errors - server issues
+            logError(IC_NAME, "Indexer server error - status: %ld, error: %s", statusCode, error.c_str());
+        }
+        else
+        {
+            // Connection errors, timeouts, etc.
+            logError(IC_NAME, "Indexer connection error: %s", error.c_str());
+        }
+
+        // Throw for all non-silenced errors
+        std::string errorMessage = error;
+        if (statusCode != NOT_USED)
+        {
+            errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
+        }
+        throw std::runtime_error(errorMessage);
     };
 
     // Define the success callback
@@ -694,8 +839,36 @@ IndexerConnector::IndexerConnector(
                     }
                 };
 
-                const auto onError = [this, &data, bulkSize](const std::string& error, const long statusCode)
+                const auto onError = [this, &data, bulkSize](
+                                         const std::string& error, const long statusCode, const std::string& errorBody)
                 {
+                    // Handle 4xx errors with detailed logging
+                    if (statusCode >= 400 && statusCode < 500)
+                    {
+                        std::string type, reason;
+                        extractErrorInfo(errorBody, type, reason);
+
+                        // Special case: Shard limit exceeded
+                        if (statusCode == HTTP_BAD_REQUEST && isShardLimitError(errorBody))
+                        {
+                            logWarn(IC_NAME,
+                                    "Document operation failed for index '%s' - type: '%s', reason: '%s' - Consider "
+                                    "increasing cluster.max_shards_per_node setting",
+                                    m_indexName.c_str(),
+                                    type.c_str(),
+                                    reason.c_str());
+                        }
+                        // Generic 4xx logging
+                        else if (!type.empty() && !reason.empty())
+                        {
+                            logWarn(IC_NAME,
+                                    "Document operation failed for index '%s' - type: '%s', reason: '%s'",
+                                    m_indexName.c_str(),
+                                    type.c_str(),
+                                    reason.c_str());
+                        }
+                    }
+
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
                         m_successCount = 0;

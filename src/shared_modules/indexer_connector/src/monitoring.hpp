@@ -34,6 +34,8 @@ constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
 // Name of the field that contains the server status
 constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 
+auto constexpr MONITOR_NAME {"monitoring"};
+
 /**
  * @brief Monitoring class.
  *
@@ -68,28 +70,6 @@ class Monitoring final
         // On success callback
         const auto onSuccess = [&serverStatus](std::string response)
         {
-            // Parse the response without throwing exceptions
-            // Response example:
-            // [
-            //     {
-            //         "epoch": "1726271464",
-            //         "timestamp": "23:51:04",
-            //         "cluster": "wazuh-cluster",
-            //         "status": "green",
-            //         "node.total": "1",
-            //         "node.data": "1",
-            //         "discovered_cluster_manager": "true",
-            //         "shards": "166",
-            //         "pri": "166",
-            //         "relo": "0",
-            //         "init": "0",
-            //         "unassign": "0",
-            //         "pending_tasks": "0",
-            //         "max_task_wait_time": "-",
-            //         "active_shards_percent": "100.0%"
-            //     }
-            // ]
-
             const auto data = nlohmann::json::parse(response, nullptr, false).at(0);
 
             // Check if the server is green or yellow
@@ -101,9 +81,82 @@ class Monitoring final
         };
 
         // On error callback
-        const auto onError = [&serverStatus](const std::string& /*error*/, const long /*statusCode*/)
+        const auto onError =
+            [&serverAddress](const std::string& error, const long statusCode, const std::string& errorBody)
         {
-            serverStatus = false;
+            // Try to extract error details from JSON
+            std::string errorType, errorReason;
+            try
+            {
+                const auto errorJson = nlohmann::json::parse(errorBody);
+                if (errorJson.contains("error"))
+                {
+                    const auto& err = errorJson.at("error");
+                    if (err.contains("type"))
+                    {
+                        errorType = err.at("type").get_ref<const std::string&>();
+                    }
+                    if (err.contains("reason"))
+                    {
+                        errorReason = err.at("reason").get_ref<const std::string&>();
+                    }
+                }
+            }
+            catch (const nlohmann::json::exception&)
+            {
+                // Ignore JSON parsing errors
+            }
+
+            // Log based on status code
+            if (statusCode == 401)
+            {
+                if (!errorType.empty() && !errorReason.empty())
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - type: '%s', reason: '%s' - Check indexer credentials",
+                            serverAddress.c_str(),
+                            errorType.c_str(),
+                            errorReason.c_str());
+                }
+                else
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - Unauthorized - Check indexer credentials",
+                            serverAddress.c_str());
+                }
+            }
+            else if (statusCode == 403)
+            {
+                if (!errorType.empty() && !errorReason.empty())
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - type: '%s', reason: '%s' - Check user permissions",
+                            serverAddress.c_str(),
+                            errorType.c_str(),
+                            errorReason.c_str());
+                }
+                else
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - Forbidden - Check user permissions",
+                            serverAddress.c_str());
+                }
+            }
+            else if (statusCode >= 500)
+            {
+                logWarn(MONITOR_NAME,
+                        "Health check failed for '%s' - Server error (%ld)",
+                        serverAddress.c_str(),
+                        statusCode);
+            }
+            else
+            {
+                logWarn(MONITOR_NAME,
+                        "Health check failed for '%s' - status: %ld, error: %s",
+                        serverAddress.c_str(),
+                        statusCode,
+                        error.c_str());
+            }
         };
 
         // Get the health of the server.
