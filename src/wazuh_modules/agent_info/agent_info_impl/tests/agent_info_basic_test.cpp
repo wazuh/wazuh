@@ -186,12 +186,10 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
     // Use a thread to stop the agent after the first iteration completes
     std::thread stopThread([this, &startedFirstIteration]()
     {
-        // Wait for first iteration to complete (with timeout)
-        auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
-
-        while (!startedFirstIteration.load() && std::chrono::steady_clock::now() < timeout)
+        // Busy-wait for the first iteration to complete
+        while (!startedFirstIteration.load(std::memory_order_acquire))
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::yield();
         }
 
         m_agentInfo->stop();
@@ -205,7 +203,7 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
 
         if (iterations == 1)
         {
-            startedFirstIteration = true;
+            startedFirstIteration.store(true, std::memory_order_release);
         }
 
         return iterations < 2;  // Run for at least one iteration with wait
