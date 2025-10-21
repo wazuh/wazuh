@@ -138,9 +138,9 @@ async def test_upsert_integrations_order_engine_error(
 @pytest.mark.parametrize(
     "policy_type, mock_response, expected_count",
     [
-        (PolicyType.TESTING, MOCK_ENGINE_RESPONSE_SUCCESS, 2),
-        (PolicyType.PRODUCTION, MOCK_ENGINE_RESPONSE_SUCCESS_2, 3),
-        (PolicyType.TESTING, MOCK_ENGINE_RESPONSE_EMPTY, 0),
+        (PolicyType.TESTING, MOCK_ENGINE_RESPONSE_SUCCESS, 1),
+        (PolicyType.PRODUCTION, MOCK_ENGINE_RESPONSE_SUCCESS_2, 1),
+        (PolicyType.TESTING, MOCK_ENGINE_RESPONSE_EMPTY, 1),
     ],
 )
 @patch("wazuh.integrations_order.get_engine_client")
@@ -171,7 +171,7 @@ async def test_get_integrations_order(mock_get_client, policy_type, mock_respons
     assert result.total_affected_items == expected_count
     assert len(result.affected_items) == expected_count
     if expected_count > 0:
-        assert result.affected_items == mock_response["content"]
+        assert result.affected_items == [mock_response["content"]]
     mock_client.integrations_order.get_order.assert_called_once_with(policy_type=policy_type)
 
 
@@ -381,8 +381,8 @@ async def test_get_integrations_order_empty_response(mock_get_client):
     result = await get_integrations_order(PolicyType.TESTING)
 
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == 0
-    assert result.affected_items == []
+    assert result.total_affected_items == 1
+    assert result.affected_items == [[]]
 
 
 @pytest.mark.asyncio

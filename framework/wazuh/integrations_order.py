@@ -77,12 +77,12 @@ async def upsert_integrations_order(order: IntegrationsOrder, policy_type: str) 
         async with get_engine_client() as client:
             if mode == "create":
                 creation_results = await client.integrations_order.create_order(
-                    content=file_contents_json, policy_type=policy_type
+                    content=asdict(order), policy_type=policy_type
                 )
                 validate_response_or_raise(creation_results, 9004, ResourceType.INTEGRATIONS_ORDER)
             else:
                 update_results = await client.integrations_order.update_order(
-                    content=file_contents_json, policy_type=policy_type
+                    content=asdict(order), policy_type=policy_type
                 )
                 validate_response_or_raise(update_results, 9005, ResourceType.INTEGRATIONS_ORDER)
 

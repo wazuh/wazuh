@@ -14,7 +14,7 @@ class IntegrationsOrderModule(BaseModule):
     # Shared lock for thread-safety across all instances
     _lock = asyncio.Lock()
 
-    async def create_order(self, content: str, policy_type: PolicyType):
+    async def create_order(self, content: Dict, policy_type: PolicyType):
         """Create a new integrations order resource.
 
         Parameters
@@ -35,7 +35,7 @@ class IntegrationsOrderModule(BaseModule):
             self._db[policy_type] = content
         return {"status": "OK", "error": None}
     
-    async def update_order(self, content: str, policy_type: PolicyType):
+    async def update_order(self, content: Dict, policy_type: PolicyType):
         """Update integrations order resource.
 
         Parameters
