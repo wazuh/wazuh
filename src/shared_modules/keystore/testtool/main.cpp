@@ -14,12 +14,6 @@
 #include <functional>
 #include <iostream>
 
-namespace Log
-{
-    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-        GLOBAL_LOG_FUNCTION;
-}; // namespace Log
-
 int main(int argc, char* argv[])
 {
     try
