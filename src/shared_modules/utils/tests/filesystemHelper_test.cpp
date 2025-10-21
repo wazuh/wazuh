@@ -26,7 +26,48 @@ TEST_F(FilesystemUtilsTest, FilesystemEnumerateDir)
     EXPECT_FALSE(items.empty());
 }
 
+TEST_F(FilesystemUtilsTest, joinPathsBothEmpty)
+{
+    EXPECT_EQ(Utils::joinPaths("", ""), "");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBaseEmpty)
+{
+    EXPECT_EQ(Utils::joinPaths("", R"(relative\path)"), R"(relative\path)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsRelativeEmpty)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base\path)", ""), R"(C:\base\path)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsNormalCase)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base\path)", R"(relative\path)"), R"(C:\base\path\relative\path)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBaseWithTrailingSlash)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base\path\)", R"(relative\path)"), R"(C:\base\path\relative\path)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsRelativeWithLeadingSlash)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base\path)", R"(\relative\path)"), R"(C:\base\path\relative\path)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBothWithSlash)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base\path\)", R"(\relative\path)"), R"(C:\base\path\relative\path)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsSingleLevel)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base)", "file.txt"), R"(C:\base\file.txt)");
+}
+
 #else
+
 TEST_F(FilesystemUtilsTest, FilesystemExistsDir)
 {
     EXPECT_TRUE(Utils::existsDir(R"(/usr)"));
@@ -60,5 +101,44 @@ TEST_F(FilesystemUtilsTest, getFileBinaryContent)
     EXPECT_FALSE(binContent.empty());
 }
 
+TEST_F(FilesystemUtilsTest, joinPathsBothEmpty)
+{
+    EXPECT_EQ(Utils::joinPaths("", ""), "");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBaseEmpty)
+{
+    EXPECT_EQ(Utils::joinPaths("", "relative/path"), "relative/path");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsRelativeEmpty)
+{
+    EXPECT_EQ(Utils::joinPaths("/base/path", ""), "/base/path");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsNormalCase)
+{
+    EXPECT_EQ(Utils::joinPaths("/base/path", "relative/path"), "/base/path/relative/path");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBaseWithTrailingSlash)
+{
+    EXPECT_EQ(Utils::joinPaths("/base/path/", "relative/path"), "/base/path/relative/path");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsRelativeWithLeadingSlash)
+{
+    EXPECT_EQ(Utils::joinPaths("/base/path", "/relative/path"), "/base/path/relative/path");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBothWithSlash)
+{
+    EXPECT_EQ(Utils::joinPaths("/base/path/", "/relative/path"), "/base/path/relative/path");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsSingleLevel)
+{
+    EXPECT_EQ(Utils::joinPaths("/base", "file.txt"), "/base/file.txt");
+}
 
 #endif
