@@ -84,7 +84,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -183,12 +183,13 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     # If auto enrollment is enabled, retry check enrollment
     if test_metadata['ENROLL'] == 'yes':
         # Start RemotedSimulator for successfully enrollment
-        remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-        remoted_server.start()
-        wait_connect()
-
-        # Shutdown RemotedSimulator
-        remoted_server.destroy()
+        remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'])
+        try:
+            remoted_server.start()
+            wait_connect()
+        finally:
+            # Shutdown RemotedSimulator
+            remoted_server.destroy()
 
     # Wait for server rollback
     wait_server_rollback()

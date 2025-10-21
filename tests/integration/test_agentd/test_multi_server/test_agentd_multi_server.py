@@ -168,32 +168,33 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
     remoted_server_address = "127.0.0.1"
     remoted_server_ports = [DEFAULT_SSL_REMOTE_CONNECTION_PORT,1516,1517]
 
-    # Configure keys
-    if(test_metadata['SIMULATOR_MODES']['AUTHD'] == 'ACCEPT'):
-        authd_server = AuthdSimulator(server_ip = remoted_server_address, mode = test_metadata['SIMULATOR_MODES']['AUTHD'])
-        authd_server.start()
-    else:
-        if(test_metadata['SIMULATOR_MODES']['AUTHD_PREV_MODE'] == 'ACCEPT'):
-            authd_server = None
-            add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
+    try:
+        # Configure keys
+        if(test_metadata['SIMULATOR_MODES']['AUTHD'] == 'ACCEPT'):
+            authd_server = AuthdSimulator(server_ip = remoted_server_address, mode = test_metadata['SIMULATOR_MODES']['AUTHD'])
+            authd_server.start()
+        else:
+            if(test_metadata['SIMULATOR_MODES']['AUTHD_PREV_MODE'] == 'ACCEPT'):
+                authd_server = None
+                add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
 
-    # Start FileMonitor
-    log_monitor = FileMonitor(WAZUH_LOG_PATH)
+        # Start FileMonitor
+        log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    # Iterate the servers from which we are expecting logs
-    for server in range(len(test_metadata['LOG_MONITOR_STR'])):
-        # Iterate the patterns expected for server
-        for pattern in range(len(test_metadata['LOG_MONITOR_STR'][server])):
-            # Build regex from expected pattern
-            regex, values = get_regex(test_metadata['LOG_MONITOR_STR'][server][pattern],
-                              remoted_server_address,
-                              remoted_server_ports[server])
-            # Look for expected log
-            log_monitor.start(callback=callbacks.generate_callback(regex,values), timeout = 150)
-            assert (log_monitor.callback_result != None), (regex,values)
-
-    if(authd_server):
-        authd_server.destroy()
+        # Iterate the servers from which we are expecting logs
+        for server in range(len(test_metadata['LOG_MONITOR_STR'])):
+            # Iterate the patterns expected for server
+            for pattern in range(len(test_metadata['LOG_MONITOR_STR'][server])):
+                # Build regex from expected pattern
+                regex, values = get_regex(test_metadata['LOG_MONITOR_STR'][server][pattern],
+                                remoted_server_address,
+                                remoted_server_ports[server])
+                # Look for expected log
+                log_monitor.start(callback=callbacks.generate_callback(regex,values), timeout = 150)
+                assert (log_monitor.callback_result != None), (regex,values)
+    finally:
+        if(authd_server):
+            authd_server.destroy()
 
 
 def get_regex(pattern, server_address, server_port):
