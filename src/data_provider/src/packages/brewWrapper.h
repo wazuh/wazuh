@@ -16,6 +16,7 @@
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
+#include "json.hpp"
 
 class BrewWrapper final : public IPackageWrapper
 {
