@@ -39,6 +39,8 @@ EXPORTED void agent_info_set_report_function(report_callback_t report_callback);
 EXPORTED void
 agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs);
 
+EXPORTED size_t agent_info_query(const char* query, char** output);
+
 #ifdef __cplusplus
 }
 #endif
@@ -50,5 +52,6 @@ typedef void (*agent_info_set_report_function_func)(report_callback_t report_cal
 typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
                                                    const char* sync_db_path,
                                                    const MQ_Functions* mq_funcs);
+typedef size_t (*agent_info_query_func)(const char* query, char** output);
 
 #endif //_AGENT_INFO_H

@@ -564,3 +564,80 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
 
     return ecsFormatted;
 }
+
+nlohmann::json AgentInfoImpl::getMetadata() const
+{
+    nlohmann::json result;
+
+    try
+    {
+        // Query agent_metadata table using SelectQuery builder
+        // Specify all columns explicitly (empty list would generate invalid SQL)
+        auto selectMetadata{ ::SelectQuery::builder()
+                             .table(AGENT_METADATA_TABLE)
+                             .columnList({"agent_id", "agent_name", "agent_version",
+                                          "host_architecture", "host_hostname",
+                                          "host_os_name", "host_os_type", "host_os_platform", "host_os_version",
+                                          "checksum"})
+                             .rowFilter("")
+                             .distinctOpt(false)
+                             .build() };
+
+        nlohmann::json metadataArray = nlohmann::json::array();
+
+        m_dBSync->selectRows(selectMetadata.query(),
+                             [&metadataArray](ReturnTypeCallback /*unused*/, const nlohmann::json & data)
+        {
+            metadataArray.push_back(data);
+        });
+
+        // Query agent_groups table using SelectQuery builder
+        auto selectGroups{ ::SelectQuery::builder()
+                           .table(AGENT_GROUPS_TABLE)
+                           .columnList({"agent_id", "group_name"})
+                           .rowFilter("")
+                           .distinctOpt(false)
+                           .build() };
+
+        nlohmann::json groupsArray = nlohmann::json::array();
+
+        m_dBSync->selectRows(selectGroups.query(),
+                             [&groupsArray](ReturnTypeCallback /*unused*/, const nlohmann::json & data)
+        {
+            groupsArray.push_back(data);
+        });
+
+        // Build result JSON
+        result["status"] = "ok";
+
+        if (!metadataArray.empty())
+        {
+            result["metadata"] = metadataArray[0]; // Should only have one row
+        }
+        else
+        {
+            result["metadata"] = nlohmann::json::object();
+        }
+
+        // Extract group names from groups array
+        nlohmann::json groups = nlohmann::json::array();
+
+        for (const auto& groupEntry : groupsArray)
+        {
+            if (groupEntry.contains("group_name"))
+            {
+                groups.push_back(groupEntry["group_name"]);
+            }
+        }
+
+        result["groups"] = groups;
+    }
+    catch (const std::exception& e)
+    {
+        result["status"] = "error";
+        result["message"] = std::string("Failed to retrieve metadata: ") + e.what();
+        m_logFunction(LOG_ERROR, result["message"]);
+    }
+
+    return result;
+}

@@ -69,6 +69,7 @@ agent_info_stop_func agent_info_stop_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
+agent_info_query_func agent_info_query_ptr = NULL;
 
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
@@ -83,6 +84,7 @@ void wm_agent_info_destroy(wm_agent_info_t* agent_info);
 cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info);
 int wm_agent_info_sync_message(const char* command, size_t command_len);
 void wm_agent_info_stop(void);
+size_t wm_agent_info_query_handler(void* data, char* query, char** output);
 
 // Module context
 const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
@@ -91,7 +93,7 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
                                           .dump = (cJSON * (*)(const void*)) wm_agent_info_dump,
                                           .sync = wm_agent_info_sync_message,
                                           .stop = (void (*)(void*))wm_agent_info_stop,
-                                          .query = NULL};
+                                          .query = wm_agent_info_query_handler};
 
 // ==============================================================================
 // Static Helper Functions
@@ -374,6 +376,21 @@ int wm_agent_info_sync_message(const char* command, size_t command_len)
     }
 }
 
+// Query handler function
+size_t wm_agent_info_query_handler(void* data, char* query, char** output)
+{
+    (void)data; // Unused parameter
+
+    if (!agent_info_query_ptr)
+    {
+        mwarn("Agent-info query function not available");
+        os_strdup("err Query function not available", *output);
+        return strlen(*output);
+    }
+
+    return agent_info_query_ptr(query, output);
+}
+
 // Main module function
 #ifdef WIN32
 DWORD WINAPI wm_agent_info_main(void* arg)
@@ -416,6 +433,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
+        agent_info_query_ptr = so_get_function_sym(agent_info_module, "agent_info_query");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");

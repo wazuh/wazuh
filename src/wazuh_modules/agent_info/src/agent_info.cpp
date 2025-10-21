@@ -162,6 +162,77 @@ void agent_info_init_sync_protocol(const char* module_name, const char* sync_db_
     g_mq_functions = mq_funcs;
 }
 
+size_t agent_info_query(const char* query, char** output)
+{
+    if (!query || !output)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_ERROR, "agent_info_query: Invalid parameters", "agent-info");
+        }
+
+        static const char* error_msg = "err Invalid parameters";
+        *output = strdup(error_msg);
+        return strlen(*output);
+    }
+
+    if (g_log_callback)
+    {
+        std::string logMsg = std::string("agent_info_query: Received query: ") + query;
+        g_log_callback(LOG_DEBUG, logMsg.c_str(), "agent-info");
+    }
+
+    try
+    {
+        std::string query_str(query);
+
+        if (query_str == "get_metadata")
+        {
+            if (!g_agent_info_impl)
+            {
+                static const char* error_msg = "err Agent info module not initialized";
+                *output = strdup(error_msg);
+                return strlen(*output);
+            }
+
+            // Call C++ implementation
+            nlohmann::json metadata = g_agent_info_impl->getMetadata();
+            std::string response = metadata.dump();
+
+            // Prepend "ok " to successful responses
+            if (metadata.contains("status") && metadata["status"] == "ok")
+            {
+                response = "ok " + response;
+            }
+            else
+            {
+                response = "err " + response;
+            }
+
+            *output = strdup(response.c_str());
+            return strlen(*output);
+        }
+        else
+        {
+            std::string error_response = "err Unknown query command: " + query_str;
+            *output = strdup(error_response.c_str());
+            return strlen(*output);
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        if (g_log_callback)
+        {
+            std::string errorMsg = std::string("agent_info_query: Exception: ") + ex.what();
+            g_log_callback(LOG_ERROR, errorMsg.c_str(), "agent-info");
+        }
+
+        std::string error_response = std::string("err Exception: ") + ex.what();
+        *output = strdup(error_response.c_str());
+        return strlen(*output);
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

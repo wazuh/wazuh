@@ -63,3 +63,8 @@ add_test(NAME AgentInfoLoggingTest COMMAND agent_info_logging_test)
 add_executable(agent_info_integration_test agent_info_integration_test.cpp)
 target_link_libraries(agent_info_integration_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoIntegrationTest COMMAND agent_info_integration_test)
+
+# Agent Info Query Tests (getMetadata functionality)
+add_executable(agent_info_query_test agent_info_query_test.cpp)
+target_link_libraries(agent_info_query_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoQueryTest COMMAND agent_info_query_test)

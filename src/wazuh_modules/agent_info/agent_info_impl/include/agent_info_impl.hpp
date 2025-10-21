@@ -75,6 +75,10 @@ class AgentInfoImpl
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
+        /// @brief Get current agent metadata
+        /// @return JSON object containing agent metadata
+        nlohmann::json getMetadata() const;
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
