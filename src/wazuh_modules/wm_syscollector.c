@@ -43,6 +43,8 @@ bool need_shutdown_wait = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool shutdown_process_started = false;
 
+static size_t wm_sys_query_handler(void *data, char *query, char **output); // Query handler
+
 const wm_context WM_SYS_CONTEXT = {
     .name = "syscollector",
     .start = (wm_routine)wm_sys_main,
@@ -50,7 +52,7 @@ const wm_context WM_SYS_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_sys_dump,
     .sync = (int(*)(const char*, size_t))wm_sync_message,
     .stop = (void(*)(void *))wm_sys_stop,
-    .query = NULL,
+    .query = wm_sys_query_handler,
 };
 
 void *syscollector_module = NULL;
@@ -66,6 +68,10 @@ syscollector_persist_diff_func syscollector_persist_diff_ptr = NULL;
 syscollector_parse_response_func syscollector_parse_response_ptr = NULL;
 syscollector_notify_data_clean_func syscollector_notify_data_clean_ptr = NULL;
 syscollector_delete_database_func syscollector_delete_database_ptr = NULL;
+
+// Query function pointer
+typedef size_t (*syscollector_query_func)(const char* query, char** output);
+syscollector_query_func syscollector_query_ptr = NULL;
 
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
@@ -274,6 +280,9 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_sync_module_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_module");
         syscollector_persist_diff_ptr = so_get_function_sym(syscollector_module, "syscollector_persist_diff");
         syscollector_parse_response_ptr = so_get_function_sym(syscollector_module, "syscollector_parse_response");
+
+        // Get query function pointer
+        syscollector_query_ptr = so_get_function_sym(syscollector_module, "syscollector_query");
     } else {
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
         pthread_exit(NULL);
@@ -481,4 +490,21 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
 #else
     return NULL;
 #endif
+}
+
+static size_t wm_sys_query_handler(void *data, char *query, char **output) {
+    (void)data;  // Unused parameter
+
+    if (!query || !output) {
+        os_strdup("err Invalid parameters", *output);
+        return strlen(*output);
+    }
+
+    // Call the C++ query function if available
+    if (syscollector_query_ptr) {
+        return syscollector_query_ptr(query, output);
+    } else {
+        os_strdup("err Syscollector query function not available", *output);
+        return strlen(*output);
+    }
 }

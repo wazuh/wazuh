@@ -68,6 +68,9 @@ EXPORTED bool sca_parse_response(const unsigned char* data, size_t length);
 EXPORTED bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps);
 EXPORTED void sca_delete_database();
 
+// Query function
+EXPORTED size_t sca_query(const char* query, char** output);
+
 // YAML to cJSON function
 EXPORTED void sca_set_yaml_to_cjson_func(yaml_to_cjson_func yaml_func);
 

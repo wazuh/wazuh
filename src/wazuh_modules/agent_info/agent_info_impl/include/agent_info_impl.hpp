@@ -18,6 +18,10 @@
 #include <string>
 #include <vector>
 
+// Type definition for module query callback function
+// Returns 0 on success, -1 on error. Response must be freed by caller.
+using module_query_callback_t = std::function<int(const std::string& module_name, const std::string& query, char** response)>;
+
 class AgentInfoImpl
 {
     public:
@@ -25,6 +29,7 @@ class AgentInfoImpl
         /// @param dbPath Path to the database file
         /// @param reportDiffFunction Function to report stateless diffs
         /// @param logFunction Function to log messages
+        /// @param queryModuleFunction Function to query other modules
         /// @param dbSync Pointer to IDBSync for database synchronization
         /// @param sysInfo Pointer to ISysInfo for system information gathering
         /// @param fileIO Pointer to IFileIOUtils for file I/O operations
@@ -32,6 +37,7 @@ class AgentInfoImpl
         AgentInfoImpl(std::string dbPath,
                       std::function<void(const std::string&)> reportDiffFunction = nullptr,
                       std::function<void(const modules_log_level_t, const std::string&)> logFunction = nullptr,
+                      module_query_callback_t queryModuleFunction = nullptr,
                       std::shared_ptr<IDBSync> dbSync = nullptr,
                       std::shared_ptr<ISysInfo> sysInfo = nullptr,
                       std::shared_ptr<IFileIOUtils> fileIO = nullptr,
@@ -81,6 +87,11 @@ class AgentInfoImpl
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
+        // TODO: change to real method name and implementation
+        /// @brief Test module coordination by communicating with SCA and FIM modules
+        /// This method is called periodically to test inter-module communication
+        void testModuleCoordination();
+
     private:
         /// @brief Update the global metadata provider with current agent metadata
         /// @param agentMetadata Agent metadata JSON
@@ -124,6 +135,9 @@ class AgentInfoImpl
 
         /// @brief Function to log messages
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
+
+        /// @brief Function to query other modules
+        module_query_callback_t m_queryModuleFunction;
 
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;

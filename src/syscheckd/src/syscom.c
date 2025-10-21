@@ -75,6 +75,31 @@ error:
     return strlen(*output);
 }
 
+size_t syscom_handle_agent_info_query(char * args, char ** output) {
+    assert(args != NULL);
+    assert(output != NULL);
+
+    // Handle standardized agent_info commands
+    mdebug1("Processing FIM agent_info command with action: %s", args);
+
+    // TODO: Implement real FIM agent_info actions
+    if (strcmp(args, "pause") == 0) {
+        os_strdup("ok FIM module paused successfully", *output);
+    } else if (strcmp(args, "flush") == 0) {
+        os_strdup("ok FIM module flushed successfully", *output);
+    } else if (strcmp(args, "get_max_version") == 0) {
+        os_strdup("ok FIM max version: 1.2.3", *output);
+    } else if (strcmp(args, "set_version") == 0) {
+        os_strdup("ok FIM version set successfully", *output);
+    } else if (strcmp(args, "resume") == 0) {
+        os_strdup("ok FIM module resumed successfully", *output);
+    } else {
+        os_strdup("err Unknown FIM agent_info action", *output);
+    }
+
+    return strlen(*output);
+}
+
 size_t syscom_dispatch(char * command, size_t command_len, char ** output){
     assert(command != NULL);
     assert(output != NULL);
@@ -129,6 +154,19 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
             os_strdup("err FIM synchronization is disabled", *output);
             return strlen(*output);
         }
+    } else if (strncmp(command, "agent_info", strlen("agent_info")) == 0) {
+        // Handle agent_info queries
+        char *args = strchr(command, ' ');
+
+        if (!args) {
+            mdebug1("SYSCOM agent_info command needs arguments");
+            os_strdup("err SYSCOM agent_info needs arguments", *output);
+            return strlen(*output);
+        }
+
+        args++; // Skip the space
+
+        return syscom_handle_agent_info_query(args, output);
     }
 
     mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, command);

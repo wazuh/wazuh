@@ -462,6 +462,63 @@ void sca_delete_database()
 
 // LCOV_EXCL_STOP
 
+/// @brief Query handler for SCA module.
+///
+/// Handles query commands sent to the SCA module from other modules.
+/// Supports commands like "pause", "resume", and "status".
+///
+/// @param query Query command string
+/// @param output Pointer to output string (caller must free with os_free)
+/// @return Length of the output string
+size_t sca_query(const char* query, char** output)
+{
+    if (!query || !output)
+    {
+        *output = strdup("err Invalid parameters");
+        return strlen(*output);
+    }
+
+    try
+    {
+        std::string query_str(query);
+
+        // TODO: Implement real SCA/AgentInfo query commands
+        if (query_str == "pause")
+        {
+            *output = strdup("ok SCA module paused successfully");
+        }
+        else if (query_str == "flush")
+        {
+            *output = strdup("ok SCA module flushed successfully");
+        }
+        else if (query_str == "get_max_version")
+        {
+            *output = strdup("ok SCA max version: 2.1.0");
+        }
+        else if (query_str == "set_version")
+        {
+            *output = strdup("ok SCA version set successfully");
+        }
+        else if (query_str == "resume")
+        {
+            *output = strdup("ok SCA module resumed successfully");
+        }
+        else
+        {
+            std::string error = "err Unknown SCA query command: " + query_str;
+            *output = strdup(error.c_str());
+        }
+
+        return strlen(*output);
+    }
+    catch (const std::exception& ex)
+    {
+        std::string error = "err " + std::string(ex.what());
+        *output = strdup(error.c_str());
+        return strlen(*output);
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

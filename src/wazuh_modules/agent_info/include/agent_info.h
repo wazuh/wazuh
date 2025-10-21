@@ -28,6 +28,7 @@ struct wm_agent_info_t;
 
 typedef void (*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag);
 typedef int (*report_callback_t)(const char* message);
+typedef int (*query_module_callback_t)(const char* module_name, const char* query, char** response);
 
 EXPORTED void agent_info_start(const struct wm_agent_info_t* agent_info_config);
 
@@ -42,6 +43,8 @@ agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path,
 
 EXPORTED bool agent_info_parse_response(const uint8_t* data, size_t data_len);
 
+EXPORTED void agent_info_set_query_module_function(query_module_callback_t query_module_callback);
+
 #ifdef __cplusplus
 }
 #endif
@@ -54,5 +57,6 @@ typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
                                                    const char* sync_db_path,
                                                    const MQ_Functions* mq_funcs);
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
+typedef void (*agent_info_set_query_module_function_func)(query_module_callback_t query_module_callback);
 
 #endif //_AGENT_INFO_H

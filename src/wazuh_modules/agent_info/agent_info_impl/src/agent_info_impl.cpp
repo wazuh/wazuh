@@ -82,6 +82,7 @@ const char* AGENT_GROUPS_SQL_STATEMENT =
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
                              std::function<void(const modules_log_level_t, const std::string&)> logFunction,
+                             module_query_callback_t queryModuleFunction,
                              std::shared_ptr<IDBSync> dbSync,
                              std::shared_ptr<ISysInfo> sysInfo,
                              std::shared_ptr<IFileIOUtils> fileIO,
@@ -95,10 +96,16 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
     , m_fileSystem(fileSystem ? std::move(fileSystem) : std::make_shared<file_system::FileSystemWrapper>())
     , m_reportDiffFunction(std::move(reportDiffFunction))
     , m_logFunction(std::move(logFunction))
+    , m_queryModuleFunction(std::move(queryModuleFunction))
 {
     if (!m_logFunction)
     {
         throw std::invalid_argument("Log function must be provided");
+    }
+
+    if (!m_queryModuleFunction)
+    {
+        throw std::invalid_argument("Query module function must be provided");
     }
 
     m_logFunction(LOG_INFO, "AgentInfo initialized.");
@@ -136,6 +143,10 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
         try
         {
             populateAgentMetadata();
+
+            // Test inter-module communication
+            testModuleCoordination();
+
         }
         catch (const std::exception& e)
         {
@@ -748,4 +759,122 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
     }
 
     return ecsFormatted;
+}
+
+// TODO: change to real method name and implementation
+void AgentInfoImpl::testModuleCoordination()
+{
+    // Check if query function is available
+    if (!m_queryModuleFunction)
+    {
+        m_logFunction(LOG_WARNING, "Module query function not available, skipping coordination test");
+        return;
+    }
+
+    auto queryModule = [this](const std::string& moduleName, const std::string& command) -> std::pair<bool, std::string>
+    {
+        m_logFunction(LOG_INFO, "Querying module '" + moduleName + "' with command: '" + command + "'");
+
+        char* response = nullptr;
+        int result = m_queryModuleFunction(moduleName, command, &response);
+
+        std::string responseStr = response ? std::string(response) : "no response";
+
+        if (result == 0)
+        {
+            m_logFunction(LOG_INFO, moduleName + " response: " + responseStr);
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Failed to query " + moduleName + " (result=" + std::to_string(result) + "): " + responseStr);
+        }
+
+        std::string returnResponse = responseStr;
+        if (response)
+        {
+            free(response);
+        }
+
+        return std::make_pair(result == 0, returnResponse);
+    };
+
+    try
+    {
+        m_logFunction(LOG_INFO, "=== Testing inter-module communication ===");
+
+        // Test SCA module queries using the regular wm_module_query
+        m_logFunction(LOG_INFO, "--- Testing SCA module communication ---");
+
+        m_logFunction(LOG_DEBUG, "About to query SCA pause...");
+        auto [scaResult1, scaResponse1] = queryModule("sca", "pause");
+        m_logFunction(LOG_INFO, "SCA pause response: " + scaResponse1);
+
+        m_logFunction(LOG_DEBUG, "About to query SCA flush...");
+        auto [scaResult2, scaResponse2] = queryModule("sca", "flush");
+        m_logFunction(LOG_INFO, "SCA flush response: " + scaResponse2);
+
+        m_logFunction(LOG_DEBUG, "About to query SCA get_max_version...");
+        auto [scaResult3, scaResponse3] = queryModule("sca", "get_max_version");
+        m_logFunction(LOG_INFO, "SCA get_max_version response: " + scaResponse3);
+
+        m_logFunction(LOG_DEBUG, "About to query SCA set_version...");
+        auto [scaResult4, scaResponse4] = queryModule("sca", "set_version");
+        m_logFunction(LOG_INFO, "SCA set_version response: " + scaResponse4);
+
+        m_logFunction(LOG_DEBUG, "About to query SCA resume...");
+        auto [scaResult5, scaResponse5] = queryModule("sca", "resume");
+        m_logFunction(LOG_INFO, "SCA resume response: " + scaResponse5);
+
+        // Test Syscollector module queries using the regular wm_module_query
+        m_logFunction(LOG_INFO, "--- Testing Syscollector module communication ---");
+
+        m_logFunction(LOG_DEBUG, "About to query Syscollector pause...");
+        auto [syscollectorResult1, syscollectorResponse1] = queryModule("syscollector", "pause");
+        m_logFunction(LOG_INFO, "Syscollector pause response: " + syscollectorResponse1);
+
+        m_logFunction(LOG_DEBUG, "About to query Syscollector flush...");
+        auto [syscollectorResult2, syscollectorResponse2] = queryModule("syscollector", "flush");
+        m_logFunction(LOG_INFO, "Syscollector flush response: " + syscollectorResponse2);
+
+        m_logFunction(LOG_DEBUG, "About to query Syscollector get_max_version...");
+        auto [syscollectorResult3, syscollectorResponse3] = queryModule("syscollector", "get_max_version");
+        m_logFunction(LOG_INFO, "Syscollector get_max_version response: " + syscollectorResponse3);
+
+        m_logFunction(LOG_DEBUG, "About to query Syscollector set_version...");
+        auto [syscollectorResult4, syscollectorResponse4] = queryModule("syscollector", "set_version");
+        m_logFunction(LOG_INFO, "Syscollector set_version response: " + syscollectorResponse4);
+
+        m_logFunction(LOG_DEBUG, "About to query Syscollector resume...");
+        auto [syscollectorResult5, syscollectorResponse5] = queryModule("syscollector", "resume");
+        m_logFunction(LOG_INFO, "Syscollector resume response: " + syscollectorResponse5);
+
+        // Test FIM/syscheck module queries using the new syscom communication
+        m_logFunction(LOG_INFO, "--- Testing FIM/syscheck module communication ---");
+
+        m_logFunction(LOG_DEBUG, "About to query FIM pause...");
+        auto [result1, response1] = queryModule("fim", "pause");
+        m_logFunction(LOG_INFO, "FIM pause response: " + response1);
+
+        m_logFunction(LOG_DEBUG, "About to query FIM flush...");
+        auto [result2, response2] = queryModule("fim", "flush");
+        m_logFunction(LOG_INFO, "FIM flush response: " + response2);
+
+        m_logFunction(LOG_DEBUG, "About to query FIM get_max_version...");
+        auto [result3, response3] = queryModule("fim", "get_max_version");
+        m_logFunction(LOG_INFO, "FIM get_max_version response: " + response3);
+
+        m_logFunction(LOG_DEBUG, "About to query FIM set_version...");
+        auto [result4, response4] = queryModule("fim", "set_version");
+        m_logFunction(LOG_INFO, "FIM set_version response: " + response4);
+
+        m_logFunction(LOG_DEBUG, "About to query FIM resume...");
+        auto [result5, response5] = queryModule("fim", "resume");
+        m_logFunction(LOG_INFO, "FIM resume response: " + response5);
+
+        m_logFunction(LOG_INFO, "=== Inter-module communication tests completed ===");
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, std::string("Error during module coordination test: ") + e.what());
+    }
 }

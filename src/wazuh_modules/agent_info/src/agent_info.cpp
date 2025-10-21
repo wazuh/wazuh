@@ -2,12 +2,18 @@
 
 #include "agent_info_impl.hpp"
 #include "wm_agent_info.h"
+#include "wmodules.h"
 
 #include <dbsync.hpp>
 
 #include <functional>
 #include <memory>
 #include <string>
+
+// Forward declare the direct C function
+extern "C" {
+    int agent_info_query_module_direct(const char* module_name, const char* query, char** response);
+}
 
 /* Agent Info db directory */
 #ifndef WAZUH_UNIT_TESTING
@@ -31,6 +37,7 @@ static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
 // Global callback function pointers
 static report_callback_t g_report_callback = nullptr;
 static log_callback_t g_log_callback = nullptr;
+static query_module_callback_t g_query_module_callback = nullptr;
 
 // Global sync protocol parameters
 static const char* g_module_name = nullptr;
@@ -40,6 +47,7 @@ static const MQ_Functions* g_mq_functions = nullptr;
 // Internal wrapper functions that capture the callbacks
 static std::function<void(const std::string&)> g_report_function_wrapper;
 static std::function<void(const modules_log_level_t, const std::string&)> g_log_function_wrapper;
+static std::function<int(const std::string&, const std::string&, char**)> g_query_module_function_wrapper;
 
 void agent_info_set_log_function(log_callback_t log_callback)
 {
@@ -71,6 +79,24 @@ void agent_info_set_report_function(report_callback_t report_callback)
             }
         };
     }
+}
+
+void agent_info_set_query_module_function(query_module_callback_t query_module_callback)
+{
+    g_query_module_callback = query_module_callback;
+
+    if (g_query_module_callback)
+    {
+        g_query_module_function_wrapper = [](const std::string& module_name, const std::string& query, char** response)
+        {
+            if (g_query_module_callback)
+            {
+                return g_query_module_callback(module_name.c_str(), query.c_str(), response);
+            }
+            return -1;
+        };
+    }
+
 }
 
 void agent_info_start(const struct wm_agent_info_t* agent_info_config)
@@ -105,7 +131,7 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
             });
 
             g_agent_info_impl =
-                std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_log_function_wrapper);
+                std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_log_function_wrapper, g_query_module_function_wrapper);
 
             // Set agent mode
             g_agent_info_impl->setIsAgent(agent_info_config->is_agent);

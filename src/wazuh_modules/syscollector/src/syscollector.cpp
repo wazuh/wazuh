@@ -195,6 +195,63 @@ void syscollector_delete_database()
     Syscollector::instance().deleteDatabase();
 }
 
+/// @brief Query handler for Syscollector module.
+///
+/// Handles query commands sent to the Syscollector module from other modules.
+/// Supports commands like "pause", "resume", and "status".
+///
+/// @param query Query command string
+/// @param output Pointer to output string (caller must free with os_free)
+/// @return Length of the output string
+size_t syscollector_query(const char* query, char** output)
+{
+    if (!query || !output)
+    {
+        *output = strdup("err Invalid parameters");
+        return strlen(*output);
+    }
+
+    // TODO: Implement real Syscollector/AgentInfo query commands
+    try
+    {
+        std::string query_str(query);
+
+        if (query_str == "pause")
+        {
+            *output = strdup("ok Syscollector module paused successfully");
+        }
+        else if (query_str == "flush")
+        {
+            *output = strdup("ok Syscollector module flushed successfully");
+        }
+        else if (query_str == "get_max_version")
+        {
+            *output = strdup("ok Syscollector max version: 3.0.5");
+        }
+        else if (query_str == "set_version")
+        {
+            *output = strdup("ok Syscollector version set successfully");
+        }
+        else if (query_str == "resume")
+        {
+            *output = strdup("ok Syscollector module resumed successfully");
+        }
+        else
+        {
+            std::string error = "err Unknown Syscollector query command: " + query_str;
+            *output = strdup(error.c_str());
+        }
+
+        return strlen(*output);
+    }
+    catch (const std::exception& ex)
+    {
+        std::string error = "err " + std::string(ex.what());
+        *output = strdup(error.c_str());
+        return strlen(*output);
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

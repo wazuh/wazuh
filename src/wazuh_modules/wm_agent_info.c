@@ -22,6 +22,7 @@
 #include "mq_op.h"
 #include "rc.h"
 #include "sym_load.h"
+#include <os_net/os_net.h>
 
 // Unit testing support
 #ifdef WAZUH_UNIT_TESTING
@@ -68,6 +69,7 @@ agent_info_stop_func agent_info_stop_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
+agent_info_set_query_module_function_func agent_info_set_query_module_function_ptr = NULL;
 
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
@@ -198,6 +200,139 @@ static int
 wm_agent_info_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
 {
     return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+}
+
+// Wrapper function to adapt wm_module_query signature to the expected callback type
+static int wm_agent_info_query_module_wrapper(const char* module_name, const char* query, char** response)
+{
+    if (!module_name || !query || !response)
+    {
+        return -1;
+    }
+
+    // Check if this is a request for FIM/syscheck module
+    if (strcmp(module_name, "fim") == 0 || strcmp(module_name, "syscheck") == 0) {
+#ifndef WIN32
+        int sock;
+        char *response_buffer = NULL;
+        ssize_t recv_length;
+
+        // Connect to syscheck syscom socket
+        mdebug1("WM_MODULE_QUERY: Attempting to connect to socket: %s", SYS_LOCAL_SOCK);
+        if ((sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR)) < 0) {
+            merror("WM_MODULE_QUERY: Failed to connect to socket, errno=%d", errno);
+            switch (errno) {
+                case ECONNREFUSED:
+                    os_strdup("err {\"error\":4,\"message\":\"Syscheck module refused connection. The component might be disabled\"}", *response);
+                    break;
+                case ENOENT:
+                    os_strdup("err {\"error\":5,\"message\":\"Syscheck socket not found. The component might not be running\"}", *response);
+                    break;
+                default:
+                    os_strdup("err {\"error\":6,\"message\":\"Could not connect to syscheck socket\"}", *response);
+            }
+            return -1;
+        }
+
+        // Build agent_info command for FIM syscom
+        char fim_command[OS_MAXSTR];
+        snprintf(fim_command, OS_MAXSTR, "agent_info %s", query);
+        mdebug1("WM_MODULE_QUERY: Built fim_command='%s'", fim_command);
+
+        // Send the query to syscheck
+        mdebug1("WM_MODULE_QUERY: Sending command to socket...");
+        if (OS_SendSecureTCP(sock, strlen(fim_command), fim_command) < 0) {
+            merror("WM_MODULE_QUERY: Failed to send command");
+            close(sock);
+            os_strdup("err {\"error\":7,\"message\":\"Could not send query to syscheck\"}", *response);
+            return -1;
+        }
+
+        // Allocate buffer for response
+        os_calloc(OS_MAXSTR, sizeof(char), response_buffer);
+
+        // Receive response from syscheck
+        switch (recv_length = OS_RecvSecureTCP(sock, response_buffer, OS_MAXSTR)) {
+            case OS_SOCKTERR:
+                close(sock);
+                free(response_buffer);
+                os_strdup("err {\"error\":8,\"message\":\"Response from syscheck too large\"}", *response);
+                return -1;
+            case -1:
+                close(sock);
+                free(response_buffer);
+                os_strdup("err {\"error\":9,\"message\":\"Error receiving response from syscheck\"}", *response);
+                return -1;
+            case 0:
+                close(sock);
+                free(response_buffer);
+                os_strdup("err {\"error\":10,\"message\":\"Empty response from syscheck\"}", *response);
+                return -1;
+            default:
+                close(sock);
+                *response = response_buffer;
+                // Check if response starts with "ok"
+                if (strncmp(*response, "ok", 2) == 0)
+                {
+                    return 0; // Success
+                }
+                else
+                {
+                    return -1; // Error
+                }
+        }
+#else
+        // On Windows, use the syscom_dispatch function directly
+        size_t response_len = syscom_dispatch(query, strlen(query), response);
+
+        if (response_len == 0 || !(*response))
+        {
+            return -1;
+        }
+
+        // Check if response starts with "ok"
+        if (strncmp(*response, "ok", 2) == 0)
+        {
+            return 0; // Success
+        }
+        else
+        {
+            return -1; // Error
+        }
+#endif
+    }
+
+    // For other modules, use wm_module_query
+    // Build full query: "module_name query_args"
+    size_t full_query_len = strlen(module_name) + 1 + strlen(query) + 1;
+    char* full_query = malloc(full_query_len);
+
+    if (!full_query)
+    {
+        return -1;
+    }
+
+    snprintf(full_query, full_query_len, "%s %s", module_name, query);
+
+    // Call wm_module_query
+    size_t response_len = wm_module_query(full_query, response);
+
+    free(full_query);
+
+    if (response_len == 0 || !(*response))
+    {
+        return -1;
+    }
+
+    // Check if response starts with "ok"
+    if (strncmp(*response, "ok", 2) == 0)
+    {
+        return 0; // Success
+    }
+    else
+    {
+        return -1; // Error
+    }
 }
 
 // Callback to send stateless messages
@@ -403,6 +538,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
+        agent_info_set_query_module_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_query_module_function");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
@@ -417,6 +553,12 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         if (agent_info_set_report_function_ptr)
         {
             agent_info_set_report_function_ptr(wm_agent_info_send_stateless);
+        }
+
+        // Set the query module function for inter-module communication
+        if (agent_info_set_query_module_function_ptr)
+        {
+            agent_info_set_query_module_function_ptr(wm_agent_info_query_module_wrapper);
         }
     }
     else
@@ -436,6 +578,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     if (agent_info_start_ptr)
     {
         minfo("Starting agent-info module...");
+
         agent_info_start_ptr(agent_info);
     }
     else
