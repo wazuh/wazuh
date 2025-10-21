@@ -200,6 +200,12 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "network_community_id",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperNetworkCommunityId});
     registry->template add<builders::OpBuilderEntry>(
+        "syslog_extract_facility",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperSyslogExtractFacility});
+    registry->template add<builders::OpBuilderEntry>(
+        "syslog_extract_severity",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperSyslogExtractSeverity});
+    registry->template add<builders::OpBuilderEntry>(
         "join", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringFromArray});
     registry->template add<builders::OpBuilderEntry>(
         "decode_base16",

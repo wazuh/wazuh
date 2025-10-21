@@ -80,6 +80,8 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [network_community_id](#network_community_id)
 - [regex_extract](#regex_extract)
 - [sha1](#sha1)
+- [syslog_extract_facility](#syslog_extract_facility)
+- [syslog_extract_severity](#syslog_extract_severity)
 - [system_epoch](#system_epoch)
 - [to_bool](#to_bool)
 - [to_int](#to_int)
@@ -10180,6 +10182,280 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# syslog_extract_facility
+
+## Signature
+
+```
+
+field: syslog_extract_facility(priority)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| priority | number | reference | Integers between `-2^63` and `2^63-1` |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Derives the syslog facility `code` and `name` from a priority value following RFC 5424.
+Valid priorities range from 0 to 191 (facility*8 + severity).
+The helper returns an object so it can be stored under `log.syslog.facility`.
+
+
+## Keywords
+
+- `syslog` 
+
+- `facility name` 
+
+- `facility code` 
+
+## Examples
+
+### Example 1
+
+Facility derived from priority 165 (local4).
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_facility($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 165
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 165,
+  "target_field": {
+    "code": 20,
+    "name": "local4"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Reject priority above 191.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_facility($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Reject negative priority values.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_facility($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# syslog_extract_severity
+
+## Signature
+
+```
+
+field: syslog_extract_severity(priority)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| priority | number | reference | Integers between `-2^63` and `2^63-1` |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Derives the syslog severity `code` and `name` from a priority value following RFC 5424.
+Valid priorities range from 0 to 191 (facility*8 + severity).
+The helper returns an object so it can be stored under `log.syslog.severity`.
+
+
+## Keywords
+
+- `syslog` 
+
+- `severity name` 
+
+- `severity code` 
+
+## Examples
+
+### Example 1
+
+Severity derived from priority 165 (Notice level).
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_severity($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 165
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 165,
+  "target_field": {
+    "code": 5,
+    "name": "notice"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Reject priority above 191.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_severity($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Reject negative priority values.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_severity($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+*The operation was performed with errors*
 
 
 
