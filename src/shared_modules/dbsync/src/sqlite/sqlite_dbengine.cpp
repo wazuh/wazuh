@@ -644,20 +644,32 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
 
     if (path.compare(":memory") != 0)
     {
-        if (std::ifstream(path))
+        // List of database files to remove (main db + auxiliary files)
+        const std::vector<std::string> filesToRemove =
         {
-            isRemoved = std::remove(path.c_str());
+            path,
+            path + "-journal",
+            path + "-wal",
+            path + "-shm"
+        };
 
-            for (uint8_t amountTries = 0; amountTries < MAX_TRIES && isRemoved; amountTries++)
+        for (const auto& file : filesToRemove)
+        {
+            if (std::ifstream(file))
             {
-                std::this_thread::sleep_for(1s); //< Sleep for 1s
-                std::cerr << "Sleep for 1s and try to delete database again.\n";
-                isRemoved = std::remove(path.c_str());
-            }
+                isRemoved = std::remove(file.c_str());
 
-            if (isRemoved)
-            {
-                ret = false;
+                for (uint8_t amountTries = 0; amountTries < MAX_TRIES && isRemoved; amountTries++)
+                {
+                    std::this_thread::sleep_for(1s); //< Sleep for 1s
+                    std::cerr << "Sleep for 1s and try to delete database file again: " << file << "\n";
+                    isRemoved = std::remove(file.c_str());
+                }
+
+                if (isRemoved)
+                {
+                    ret = false;
+                }
             }
         }
     }
@@ -2199,5 +2211,32 @@ void SQLiteDBEngine::updateTableRowCounter(const std::string& table, const long 
             it->second.currentRows = 0;
             throw dbengine_error { ERROR_COUNT_MAX_ROWS };
         }
+    }
+}
+
+void SQLiteDBEngine::closeAndDeleteDatabase(const std::string& path)
+{
+    std::lock_guard<std::mutex> lock(m_stmtMutex);
+
+    // Clear the statement cache
+    m_statementsCache.clear();
+
+    // Commit and release the transaction
+    if (m_transaction)
+    {
+        m_transaction->commit();
+        m_transaction.reset();
+    }
+
+    // Close the SQLite connection
+    if (m_sqliteConnection)
+    {
+        m_sqliteConnection.reset();
+    }
+
+    // Delete the database file
+    if (!cleanDB(path))
+    {
+        throw dbengine_error {DELETE_OLD_DB_ERROR};
     }
 }

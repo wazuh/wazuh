@@ -677,6 +677,41 @@ void dbsync_free_result(cJSON** js_data)
     }
 }
 
+int dbsync_close_and_delete_db(const DBSYNC_HANDLE handle,
+                               const char*         path)
+{
+    auto retVal { -1 };
+    std::string errorMessage;
+
+    if (!handle || !path)
+    {
+        errorMessage += "Invalid parameters.";
+    }
+    else
+    {
+        try
+        {
+            DBSyncImplementation::instance().closeAndDeleteDatabase(handle, path);
+            retVal = 0;
+        }
+        catch (const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            retVal = ex.id();
+        }
+        // LCOV_EXCL_START
+        catch (...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+
+        // LCOV_EXCL_STOP
+    }
+
+    log_message(errorMessage);
+    return retVal;
+}
+
 #ifdef __cplusplus
 }
 #endif
@@ -698,6 +733,7 @@ DBSync::DBSync(const HostType                  hostType,
                const std::vector<std::string>& upgradeStatements)
     : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement, dbManagement, upgradeStatements) }
     , m_shouldBeRemoved{ true }
+    , m_dbPath{ path }
 { }
 
 DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
@@ -799,6 +835,11 @@ void DBSync::updateWithSnapshot(const nlohmann::json&     jsInput,
         }
     };
     DBSyncImplementation::instance().updateSnapshotData(m_dbsyncHandle, jsInput, callbackWrapper);
+}
+
+void DBSync::closeAndDeleteDatabase()
+{
+    DBSyncImplementation::instance().closeAndDeleteDatabase(m_dbsyncHandle, m_dbPath);
 }
 
 

@@ -19,4 +19,5 @@ class MockDBSync : public IDBSync
                     (const nlohmann::json& jsInput, ResultCallbackData callbackData),
                     (override));
         MOCK_METHOD(DBSYNC_HANDLE, handle, (), (override));
+        MOCK_METHOD(void, closeAndDeleteDatabase, (), (override));
 };

@@ -255,6 +255,11 @@ void SecurityConfigurationAssessment::deleteDatabase()
     {
         m_spSyncProtocol->deleteDatabase();
     }
+
+    if (m_dBSync)
+    {
+        m_dBSync->closeAndDeleteDatabase();
+    }
 }
 
 // LCOV_EXCL_STOP
