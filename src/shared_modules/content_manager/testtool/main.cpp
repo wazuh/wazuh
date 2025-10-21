@@ -135,7 +135,7 @@ void runOffsetUpdate(const std::string& topicName)
         std::cout << msg << std::endl;
     };
 
-    const auto onError = [](const std::string& msg, const long responseCode)
+    const auto onError = [](const std::string& msg, const long responseCode, const std::string& /*responseBody*/)
     {
         std::cout << msg << ": " << responseCode << std::endl;
     };
@@ -176,9 +176,10 @@ int main()
             std::cout << msg << std::endl;
         };
 
-        const auto onError = [](const std::string& msg, const long responseCode)
+        const auto onError = [](const std::string& msg, const long responseCode, const std::string& responseBody)
         {
             std::cout << msg << ": " << responseCode << std::endl;
+            std::cerr << "Response body: " << responseBody << "\n";
         };
 
         const std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";
