@@ -161,31 +161,6 @@ namespace Utils
         return parentDir;
     }
 
-    static std::string joinPaths(const std::string& base, const std::string& relative)
-    {
-        if (base.empty()) return relative;
-        if (relative.empty()) return base;
-
-#ifdef _WIN32
-        const char separator = '\\';
-#else
-        const char separator = '/';
-#endif
-
-        if (base.back() == separator && relative.front() == separator)
-        {
-            return base + relative.substr(1); // Remove extra slash
-        }
-        else if (base.back() != separator && relative.front() != separator)
-        {
-            return base + separator + relative; // Add missing slash
-        }
-        else
-        {
-            return base + relative; // Already properly separated
-        }
-    }
-
     static bool isAbsolutePath(const std::string& path)
     {
         if (path.empty()) return false;
@@ -198,6 +173,49 @@ namespace Utils
         // Unix absolute path starts with '/'
         return path[0] == '/';
     #endif
+    }
+
+    static std::string joinPaths(const std::string& base, const std::string& relative)
+    {
+        if (base.empty()) return relative;
+        if (relative.empty()) return base;
+
+#ifdef _WIN32
+        const char separator = '\\';
+        const char altSeparator = '/';
+#else
+        const char separator = '/';
+        const char altSeparator = '\\';
+#endif
+
+        // Normalize separators in relative path to use the platform separator
+        std::string normalizedRelative = relative;
+        std::replace(normalizedRelative.begin(), normalizedRelative.end(), altSeparator, separator);
+
+        // Remove leading separator from relative if present
+        size_t relativeStart = 0;
+        while (relativeStart < normalizedRelative.length() && normalizedRelative[relativeStart] == separator)
+        {
+            ++relativeStart;
+        }
+
+        // Remove trailing separator from base if present
+        std::string normalizedBase = base;
+        while (!normalizedBase.empty() && normalizedBase.back() == separator)
+        {
+            normalizedBase.pop_back();
+        }
+
+        // If base is now empty (was only separators), return relative
+        if (normalizedBase.empty())
+        {
+            return relativeStart < normalizedRelative.length()
+                ? normalizedRelative.substr(relativeStart)
+                : normalizedRelative;
+        }
+
+        // Join with a single separator
+        return normalizedBase + separator + normalizedRelative.substr(relativeStart);
     }
 
     static std::string removePrefix(const std::string& fullPath, const std::string& prefix)

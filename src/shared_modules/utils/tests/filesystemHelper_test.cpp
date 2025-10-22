@@ -66,6 +66,22 @@ TEST_F(FilesystemUtilsTest, joinPathsSingleLevel)
     EXPECT_EQ(Utils::joinPaths(R"(C:\base)", "file.txt"), R"(C:\base\file.txt)");
 }
 
+TEST_F(FilesystemUtilsTest, joinPathsMixedSeparators)
+{
+    // Forward slashes should be converted to backslashes on Windows
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base\path)", "relative/path/file.txt"), R"(C:\base\path\relative\path\file.txt)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsMultipleTrailingSlashes)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(C:\base\path\\\)", R"(\\\relative\path)"), R"(C:\base\path\relative\path)");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBaseOnlySeparators)
+{
+    EXPECT_EQ(Utils::joinPaths(R"(\\\)", R"(relative\path)"), R"(relative\path)");
+}
+
 #else
 
 TEST_F(FilesystemUtilsTest, FilesystemExistsDir)
@@ -139,6 +155,16 @@ TEST_F(FilesystemUtilsTest, joinPathsBothWithSlash)
 TEST_F(FilesystemUtilsTest, joinPathsSingleLevel)
 {
     EXPECT_EQ(Utils::joinPaths("/base", "file.txt"), "/base/file.txt");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsMultipleTrailingSlashes)
+{
+    EXPECT_EQ(Utils::joinPaths("/base/path///", "///relative/path"), "/base/path/relative/path");
+}
+
+TEST_F(FilesystemUtilsTest, joinPathsBaseOnlySeparators)
+{
+    EXPECT_EQ(Utils::joinPaths("///", "relative/path"), "relative/path");
 }
 
 #endif
