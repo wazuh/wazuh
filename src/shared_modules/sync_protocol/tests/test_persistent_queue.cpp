@@ -107,7 +107,7 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
 
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
-    EXPECT_THROW(queue.submit("id1", "idx1", "{}", Operation::CREATE), std::runtime_error);
+    EXPECT_THROW(queue.submit("id1", "idx1", "{}", Operation::CREATE, 0), std::runtime_error);
 
     // Verify that the specific error message was logged
     EXPECT_EQ(capturedLogLevel, LOG_ERROR);

@@ -1320,7 +1320,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     // Create some sample data for synchronization to make it successful
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 0}
     };
 
     // Set up mock expectations for successful sync until the finalization phase
@@ -2488,7 +2488,7 @@ TEST_F(AgentSyncProtocolTest, SendStartAndWaitAckException)
     // Set up mock data for synchronization to trigger sendStartAndWaitAck
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -2550,8 +2550,8 @@ TEST_F(AgentSyncProtocolTest, SendDataMessagesException)
     // Set up mock data for synchronization to trigger sendDataMessages
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 1}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -3899,7 +3899,7 @@ TEST_F(AgentSyncProtocolTest, SendEndMessageException)
     // Set up mock data for synchronization
     std::vector<PersistedData> testData =
     {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())

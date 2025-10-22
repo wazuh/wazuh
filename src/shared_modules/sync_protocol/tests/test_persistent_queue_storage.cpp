@@ -312,10 +312,10 @@ class PersistentQueueStorageTest : public ::testing::Test
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 {
     // Insert items with different indices
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE});
-    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "{}", Operation::MODIFY});
-    storage->submitOrCoalesce(PersistedData{0, "id4", "index3", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 0});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE, 0});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "{}", Operation::MODIFY, 0});
+    storage->submitOrCoalesce(PersistedData{0, "id4", "index3", "{}", Operation::CREATE, 0});
 
     // Verify all items are present
     auto allItems = storage->fetchAndMarkForSync();
@@ -341,8 +341,8 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 TEST_F(PersistentQueueStorageTest, RemoveByIndexHandlesNonExistentIndex)
 {
     // Insert some items
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE, 1});
 
     // Try to remove items with non-existent index (should not throw)
     EXPECT_NO_THROW(storage->removeByIndex("non_existent_index"));
@@ -365,15 +365,15 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexHandlesEmptyDatabase)
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
 {
     // Insert items and mark some as syncing
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "{}", Operation::MODIFY});
-    storage->submitOrCoalesce(PersistedData{0, "id3", "index2", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "{}", Operation::MODIFY, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index2", "{}", Operation::CREATE, 1});
 
     // Mark items as syncing
     storage->fetchAndMarkForSync();
 
     // Update an item during sync (will be SYNCING_UPDATED)
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{updated}", Operation::MODIFY});
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{updated}", Operation::MODIFY, 1});
 
     // Remove all items with "index1" regardless of status
     storage->removeByIndex("index1");
@@ -497,7 +497,7 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseVerifyConnectionI
     using ::testing::_;
 
     // Insert some data to ensure database is active
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 1});
     auto items = storage->fetchAndMarkForSync();
     EXPECT_EQ(items.size(), static_cast<size_t>(1));
 
