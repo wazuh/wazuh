@@ -136,7 +136,15 @@ int main(const int argc, const char* argv[])
                        va_list args)
             {
                 auto pos = file.find_last_of('/');
-                std::string fileName = (pos != std::string::npos) ? file.substr(pos + 1) : file;
+                std::string fileName;
+                if (pos != std::string::npos)
+                {
+                    fileName = file.substr(pos + 1);
+                }
+                else
+                {
+                    fileName = file;
+                }
 
                 char formattedStr[MAX_LEN] = {0};
                 vsnprintf(formattedStr, MAX_LEN, message.c_str(), args);
@@ -164,7 +172,10 @@ int main(const int argc, const char* argv[])
             const auto events = nlohmann::json::parse(eventsFile);
             if (events.is_array())
             {
-                for (const auto& event : events) indexerConnector.publish(event.dump());
+                for (const auto& event : events)
+                {
+                    indexerConnector.publish(event.dump());
+                }
             }
             else
             {

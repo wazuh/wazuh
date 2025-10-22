@@ -141,7 +141,7 @@ public:
      */
     uint64_t getLoopDelaySeconds() const
     {
-        return std::stoull(m_loopDelaySeconds);
+        return !m_loopDelaySeconds.empty() ? std::stoull(m_loopDelaySeconds) : 0;
     }
 
     /**
