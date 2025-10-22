@@ -158,6 +158,49 @@ Synchronizes metadata or groups with the server without sending data. This metho
 
 **Returns:** `true` if synchronization completed successfully, `false` otherwise
 
+##### `notifyDataClean()`
+
+```cpp
+bool notifyDataClean(const std::vector<std::string>& indices,
+                     std::chrono::seconds timeout,
+                     unsigned int retries,
+                     size_t maxEps)
+```
+
+Notifies the manager about data cleaning for specified indices. This method sends DataClean messages for each index in the provided vector. The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck. Upon receiving Ok/PartialOk, it clears the local database and returns true.
+
+**Parameters:**
+- `indices`: Vector of index names to clean
+- `timeout`: Timeout duration for waiting for server responses
+- `retries`: Number of retry attempts for each message
+- `maxEps`: Maximum events per second (0 = unlimited)
+
+**Returns:** `true` if notification completed successfully and database was cleared, `false` otherwise
+
+**Example:**
+```cpp
+std::vector<std::string> indices = {"fim_files", "fim_registry"};
+bool success = protocol.notifyDataClean(
+    indices,
+    std::chrono::seconds(30),
+    3,
+    1000
+);
+```
+
+##### `deleteDatabase()`
+
+```cpp
+void deleteDatabase()
+```
+
+Deletes the database file. This method closes the database connection and removes the database file from disk.
+
+**Example:**
+```cpp
+protocol.deleteDatabase();
+```
+
 ##### `parseResponseBuffer()`
 
 ```cpp
@@ -326,6 +369,58 @@ C wrapper for `synchronizeMetadataOrGroups()`. Synchronizes metadata or groups w
 - `max_eps`: Maximum events per second
 
 **Returns:** `true` on success, `false` on failure
+
+#### `asp_notify_data_clean()`
+
+```c
+bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
+                           const char** indices,
+                           size_t indices_count,
+                           unsigned int sync_timeout,
+                           unsigned int sync_retries,
+                           size_t max_eps)
+```
+
+C wrapper for `notifyDataClean()`. Notifies the manager about data cleaning for specified indices. This function sends DataClean messages for each index in the provided array. The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck. Upon receiving Ok/PartialOk, it clears the local database and returns true.
+
+**Parameters:**
+- `handle`: Protocol handle
+- `indices`: Array of index name strings to clean
+- `indices_count`: Number of indices in the array
+- `sync_timeout`: Timeout in seconds
+- `sync_retries`: Number of retries
+- `max_eps`: Maximum events per second
+
+**Returns:** `true` if notification completed successfully and database was cleared, `false` otherwise
+
+**Example:**
+```c
+const char* indices[] = {"fim_files", "fim_registry"};
+bool success = asp_notify_data_clean(
+    handle,
+    indices,
+    2,
+    30,
+    3,
+    1000
+);
+```
+
+#### `asp_delete_database()`
+
+```c
+void asp_delete_database(AgentSyncProtocolHandle* handle)
+```
+
+C wrapper for `deleteDatabase()`. Deletes the database file. This function closes the database connection and removes the database file from disk.
+
+**Parameters:**
+- `handle`: Protocol handle
+
+**Example:**
+```c
+asp_delete_database(handle);
+```
 
 #### `asp_parse_response_buffer()`
 

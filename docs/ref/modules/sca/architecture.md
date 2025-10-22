@@ -106,6 +106,96 @@ The SCA module operates with the following threads:
 
 ---
 
+## SCA Disabled Cleanup Flow
+
+### Overview
+
+When the SCA module is disabled, the `wm_handle_sca_disable_and_notify_data_clean()` function executes a cleanup procedure to notify the manager and remove local databases. This ensures the manager's state remains synchronized with the agent's actual module status.
+
+### Execution Trigger
+
+The function is called during module startup in `wm_sca_main()` when `data->enabled` is false:
+
+```c
+if (data->enabled) {
+    minfo("SCA module enabled.");
+} else {
+    wm_handle_sca_disable_and_notify_data_clean();
+    minfo("SCA module disabled. Exiting.");
+    pthread_exit(NULL);
+}
+```
+
+### Cleanup Flow
+
+```
+Module Startup (wm_sca_main)
+      │
+      ▼
+Check data->enabled
+      │
+      ▼ (if disabled)
+wm_handle_sca_disable_and_notify_data_clean()
+      │
+      ├─► Check for SCA database file ───► w_is_file(SCA_DB_DISK_PATH)
+      │                                           │
+      │                                           ├─► File exists
+      │                                           │   (proceed with cleanup)
+      │                                           │
+      │                                           └─► File not exists
+      │                                               (skip notification, exit)
+      │
+Load SCA module dynamically
+      │
+      ▼
+Configure SCA module minimally
+      │
+      ├─► Set logging callback ─────────► sca_set_log_function(sca_log_callback)
+      │
+      ├─► Set sync parameters ──────────► sca_set_sync_parameters()
+      │   (module name, DB path, MQ funcs)
+      │
+      └─► Initialize module ─────────────► sca_init()
+      │
+      ▼
+Send data clean notification ────────► sca_notify_data_clean()
+      │                                     │
+      │                                     ├─► indices: [SCA_SYNC_INDEX]
+      │                                     ├─► Retry on failure
+      │                                     │   (wait sca_sync_interval)
+      │                                     │
+      │                                     └─► Success confirmation
+      │
+      └─► Delete databases ─────────► sca_delete_database()
+```
+
+### Behavior Scenarios
+
+#### Scenario 1: SCA Disabled with Existing Database
+
+```
+1. Agent starts with SCA module disabled (enabled = false)
+2. SCA database file exists at SCA_DB_DISK_PATH
+3. Load SCA module dynamically
+4. Configure logging and sync parameters
+5. Initialize SCA module structures
+6. Send data clean notification to manager (with infinite retries)
+7. Manager removes SCA_SYNC_INDEX from agent's state
+8. Delete sync protocol database
+9. Exit module startup
+```
+
+#### Scenario 2: SCA Disabled with No Database
+
+```
+1. Agent starts with SCA module disabled (enabled = false)
+2. SCA database file does not exist
+3. Skip data clean notification (nothing to clean)
+4. Exit module startup immediately
+```
+
+---
+
 ## Event Types
 
 ### Stateful Events

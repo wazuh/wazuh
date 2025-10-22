@@ -414,3 +414,57 @@ sequenceDiagram
 
     Note over Module: Metadata synchronized<br/>without data transfer
 ```
+
+### Data Clean Notification Flow
+
+```mermaid
+sequenceDiagram
+    participant Module as Internal Module
+    participant ASP as Agent Sync Protocol
+    participant Queue as Persistent Queue
+    participant MQ as Message Queue
+    participant AD as Wazuh agentd
+    participant Manager as Wazuh Manager
+
+    Note over Module: Module disabled or<br/>specific indices removed
+
+    Module->>ASP: notifyDataClean(indices, timeout, retries, maxEps)
+    ASP->>ASP: Validate indices (non-empty)
+
+    Note over ASP: Create PersistedData<br/>for each index
+
+    Note over ASP,Manager: Session Establishment
+    ASP->>MQ: Send Start(mode=DELTA, size=N, indices)
+    MQ->>AD: Forward Start
+    AD->>Manager: Forward Start
+    Manager->>Manager: Create session
+    Manager->>AD: Send StartAck(session_id)
+    AD->>ASP: Forward StartAck
+    ASP->>ASP: Store session_id
+
+    Note over ASP,Manager: DataClean Messages Transfer
+    loop For each index
+        ASP->>ASP: Build DataClean message
+        ASP->>MQ: Send DataClean[seq, session, index]
+        MQ->>AD: Forward DataClean
+        AD->>Manager: Forward DataClean
+        Manager->>Manager: Mark index for cleanup
+    end
+
+    Note over ASP,Manager: Session Completion
+    ASP->>MQ: Send End(session_id)
+    MQ->>AD: Forward End
+    AD->>Manager: Forward End
+    Manager->>Manager: Clean marked indices
+    Manager->>AD: Send EndAck(success)
+    AD->>ASP: Forward EndAck
+
+    Note over ASP: Success confirmed
+
+    ASP->>Queue: clearItemsByIndex(index) for each
+    Queue-->>ASP: Local data cleared
+
+    ASP-->>Module: Return true (success)
+
+    Note over Module: Data clean notification<br/>completed successfully
+```
