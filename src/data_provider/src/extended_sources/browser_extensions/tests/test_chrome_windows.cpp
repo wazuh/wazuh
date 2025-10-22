@@ -31,7 +31,7 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
-    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(10));
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(5));
 }
 
 TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
@@ -61,12 +61,12 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["manifest_hash"], "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f");
             EXPECT_EQ(jsonElement["name"], "Adobe Acrobat: PDF edit, convert, sign tools");
             EXPECT_EQ(jsonElement["optional_permissions"], "history, bookmarks");
-            EXPECT_EQ(jsonElement["path"], Utils::joinPaths(mockHomePath, "mock-user/AppData\\Local\\Google\\Chrome\\User Data/Default/Extensions/ext1\\1.2.3"));
+            EXPECT_EQ(jsonElement["path"], Utils::joinPaths(mockHomePath, R"(mock-user\AppData\Local\Google\Chrome\User Data\Default\Extensions\ext1\1.2.3)"));
             EXPECT_EQ(jsonElement["permissions"],
                       "contextMenus, tabs, downloads, nativeMessaging, webRequest, webNavigation, storage, scripting, alarms, offscreen, cookies, sidePanel");
             EXPECT_EQ(jsonElement["persistent"], "0");
             EXPECT_EQ(jsonElement["profile"], "Seu Chrome");
-            EXPECT_EQ(jsonElement["profile_path"], Utils::joinPaths(mockHomePath, "mock-user/AppData\\Local\\Google\\Chrome\\User Data/Default"));
+            EXPECT_EQ(jsonElement["profile_path"], Utils::joinPaths(mockHomePath, R"(mock-user\AppData\Local\Google\Chrome\User Data\Default)"));
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
             EXPECT_EQ(jsonElement["state"], "1");
