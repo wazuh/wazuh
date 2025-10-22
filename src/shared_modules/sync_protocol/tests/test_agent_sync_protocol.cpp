@@ -3266,13 +3266,26 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseThrowsOnQueueError)
             return 0;
         }
     };
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    bool errorLogged = false;
+    std::string loggedMessage;
+    LoggerFunc testLogger = [&errorLogged, &loggedMessage](modules_log_level_t level, const std::string& message)
+    {
+        if (level == LOG_ERROR && message.find("Failed to delete database") != std::string::npos)
+        {
+            errorLogged = true;
+            loggedMessage = message;
+        }
+    };
+
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     EXPECT_CALL(*mockQueue, deleteDatabase())
     .WillOnce(::testing::Throw(std::runtime_error("Database deletion failed")));
 
-    EXPECT_THROW(protocol->deleteDatabase(), std::runtime_error);
+    EXPECT_NO_THROW(protocol->deleteDatabase());
+    EXPECT_TRUE(errorLogged);
+    EXPECT_NE(loggedMessage.find("Database deletion failed"), std::string::npos);
 }
 
 // Tests for notifyDataClean

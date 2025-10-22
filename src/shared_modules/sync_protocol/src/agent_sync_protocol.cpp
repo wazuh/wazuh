@@ -1043,6 +1043,5 @@ void AgentSyncProtocol::deleteDatabase()
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("Failed to delete database: ") + e.what());
-        throw;
     }
 }
