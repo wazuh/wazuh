@@ -43,6 +43,8 @@ int response_timeout;
 int guess_agent_group;
 int shared_reload_interval;
 int disk_storage;
+size_t batch_events_capacity;
+size_t batch_events_per_agent_capacity;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -89,6 +91,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     shared_reload_interval = getDefine_Int("remoted", "shared_reload", 1, 18000);
     disk_storage = getDefine_Int("remoted", "disk_storage", 0, 1);
     _s_verify_counter = getDefine_Int("remoted", "verify_msg_id", 0, 1);
+    batch_events_capacity = (size_t)getDefine_Int("remoted", "batch_events_capacity", 0, 0x1<<20);
+    batch_events_per_agent_capacity = (size_t)getDefine_Int("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;

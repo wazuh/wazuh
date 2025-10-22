@@ -224,5 +224,7 @@ extern int router_forwarding_disabled;
 extern int state_interval;
 extern int shared_reload_interval;
 extern size_t global_counter;
+extern size_t batch_events_capacity;
+extern size_t batch_events_per_agent_capacity;
 
 #endif /* LOGREMOTE_H */
