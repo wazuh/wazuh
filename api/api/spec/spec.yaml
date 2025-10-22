@@ -72,10 +72,6 @@ x-rbac-catalog:
       description: "Reference agent groups via group ID (i.e. group:id:default)"
     'node:id':
       description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
-    'decoder:file':
-      description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-    'list:file':
-      description: "Reference list files via its filename (i.e. list:file:audit-keys)"
     'rule:file':
       description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
@@ -255,15 +251,15 @@ x-rbac-catalog:
         resources: ['*:*:*']
         effect: "allow"
     'decoders:read':
-      description: "Read decoders files"
+      description: "Read decoders"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['decoders:read']
-        resources: ['decoder:file:*']
+        resources: ['*:*:*']
         effect: "allow"
     'decoders:update':
-      description: "Update or upload custom decoder files"
+      description: "Update decoders"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -271,37 +267,85 @@ x-rbac-catalog:
         resources: ['*:*:*']
         effect: "allow"
     'decoders:delete':
-      description: "Delete custom decoder files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
-      example:
-        actions: ['decoders:delete']
-        resources: ['decoder:file:local_decoder.xml']
-        effect: "allow"
-    'lists:read':
-      description: "Read CDB lists files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/list:file'
-      example:
-        actions: ['lists:read']
-        resources: ['list:file:audit-keys']
-        effect: "deny"
-    'lists:update':
-      description: "Update or upload CDB lists files"
+      description: "Delete decoders"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['lists:update']
+        actions: ['decoders:delete']
         resources: ['*:*:*']
         effect: "allow"
-    'lists:delete':
-      description: "Delete CDB lists files"
+    'decoders:create':
+      description: "Create decoders"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/list:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['lists:delete']
-        resources: ['list:file:audit-keys']
-        effect: "deny"
+        actions: ['decoders:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'kvdbs:read':
+      description: "Read KVDBs"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['kvdbs:read']
+        resources: ['*:*:*']
+        effect: "allow"
+    'kvdbs:create':
+      description: "Create KVDBs"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['kvdbs:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'kvdbs:update':
+      description: "Update KVDBs"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['kvdbs:update']
+        resources: ['*:*:*']
+        effect: "allow"
+    'kvdbs:delete':
+      description: "Delete KVDBs"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['kvdbs:delete']
+        resources: ['*:*:*']
+        effect: "allow"
+    'integrations:create':
+      description: "Create integration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:create' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'integrations:read':
+      description: "Read integration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:read' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'integrations:update':
+      description: "Update integration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:update' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'integrations:delete':
+      description: "Delete integration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:delete' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
       resources:
@@ -918,45 +962,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/Decoder'
-
-    AllItemsResponseDecodersFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/DecoderFile'
-
-    AllItemsResponseLists:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBList'
-
-    AllItemsResponseListsFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBListFile'
 
     AllItemsResponseRoles:
       allOf:
@@ -1936,6 +1941,59 @@ components:
               enum:
               - "yes"
               - "no"
+
+    # KVDB models
+    ItemKVDB:
+      allOf:
+        - $ref: '#/components/schemas/CommonRuleset'
+        - type: object
+          description: "KVDB asset descriptor and content"
+          required:
+            - id
+            - name
+            - content
+          properties:
+            integration_id:
+              type: string
+              nullable: true
+              description: "Optional integration owner ID"
+            content:
+              type: object
+              additionalProperties: true
+              description: "Key-Value map (or object) managed by the Engine"
+
+    KVDBUpsertRequest:
+      allOf:
+        - $ref: '#/components/schemas/CommonRuleset'
+        - type: object
+          required:
+            - id
+            - content
+          properties:
+            integration_id:
+              type: string
+              nullable: true
+            content:
+              type: object
+              additionalProperties: true
+
+    AllItempsResponseKVDBs:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              allOf:
+                - $ref: '#/components/schemas/AllItemsResponse'
+                - type: object
+                  required:
+                    - affected_items
+                  properties:
+                    affected_items:
+                      type: array
+                      description: "KVDBs affected/returned by the API call"
+                      items:
+                        $ref: '#/components/schemas/ItemKVDB'
 
     # Logtest models
     LogtestRequest:
@@ -3910,73 +3968,78 @@ components:
           enum: [white, black]
           example: white
 
-    # Decoders models
-    Decoder:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/DecoderFile'
-      properties:
-        name:
-          type: string
-          description: "Decoder name"
-        position:
-          type: integer
-          format: int32
-          minimum: 0
-          description: "Position of this decoder in the decoder file. The parent decoder will have position 0, the
-          following defined decoder will have position 1, and so on"
-        details:
-          type: object
-          description: "Decoder definition fields"
-          properties:
-            program_name:
-              type: object
-              nullable: true
-            parent:
-              type: string
-            prematch:
-              type: object
-            regex:
-              type: object
-              items:
-                type: string
-            order:
-              type: string
-            accumulate:
-              type: boolean
-              nullable: true
-
-    DecoderFile:
-      allOf:
-        - $ref: '#/components/schemas/RulesetFile'
-        - $ref: '#/components/schemas/RulesetStatus'
-
-    # Lists models
-    CDBList:
-      allOf:
-        - $ref: '#/components/schemas/RulesetFile'
-        - type: object
-          properties:
-            items:
-              type: array
-              items:
-                $ref: '#/components/schemas/CDBListPair'
-
-    CDBListPair:
+    # Common engine ruleset model
+    CommonRuleset:
       type: object
       required:
-        - key
-        - value
+        - id
+        - name
       properties:
-        key:
+        id:
           type: string
-          description: "Value of the CDB list item key"
-        value:
+          description: "Unique ID"
+        name:
           type: string
-          description: "Value of the CDB list item value"
+          description: "Human-friendly name"
 
-    CDBListFile:
-      $ref: '#/components/schemas/RulesetFile'
+    # Decoders models
+    Decoder:
+      allOf:
+        - $ref: '#/components/schemas/CommonRuleset'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - decoder
+            integration_id:
+              type: string   
+            status:
+              type: string
+              enum:
+                - enabled
+                - disabled
+            document:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  description: Decoder metadata
+                  required:
+                    - module
+                    - title
+                    - description
+                    - compatibility
+                    - versions
+                    - author
+                    - references
+                  properties:
+                    module:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    compatibility:
+                      type: string
+                    versions:
+                      type: array
+                      items:
+                        type: string
+                    author:
+                      type: object
+                      required:
+                        - name
+                        - date
+                      properties:
+                        name:
+                          type: string
+                        date:
+                          type: string
+                    references:
+                      type: array
+                      items:
+                        type: string
 
     # Overview models
     OverviewAgents:
@@ -4045,6 +4108,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Agent'
+
+    # Integrations models
+    IntegrationCreateModel:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Integration type.
+        name:
+          type: string
+          description: Integration name.
+        id:
+          type: string
+          description: Integration ID.
+        description:
+          type: string
+          description: Integration description.
+        documentation:
+          type: string
+          description: Integration documentation.
+        status:
+          type: string
+          description: Integration status.
+        kvdbs:
+          type: array
+          items:
+            type: string
+          description: List of KVDBs associated with the integration.
+        decoders:
+          type: array
+          items:
+            type: string
+          description: List of decoders associated with the integration.
+      required:
+        - type
+        - name
+        - id
+        - description
+        - documentation
+        - status
+        - kvdbs
+        - decoders
+
+
+    # Integrations order models
+    IntegrationInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Integration ID.
+        name:
+          type: string
+          description: Integration name.
+      required:
+        - id
+        - name
+
+    IntegrationsOrder:
+      type: object
+      properties:
+        order:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationInfo'
+          description: List of IntegrationInfo objects representing the order.
+      required:
+        - order
+
 
   securitySchemes:
     basicAuth:
@@ -4347,15 +4479,14 @@ components:
           enum:
             - wazuh-analysisd
             - wazuh-remoted
-    decoder_name:
+    decoder_id:
       in: query
-      name: decoder_names
+      name: decoder_id
       description: "Decoder name"
       schema:
         type: array
         items:
           type: string
-          format: names
     description:
       in: query
       name: description
@@ -4498,14 +4629,15 @@ components:
         default: 500
         minimum: 1
         maximum: 500
-    list_filename_path:
-      in: path
-      name: filename
-      description: "Filename (CDB list) to get/edit/delete."
-      required: true
+    kvdb_id:
+      in: query
+      name: kvdb_id
+      description: "Filter by KVDB IDs"
+      required: false
       schema:
-        type: string
-        format: cdb_filename_path
+        type: array
+        items:
+          type: string
     agents_list:
       in: query
       name: agents_list
@@ -4740,6 +4872,17 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
+    policy_type:
+      in: query
+      name: type
+      description: "Engine policy type"
+      required: true
+      schema:
+        type: string
+        items:
+          enum:
+          - testing
+          - production
     endpoint:
       in: query
       name: endpoint
@@ -4997,6 +5140,16 @@ components:
             - never_connected
             - disconnected
         minItems: 1
+    status_resource:
+      in: query
+      name: status
+      description: "Filter by resource status"
+      required: false
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
     statusRLDParam:
       in: query
       name: status
@@ -5088,6 +5241,15 @@ components:
       schema:
         type: boolean
         default: false
+    integration_id:
+      in: query
+      name: integration_id
+      description: List of integration IDs.
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
     node_type:
       in: query
       name: type
@@ -5788,8 +5950,6 @@ components:
           - 'agent:id'
           - 'group:id'
           - 'node:id'
-          - 'decoder:file'
-          - 'list:file'
           - 'rule:file'
           - 'policy:id'
           - 'role:id'
@@ -5811,7 +5971,7 @@ components:
     xml_filename:
       in: query
       name: filename
-      description: "Filter by filename of one or more rule or decoder files."
+      description: "Filter by filename of one or more rule files."
       schema:
         type: array
         items:
@@ -5820,7 +5980,7 @@ components:
     xml_filename_path:
       in: path
       name: filename
-      description: "Filename (rule or decoder) to download/upload/edit file."
+      description: "Filename (rule) to download/upload/edit file."
       required: true
       schema:
         type: string
@@ -5841,8 +6001,8 @@ tags:
     description: "Ingestion endpoints"
   - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: Lists
-    description: "CDB lists management"
+  - name: KVDBs
+    description: "User-defined KVDBs management"
   - name: Logtest
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
@@ -9116,12 +9276,8 @@ paths:
                         rule_exclude:
                           - 0215-policy_rules.xml
                         list:
-                          - etc/lists/audit-keys
-                          - etc/lists/amazon/aws-eventnames
-                          - etc/lists/security-eventchannel
-                          - etc/lists/malicious-ioc/malware-hashes
-                          - etc/lists/malicious-ioc/malicious-ip
-                          - etc/lists/malicious-ioc/malicious-domains
+                          - etc/ruleset/kvdb/ip_reputation.json
+                          - etc/ruleset/kvdb/geoip_countries.json
                       auth:
                         disabled: no
                         port: "1515"
@@ -10222,31 +10378,28 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /lists:
-    get:
+  /integrations:
+    post:
       tags:
-        - Lists
-      summary: "Get CDB lists info"
-      description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
-      See available parameters for more details"
-      operationId: api.controllers.cdb_list_controller.get_lists
+        - Integrations
+      summary: "Create a new integration"
+      description: "Creates a new integration asset"
+      operationId: api.controllers.integration_controller.upsert_integration
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
+        - $ref: '#/x-rbac-catalog/actions/integrations:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/policy_type'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreateModel'
       responses:
         '200':
-          description: "Successfully got all CDB lists and the files where they are defined"
+          description: Integration created
           content:
             application/json:
               schema:
@@ -10255,28 +10408,55 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
-              example:
-                data:
-                  affected_items:
-                    - items:
-                        - key: audit-wazuh-w
-                          value: write
-                        - key: audit-wazuh-r
-                          value: read
-                        - key: audit-wazuh-a
-                          value: attribute
-                        - key: audit-wazuh-x
-                          value: execute
-                        - key: audit-wazuh-c
-                          value: command
-                      relative_dirname: etc/lists
-                      filename: audit-keys
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All specified lists were returned"
-                error: 0
+                        $ref: '#/components/schemas/AllItemsResponse'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    get:
+      tags:
+        - Integrations
+      summary: "Get integrations"
+      description: "Get a list of integrations"
+      operationId: api.controllers.integration_controller.get_integration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:read'
+      parameters:
+        - $ref: '#/components/parameters/integration_id'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/status_resource'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+      responses:
+        '200':
+          description: List of integrations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10288,24 +10468,27 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /lists/files/{filename}:
-    get:
+    put:
       tags:
-        - Lists
-      summary: "Get CDB list file content"
-      description: "Return the content of a CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found"
-      operationId: api.controllers.cdb_list_controller.get_file
+        - Integrations
+      summary: "Update integrations"
+      description: "Updates the contents of an Integration"
+      operationId: api.controllers.integration_controller.upsert_integration
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
+        - $ref: '#/x-rbac-catalog/actions/integrations:update'
       parameters:
-        - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/policy_type'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreateModel'
       responses:
         '200':
-          description: "Successfully got CDB list"
+          description: Integration updated
           content:
             application/json:
               schema:
@@ -10314,79 +10497,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
-              example:
-                data:
-                  affected_items:
-                    - audit-wazuh-w: write
-                      audit-wazuh-r: read
-                      audit-wazuh-a: attribute
-                      audit-wazuh-x: execute
-                      audit-wazuh-c: command
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "CDB list was returned"
-                error: 0
-            'text/plain':
-              schema:
-                type: string
-              example: |
-                audit-wazuh-w:write
-                audit-wazuh-r:read
-                audit-wazuh-a:attribute
-                audit-wazuh-x:execute
-                audit-wazuh-c:command
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    put:
-      tags:
-        - Lists
-      summary: "Update CDB list file"
-      description: "Replace or upload a CDB list file with the data contained in the API request"
-      operationId: api.controllers.cdb_list_controller.put_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:update'
-        - $ref: '#/x-rbac-catalog/actions/lists:delete'
-      parameters:
-        - $ref: '#/components/parameters/list_filename_path'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/overwrite'
-      requestBody:
-        description: "Content of the file to be uploaded"
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
-              example:
-                data:
-                  affected_items:
-                    - etc/lists/audit-keys
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "CDB list file uploaded successfully"
-                error: 0
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10399,37 +10510,32 @@ paths:
           $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+
     delete:
       tags:
-        - Lists
-      summary: "Delete CDB list file"
-      description: "Delete a specified CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found"
-      operationId: api.controllers.cdb_list_controller.delete_file
+        - Integrations
+      summary: "Delete integrations"
+      description: "Delete a list of integrations"
+      operationId: api.controllers.integration_controller.delete_integration
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:delete'
+        - $ref: '#/x-rbac-catalog/actions/integrations:delete'
       parameters:
-        - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/integration_id'
       responses:
         '200':
-          description: "Confirmation message"
+          description: Integrations deleted
           content:
             application/json:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
-              example:
-                data:
-                  affected_items:
-                    - etc/lists/test
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "CDB list file was successfully deleted"
-                error: 0
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10441,28 +10547,22 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /lists/files:
+  /integrations_order:
     get:
       tags:
-        - Lists
-      summary: "Get CDB lists files"
-      description: "Return the path from all CDB lists. Use this method to know all the CDB lists and their location in
-      the filesystem relative to Wazuh installation folder"
-      operationId: api.controllers.cdb_list_controller.get_lists_files
+        - Integrations_order
+      summary: "Get list ofget integrations orders"
+      description: "Get list of integrations orders"
+      operationId: api.controllers.integrations_order_controller.get_integrations_order
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
+        - $ref: '#/x-rbac-catalog/actions/integrations:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/policy_type'
       responses:
         '200':
-          description: "Successfully got CDB lists"
+          description: List of integration info
           content:
             application/json:
               schema:
@@ -10471,22 +10571,141 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
+                        $ref: '#/components/schemas/AllItemsResponse'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - Integrations_order
+      summary: "Create integrations orders"
+      description: "Create a list of integrations orders"
+      operationId: api.controllers.integrations_order_controller.upsert_integrations_order
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_type'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/IntegrationInfo'
+      responses:
+        '200':
+          description: Integrations order created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - Integrations_order
+      summary: "Delete integrations orders"
+      description: "Delete integrations orders"
+      operationId: api.controllers.integrations_order_controller.delete_integrations_order
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_type'
+      responses:
+        '200':
+          description: Integrations order deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /kvdbs:
+    get:
+      tags:
+        - KVDBs
+      summary: "List KVDB resources"
+      description: "Return KVDBs."
+      operationId: api.controllers.kvdb_controller.get_kvdb
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:read'
+      parameters:
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/kvdb_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+      responses:
+        '200':
+          description: "KVDBs"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllItempsResponseKVDBs'
               example:
                 data:
                   affected_items:
-                    - relative_dirname: etc/lists/amazon
-                      filename: aws-eventnames
-                    - relative_dirname: etc/lists/amazon
-                      filename: aws-sources
-                    - relative_dirname: etc/lists
-                      filename: audit-keys
-                    - relative_dirname: etc/lists
-                      filename: security-eventchannel
-                  total_affected_items: 4
+                      id: ip_reputation
+                      integration_id: threatintel_v1
+                      name: "IP Reputation"
+                      content:
+                        "1.2.3.4": "malicious"
+                        "5.6.7.8": "suspicious"
+                  total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: 'All specified paths were returned'
+                message: "KVDBs returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10496,6 +10715,163 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    post:
+      tags:
+        - KVDBs
+      summary: "Create a KVDB"
+      description: "Create a KVDB."
+      operationId: api.controllers.kvdb_controller.upsert_kvdb
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:create'
+      parameters:
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemKVDB'
+            example:
+              id: kvdb_id
+              integration_id: integration_a_id
+              name: "Example KVDB"
+              content:
+                Key1: "Value1"
+                Key2: "Value2"
+      responses:
+        '200':
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - kvdb_id
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "KVDB created"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - KVDBs
+      summary: "Update a KVDB"
+      description: "Update a KVDB."
+      operationId: api.controllers.kvdb_controller.upsert_kvdb
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:update'
+      parameters:
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KVDBUpsertRequest'
+            example:
+              id: kvdb_id
+              integration_id: integration_a_id
+              content:
+                Key1: "NewValue1"
+                Key3: "Value3"
+      responses:
+        '200':
+          description: "Updated"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllItempsResponseKVDBs'
+              example:
+                data:
+                  affected_items:
+                      id: kvdb_id
+                      integration_id: integration_a_id
+                      name: "Example KVDB"
+                      content:
+                        Key1: "NewValue1"
+                        Key3: "Value3"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "KVDB updated"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - KVDBs
+      summary: "Delete KVDBs"
+      description: "Delete one or more KVDBs."
+      operationId: api.controllers.kvdb_controller.delete_kvdb
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:delete'
+      parameters:
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/kvdb_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Deleted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - kvdb_id
+                    - kvdb_old
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "KVDBs deleted"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -11737,14 +12113,15 @@ paths:
     get:
       tags:
         - Decoders
-      summary: "List decoders"
-      description: "Return information about all decoders included in ossec.conf. This information include decoder's
-      route, decoder's name, decoder's file among others"
-      operationId: api.controllers.decoder_controller.get_decoders
+      summary: "Get decoders"
+      description: "Get decoders"
+      operationId: api.controllers.decoder_controller.get_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
-        - $ref: '#/components/parameters/decoder_name'
+        - $ref: '#/components/parameters/decoder_id'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/status_resource'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
@@ -11753,13 +12130,10 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/distinct'
       responses:
         '200':
-          description: "List of decoders included in ossec.conf"
+          description: "List of decoders."
           content:
             application/json:
               schema:
@@ -11769,246 +12143,6 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseDecoders'
-              example:
-                data:
-                  affected_items:
-                    - filename: "0005-wazuh_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: wazuh
-                      position: 0
-                      details:
-                        prematch:
-                          pattern: "^wazuh: "
-                    - filename: "0005-wazuh_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: agent-buffer
-                      position: 1
-                      details:
-                        parent: wazuh
-                        prematch:
-                          pattern: "^wazuh: "
-                          offset: after_parent
-                        regex:
-                          pattern: "^ '(\\S+)'."
-                          offset: after_prematch
-                        order: level
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected decoders were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /decoders/files:
-    get:
-      tags:
-        - Decoders
-      summary: "Get files"
-      description: "Return information about all decoders files used in Wazuh. This information include decoder's file,
-      decoder's route and decoder's status among others"
-      operationId: api.controllers.decoder_controller.get_decoders_files
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/xml_filename'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: "List of decoders files"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseDecodersFiles'
-              example:
-                data:
-                  affected_items:
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
-                      status: enabled
-                    - filename: 0006-json_decoders.xml
-                      relative_dirname: ruleset/decoders
-                      status: enabled
-                    - filename: 0010-active-response_decoders.xml
-                      relative_dirname: ruleset/decoders
-                      status: enabled
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All decoder files were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /decoders/files/{filename}:
-    get:
-      tags:
-        - Decoders
-      summary: "Get decoders file content"
-      description: "Get the content of a specified decoder file"
-      operationId: api.controllers.decoder_controller.get_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/raw'
-        - $ref: '#/components/parameters/get_dirnames_path'
-      responses:
-        '200':
-          description: "Decoder content"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - decoder:
-                        - "@name": wazuh
-                          prematch: "^wazuh:"
-                        - "@name": agent-buffer
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^Agent buffer:"
-                          regex:
-                            "@offset": after_prematch
-                            "#text": "^ '(\\S+)'."
-                          order: level
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^Upgrade procedure |^Custom installation"
-                          regex:
-                            "@offset": after_prematch
-                            "#text": on agent (\d\d\d)\s\((\S+)\):\s(\w+)
-                          order: agent.id, agent.name, status
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          regex: aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$
-                          order: error
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          regex: started.\sCurrent\sversion:\sWazuh\s(\.+)$
-                          order: agent.cur_version
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          regex: succeeded.\sNew\sversion:\sWazuh\s(\.+)$
-                          order: agent.new_version
-                        - "@name": agent-restart
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^Invalid remote configuration:"
-                          regex:
-                            "@offset": after_prematch
-                            "#text": "^ '(\\S+)'."
-                          order: module
-                        - "@name": fim-state
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^FIM DB:"
-                          plugin_decoder:
-                            "@offset": after_prematch
-                            "#text": JSON_Decoder
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Selected decoder was returned"
-                error: 0
-            application/xml:
-              schema:
-                type: string
-              example: |
-                <!--
-                  -  Wazuh decoders
-                  -  Created by Wazuh, Inc.
-                  -  Copyright (C) 2015, Wazuh Inc.
-                  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
-                -->
-                <decoder name="wazuh">
-                  <prematch>^wazuh: </prematch>
-                </decoder>
-                <decoder name="agent-buffer">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^Agent buffer:</prematch>
-                  <regex offset="after_prematch">^ '(\S+)'.</regex>
-                  <order>level</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^Upgrade procedure |^Custom installation </prematch>
-                  <regex offset="after_prematch">on agent (\d\d\d)\s\((\S+)\):\s(\w+)</regex>
-                  <order>agent.id, agent.name, status</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <regex>aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$</regex>
-                  <order>error</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <regex>started.\sCurrent\sversion:\sWazuh\s(\.+)$</regex>
-                  <order>agent.cur_version</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <regex>succeeded.\sNew\sversion:\sWazuh\s(\.+)$</regex>
-                  <order>agent.new_version</order>
-                </decoder>
-                <decoder name="agent-restart">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^Invalid remote configuration:</prematch>
-                  <regex offset="after_prematch">^ '(\S+)'.</regex>
-                  <order>module</order>
-                </decoder>
-                <decoder name="fim-state">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^FIM DB: </prematch>
-                  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
-                </decoder>
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12022,26 +12156,38 @@ paths:
     put:
       tags:
         - Decoders
-      summary: "Update decoders file"
-      description: "Upload or replace a user decoder file content"
-      operationId: api.controllers.decoder_controller.put_file
+      summary: "Update decoders"
+      description: "Update decoders"
+      operationId: api.controllers.decoder_controller.upsert_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:update'
-        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
       parameters:
+        - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/overwrite'
-        - $ref: '#/components/parameters/get_dirnames_path'
       requestBody:
-        description: "Content of the decoder to be uploaded"
         required: true
         content:
-          application/octet-stream:
+          application/json:
             schema:
-              type: string
-              format: binary
+              $ref: '#/components/schemas/Decoder'
+            example:
+              type: decoder
+              id: decoder_id
+              integration_id: integration_id
+              name: Example new decoder
+              status: enabled
+              document:
+                metadata:
+                  author:
+                    date: date
+                    name: name
+                  compatibility: compatibility
+                  description: description
+                  module: module
+                  references: references
+                  title: title
+                  versions: versions
       responses:
         '200':
           description: "Confirmation message"
@@ -12054,15 +12200,6 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/decoders/new_decoder.xml"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Decoder was successfully uploaded"
-                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12071,25 +12208,68 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+    post:
+      tags:
+        - Decoders
+      summary: "Create decoders"
+      description: "Create decoders"
+      operationId: api.controllers.decoder_controller.upsert_decoder
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoders:create'
+      parameters:
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decoder'
+            example:
+              type: decoder
+              id: decoder_id
+              integration_id: integration_id
+              name: Example new decoder
+              status: enabled
+              document:
+                metadata:
+                  author:
+                    date: date
+                    name: name
+                  compatibility: compatibility
+                  description: description
+                  module: module
+                  references: references
+                  title: title
+                  versions: versions
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
     delete:
       tags:
         - Decoders
-      summary: "Delete decoders file"
-      description: "Delete a specified decoder file"
-      operationId: api.controllers.decoder_controller.delete_file
+      summary: "Delete decoders"
+      description: "Delete decoders"
+      operationId: api.controllers.decoder_controller.delete_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:delete'
       parameters:
+        - $ref: '#/components/parameters/decoder_id'
+        - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -12102,92 +12282,6 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/decoders/new_decoder.xml"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Decoder file was successfully deleted"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /decoders/parents:
-    get:
-      tags:
-        - Decoders
-      summary: "Get parent decoders"
-      description: "Return information about all parent decoders. A parent decoder is a decoder used as base of other
-      decoders"
-      operationId: api.controllers.decoder_controller.get_decoders_parents
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "List of parent decoders"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - filename: "0005-wazuh_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: wazuh
-                      position: 0
-                      details:
-                        prematch:
-                          pattern: "^wazuh: "
-                    - filename: "0006-json_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: json
-                      position: 0
-                      details:
-                        prematch:
-                          pattern: ^{\\s*\"
-                        plugin_decoder: JSON_Decoder
-                  total_affected_items: 182
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected decoders were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /events:
     post:
       tags:
@@ -12691,10 +12785,6 @@ paths:
                     description: "Reference agent groups via group ID (i.e. group:id:default)"
                   "node:id":
                     description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
-                  "decoder:file":
-                    description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-                  "list:file":
-                    description: "Reference list files via its filename (i.e. list:file:audit-keys)"
                   "rule:file":
                     description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
                   "policy:id":

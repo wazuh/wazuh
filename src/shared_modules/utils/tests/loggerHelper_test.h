@@ -35,13 +35,13 @@ protected:
     {
         Log::assignLogFunction(
             [](const int logLevel,
-               const std::string& tag,
-               const std::string& file,
+               const char* tag,
+               const char* file,
                const int line,
-               const std::string& func,
-               const std::string& logMessage,
+               const char* func,
+               const char* logMessage,
                va_list args)
-            { logFunctionWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
+            { logFunctionWrapper(logLevel, tag, file, line, func, logMessage, args); });
     }
 
     virtual void SetUp()

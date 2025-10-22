@@ -22,23 +22,12 @@
 keystore keys;
 remoted logr;
 char* node_name;
-rlim_t nofile;
-int tcp_keepidle;
-int tcp_keepintvl;
-int tcp_keepcnt;
 
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
     const int position = logr.position;
-    int recv_timeout;    //timeout in seconds waiting for a client reply
     char * str_protocol = NULL;
-
-    recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
-
-    tcp_keepidle = getDefine_Int("remoted", "tcp_keepidle", 1, 7200);
-    tcp_keepintvl = getDefine_Int("remoted", "tcp_keepintvl", 1, 100);
-    tcp_keepcnt = getDefine_Int("remoted", "tcp_keepcnt", 1, 50);
 
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
@@ -59,7 +48,6 @@ void HandleRemote(int uid)
     // Set resource limit for file descriptors
 
     {
-        nofile = getDefine_Int("remoted", "rlimit_nofile", 1024, 1048576);
         struct rlimit rlimit = { nofile, nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {

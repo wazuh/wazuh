@@ -12,6 +12,7 @@
 
 atomic_int_t audit_health_check_creation = ATOMIC_INT_INITIALIZER(0);
 atomic_int_t hc_thread_active = ATOMIC_INT_INITIALIZER(0);
+atomic_int_t hc_thread_finished = ATOMIC_INT_INITIALIZER(0);
 
 pthread_mutex_t audit_hc_mutex;
 pthread_cond_t audit_hc_cond;
@@ -27,6 +28,9 @@ int audit_health_check(int audit_socket) {
     struct timespec wait_time = {0, 0};
 
     w_mutex_init(&audit_hc_mutex, NULL);
+    
+    // Reset the finished flag for this health check
+    atomic_int_set(&hc_thread_finished, 0);
 
     // Audit needs an absolute path to add rules
     abspath(AUDIT_HEALTHCHECK_DIR, abs_path_healthcheck, PATH_MAX);
@@ -80,13 +84,21 @@ int audit_health_check(int audit_socket) {
     if (audit_delete_rule(abs_path_healthcheck, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY) <= 0) {
         mdebug1(FIM_HEALTHCHECK_CHECK_RULE); // LCOV_EXCL_LINE
     }
+    // Signal the secondary thread to stop and wait for it to finish
+    w_mutex_lock(&audit_hc_mutex);
     atomic_int_set(&hc_thread_active, 0);
+    w_mutex_unlock(&audit_hc_mutex);
 
     // Lock this thread (with 5 seconds timeout) until the healthcheck thread has ended.
     w_mutex_lock(&audit_hc_mutex);
     gettime(&wait_time);
     wait_time.tv_sec += 5;
-    pthread_cond_timedwait(&audit_hc_cond, &audit_hc_mutex, &wait_time);
+    while (atomic_int_get(&hc_thread_finished) == 0) {
+        if (pthread_cond_timedwait(&audit_hc_cond, &audit_hc_mutex, &wait_time) != 0) {
+            // Timeout or error occurred
+            break;
+        }
+    }
     w_mutex_unlock(&audit_hc_mutex);
 
     return retval;
@@ -106,6 +118,7 @@ void *audit_healthcheck_thread(int *audit_sock) {
     mdebug2(FIM_HEALTHCHECK_THREAD_FINISHED);
 
     w_mutex_lock(&audit_hc_mutex);
+    atomic_int_set(&hc_thread_finished, 1);
     w_cond_signal(&audit_hc_cond);
     w_mutex_unlock(&audit_hc_mutex);
 

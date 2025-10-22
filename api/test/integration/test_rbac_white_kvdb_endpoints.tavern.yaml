@@ -1,0 +1,65 @@
+---
+test_name: RBAC WHITE - /kvdbs allows read and write
+
+stages:
+
+  - name: POST /kvdbs (create)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+        Content-Type: application/json
+      json:
+        id: "rbac_kvdb_white"
+        name: "rbac_white"
+        content: { key1: value1 }
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+
+  - name: GET /kvdbs (read single by filter)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=rbac_kvdb_white"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_total_items: 1
+          expected_first_id: "rbac_kvdb_white"
+
+  - name: PUT /kvdbs (update)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+        Content-Type: application/json
+      json:
+        id: "rbac_kvdb_white"
+        name: "rbac_white_updated"
+        content: { key1: value2 }
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+
+  - name: DELETE /kvdbs
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=rbac_kvdb_white"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb

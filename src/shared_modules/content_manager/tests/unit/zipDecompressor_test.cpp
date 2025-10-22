@@ -21,7 +21,7 @@ namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
-};
+}; // namespace Log
 
 // Folder containing all the input files.
 const auto INPUT_FILES_DIR {std::filesystem::current_path() / "input_files" / "zipDecompressor"};

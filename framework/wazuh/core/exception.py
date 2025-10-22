@@ -355,26 +355,6 @@ class WazuhException(Exception):
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
 
-        # CDB List: 1800 - 1899
-        1800: {'message': 'Bad format in CDB list {path}'},
-        1801: {'message': 'Wrong \'path\' parameter',
-               'remediation': 'Please, provide a correct path'},
-        1802: {'message': 'Lists file not found',
-               'remediation': 'Please, use `GET /lists/files` to find all available lists'},
-        1803: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1804: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you provide a correct filepath'
-               },
-        1805: {'message': 'File with the same name already exists in a subdirectory.',
-               'remediation': 'Please, make sure to use a name which is not repeated. '
-               },
-        1806: {'message': 'Error trying to create CDB list file.'
-               },
-        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                          'The error message will be the output of upgrade module'},
-
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'
                },
@@ -605,12 +585,26 @@ class WazuhException(Exception):
         7001: {'message': 'Error trying to read logtest session token',
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
+        # Engine
+        9001: {'message': 'Asset syntax error: '
+        '            The provided {resource_type} asset data does not match the required format: {cause}.',
+              'remediation': 'Please check the resouce data and ensure it meets the required format'},
+        9002: {'message': 'Engine error: Unable to validate the {resource_type}: {cause}.',
+               'remediation': 'Please check the resouce data and ensure it meets the required format.'},
+        9003: {'message': 'Engine error: Unable to get the {resource_type}: {cause}',
+               'remediation': 'Check the resouce ID and confirm it is present in the system.'},
+        9004: {'message': 'Engine error: Unable to create the {resource_type}: {cause}.',
+                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
+        9005: {'message': 'Engine error: Unable to update the {resource_type}: {cause}.',
+                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
+        9006: {'message': 'Engine error: Unable to delete the {resource_type}: {cause}.',
+                'remediation': 'Check the resouce ID and confirm it is present in the system.'},
     }
 
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
                                     'The error message will be the output of vulnerability scan module'}
-                   for key in range(8001, 9000)})
+                   for key in range(8007, 9000)})
 
     def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
                  dapi_errors: dict = None, title: str = None, type: str = None):
@@ -685,7 +679,8 @@ class WazuhException(Exception):
 
     def __hash__(self):
         return hash(
-            (self._type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
+            (self._type, self._title, self._code, self._extra_message if isinstance(self._extra_message, str) else None,
+              self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         if isinstance(other, WazuhException):

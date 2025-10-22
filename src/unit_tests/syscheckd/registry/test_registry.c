@@ -657,7 +657,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
     // Set value of FirstSubKey
-    char *value_name = "test_value";
+    wchar_t *value_name = L"test_value";
     unsigned int value_type = REG_DWORD;
     unsigned int value_size = 4;
     DWORD value_data = 123456;
@@ -673,13 +673,13 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     // Scan a subkey of batfile
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
                              ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
+    expect_RegEnumKeyExW_call(L"FirstSubKey", ERROR_SUCCESS);
 
     // Scan a value of FirstSubKey
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile\\FirstSubKey", 0,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile\\FirstSubKey", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
 
@@ -690,7 +690,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     expect_string(__wrap__merror, formatted_msg, "Dbsync registry transaction failed due to -1");
     will_return(__wrap_fim_db_transaction_sync_row, -1);
-    expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
                                    (const char *)&value_data, 4, REG_DWORD, NULL);
@@ -716,7 +716,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     syscheck.registry = default_config;
 
     // Set value of FirstSubKey
-    char *value_name = "test_value";
+    wchar_t *value_name = L"test_value";
     unsigned int value_type = REG_DWORD;
     unsigned int value_size = 4;
     DWORD value_data = 123456;
@@ -734,12 +734,12 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_any_always(__wrap__merror, formatted_msg);
 
     // Scan a subkey of batfile
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
+    expect_RegEnumKeyExW_call(L"FirstSubKey", ERROR_SUCCESS);
 
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile\\FirstSubKey", 0,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile\\FirstSubKey", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
 
@@ -751,7 +751,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     will_return(__wrap_fim_db_transaction_sync_row, -1);
 
-    expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
 
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
@@ -766,9 +766,9 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     will_return(__wrap_fim_db_transaction_sync_row, -1);
 
     // Scan a subkey of RecursionLevel0
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\RecursionLevel0", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\RecursionLevel0", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("depth0", 7, ERROR_SUCCESS);
+    expect_RegEnumKeyExW_call(L"depth0", ERROR_SUCCESS);
 
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2",
@@ -777,7 +777,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
 
     will_return(__wrap_fim_db_transaction_sync_row, -1);
 
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\FailToInsert", 0,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\FailToInsert", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 0, &last_write_time, ERROR_SUCCESS);
 
@@ -795,7 +795,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     fim_registry_scan();
 }
 
-static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
+static void test_fim_registry_scan_RegOpenKeyExW_fail(void **state) {
     syscheck.registry = one_entry_config;
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
     TXN_HANDLE mock_handle;
@@ -803,12 +803,12 @@ static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
     will_return(__wrap_fim_db_transaction_start, mock_handle);
     will_return(__wrap_fim_db_transaction_start, mock_handle);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '[x64]'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6920): Failed to open registry key: 'Software\\Classes\\batfile' (arch: '[x64]'). Error code: -1.");
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     // Scan a subkey of batfile
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, -1);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -832,7 +832,7 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     // Scan a subkey of batfile
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, -1);
 
@@ -1154,7 +1154,7 @@ int main(void) {
         /* fim_registry_scan tests */
         cmocka_unit_test(test_fim_registry_scan_base_line_generation),
         cmocka_unit_test(test_fim_registry_scan_regular_scan),
-        cmocka_unit_test(test_fim_registry_scan_RegOpenKeyEx_fail),
+        cmocka_unit_test(test_fim_registry_scan_RegOpenKeyExW_fail),
         cmocka_unit_test(test_fim_registry_scan_RegQueryInfoKey_fail),
 
         /* fim registry key transaction callback tests */

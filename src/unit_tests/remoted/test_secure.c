@@ -68,6 +68,10 @@ static int setup_config(void** state)
     w_linked_queue_t* queue = linked_queue_init();
     keys.opened_fp_queue = queue;
     test_mode = 1;
+
+    // Initialize router_forwarding_disabled to 0 (enabled by default)
+    router_forwarding_disabled = 0;
+
     return 0;
 }
 
@@ -152,7 +156,7 @@ int __wrap_close(int __fd)
     return mock();
 }
 
-int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg, 
+int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg,
                                         void* agent_ctx, int schema_type) {
     check_expected_ptr(handle);
     check_expected_ptr(msg);
@@ -1294,8 +1298,6 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
@@ -1394,8 +1396,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
@@ -1987,8 +1987,6 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
@@ -2065,8 +2063,6 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
@@ -2140,9 +2136,6 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_success(void** state
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
@@ -2225,9 +2218,6 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_no_handle(void** sta
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
-
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
     // Expect debug message when router handle is not available
@@ -2303,9 +2293,6 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_invalid_json(void** 
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
@@ -2386,9 +2373,6 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_json_without_paramet
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
-
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
     expect_string(__wrap__mwarn, formatted_msg, "Could not get parameters from upgrade message: '{\"command\":\"upgrade_update_status\",\"not-parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}'");
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2464,9 +2448,6 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed(void** s
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '042' (rc=-1)");
-
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
     expect_string(__wrap__mwarn, formatted_msg, "Unable to forward upgrade-ack message '{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}' for agent 042");
@@ -2551,13 +2532,16 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    // getDefine_Int for router_forwarding_disabled - DISABLED (return 1)
-    will_return(__wrap_getDefine_Int, 1); // Router forwarding DISABLED
+    // Set router_forwarding_disabled to 1 to test disabled forwarding
+    router_forwarding_disabled = 1;
 
     // Expect the debug message when router forwarding is disabled
     expect_string(__wrap__mdebug2, formatted_msg, "Router forwarding is disabled, not forwarding message from agent '001'.");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    // Reset router_forwarding_disabled after test
+    router_forwarding_disabled = 0;
 
     os_free(key->id);
     os_free(key->name);
