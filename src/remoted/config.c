@@ -224,6 +224,8 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"keyupdate_interval",keyupdate_interval);
     cJSON_AddNumberToObject(remoted,"router_forwarding_disabled",router_forwarding_disabled);
     cJSON_AddNumberToObject(remoted,"state_interval",state_interval);
+    cJSON_AddNumberToObject(remoted,"batch_events_capacity",batch_events_capacity);
+    cJSON_AddNumberToObject(remoted,"batch_events_per_agent_capacity",batch_events_per_agent_capacity);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
