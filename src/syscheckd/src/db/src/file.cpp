@@ -373,7 +373,6 @@ FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_
     return retVal;
 }
 
-// Caller must free(*out_string_ptr) when done.
 FIMDBErrorCode fim_db_get_table_concatenated_checksums(char** out_string_ptr, char* table_name)
 {
     if (!out_string_ptr | !table_name)

@@ -605,8 +605,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
     while (fim_sync_module_running) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
-
         minfo("Running FIM synchronization.");
+
+        fim_db_recover_module_data(syscheck.sync_handle); // NOTE: test only
 
         bool first_scan_has_been_synched = fim_db_check_if_first_scan_has_been_synched();
         bool sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, first_scan_has_been_synched);
@@ -647,6 +648,22 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 free(concatenated_checksums);
 
                 minfo("Success! Final file table checksum is: %s", final_checksum);
+                bool sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, first_scan_has_been_synched);
+                bool needs_full_sync = asp_requires_full_sync(
+                    syscheck.sync_handle,
+                    table_names[i],
+                    final_checksum,
+                    syscheck.sync_response_timeout,
+                    FIM_SYNC_RETRIES, 
+                    syscheck.sync_max_eps
+                );
+                if (needs_full_sync) {
+                    minfo("Checksum mismatch detected for index %s, full sync required", table_names[i]);
+                    return true;
+                } else {
+                    minfo("Checksum valid for index %s, delta sync sufficient", table_names[i]);
+                    return false;
+                }
             }
         } else {
             minfo("Synchronization failed");

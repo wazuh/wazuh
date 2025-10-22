@@ -159,6 +159,9 @@ class EXPORTED DB final
         std::string getConcatenatedChecksums(const std::string& tableName);
 
 
+        // TODO: fill
+        std::vector<nlohmann::json> getEveryElement(const std::string& tableName);
+
     private:
         DB() = default;
         ~DB() = default;
