@@ -124,7 +124,6 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
     return concatenatedChecksums;
 }
 
-// TODO: Maybe make this private
 std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName){
     std::vector<nlohmann::json> recoveryItems;
     if (TABLE_PRIMARY_KEYS.find(tableName) == TABLE_PRIMARY_KEYS.end())
@@ -135,7 +134,6 @@ std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName){
         if (ReturnTypeCallback::SELECTED == type)
         {
             recoveryItems.push_back(jsonResult);
-            FIMDB::instance().logFunction(LOG_INFO, jsonResult.dump());
         }
     }};
     auto selectQuery {SelectQuery::builder()
@@ -294,37 +292,6 @@ void fim_db_set_first_scan_has_been_synched(){
     DB::instance().setFirstScanHasBeenSynched();
 }
 
-void fim_db_recover_module_data(AgentSyncProtocolHandle* protocol){
-    std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(FIMDB_FILE_TABLE_NAME);
-
-    // Persist all recovery data in memory
-    for (const nlohmann::json& item : recoveryItems) {
-        // Calculate SHA1 hash using Utils::HashData
-        // TODO: Maybe just add a function into hte class that does this
-        std::string id = item["path"];
-        try
-        {
-            Utils::HashData hash(Utils::HashType::Sha1);
-            hash.update(id.c_str(), id.length());
-
-            const std::vector<unsigned char> hashResult = hash.hash();
-            std::string hexHash = Utils::asciiToHex(hashResult);
-            FIMDB::instance().logFunction(LOG_INFO, hexHash);
-        }
-        // LCOV_EXCL_START
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
-        }
-        auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        wrapper->impl->protocol->persistDifferenceInMemory(
-            id,
-            Operation::CREATE, // TODO: might want to change the docs for the uppercase one
-            FIMDB_FILE_TABLE_NAME,
-            item.dump()
-        );
-    }
-}
 
 #ifdef __cplusplus
 }

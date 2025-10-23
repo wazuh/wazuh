@@ -10,6 +10,7 @@
 
 
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
+#include "fimCommonDefs.h"
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -607,8 +608,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
         minfo("Running FIM synchronization.");
 
-        fim_db_recover_module_data(syscheck.sync_handle); // NOTE: test only
-
         bool first_scan_has_been_synched = fim_db_check_if_first_scan_has_been_synched();
         bool sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, first_scan_has_been_synched);
         if (sync_result) {
@@ -659,10 +658,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 );
                 if (needs_full_sync) {
                     minfo("Checksum mismatch detected for index %s, full sync required", table_names[i]);
-                    return true;
+                    fim_recovery_persist_table_and_resync(table_names[i], syscheck.sync_handle, syscheck.sync_response_timeout, syscheck.sync_max_eps);
+                    return;
                 } else {
                     minfo("Checksum valid for index %s, delta sync sufficient", table_names[i]);
-                    return false;
+                    return;
                 }
             }
         } else {
@@ -671,7 +671,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
         minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
-
         for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
             sleep(1);
         }

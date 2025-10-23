@@ -23,7 +23,10 @@ include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
+include_directories(${SRC_FOLDER}/external/flatbuffers/include/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
+include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
@@ -76,6 +79,7 @@ add_subdirectory("src/db")
 
 file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/*.c"
+     "${CMAKE_SOURCE_DIR}/src/*.cpp"
      "${CMAKE_SOURCE_DIR}/src/file/*.c"
      "${CMAKE_SOURCE_DIR}/src/registry/*.c"
      "${CMAKE_SOURCE_DIR}/src/whodata/*.c")
