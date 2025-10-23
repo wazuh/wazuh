@@ -37,7 +37,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         }
         wrapper->impl->persistDifferenceInMemory(
             id,
-            Operation::CREATE, // TODO: might want to change the docs for the uppercase one
+            Operation::CREATE,
             table_name,
             item.dump()
         );

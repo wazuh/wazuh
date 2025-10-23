@@ -115,7 +115,7 @@ void onFileCreated(const std::string& filepath, const FileInfo& info) {
     // Persist the difference
     protocol->persistDifference(
         id,
-        Operation::Create,
+        Operation::CREATE,
         "fim_events",
         data.dump()
     );
@@ -128,7 +128,7 @@ void onFileModified(const std::string& filepath, const FileInfo& info) {
 
     protocol->persistDifference(
         id,
-        Operation::Update,
+        Operation::UPDATE,
         "fim_events",
         data.dump()
     );
@@ -140,7 +140,7 @@ void onFileDeleted(const std::string& filepath) {
 
     protocol->persistDifference(
         id,
-        Operation::Delete,
+        Operation::DELETE,
         "fim_events",
         "{\"path\": \"" + filepath + "\"}"
     );
@@ -185,7 +185,7 @@ void recoverModuleData() {
     for (const auto& item : recoveryItems) {
         protocol->persistDifferenceInMemory(
             item.id,
-            Operation::Create,
+            Operation::CREATE,
             item.index,
             item.data
         );
@@ -387,7 +387,7 @@ public:
 
         m_protocol->persistDifference(
             id,
-            Operation::Update,
+            Operation::UPDATE,
             "inventory_" + category,
             data.dump()
         );
@@ -405,7 +405,7 @@ public:
 
         m_protocol->persistDifference(
             pkg.name + "_" + pkg.version,
-            Operation::Create,
+            Operation::CREATE,
             "inventory_packages",
             data.dump()
         );
@@ -415,7 +415,7 @@ public:
     void onPackageRemoved(const std::string& pkgName) {
         m_protocol->persistDifference(
             pkgName,
-            Operation::Delete,
+            Operation::DELETE,
             "inventory_packages",
             "{\"name\": \"" + pkgName + "\"}"
         );
