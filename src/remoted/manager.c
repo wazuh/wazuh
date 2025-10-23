@@ -959,7 +959,7 @@ STATIC void process_groups() {
                 merror("Couldn't add group '%s' to hash table 'groups'", entry->d_name);
             } else {
                 group->name = strdup(entry->d_name);
-                c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, !logr.nocmerged, false);
+                c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, merge_shared, false);
                 group->has_changed = true;
                 group->exists = true;
             }
@@ -969,7 +969,7 @@ STATIC void process_groups() {
             c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, false, false);
             if (ftime_changed(old_time, group->f_time)) {
                 // Group has changed
-                if (!logr.nocmerged) {
+                if (merge_shared) {
                     OSHash_Clean(group->f_time, free_file_time);
                     c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
                 }
@@ -1073,14 +1073,14 @@ STATIC void process_multi_groups() {
                 merror("Couldn't add multigroup '%s' to hash table 'multi_groups'", key);
             } else {
                 multigroup->name = strdup(key);
-                c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, !logr.nocmerged);
+                c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, merge_shared);
                 multigroup->exists = true;
             }
         } else {
             if (group_changed(key)) {
                 // Multigroup needs to be updated
                 OSHash_Clean(multigroup->f_time, free_file_time);
-                c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, !logr.nocmerged);
+                c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, merge_shared);
                 mdebug2("Multigroup '%s' has changed.", multigroup->name);
 
             } else {
@@ -1089,7 +1089,7 @@ STATIC void process_multi_groups() {
                 c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, false);
                 if (ftime_changed(old_time, multigroup->f_time)) {
                     // Multigroup was modified from outside
-                    if (!logr.nocmerged) {
+                    if (merge_shared) {
                         OSHash_Clean(multigroup->f_time, free_file_time);
                         c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, true);
                         mwarn("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);

@@ -65,6 +65,7 @@ namespace chrome
         EdgeBeta,
         Vivaldi,
         Arc,
+        Comet
     };
 
     /// A list of possible path suffixes for each browser type
@@ -80,7 +81,7 @@ namespace chrome
         {ChromeBrowserType::Brave, ".config/BraveSoftware/Brave-Browser"},
         {ChromeBrowserType::Chromium, ".config/chromium"},
         {ChromeBrowserType::Chromium, "snap/chromium/common/chromium"},
-        {ChromeBrowserType::Yandex, ".config/yandex-browser-beta"},
+        {ChromeBrowserType::Yandex, ".config/yandex-browser"},
         {ChromeBrowserType::Opera, ".config/opera"},
         {ChromeBrowserType::Vivaldi, ".config/vivaldi"},
     };
@@ -98,7 +99,8 @@ namespace chrome
         {ChromeBrowserType::EdgeBeta, "Library/Application Support/Microsoft Edge Beta"},
         {ChromeBrowserType::Opera, "Library/Application Support/com.operasoftware.Opera"},
         {ChromeBrowserType::Vivaldi, "Library/Application Support/Vivaldi"},
-        {ChromeBrowserType::Arc, "Library/Application Support/Arc/User Data"}
+        {ChromeBrowserType::Arc, "Library/Application Support/Arc/User Data"},
+        {ChromeBrowserType::Comet, "Library/Application Support/Comet"}
     };
 
     const ChromePathSuffixMap WINDOWS_PATH_LIST =
@@ -108,12 +110,14 @@ namespace chrome
         {ChromeBrowserType::GoogleChromeDev, "AppData\\Local\\Google\\Chrome Dev\\User Data"},
         {ChromeBrowserType::GoogleChromeCanary, "AppData\\Local\\Google\\Chrome SxS\\User Data"},
         {ChromeBrowserType::Brave, "AppData\\Roaming\\brave"},
+        {ChromeBrowserType::Brave, "AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"},
         {ChromeBrowserType::Chromium, "AppData\\Local\\Chromium"},
         {ChromeBrowserType::Yandex, "AppData\\Local\\Yandex\\YandexBrowser\\User Data"},
         {ChromeBrowserType::Edge, "AppData\\Local\\Microsoft\\Edge\\User Data"},
         {ChromeBrowserType::EdgeBeta, "AppData\\Local\\Microsoft\\Edge Beta\\User Data"},
         {ChromeBrowserType::Opera, "AppData\\Roaming\\Opera Software\\Opera Stable"},
-        {ChromeBrowserType::Vivaldi, "AppData\\Local\\Vivaldi\\User Data"}
+        {ChromeBrowserType::Vivaldi, "AppData\\Local\\Vivaldi\\User Data"},
+        {ChromeBrowserType::Comet, "AppData\\Local\\Perplexity\\Comet\\User Data"}
     };
 
     const std::unordered_map<ChromeBrowserType, std::string>
@@ -131,6 +135,7 @@ namespace chrome
         {ChromeBrowserType::EdgeBeta, "edge_beta"},
         {ChromeBrowserType::Vivaldi, "vivaldi"},
         {ChromeBrowserType::Arc, "arc"},
+        {ChromeBrowserType::Comet, "comet"}
     };
 
     const std::string PREFERENCES_FILE{"Preferences"};
