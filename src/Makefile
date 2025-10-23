@@ -1730,7 +1730,17 @@ config_o := $(config_c:.c=.o)
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+#### Router (server only) ##
+build_router:
+ifeq (${TARGET},server)
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE} router
+endif
+
+ifeq (${TARGET},server)
+build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_router
+else
 build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
+endif
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
