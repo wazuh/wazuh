@@ -216,6 +216,10 @@
             },
             "scanner": {
               "properties": {
+                "source": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                },
                 "vendor": {
                   "ignore_above": 1024,
                   "type": "keyword"
@@ -242,6 +246,9 @@
             "severity": {
               "ignore_above": 1024,
               "type": "keyword"
+            },
+            "under_evaluation": {
+              "type": "boolean"
             }
           }
         },
