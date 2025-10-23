@@ -43,6 +43,36 @@ if [ "$TYPE" = "manager" ]; then
 fi
 
 if command -v systemctl >/dev/null 2>&1; then
+    # If reload is requested, wait for service to be fully active first
+    if [ "$PARAM_ACTION" = "reload" ]; then
+        # Wait up to 60 seconds for service to be active
+        TIMEOUT=60
+        ELAPSED=0
+        while [ $ELAPSED -lt $TIMEOUT ]; do
+            STATE=$(systemctl is-active wazuh-$TYPE 2>/dev/null)
+
+            # Exit immediately if service is in a failed or stopped state
+            case "$STATE" in
+                inactive|failed)
+                    echo "Service wazuh-$TYPE is in state '$STATE', cannot reload" >> ${PWD}/logs/active-responses.log
+                    exit 1
+                    ;;
+                active)
+                    break
+                    ;;
+            esac
+
+            sleep 1
+            ELAPSED=$((ELAPSED + 1))
+        done
+
+        # Check if service is now active
+        if ! systemctl is-active --quiet wazuh-$TYPE; then
+            echo "Service wazuh-$TYPE is not active after waiting $TIMEOUT seconds" >> ${PWD}/logs/active-responses.log
+            exit 1
+        fi
+    fi
+
     systemctl $PARAM_ACTION wazuh-$TYPE
 else
     ${PWD}/bin/wazuh-control $PARAM_ACTION

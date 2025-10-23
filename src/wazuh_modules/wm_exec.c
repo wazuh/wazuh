@@ -125,6 +125,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
             winerror = GetLastError();
             merror("at wm_exec(): SetHandleInformation(%d): %s", winerror, win_strerror(winerror));
+            CloseHandle(tinfo.pipe);
+            CloseHandle(sinfo.hStdOutput);
             return -1;
         }
     }
@@ -146,8 +148,12 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
     if (!wCreateProcessW(NULL, wcommand, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
         winerror = GetLastError();
-        merror("at wm_exec(): CreateProcess(%d): %s", winerror, win_strerror(winerror));
+        mwarn("Cannot run '%s': %s (%d)", command, win_strerror(winerror), winerror);
         os_free(wcommand);
+        if (output) {
+            CloseHandle(tinfo.pipe);
+            CloseHandle(sinfo.hStdOutput);
+        }
         return -1;
     }
 

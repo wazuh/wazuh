@@ -99,6 +99,20 @@ namespace Utils
         return ret;
     }
 
+    static bool replaceLast(std::string& data, const std::string& toSearch, const std::string& toReplace)
+    {
+        auto pos {data.rfind(toSearch)};  // find last occurrence
+        bool ret {false};
+
+        if (pos != std::string::npos)
+        {
+            data.replace(pos, toSearch.size(), toReplace);
+            ret = true;
+        }
+
+        return ret;
+    }
+
     static std::string leftTrim(const std::string& str, const std::string& args = " ")
     {
         const auto pos {str.find_first_not_of(args)};

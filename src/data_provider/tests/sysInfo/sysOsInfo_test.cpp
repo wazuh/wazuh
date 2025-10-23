@@ -62,4 +62,5 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_EQ("1903", output.at("os_release"));
     EXPECT_EQ("19H1", output.at("os_display_version"));
     EXPECT_EQ("10.0.18362", output.at("os_version"));
+    EXPECT_EQ("10.0.18362", output.at("release"));
 }

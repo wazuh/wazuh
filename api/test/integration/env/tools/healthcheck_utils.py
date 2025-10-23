@@ -66,18 +66,18 @@ def get_agent_health_base():
     # depending on the agent version.
 
     shared_conf_restart = os.system(
-        f"grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' {OSSEC_LOG_PATH}")
+        f"grep -q 'agentd: INFO: Agent is reloading due to shared configuration changes' {OSSEC_LOG_PATH}")
     agent_connection = os.system(f"grep -q 'agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}")
 
     if shared_conf_restart == 0 and agent_connection == 0:
         # No -q option as we need the output
         output = os.popen(
-            f"grep -a 'agentd: INFO: Agent is restarting due to shared configuration changes."
+            f"grep -a 'agentd: INFO: Agent is reloading due to shared configuration changes"
             f"\|agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}").read().split("\n")[:-1]
 
         agent_restarted = False
         for log in output:
-            if not agent_restarted and re.match(r'.*Agent is restarting due to shared configuration changes.*', log):
+            if not agent_restarted and re.match(r'.*Agent is reloading due to shared configuration changes*', log):
                 agent_restarted = True
             if agent_restarted and re.match(r'.*Connected to the server.*', log):
                 # Wait to avoid the worst case scenario:

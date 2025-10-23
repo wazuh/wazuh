@@ -86,10 +86,23 @@ public:
 
         createRSA(rsa, filePath, RSA_PRIVATE);
 
+        const int rsaSize = T::RSA_size(rsa);
+
+        // Input validation: RSA ciphertext must be exactly RSA_size bytes
+        if (input.length() != static_cast<size_t>(rsaSize))
+        {
+            T::RSA_free(rsa);
+            throw std::runtime_error("Invalid RSA ciphertext size. Expected: " + std::to_string(rsaSize) +
+                                     ", Got: " + std::to_string(input.length()));
+        }
+
         std::string decryptedText(T::RSA_size(rsa), 0); // Initialize with zeros
 
         // Defered free
         DEFER([&]() { T::RSA_free(rsa); });
+
+        // Clear error queue
+        T::ERR_clear_error();
 
         // Decrypt the ciphertext using RSA private key
         const auto decryptedLen = T::RSA_private_decrypt(input.length(),
@@ -97,14 +110,22 @@ public:
                                                          reinterpret_cast<unsigned char*>(decryptedText.data()),
                                                          rsa,
                                                          RSA_PKCS1_PADDING);
-
         if (decryptedLen < 0)
         {
-            throw std::runtime_error("RSA decryption failed: " +
-                                     std::string(T::ERR_reason_error_string(T::ERR_get_error())));
+            unsigned long err = T::ERR_get_error();
+            std::string errMsg = "RSA decryption failed";
+            if (err != 0)
+            {
+                errMsg += ": " + std::string(T::ERR_reason_error_string(err));
+            }
+            throw std::runtime_error(errMsg);
         }
 
-        // Display the decrypted plaintext
+        if (decryptedLen == 0)
+        {
+            throw std::runtime_error("RSA decryption produced zero-length output");
+        }
+
         output = decryptedText.substr(0, decryptedLen);
 
         return decryptedLen;
