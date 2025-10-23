@@ -34,6 +34,9 @@ class ISysInfo
         virtual nlohmann::json browserExtensions() = 0;
         virtual void packages(std::function<void(nlohmann::json&)>) = 0;
         virtual void processes(std::function<void(nlohmann::json&)>) = 0;
+        virtual std::string agentId() = 0;
+        virtual std::string agentName() = 0;
+        virtual std::vector<std::string> agentGroups() = 0;
 
 };
 

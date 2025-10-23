@@ -56,6 +56,9 @@ class EXPORTED SysInfo: public ISysInfo
         nlohmann::json users();
         nlohmann::json services();
         nlohmann::json browserExtensions();
+        std::string agentId();
+        std::string agentName();
+        std::vector<std::string> agentGroups();
     private:
         virtual nlohmann::json getHardware() const;
         virtual nlohmann::json getPackages() const;
@@ -70,6 +73,9 @@ class EXPORTED SysInfo: public ISysInfo
         virtual nlohmann::json getBrowserExtensions() const;
         virtual void getPackages(std::function<void(nlohmann::json&)>) const;
         virtual void getProcessesInfo(std::function<void(nlohmann::json&)>) const;
+        virtual std::string getAgentId() const;
+        virtual std::string getAgentName() const;
+        virtual std::vector<std::string> getAgentGroups() const;
 };
 
 #endif //_SYS_INFO_HPP

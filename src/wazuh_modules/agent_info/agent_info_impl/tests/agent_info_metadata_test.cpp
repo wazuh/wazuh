@@ -63,27 +63,6 @@ class AgentInfoMetadataTest : public ::testing::Test
 
 TEST_F(AgentInfoMetadataTest, PopulatesMetadataSuccessfully)
 {
-    // Setup: Mock client.keys file reading
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        // Simulate client.keys content: "001 agent1 192.168.1.1 key123"
-        callback("001 agent1 192.168.1.1 key123");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        // Simulate merged.mg content with XML comments
-        callback("<!-- Source file: default/agent.conf -->");
-        callback("<!-- Source file: group1/agent.conf -->");
-        callback("<!-- Source file: group2/agent.conf -->");
-    }));
-
     // Setup: Mock sysinfo OS data
     nlohmann::json osData = {{"architecture", "x86_64"},
         {"hostname", "test-host"},
@@ -93,6 +72,11 @@ TEST_F(AgentInfoMetadataTest, PopulatesMetadataSuccessfully)
         {"os_version", "22.04"}
     };
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Setup: Mock agent ID, name, and groups from SysInfo
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"default", "group1", "group2"}));
 
     // Mock handle() to return nullptr - updateChanges will catch exceptions
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -112,14 +96,14 @@ TEST_F(AgentInfoMetadataTest, PopulatesMetadataSuccessfully)
 
 TEST_F(AgentInfoMetadataTest, HandlesClientKeysNotFound)
 {
-    // Setup: client.keys doesn't exist
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(false))  // client.keys doesn't exist
-    .WillOnce(::testing::Return(false)); // merged.mg doesn't exist
-
     // Mock sysinfo
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // SysInfo returns empty values when client.keys doesn't exist
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return(""));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return(""));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -132,32 +116,18 @@ TEST_F(AgentInfoMetadataTest, HandlesClientKeysNotFound)
         return false;
     });
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name from client.keys"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name"));
 }
 
 TEST_F(AgentInfoMetadataTest, HandlesEmptyGroups)
 {
-    // Setup: Files exist
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 agent1 192.168.1.1 key123");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        // merged.mg with no group line - callback returns true to continue reading
-        callback("some other line");
-        return true;
-    }));
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Agent exists but no groups
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -175,26 +145,13 @@ TEST_F(AgentInfoMetadataTest, HandlesEmptyGroups)
 
 TEST_F(AgentInfoMetadataTest, HandlesInvalidClientKeysFormat)
 {
-    // Setup: Files exist but client.keys has invalid format
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        // Invalid format - only one token
-        callback("001");
-    }))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("<!-- Source file: group1/agent.conf -->");
-    }));
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Invalid format - only ID, no name
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return(""));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"group1"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -207,33 +164,17 @@ TEST_F(AgentInfoMetadataTest, HandlesInvalidClientKeysFormat)
         return false;
     });
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name from client.keys"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name"));
 }
 
 TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
 {
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))
-    .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("002 test-agent 10.0.0.1 secretkey");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        // Multiple groups in XML comments
-        callback("<!-- Source file: default/agent.conf -->");
-        callback("<!-- Source file: web-servers/agent.conf -->");
-        callback("<!-- Source file: database/agent.conf -->");
-        callback("<!-- Source file: monitoring/agent.conf -->");
-    }));
-
     nlohmann::json osData = {{"architecture", "aarch64"}, {"hostname", "server1"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("002"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("test-agent"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "web-servers", "database", "monitoring"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -251,9 +192,9 @@ TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
 
 TEST_F(AgentInfoMetadataTest, HandlesExceptionDuringPopulate)
 {
-    // Setup: Make fileSystem throw an exception
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Throw(std::runtime_error("Filesystem error")));
+    // Setup: Make SysInfo throw an exception
+    EXPECT_CALL(*m_mockSysInfo, agentId())
+    .WillOnce(::testing::Throw(std::runtime_error("SysInfo error")));
 
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
@@ -265,27 +206,11 @@ TEST_F(AgentInfoMetadataTest, HandlesExceptionDuringPopulate)
     }));
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to populate agent metadata"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Filesystem error"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("SysInfo error"));
 }
 
 TEST_F(AgentInfoMetadataTest, IncludesAllOSFieldsInMetadata)
 {
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))
-    .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("123 my-agent 192.168.1.100 mykey");
-    }))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("<!-- Source file: default/agent.conf -->");
-    }));
-
     nlohmann::json osData = {{"architecture", "x86_64"},
         {"hostname", "test-machine"},
         {"os_name", "CentOS"},
@@ -294,6 +219,11 @@ TEST_F(AgentInfoMetadataTest, IncludesAllOSFieldsInMetadata)
         {"os_version", "8.5"}
     };
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent ID, name, and groups from SysInfo
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("123"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("my-agent"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -312,22 +242,6 @@ TEST_F(AgentInfoMetadataTest, IncludesAllOSFieldsInMetadata)
 
 TEST_F(AgentInfoMetadataTest, HandlesPartialOSData)
 {
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))
-    .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("456 partial-os-agent 10.10.10.10 key456");
-    }))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("<!-- Source file: test/agent.conf -->");
-    }));
-
     // Only provide some OS fields
     nlohmann::json osData =
     {
@@ -335,6 +249,11 @@ TEST_F(AgentInfoMetadataTest, HandlesPartialOSData)
         // Missing: architecture, os_type, os_platform, os_version
     };
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent ID, name, and groups from SysInfo
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("456"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("partial-os-agent"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"test"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -364,21 +283,13 @@ TEST_F(AgentInfoMetadataTest, HandlesPartialOSData)
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_FileNotFound)
 {
-    // Setup: merged.mg doesn't exist
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))   // client.keys exists
-    .WillOnce(::testing::Return(false)); // merged.mg doesn't exist
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 agent1 192.168.1.1 key123");
-    }));
-    // No second call expected since merged.mg doesn't exist
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent exists but no groups (merged.mg doesn't exist)
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -396,30 +307,13 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_FileNotFound)
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_OnlyDefaultGroup)
 {
-    // Setup: merged.mg exists but only has default group
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 agent1 192.168.1.1 key123");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("#1397d1cd");
-        callback("!357 agent.conf");
-        callback("<!-- Source file: default/agent.conf -->");
-        callback("<agent_config>");
-        callback("  <!-- Shared agent configuration here -->");
-        callback("</agent_config>");
-    }));
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent with only default group
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -431,38 +325,19 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_OnlyDefaultGroup)
         return false;
     });
 
-    // Default group should be excluded, so no groups found
+    // Default group should be included
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 1 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroup)
 {
-    // Setup: merged.mg with single non-default group
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 agent1 192.168.1.1 key123");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("#1397d1cd");
-        callback("!357 agent.conf");
-        callback("<!-- Source file: default/agent.conf -->");
-        callback("<agent_config>");
-        callback("</agent_config>");
-        callback("<!-- Source file: mygroup/agent.conf -->");
-        callback("<agent_config>");
-        callback("</agent_config>");
-    }));
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent with default and one custom group
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "mygroup"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -474,45 +349,19 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroup)
         return false;
     });
 
-    // Should find 1 group
+    // Should find 2 groups (default + mygroup)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 2 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultipleGroups)
 {
-    // Setup: merged.mg with multiple groups (matching user's example)
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 agent1 192.168.1.1 key123");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        // This matches the user's exact example
-        callback("#1397d1cd");
-        callback("!357 agent.conf");
-        callback("<!-- Source file: default/agent.conf -->");
-        callback("<agent_config>");
-        callback("  <!-- Shared agent configuration here -->");
-        callback("</agent_config>");
-        callback("<!-- Source file: mygroup/agent.conf -->");
-        callback("<agent_config>");
-        callback("  <!-- Shared agent configuration here -->");
-        callback("</agent_config>");
-        callback("<!-- Source file: mysecondgroup/agent.conf -->");
-        callback("<agent_config>");
-        callback("  <!-- Shared agent configuration here -->");
-        callback("</agent_config>");
-    }));
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent with multiple groups
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "mygroup", "mysecondgroup"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -524,38 +373,19 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultipleGroups)
         return false;
     });
 
-    // Should find 2 groups (mygroup and mysecondgroup), excluding default
+    // Should find 3 groups (default, mygroup, and mysecondgroup)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 3 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_WithWhitespaceAndExtraLines)
 {
-    // Setup: Test edge cases with whitespace, empty lines, and various formats
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 agent1 192.168.1.1 key123");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("");  // empty line
-        callback("<!-- Source file: default/agent.conf -->");
-        callback("   ");  // whitespace only
-        callback("<!--Source file: group-with-no-spaces/agent.conf-->");  // No spaces around comment
-        callback("  <!-- Source file: group-with-leading-space/agent.conf -->  ");  // Leading/trailing spaces
-        callback("<!-- Some other comment -->");  // Non-group comment
-        callback("<!-- Source file: group-with-dashes-123/agent.conf -->");  // Group with dashes and numbers
-        callback("<agent_config>");
-    }));
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent with groups that would have whitespace and various formats in merged.mg
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "group-with-no-spaces", "group-with-leading-space", "group-with-dashes-123"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -567,35 +397,19 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_WithWhitespaceAndExtraLines)
         return false;
     });
 
-    // Should find 3 groups (excluding default)
+    // Should find 4 groups (default + 3 custom groups)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 4 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MalformedComments)
 {
-    // Setup: Test with various malformed comments that should be ignored
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))  // client.keys exists
-    .WillOnce(::testing::Return(true)); // merged.mg exists
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(
-        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 agent1 192.168.1.1 key123");
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("<!-- Source file: valid-group/agent.conf -->");
-        callback("<!-- Source file: /agent.conf -->");  // Missing group name
-        callback("<!-- Source file: another-group/wrong.conf -->");  // Wrong file name (not agent.conf)
-        callback("<!-- Source file: third-group/ -->");  // Missing agent.conf
-        callback("<!-- Source file: agent.conf -->");  // Missing group path separator
-    }));
-
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Mock agent with only valid group (malformed entries would be filtered by agentInfoHelper)
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"valid-group"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));

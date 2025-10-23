@@ -22,4 +22,7 @@ class MockSysInfo : public ISysInfo
         MOCK_METHOD(nlohmann::json, browserExtensions, (), (override));
         MOCK_METHOD(void, packages, (std::function<void(nlohmann::json&)>), (override));
         MOCK_METHOD(void, processes, (std::function<void(nlohmann::json&)>), (override));
+        MOCK_METHOD(std::string, agentId, (), (override));
+        MOCK_METHOD(std::string, agentName, (), (override));
+        MOCK_METHOD(std::vector<std::string>, agentGroups, (), (override));
 };

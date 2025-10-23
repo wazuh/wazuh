@@ -22,6 +22,7 @@
 #include <winternl.h>
 #include <ntstatus.h>
 #include <netioapi.h>
+#include <fstream>
 #include "sysinfoapi.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
@@ -29,6 +30,7 @@
 #include "registryHelper.h"
 #include "defs.h"
 #include "sharedDefs.h"
+#include "agentInfoHelper.h"
 #include "timeHelper.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
@@ -1335,4 +1337,25 @@ nlohmann::json SysInfo::getBrowserExtensions() const
     }
 
     return result;
+}
+
+std::string SysInfo::getAgentId() const
+{
+    return AgentInfoHelper::readAgentId();
+}
+
+std::string SysInfo::getAgentName() const
+{
+    auto getHostname = [this]() -> std::string
+    {
+        nlohmann::json osInfo = getOsInfo();
+        return osInfo.contains("hostname") ? osInfo["hostname"].get<std::string>() : "";
+    };
+
+    return AgentInfoHelper::readAgentName(KEYS_FILE, getHostname);
+}
+
+std::vector<std::string> SysInfo::getAgentGroups() const
+{
+    return AgentInfoHelper::readAgentGroups("shared\\merged.mg");
 }

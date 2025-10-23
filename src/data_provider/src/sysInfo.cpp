@@ -77,6 +77,21 @@ nlohmann::json SysInfo::browserExtensions()
     return getBrowserExtensions();
 }
 
+std::string SysInfo::agentId()
+{
+    return getAgentId();
+}
+
+std::string SysInfo::agentName()
+{
+    return getAgentName();
+}
+
+std::vector<std::string> SysInfo::agentGroups()
+{
+    return getAgentGroups();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

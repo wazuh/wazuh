@@ -187,29 +187,16 @@ void AgentInfoImpl::populateAgentMetadata()
     // Get OS information from sysinfo
     nlohmann::json osInfo = m_sysInfo->os();
 
-    // Read agent ID and name
-    std::string agentId;
-    std::string agentName;
+    // Read agent ID and name from SysInfo
+    // SysInfo handles both agent and server/manager cases:
+    // - For agents: reads from client.keys
+    // - For server/manager: returns "000" and hostname
+    std::string agentId = m_sysInfo->agentId();
+    std::string agentName = m_sysInfo->agentName();
 
-    if (m_isAgent)
+    if (agentId.empty() || agentName.empty())
     {
-        // For agents, read from client.keys
-        if (!readClientKeys(agentId, agentName))
-        {
-            m_logFunction(LOG_WARNING, "Failed to read agent ID and name from client.keys");
-        }
-    }
-    else
-    {
-        // For server/manager, use default values
-        agentId = "000";
-
-        if (osInfo.contains("hostname"))
-        {
-            agentName = osInfo["hostname"];
-        }
-
-        m_logFunction(LOG_DEBUG, "Using default server/manager agent data: ID=000, Name=" + agentName);
+        m_logFunction(LOG_WARNING, "Failed to read agent ID and name");
     }
 
     // Build the agent metadata JSON
@@ -259,13 +246,9 @@ void AgentInfoImpl::populateAgentMetadata()
     auto logMsg = std::string("Agent metadata populated successfully");
     m_logFunction(LOG_INFO, logMsg);
 
-    // Read agent groups from merged.mg (only for agents)
-    std::vector<std::string> groups;
-
-    if (m_isAgent)
-    {
-        groups = readAgentGroups();
-    }
+    // Read agent groups from merged.mg
+    // SysInfo returns empty vector for server/manager (no groups file)
+    std::vector<std::string> groups = m_sysInfo->agentGroups();
 
     // Always update agent groups in database (even if empty, to clear old groups)
     auto groupsData = nlohmann::json::array();
@@ -293,106 +276,6 @@ void AgentInfoImpl::populateAgentMetadata()
     }
 
     m_logFunction(LOG_INFO, groupLogMsg);
-}
-
-bool AgentInfoImpl::readClientKeys(std::string& agentId, std::string& agentName) const
-{
-    // Check if client.keys file exists
-    if (!m_fileSystem->exists(KEYS_FILE))
-    {
-        m_logFunction(LOG_DEBUG, std::string("File does not exist: ") + KEYS_FILE);
-        return false;
-    }
-
-    bool found = false;
-
-    // Read the first line of client.keys file
-    m_fileIO->readLineByLine(KEYS_FILE,
-                             [&](const std::string & line)
-    {
-        if (!line.empty())
-        {
-            // client.keys format: ID NAME IP KEY
-            // Use stringHelper to split by space
-            auto tokens = Utils::split(line, ' ');
-
-            if (tokens.size() >= 2)
-            {
-                agentId = tokens[0];
-                agentName = tokens[1];
-
-                m_logFunction(LOG_DEBUG, "Read agent data from client.keys: ID=" + agentId + ", Name=" + agentName);
-                found = true;
-                return false; // Stop reading after first line
-            }
-        }
-
-        return true; // Continue reading if first line was empty
-    });
-
-    return found;
-}
-
-std::vector<std::string> AgentInfoImpl::readAgentGroups() const
-{
-    std::vector<std::string> groups;
-
-#ifndef WIN32
-    const char* mergedFile = "etc/shared/merged.mg";
-#else
-    const char* mergedFile = "shared\\merged.mg";
-#endif
-
-    // Check if merged.mg file exists
-    if (!m_fileSystem->exists(mergedFile))
-    {
-        m_logFunction(LOG_DEBUG, std::string("File does not exist: ") + mergedFile);
-        return groups;
-    }
-
-    // Look for group names in XML comments in merged.mg
-    // Format: <!-- Source file: groupname/agent.conf --> or <!--Source file: groupname/agent.conf-->
-    m_fileIO->readLineByLine(mergedFile,
-                             [&](const std::string & line)
-    {
-        // Look for XML comment with "Source file:" (with or without space after <!--)
-        std::string trimmedLine = Utils::trim(line);
-        size_t sourceFilePos = trimmedLine.find("Source file:");
-
-        if (sourceFilePos != std::string::npos && trimmedLine.find("<!--") == 0)
-        {
-            // Extract the path after "Source file:"
-            size_t pathStart = sourceFilePos + 12; // Length of "Source file:"
-
-            // Skip any leading whitespace after "Source file:"
-            while (pathStart < trimmedLine.length() && std::isspace(trimmedLine[pathStart]))
-            {
-                pathStart++;
-            }
-
-            auto pathEnd = trimmedLine.find("/agent.conf", pathStart);
-
-            if (pathEnd != std::string::npos && pathEnd > pathStart)
-            {
-                std::string groupName = trimmedLine.substr(pathStart, pathEnd - pathStart);
-                groupName = Utils::trim(groupName);
-
-                if (!groupName.empty())
-                {
-                    groups.push_back(groupName);
-                }
-            }
-        }
-
-        return true; // Continue reading to find all groups
-    });
-
-    if (!groups.empty())
-    {
-        m_logFunction(LOG_DEBUG, "Read " + std::to_string(groups.size()) + " groups from merged.mg");
-    }
-
-    return groups;
 }
 
 void AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json& values)

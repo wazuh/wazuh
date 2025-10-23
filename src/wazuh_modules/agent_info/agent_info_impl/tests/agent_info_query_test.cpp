@@ -30,7 +30,7 @@ class AgentInfoQueryTest : public ::testing::Test
             m_logOutput.clear();
 
             // Create the logging function to capture log messages
-            m_logFunction = [this](const modules_log_level_t /* level */, const std::string& log)
+            m_logFunction = [this](const modules_log_level_t /* level */, const std::string & log)
             {
                 m_logOutput += log;
                 m_logOutput += "\n";
@@ -78,12 +78,13 @@ TEST_F(AgentInfoQueryTest, GetMetadataReturnsCompleteData)
     // Mock selectRows to return metadata
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Invoke(
-                  [](const nlohmann::json& query, ResultCallbackData callback)
+                  [](const nlohmann::json & query, ResultCallbackData callback)
     {
         // First call is for agent_metadata table
         if (query["table"] == "agent_metadata")
         {
-            nlohmann::json metadata = {
+            nlohmann::json metadata =
+            {
                 {"agent_id", "001"},
                 {"agent_name", "test-agent"},
                 {"agent_version", "v4.8.0"},
@@ -99,7 +100,7 @@ TEST_F(AgentInfoQueryTest, GetMetadataReturnsCompleteData)
         }
     }))
     .WillOnce(::testing::Invoke(
-                  [](const nlohmann::json& query, ResultCallbackData callback)
+                  [](const nlohmann::json & query, ResultCallbackData callback)
     {
         // Second call is for agent_groups table
         if (query["table"] == "agent_groups")
@@ -226,12 +227,13 @@ TEST_F(AgentInfoQueryTest, GetMetadataWithNoGroups)
     // Mock selectRows to return metadata but no groups
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Invoke(
-                  [](const nlohmann::json& query, ResultCallbackData callback)
+                  [](const nlohmann::json & query, ResultCallbackData callback)
     {
         // Return metadata
         if (query["table"] == "agent_metadata")
         {
-            nlohmann::json metadata = {
+            nlohmann::json metadata =
+            {
                 {"agent_id", "001"},
                 {"agent_name", "test-agent"},
                 {"checksum", "abc123"}
@@ -269,7 +271,7 @@ TEST_F(AgentInfoQueryTest, GetMetadataExtractsGroupNames)
     // Mock selectRows
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Invoke(
-                  [](const nlohmann::json& query, ResultCallbackData callback)
+                  [](const nlohmann::json & query, ResultCallbackData callback)
     {
         if (query["table"] == "agent_metadata")
         {
@@ -278,17 +280,19 @@ TEST_F(AgentInfoQueryTest, GetMetadataExtractsGroupNames)
         }
     }))
     .WillOnce(::testing::Invoke(
-                  [](const nlohmann::json& query, ResultCallbackData callback)
+                  [](const nlohmann::json & query, ResultCallbackData callback)
     {
         // Groups with extra fields (should extract only group_name)
         if (query["table"] == "agent_groups")
         {
-            nlohmann::json group1 = {
+            nlohmann::json group1 =
+            {
                 {"agent_id", "001"},
                 {"group_name", "group_a"},
                 {"extra_field", "should_be_ignored"}
             };
-            nlohmann::json group2 = {
+            nlohmann::json group2 =
+            {
                 {"agent_id", "001"},
                 {"group_name", "group_b"}
             };

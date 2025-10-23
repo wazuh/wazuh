@@ -65,23 +65,12 @@ class AgentInfoLoggingTest : public ::testing::Test
 
 TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
 {
-    // Setup: Mock client.keys and merged.mg
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))
-    .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("001 test-agent 192.168.1.1 key");
-    }))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("<!-- Source file: test-group/agent.conf -->");
-    }));
-
+    // Setup: Mock SysInfo
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("test-agent"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"test-group"}));
 
     EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
 
@@ -130,11 +119,14 @@ TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Throw(std::runtime_error("DBSync error")));
 
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(false));
-
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(nlohmann::json()));
+    EXPECT_CALL(*m_mockSysInfo, agentId())
+    .WillRepeatedly(::testing::Return(""));
+    EXPECT_CALL(*m_mockSysInfo, agentName())
+    .WillRepeatedly(::testing::Return(""));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups())
+    .WillRepeatedly(::testing::Return(std::vector<std::string>{}));
 
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       "test_path",

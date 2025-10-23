@@ -161,6 +161,15 @@ else()
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+# Add agent-specific or server-specific helper implementation
+# This applies to all platforms (Windows, Linux, Mac, BSD, Unix)
+if("${WAZUH_TARGET}" STREQUAL "agent" OR "${WAZUH_TARGET}" STREQUAL "winagent")
+  list(APPEND SYSINFO_SRC "${CMAKE_SOURCE_DIR}/src/agentInfoHelperAgent.cpp")
+  add_definitions(-DCLIENT)
+else()
+  list(APPEND SYSINFO_SRC "${CMAKE_SOURCE_DIR}/src/agentInfoHelperServer.cpp")
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
    CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR
    CMAKE_SYSTEM_NAME STREQUAL "Windows")

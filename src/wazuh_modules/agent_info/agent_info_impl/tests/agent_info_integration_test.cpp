@@ -67,23 +67,12 @@ class AgentInfoRealDBSyncTest : public ::testing::Test
 
 TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
 {
-    // Setup mocks to provide data
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))
-    .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("456 real-dbsync-test 10.0.0.1 key");
-    }))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("#group: dbsync-test-group");
-    }));
-
+    // Setup SysInfo mocks to provide data
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("456"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("real-dbsync-test"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"dbsync-test-group"}));
 
     // Create agent info with real DBSync (using in-memory database)
     // This will trigger updateChanges internally through start()
@@ -127,10 +116,12 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
 
 TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
 {
-    // For manager mode, no client.keys or merged.mg reading needed
-    // Only need sysinfo with hostname
+    // For manager mode, SysInfo returns "000" and hostname
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}, {"hostname", "test-manager-hostname"}};
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("000"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("test-manager-hostname"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
 
     // Create agent info with real DBSync (using in-memory database)
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
@@ -186,23 +177,9 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
  */
 TEST_F(AgentInfoRealDBSyncTest, GetMetadataWithRealDBSync)
 {
-    // Setup mocks to provide data
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))
-    .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    // Setup SysInfo mocks to provide data
+    nlohmann::json osData =
     {
-        callback("789 metadata-test-agent 10.0.0.2 key");
-    }))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("#group: test-group1");
-        callback("#group: test-group2");
-    }));
-
-    nlohmann::json osData = {
         {"architecture", "x86_64"},
         {"hostname", "metadata-test-host"},
         {"os_name", "Ubuntu"},
@@ -211,6 +188,9 @@ TEST_F(AgentInfoRealDBSyncTest, GetMetadataWithRealDBSync)
         {"os_version", "22.04"}
     };
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+    EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("789"));
+    EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("metadata-test-agent"));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"test-group1", "test-group2"}));
 
     // Create AgentInfoImpl with real DBSync (in-memory)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
@@ -225,7 +205,10 @@ TEST_F(AgentInfoRealDBSyncTest, GetMetadataWithRealDBSync)
     m_agentInfo->setIsAgent(true);
 
     // Populate metadata (runs once and exits)
-    m_agentInfo->start(1, []() { return false; });
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     // Give DBSync time to flush writes
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -260,6 +243,7 @@ TEST_F(AgentInfoRealDBSyncTest, GetMetadataWithRealDBSync)
     // Verify groups
     const auto& groups = result["groups"];
     ASSERT_TRUE(groups.is_array());
+
     // Note: Groups might be empty depending on how merged.mg is parsed
     // The important thing is that getMetadata() works and returns the array structure
     if (groups.size() >= 2)

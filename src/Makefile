@@ -1650,7 +1650,7 @@ build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 
 #### Sysinfo ##
 build_sysinfo: build_shared_modules $(WAZUHEXT_LIB)
-	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
+	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} -DWAZUH_TARGET=${TARGET} .. && ${MAKE}
 
 #### Syscollector ##
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))

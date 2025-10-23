@@ -89,6 +89,21 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)>callback) con
     callback(PROCESSES_EXPECTED);
 }
 
+std::string SysInfo::getAgentId() const
+{
+    return "001";
+}
+
+std::string SysInfo::getAgentName() const
+{
+    return "test-agent";
+}
+
+std::vector<std::string> SysInfo::getAgentGroups() const
+{
+    return {"group1", "group2"};
+}
+
 class CallbackMock
 {
     public:

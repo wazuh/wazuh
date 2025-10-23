@@ -15,6 +15,8 @@
 #include "cmdHelper.h"
 #include "timeHelper.h"
 #include "sharedDefs.h"
+#include "defs.h"
+#include "agentInfoHelper.h"
 
 static void getOsInfoFromUname(nlohmann::json& info)
 {
@@ -138,4 +140,25 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 {
     //TODO: Pending implementation.
     return nlohmann::json();
+}
+
+std::string SysInfo::getAgentId() const
+{
+    return AgentInfoHelper::readAgentId();
+}
+
+std::string SysInfo::getAgentName() const
+{
+    auto getHostname = [this]() -> std::string
+    {
+        nlohmann::json osInfo = getOsInfo();
+        return osInfo.contains("hostname") ? osInfo["hostname"].get<std::string>() : "";
+    };
+
+    return AgentInfoHelper::readAgentName(KEYS_FILE, getHostname);
+}
+
+std::vector<std::string> SysInfo::getAgentGroups() const
+{
+    return AgentInfoHelper::readAgentGroups("etc/shared/merged.mg");
 }

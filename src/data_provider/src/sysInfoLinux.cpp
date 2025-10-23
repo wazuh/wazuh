@@ -39,6 +39,8 @@
 #include "systemd_units_linux.hpp"
 #include "chrome.hpp"
 #include "firefox.hpp"
+#include "defs.h"
+#include "agentInfoHelper.h"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
@@ -992,4 +994,25 @@ nlohmann::json SysInfo::getBrowserExtensions() const
     }
 
     return result;
+}
+
+std::string SysInfo::getAgentId() const
+{
+    return AgentInfoHelper::readAgentId();
+}
+
+std::string SysInfo::getAgentName() const
+{
+    auto getHostname = [this]() -> std::string
+    {
+        nlohmann::json osInfo = getOsInfo();
+        return osInfo.contains("hostname") ? osInfo["hostname"].get<std::string>() : "";
+    };
+
+    return AgentInfoHelper::readAgentName(KEYS_FILE, getHostname);
+}
+
+std::vector<std::string> SysInfo::getAgentGroups() const
+{
+    return AgentInfoHelper::readAgentGroups("etc/shared/merged.mg");
 }
