@@ -1,6 +1,7 @@
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <chrono>
 #include <iterator>
@@ -36,6 +37,14 @@ constexpr auto TRACE_TARGET_NOT_FOUND = "[{}] -> Failure: Target field '{}' refe
 constexpr auto TRACE_TARGET_TYPE_NOT_STRING = "[{}] -> Failure: Target field '{}' type is not string";
 constexpr auto TRACE_REFERENCE_NOT_FOUND = "[{}] -> Failure: Parameter '{}' reference not found";
 constexpr auto TRACE_REFERENCE_TYPE_IS_NOT = "[{}] -> Failure: Parameter '{}' type is not ";
+
+constexpr std::array<std::string_view, 24> SYSLOG_FACILITY_NAMES = {
+    "kernel", "user",   "mail",     "daemon", "auth",   "syslog",   "lpr",      "news",
+    "uucp",   "cron",   "authpriv", "ftp",    "ntp",    "logaudit", "logalert", "solaris-cron",
+    "local0", "local1", "local2",   "local3", "local4", "local5",   "local6",   "local7"};
+
+constexpr std::array<std::string_view, 8> SYSLOG_SEVERITY_NAMES = {
+    "emergency", "alert", "critical", "error", "warning", "notice", "informational", "debug"};
 
 /**
  * @brief NumberOperators supported by the string helpers.
@@ -2609,6 +2618,123 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
 
         json::Json result;
         result.setString(std::get<std::string>(cid));
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
+// field: +syslog_extract_facility/$<log.syslog.priority>
+MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 1);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto priorityRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    const auto& validator = buildCtx->validator();
+
+    if (validator.hasField(priorityRef.dotPath()))
+    {
+        const auto type = validator.getJsonType(priorityRef.dotPath());
+        if (type != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected 'number' reference but got reference '{}' of type '{}'",
+                                                 priorityRef.dotPath(),
+                                                 json::Json::typeToStr(type)));
+        }
+    }
+
+    const auto name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, name, priorityRef.dotPath());
+    const std::string failureOutOfRange =
+        fmt::format("[{}] -> Failure: 'priority' out of range (expected 0-191)", name);
+
+    // 5) Lambda runtime (solo una lectura del campo priority)
+    return [successTrace,
+            failureNotFound,
+            failureOutOfRange,
+            priorityPath = priorityRef.jsonPath(),
+            runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        const auto syslogObj = event->getIntAsInt64(priorityPath);
+        if (!syslogObj.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureNotFound);
+        }
+        const int64_t priority = syslogObj.value();
+        if (priority < 0 || priority > 191)
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureOutOfRange);
+        }
+
+        const int facilityCode = static_cast<int>(priority / 8);
+
+        const std::string facilityName =
+            (facilityCode >= 0 && facilityCode < static_cast<int>(SYSLOG_FACILITY_NAMES.size()))
+                ? std::string {SYSLOG_FACILITY_NAMES[facilityCode]}
+                : fmt::format("unknown({})", facilityCode);
+
+        json::Json result;
+        result.setInt64(facilityCode, "/code");
+        result.setString(facilityName, "/name");
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
+// field: +syslog_extract_severity/$<log.syslog.priority>
+MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 1);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto priorityRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    const auto& validator = buildCtx->validator();
+
+    if (validator.hasField(priorityRef.dotPath()))
+    {
+        const auto type = validator.getJsonType(priorityRef.dotPath());
+        if (type != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected 'number' reference but got reference '{}' of type '{}'",
+                                                 priorityRef.dotPath(),
+                                                 json::Json::typeToStr(type)));
+        }
+    }
+
+    const auto name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, name, priorityRef.dotPath());
+    const std::string failureOutOfRange =
+        fmt::format("[{}] -> Failure: 'priority' out of range (expected 0-191)", name);
+
+    // 5) Lambda runtime (solo una lectura del campo priority)
+    return [successTrace,
+            failureNotFound,
+            failureOutOfRange,
+            priorityPath = priorityRef.jsonPath(),
+            runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        const auto syslogObj = event->getIntAsInt64(priorityPath);
+        if (!syslogObj.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureNotFound);
+        }
+        const int64_t priority = syslogObj.value();
+        if (priority < 0 || priority > 191)
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureOutOfRange);
+        }
+
+        const int severityCode = static_cast<int>(priority % 8);
+        const std::string severityName =
+            (severityCode >= 0 && severityCode < static_cast<int>(SYSLOG_SEVERITY_NAMES.size()))
+                ? std::string {SYSLOG_SEVERITY_NAMES[severityCode]}
+                : fmt::format("unknown({})", severityCode);
+
+        json::Json result;
+        result.setInt64(severityCode, "/code");
+        result.setString(severityName, "/name");
         RETURN_SUCCESS(runState, result, successTrace);
     };
 }

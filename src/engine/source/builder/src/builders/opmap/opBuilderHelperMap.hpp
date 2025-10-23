@@ -350,6 +350,36 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 //*************************************************
+//*              Syslog transform                  *
+//*************************************************
+
+/**
+ * @brief Helper that resolves a syslog priority into the corresponding facility code and name.
+ *
+ * The helper expects a single argument (literal or reference) that represents the syslog priority value. The resulting
+ * JSON object contains the computed `code` and `name` fields so it can be stored under `log.syslog.facility`.
+ *
+ * @param opArgs Vector of operation arguments for the helper.
+ * @param buildCtx Shared pointer to the build context used during helper execution.
+ * @return MapOp lifter that populates both `log.syslog.facility.code` and `log.syslog.facility.name`.
+ */
+MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Helper that resolves a syslog priority into the corresponding severity code and name.
+ *
+ * The helper expects a single argument (literal or reference) that represents the syslog priority value. The resulting
+ * JSON object contains the computed `code` and `name` fields so it can be stored under `log.syslog.severity`.
+ *
+ * @param opArgs Vector of operation arguments for the helper.
+ * @param buildCtx Shared pointer to the build context used during helper execution.
+ * @return MapOp lifter that populates both `log.syslog.severity.code` and `log.syslog.severity.name`.
+ */
+MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+//*************************************************
 //*              Time tranform                    *
 //*************************************************
 /**
