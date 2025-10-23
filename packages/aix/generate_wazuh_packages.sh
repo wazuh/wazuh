@@ -67,6 +67,88 @@ check_openssl() {
   fi
 }
 
+# Function to download files using openssl with SSL certificate validation
+download_with_openssl() {
+    local url="$1"
+    local output_file="$2"
+    local temp_response="/tmp/openssl_response_$$"
+    local temp_headers="/tmp/openssl_headers_$$"
+    local temp_body="/tmp/openssl_body_$$"
+
+    # Extract URL components
+    local host_and_path=$(echo "$url" | sed 's|^[^:]*://||')
+    local host=$(echo "$host_and_path" | cut -d'/' -f1)
+    local path="/$(echo "$host_and_path" | cut -d'/' -f2-)"
+
+    # Verify certificate bundle exists
+    if [[ ! -f "${CERT_BUNDLE}" ]]; then
+        echo "Error: Certificate bundle not found at ${CERT_BUNDLE}"
+        return 1
+    fi
+
+    echo "Downloading $output_file from $host$path..."
+
+    # Create HTTP/1.1 request
+    local http_request="GET $path HTTP/1.1\r\nHost: $host\r\nUser-Agent: wazuh-aix-installer/1.0\r\nConnection: close\r\n\r\n"
+
+    # Use printf to handle \r\n correctly
+    printf "%b" "$http_request" | \
+    openssl s_client -connect "$host:443" \
+                     -servername "$host" \
+                     -CAfile "${CERT_BUNDLE}" \
+                     -verify_return_error \
+                     -quiet 2>/dev/null > "$temp_response"
+
+    local openssl_exit_code=$?
+    if [[ $openssl_exit_code -ne 0 ]]; then
+        echo "Error: SSL connection failed or certificate verification failed"
+        rm -f "$temp_response" "$temp_headers" "$temp_body"
+        return 1
+    fi
+
+    # Find the first empty line (end of headers) - HTTP uses \r\n line endings
+    # Look for empty line, line with just \r, or line with just whitespace
+    local blank_line=$(awk '/^$|^[[:space:]]*$|^\r$|^[[:space:]]*\r$/ {print NR; exit}' "$temp_response")
+
+    if [[ -n "$blank_line" && "$blank_line" -gt 0 ]]; then
+        # Extract headers (everything before the blank line)
+        head -n $((blank_line - 1)) "$temp_response" > "$temp_headers"
+        # Extract body (everything after the blank line)
+        tail -n +$((blank_line + 1)) "$temp_response" > "$temp_body"
+    else
+        echo "Error: Could not find end of HTTP headers"
+        echo "First 10 lines of response:"
+        head -10 "$temp_response"
+        rm -f "$temp_response" "$temp_headers" "$temp_body"
+        return 1
+    fi
+
+    # Check HTTP response code
+    local http_code=$(head -1 "$temp_headers" | awk '{print $2}')
+
+    if [[ "$http_code" = "200" ]]; then
+        echo "Download successful (HTTP $http_code)"
+        mv "$temp_body" "$output_file"
+    else
+        echo "Error: HTTP $http_code"
+        head -5 "$temp_headers"
+        rm -f "$temp_response" "$temp_headers" "$temp_body"
+        return 1
+    fi
+
+    # Clean up temporary files
+    rm -f "$temp_response" "$temp_headers" "$temp_body"
+
+    # Verify downloaded file
+    if [[ -f "$output_file" && -s "$output_file" ]]; then
+        echo "File $output_file downloaded successfully"
+        return 0
+    else
+        echo "Error: Downloaded file is empty or missing"
+        return 1
+    fi
+}
+
 # Function to install perl 5.10 on AIX
 build_perl() {
 
@@ -115,10 +197,10 @@ build_environment() {
   # Function to download and install RPM
   install_rpm() {
     local url="$1"
-    local filename="$(basename "$url")"
+    local filename="/tmp/$(basename "$url")"
 
     echo "Downloading $filename..."
-    curl -LO "$url" -s || { echo "Failed to download $url"; return 1; }
+    download_with_openssl "$url" "$filename" || { echo "Failed to download $url"; return 1; }
 
     echo "Installing $filename..."
     $rpm "$filename" || true

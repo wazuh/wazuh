@@ -207,9 +207,10 @@ checks:
     compliance:
       - cis: ["2.3.1.1"]
       - cis_csc: ["4.7"]
-    condition: all
+    condition: any
     rules:
-      - 'c:powershell -NoProfile -Command "[bool](Get-CimInstance -Query ''SELECT * FROM Win32_UserAccount WHERE LocalAccount = TRUE AND SID LIKE ''''S-1-5-21-%-500'''''' | Where-Object -Property Disabled)" -> r:True'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-500") get Disabled -> r:TRUE'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-500") get Disabled -> r:No Instance\(s\) Available.'
 
   # 2.3.1.1 (L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'. (Automated)
    - id: 15510
@@ -470,9 +471,8 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge'
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 0'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> n:^(\d+) compare <= 30'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare <= 30'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare > 0'
 
   # 2.3.6.6 (L1) Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'. (Automated)
    - id: 15524
