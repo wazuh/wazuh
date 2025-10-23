@@ -246,10 +246,18 @@ def runCoverage(moduleName):
     for aux in paths:
         folders += "--directory {} ".format(aux)
 
+    # Build exclusion patterns based on module
+    excludePatterns = ["*/tests/*"]
+    if moduleName == "shared_modules/sync_protocol":
+        excludePatterns.extend(["*inventorySync_generated*"])
+
+    excludeArgs = " ".join('--exclude="{}"'.format(pattern) for pattern in excludePatterns)
+
     coverageCommand = "lcov {} --capture --output-file {}/code_coverage.info \
-                       -rc lcov_branch_coverage=0 --exclude=\"*/tests/*\" \
+                       -rc lcov_branch_coverage=0 {} \
                        --include \"{}/*\" -q".format(folders,
                                                      reportFolder,
+                                                     excludeArgs,
                                                      includeDir)
     out = subprocess.run(coverageCommand,
                          stdout=subprocess.PIPE,

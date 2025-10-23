@@ -121,6 +121,31 @@ bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
                                  unsigned int sync_retries,
                                  size_t max_eps);
 
+/// @brief Notifies the manager about data cleaning for specified indices.
+///
+/// This function sends DataClean messages for each index in the provided array.
+/// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
+/// Upon receiving Ok/PartialOk, it clears the local database and returns true.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param indices Array of index name strings to clean.
+/// @param indices_count Number of indices in the array.
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @return true if notification completed successfully and database was cleared, false otherwise
+bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
+                           const char** indices,
+                           size_t indices_count,
+                           unsigned int sync_timeout,
+                           unsigned int sync_retries,
+                           size_t max_eps);
+
+/// @brief Deletes the database file.
+///
+/// This function closes the database connection and removes the database file from disk.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+void asp_delete_database(AgentSyncProtocolHandle* handle);
+
 #ifdef __cplusplus
 }
 #endif

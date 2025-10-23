@@ -168,3 +168,23 @@ TEST(DBTest, TestValidFimLimit)
 
     delete mockLog;
 }
+
+TEST_F(DBTestFixture, TestFimDBCloseAndDelete)
+{
+    EXPECT_NO_THROW({
+        const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+        fim_db_close_and_delete_database();
+    });
+}
+
+TEST(DBTest, TestFimDBCloseAndDeleteWithoutInit)
+{
+    mockLog = new MockLoggingCall();
+
+    EXPECT_NO_THROW({
+        fim_db_close_and_delete_database();
+    });
+
+    delete mockLog;
+}

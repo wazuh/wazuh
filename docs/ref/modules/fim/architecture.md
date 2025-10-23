@@ -174,6 +174,163 @@ fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &tx
 
 ---
 
+## FIM Disabled Cleanup Flow
+
+### Overview
+
+When FIM (syscheck) is disabled, the `handle_fim_disabled()` function executes a cleanup procedure to notify the manager and remove local databases. This ensures the manager's state remains synchronized with the agent's actual monitoring status.
+
+### Execution Trigger
+
+The function is called during agent startup in `start_daemon()` when `syscheck.disabled` is true:
+
+```c
+if (syscheck.disabled) {
+    handle_fim_disabled();
+    minfo("Syscheck is disabled. Exiting.");
+    return;
+}
+```
+
+### Cleanup Flow
+
+```
+Agent Startup
+      │
+      ▼
+Check syscheck.disabled
+      │
+      ▼ (if disabled)
+handle_fim_disabled()
+      │
+      ├─► Check file entries count ──────► fim_db_get_count_file_entry()
+      │                                           │
+      │                                           ▼
+      │                                    Add FIM_FILES_SYNC_INDEX
+      │
+      ├─► Check registry keys count ─────► fim_db_get_count_registry_key()
+      │   (Windows only)                          │
+      │                                           ▼
+      │                                    Add FIM_REGISTRY_KEYS_SYNC_INDEX
+      │
+      ├─► Check registry values count ───► fim_db_get_count_registry_data()
+      │   (Windows only)                          │
+      │                                           ▼
+      │                                    Add FIM_REGISTRY_VALUES_SYNC_INDEX
+      │
+      ▼
+Prepare indices array
+      │
+      ▼ (if indices_count > 0)
+Send data clean notification ──────► asp_notify_data_clean()
+      │                                     │
+      │                                     ▼
+      │                              Retry on failure
+      │                              (wait sync_interval)
+      │                                     │
+      │                                     ▼
+      │                              Success confirmation
+      │
+      ├─► Delete sync protocol DB ────► asp_delete_database()
+      │
+      └─► Delete FIM database ────────► fim_db_close_and_delete_database()
+```
+
+### Implementation Details
+
+#### Step 1: Database Entry Count Check
+
+The function queries the FIM database to determine which indices contain data:
+
+```c
+int files_count = fim_db_get_count_file_entry();
+if (files_count > 0) {
+    indices[indices_count++] = FIM_FILES_SYNC_INDEX;
+}
+
+#ifdef WIN32
+int registry_keys_count = fim_db_get_count_registry_key();
+int registry_values_count = fim_db_get_count_registry_data();
+
+if (registry_keys_count > 0) {
+    indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
+}
+if (registry_values_count > 0) {
+    indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
+}
+#endif
+```
+
+**Indices checked:**
+- `FIM_FILES_SYNC_INDEX` (`"wazuh-states-fim-files"`) - File monitoring data
+- `FIM_REGISTRY_KEYS_SYNC_INDEX` (`"wazuh-states-fim-registry-keys"`) - Registry keys (Windows)
+- `FIM_REGISTRY_VALUES_SYNC_INDEX` (`"wazuh-states-fim-registry-values"`) - Registry values (Windows)
+
+#### Step 2: Data Clean Notification
+
+If any indices contain data, the agent notifies the manager to remove them from its state:
+
+```c
+if (indices_count > 0) {
+    minfo("Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
+
+    bool ret = false;
+    while (!ret) {
+        ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count,
+                                    syscheck.sync_response_timeout, FIM_SYNC_RETRIES,
+                                    syscheck.sync_max_eps);
+        if (!ret) {
+            // Wait sync_interval before retry
+            for (uint32_t i = 0; i < syscheck.sync_interval; i++) {
+                sleep(1);
+            }
+        }
+    }
+}
+```
+
+**Retry Logic:**
+- Continues retrying until successful
+- Waits `syscheck.sync_interval` seconds between retries
+- Uses configured timeout and max events per second limits
+
+#### Step 3: Database Cleanup
+
+After successful notification (or if no data exists), both databases are deleted:
+
+```c
+asp_delete_database(syscheck.sync_handle);      // Delete sync protocol database
+fim_db_close_and_delete_database();             // Delete FIM database
+```
+
+### Behavior Scenarios
+
+#### Scenario 1: FIM Disabled with Existing Data
+
+```
+1. Agent starts with syscheck.disabled = true
+2. FIM database contains 150 file entries and 50 registry keys
+3. Indices array: [FIM_FILES_SYNC_INDEX, FIM_REGISTRY_KEYS_SYNC_INDEX]
+4. Send data clean notification to manager (with retries if needed)
+5. Manager removes indices from agent's state
+6. Delete sync protocol database
+7. Delete FIM database
+8. Exit FIM module
+```
+
+#### Scenario 2: FIM Disabled with Empty Database
+
+```
+1. Agent starts with syscheck.disabled = true
+2. FIM database is empty (counts = 0)
+3. Skip data clean notification
+4. Delete sync protocol database
+5. Delete FIM database
+6. Exit FIM module
+```
+
+---
+
 ## Synchronization Architecture
 
 ### Periodic Synchronization Thread

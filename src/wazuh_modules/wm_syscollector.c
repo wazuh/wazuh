@@ -54,6 +54,8 @@ const wm_context WM_SYS_CONTEXT = {
 };
 
 void *syscollector_module = NULL;
+
+syscollector_init_func syscollector_init_ptr = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
 
@@ -62,6 +64,8 @@ syscollector_init_sync_func syscollector_init_sync_ptr = NULL;
 syscollector_sync_module_func syscollector_sync_module_ptr = NULL;
 syscollector_persist_diff_func syscollector_persist_diff_ptr = NULL;
 syscollector_parse_response_func syscollector_parse_response_ptr = NULL;
+syscollector_notify_data_clean_func syscollector_notify_data_clean_ptr = NULL;
+syscollector_delete_database_func syscollector_delete_database_ptr = NULL;
 
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
@@ -133,6 +137,95 @@ static int wm_sys_send_binary_msg(int queue, const void* message, size_t message
     return SendBinaryMSG(queue, message, message_len, locmsg, loc);
 }
 
+static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t *sys) {
+
+    if (w_is_file(SYSCOLLECTOR_DB_DISK_PATH)) {
+        mtinfo(WM_SYS_LOGTAG, "Syscollector is disabled, Syscollector database file exists. Proceeding with data clean notification.");
+    } else {
+        mtinfo(WM_SYS_LOGTAG, "Syscollector is disabled, Syscollector database file does not exist. Skipping data clean notification.");
+        return;
+    }
+
+    if (syscollector_module = so_get_module_handle("syscollector"), syscollector_module) {
+
+        syscollector_init_ptr = so_get_function_sym(syscollector_module, "syscollector_init");
+
+        // Get sync protocol function pointers
+        syscollector_init_sync_ptr = so_get_function_sym(syscollector_module, "syscollector_init_sync");
+        syscollector_parse_response_ptr = so_get_function_sym(syscollector_module, "syscollector_parse_response");
+        syscollector_notify_data_clean_ptr = so_get_function_sym(syscollector_module, "syscollector_notify_data_clean");
+        syscollector_delete_database_ptr = so_get_function_sym(syscollector_module, "syscollector_delete_database");
+
+        MQ_Functions mq_funcs = {
+                .start = wm_sys_startmq,
+                .send_binary = wm_sys_send_binary_msg
+            };
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+
+        syscollector_init_ptr(sys->interval,
+                               wm_sys_send_diff_message,
+                               wm_sys_persist_diff_message,
+                               taggedLogFunction,
+                               SYSCOLLECTOR_DB_DISK_PATH,
+                               SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
+                               SYSCOLLECTOR_NORM_TYPE,
+                               sys->flags.scan_on_start,
+                               sys->flags.hwinfo,
+                               sys->flags.osinfo,
+                               sys->flags.netinfo,
+                               sys->flags.programinfo,
+                               sys->flags.portsinfo,
+                               sys->flags.allports,
+                               sys->flags.procinfo,
+                               sys->flags.hotfixinfo,
+                               sys->flags.groups,
+                               sys->flags.users,
+                               sys->flags.services,
+                               sys->flags.browser_extensions,
+                               sys->flags.notify_first_scan);
+
+        if (syscollector_notify_data_clean_ptr && syscollector_delete_database_ptr)
+        {
+            const char* indices[] = {
+                SYSCOLLECTOR_SYNC_INDEX_SYSTEM,
+                SYSCOLLECTOR_SYNC_INDEX_HARDWARE,
+                SYSCOLLECTOR_SYNC_INDEX_HOTFIXES,
+                SYSCOLLECTOR_SYNC_INDEX_PACKAGES,
+                SYSCOLLECTOR_SYNC_INDEX_PROCESSES,
+                SYSCOLLECTOR_SYNC_INDEX_PORTS,
+                SYSCOLLECTOR_SYNC_INDEX_INTERFACES,
+                SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS,
+                SYSCOLLECTOR_SYNC_INDEX_NETWORKS,
+                SYSCOLLECTOR_SYNC_INDEX_USERS,
+                SYSCOLLECTOR_SYNC_INDEX_GROUPS,
+                SYSCOLLECTOR_SYNC_INDEX_SERVICES,
+                SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS
+            };
+            size_t indices_count = sizeof(indices) / sizeof(indices[0]);
+            bool ret = false;
+            while (!ret) {
+                ret = syscollector_notify_data_clean_ptr(indices, indices_count, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+                if (!ret) {
+                    for (uint32_t i = 0; i < sync_interval; i++) {
+                        sleep(1);
+                    }
+                }
+            }
+            mtdebug1(WM_SYS_LOGTAG, "Syscollector data clean notification sent successfully.");
+
+            syscollector_delete_database_ptr();
+        } else {
+            mtwarn(WM_SYS_LOGTAG, "Syscollector notify data clean functions not available.");
+        }
+
+    }
+    else
+    {
+        mtwarn(WM_SYS_LOGTAG, "Failed to load Syscollector module for data clean notification.");
+        return;
+    }
+}
+
 #ifdef WIN32
 DWORD WINAPI wm_sys_main(void *arg) {
     wm_sys_t *sys = (wm_sys_t *)arg;
@@ -152,6 +245,7 @@ void* wm_sys_main(wm_sys_t *sys) {
     w_mutex_init(&sys_reconnect_mutex, NULL);
 
     if (!sys->flags.enabled) {
+        wm_handle_sys_disabled_and_notify_data_clean(sys);
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
@@ -168,6 +262,7 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     if (syscollector_module = so_get_module_handle("syscollector"), syscollector_module)
     {
+        syscollector_init_ptr = so_get_function_sym(syscollector_module, "syscollector_init");
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
 
@@ -181,7 +276,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         pthread_exit(NULL);
     }
 
-    if (syscollector_start_ptr) {
+    if (syscollector_init_ptr && syscollector_start_ptr) {
         mtdebug1(WM_SYS_LOGTAG, "Starting Syscollector.");
         w_mutex_lock(&sys_stop_mutex);
         need_shutdown_wait = true;
@@ -221,7 +316,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
         }
 
-        syscollector_start_ptr(sys->interval,
+        syscollector_init_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_persist_diff_message,
                                taggedLogFunction,
@@ -242,10 +337,13 @@ void* wm_sys_main(wm_sys_t *sys) {
                                sys->flags.services,
                                sys->flags.browser_extensions,
                                sys->flags.notify_first_scan);
+
+        syscollector_start_ptr();
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
         pthread_exit(NULL);
     }
+    syscollector_init_ptr = NULL;
     syscollector_start_ptr = NULL;
     syscollector_stop_ptr = NULL;
 

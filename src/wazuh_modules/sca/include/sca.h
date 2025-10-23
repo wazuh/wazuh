@@ -22,6 +22,20 @@ extern "C"
 #include "logging_helper.h"
 #include "agent_sync_protocol_c_interface_types.h"
 
+/* SCA db directory */
+#ifndef WAZUH_UNIT_TESTING
+#define SCA_DB_DISK_PATH "queue/sca/db/sca.db"
+#else
+#ifndef WIN32
+#define SCA_DB_DISK_PATH    "./sca.db"
+#else
+#define SCA_DB_DISK_PATH    ".\\sca.db"
+#endif // WIN32
+#endif // WAZUH_UNIT_TESTING
+
+/* SCA sync protocol index name */
+#define SCA_SYNC_INDEX "wazuh-states-sca"
+
 // Forward declarations
 struct wm_sca_t;
 struct cJSON;
@@ -34,6 +48,8 @@ typedef int (*push_stateful_func)(const char* id, Operation_t operation, const c
 typedef struct cJSON* (*yaml_to_cjson_func)(const char* yaml_path);
 
 EXPORTED void sca_start(const struct wm_sca_t* sca_config);
+
+EXPORTED void sca_init();
 
 EXPORTED void sca_stop();
 
@@ -49,6 +65,8 @@ EXPORTED void sca_set_sync_parameters(const char* module_name, const char* sync_
 EXPORTED bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps);
 EXPORTED void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 EXPORTED bool sca_parse_response(const unsigned char* data, size_t length);
+EXPORTED bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps);
+EXPORTED void sca_delete_database();
 
 // YAML to cJSON function
 EXPORTED void sca_set_yaml_to_cjson_func(yaml_to_cjson_func yaml_func);
@@ -56,6 +74,8 @@ EXPORTED void sca_set_yaml_to_cjson_func(yaml_to_cjson_func yaml_func);
 #ifdef __cplusplus
 }
 #endif
+
+typedef void (*sca_init_func)();
 
 typedef void (*sca_start_func)(const struct wm_sca_t* sca_config);
 
@@ -74,6 +94,8 @@ typedef void (*sca_set_sync_parameters_func)(const char* module_name, const char
 typedef bool(*sca_sync_module_func)(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps);
 typedef void(*sca_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 typedef bool(*sca_parse_response_func)(const unsigned char* data, size_t length);
+typedef bool(*sca_notify_data_clean_func)(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps);
+typedef void(*sca_delete_database_func)();
 
 // YAML to cJSON function
 typedef void (*sca_set_yaml_to_cjson_func_func)(yaml_to_cjson_func yaml_func);

@@ -167,6 +167,11 @@ class FIMDB
          */
         void teardown();
 
+        /**
+         * @brief Closes the database connection and deletes the database file.
+         */
+        void closeAndDeleteDatabase();
+
     private:
         bool m_stopping;
         std::shared_ptr<DBSync> m_dbsyncHandler;

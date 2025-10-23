@@ -142,6 +142,67 @@ bool success = Syscollector::instance().parseResponseBuffer(response_data,
                                                             response_length);
 ```
 
+#### `notifyDataClean()`
+
+Notifies the manager that specific inventory indices have been cleaned and should be removed.
+
+**Signature:**
+```cpp
+bool Syscollector::notifyDataClean(const std::vector<std::string>& indices,
+                                   std::chrono::seconds timeout,
+                                   unsigned int retries,
+                                   size_t maxEps);
+```
+
+**Parameters:**
+- `indices`: Vector of index names to clean
+- `timeout`: Response timeout duration
+- `retries`: Maximum retry attempts
+- `maxEps`: Maximum events per second (0 = unlimited)
+
+**Returns:**
+- `true` if notification succeeded
+- `false` if notification failed
+
+**Usage Example:**
+```cpp
+// Notify data clean for disabled inventory components
+std::vector<std::string> indices_to_clean = {
+    SYSCOLLECTOR_SYNC_INDEX_PACKAGES,
+    SYSCOLLECTOR_SYNC_INDEX_PROCESSES,
+    SYSCOLLECTOR_SYNC_INDEX_PORTS
+};
+
+bool notify_success = Syscollector::instance().notifyDataClean(
+    indices_to_clean,
+    std::chrono::seconds(timeout_config),
+    SYSCOLLECTOR_SYNC_RETRIES,
+    max_eps_config);
+```
+
+#### `deleteDatabase()`
+
+Deletes both the sync protocol database and the Syscollector DBSync database.
+
+**Signature:**
+```cpp
+void Syscollector::deleteDatabase();
+```
+
+**Description:**
+
+Removes both the Agent Sync Protocol database and the Syscollector inventory database from disk. This method should be called when the Syscollector module is disabled or when a complete cleanup is required. Typically called after successfully notifying the manager with `notifyDataClean()`.
+
+**Databases Deleted:**
+- Sync protocol database: Persistent queue and sync state
+- DBSync database: Local inventory data (packages, processes, ports, etc.)
+
+**Usage Example:**
+```cpp
+// Delete databases when Syscollector is disabled
+Syscollector::instance().deleteDatabase();
+```
+
 ---
 
 ## Operation Types

@@ -32,10 +32,13 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
     {
         m_persistentQueue = queue ? std::move(queue) : std::make_shared<PersistentQueue>(dbPath, m_logger);
     }
+    // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR_EXIT, "Failed to initialize PersistentQueue: " + std::string(ex.what()));
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void AgentSyncProtocol::persistDifference(const std::string& id,
@@ -72,10 +75,13 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
 
         m_inMemoryData.push_back(persistedData);
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("Failed to persist item in memory: ") + e.what());
     }
+
+    // LCOV_EXCL_STOP
 }
 
 bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
@@ -307,6 +313,81 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     else
     {
         m_logger(LOG_WARNING, "Synchronization failed for metadata/groups mode");
+    }
+
+    clearSyncState();
+    return success;
+}
+
+bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
+                                        std::chrono::seconds timeout,
+                                        unsigned int retries,
+                                        size_t maxEps)
+{
+    if (indices.empty())
+    {
+        m_logger(LOG_ERROR, "Cannot notify data clean with empty indices vector");
+        return false;
+    }
+
+    if (!ensureQueueAvailable())
+    {
+        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
+        return false;
+    }
+
+    clearSyncState();
+
+    // Create PersistedData vector for DataClean messages
+    std::vector<PersistedData> dataToSync;
+    dataToSync.reserve(indices.size());
+
+    for (size_t i = 0; i < indices.size(); ++i)
+    {
+        PersistedData item;
+        item.seq = i;
+        item.index = indices[i];
+        // id, data, and operation are not used for DataClean messages
+        dataToSync.push_back(item);
+    }
+
+    bool success = false;
+
+    // Step 1: Send Start message with the indices and size
+    if (sendStartAndWaitAck(Mode::DELTA, dataToSync.size(), indices, timeout, retries, maxEps))
+    {
+        // Step 2: Send DataClean message for each index
+        if (sendDataCleanMessages(m_syncState.session, dataToSync, maxEps))
+        {
+            // Step 3: Send End message and wait for EndAck
+            if (sendEndAndWaitAck(m_syncState.session, timeout, retries, dataToSync, maxEps))
+            {
+                success = true;
+            }
+        }
+    }
+
+    try
+    {
+        if (success)
+        {
+            m_logger(LOG_DEBUG, "DataClean notification completed successfully. Clearing local database.");
+
+            // Clear the local database after successful notification
+            for (const auto& index : indices)
+            {
+                m_persistentQueue->clearItemsByIndex(index);
+            }
+        }
+        else
+        {
+            m_logger(LOG_WARNING, "DataClean notification failed.");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to clear local database: ") + e.what());
+        success = false;
     }
 
     clearSyncState();
@@ -545,6 +626,46 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("Exception when sending ChecksumModule message: ") + e.what());
+    }
+
+    return false;
+}
+
+bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
+                                              const std::vector<PersistedData>& data,
+                                              size_t maxEps)
+{
+    try
+    {
+        for (const auto& item : data)
+        {
+            flatbuffers::FlatBufferBuilder builder;
+            auto indexStr = builder.CreateString(item.index);
+
+            Wazuh::SyncSchema::DataCleanBuilder dataCleanBuilder(builder);
+            dataCleanBuilder.add_seq(item.seq);
+            dataCleanBuilder.add_session(session);
+            dataCleanBuilder.add_index(indexStr);
+            auto dataCleanOffset = dataCleanBuilder.Finish();
+
+            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataClean, dataCleanOffset.Union());
+            builder.Finish(message);
+
+            const uint8_t* buffer_ptr = builder.GetBufferPointer();
+            const size_t buffer_size = builder.GetSize();
+            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+            if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when sending DataClean messages: ") + e.what());
     }
 
     return false;
@@ -911,4 +1032,16 @@ Wazuh::SyncSchema::Mode AgentSyncProtocol::toProtocolMode(Mode mode) const
     }
 
     throw std::invalid_argument("Unknown Mode value: " + std::to_string(static_cast<int>(mode)));
+}
+
+void AgentSyncProtocol::deleteDatabase()
+{
+    try
+    {
+        m_persistentQueue->deleteDatabase();
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to delete database: ") + e.what());
+    }
 }

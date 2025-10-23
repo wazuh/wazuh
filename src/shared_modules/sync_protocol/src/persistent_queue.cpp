@@ -95,3 +95,31 @@ void PersistentQueue::resetSyncingItems()
         throw;
     }
 }
+
+void PersistentQueue::clearItemsByIndex(const std::string& index)
+{
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->removeByIndex(index);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error clearing items by index: ") + ex.what());
+        throw;
+    }
+}
+
+void PersistentQueue::deleteDatabase()
+{
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->deleteDatabase();
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error deleting database: ") + ex.what());
+        throw;
+    }
+}

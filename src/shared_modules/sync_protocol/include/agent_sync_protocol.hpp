@@ -61,6 +61,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
         bool synchronizeMetadataOrGroups(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
+        /// @copydoc IAgentSyncProtocol::notifyDataClean
+        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+
+        /// @copydoc IAgentSyncProtocol::deleteDatabase
+        void deleteDatabase() override;
+
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
         /// @param length Size of the FlatBuffer message in bytes.
@@ -135,6 +141,15 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                  const std::string& index,
                                  const std::string& checksum,
                                  size_t maxEps);
+
+        /// @brief Sends DataClean messages to the server for each data item
+        /// @param session Session id
+        /// @param data Vector of PersistedData to send as DataClean messages
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @return True on success, false on failure
+        bool sendDataCleanMessages(uint64_t session,
+                                   const std::vector<PersistedData>& data,
+                                   size_t maxEps);
 
         /// @brief Sends an end message to the server
         /// @param session Session id

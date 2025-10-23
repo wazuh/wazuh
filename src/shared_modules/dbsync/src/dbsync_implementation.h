@@ -81,6 +81,8 @@ namespace DbSync
             void release();
 
             void releaseContext(const DBSYNC_HANDLE handle);
+
+            void closeAndDeleteDatabase(const DBSYNC_HANDLE handle, const std::string& path);
         private:
 
             struct TransactionContext final
