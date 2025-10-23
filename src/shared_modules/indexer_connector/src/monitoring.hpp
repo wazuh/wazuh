@@ -106,7 +106,8 @@ class Monitoring final
         const auto onError =
             [&serverAddress](const std::string& error, const long statusCode, const std::string& errorBody)
         {
-            // Try to extract error details from JSON
+            // LCOV_EXCL_START
+            //  Try to extract error details from JSON
             std::string errorType, errorReason;
             try
             {
@@ -180,6 +181,7 @@ class Monitoring final
                         error.c_str());
             }
         };
+        // LCOV_EXCL_STOP
 
         // Get the health of the server.
         HTTPRequest::instance().get(
