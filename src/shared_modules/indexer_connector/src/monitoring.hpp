@@ -70,6 +70,28 @@ class Monitoring final
         // On success callback
         const auto onSuccess = [&serverStatus](std::string response)
         {
+            // Parse the response without throwing exceptions
+            // Response example:
+            // [
+            //     {
+            //         "epoch": "1726271464",
+            //         "timestamp": "23:51:04",
+            //         "cluster": "wazuh-cluster",
+            //         "status": "green",
+            //         "node.total": "1",
+            //         "node.data": "1",
+            //         "discovered_cluster_manager": "true",
+            //         "shards": "166",
+            //         "pri": "166",
+            //         "relo": "0",
+            //         "init": "0",
+            //         "unassign": "0",
+            //         "pending_tasks": "0",
+            //         "max_task_wait_time": "-",
+            //         "active_shards_percent": "100.0%"
+            //     }
+            // ]
+
             const auto data = nlohmann::json::parse(response, nullptr, false).at(0);
 
             // Check if the server is green or yellow
