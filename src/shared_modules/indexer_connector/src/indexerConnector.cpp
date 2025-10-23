@@ -210,6 +210,16 @@ static inline bool isResourceAlreadyExists(std::string_view errorBody) noexcept
 }
 
 /**
+ * @brief Fast check if error is template priority conflict
+ */
+static inline bool isTemplatePriorityConflict(std::string_view errorBody) noexcept
+{
+    return errorBody.find("illegal_argument_exception") != std::string_view::npos &&
+           errorBody.find("multiple index templates") != std::string_view::npos &&
+           errorBody.find("same priority") != std::string_view::npos;
+}
+
+/**
  * @brief Fast check if error is validation_exception with shard limit
  */
 static inline bool isShardLimitError(std::string_view errorBody) noexcept
@@ -717,8 +727,13 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         // Special case: Resource already exists during initialization - SILENCE
         if (statusCode == HTTP_BAD_REQUEST && isResourceAlreadyExists(errorBody))
         {
-            logDebug2(IC_NAME, "Index or template already exists (expected during initialization)");
             return; // Silently continue, don't throw
+        }
+
+        // Special case: Template priority conflict - SILENCE (cleanup issue)
+        if (statusCode == HTTP_BAD_REQUEST && isTemplatePriorityConflict(errorBody))
+        {
+            return; // Silently continue, cleanup will handle it
         }
 
         // Extract error info once for all 4xx cases
@@ -1218,7 +1233,7 @@ IndexerConnector::IndexerConnector(
                 }
                 catch (const std::exception& e)
                 {
-                    logDebug1(IC_NAME,
+                    logDebug2(IC_NAME,
                               "Unable to initialize IndexerConnector for index '%s': %s. Retrying in %ld "
                               "seconds.",
                               m_indexName.c_str(),
