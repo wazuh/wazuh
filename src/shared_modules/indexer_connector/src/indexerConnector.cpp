@@ -1178,7 +1178,7 @@ IndexerConnector::IndexerConnector(
                 const auto elapsed = std::chrono::duration_cast<std::chrono::minutes>(now - syncIt->second);
                 if (elapsed.count() < MINIMAL_SYNC_TIME)
                 {
-                    logDebug1(IC_NAME,
+                    logDebug2(IC_NAME,
                               "Agent '%s' sync blocked by rate limit (elapsed: %ld min, remaining: %ld min).",
                               agentId.c_str(),
                               elapsed.count(),
@@ -1194,7 +1194,7 @@ IndexerConnector::IndexerConnector(
 
             try
             {
-                logInfo(IC_NAME, "Syncing agent '%s' with indexer.", agentId.c_str());
+                logDebug2(IC_NAME, "Syncing agent '%s' with indexer.", agentId.c_str());
                 diff(getAgentDocumentsIds(selector->getNext(), agentId, secureCommunication),
                      agentId,
                      secureCommunication,
@@ -1203,7 +1203,7 @@ IndexerConnector::IndexerConnector(
                 lock.lock();
                 m_lastSync[agentId] = std::chrono::system_clock::now();
                 m_syncInProgress.erase(agentId); // Clear in-progress flag
-                logInfo(IC_NAME, "Agent '%s' sync succeeded.", agentId.c_str());
+                logDebug2(IC_NAME, "Agent '%s' sync succeeded.", agentId.c_str());
             }
             catch (const std::exception& e)
             {
