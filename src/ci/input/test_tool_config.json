@@ -73,7 +73,7 @@
             ]
         }
     ],
-    "shared_modules/sync_protocol":
+    "sync_protocol":
     [
         {
             "test_tool_name": "sync_protocol_test_tool",

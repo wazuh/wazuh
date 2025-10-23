@@ -25,7 +25,7 @@ link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
-link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/sync_protocol/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 include_directories(${SRC_FOLDER}/external/bzip2/)
@@ -40,8 +40,8 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
-include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
-include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
+include_directories(${SRC_FOLDER}/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/sync_protocol/build/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 
@@ -55,7 +55,7 @@ find_library(DBSYNC_LIB dbsync
     HINTS ${SRC_FOLDER}/shared_modules/dbsync/build/lib
     NO_DEFAULT_PATH)
 find_library(SYNC_PROTOCOL_LIB agent_sync_protocol
-    HINTS ${SRC_FOLDER}/shared_modules/sync_protocol/build/lib
+    HINTS ${SRC_FOLDER}/sync_protocol/build/lib
     NO_DEFAULT_PATH)
 find_library(PCRE2_LIB pcre2-8
     HINTS ${SRC_FOLDER}/external/libpcre2/.libs

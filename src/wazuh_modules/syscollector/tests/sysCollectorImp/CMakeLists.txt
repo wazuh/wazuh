@@ -7,12 +7,12 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
 endif()
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
-link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/sync_protocol/build/lib)
 
 include_directories(${SRC_FOLDER}/data_provider/tests/mocks/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
-include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
-include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
+include_directories(${SRC_FOLDER}/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/sync_protocol/build/)
 
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
@@ -34,7 +34,7 @@ add_executable(syscollectorimp_unit_test
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_custom_command(TARGET syscollectorimp_unit_test POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SRC_FOLDER}/shared_modules/sync_protocol/build/bin/libagent_sync_protocol.dll"
+        "${SRC_FOLDER}/sync_protocol/build/bin/libagent_sync_protocol.dll"
         "$<TARGET_FILE_DIR:syscollectorimp_unit_test>/libagent_sync_protocol.dll"
         COMMENT "Copying libagent_sync_protocol.dll to test directory"
     )

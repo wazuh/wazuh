@@ -70,7 +70,7 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("test-agent"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"test-group"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"test-group"}));
 
     EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
 
@@ -126,7 +126,7 @@ TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
     EXPECT_CALL(*m_mockSysInfo, agentName())
     .WillRepeatedly(::testing::Return(""));
     EXPECT_CALL(*m_mockSysInfo, agentGroups())
-    .WillRepeatedly(::testing::Return(std::vector<std::string>{}));
+    .WillRepeatedly(::testing::Return(std::vector<std::string> {}));
 
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       "test_path",

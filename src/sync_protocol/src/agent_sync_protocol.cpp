@@ -11,21 +11,40 @@
 #include "ipersistent_queue.hpp"
 #include "persistent_queue.hpp"
 #include "defs.h"
+#include "hashHelper.h"
+#include "stringHelper.h"
 
+#include <sysInfoInterface.h>
+#include <sysInfo.hpp>
+
+#include <algorithm>
 #include <flatbuffers/flatbuffers.h>
 #include <thread>
 #include <set>
+#include <utility>
 
 constexpr char SYNC_MQ = 's';
 
-AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue)
+AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName,
+                                     const std::string& dbPath,
+                                     MQ_Functions mqFuncs,
+                                     LoggerFunc logger,
+                                     std::shared_ptr<IPersistentQueue> queue,
+                                     std::shared_ptr<ISysInfo> sysInfo)
     : m_moduleName(moduleName),
       m_mqFuncs(mqFuncs),
-      m_logger(std::move(logger))
+      m_logger(std::move(logger)),
+      m_sysInfo(std::move(sysInfo))
 {
     if (!m_logger)
     {
         throw std::invalid_argument("Logger provided to AgentSyncProtocol cannot be null.");
+    }
+
+    if (!m_sysInfo)
+    {
+        m_sysInfo = std::make_shared<SysInfo>();
+        m_logger(LOG_DEBUG, "SysInfo instance not provided to AgentSyncProtocol; agent metadata fields may be empty.");
     }
 
     try
@@ -436,22 +455,184 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // Translate DB mode to Schema mode
         const auto protocolMode = toProtocolMode(mode);
 
-        // Create hardcoded agent information
-        auto architecture = builder.CreateString("hardcoded_architecture");
-        auto hostname = builder.CreateString("hardcoded_hostname");
-        auto osname = builder.CreateString("hardcoded_osname");
-        auto ostype = builder.CreateString("hardcoded_ostype");
-        auto osversion = builder.CreateString("hardcoded_osversion");
-        auto agentversion = builder.CreateString("hardcoded_agentversion");
-        auto agentname = builder.CreateString("hardcoded_agentname");
-        auto agentid = builder.CreateString("001");
-        auto checksum_metadata = builder.CreateString("hardcoded_checksum_metadata");
-        uint64_t global_version = 1000; // Hardcoded global version as ulong
+        // Gather agent metadata information
+        std::string architecture;
+        std::string hostname;
+        std::string osname;
+        std::string ostype;
+        std::string osversion;
+        std::string osplatform;
+        std::string agentversion = (__ossec_version != nullptr) ? std::string(__ossec_version) : std::string{};
+        std::string agentname;
+        std::string agentid;
+        std::vector<std::string> groupsList;
+
+        if (m_sysInfo)
+        {
+            try
+            {
+                const auto osInfo = m_sysInfo->os();
+                architecture = osInfo.value("architecture", "");
+                hostname = osInfo.value("hostname", "");
+                osname = osInfo.value("os_name", "");
+                ostype = osInfo.value("os_type", "");
+                osversion = osInfo.value("os_version", "");
+                osplatform = osInfo.value("os_platform", "");
+            }
+            catch (const std::exception& ex)
+            {
+                m_logger(LOG_WARNING, "Failed to retrieve OS information from SysInfo: " + std::string(ex.what()));
+            }
+
+            try
+            {
+                agentname = m_sysInfo->agentName();
+            }
+            catch (const std::exception& ex)
+            {
+                m_logger(LOG_WARNING, "Failed to retrieve agent name from SysInfo: " + std::string(ex.what()));
+            }
+
+            try
+            {
+                agentid = m_sysInfo->agentId();
+            }
+            catch (const std::exception& ex)
+            {
+                m_logger(LOG_WARNING, "Failed to retrieve agent id from SysInfo: " + std::string(ex.what()));
+            }
+
+            try
+            {
+                const auto rawGroups = m_sysInfo->agentGroups();
+                groupsList.reserve(rawGroups.size());
+
+                for (const auto& group : rawGroups)
+                {
+                    if (!group.empty())
+                    {
+                        groupsList.push_back(group);
+                    }
+                }
+            }
+            catch (const std::exception& ex)
+            {
+                m_logger(LOG_WARNING, "Failed to retrieve agent groups from SysInfo: " + std::string(ex.what()));
+            }
+        }
+        else
+        {
+            m_logger(LOG_DEBUG, "SysInfo not available; Start message metadata will be sent empty.");
+        }
+
+        const auto computeSha1Hex = [](const std::string & input) -> std::string
+        {
+            if (input.empty())
+            {
+                return {};
+            }
+
+            Utils::HashData hash(Utils::HashType::Sha1);
+            hash.update(input.data(), input.size());
+            return Utils::asciiToHex(hash.hash());
+        };
+
+        std::string metadataConcat;
+
+        const auto appendIfNotEmpty = [&metadataConcat](const std::string & value)
+        {
+            if (!value.empty())
+            {
+                metadataConcat += value;
+                metadataConcat.push_back(':');
+            }
+        };
+
+        appendIfNotEmpty(agentid);
+        appendIfNotEmpty(agentname);
+        appendIfNotEmpty(agentversion);
+        appendIfNotEmpty(architecture);
+        appendIfNotEmpty(hostname);
+        appendIfNotEmpty(osname);
+        appendIfNotEmpty(ostype);
+        appendIfNotEmpty(osplatform);
+        appendIfNotEmpty(osversion);
+
+        const std::string checksumMetadata = computeSha1Hex(metadataConcat);
+
+        std::vector<std::string> sortedGroups = groupsList;
+        std::sort(sortedGroups.begin(), sortedGroups.end());
+        sortedGroups.erase(std::unique(sortedGroups.begin(), sortedGroups.end()), sortedGroups.end());
+
+        std::string groupsConcat;
+
+        for (const auto& group : sortedGroups)
+        {
+            if (group.empty())
+            {
+                continue;
+            }
+
+            if (!groupsConcat.empty())
+            {
+                groupsConcat.push_back('|');
+            }
+
+            groupsConcat += group;
+        }
+
+        std::string globalVersionInput;
+
+        if (!checksumMetadata.empty())
+        {
+            globalVersionInput += checksumMetadata;
+        }
+
+        if (!groupsConcat.empty())
+        {
+            if (!globalVersionInput.empty())
+            {
+                globalVersionInput.push_back('|');
+            }
+
+            globalVersionInput += groupsConcat;
+        }
+
+        std::string globalVersion = computeSha1Hex(globalVersionInput);
+
+        if (globalVersion.empty())
+        {
+            globalVersion = checksumMetadata;
+        }
+
+        // Convert hex string to uint64_t for global_version field
+        uint64_t globalVersionValue = 0;
+
+        if (!globalVersion.empty() && globalVersion.length() >= 16)
+        {
+            // Take first 16 hex chars (8 bytes) and convert to uint64_t
+            globalVersionValue = std::stoull(globalVersion.substr(0, 16), nullptr, 16);
+        }
+
+        auto architectureOffset = builder.CreateString(architecture);
+        auto hostnameOffset = builder.CreateString(hostname);
+        auto osnameOffset = builder.CreateString(osname);
+        auto ostypeOffset = builder.CreateString(ostype);
+        auto osversionOffset = builder.CreateString(osversion);
+        auto agentversionOffset = builder.CreateString(agentversion);
+        auto agentnameOffset = builder.CreateString(agentname);
+        auto agentidOffset = builder.CreateString(agentid);
+        auto checksumMetadataOffset = builder.CreateString(checksumMetadata);
 
         // Create groups vector
         std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
-        groups_vec.push_back(builder.CreateString("hardcoded_group1"));
-        groups_vec.push_back(builder.CreateString("hardcoded_group2"));
+        groups_vec.reserve(groupsList.size());
+
+        for (const auto& group : groupsList)
+        {
+            groups_vec.push_back(builder.CreateString(group));
+        }
+
         auto groups = builder.CreateVector(groups_vec);
 
         // Create index vector from uniqueIndices parameter
@@ -470,17 +651,17 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
         startBuilder.add_index(indices);
         startBuilder.add_first(isFirst);
-        startBuilder.add_architecture(architecture);
-        startBuilder.add_hostname(hostname);
-        startBuilder.add_osname(osname);
-        startBuilder.add_ostype(ostype);
-        startBuilder.add_osversion(osversion);
-        startBuilder.add_agentversion(agentversion);
-        startBuilder.add_agentname(agentname);
-        startBuilder.add_agentid(agentid);
+        startBuilder.add_architecture(architectureOffset);
+        startBuilder.add_hostname(hostnameOffset);
+        startBuilder.add_osname(osnameOffset);
+        startBuilder.add_ostype(ostypeOffset);
+        startBuilder.add_osversion(osversionOffset);
+        startBuilder.add_agentversion(agentversionOffset);
+        startBuilder.add_agentname(agentnameOffset);
+        startBuilder.add_agentid(agentidOffset);
         startBuilder.add_groups(groups);
-        startBuilder.add_checksum_metadata(checksum_metadata);
-        startBuilder.add_global_version(global_version);
+        startBuilder.add_checksum_metadata(checksumMetadataOffset);
+        startBuilder.add_global_version(globalVersionValue);
 
         auto startOffset = startBuilder.Finish();
 

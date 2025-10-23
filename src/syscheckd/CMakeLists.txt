@@ -22,7 +22,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
-include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
@@ -30,7 +30,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
 
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
-link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/sync_protocol/build/lib)
 link_directories(${SRC_FOLDER}/)
 
 set(CMAKE_CXX_STANDARD 17)

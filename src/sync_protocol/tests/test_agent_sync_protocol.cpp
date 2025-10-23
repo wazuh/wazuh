@@ -71,7 +71,12 @@ class AgentSyncProtocolTest : public ::testing::Test
         const uint64_t session2 = 5678;
         const unsigned int retries = 1;
         const unsigned int maxEps = 100;
+#ifdef __APPLE__
+        // macOS requires longer delays due to different thread scheduling behavior
+        const unsigned int delay = 500;
+#else
         const unsigned int delay = 100;
+#endif
         const uint8_t min_timeout = 1;
         const uint8_t max_timeout = 3;
 };

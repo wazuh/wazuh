@@ -72,7 +72,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("456"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("real-dbsync-test"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"dbsync-test-group"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"dbsync-test-group"}));
 
     // Create agent info with real DBSync (using in-memory database)
     // This will trigger updateChanges internally through start()
@@ -121,7 +121,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("000"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("test-manager-hostname"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {}));
 
     // Create agent info with real DBSync (using in-memory database)
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
@@ -190,7 +190,7 @@ TEST_F(AgentInfoRealDBSyncTest, GetMetadataWithRealDBSync)
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("789"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("metadata-test-agent"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"test-group1", "test-group2"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"test-group1", "test-group2"}));
 
     // Create AgentInfoImpl with real DBSync (in-memory)
     m_agentInfo = std::make_shared<AgentInfoImpl>(

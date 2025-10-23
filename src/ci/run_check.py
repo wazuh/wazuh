@@ -210,7 +210,7 @@ def runCoverage(moduleName):
                                         "*/CMakeFiles/*.dir")
         includeDir = includeDir.parent
         paths = glob.glob(moduleCMakeFiles)
-    elif moduleName == "shared_modules/sync_protocol":
+    elif moduleName == "sync_protocol":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
     elif moduleName == "shared_modules/file_helper":
@@ -248,7 +248,7 @@ def runCoverage(moduleName):
 
     # Build exclusion patterns based on module
     excludePatterns = ["*/tests/*"]
-    if moduleName == "shared_modules/sync_protocol":
+    if moduleName == "sync_protocol":
         excludePatterns.extend(["*inventorySync_generated*"])
 
     excludeArgs = " ".join('--exclude="{}"'.format(pattern) for pattern in excludePatterns)

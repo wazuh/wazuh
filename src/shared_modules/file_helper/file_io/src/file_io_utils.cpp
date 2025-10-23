@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 namespace file_io
 {

@@ -38,6 +38,7 @@
 #include "chrome.hpp"
 #include "safari_darwin.hpp"
 #include "firefox.hpp"
+#include "agentInfoHelper.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -898,4 +899,25 @@ nlohmann::json SysInfo::getBrowserExtensions() const
     }
 
     return result;
+}
+
+std::string SysInfo::getAgentId() const
+{
+    return AgentInfoHelper::readAgentId();
+}
+
+std::string SysInfo::getAgentName() const
+{
+    auto getHostname = [this]() -> std::string
+    {
+        nlohmann::json osInfo = getOsInfo();
+        return osInfo.contains("hostname") ? osInfo["hostname"].get<std::string>() : "";
+    };
+
+    return AgentInfoHelper::readAgentName(KEYS_FILE, getHostname);
+}
+
+std::vector<std::string> SysInfo::getAgentGroups() const
+{
+    return AgentInfoHelper::readAgentGroups("etc/shared/merged.mg");
 }

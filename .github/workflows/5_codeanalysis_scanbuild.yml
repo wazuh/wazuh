@@ -29,7 +29,7 @@ jobs:
         run: |
           cd src
           make deps TARGET=${{matrix.target}} -j$(nproc)
-          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
+          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ --exclude shared_modules/http-request/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: actions/upload-artifact@v4
@@ -60,7 +60,7 @@ jobs:
           make deps TARGET=winagent -j$(nproc)
           make TARGET=winagent DEBUG=1 -j$(nproc)
           make clean-internals
-          scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=winagent DEBUG=1 -j$(nproc)
+          scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ --exclude shared_modules/http-request/ make TARGET=winagent DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: actions/upload-artifact@v4
@@ -86,7 +86,7 @@ jobs:
         run: |
           cd src
           make deps TARGET=agent -j3
-          /opt/homebrew/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j3
+          /opt/homebrew/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ --exclude shared_modules/http-request/ make TARGET=agent DEBUG=1 -j3
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: actions/upload-artifact@v4

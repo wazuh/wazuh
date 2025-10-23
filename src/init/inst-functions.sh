@@ -741,9 +741,9 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libdbsync.dylib
         fi
-        if [ -f shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib ]
+        if [ -f sync_protocol/build/lib/libagent_sync_protocol.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib
+            ${INSTALL} -m 0750 -o root -g 0 sync_protocol/build/lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libagent_sync_protocol.dylib
         fi
     elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
@@ -754,9 +754,9 @@ InstallCommon()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libdbsync.so
         fi
     fi
-    if [ -f shared_modules/sync_protocol/build/lib/libagent_sync_protocol.so ]
+    if [ -f sync_protocol/build/lib/libagent_sync_protocol.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/sync_protocol/build/lib/libagent_sync_protocol.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} sync_protocol/build/lib/libagent_sync_protocol.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_sync_protocol.so
@@ -833,7 +833,7 @@ InstallCommon()
             install_name_tool -id @rpath/../lib/libsyscollector.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
             install_name_tool -change $(PWD)/data_provider/build/lib/libsysinfo.dylib @rpath/../lib/libsysinfo.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
             install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/sync_protocol/build/lib/libagent_sync_protocol.dylib @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
         fi
     elif [ -f wazuh_modules/syscollector/build/lib/libsyscollector.so ]
     then

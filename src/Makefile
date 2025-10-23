@@ -103,7 +103,7 @@ SELINUX_POLICY=selinux/wazuh.pp
 SHARED_MODULES=shared_modules/
 WAZUH_MODULES=wazuh_modules/
 DBSYNC=${SHARED_MODULES}dbsync/
-SYNC_PROTOCOL=${SHARED_MODULES}sync_protocol/
+SYNC_PROTOCOL=sync_protocol/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SCA=wazuh_modules/sca/
 AGENT_INFO=wazuh_modules/agent_info/
@@ -128,6 +128,7 @@ ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
 WIN_CMAKE_RULES+=win32/sysinfo
 WIN_CMAKE_RULES+=win32/shared_modules
+WIN_CMAKE_RULES+=win32/sync_protocol
 WIN_RESOURCE_OBJ=-DRESOURCE_OBJ=win32/version-dll.o
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 WIN_CMAKE_RULES+=win32/syscollector
@@ -710,23 +711,28 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 win32/shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 #### Sysinfo ##
 
 win32/sysinfo: $(WAZUHEXT_LIB) win32/shared_modules win32/version-dll.o
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
+#### Sync Protocol ##
+
+win32/sync_protocol: $(WAZUHEXT_LIB) win32/sysinfo win32/version-dll.o
+	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+
 #### Syscollector ##
-win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
+win32/syscollector: win32/shared_modules win32/sync_protocol win32/version-dll.o
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 ### SCA ##
-win32/sca: win32/shared_modules win32/sysinfo
+win32/sca: win32/shared_modules win32/sync_protocol
 	cd ${SCA} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 ### agent_info ##
-win32/agent_info: win32/shared_modules win32/sysinfo
+win32/agent_info: win32/shared_modules win32/sync_protocol
 	cd ${AGENT_INFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${AGENT_INFO_TEST} ${AGENT_INFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
@@ -1646,28 +1652,32 @@ config/%.o: config/%.c
 build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
+	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 
 #### Sysinfo ##
 build_sysinfo: build_shared_modules $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} -DWAZUH_TARGET=${TARGET} .. && ${MAKE}
 
+#### Sync Protocol ##
+build_sync_protocol: build_sysinfo $(WAZUHEXT_LIB)
+	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+
 #### Syscollector ##
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-build_syscollector: build_shared_modules build_sysinfo
+build_syscollector: build_shared_modules build_sync_protocol
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
 #### SCA ##
-build_sca: build_shared_modules build_sysinfo
+build_sca: build_shared_modules build_sync_protocol
 	cd ${SCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} .. && ${MAKE}
 
 #### Agent Info ##
-build_agent_info: build_shared_modules build_sysinfo
+build_agent_info: build_shared_modules build_sync_protocol
 	cd ${AGENT_INFO} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${AGENT_INFO_TEST} ${AGENT_INFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector build_sca build_agent_info
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_sync_protocol build_syscollector build_sca build_agent_info
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
 
 #### Wazuh modules ##

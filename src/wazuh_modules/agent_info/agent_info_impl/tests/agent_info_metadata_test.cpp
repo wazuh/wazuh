@@ -103,7 +103,7 @@ TEST_F(AgentInfoMetadataTest, HandlesClientKeysNotFound)
     // SysInfo returns empty values when client.keys doesn't exist
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return(""));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return(""));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -127,7 +127,7 @@ TEST_F(AgentInfoMetadataTest, HandlesEmptyGroups)
     // Agent exists but no groups
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -151,7 +151,7 @@ TEST_F(AgentInfoMetadataTest, HandlesInvalidClientKeysFormat)
     // Invalid format - only ID, no name
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return(""));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"group1"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"group1"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -174,7 +174,7 @@ TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
 
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("002"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("test-agent"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "web-servers", "database", "monitoring"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"default", "web-servers", "database", "monitoring"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -223,7 +223,7 @@ TEST_F(AgentInfoMetadataTest, IncludesAllOSFieldsInMetadata)
     // Mock agent ID, name, and groups from SysInfo
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("123"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("my-agent"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"default"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -253,7 +253,7 @@ TEST_F(AgentInfoMetadataTest, HandlesPartialOSData)
     // Mock agent ID, name, and groups from SysInfo
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("456"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("partial-os-agent"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"test"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"test"}));
 
     // Mock handle() to return nullptr
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -289,7 +289,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_FileNotFound)
     // Mock agent exists but no groups (merged.mg doesn't exist)
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -313,7 +313,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_OnlyDefaultGroup)
     // Mock agent with only default group
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"default"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -337,7 +337,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroup)
     // Mock agent with default and one custom group
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "mygroup"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"default", "mygroup"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -361,7 +361,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultipleGroups)
     // Mock agent with multiple groups
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "mygroup", "mysecondgroup"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"default", "mygroup", "mysecondgroup"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -385,7 +385,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_WithWhitespaceAndExtraLines)
     // Mock agent with groups that would have whitespace and various formats in merged.mg
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"default", "group-with-no-spaces", "group-with-leading-space", "group-with-dashes-123"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"default", "group-with-no-spaces", "group-with-leading-space", "group-with-dashes-123"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
@@ -409,7 +409,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MalformedComments)
     // Mock agent with only valid group (malformed entries would be filtered by agentInfoHelper)
     EXPECT_CALL(*m_mockSysInfo, agentId()).WillOnce(::testing::Return("001"));
     EXPECT_CALL(*m_mockSysInfo, agentName()).WillOnce(::testing::Return("agent1"));
-    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string>{"valid-group"}));
+    EXPECT_CALL(*m_mockSysInfo, agentGroups()).WillOnce(::testing::Return(std::vector<std::string> {"valid-group"}));
 
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));

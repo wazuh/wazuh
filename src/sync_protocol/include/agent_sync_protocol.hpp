@@ -19,7 +19,9 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
-#include <condition_variable>
+
+class ISysInfo;
+
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
     public:
@@ -29,7 +31,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue = nullptr);
+        explicit AgentSyncProtocol(const std::string& moduleName,
+                                   const std::string& dbPath,
+                                   MQ_Functions mqFuncs,
+                                   LoggerFunc logger,
+                                   std::shared_ptr<IPersistentQueue> queue = nullptr,
+                                   std::shared_ptr<ISysInfo> sysInfo = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -86,6 +93,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Logger function
         LoggerFunc m_logger;
+
+        /// @brief Interface to gather local system information
+        std::shared_ptr<ISysInfo> m_sysInfo;
 
         /// @brief Queue
         int m_queue = -1;
