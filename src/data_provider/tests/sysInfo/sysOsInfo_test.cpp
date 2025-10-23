@@ -44,7 +44,7 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
         pOsInfoProvider
     };
     EXPECT_CALL(*pOsInfoProvider, name()).WillOnce(Return("Microsoft Windows 10 Home"));
-    EXPECT_CALL(*pOsInfoProvider, version()).Times(2).WillRepeatedly(Return("10.0.18362"));
+    EXPECT_CALL(*pOsInfoProvider, version()).WillOnce(Return("10.0.18362"));
     EXPECT_CALL(*pOsInfoProvider, majorVersion()).WillOnce(Return("10"));
     EXPECT_CALL(*pOsInfoProvider, minorVersion()).WillOnce(Return("0"));
     EXPECT_CALL(*pOsInfoProvider, build()).WillOnce(Return("18362"));

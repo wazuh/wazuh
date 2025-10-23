@@ -10,6 +10,7 @@
 #include <iostream>
 #include "dbus_wrapper.hpp"
 #include "systemd_units_linux.hpp"
+#include "stringHelper.h"
 
 SystemdUnitsProvider::SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper)
     : m_dbusWrapper(std::move(dbusWrapper))
@@ -178,7 +179,11 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             }
         }
 
-        output.emplace_back(std::move(unit));
+        if (Utils::endsWith(unit.id, ".service") && Utils::replaceLast(unit.id, ".service", ""))
+        {
+            output.emplace_back(std::move(unit));
+        }
+
         m_dbusWrapper->message_iter_next(&arrayIter);
     }
 
