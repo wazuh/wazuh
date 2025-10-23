@@ -529,9 +529,10 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
         // Get template mappings.
         auto& templateMappings = templateData["template"]["mappings"];
 
-        const auto onError = [](const std::string& error, const long statusCode)
+        const auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
         {
-            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+            logError(
+                IC_NAME, "%s, status code: %ld, response body: %s.", error.c_str(), statusCode, responseBody.c_str());
             throw std::runtime_error(error);
         };
 
@@ -680,9 +681,9 @@ void IndexerConnector::rollbackIndexChanges(const std::shared_ptr<ServerSelector
 {
     if (m_blockedIndex)
     {
-        const auto onError = [](const std::string& error, const long statusCode)
+        const auto onError = [](const std::string& error, const long statusCode, const std::string& errorBody)
         {
-            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+            logError(IC_NAME, "%s, status code: %ld, response body: %s.", error.c_str(), statusCode, errorBody.c_str());
             throw std::runtime_error(error);
         };
 
