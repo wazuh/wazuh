@@ -444,7 +444,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto osversion = builder.CreateString("hardcoded_osversion");
         auto agentversion = builder.CreateString("hardcoded_agentversion");
         auto agentname = builder.CreateString("hardcoded_agentname");
-        auto agentid = builder.CreateString("hardcoded_agentid");
+        auto agentid = builder.CreateString("001");
         auto checksum_metadata = builder.CreateString("hardcoded_checksum_metadata");
         uint64_t global_version = 1000; // Hardcoded global version as ulong
 
