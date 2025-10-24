@@ -936,7 +936,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
             extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
             extensionItem["browser_profile_name"]      = (ext.contains("profile") && !ext["profile"].get<std::string>().empty()) ? ext["profile"] : UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = ext.value("profile_path",        UNKNOWN_VALUE);
+            extensionItem["browser_profile_path"]      = (ext.contains("profile_path") && !ext["profile_path"].get<std::string>().empty()) ? ext["profile_path"] : UNKNOWN_VALUE;
             extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
             extensionItem["package_type"]              = UNKNOWN_VALUE;
@@ -970,7 +970,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
             extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
             extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = (ext.contains("location") && !ext["location"].get<std::string>().empty()) ? ext["location"] : UNKNOWN_VALUE;
             extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = UNKNOWN_VALUE;
             extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);

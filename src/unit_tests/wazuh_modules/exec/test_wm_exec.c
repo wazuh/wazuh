@@ -105,6 +105,86 @@ static void test_wm_exec_not_accented_command(void ** state) {
 #endif
 }
 
+static void test_wm_exec_createprocess_fails_with_output(void ** state) {
+#ifdef WIN32
+    char *output = NULL;
+    int status = 0;
+    const char *command = "invalid_command.exe";
+
+    // Mock CreatePipe - simulate successful pipe creation
+    will_return(wrap_CreatePipe, TRUE);
+    will_return(wrap_CreatePipe, (HANDLE)0x1234);  // hReadPipe (tinfo.pipe)
+    will_return(wrap_CreatePipe, (HANDLE)0x5678);  // hWritePipe (sinfo.hStdOutput)
+
+    // Mock SetHandleInformation - success
+    expect_value(wrap_SetHandleInformation, hObject, (HANDLE)0x5678);
+    expect_value(wrap_SetHandleInformation, dwMask, HANDLE_FLAG_INHERIT);
+    expect_value(wrap_SetHandleInformation, dwFlags, 1);
+    will_return(wrap_SetHandleInformation, TRUE);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    // Mock CreateProcessW to FAIL
+    expect_any(wrap_CreateProcessW, lpCommandLine);
+    will_return(wrap_CreateProcessW, FALSE);
+
+    // Expect mwarn call (from the fix)
+    expect_any(__wrap__mwarn, formatted_msg);
+
+    // IMPORTANT: Verify CloseHandle is called twice to clean up pipes
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x1234);  // tinfo.pipe
+    will_return(wrap_CloseHandle, TRUE);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x5678);  // sinfo.hStdOutput
+    will_return(wrap_CloseHandle, TRUE);
+
+    // Execute wm_exec with output (so pipes are created)
+    int result = wm_exec(command, &output, &status, 5, NULL);
+
+    // Verify error is returned
+    assert_int_equal(result, -1);
+    assert_null(output);
+#else
+    printf("not implemented yet!\n");
+#endif
+}
+
+static void test_wm_exec_sethandleinformation_fails(void ** state) {
+#ifdef WIN32
+    char *output = NULL;
+    int status = 0;
+    const char *command = "test_command.exe";
+
+    // Mock CreatePipe - simulate successful pipe creation
+    will_return(wrap_CreatePipe, TRUE);
+    will_return(wrap_CreatePipe, (HANDLE)0xABCD);  // hReadPipe (tinfo.pipe)
+    will_return(wrap_CreatePipe, (HANDLE)0xEF01);  // hWritePipe (sinfo.hStdOutput)
+
+    // Mock SetHandleInformation - FAILS
+    expect_value(wrap_SetHandleInformation, hObject, (HANDLE)0xEF01);
+    expect_value(wrap_SetHandleInformation, dwMask, HANDLE_FLAG_INHERIT);
+    expect_value(wrap_SetHandleInformation, dwFlags, 1);
+    will_return(wrap_SetHandleInformation, FALSE);  // FAILS
+
+    // Expect merror call
+    expect_any(__wrap__merror, formatted_msg);
+
+    // IMPORTANT: Verify CloseHandle is called twice to clean up pipes
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0xABCD);  // tinfo.pipe
+    will_return(wrap_CloseHandle, TRUE);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0xEF01);  // sinfo.hStdOutput
+    will_return(wrap_CloseHandle, TRUE);
+
+    // Execute wm_exec with output
+    int result = wm_exec(command, &output, &status, 5, NULL);
+
+    // Verify error is returned
+    assert_int_equal(result, -1);
+    assert_null(output);
+#else
+    printf("not implemented yet!\n");
+#endif
+}
+
 #ifndef TEST_WINAGENT
 static void test_wm_append_sid_null_list(void ** state) {
     pid_t sid = 1234;
@@ -343,7 +423,7 @@ static void test_wm_remove_handle_not_found(void ** state) {
 
     will_return(__wrap_OSList_GetFirstNode, NULL);
 
-    expect_string(__wrap__mwarn, formatted_msg, 
+    expect_string(__wrap__mwarn, formatted_msg,
                  "Child process handle 00112233 could not be removed because "
                  "it was not found in the children list.");
 
@@ -433,6 +513,8 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_wm_exec_accented_command),
         cmocka_unit_test(test_wm_exec_not_accented_command),
+        cmocka_unit_test(test_wm_exec_createprocess_fails_with_output),
+        cmocka_unit_test(test_wm_exec_sethandleinformation_fails),
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_wm_append_sid_null_list, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_wm_append_sid_fail, setup_modules, teardown_modules),

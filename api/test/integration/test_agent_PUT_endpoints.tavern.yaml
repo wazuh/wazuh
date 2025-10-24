@@ -157,6 +157,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["003", "004"]
+          restarted: False
       status_code: 200
       json:
         error: 2
@@ -187,6 +188,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["001", "003", "004", "007"]  # 009 is not restarted as it is disconnected
+          restarted: False
       status_code: 200
       json:
         error: 0
@@ -218,6 +220,7 @@ stages:
         extra_kwargs:
           agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
                                                                                  # they are disconnected
+          restarted: False
       status_code: 200
       json:
         error: 0
@@ -259,6 +262,7 @@ stages:
         extra_kwargs:
           agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
                                                                                  # they are disconnected
+          restarted: False
       status_code: 200
 
     # PUT /groups/wrong_group/configuration
@@ -676,6 +680,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["001"]
+          restarted: False
       status_code: 200
       json:
         error: 0
@@ -734,6 +739,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["002"]
+          restarted: False
       status_code: 200
       json:
         error: 0

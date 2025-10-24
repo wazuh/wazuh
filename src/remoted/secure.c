@@ -206,11 +206,9 @@ void HandleSecure()
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
     indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
 
-    size_t batch_events_capacity = (size_t)getDefine_Int("remoted", "batch_events_capacity", 0, 0x1<<20);
     events_queue = batch_queue_init(batch_events_capacity);
     batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
 
-    size_t batch_events_per_agent_capacity = (size_t)getDefine_Int("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20);
     batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
 
     uhttp_global_init();

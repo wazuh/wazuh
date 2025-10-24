@@ -1346,11 +1346,11 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     {
         std::string browser_name = data.contains("browser_name") ? data["browser_name"].get<std::string>() : "";
         std::string user_id = data.contains("user_id") ? data["user_id"].get<std::string>() : "";
-        std::string browser_profile_name = data.contains("browser_profile_name") ? data["browser_profile_name"].get<std::string>() : "";
+        std::string browser_profile_path = data.contains("browser_profile_path") ? data["browser_profile_path"].get<std::string>() : "";
         std::string package_name = data.contains("package_name") ? data["package_name"].get<std::string>() : "";
         std::string package_version = data.contains("package_version_") ? data["package_version_"].get<std::string>() : "";
 
-        ret = browser_name + ":" + user_id + ":" + browser_profile_name + ":" + package_name + ":" + package_version;
+        ret = browser_name + ":" + user_id + ":" + browser_profile_path + ":" + package_name + ":" + package_version;
     }
 
     return ret;

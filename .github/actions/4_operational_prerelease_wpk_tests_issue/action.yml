@@ -13,9 +13,16 @@ inputs:
   prev_issue:
     description: 'Previous issue number'
     required: true
+  assignee:
+    description: 'GitHub username to assign the issue to'
+    required: true
   github_token:
     description: 'GitHub token'
     required: true
+  project_token:
+    description: 'GitHub token with project permissions (optional, for project configuration)'
+    required: false
+    default: ''
 outputs:
   issue_url:
     description: 'URL of the created issue'
@@ -35,6 +42,7 @@ runs:
         PREV_ISSUE="${{ inputs.prev_issue }}"
 
         REPO="wazuh/wazuh"
+        PROJECT="XDR+SIEM/Agent team"
         LABEL="level/task,type/test"
         TITLE="Release $RELEASE - $STAGE - WPK Upgrade Tests"
         TAG="v$RELEASE-$(echo ${STAGE// /} | tr '[:upper:]' '[:lower:]')"
@@ -67,21 +75,27 @@ runs:
 
         We aim to test each WPK package on a modern platform that supports it.
 
-        | Platform   | Suggested OS           |
-        |------------|------------------------|
-        | DEB        | Ubuntu 24.04           |
-        | RPM        | AlmaLinux 9            |
-        | MSI        | Windows 11             |
-        | PKG x86_64 | macOS 15 Sonoma @arm64 |
+        | Platform | Suggested OS          |
+        |----------|-----------------------|
+        | DEB      | Ubuntu 24.04          |
+        | RPM      | AlmaLinux 9           |
+        | MSI      | Windows 11            |
+        | PKG      | macOS 26 Tahoe @arm64 |
+
+        ## Download the manager package
+
+        \`\`\`shell
+        curl -LsO https://packages-dev.wazuh.com/pre-release/apt/pool/main/w/wazuh-manager/wazuh-manager_${RELEASE}-1_amd64.deb
+        curl -LsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-${RELEASE}-1.x86_64.rpm
+        \`\`\`
 
         ## Download the WPK packages
 
         \`\`\`shell
-        cd /var/ossec/tmp
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v$RELEASE_linux_amd64.deb.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v$RELEASE_linux_x86_64.rpm.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v$RELEASE_macos_intel64.pkg.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v$RELEASE_windows.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v${RELEASE}_linux_amd64.deb.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v${RELEASE}_linux_x86_64.rpm.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v${RELEASE}_macos_intel64.pkg.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v${RELEASE}_windows.wpk
         \`\`\`
 
         ## Report procedure
@@ -140,10 +154,33 @@ runs:
         EOF
         )
 
-        ISSUE_URL=$(gh issue create \
+        if OUTPUT=$(gh issue create \
           --repo "$REPO" \
           --title "$TITLE" \
           --label "$LABEL" \
-          --body "$BODY")
+          --body "$BODY" \
+          --assignee "${{ inputs.assignee }}" 2>&1); then
 
-        echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+          ISSUE_URL="$OUTPUT"
+          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+
+          # Extract issue number from URL
+          ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oP '\d+$')
+
+          # Configure project fields if project_token is provided
+          if [[ -n "${{ inputs.project_token }}" ]]; then
+            echo "Configuring project fields..."
+            export GITHUB_TOKEN="${{ inputs.project_token }}"
+
+            # Add issue to project first
+            gh project item-add 86 --owner wazuh --url "$ISSUE_URL"
+
+            # Configure project fields
+            bash .github/scripts/configure-project-fields.sh "$ISSUE_NUMBER" "$RELEASE" "$STAGE"
+          else
+            echo "No project token provided, skipping project configuration"
+          fi
+        else
+          echo "Error creating issue: $OUTPUT"
+          exit 1
+        fi

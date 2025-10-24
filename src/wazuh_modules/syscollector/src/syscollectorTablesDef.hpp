@@ -284,7 +284,7 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         file_hash_sha256 TEXT,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (browser_name,user_id,browser_profile_name,package_name,package_version_)) WITHOUT ROWID;)"
+        PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
 };
 
 constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };

@@ -43,6 +43,8 @@ int response_timeout;
 int guess_agent_group;
 int shared_reload_interval;
 int disk_storage;
+size_t batch_events_capacity;
+size_t batch_events_per_agent_capacity;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -55,7 +57,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->conn = NULL;
     cfg->allowips = NULL;
     cfg->denyips = NULL;
-    cfg->nocmerged = 0;
     cfg->queue_size = 131072;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
@@ -89,6 +90,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     shared_reload_interval = getDefine_Int("remoted", "shared_reload", 1, 18000);
     disk_storage = getDefine_Int("remoted", "disk_storage", 0, 1);
     _s_verify_counter = getDefine_Int("remoted", "verify_msg_id", 0, 1);
+    batch_events_capacity = (size_t)getDefine_Int("remoted", "batch_events_capacity", 0, 0x1<<20);
+    batch_events_per_agent_capacity = (size_t)getDefine_Int("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
@@ -204,7 +207,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"shared_reload",shared_reload_interval);
     cJSON_AddNumberToObject(remoted,"disk_storage",disk_storage);
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
-    cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
+    cJSON_AddNumberToObject(remoted,"merge_shared",merge_shared);
     cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
     cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
     cJSON_AddNumberToObject(remoted,"send_chunk",send_chunk);
@@ -220,6 +223,8 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"keyupdate_interval",keyupdate_interval);
     cJSON_AddNumberToObject(remoted,"router_forwarding_disabled",router_forwarding_disabled);
     cJSON_AddNumberToObject(remoted,"state_interval",state_interval);
+    cJSON_AddNumberToObject(remoted,"batch_events_capacity",batch_events_capacity);
+    cJSON_AddNumberToObject(remoted,"batch_events_per_agent_capacity",batch_events_per_agent_capacity);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
