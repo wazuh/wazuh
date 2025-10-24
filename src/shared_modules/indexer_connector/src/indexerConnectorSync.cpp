@@ -45,6 +45,16 @@ public:
         m_impl.bulkIndex(id, index, data);
     }
 
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+    {
+        m_impl.bulkIndex(id, index, data, version);
+    }
+
+    void flush()
+    {
+        m_impl.flush();
+    }
+
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
     {
         return m_impl.scopeLock();
@@ -84,6 +94,16 @@ void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view inde
 void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index, std::string_view data)
 {
     m_impl->bulkIndex(id, index, data);
+}
+
+void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+{
+    m_impl->bulkIndex(id, index, data, version);
+}
+
+void IndexerConnectorSync::flush()
+{
+    m_impl->flush();
 }
 
 [[nodiscard]] std::unique_lock<std::mutex> IndexerConnectorSync::scopeLock()
