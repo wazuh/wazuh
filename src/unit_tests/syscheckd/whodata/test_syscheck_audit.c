@@ -676,6 +676,8 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
 
+    errno = 0;
+
     int ret;
     ret = set_auditd_config();
 
@@ -727,6 +729,8 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     will_return(__wrap_fclose, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
+
+    errno = 0;
 
     int ret;
     ret = set_auditd_config();
