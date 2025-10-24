@@ -330,9 +330,9 @@ checks:
       - pci_dss_v3.2.1: ["2.1", "2.1.1"]
       - pci_dss_v4.0: ["2.2.2", "2.3.1"]
       - soc_2: ["CC6.3"]
-   condition: all
-   rules:
-     - 'not c:net user -> r:guest|Guest|Gast|Invité|Invitado|Ospite|Convidado|Gäst |Gjest|Gæst|Vieras|Гость|Gość|Vendég|Host |Misafir|Επισκέπτης|ゲスト|来宾|來賓|게스트|ضيف|אורח|บัญชีผู้ใช้ทั่วไป'
+    condition: all
+    rules:
+      - 'not c:net user -> r:guest|Guest|Gast|Invité|Invitado|Ospite|Convidado|Gäst |Gjest|Gæst|Vieras|Гость|Gość|Vendég|Host |Misafir|Επισκέπτης|ゲスト|来宾|來賓|게스트|ضيف|אורח|บัญชีผู้ใช้ทั่วไป'
 
   # 2.3.2.1 (L1) Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'. (Automated)
   - id: 27013
