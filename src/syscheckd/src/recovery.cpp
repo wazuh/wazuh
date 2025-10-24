@@ -7,6 +7,7 @@ extern "C" {
 }
 
 #include "recovery.h"
+#include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol_c_wrapper.hpp"
 #include "db.hpp"
 #include "fimCommonDefs.h"
@@ -58,4 +59,44 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             minfo("Recovery synchronization failed, will retry later");
         }
     }
+}
+
+bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps){
+
+    AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+
+    minfo("Attempting to get checksum for %s table", table_name);
+    std::string concatenated_checksums = DB::instance().getConcatenatedChecksums(table_name);
+    //
+    // Build checksum-of-checksums
+    Utils::HashData hash(Utils::HashType::Sha1);
+    std::string final_checksum;
+    try
+    {
+        hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
+        const std::vector<unsigned char> hashResult = hash.hash();
+        final_checksum = Utils::asciiToHex(hashResult);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
+    }
+
+    minfo("Success! Final file table checksum is: %s", final_checksum.c_str());
+
+    bool needs_full_sync = wrapper->impl->requiresFullSync(
+        table_name,
+        final_checksum,
+        std::chrono::seconds(sync_response_timeout),
+        FIM_SYNC_RETRIES, 
+        sync_max_eps
+    );
+    if (needs_full_sync) {
+        minfo("Checksum mismatch detected for index %s, full sync required", table_name);
+        return true;
+    } else {
+        minfo("Checksum valid for index %s, delta sync sufficient", table_name);
+        return false;
+    }
+
 }

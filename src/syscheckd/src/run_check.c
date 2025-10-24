@@ -11,6 +11,7 @@
 
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
 #include "fimCommonDefs.h"
+#include "recovery.h"
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -606,10 +607,16 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
     while (fim_sync_module_running) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
+
         minfo("Running FIM synchronization.");
 
         bool first_scan_has_been_synched = fim_db_check_if_first_scan_has_been_synched();
-        bool sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, first_scan_has_been_synched);
+        bool sync_result = asp_sync_module(syscheck.sync_handle, 
+                                           MODE_DELTA, 
+                                           syscheck.sync_response_timeout, 
+                                           FIM_SYNC_RETRIES, 
+                                           syscheck.sync_max_eps, 
+                                           first_scan_has_been_synched);
         if (sync_result) {
             minfo("Synchronization succeeded");
             if (!first_scan_has_been_synched) {
@@ -617,9 +624,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 mdebug2("db's first scan has been synched");
             }
 
-            // Recovery process
-            minfo("Attempting to get file table checksums...");
-
+            minfo("Starting checksum validation process");
 #ifdef WIN32
             int table_count = 3;
             char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
@@ -628,41 +633,15 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
 #endif
             for (int i = 0; i < table_count; i++) {
-                char* concatenated_checksums = NULL;
-
-                FIMDBErrorCode result = fim_db_get_table_concatenated_checksums(&concatenated_checksums, table_names[i]);
-
-                if (result != FIMDB_OK || !concatenated_checksums)
-                {
-                    merror("Error: Failed to get concatenated checksums from database.");
-                    if (concatenated_checksums){
-                        free(concatenated_checksums);
-                    }
-                    continue;
-                }
-
-                char final_checksum[OS_SHA1_HEXDIGEST_SIZE + 1];
-                OS_SHA1_Str(concatenated_checksums, -1, final_checksum);
-
-                free(concatenated_checksums);
-
-                minfo("Success! Final file table checksum is: %s", final_checksum);
-                bool sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, first_scan_has_been_synched);
-                bool needs_full_sync = asp_requires_full_sync(
-                    syscheck.sync_handle,
-                    table_names[i],
-                    final_checksum,
-                    syscheck.sync_response_timeout,
-                    FIM_SYNC_RETRIES, 
-                    syscheck.sync_max_eps
-                );
-                if (needs_full_sync) {
-                    minfo("Checksum mismatch detected for index %s, full sync required", table_names[i]);
-                    fim_recovery_persist_table_and_resync(table_names[i], syscheck.sync_handle, syscheck.sync_response_timeout, syscheck.sync_max_eps);
-                    return;
-                } else {
-                    minfo("Checksum valid for index %s, delta sync sufficient", table_names[i]);
-                    return;
+                bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i], 
+                                                                                   syscheck.sync_handle, 
+                                                                                   syscheck.sync_response_timeout, 
+                                                                                   syscheck.sync_max_eps);
+                if (full_sync_required) {
+                    fim_recovery_persist_table_and_resync(table_names[i], 
+                                                          syscheck.sync_handle, 
+                                                          syscheck.sync_response_timeout, 
+                                                          syscheck.sync_max_eps);
                 }
             }
         } else {

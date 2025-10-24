@@ -188,7 +188,7 @@ EXPORTED void fim_db_close_and_delete_database();
      * @retval FIMDB_ERR on failure.
      * @note Caller must free(*out_string_ptr) when done.
      */
-    EXPORTED FIMDBErrorCode fim_db_get_table_concatenated_checksums(char** out_string_ptr, char* table_name);
+    EXPORTED FIMDBErrorCode fim_db_get_table_concatenated_checksums(char* table_name, char** out_string_ptr);
 
 #ifdef WIN32
 

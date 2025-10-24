@@ -26,14 +26,19 @@
 #define EXPORTED
 #endif
 
-#include "agent_sync_protocol.hpp"
-
 #ifdef __cplusplus
+#include "agent_sync_protocol.hpp"
 extern "C"
 {
+#else
+#include "agent_sync_protocol_c_interface_types.h"
 #endif
 
-EXPORTED void recover_module_data(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
+#include <stdbool.h>
+
+EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
+
+EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
 
 #ifdef __cplusplus
 }
