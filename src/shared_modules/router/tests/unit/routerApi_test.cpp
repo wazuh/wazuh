@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "flatbuffers/include/inventorySync_generated.h"
 #include "router.h"
 #include <atomic>
 #include <gtest/gtest.h>
@@ -649,3 +650,145 @@ TEST_F(RouterAPITest, TestMultipleStartCalls)
 
 //     router_provider_destroy(handle);
 // }
+
+// Helper to create a Start message for testing
+static std::vector<uint8_t> createStartMessage(const std::string& agentId)
+{
+    flatbuffers::FlatBufferBuilder builder;
+    auto agentIdOffset = builder.CreateString(agentId);
+    auto moduleOffset = builder.CreateString("test-module");
+
+    auto startMsg = Wazuh::SyncSchema::CreateStart(builder,
+                                                   moduleOffset,                       // module
+                                                   Wazuh::SyncSchema::Mode_ModuleFull, // mode
+                                                   100,                                // size
+                                                   0,                                  // index
+                                                   true,                               // first
+                                                   0,                                  // architecture
+                                                   0,                                  // hostname
+                                                   0,                                  // osname
+                                                   0,                                  // ostype
+                                                   0,                                  // osversion
+                                                   0,                                  // agentversion
+                                                   0,                                  // agentname
+                                                   agentIdOffset);                     // agentid
+
+    auto msg = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_Start, startMsg.Union());
+
+    builder.Finish(msg);
+
+    return std::vector<uint8_t>(builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize());
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncValidMatch)
+{
+    router_initialize(NULL);
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with agent ID "001"
+    auto message = createStartMessage("001");
+
+    // Should succeed: authenticated agent "1" matches claimed "001" (integer comparison)
+    EXPECT_EQ(0, router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "1"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncSpoofingDetected)
+{
+    router_initialize(NULL);
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with agent ID "123"
+    auto message = createStartMessage("123");
+
+    // Should fail: authenticated agent "456" doesn't match claimed "123"
+    EXPECT_EQ(-1,
+              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "456"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncEmptyAgentId)
+{
+    router_initialize(NULL);
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with empty agent ID
+    auto message = createStartMessage("");
+
+    // Should fail: Start message must have agent ID
+    EXPECT_EQ(-1,
+              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "123"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncNonNumericAgentId)
+{
+    router_initialize(NULL);
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with non-numeric agent ID
+    auto message = createStartMessage("abc");
+
+    // Should fail: agent IDs must be numeric
+    EXPECT_EQ(-1,
+              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "123"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncNullAuthAgentId)
+{
+    router_initialize(NULL);
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with agent ID "123"
+    auto message = createStartMessage("123");
+
+    // Should fail: authenticated agent ID is NULL
+    EXPECT_EQ(
+        -1, router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), nullptr));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncLeadingZeros)
+{
+    router_initialize(NULL);
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with agent ID "0042"
+    auto message = createStartMessage("0042");
+
+    // Should succeed: "42" matches "0042" (integer comparison)
+    EXPECT_EQ(0,
+              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "42"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}

@@ -10,9 +10,13 @@
  */
 
 #include "router.h"
+#include "flatbuffers/include/inventorySync_generated.h"
 #include "logging_helper.h"
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <string>
+
 static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION = nullptr;
 
 void logMessage(const modules_log_level_t level, const std::string& msg)
@@ -264,6 +268,95 @@ extern "C"
             logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
         }
         return retVal;
+    }
+
+    int router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
+                                  const char* message,
+                                  unsigned int message_size,
+                                  const char* authenticated_agent_id)
+    {
+        try
+        {
+            if (!message || message_size == 0)
+            {
+                throw std::runtime_error("Message is empty");
+            }
+
+            if (!authenticated_agent_id || strlen(authenticated_agent_id) == 0)
+            {
+                throw std::runtime_error("Authenticated agent ID is empty");
+            }
+
+            // Verify flatbuffer structure
+            flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(message), message_size);
+            if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+            {
+                throw std::runtime_error("Invalid flatbuffer message structure");
+            }
+
+            auto syncMessage = Wazuh::SyncSchema::GetMessage(message);
+
+            // Anti-spoofing validation: only validate Start messages (which contain agent ID)
+            if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
+            {
+                const auto startMsg = syncMessage->content_as_Start();
+                if (!startMsg)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR, "Invalid Start message");
+                    return -1;
+                }
+
+                // Start message MUST have an agent ID
+                if (!startMsg->agentid() || startMsg->agentid()->size() == 0)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Agent ID validation failed: Start message missing agent ID");
+                    return -1;
+                }
+
+                std::string claimedAgentId(startMsg->agentid()->str());
+
+                // Validate that both IDs contain only digits
+                auto isNumeric = [](const std::string& str)
+                {
+                    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+                };
+
+                std::string authId(authenticated_agent_id);
+                if (!isNumeric(authId) || !isNumeric(claimedAgentId))
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Agent ID validation failed: non-numeric ID. Authenticated: '" + authId +
+                                   "', Claimed: '" + claimedAgentId + "'");
+                    return -1;
+                }
+
+                // Compare agent IDs as integers to handle leading zeros
+                int authIdInt = std::atoi(authenticated_agent_id);
+                int claimIdInt = std::atoi(claimedAgentId.c_str());
+
+                if (authIdInt != claimIdInt)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Agent ID spoofing detected! Authenticated agent '" + authId + "' claimed to be '" +
+                                   claimedAgentId + "'. Connection rejected.");
+                    return -1;
+                }
+
+                logMessage(modules_log_level_t::LOG_DEBUG, "Agent ID validation passed for agent '" + authId + "'");
+            }
+
+            // Validation passed, send the message
+            std::vector<char> data(message, message + message_size);
+            std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+            PROVIDERS.at(handle)->send(data);
+            return 0;
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error in router_provider_send_sync: ") + e.what());
+            return -1;
+        }
     }
 
     void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle)
