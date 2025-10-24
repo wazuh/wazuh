@@ -1289,9 +1289,6 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     os_free(key->id);
@@ -1386,9 +1383,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -1978,9 +1972,6 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     os_free(key->id);
@@ -2053,9 +2044,6 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 

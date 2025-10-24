@@ -59,8 +59,8 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 #define INVENTORY_SYNC_HEADER "s:"
 #define INVENTORY_SYNC_HEADER_SIZE 2
 
-// Router message forwarder
-void router_message_forward(char* msg, size_t msg_length, const char* agent_id);
+// Router message forwarder - returns true if message was forwarded to router
+bool router_message_forward(char* msg, size_t msg_length, const char* agent_id);
 
 // Message handler thread
 static void * rem_handler_main(void * args);
@@ -952,33 +952,30 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         _close_sock(&keys, sock_idle);
     }
 
-    evt_item_t *e; os_calloc(1, sizeof(*e), e);
-    os_calloc(msg_length, sizeof(char), e->raw);
-    memcpy(e->raw, tmp_msg, msg_length);
-    e->len = msg_length;
-
-    int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
-    if (rc < 0) {
-        dispose_evt_item(e);
-        mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
+    // Check if message should be forwarded to router instead of analysisd
+    bool forwarded_to_router = false;
+    if (router_forwarding_disabled != 1) {
+        forwarded_to_router = router_message_forward(tmp_msg, msg_length, agentid_str);
     }
 
-    if(router_forwarding_disabled == 1) {
-        // If router forwarding is disabled, do not forward events to subscribers
-        mdebug2("Router forwarding is disabled, not forwarding message from agent '%s'.", agentid_str);
-        os_free(agentid_str);
-        return;
-    }
+    // Only send to analysisd if not forwarded to router
+    if (!forwarded_to_router) {
+        evt_item_t *e; os_calloc(1, sizeof(*e), e);
+        os_calloc(msg_length, sizeof(char), e->raw);
+        memcpy(e->raw, tmp_msg, msg_length);
+        e->len = msg_length;
 
-    // Forwarding events to subscribers
-    router_message_forward(tmp_msg, msg_length, agentid_str);
+        int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
+        if (rc < 0) {
+            dispose_evt_item(e);
+            mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
+        }
+    }
 
     os_free(agentid_str);
 }
 
-void router_message_forward(char* msg, size_t msg_length, const char* agent_id) {
-
-    mdebug2("Forwarding message to router");
+bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) {
 
     ROUTER_PROVIDER_HANDLE router_handle = NULL;
     int message_header_size = 0;
@@ -987,7 +984,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
     if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
         if (!router_sync_handle) {
             mdebug2("Router handle for 'inventory synchronization' not available.");
-            return;
+            return false;
         }
         router_handle = router_sync_handle;
         message_header_size = INVENTORY_SYNC_HEADER_SIZE;
@@ -996,7 +993,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
     else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
         if (!router_upgrade_ack_handle) {
             mdebug2("Router handle for 'upgrade_notifications' not available.");
-            return;
+            return false;
         }
         router_handle = router_upgrade_ack_handle;
         message_header_size = UPGRADE_ACK_HEADER_SIZE;
@@ -1004,15 +1001,17 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
     }
 
     if (!router_handle) {
-        return;
+        return false;
     }
+
+    mdebug2("Forwarding message to router");
 
     char* msg_start = msg + message_header_size;
     if (message_type == MT_INV_SYNC) {
         // Validate minimum message length: header + "x:y" (4 chars minimum after header)
         if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
             mdebug2("Message too short for expected format.");
-            return;
+            return false;
         }
 
         size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
@@ -1022,14 +1021,14 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         char* colon = (char*)memchr(msg_start, ':', remaining_len);
         if (!colon || colon == msg_start) {
             mdebug2("Invalid message format: missing or empty module.");
-            return;
+            return false;
         }
 
         // Calculate module length and validate it's reasonable
         size_t module_len = colon - msg_start;
         if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
             mdebug2("Invalid module length.");
-            return;
+            return false;
         }
 
         // Calculate message payload position
@@ -1038,7 +1037,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
 
         if (payload_offset >= msg_length) {
             mdebug2("Invalid message format: no payload data.");
-            return;
+            return false;
         }
 
         // Calculate safe message size
@@ -1047,7 +1046,10 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         // Send the raw flatbuffer to inventory sync with anti-spoofing validation
         if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id) != 0) {
             mdebug2("Unable to forward message for agent '%s'.", agent_id);
+            return false;
         }
+
+        return true;
     }
     else if (message_type == MT_UPGRADE_ACK) {
 
@@ -1055,7 +1057,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         const char *json_err;
         if (upgrade_ack_json = cJSON_ParseWithOpts(msg_start, &json_err, 0), !upgrade_ack_json) {
             mwarn("Failed to parse router message JSON: '%s'", json_err);
-            return;
+            return false;
         }
 
         cJSON* parameters_obj = cJSON_GetObjectItem(upgrade_ack_json, "parameters");
@@ -1070,18 +1072,24 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
 
             if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
                 mwarn("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
+                cJSON_free(upgrade_message);
+                cJSON_Delete(upgrade_ack_json);
+                return false;
             }
 
             // Free the printed message and JSON object
             cJSON_free(upgrade_message);
+            cJSON_Delete(upgrade_ack_json);
+            return true;
         }
         else {
             mwarn("Could not get parameters from upgrade message: '%s'", msg_start);
+            cJSON_Delete(upgrade_ack_json);
+            return false;
         }
-
-        cJSON_Delete(upgrade_ack_json);
-
     }
+
+    return false;
 }
 
 // Close and remove socket from keystore
