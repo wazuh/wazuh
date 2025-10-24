@@ -7533,8 +7533,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SCClipLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SCClipLevel -> 0'
 
   # 18.10.57.3.9.1 (L1) Ensure 'Always prompt for password upon connection' is set to 'Enabled'. (Automated)
   - id: 18895
@@ -7547,8 +7550,11 @@ checks:
       - cis: ["18.10.57.3.9.1"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword -> 1'
 
   # 18.10.57.3.9.2 (L1) Ensure 'Require secure RPC communication' is set to 'Enabled'. (Automated)
   - id: 18896
@@ -7564,8 +7570,11 @@ checks:
       - nist_sp_800-53: ["SC-7(8)"]
       - pci_dss_v3.2.1: ["1.1.4", "1.2", "1.3.2", "1.3.3", "1.3.4", "1.3.5", "6.6"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.2.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> 1'
 
   # 18.10.57.3.9.3 (L1) Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'. (Automated)
   - id: 18897
@@ -7582,8 +7591,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
   # 18.10.57.3.9.4 (L1) Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'. (Automated)
   - id: 18898
@@ -7600,8 +7612,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication -> 1'
 
   # 18.10.57.3.9.5 (L1) Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'. (Automated)
   - id: 18899
@@ -7618,8 +7633,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 3'
 
   # 18.10.57.3.10.1 (L2) Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'. (Automated)
   - id: 18900
@@ -7633,8 +7651,12 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare <= 900000'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare != 0'
 
   # 18.10.57.3.10.2 (L2) Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'. (Automated)
   - id: 18901
@@ -7648,8 +7670,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> 60000'
 
   # 18.10.57.3.11.1 (L1) Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'. (Automated)
   - id: 18902
@@ -7662,8 +7687,11 @@ checks:
       - cis: ["18.10.57.3.11.1"]
       - cis_csc_v8: ["3.4"]
       - pci_dss_v4.0: ["3.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit -> 1'
 
   # 18.10.57.3.11.2 (L1) Ensure 'Do not use temporary folders per session' is set to 'Disabled'. (Automated)
   - id: 18903
@@ -7676,8 +7704,11 @@ checks:
       - cis: ["18.10.57.3.11.2"]
       - cis_csc_v8: ["3.4"]
       - pci_dss_v4.0: ["3.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> PerSessionTempDir'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> PerSessionTempDir -> 1'
 
   # 18.10.58.1 (L1) Ensure 'Prevent downloading of enclosures' is set to 'Enabled'. (Automated)
   - id: 18904
@@ -7694,8 +7725,11 @@ checks:
       - iso_27001-2013: ["A.12.6.2"]
       - nist_sp_800-53: ["CM-10", "CM-11", "SC-18"]
       - pci_dss_v4.0: ["2.2.4"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload -> 1'
 
   # 18.10.58.2 (L1) Ensure 'Turn on Basic feed authentication over HTTP' is set to 'Disabled'. (Automated)
   - id: 18905
@@ -7712,8 +7746,11 @@ checks:
       - iso_27001-2013: ["A.12.6.2"]
       - nist_sp_800-53: ["CM-10", "CM-11", "SC-18"]
       - pci_dss_v4.0: ["2.2.4"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> AllowBasicAuthInClear'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> AllowBasicAuthInClear -> 0'
 
   # 18.10.59.2 (L2) Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'. (Automated)
   - id: 18906
@@ -7731,8 +7768,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
 
   # 18.10.59.3 (L1) Ensure 'Allow indexing of encrypted files' is set to 'Disabled'. (Automated)
   - id: 18907
@@ -7750,15 +7790,19 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems -> 0'
 
   # 18.10.59.4 (L2) Ensure 'Allow search highlights' is set to 'Disabled'. (Automated)
   - id: 18908
     title: "Ensure 'Allow search highlights' is set to 'Disabled'."
     description: "This policy setting controls search highlights in the start menu search box and in search home. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, data should never be sent to or received by any third-party since this data could contain sensitive information."
-    impact: "“Interesting”, “informative”, and “noteworthy” information about the current date will not be displayed (by Microsoft) to the user."
+    impact: 'Interesting, "informative", and "noteworthy" information about the current date will not be displayed (by Microsoft) to the user.'
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow search highlights Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Search.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.59.4"]
@@ -7767,8 +7811,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> EnableDynamicContentInWSB'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> EnableDynamicContentInWSB -> 0'
 
   # 18.10.63.1 (L2) Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'. (Automated)
   - id: 18909
@@ -7782,8 +7829,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> 1'
 
   # 18.10.76.2.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'. (Automated)
   - id: 18910
@@ -7799,8 +7849,13 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel -> Block'
 
   # 18.10.80.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'. (Automated)
   - id: 18911
@@ -7814,8 +7869,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> 0'
 
   # 18.10.80.2 (L1) Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'. (Automated)
   - id: 18912
@@ -7829,8 +7887,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace -> r:^0$|^1$'
 
   # 18.10.81.1 (L1) Ensure 'Allow user control over installs' is set to 'Disabled'. (Automated)
   - id: 18913
@@ -7843,8 +7904,11 @@ checks:
       - cis: ["18.10.81.1"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> 0'
 
   # 18.10.81.2 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated)
   - id: 18914
@@ -7858,8 +7922,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["4.3"]
       - iso_27001-2013: ["A.9.2.3"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
 
   # 18.10.81.3 (L2) Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'. (Automated)
   - id: 18915
@@ -7875,8 +7942,11 @@ checks:
       - nist_sp_800-53: ["CM-7(5)"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
 
   # 18.10.82.1 (L1) Ensure 'Configure the transmission of the user's password in the content of MPR notifications sent by winlogon.' is set to 'Disabled'. (Automated)
   - id: 18916
@@ -7886,8 +7956,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Logon Options\\Configure the transmission of the user's password in the content of MPR notifications sent by winlogon. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WinLogon.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer). Note #2: This setting was initially released with the Windows 11 Release 22H2 Administrative Templates, named Enable MPR notifications for the system. It was renamed starting with the Windows 11 Release 24H2 Administrative Templates."
     references:
-      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-"
-      - "https://learn.microsoft.com/en-us/windows/win32/secauthn/multiple-provider-"
+      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-version-22h2-security-baseline/ba-p/3632520"
+      - "https://learn.microsoft.com/en-us/windows/win32/secauthn/multiple-provider-router"
     compliance:
       - cis: ["18.10.82.1"]
       - cis_csc_v8: ["4.8"]
@@ -7897,8 +7967,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableMPR'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableMPR -> 0'
 
   # 18.10.82.2 (L1) Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'. (Automated)
   - id: 18917
@@ -7912,8 +7985,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   # 18.10.87.1 (L2) Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'. (Automated)
   - id: 18918
@@ -7923,15 +7999,18 @@ checks:
     impact: "PowerShell script input will be logged to the Applications and Services Logs\\Microsoft\\Windows\\PowerShell\\Operational Event Log channel, which can contain credentials and sensitive information. Note: Configuring this setting to Enabled generates a high volume of event logs which will be overwritten if the log size is not expanded or offloaded to a log collection system. Warning: There are potential risks of capturing credentials and sensitive information in the PowerShell logs, which could be exposed to users who have read-access to those logs. Microsoft provides a feature called \"Protected Event Logging\" to better secure event log data. For assistance with protecting event logging, visit: About Logging Windows - PowerShell | Microsoft Docs."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-"
+      - "https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging_windows?view=powershell-7.2#protected-event-logging"
     compliance:
       - cis: ["18.10.87.1"]
       - cis_csc_v8: ["8.8"]
       - cis_csc_v7: ["8.8"]
       - iso_27001-2013: ["A.12.14.1"]
       - soc_2: ["CC5.2", "CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   # 18.10.87.2 (L2) Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'. (Automated)
   - id: 18919
@@ -7941,13 +8020,16 @@ checks:
     impact: "PowerShell transcript input will be logged to PowerShell_transcript output files, which are saved to the My Documents folder (within a separate subfolder for each day) of each users´ profile by default. Optionally, a specific output directory name can be specified, which will contain all PowerShell transcript logs in a subfolder of My Documents. If specifying a full path outside the users My Documents folder, other users on the system could have access to view these logs, which may contain sensitive information such as passwords. Warning: There are potential risks of capturing credentials and sensitive information in PowerShell_transcript output files, which could be exposed to users who have read access to the files. Warning #2: PowerShell Transcription is not compatible with the natively installed PowerShell v4 on Microsoft Windows 10 Release 1511 and Server 2012 R2 and below. If this recommendation is set as prescribed, PowerShell will need to be updated to at least v5.1 or newer. For more information on updating PowerShell, please see Windows PowerShell System Requirements - PowerShell | Microsoft Learn."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Transcription Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-"
+      - "https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_group_policy_settings?view=powershell-7.2#turn-on-powershell-transcription"
     compliance:
       - cis: ["18.10.87.2"]
       - cis_csc_v8: ["8.8"]
       - soc_2: ["CC5.2", "CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 1'
 
   # 18.10.89.1.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
   - id: 18920
@@ -7966,8 +8048,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
 
   # 18.10.89.1.2 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'. (Automated)
   - id: 18921
@@ -7986,8 +8071,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> 0'
 
   # 18.10.89.1.3 (L1) Ensure 'Disallow Digest authentication' is set to 'Enabled'. (Automated)
   - id: 18922
@@ -8006,8 +8094,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> 0'
 
   # 18.10.89.2.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
   - id: 18923
@@ -8026,8 +8117,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> 0'
 
   # 18.10.89.2.2 (L2) Ensure 'Allow remote server management through WinRM' is set to 'Disabled'. (Automated)
   - id: 18924
@@ -8045,8 +8139,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
 
   # 18.10.89.2.3 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'. (Automated)
   - id: 18925
@@ -8065,8 +8162,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> 0'
 
   # 18.10.89.2.4 (L1) Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'. (Automated)
   - id: 18926
@@ -8079,9 +8179,11 @@ checks:
       - cis: ["18.10.89.2.4"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["14.3"]
-      - iso_27001-2013: ["A.13.1.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> 1'
 
   # 18.10.90.1 (L2) Ensure 'Allow Remote Shell Access' is set to 'Disabled'. (Automated)
   - id: 18927
@@ -8099,8 +8201,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> 0'
 
   # 18.10.92.2.1 (L1) Ensure 'Prevent users from modifying settings' is set to 'Enabled'. (Automated)
   - id: 18928
@@ -8116,8 +8221,11 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride -> 1'
 
   # 18.10.93.1.1 (L1) Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'. (Automated)
   - id: 18929
@@ -8134,13 +8242,16 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> 0'
 
   # 18.10.93.2.1 (L1) Ensure 'Configure Automatic Updates' is set to 'Enabled'. (Automated)
   - id: 18930
     title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'."
-    description: 'This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following four options in the Configure Automatic Updates Properties dialog box to specify how the service will work: - 2 - Notify for download and auto install (Notify before downloading any updates) - 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) - 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) - 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting "Configure automatic updating:" has 4 possible values – all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a third-party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the third-party patching process.'
+    description: 'This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work: - 2 - Notify for download and auto install (Notify before downloading any updates) - 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) - 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) - 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting "Configure automatic updating:" has 4 possible values - all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a third-party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the third-party patching process.'
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
     impact: "Critical operating system updates and service packs will be installed as necessary."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
@@ -8152,8 +8263,11 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
   # 18.10.93.2.2 (L1) Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'. (Automated)
   - id: 18931
@@ -8170,8 +8284,11 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
 
   # 18.10.93.4.1 (L1) Ensure 'Manage preview builds' is set to 'Disabled'. (Automated)
   - id: 18932
@@ -8191,13 +8308,16 @@ checks:
       - nist_sp_800-53: ["CM-7(5)"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 1'
 
   # 18.10.93.4.2 (L1) Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'. (Automated)
   - id: 18933
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'."
-    description: 'This policy setting determines when Preview Build or Feature Updates are received. Defer Updates This enables devices to defer taking the next Feature Update available to your channel for up to 14 days for all the pre-release channels and up to 365 days for the Semi-Annual Channel. Or, if the device is updating from the Semi-Annual Channel, a version for the device to move to and/or stay on until the policy is updated or the device reaches end of service can be specified. Note: If you set both policies, the version specified will take precedence and the deferrals will not be in effect. Please see the Windows Release Information page for OS version information. Pause Updates To prevent Feature Updates from being received on their scheduled time, you can temporarily pause Feature Updates. The pause will remain in effect for 35 days from the specified start date or until the field is cleared (Quality Updates will still be offered). Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying “Dual Scan” – WSUS Product Team Blog - Improving Dual Scan on 1607 – WSUS Product Team Blog Note #3: Prior to Windows 10 R1703, values above 180 days are not recognized by the OS. Starting with Windows 10 R1703, the maximum number of days you can defer is 365 days.'
+    description: 'This policy setting determines when Preview Build or Feature Updates are received. Defer Updates This enables devices to defer taking the next Feature Update available to your channel for up to 14 days for all the pre-release channels and up to 365 days for the Semi-Annual Channel. Or, if the device is updating from the Semi-Annual Channel, a version for the device to move to and/or stay on until the policy is updated or the device reaches end of service can be specified. Note: If you set both policies, the version specified will take precedence and the deferrals will not be in effect. Please see the Windows Release Information page for OS version information. Pause Updates To prevent Feature Updates from being received on their scheduled time, you can temporarily pause Feature Updates. The pause will remain in effect for 35 days from the specified start date or until the field is cleared (Quality Updates will still be offered). Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying "Dual Scan" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog Note #3: Prior to Windows 10 R1703, values above 180 days are not recognized by the OS. Starting with Windows 10 R1703, the maximum number of days you can defer is 365 days.'
     rationale: "In a production environment, it is preferred to only use software and features that are publicly available, after they have gone through rigorous testing in beta."
     impact: "Feature Updates will be delayed until they are publicly released to general public by Microsoft."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage updates offered from Windows Update\\Select when Preview Builds and Feature Updates are received Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Select when Feature Updates are received, but it was renamed to Select when Preview Builds and Feature Updates are received starting with the Windows 10 Release 1709 Administrative Templates."
@@ -8210,13 +8330,18 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdates'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdates -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare >= 180'
 
   # 18.10.93.4.3 (L1) Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'. (Automated)
   - id: 18934
     title: "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'."
-    description: 'This settings controls when Quality Updates are received. The recommended state for this setting is: Enabled: 0 days. Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows Server 2016 RTM (Release 1607), Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying “Dual Scan” – WSUS Product Team Blog - Improving Dual Scan on 1607 – WSUS Product Team Blog.'
+    description: 'This settings controls when Quality Updates are received. The recommended state for this setting is: Enabled: 0 days. Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows Server 2016 RTM (Release 1607), Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying "Dual Scan" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog.'
     rationale: "Quality Updates can contain important bug fixes and/or security patches, and should be installed as soon as possible."
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:0 days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage updates offered from Windows Update\\Select when Quality Updates are received Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
@@ -8228,205 +8353,23 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdates'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdates -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays -> 0'
 
-  # 19.5.1.1 (L1) Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'. (Automated)
-  - id: 18935
-    title: "Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'."
-    description: "This policy setting turns off toast notifications on the lock screen. The recommended state for this setting is Enabled."
-    rationale: "While this feature can be handy for users, applications that provide toast notifications might display sensitive personal or business data while the device is left unattended."
-    impact: "Applications will not be able to raise toast notifications on the lock screen."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Start Menu and Taskbar\\Notifications\\Turn off toast notifications on the lock screen Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WPN.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
-    compliance:
-      - cis: ["19.5.1.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 19.6.6.1.1 (L2) Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'. (Automated)
-  - id: 18936
-    title: "Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'."
-    description: "This policy setting specifies whether users can participate in the Help Experience Improvement program. The Help Experience Improvement program collects information about how customers use Windows Help so that Microsoft can improve it. The recommended state for this setting is: Enabled."
-    rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
-    impact: "Users cannot participate in the Help Experience Improvement program."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication Settings\\Turn off Help Experience Improvement Program Note: This Group Policy path is provided by the Group Policy template HelpAndSupport.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
-    compliance:
-      - cis: ["19.6.6.1.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 19.7.5.1 (L1) Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'. (Automated)
-  - id: 18937
-    title: "Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'."
-    description: 'This policy setting allows you to manage whether Windows marks file attachments with information about their zone of origin (such as restricted, Internet, intranet, local). This requires NTFS in order to function correctly, and will fail without notice on FAT32. By not preserving the zone information, Windows cannot make proper risk assessments. The recommended state for this setting is: Disabled. Note: The Attachment Manager feature warns users when opening or executing files which are marked as being from an untrusted source, unless/until the file''s zone information has been removed via the "Unblock" button on the file''s properties or via a separate tool such as Microsoft Sysinternals Streams.'
-    rationale: "A file that is downloaded from a computer in the Internet or Restricted Sites zone may be moved to a location that makes it appear safe, like an intranet file share, and executed by an unsuspecting user. The Attachment Manager feature will warn users when opening or executing files which are marked as being from an untrusted source, unless/until the file's zone information has been removed."
-    impact: "None - this is the default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Attachment Manager\\Do not preserve zone information in file attachments Note: This Group Policy path is provided by the Group Policy template AttachmentManager.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
-    compliance:
-      - cis: ["19.7.5.1"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["0.0"]
-    condition:
-    rules:
-
-  # 19.7.5.2 (L1) Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'. (Automated)
-  - id: 18938
-    title: "Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'."
-    description: "This policy setting manages the behavior for notifying registered antivirus programs. If multiple programs are registered, they will all be notified. The recommended state for this setting is: Enabled. Note: An updated antivirus program must be installed for this policy setting to function properly."
-    rationale: "Antivirus programs that do not perform on-access checks may not be able to scan downloaded files."
-    impact: "Windows tells the registered antivirus program(s) to scan the file when a user opens a file attachment. If the antivirus program fails, the attachment is blocked from being opened."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Attachment Manager\\Notify antivirus programs when opening attachments Note: This Group Policy path is provided by the Group Policy template AttachmentManager.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
-    compliance:
-      - cis: ["19.7.5.2"]
-      - cis_csc_v8: ["10.1"]
-      - cis_csc_v7: ["8.1"]
-      - cmmc_v2.0: ["SI.L1-3.14.2"]
-      - hipaa: ["164.308(a)(5)(ii)(B)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - pci_dss_v3.2.1: ["5.1"]
-      - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
-      - soc_2: ["CC6.8"]
-    condition:
-    rules:
-
-  # 19.7.8.1 (L1) Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'. (Automated)
-  - id: 18939
-    title: "Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'."
-    description: "This policy setting lets you configure Windows Spotlight on the lock screen. The recommended state for this setting is: Disabled. Note: Per Microsoft TechNet, this policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions."
-    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display suggested apps as well as images from the internet."
-    impact: "Windows Spotlight will be turned off and users will no longer be able to select it as their lock screen."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Configure Windows spotlight on lock screen Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
-    compliance:
-      - cis: ["19.7.8.1"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["16.11"]
-      - iso_27001-2013: ["A.8.1.3"]
-    condition:
-    rules:
-
-  # 19.7.8.2 (L1) Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'. (Automated)
-  - id: 18940
-    title: "Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'."
-    description: "This policy setting determines whether Windows will suggest apps and content from third-party software publishers. The recommended state for this setting is: Enabled."
-    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display suggested apps as well as images from the internet."
-    impact: "Windows Spotlight on lock screen, Windows tips, Microsoft consumer features and other related features will no longer suggest apps and content from third-party software publishers. Users may still see suggestions and tips to make them more productive with Microsoft features and apps."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Do not suggest third-party content in Windows spotlight Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
-    compliance:
-      - cis: ["19.7.8.2"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["0.0"]
-    condition:
-    rules:
-
-  # 19.7.8.3 (L2) Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'. (Automated)
-  - id: 18941
-    title: "Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'."
-    description: "This setting determines if Windows can use diagnostic data to provide tailored experiences to the user. The recommended state for this setting is: Enabled."
-    rationale: "Tracking, collection and utilization of personalized data is a privacy and security issue that is of concern to many organizations."
-    impact: 'Windows will not use diagnostic data from this device (this data may include browser, app and feature usage, depending on the "Diagnostic and usage data" setting value) to customize content shown on the lock screen, Windows tips, Microsoft consumer features and other related features. If these features are enabled, users will still see recommendations, tips and offers, but they may be less personalized.'
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Do not use diagnostic data for tailored experiences Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
-    compliance:
-      - cis: ["19.7.8.3"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["9.2"]
-      - iso_27001-2013: ["A.13.1.3"]
-    condition:
-    rules:
-
-  # 19.7.8.4 (L2) Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'. (Automated)
-  - id: 18942
-    title: "Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'."
-    description: "This policy setting lets you turn off all Windows Spotlight features at once. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet, this policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions."
-    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display suggested apps as well as images from the internet."
-    impact: "Windows Spotlight on lock screen, Windows tips, Microsoft consumer features and other related features will be turned off."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off all Windows spotlight features Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
-    compliance:
-      - cis: ["19.7.8.4"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 19.7.8.5 (L1) Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'. (Automated)
-  - id: 18943
-    title: "Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'."
-    description: "This policy setting removes the Spotlight collection setting in Personalization, rendering the user unable to select and subsequently download daily images from Microsoft to the system desktop. The recommended state for this setting is: Enabled."
-    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display images from Microsoft."
-    impact: "The Spotlight collection feature will not be available as an option in Personalization settings, so users will not be able to download daily images from Microsoft."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off Spotlight collection on Desktop Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
-    references:
-      - "https://docs.microsoft.com/en-us/windows/configuration/windows-spotlight"
-    compliance:
-      - cis: ["19.7.8.5"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["0.0"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 19.7.26.1 (L1) Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'. (Automated)
-  - id: 18944
-    title: "Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'."
-    description: "This policy setting determines whether users can share files within their profile. By default, users are allowed to share files within their profile to other users on their network after an administrator opts in the computer. An administrator can opt in the computer by using the sharing wizard to share a file within their profile. The recommended state for this setting is: Enabled."
-    rationale: "If not properly configured, a user could accidentally share sensitive data with unauthorized users. In an enterprise managed environment, the company should provide a managed location for file sharing, such as a file server or SharePoint, instead of the user sharing files directly from their own user profile."
-    impact: "Users cannot share files within their profile using the sharing wizard. Also, the sharing wizard cannot create a share at %root%\\Users and can only be used to create SMB shares on folders."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Network Sharing\\Prevent users from sharing files within their profile. Note: This Group Policy path is provided by the Group Policy template Sharing.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
-    compliance:
-      - cis: ["19.7.26.1"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["14.6"]
-      - iso_27001-2013: ["A.9.1.1"]
-    condition:
-    rules:
-
-  # 19.7.44.1 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated)
-  - id: 18945
-    title: "Ensure 'Always install with elevated privileges' is set to 'Disabled'."
-    description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system. Note: This setting appears both in the Computer Configuration and User Configuration folders. To make this setting effective, you must enable the setting in both folders. Caution: If enabled, skilled users can take advantage of the permissions this setting grants to change their privileges and gain permanent access to restricted files and folders. Note that the User Configuration version of this setting is not guaranteed to be secure. The recommended state for this setting is: Disabled."
-    rationale: "Users with limited privileges can exploit this feature by creating a Windows Installer installation package that creates a new local account that belongs to the local built-in Administrators group, adds their current account to the local built-in Administrators group, installs malicious software, or performs other unauthorized activities."
-    impact: "None - this is the default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Always install with elevated privileges Note: This Group Policy path is provided by the Group Policy template MSI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
-    compliance:
-      - cis: ["19.7.44.1"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["4.3"]
-      - iso_27001-2013: ["A.9.2.3"]
-    condition:
-    rules:
-
-  # 19.7.46.2.1 (L2) Ensure 'Prevent Codec Download' is set to 'Enabled'. (Automated)
-  - id: 18946
-    title: "Ensure 'Prevent Codec Download' is set to 'Enabled'."
-    description: "This setting controls whether Windows Media Player is allowed to download additional codecs for decoding media files it does not already understand. The recommended state for this setting is: Enabled."
-    rationale: "This has some potential for risk if a malicious data file is opened in Media Player that requires an additional codec to be installed. If a special codec is required for a necessary job function, then that codec should first be tested to ensure it is legitimate, and it should be supplied by the IT department in the organization."
-    impact: "Windows Media Player is prevented from automatically downloading codecs to your computer. In addition, the Download codecs automatically check box on the Player tab in the Player is not available."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Media Player\\Playback\\Prevent Codec Download Note: This Group Policy path is provided by the Group Policy template WindowsMediaPlayer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
-    compliance:
-      - cis: ["19.7.46.2.1"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["5.1"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-    condition:
-    rules:
+  # 19.5.1.1 (L1) Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.6.6.1.1 (L2) Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.5.1 (L1) Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'. (Automated) - Not Implemented
+  # 19.7.5.2 (L1) Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.8.1 (L1) Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'. (Automated) - Not Implemented
+  # 19.7.8.2 (L1) Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.8.3 (L2) Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.8.4 (L2) Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.8.5 (L1) Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.26.1 (L1) Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.44.1 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated) - Not Implemented
+  # 19.7.46.2.1 (L2) Ensure 'Prevent Codec Download' is set to 'Enabled'. (Automated) - Not Implemented
