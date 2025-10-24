@@ -246,6 +246,8 @@ static void test_remoted_internal_options_config(void **state) {
     will_return(__wrap_getDefine_Int, 101);    // shared_reload_interval
     will_return(__wrap_getDefine_Int, 103);    // disk_storage
     will_return(__wrap_getDefine_Int, 107);    // _s_verify_counter
+    will_return(__wrap_getDefine_Int, 109);    // batch_events_capacity
+    will_return(__wrap_getDefine_Int, 113);    // batch_events_per_agent_capacity
 
     // Mock ReadConfig calls
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
@@ -302,6 +304,8 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "shared_reload")->valueint, 101);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "disk_storage")->valueint, 103);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "verify_msg_id")->valueint, 107);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_capacity")->valueint, 109);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_per_agent_capacity")->valueint, 113);
 
     cJSON_Delete(json);
 }
