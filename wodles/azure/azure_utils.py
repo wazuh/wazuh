@@ -37,13 +37,34 @@ DEPRECATED_MESSAGE = (
 URL_LOGGING = 'https://login.microsoftonline.com'
 
 
-def set_logger(debug_level: int):
-    """Set the logger configuration."""
-    logging.basicConfig(
-        level=LOG_LEVELS.get(debug_level, logging.INFO),
-        format=LOGGING_MSG_FORMAT,
-        datefmt=LOGGING_DATE_FORMAT,
-    )
+def set_logger(debug_level: int, log_file: str = "azure-logs-debug.log"):
+    """Configure the logger to output to both stdout and a log file."""
+    # Remove existing handlers to avoid duplicate logs
+    root_logger = logging.getLogger()
+    if root_logger.hasHandlers():
+        root_logger.handlers.clear()
+
+    # Override debug level
+    debug_level = 2
+
+    # Set log level and formatter
+    log_level = LOG_LEVELS.get(debug_level, logging.INFO)
+    formatter = logging.Formatter(fmt=LOGGING_MSG_FORMAT, datefmt=LOGGING_DATE_FORMAT)
+
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+
+    # File handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+
+    # Apply configuration
+    root_logger.setLevel(log_level)
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+
+    # Adjust logging levels for external libraries
     logging.getLogger('azure').setLevel(LOG_LEVELS.get(debug_level, logging.WARNING))
     logging.getLogger('urllib3').setLevel(logging.ERROR)
 
