@@ -63,6 +63,8 @@ class AgentSyncProtocolTest : public ::testing::Test
             }
                           );
             asp_destroy(handle);
+
+            mockQueue = std::make_shared<MockPersistentQueue>();
         }
 
         std::shared_ptr<MockPersistentQueue> mockQueue;
@@ -78,7 +80,7 @@ class AgentSyncProtocolTest : public ::testing::Test
 
 TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -104,7 +106,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
 
 TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -130,7 +132,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
 
 TEST_F(AgentSyncProtocolTest, PersistDifferenceInMemorySuccess)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -153,7 +155,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceInMemorySuccess)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions failingStartMqFuncs =
     {
         .start = [](const char*, short int, short int) { return -1; }, // Fail to start queue
@@ -178,7 +180,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsException)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -205,7 +207,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsExceptio
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -233,7 +235,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
 // Tests for synchronizeModule with Mode::FULL (using in-memory data)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithEmptyInMemoryData)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -261,7 +263,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithEmptyInMemoryData)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -342,7 +344,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -379,7 +381,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -414,7 +416,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions failingSendStartMqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -450,7 +452,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -511,7 +513,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartAckTimeout)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -547,7 +549,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartAckTimeout)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
     MQ_Functions failingSendDataMqFuncs =
@@ -617,7 +618,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
     MQ_Functions failingSendEndMqFuncs =
@@ -687,7 +687,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -768,7 +768,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -849,7 +849,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -943,7 +943,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
     MQ_Functions failingReqRetDataMqFuncs =
@@ -1041,7 +1040,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     MQ_Functions mqFuncs =
     {
@@ -1103,7 +1101,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     MQ_Functions mqFuncs =
     {
@@ -1185,7 +1182,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     MQ_Functions mqFuncs =
     {
@@ -1295,7 +1291,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1385,7 +1381,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithNullBuffer)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1404,7 +1400,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithNullBuffer)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1437,7 +1433,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1495,7 +1491,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1553,7 +1549,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1611,7 +1607,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1644,7 +1640,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1722,7 +1718,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1800,7 +1796,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1878,7 +1874,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1917,7 +1913,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -1995,7 +1991,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2079,7 +2075,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnknownMessageType)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2105,7 +2101,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnknownMessageType)
 // Tests for requiresFullSync
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2180,7 +2176,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2255,7 +2251,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncNoQueueAvailable)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions failingStartMqFuncs =
     {
         .start = [](const char*, short int, short int) { return -1; }, // Fail to start queue
@@ -2284,7 +2280,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncNoQueueAvailable)
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions failingSendStartMqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2312,7 +2308,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncStartAckTimeout)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2340,7 +2336,6 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncStartAckTimeout)
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendChecksumMessageFails)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
     MQ_Functions failingChecksumMqFuncs =
@@ -2418,7 +2413,6 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendChecksumMessageFails)
 
 TEST_F(AgentSyncProtocolTest, EnsureQueueAvailableException)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     MQ_Functions throwingMqFuncs =
     {
@@ -2460,7 +2454,6 @@ TEST_F(AgentSyncProtocolTest, EnsureQueueAvailableException)
 
 TEST_F(AgentSyncProtocolTest, SendStartAndWaitAckException)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     MQ_Functions throwingMqFuncs =
     {
@@ -2511,7 +2504,6 @@ TEST_F(AgentSyncProtocolTest, SendStartAndWaitAckException)
 
 TEST_F(AgentSyncProtocolTest, SendDataMessagesException)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
     MQ_Functions throwingMqFuncs =
@@ -2598,7 +2590,7 @@ TEST_F(AgentSyncProtocolTest, SendDataMessagesException)
 // Tests for clearInMemoryData
 TEST_F(AgentSyncProtocolTest, ClearInMemoryDataWithEmptyData)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2616,7 +2608,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataWithEmptyData)
 
 TEST_F(AgentSyncProtocolTest, ClearInMemoryDataWithData)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2639,7 +2631,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataWithData)
 
 TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2683,7 +2675,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
 
 TEST_F(AgentSyncProtocolTest, ClearInMemoryDataMultipleTimes)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2712,7 +2704,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataMultipleTimes)
 // Tests for synchronizeMetadataOrGroups
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2783,7 +2775,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2854,7 +2846,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2925,7 +2917,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -2996,7 +2988,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithInvalidMode)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -3021,7 +3013,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithInvalidMode)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions failingStartMqFuncs =
     {
         .start = [](const char*, short int, short int) { return -1; }, // Fail to start queue
@@ -3046,7 +3038,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsStartAckTimeout)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -3071,7 +3063,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsStartAckTimeout)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -3121,7 +3113,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithStartAckError)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -3169,7 +3161,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithStartAckError)
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -3237,7 +3229,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
 // Tests for deleteDatabase
 TEST_F(AgentSyncProtocolTest, DeleteDatabaseCallsQueueDeleteDatabase)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -3257,7 +3249,7 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseCallsQueueDeleteDatabase)
 
 TEST_F(AgentSyncProtocolTest, DeleteDatabaseThrowsOnQueueError)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
@@ -3291,7 +3283,7 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseThrowsOnQueueError)
 // Tests for notifyDataClean
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithEmptyIndices)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3316,7 +3308,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithEmptyIndices)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoQueueAvailable)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions failingStartMqFuncs =
     {
         .start = [](const char*, short int, short int) { return -1; }, // Queue start fails
@@ -3341,7 +3333,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoQueueAvailable)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendStartFails)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions failingSendMqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3366,7 +3358,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendStartFails)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3391,7 +3383,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3440,7 +3432,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckTimeout)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3493,7 +3485,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckTimeout)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckError)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3561,7 +3553,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckError)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanClearItemsByIndexThrows)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3629,7 +3621,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanClearItemsByIndexThrows)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithSingleIndex)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3697,7 +3689,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithSingleIndex)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithMultipleIndices)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
@@ -3769,7 +3761,6 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithMultipleIndices)
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendDataCleanMessagesException)
 {
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     // Create a custom MQ_Functions that will cause an exception during data clean message sending
     MQ_Functions mqFuncs =
@@ -3843,8 +3834,6 @@ TEST_F(AgentSyncProtocolTest, SendChecksumMessageException)
     // Test that exceptions in sendChecksumMessage are properly caught and logged
     // Uses requiresFullSync which calls sendChecksumMessage internally
 
-    mockQueue = std::make_shared<MockPersistentQueue>();
-
     // Create protocol with throwing message queue function
     static int callCount = 0;
     callCount = 0; // Reset counter for this test
@@ -3880,8 +3869,6 @@ TEST_F(AgentSyncProtocolTest, SendEndMessageException)
 {
     // Test that exceptions in sendEndAndWaitAck are properly caught and logged
     // Uses synchronizeModule which calls sendEndAndWaitAck internally
-
-    mockQueue = std::make_shared<MockPersistentQueue>();
 
     // Create protocol with throwing message queue function that fails on End message
     static int callCount = 0;
