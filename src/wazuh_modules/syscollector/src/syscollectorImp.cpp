@@ -275,7 +275,13 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
-{}
+{
+    // Ensure logging is always available even if initSyncProtocol runs before init()
+    m_logFunction = [](modules_log_level_t, const std::string&)
+    {
+        // Default to noop until syscollector_init installs the real logger.
+    };
+}
 
 std::string Syscollector::getCreateStatement() const
 {
