@@ -213,6 +213,6 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
 
     // Verify start was called
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module started"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module loop ended"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module stopped"));
     EXPECT_GE(iterations, 1);  // At least one iteration should have completed
 }
