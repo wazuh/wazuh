@@ -111,7 +111,9 @@ namespace Utils
 
                 if (!cryptoInitialized)
                 {
-                    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, nullptr);
+                    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS |
+                                            OPENSSL_INIT_LOAD_CONFIG,
+                                        nullptr);
                     cryptoInitialized = true;
                 }
 
