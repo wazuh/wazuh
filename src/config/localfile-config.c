@@ -959,9 +959,6 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
                     fclose((*logf)[i].fp);
                 }
             #ifdef WIN32
-                if ((*logf)[i].h && (*logf)[i].h != INVALID_HANDLE_VALUE) {
-                    CloseHandle((*logf)[i].h);
-                }
                 pthread_mutex_destroy(&(*logf)[i].mutex);
             #endif
             }

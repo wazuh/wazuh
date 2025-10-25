@@ -135,6 +135,25 @@ TEST_F(StringUtilsTest, CheckNotFirstReplacement)
     EXPECT_FALSE(retVal);
 }
 
+TEST_F(StringUtilsTest, CheckLastReplacement)
+{
+    std::string string_base {"bye_bye_bye"};
+    const auto retVal1 {Utils::replaceLast(string_base, "bye", "hello")};
+    EXPECT_EQ(string_base, "bye_bye_hello");
+    string_base = "bye_hello_bye";
+    const auto retVal2 = Utils::replaceLast(string_base, "bye", "");
+    EXPECT_EQ(string_base, "bye_hello_");
+    EXPECT_TRUE(retVal1 && retVal2);
+}
+
+TEST_F(StringUtilsTest, CheckNotLastReplacement)
+{
+    std::string string_base {"hello_world"};
+    const auto retVal {Utils::replaceLast(string_base, "nothing_", "bye_")};
+    EXPECT_EQ(string_base, "hello_world");
+    EXPECT_FALSE(retVal);
+}
+
 TEST_F(StringUtilsTest, RightTrim)
 {
     EXPECT_EQ("Hello", Utils::rightTrim("Hello"));

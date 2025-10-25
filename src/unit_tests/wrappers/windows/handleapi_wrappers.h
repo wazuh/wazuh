@@ -15,9 +15,22 @@
 
 #undef CloseHandle
 #define CloseHandle wrap_CloseHandle
+#undef CreatePipe
+#define CreatePipe wrap_CreatePipe
+#undef SetHandleInformation
+#define SetHandleInformation wrap_SetHandleInformation
 
 WINBOOL wrap_CloseHandle (HANDLE hObject);
 
 void expect_CloseHandle_call(HANDLE object, int ret);
+
+BOOL wrap_CreatePipe(PHANDLE hReadPipe,
+                     PHANDLE hWritePipe,
+                     LPSECURITY_ATTRIBUTES lpPipeAttributes,
+                     DWORD nSize);
+
+BOOL wrap_SetHandleInformation(HANDLE hObject,
+                                DWORD dwMask,
+                                DWORD dwFlags);
 
 #endif
