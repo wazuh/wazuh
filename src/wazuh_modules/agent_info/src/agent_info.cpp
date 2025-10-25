@@ -171,9 +171,7 @@ size_t agent_info_query(const char* query, char** output)
             g_log_callback(LOG_ERROR, "agent_info_query: Invalid parameters", "agent-info");
         }
 
-        static const char* error_msg = "err Invalid parameters";
-        *output = strdup(error_msg);
-        return strlen(*output);
+        return 0;
     }
 
     if (g_log_callback)
@@ -192,7 +190,7 @@ size_t agent_info_query(const char* query, char** output)
             {
                 static const char* error_msg = "err Agent info module not initialized";
                 *output = strdup(error_msg);
-                return strlen(*output);
+                return *output ? strlen(*output) : 0;
             }
 
             // Call C++ implementation
@@ -210,13 +208,13 @@ size_t agent_info_query(const char* query, char** output)
             }
 
             *output = strdup(response.c_str());
-            return strlen(*output);
+            return *output ? strlen(*output) : 0;
         }
         else
         {
             std::string error_response = "err Unknown query command: " + query_str;
             *output = strdup(error_response.c_str());
-            return strlen(*output);
+            return *output ? strlen(*output) : 0;
         }
     }
     catch (const std::exception& ex)
@@ -229,7 +227,7 @@ size_t agent_info_query(const char* query, char** output)
 
         std::string error_response = std::string("err Exception: ") + ex.what();
         *output = strdup(error_response.c_str());
-        return strlen(*output);
+        return *output ? strlen(*output) : 0;
     }
 }
 
