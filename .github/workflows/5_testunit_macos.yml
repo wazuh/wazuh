@@ -40,7 +40,7 @@ jobs:
           ctest -V
           cd ../../../sync_protocol/build
           ctest -V
-          cd ../../../syscheckd/build
+          cd ../../syscheckd/build
           ctest -V
           cd ../../wazuh_modules/sca/build
           ctest -V
@@ -80,7 +80,7 @@ jobs:
           ctest -V
           cd ../../../sync_protocol/build
           ctest -V
-          cd ../../../syscheckd/build
+          cd ../../syscheckd/build
           ctest -V
           cd ../../wazuh_modules/sca/build
           ctest -V
