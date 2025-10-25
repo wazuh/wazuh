@@ -39,7 +39,7 @@ class IndexerType(Enum):
     # Objects
     OBJECT = auto()
     NESTED = auto()
-    FLATTENED = auto()
+    FLAT_OBJECT = auto()
 
     # Misc (not an ES mapping type, used internally elsewhere)
     ARRAY = auto()
@@ -99,8 +99,8 @@ class IndexerType(Enum):
             return cls.OBJECT
         elif name == str(cls.NESTED):
             return cls.NESTED
-        elif name == str(cls.FLATTENED):
-            return cls.FLATTENED
+        elif name == str(cls.FLAT_OBJECT):
+            return cls.FLAT_OBJECT
 
         # Misc
         elif name == str(cls.ARRAY):
@@ -138,7 +138,7 @@ class JsonType(Enum):
 
 def indexer_to_json_type(indexer_type: IndexerType) -> JsonType:
     # Object types
-    if indexer_type in {IndexerType.OBJECT, IndexerType.NESTED, IndexerType.FLATTENED}:
+    if indexer_type in {IndexerType.OBJECT, IndexerType.NESTED, IndexerType.FLAT_OBJECT}:
         return JsonType.OBJECT
 
     # String types

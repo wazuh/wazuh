@@ -1,20 +1,9 @@
-import json
 from typing import Dict, Set, Tuple
 from copy import deepcopy
 
 import shared.resource_handler as rs
 
-from .drivers import ecs, wazuh
-
-
-def ECS_FLAT_URL(
-    x): return f'https://raw.githubusercontent.com/elastic/ecs/{x}/generated/ecs/ecs_flat.yml'
-
-
-def make_error(msg):
-    print(msg)
-    print('Aborted.')
-    exit(1)
+from .drivers import ecs
 
 
 def _is_allowed(path: str, allowed: Set[str]) -> bool:
@@ -25,6 +14,7 @@ def _is_allowed(path: str, allowed: Set[str]) -> bool:
         if path.startswith(p + "."):
             return True
     return False
+
 
 def _partition_schema(props: Dict[str, dict], allowed: Set[str], parent_path: str = "") -> Tuple[Dict[str, dict], Dict[str, dict]]:
     """Splits a property dictionary into (rules_props, dec_props) preserving the structure."""
@@ -40,6 +30,7 @@ def _partition_schema(props: Dict[str, dict], allowed: Set[str], parent_path: st
             dec_props[name] = d_node
 
     return rules_props, dec_props
+
 
 def _partition_node(schema: dict, path: str, allowed: Set[str]) -> Tuple[dict | None, dict | None]:
     """
@@ -98,6 +89,7 @@ def _partition_node(schema: dict, path: str, allowed: Set[str]) -> Tuple[dict | 
 
     return None, deepcopy(schema)
 
+
 def _build_fields_schema(base_template: dict, properties: dict, file_id: str, name: str) -> dict:
     t = deepcopy(base_template)
     t['$id'] = file_id            # p.ej. "rule_fields.json" or "decoder_fields.json"
@@ -105,14 +97,12 @@ def _build_fields_schema(base_template: dict, properties: dict, file_id: str, na
     t['properties'] = properties  # filtered tree
     return t
 
-def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandler, allowed_fields_path: str) -> Tuple[dict, dict, dict, dict, dict]:
 
-    print(f'Using target ECS version: {ecs_version}')
+def generate(wcs_path: str, resource_handler: rs.ResourceHandler, allowed_fields_path: str) -> Tuple[dict, dict, dict, dict, dict]:
 
     print('Loading resources...')
-    ecs_flat_url = ECS_FLAT_URL(ecs_version)
-    print(f'Downloading {ecs_flat_url}...')
-    ecs_flat = resource_handler.download_file(ecs_flat_url)
+    print(f'Loading WCS file from {wcs_path}...')
+    wcs_flat = resource_handler.load_file(wcs_path)
     print(f'Loading schema template...')
     fields_template = resource_handler.load_internal_file('fields.template')
     print(f'Loading mappings template...')
@@ -122,8 +112,8 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
     logpar_template = resource_handler.load_internal_file('logpar_types')
 
     # Generate field tree from ecs_flat
-    print('Building field tree from ecs definition...')
-    field_tree = ecs.build_field_tree(ecs_flat)
+    print('Building field tree from WCS definition...')
+    field_tree = ecs.build_field_tree(wcs_flat)
     field_tree.add_logpar_overrides(logpar_template["fields"])
     print('Success.')
 
@@ -132,25 +122,7 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
     engine_schema = dict()
     engine_schema['name'] = 'schema/engine-schema/0'
     engine_schema['fields'] = dict()
-    engine_schema['fields'] = ecs.to_engine_schema(ecs_flat)
-
-    # Add modules
-    for module in modules:
-        print(f'Adding module {module}...')
-        print('Loading resources...')
-        fields_definition, logpar_overrides, module_name = resource_handler.load_module_files(
-            module)
-        print('Generating field tree...')
-        module_tree = wazuh.build_field_tree(fields_definition, module_name)
-        print('Adding logpar overrides...')
-        if logpar_overrides:
-            module_tree.add_logpar_overrides(logpar_overrides["fields"])
-        print('Merging module...')
-        field_tree.merge(module_tree)
-        print('Adding to engine schema...')
-        engine_schema['fields'] = {
-            **engine_schema['fields'], **wazuh.to_engine_schema(fields_definition, module_name)}
-        print('Success.')
+    engine_schema['fields'] = ecs.to_engine_schema(wcs_flat)
 
     # Get schema properties
     print('Generating fields schema properties...')

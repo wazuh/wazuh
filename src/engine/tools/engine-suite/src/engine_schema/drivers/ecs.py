@@ -6,7 +6,7 @@ def _ecs_to_indexer_type(ecs_type: str) -> IndexerType:
         return IndexerType.TEXT
     if 'constant_keyword' == ecs_type:
         return IndexerType.KEYWORD
-    if 'flattened' == ecs_type:
+    if 'flat_object' == ecs_type:
         return IndexerType.OBJECT
     if 'number' == ecs_type:
         return IndexerType.LONG
