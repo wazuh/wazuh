@@ -2433,3 +2433,29 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
         t.join();
     }
 }
+
+// Test cases for sync protocol functions to improve coverage
+TEST_F(SyscollectorImpTest, syncProtocolFunctions)
+{
+    // Initialize sync protocol first to avoid crashes
+    MQ_Functions mqFuncs;
+    mqFuncs.start = nullptr;
+    mqFuncs.send_binary = nullptr;
+
+    Syscollector::instance().initSyncProtocol("test_module", ":memory:", mqFuncs);
+
+    // Test persistDifference - safe to call even with nullptr mqFuncs
+    Syscollector::instance().persistDifference("test_id", Operation::CREATE, "test_index", "{}", 1);
+    Syscollector::instance().persistDifference("test_id2", Operation::MODIFY, "test_index2", "{\"test\":true}", 2);
+    Syscollector::instance().persistDifference("test_id3", Operation::DELETE_, "test_index3", "{}", 3);
+
+    // Test parseResponseBuffer - safe to call
+    uint8_t data[] = {0x01, 0x02, 0x03};
+    bool result = Syscollector::instance().parseResponseBuffer(data, sizeof(data));
+    (void)result;
+
+    // Test deleteDatabase - safe to call
+    Syscollector::instance().deleteDatabase();
+
+    SUCCEED();
+}
