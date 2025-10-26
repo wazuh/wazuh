@@ -110,6 +110,7 @@ AGENT_INFO=wazuh_modules/agent_info/
 ROUTER=${SHARED_MODULES}router/
 CONTENT_MANAGER=${SHARED_MODULES}content_manager/
 FILE_HELPER=${SHARED_MODULES}file_helper/
+METADATA_PROVIDER=${SHARED_MODULES}metadata_provider/
 VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
 SYSINFO=data_provider/
 SYSCHECK=syscheckd/
@@ -337,10 +338,12 @@ ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
 	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/bin
 	OSSEC_LDFLAGS+=-L${FILE_HELPER}build/bin
+	OSSEC_LDFLAGS+=-L${METADATA_PROVIDER}build/bin
 else
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/lib
 	OSSEC_LDFLAGS+=-L${FILE_HELPER}build/lib
+	OSSEC_LDFLAGS+=-L${METADATA_PROVIDER}build/lib
 endif
 
 ifeq (${TARGET},server)
@@ -709,6 +712,7 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 
 win32/shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+	cd ${METADATA_PROVIDER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
@@ -1645,6 +1649,7 @@ config/%.o: config/%.c
 
 build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+	cd ${METADATA_PROVIDER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
 
@@ -2388,6 +2393,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(DBSYNC)build
 	rm -rf $(SYNC_PROTOCOL)build
 	rm -rf $(FILE_HELPER)build
+	rm -rf $(METADATA_PROVIDER)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SCA)build
 	rm -rf $(AGENT_INFO)build

@@ -11,6 +11,7 @@
 #include "ipersistent_queue.hpp"
 #include "persistent_queue.hpp"
 #include "defs.h"
+#include "metadata_provider.h"
 
 #include <flatbuffers/flatbuffers.h>
 #include <thread>
@@ -426,6 +427,10 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t maxEps,
                                             bool isFirst)
 {
+    // Declare metadata variables outside try block for proper cleanup in catch
+    agent_metadata_t metadata{};
+    bool has_metadata = false;
+
     try
     {
         flatbuffers::FlatBufferBuilder builder;
@@ -436,22 +441,48 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // Translate DB mode to Schema mode
         const auto protocolMode = toProtocolMode(mode);
 
-        // Create hardcoded agent information
-        auto architecture = builder.CreateString("hardcoded_architecture");
-        auto hostname = builder.CreateString("hardcoded_hostname");
-        auto osname = builder.CreateString("hardcoded_osname");
-        auto ostype = builder.CreateString("hardcoded_ostype");
-        auto osversion = builder.CreateString("hardcoded_osversion");
-        auto agentversion = builder.CreateString("hardcoded_agentversion");
-        auto agentname = builder.CreateString("hardcoded_agentname");
-        auto agentid = builder.CreateString("001");
-        auto checksum_metadata = builder.CreateString("hardcoded_checksum_metadata");
-        uint64_t global_version = 1000; // Hardcoded global version as ulong
+        // Try to get metadata from provider, fallback to defaults if unavailable
+        has_metadata = (metadata_provider_get(&metadata) == 0);
 
-        // Create groups vector
+        // If metadata not available, use safe defaults
+        if (!has_metadata)
+        {
+            m_logger(LOG_DEBUG, "Metadata not available from provider, using defaults");
+            std::strncpy(metadata.agent_id, "000", sizeof(metadata.agent_id) - 1);
+            std::strncpy(metadata.agent_name, "unknown", sizeof(metadata.agent_name) - 1);
+            std::strncpy(metadata.agent_version, "unknown", sizeof(metadata.agent_version) - 1);
+            std::strncpy(metadata.architecture, "unknown", sizeof(metadata.architecture) - 1);
+            std::strncpy(metadata.hostname, "unknown", sizeof(metadata.hostname) - 1);
+            std::strncpy(metadata.os_name, "unknown", sizeof(metadata.os_name) - 1);
+            std::strncpy(metadata.os_type, "unknown", sizeof(metadata.os_type) - 1);
+            std::strncpy(metadata.os_version, "unknown", sizeof(metadata.os_version) - 1);
+            std::strncpy(metadata.checksum_metadata, "", sizeof(metadata.checksum_metadata) - 1);
+            metadata.global_version = 1000;
+            metadata.groups = nullptr;
+            metadata.groups_count = 0;
+        }
+
+        // Create flatbuffer strings from metadata
+        auto architecture = builder.CreateString(metadata.architecture);
+        auto hostname = builder.CreateString(metadata.hostname);
+        auto osname = builder.CreateString(metadata.os_name);
+        auto ostype = builder.CreateString(metadata.os_type);
+        auto osversion = builder.CreateString(metadata.os_version);
+        auto agentversion = builder.CreateString(metadata.agent_version);
+        auto agentname = builder.CreateString(metadata.agent_name);
+        auto agentid = builder.CreateString(metadata.agent_id);
+        auto checksum_metadata = builder.CreateString(metadata.checksum_metadata);
+        uint64_t global_version = metadata.global_version;
+
+        // Create groups vector from metadata
         std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
-        groups_vec.push_back(builder.CreateString("hardcoded_group1"));
-        groups_vec.push_back(builder.CreateString("hardcoded_group2"));
+        if (metadata.groups && metadata.groups_count > 0)
+        {
+            for (size_t i = 0; i < metadata.groups_count; ++i)
+            {
+                groups_vec.push_back(builder.CreateString(metadata.groups[i]));
+            }
+        }
         auto groups = builder.CreateVector(groups_vec);
 
         // Create index vector from uniqueIndices parameter
@@ -515,16 +546,33 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 }
 
                 m_logger(LOG_DEBUG, "StartAck received. Session: " + std::to_string(m_syncState.session));
+
+                // Clean up metadata before returning success
+                if (has_metadata)
+                {
+                    metadata_provider_free_metadata(&metadata);
+                }
                 return true;
             }
 
             m_logger(LOG_DEBUG, "Timed out waiting for StartAck. Retrying...");
         }
 
+        // Clean up metadata if we successfully retrieved it
+        if (has_metadata)
+        {
+            metadata_provider_free_metadata(&metadata);
+        }
+
         return false;
     }
     catch (const std::exception& e)
     {
+        // Clean up metadata on exception
+        if (has_metadata)
+        {
+            metadata_provider_free_metadata(&metadata);
+        }
         m_logger(LOG_ERROR, std::string("Exception when sending Start message: ") + e.what());
     }
 

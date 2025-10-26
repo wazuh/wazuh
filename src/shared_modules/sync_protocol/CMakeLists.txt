@@ -94,17 +94,20 @@ target_include_directories(agent_sync_protocol
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/
     ${CMAKE_SOURCE_DIR}/../../headers
     ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/filesystem/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../metadata_provider/include
 )
 
 target_link_directories(agent_sync_protocol
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/build/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/../metadata_provider/build/lib
 )
 
 target_link_libraries(agent_sync_protocol
   PRIVATE
   flatbuffers
   FilesystemWrapper
+  metadata_provider
   ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a
 )
 

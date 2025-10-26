@@ -26,6 +26,7 @@ link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/metadata_provider/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 include_directories(${SRC_FOLDER}/external/bzip2/)
@@ -42,6 +43,7 @@ include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
+include_directories(${SRC_FOLDER}/shared_modules/metadata_provider/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 
@@ -56,6 +58,9 @@ find_library(DBSYNC_LIB dbsync
     NO_DEFAULT_PATH)
 find_library(SYNC_PROTOCOL_LIB agent_sync_protocol
     HINTS ${SRC_FOLDER}/shared_modules/sync_protocol/build/lib
+    NO_DEFAULT_PATH)
+find_library(METADATA_PROVIDER_LIB metadata_provider
+    HINTS ${SRC_FOLDER}/shared_modules/metadata_provider/build/lib
     NO_DEFAULT_PATH)
 find_library(PCRE2_LIB pcre2-8
     HINTS ${SRC_FOLDER}/external/libpcre2/.libs
@@ -84,6 +89,10 @@ if(NOT SYNC_PROTOCOL_LIB)
     set(SYNC_PROTOCOL_LIB agent_sync_protocol)
     message(STATUS "agent_sync_protocol library not found, using target name")
 endif()
+if(NOT METADATA_PROVIDER_LIB)
+    set(METADATA_PROVIDER_LIB metadata_provider)
+    message(STATUS "metadata_provider library not found, using target name")
+endif()
 if(NOT PCRE2_LIB)
     set(PCRE2_LIB pcre2-8)
     message(STATUS "pcre2-8 library not found, using target name")
@@ -105,6 +114,7 @@ target_link_libraries(
             ${FILESYSTEM_WRAPPER_LIB}
             ${FILE_IO_LIB}
             ${SYNC_PROTOCOL_LIB}
+            ${METADATA_PROVIDER_LIB}
             ${DBSYNC_LIB}
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson
