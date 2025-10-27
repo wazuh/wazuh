@@ -26,8 +26,6 @@ namespace PackageLinuxHelper
     {
         nlohmann::json ret;
         auto version { package.version };
-        std::string vendor       { UNKNOWN_VALUE };
-        std::string email        { UNKNOWN_VALUE };
 
         if (package.epoch)
         {
@@ -41,10 +39,6 @@ namespace PackageLinuxHelper
 
         if (package.name.compare("gpg-pubkey") != 0 && !package.name.empty())
         {
-            if (!package.vendor.empty())
-            {
-                Utils::splitMaintainerField(package.vendor, vendor, email);
-            }
 
             ret["name"]         = package.name;
             ret["size"]         = package.size;
@@ -56,7 +50,7 @@ namespace PackageLinuxHelper
             ret["architecture"] = package.architecture;
             ret["source"]       = UNKNOWN_VALUE;
             ret["format"]       = "rpm";
-            ret["vendor"]       = vendor;
+            ret["vendor"]       = package.vendor.empty() ? UNKNOWN_VALUE : package.vendor;
             ret["description"]  = package.description;
         }
 
