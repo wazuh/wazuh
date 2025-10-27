@@ -50,6 +50,8 @@ private:
     std::vector<uint8_t> wrapWithAgentInfo(const std::vector<uint8_t>& message);
     void subscribeToResponses();
     std::string getResponseTopic() const;
+    bool configRouter();  // Returns bool like ensureQueueAvailable()
 
     static constexpr const char* m_inventoryStatesTopic = "inventory-states";
+    std::atomic<bool> m_subscriberReady;
 };

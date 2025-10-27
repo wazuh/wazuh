@@ -23,6 +23,7 @@ RouterTransport::RouterTransport(const std::string& agentId,
     , m_moduleName(moduleName)
     , m_logger(std::move(logger))
     , m_responseCallback(callback)
+    , m_subscriberReady(false)
 {
 }
 
@@ -33,18 +34,6 @@ RouterTransport::~RouterTransport()
 
 bool RouterTransport::initialize()
 {
-    try
-    {
-        m_provider = std::make_unique<RouterProvider>(m_inventoryStatesTopic, true);
-        m_provider->start();
-        m_logger(LOG_INFO, "RouterProvider started for topic: " + std::string(m_inventoryStatesTopic));
-        subscribeToResponses();
-    }
-    catch (const std::exception& ex)
-    {
-        m_logger(LOG_ERROR_EXIT, "Failed to initialize RouterTransport: " + std::string(ex.what()));
-        return false;
-    }
     return true;
 }
 
@@ -63,9 +52,14 @@ void RouterTransport::shutdown()
     }
 }
 
-// TODO: Implement checkStatus for RouterTransport
 bool RouterTransport::checkStatus()
 {
+    // Like MQueueTransport::checkStatus() - simply try to ensure router is available
+    if (!configRouter())
+    {
+        m_logger(LOG_ERROR, "Failed to initialize Router");
+        return false;  // Graceful failure, will retry on next sync attempt
+    }
     return true;
 }
 
@@ -73,6 +67,13 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
 {
     try
     {
+        // Null check like MQueue checks m_queue < 0
+        if (!m_provider)
+        {
+            m_logger(LOG_ERROR, "Cannot send: RouterProvider not initialized");
+            return false;
+        }
+
         auto wrappedMessage = wrapWithAgentInfo(message);
         std::vector<char> routerMessage(wrappedMessage.begin(), wrappedMessage.end());
         m_provider->send(routerMessage);
@@ -119,19 +120,53 @@ void RouterTransport::subscribeToResponses()
     const std::string responseTopic = getResponseTopic();
     const std::string subscriberId = "agent-sync-protocol-" + m_agentId;
 
-    try
+    // Let exceptions propagate to configRouter() - no LOG_ERROR_EXIT here
+    m_subscriber = std::make_unique<RouterSubscriber>(responseTopic, subscriberId, true);
+
+    // Use onConnect callback to ensure subscription is established before marking as ready
+    auto onConnect = [this]()
     {
-        m_subscriber = std::make_unique<RouterSubscriber>(responseTopic, subscriberId, true);
-        m_subscriber->subscribe(m_responseCallback);
-        m_logger(LOG_INFO, "RouterSubscriber created for topic: " + responseTopic);
-    }
-    catch (const std::exception& ex)
-    {
-        m_logger(LOG_ERROR_EXIT, "Failed to initialize RouterSubscriber: " + std::string(ex.what()));
-    }
+        m_subscriberReady.store(true);
+        m_logger(LOG_INFO, "RouterSubscriber connected and ready");
+    };
+
+    m_subscriber->subscribe(m_responseCallback, onConnect);
+    m_logger(LOG_INFO, "RouterSubscriber created for topic: " + responseTopic);
 }
 
 std::string RouterTransport::getResponseTopic() const
 {
     return "inventory-sync-agent-" + m_agentId + "-responses";
+}
+
+bool RouterTransport::configRouter()
+{
+    try
+    {
+        // Check if already initialized (null check pattern like MQueue's m_queue < 0)
+        if (!m_provider)
+        {
+            m_provider = std::make_unique<RouterProvider>(m_inventoryStatesTopic, false);
+            m_provider->start();
+            m_logger(LOG_INFO, "RouterProvider started for topic: " + std::string(m_inventoryStatesTopic));
+        }
+
+        // Check if subscriber already initialized
+        if (!m_subscriber)
+        {
+            subscribeToResponses();
+        }
+
+        // Return true only if both are valid and subscriber is ready
+        return (m_provider != nullptr) && (m_subscriber != nullptr) && m_subscriberReady;
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, "Failed to initialize RouterTransport: " + std::string(ex.what()));
+        // Clean up partial state like MQueue does
+        m_provider.reset();
+        m_subscriber.reset();
+        m_subscriberReady = false;
+        return false;  // Graceful failure, allows retry
+    }
 }
