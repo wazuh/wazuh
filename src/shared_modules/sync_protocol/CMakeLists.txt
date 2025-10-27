@@ -78,6 +78,7 @@ add_library(agent_sync_protocol SHARED
   src/agent_sync_protocol.cpp
   src/persistent_queue.cpp
   src/persistent_queue_storage.cpp
+  src/metadata_provider.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ}

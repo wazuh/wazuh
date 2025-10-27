@@ -5,6 +5,7 @@
 #include "hashHelper.h"
 #include "stringHelper.h"
 #include "timeHelper.h"
+#include "metadata_provider.h"
 
 #include <dbsync.hpp>
 #include <file_io_utils.hpp>
@@ -293,6 +294,72 @@ void AgentInfoImpl::populateAgentMetadata()
     }
 
     m_logFunction(LOG_INFO, groupLogMsg);
+
+    // Update the global metadata provider
+    updateMetadataProvider(agentMetadata, groups);
+}
+
+void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups)
+{
+    agent_metadata_t metadata{};
+
+    // Copy string fields safely
+    auto copyField = [](char* dest, size_t dest_size, const nlohmann::json & json, const char* field)
+    {
+        if (json.contains(field) && json[field].is_string())
+        {
+            std::strncpy(dest, json[field].get<std::string>().c_str(), dest_size - 1);
+            dest[dest_size - 1] = '\0';
+        }
+    };
+
+    copyField(metadata.agent_id, sizeof(metadata.agent_id), agentMetadata, "agent_id");
+    copyField(metadata.agent_name, sizeof(metadata.agent_name), agentMetadata, "agent_name");
+    copyField(metadata.agent_version, sizeof(metadata.agent_version), agentMetadata, "agent_version");
+    copyField(metadata.architecture, sizeof(metadata.architecture), agentMetadata, "host_architecture");
+    copyField(metadata.hostname, sizeof(metadata.hostname), agentMetadata, "host_hostname");
+    copyField(metadata.os_name, sizeof(metadata.os_name), agentMetadata, "host_os_name");
+    copyField(metadata.os_type, sizeof(metadata.os_type), agentMetadata, "host_os_type");
+    copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
+    copyField(metadata.checksum_metadata, sizeof(metadata.checksum_metadata), agentMetadata, "checksum");
+
+    // Set global version (hardcoded for now, can be made dynamic)
+    metadata.global_version = 1000;
+
+    // Copy groups
+    if (!groups.empty())
+    {
+        metadata.groups = new char* [groups.size()];
+        metadata.groups_count = groups.size();
+
+        for (size_t i = 0; i < groups.size(); ++i)
+        {
+            const size_t len = groups[i].length();
+            metadata.groups[i] = new char[len + 1];
+            std::strcpy(metadata.groups[i], groups[i].c_str());
+        }
+    }
+
+    // Update the provider
+    if (metadata_provider_update(&metadata) == 0)
+    {
+        m_logFunction(LOG_DEBUG, "Successfully updated metadata provider");
+    }
+    else
+    {
+        m_logFunction(LOG_WARNING, "Failed to update metadata provider");
+    }
+
+    // Free allocated groups
+    if (metadata.groups)
+    {
+        for (size_t i = 0; i < metadata.groups_count; ++i)
+        {
+            delete[] metadata.groups[i];
+        }
+
+        delete[] metadata.groups;
+    }
 }
 
 bool AgentInfoImpl::readClientKeys(std::string& agentId, std::string& agentName) const
