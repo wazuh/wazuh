@@ -74,6 +74,8 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [geoip](#geoip)
 - [get_date](#get_date)
 - [hex_to_number](#hex_to_number)
+- [iana_protocol_name_to_number](#iana_protocol_name_to_number)
+- [iana_protocol_number_to_name](#iana_protocol_number_to_name)
 - [int_calculate](#int_calculate)
 - [ip_version](#ip_version)
 - [join](#join)
@@ -9106,6 +9108,1034 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# iana_protocol_name_to_number
+
+## Signature
+
+```
+
+field: iana_protocol_name_to_number(protocol_name)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| protocol_name | string | reference | Any string |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Resolves an IANA IP protocol keyword to its numeric code, returned as a string (e.g., "6").
+Normalization rules:
+  - Lowercased.
+  - Spaces/underscores converted to '-'.
+  - Aliases recognized:
+      * "icmpv6" → "ipv6-icmp"
+      * "udp-lite" / "udp_lite" → "udplite"
+      * "ip-in-ip" → "ipip"
+The helper rejects generic/unspecific categories and returns failure.
+
+
+## Keywords
+
+- `iana` 
+
+- `protocol` 
+
+## Examples
+
+### Example 1
+
+canonical keyword
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "tcp"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "tcp",
+  "target_field": "6"
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+case-insensitive
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "UDP"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "UDP",
+  "target_field": "17"
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+canonical hyphenated form
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "ipv6-icmp"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "ipv6-icmp",
+  "target_field": "58"
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+underscore alias normalized → "udplite"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "udp_lite"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "udp_lite",
+  "target_field": "136"
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+alias normalized → "ipip"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "ip-in-ip"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "ip-in-ip",
+  "target_field": "94"
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+alias normalized → "ipv6-icmp"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "ICMPv6"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "ICMPv6",
+  "target_field": "58"
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+reject generic/unspecific categories
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "any-host-internal-protocol"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "any-host-internal-protocol"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+application-layer name → not an IANA IP protocol keyword
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "smtp"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "smtp"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 9
+
+empty string
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": ""
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 10
+
+non-string input rejected (must be a reference to string)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": 123
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": 123
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# iana_protocol_number_to_name
+
+## Signature
+
+```
+
+field: iana_protocol_number_to_name(protocol_code)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| protocol_code | string, number | reference | Any object |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Resolves an IANA IP protocol numeric code (0..255) to its canonical keyword.
+The helper accepts either a number or a base-10 numeric string (same argument, by reference).
+The helper returns failure for experimental, reserved, unassigned codes and for generic/unspecific categories.
+
+
+## Keywords
+
+- `iana` 
+
+- `protocol` 
+
+## Examples
+
+### Example 1
+
+6 → "tcp"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 6
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 6,
+  "target_field": "tcp"
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+58 → "ipv6-icmp"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 58
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 58,
+  "target_field": "ipv6-icmp"
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+147 → "bit-emu"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 147
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 147,
+  "target_field": "bit-emu"
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+string numeric accepted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "6"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "6",
+  "target_field": "tcp"
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+string numeric accepted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "58"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "58",
+  "target_field": "ipv6-icmp"
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+string numeric accepted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "147"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "147",
+  "target_field": "bit-emu"
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+rejects non-integer numeric string
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "6.0"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "6.0"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+out of range (negative)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "-1"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "-1"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 9
+
+out of range (>255)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "256"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "256"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 10
+
+non-numeric string rejected
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "abc"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "abc"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 11
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 61
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 61
+}
+```
+
+*The operation was performed with errors*
+
+### Example 12
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 63
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 63
+}
+```
+
+*The operation was performed with errors*
+
+### Example 13
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 68
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 68
+}
+```
+
+*The operation was performed with errors*
+
+### Example 14
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 99
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 99
+}
+```
+
+*The operation was performed with errors*
+
+### Example 15
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 114
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 114
+}
+```
+
+*The operation was performed with errors*
+
+### Example 16
+
+unassigned protocol code
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 148
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 148
+}
+```
+
+*The operation was performed with errors*
+
+### Example 17
+
+experimental protocol code
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 253
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 253
+}
+```
+
+*The operation was performed with errors*
+
+### Example 18
+
+reserved protocol code
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 255
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 255
+}
+```
+
+*The operation was performed with errors*
+
+### Example 19
+
+out of range (negative)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": -1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": -1
+}
+```
+
+*The operation was performed with errors*
+
+### Example 20
+
+out of range (>255)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 256
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 256
+}
+```
+
+*The operation was performed with errors*
+
+### Example 21
+
+null rejected
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": null
+}
+```
+
+#### Outcome Event
+
+```json
+{}
+```
+
+*The operation was performed with errors*
 
 
 
