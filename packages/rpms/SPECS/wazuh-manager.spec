@@ -719,6 +719,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libwazuhshared.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libdbsync.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libagent_sync_protocol.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libmetadata_provider.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libsyscollector.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libsca.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libagent_info.so

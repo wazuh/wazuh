@@ -210,6 +210,9 @@
                     <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
                         <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll" />
                     </Component>
+                    <Component Id="METADATA_PROVIDER_DLL" DiskId="1" Guid="8C7D92E3-5F41-4A1B-9E2D-6F8B3C4D5E6F">
+                        <File Id="METADATA_PROVIDER_DLL" Name="libmetadata_provider.dll" Source="..\shared_modules\metadata_provider\build\bin\libmetadata_provider.dll" />
+                    </Component>
                     <Component Id="SYSINFO_DLL" DiskId="1" Guid="1D244B64-E1C3-4BED-A4CF-9C25E3B3BA0F">
                         <File Id="SYSINFO_DLL" Name="sysinfo.dll" Source="..\data_provider\build\bin\sysinfo.dll" />
                     </Component>
@@ -612,6 +615,7 @@
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="AGENT_SYNC_PROTOCOL_DLL" />
+            <ComponentRef Id="METADATA_PROVIDER_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
