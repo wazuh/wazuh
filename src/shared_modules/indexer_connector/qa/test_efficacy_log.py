@@ -676,3 +676,158 @@ def test_update_mappings_connector_legacy(opensearch):
 
     assert counter < 10, "The document was not inserted"
     process.terminate()
+
+
+@pytest.mark.parametrize("opensearch", [True], indirect=True)
+def test_error_handling_shard_limit_exceeded(opensearch):
+    """
+    Test that shard limit validation error is logged with recommendation.
+
+    Scenario:
+    1. Configure OpenSearch with very low shard limit (e.g., 1)
+    2. Try to create multiple indices
+    3. Verify WARNING log contains recommendation to increase cluster.max_shards_per_node
+
+    Note: This requires OpenSearch configuration change to set low shard limit.
+    """
+    os.chdir(Path(__file__).parent.parent.parent.parent)
+    LOGGER.debug(f"Current directory: {os.getcwd()}")
+
+    # Set very low shard limit on OpenSearch
+    url = f'http://{GLOBAL_URL}/_cluster/settings'
+    settings = {"persistent": {"cluster.max_shards_per_node": 1}}
+    response = requests.put(url, json=settings)
+    assert response.status_code == 200, "Failed to set shard limit"
+
+    # Clean up
+    if os.path.exists("queue/indexer/"):
+        shutil.rmtree("queue/indexer/")
+
+    cmd = Path(
+        "build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool"
+    )
+    cmd_alt = Path(
+        "shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool"
+    )
+    if not cmd.exists():
+        cmd = cmd_alt
+    assert cmd.exists(), "The binary does not exist"
+
+    log_file = Path("log.out")
+    if log_file.exists():
+        log_file.unlink()
+
+    test_name = inspect.currentframe().f_code.co_name
+
+    LOGGER.debug(f"Running test {test_name}")
+
+    # Try to create index (should fail with shard limit error)
+    args = [
+        "-c",
+        f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
+        "-t",
+        f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
+        "-w",
+        "10",
+        "-l",
+        str(log_file),
+    ]
+
+    command = [cmd] + args
+    process = subprocess.Popen(command)
+    time.sleep(5)
+    process.terminate()
+
+    # Verify log contains recommendation
+    with open(log_file, "r") as f:
+        log_content = f.read()
+        assert "validation_exception" in log_content, (
+            "Expected validation_exception not found"
+        )
+        assert "maximum shards open" in log_content, (
+            "Expected shard limit error not found"
+        )
+        assert (
+            "Consider increasing cluster.max_shards_per_node setting" in log_content
+        ), "Expected recommendation not found in log"
+
+    # Restore shard limit
+    settings = {"persistent": {"cluster.max_shards_per_node": None}}
+    requests.put(url, json=settings)
+
+    LOGGER.info("Shard limit error logged with recommendation")
+
+
+@pytest.mark.parametrize("opensearch", [True], indirect=True)
+def test_error_handling_404_index_not_found(opensearch):
+    """
+    Test 404 index not found error handling.
+
+    Scenario:
+    1. Try to sync with non-existent index (don't create it first)
+    2. Verify WARNING with type: 'index_not_found_exception'
+    """
+    os.chdir(Path(__file__).parent.parent.parent.parent)
+    LOGGER.debug(f"Current directory: {os.getcwd()}")
+
+    # Clean up
+    if os.path.exists("queue/indexer/"):
+        shutil.rmtree("queue/indexer/")
+
+    # Ensure test index does NOT exist
+    index_url = f'http://{GLOBAL_URL}/wazuh-nonexistent-index-404'
+    response = requests.delete(index_url)
+    LOGGER.debug(f"Deleted test index (if existed): {response.status_code}")
+
+    cmd = Path(
+        "build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool"
+    )
+    cmd_alt = Path(
+        "shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool"
+    )
+    if not cmd.exists():
+        cmd = cmd_alt
+    assert cmd.exists(), "The binary does not exist"
+
+    log_file = Path("log.out")
+    if log_file.exists():
+        log_file.unlink()
+
+    test_name = inspect.currentframe().f_code.co_name
+
+    LOGGER.debug(f"Running test {test_name}")
+
+    # Try to sync with non-existent index (no template, no creation)
+    args = [
+        "-c",
+        f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
+        "-t",
+        f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
+        "-s",
+        "000",  # Sync operation will try to query non-existent index
+        "-w",
+        "10",
+        "-l",
+        str(log_file),
+    ]
+
+    command = [cmd] + args
+    process = subprocess.Popen(command)
+    time.sleep(5)
+    process.terminate()
+
+    # Verify log contains 404 error
+    with open(log_file, "r") as f:
+        log_content = f.read()
+        # Should contain index_not_found_exception or similar
+        assert (
+            "index_not_found_exception" in log_content
+            or "no such index" in log_content
+            or "404" in log_content
+        ), "Expected index not found error"
+
+        # Should have structured format
+        if "type:" in log_content:
+            assert "reason:" in log_content, "Expected structured error format"
+
+    LOGGER.info("404 Index not found error properly logged")

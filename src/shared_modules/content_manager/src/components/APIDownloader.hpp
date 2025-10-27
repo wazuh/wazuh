@@ -75,9 +75,10 @@ private:
         logDebug2(WM_CONTENTUPDATER, "Downloading from API '%s'", m_url.c_str());
 
         const auto onError {
-            [](const std::string& message, [[maybe_unused]] const long statusCode)
+            [](const std::string& message, [[maybe_unused]] const long statusCode, const std::string& responseBody)
             {
-                throw std::runtime_error("APIDownloader - Could not get response from API because: " + message);
+                throw std::runtime_error("APIDownloader - Could not get response from API because: " + message +
+                                         " - Response body: " + responseBody);
             }};
 
         // Run the request. Save the file on disk.
