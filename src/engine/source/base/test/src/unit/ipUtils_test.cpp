@@ -238,3 +238,122 @@ TEST(isSpecialIPv6Address, Valid_range)
     EXPECT_FALSE(utils::ip::isSpecialIPv6Address("2001:db8:1234:0:0:0:0:1"));
     EXPECT_FALSE(utils::ip::isSpecialIPv6Address("2001:0db8:1234:ffff:ffff:ffff:ffff:ffff"));
 }
+
+TEST(IanaProtocolNormalize, BasicAndAliases)
+{
+    using utils::ip::normalizeIanaProtocolName;
+
+    EXPECT_EQ(normalizeIanaProtocolName("TCP"), "tcp");
+    EXPECT_EQ(normalizeIanaProtocolName("ipv6 icmp"), "ipv6-icmp"); // space -> '-'
+    EXPECT_EQ(normalizeIanaProtocolName("udp_lite"), "udplite");    // '_' -> '-' -> alias
+    EXPECT_EQ(normalizeIanaProtocolName("UDP-LITE"), "udplite");    // alias
+    EXPECT_EQ(normalizeIanaProtocolName("IP-in-IP"), "ipip");       // alias
+}
+
+// -------- ianaProtocolNameToNumber --------
+TEST(IanaProtocolNameToNumber, ValidBasics)
+{
+    using utils::ip::ianaProtocolNameToNumber;
+
+    auto tcp = ianaProtocolNameToNumber("tcp");
+    ASSERT_TRUE(tcp.has_value());
+    EXPECT_EQ(*tcp, 6);
+
+    auto udp = ianaProtocolNameToNumber("UDP"); // case-insensitive
+    ASSERT_TRUE(udp.has_value());
+    EXPECT_EQ(*udp, 17);
+
+    auto ipv4 = ianaProtocolNameToNumber("ipv4");
+    ASSERT_TRUE(ipv4.has_value());
+    EXPECT_EQ(*ipv4, 4);
+
+    auto ipv6 = ianaProtocolNameToNumber("IPv6");
+    ASSERT_TRUE(ipv6.has_value());
+    EXPECT_EQ(*ipv6, 41);
+
+    auto icmpv6 = ianaProtocolNameToNumber("ipv6-icmp");
+    ASSERT_TRUE(icmpv6.has_value());
+    EXPECT_EQ(*icmpv6, 58);
+}
+
+TEST(IanaProtocolNameToNumber, AliasesAndNormalization)
+{
+    using utils::ip::ianaProtocolNameToNumber;
+
+    // udplite aliases
+    auto udplite = ianaProtocolNameToNumber("udplite");
+    ASSERT_TRUE(udplite.has_value());
+    EXPECT_EQ(*udplite, 136);
+
+    auto udpLiteHyphen = ianaProtocolNameToNumber("udp-lite");
+    ASSERT_TRUE(udpLiteHyphen.has_value());
+    EXPECT_EQ(*udpLiteHyphen, 136);
+
+    auto udpLiteUnderscore = ianaProtocolNameToNumber("udp_lite");
+    ASSERT_TRUE(udpLiteUnderscore.has_value());
+    EXPECT_EQ(*udpLiteUnderscore, 136);
+
+    // icmpv6 alias
+    auto icmpv6Alias = ianaProtocolNameToNumber("icmpv6");
+    ASSERT_TRUE(icmpv6Alias.has_value());
+    EXPECT_EQ(*icmpv6Alias, 58);
+
+    // ip-in-ip alias
+    auto ipInIpAlias = ianaProtocolNameToNumber("ip-in-ip");
+    ASSERT_TRUE(ipInIpAlias.has_value());
+    EXPECT_EQ(*ipInIpAlias, 94);
+}
+
+TEST(IanaProtocolNameToNumber, UnknownNames)
+{
+    using utils::ip::ianaProtocolNameToNumber;
+
+    // Not IANA protocol keywords
+    EXPECT_FALSE(ianaProtocolNameToNumber("smtp").has_value());
+    EXPECT_FALSE(ianaProtocolNameToNumber("http").has_value());
+
+    // Leading/trailing whitespace currently not trimmed in normalize -> should fail
+    EXPECT_FALSE(ianaProtocolNameToNumber(" tcp ").has_value());
+}
+
+// -------- ianaProtocolNumberToName --------
+TEST(IanaProtocolNumberToName, ValidBasics)
+{
+    using utils::ip::ianaProtocolNumberToName;
+
+    auto tcp = ianaProtocolNumberToName(6);
+    ASSERT_TRUE(tcp.has_value());
+    EXPECT_EQ(*tcp, "tcp");
+
+    auto ipv6 = ianaProtocolNumberToName(41);
+    ASSERT_TRUE(ipv6.has_value());
+    EXPECT_EQ(*ipv6, "ipv6");
+
+    auto icmpv6 = ianaProtocolNumberToName(58);
+    ASSERT_TRUE(icmpv6.has_value());
+    EXPECT_EQ(*icmpv6, "ipv6-icmp");
+
+    auto udplite = ianaProtocolNumberToName(136);
+    ASSERT_TRUE(udplite.has_value());
+    EXPECT_EQ(*udplite, "udplite");
+
+    auto bitEmu = ianaProtocolNumberToName(147);
+    ASSERT_TRUE(bitEmu.has_value());
+    EXPECT_EQ(*bitEmu, "bit-emu");
+}
+
+TEST(IanaProtocolNumberToName, UnassignedExperimentalReserved)
+{
+    using utils::ip::ianaProtocolNumberToName;
+
+    // Unassigned examples (according to current table content)
+    EXPECT_FALSE(ianaProtocolNumberToName(148).has_value());
+    EXPECT_FALSE(ianaProtocolNumberToName(200).has_value());
+
+    // Experimental
+    EXPECT_FALSE(ianaProtocolNumberToName(253).has_value());
+    EXPECT_FALSE(ianaProtocolNumberToName(254).has_value());
+
+    // Reserved
+    EXPECT_FALSE(ianaProtocolNumberToName(255).has_value());
+}
