@@ -305,6 +305,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/ctistore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 
 
 target_link_libraries(wazuh-engine
