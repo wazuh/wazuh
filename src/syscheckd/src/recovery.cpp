@@ -36,11 +36,13 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         {
             throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
         }
+        minfo("DBG Version: ", item["version"]);
         wrapper->impl->persistDifferenceInMemory(
             id,
             Operation::CREATE,
             table_name,
-            item.dump()
+            item.dump(),
+            item["version"]
         );
         }
         minfo("Persisted %zu recovery items in memory", recoveryItems.size());

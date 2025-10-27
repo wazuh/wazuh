@@ -96,11 +96,6 @@ void DB::setFirstScanHasBeenSynched(){
 
 std::string DB::getConcatenatedChecksums(const std::string& tableName)
 {
-    if (TABLE_PRIMARY_KEYS.find(tableName) == TABLE_PRIMARY_KEYS.end())
-    {
-        throw std::runtime_error("Unknown table name for checksum calculation: " + tableName);
-    }
-
     std::string concatenatedChecksums;
 
     auto callback {[&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json& jsonResult)
@@ -115,7 +110,6 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
                       .table(tableName)
                       .columnList({"checksum"})
                       .rowFilter("")
-                      .orderByOpt(TABLE_PRIMARY_KEYS.at(tableName))
                       .distinctOpt(false)
                       .build()};
 
@@ -126,10 +120,6 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
 
 std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName){
     std::vector<nlohmann::json> recoveryItems;
-    if (TABLE_PRIMARY_KEYS.find(tableName) == TABLE_PRIMARY_KEYS.end())
-    {
-        throw std::runtime_error("Unknown table name for module recovery: " + tableName);
-    }
     auto callback {[&recoveryItems](ReturnTypeCallback type, const nlohmann::json& jsonResult){
         if (ReturnTypeCallback::SELECTED == type)
         {
