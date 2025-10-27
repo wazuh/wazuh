@@ -123,6 +123,43 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
 MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Maps an IANA IP protocol name to its numeric code (0..255) and returns it as a string.
+ * Accepts a JSON string by reference (e.g., "tcp", "udp", "ipv6-icmp", "gre").
+ * The lookup is strict to IANA protocol keywords (not application-layer names).
+ * Normalization: case-insensitive, spaces/underscores -> '-', y alias comunes
+ * (icmpv6->ipv6-icmp, udp-lite->udplite, ip-in-ip->ipip).
+ *
+ * @param opArgs   Exactly one argument: a reference to the source JSON string.
+ * @param buildCtx Build context used for optional schema pre-checks and tracing.
+ * @return MapOp producing a JSON string with the decimal code on success.
+ *
+ * Fails at runtime if the reference is missing, not a string, the name is unknown,
+ * or the numeric-to-string conversion fails.
+ *
+ * @throws std::runtime_error if the parameter is not a reference, or if more than one
+ * parameter is provided.
+ */
+MapOp opBuilderHelperIanaProtocolNameToNumber(const std::vector<OpArg>& opArgs,
+                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Maps an IANA IP protocol numeric code (0..255) to its canonical name.
+ * Accepts a JSON number by reference (integer only).
+ *
+ * @param opArgs   Exactly one argument: a reference to the source JSON number.
+ * @param buildCtx Build context used for optional schema pre-checks and tracing.
+ * @return MapOp producing a JSON string with the canonical IANA keyword on success.
+ *
+ * Fails at runtime if the reference is missing, not a number, not an integer in [0,255],
+ * or if the code is unassigned/experimental/reserved/unknown.
+ *
+ * @throws std::runtime_error if the parameter is not a reference, or if more than one
+ * parameter is provided.
+ */
+MapOp opBuilderHelperIanaProtocolNumberToName(const std::vector<OpArg>& opArgs,
+                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Transforms a string by replacing, if exists, every ocurrence of a substring by a
  * new one.
  *
