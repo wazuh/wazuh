@@ -304,8 +304,10 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     agent_metadata_t metadata{};
 
     // Copy string fields safely
-    auto copyField = [](char* dest, size_t dest_size, const nlohmann::json& json, const char* field) {
-        if (json.contains(field) && json[field].is_string()) {
+    auto copyField = [](char* dest, size_t dest_size, const nlohmann::json & json, const char* field)
+    {
+        if (json.contains(field) && json[field].is_string())
+        {
             std::strncpy(dest, json[field].get<std::string>().c_str(), dest_size - 1);
             dest[dest_size - 1] = '\0';
         }
@@ -327,7 +329,7 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     // Copy groups
     if (!groups.empty())
     {
-        metadata.groups = new char*[groups.size()];
+        metadata.groups = new char* [groups.size()];
         metadata.groups_count = groups.size();
 
         for (size_t i = 0; i < groups.size(); ++i)
@@ -355,6 +357,7 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
         {
             delete[] metadata.groups[i];
         }
+
         delete[] metadata.groups;
     }
 }

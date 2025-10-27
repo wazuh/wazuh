@@ -476,6 +476,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
         // Create groups vector from metadata
         std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
+
         if (metadata.groups && metadata.groups_count > 0)
         {
             for (size_t i = 0; i < metadata.groups_count; ++i)
@@ -483,6 +484,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 groups_vec.push_back(builder.CreateString(metadata.groups[i]));
             }
         }
+
         auto groups = builder.CreateVector(groups_vec);
 
         // Create index vector from uniqueIndices parameter
@@ -552,6 +554,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 {
                     metadata_provider_free_metadata(&metadata);
                 }
+
                 return true;
             }
 
@@ -573,6 +576,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         {
             metadata_provider_free_metadata(&metadata);
         }
+
         m_logger(LOG_ERROR, std::string("Exception when sending Start message: ") + e.what());
     }
 

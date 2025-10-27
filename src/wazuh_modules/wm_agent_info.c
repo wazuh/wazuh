@@ -249,24 +249,24 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     unsigned int i;
     wm_agent_info_t* agent_info;
 
-    if (!module->data)
-    {
-        os_calloc(1, sizeof(wm_agent_info_t), agent_info);
-        agent_info->enabled = 1;    // Enabled by default
-        agent_info->interval = 300; // 5 minutes default interval
+    // if (!module->data)
+    // {
+    os_calloc(1, sizeof(wm_agent_info_t), agent_info);
+    agent_info->enabled = 1;  // Enabled by default
+    agent_info->interval = 1; // 5 minutes default interval
 
-        // Database synchronization config values
-        agent_info->sync.enable_synchronization = 1;
-        agent_info->sync.sync_response_timeout = 30;
-        agent_info->sync.sync_retries = 5;
-        agent_info->sync.sync_max_eps = 10;
+    // Database synchronization config values
+    agent_info->sync.enable_synchronization = 1;
+    agent_info->sync.sync_response_timeout = 1;
+    agent_info->sync.sync_retries = 1;
+    agent_info->sync.sync_max_eps = 1;
 
-        module->context = &WM_AGENT_INFO_CONTEXT;
-        module->tag = strdup(module->context->name);
-        module->data = agent_info;
-    }
+    module->context = &WM_AGENT_INFO_CONTEXT;
+    module->tag = strdup(module->context->name);
+    module->data = agent_info;
+    // }
 
-    agent_info = module->data;
+    // agent_info = module->data;
 
 #ifdef CLIENT
     agent_info->is_agent = true;
