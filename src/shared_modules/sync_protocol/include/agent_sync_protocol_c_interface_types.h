@@ -39,6 +39,15 @@ typedef enum
     MODE_GROUP_CHECK = 6     ///< Group integrity check
 } Mode_t;
 
+/// @brief Defines additional synchronization options.
+typedef enum
+{
+    OPTION_SYNC    = 0,     ///< Standard synchronization option.
+    OPTION_VD_FIRST = 1,    ///< Vulnerability detection first synchronization option.
+    OPTION_VD_SYNC  = 2,    ///< Vulnerability detection synchronization option.
+    OPTION_VD_CLEAN = 3     ///< Vulnerability detection cleanup synchronization option.
+} Option_t;
+
 /// @brief Opaque handle to the AgentSyncProtocol C++ object.
 ///
 /// Used to interact with the AgentSyncProtocol instance from C code.

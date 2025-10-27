@@ -84,7 +84,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
     // LCOV_EXCL_STOP
 }
 
-bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option)
 {
     // Validate synchronization mode
     if (mode != Mode::FULL && mode != Mode::DELTA)
@@ -146,7 +146,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 
     bool success = false;
 
-    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, timeout, retries, maxEps))
+    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, timeout, retries, maxEps, option))
     {
         if (sendDataMessages(m_syncState.session, dataToSync, maxEps))
         {
@@ -322,7 +322,8 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
                                         std::chrono::seconds timeout,
                                         unsigned int retries,
-                                        size_t maxEps)
+                                        size_t maxEps,
+                                        Option option)
 {
     if (indices.empty())
     {
@@ -354,7 +355,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     bool success = false;
 
     // Step 1: Send Start message with the indices and size
-    if (sendStartAndWaitAck(Mode::DELTA, dataToSync.size(), indices, timeout, retries, maxEps))
+    if (sendStartAndWaitAck(Mode::DELTA, dataToSync.size(), indices, timeout, retries, maxEps, option))
     {
         // Step 2: Send DataClean message for each index
         if (sendDataCleanMessages(m_syncState.session, dataToSync, maxEps))
@@ -424,7 +425,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             const std::chrono::seconds timeout,
                                             unsigned int retries,
                                             size_t maxEps,
-                                            bool isFirst)
+                                            Option option)
 {
     try
     {
@@ -469,7 +470,10 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_mode(protocolMode);
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
         startBuilder.add_index(indices);
-        startBuilder.add_first(isFirst);
+
+        // Translate Option enum to Schema Option
+        startBuilder.add_option(toProtocolOption(option));
+
         startBuilder.add_architecture(architecture);
         startBuilder.add_hostname(hostname);
         startBuilder.add_osname(osname);
@@ -1032,6 +1036,24 @@ Wazuh::SyncSchema::Mode AgentSyncProtocol::toProtocolMode(Mode mode) const
     }
 
     throw std::invalid_argument("Unknown Mode value: " + std::to_string(static_cast<int>(mode)));
+}
+
+Wazuh::SyncSchema::Option AgentSyncProtocol::toProtocolOption(Option option) const
+{
+    static const std::unordered_map<Option, Wazuh::SyncSchema::Option> optionMap =
+    {
+        {Option::SYNC, Wazuh::SyncSchema::Option::Sync},
+        {Option::VDFIRST, Wazuh::SyncSchema::Option::VDFirst},
+        {Option::VDSYNC, Wazuh::SyncSchema::Option::VDSync},
+        {Option::VDCLEAN, Wazuh::SyncSchema::Option::VDClean}
+    };
+
+    if (const auto it = optionMap.find(option); it != optionMap.end())
+    {
+        return it->second;
+    }
+
+    throw std::invalid_argument("Unknown Option value: " + std::to_string(static_cast<int>(option)));
 }
 
 void AgentSyncProtocol::deleteDatabase()

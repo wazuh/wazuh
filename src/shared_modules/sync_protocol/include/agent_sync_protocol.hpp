@@ -46,7 +46,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                        uint64_t version) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+        bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) override;
 
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         bool requiresFullSync(const std::string& index,
@@ -62,7 +62,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool synchronizeMetadataOrGroups(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
-        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) override;
 
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
@@ -107,7 +107,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
-        /// @param isFirst Indicates if this is the first synchronization. Default is false.
+        /// @param option Synchronization option.
         /// @return True on success, false on failure or timeout
         bool sendStartAndWaitAck(Mode mode,
                                  size_t dataSize,
@@ -115,7 +115,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                  const std::chrono::seconds timeout,
                                  unsigned int retries,
                                  size_t maxEps,
-                                 bool isFirst = false);
+                                 Option option = Option::SYNC);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -207,6 +207,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mode The internal Mode enum value.
         /// @return The corresponding Wazuh::SyncSchema::Mode value.
         Wazuh::SyncSchema::Mode toProtocolMode(Mode mode) const;
+
+        /// @brief Converts internal Option enum to protocol schema Option.
+        /// @param option The internal Option enum value.
+        /// @return The corresponding Wazuh::SyncSchema::Option value.
+        Wazuh::SyncSchema::Option toProtocolOption(Option option) const;
 
         /// @brief Synchronization state shared between threads during module sync.
         ///

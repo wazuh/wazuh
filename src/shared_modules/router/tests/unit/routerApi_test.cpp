@@ -663,7 +663,7 @@ static std::vector<uint8_t> createStartMessage(const std::string& agentId)
                                                    Wazuh::SyncSchema::Mode_ModuleFull, // mode
                                                    100,                                // size
                                                    0,                                  // index
-                                                   true,                               // first
+                                                   Wazuh::SyncSchema::Option_Sync,     // first
                                                    0,                                  // architecture
                                                    0,                                  // hostname
                                                    0,                                  // osname

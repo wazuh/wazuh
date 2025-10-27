@@ -22,6 +22,13 @@ enum Status: byte {
     Offline
 }
 
+enum Option: byte {
+    Sync,
+    VDFirst,
+    VDSync,
+    VDClean
+}
+
 table DataValue {
     seq: ulong;
     session: ulong;
@@ -32,12 +39,18 @@ table DataValue {
     data: [byte];
 }
 
+table DataContext {
+    seq: ulong;
+    session: ulong;
+    data: [byte];
+}
+
 table Start {
     module: string;
     mode: Mode;
     size: ulong;
     index: [string];
-    first: bool;
+    option: Option;
     architecture: string;
     hostname: string;
     osname: string;

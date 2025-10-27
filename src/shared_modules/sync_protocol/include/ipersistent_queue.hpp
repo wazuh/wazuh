@@ -37,6 +37,15 @@ enum class Mode : int
     GROUP_CHECK = MODE_GROUP_CHECK        ///< Group integrity check mode.
 };
 
+/// @brief Defines additional synchronization options.
+enum class Option : int
+{
+    SYNC    = OPTION_SYNC,     ///< Standard synchronization option.
+    VDFIRST = OPTION_VD_FIRST, ///< Virtual data first synchronization option.
+    VDSYNC  = OPTION_VD_SYNC,  ///< Virtual data synchronization option.
+    VDCLEAN = OPTION_VD_CLEAN  ///< Virtual data cleanup synchronization option.
+};
+
 /// @brief Represents a persisted message used in module synchronization.
 ///
 /// This structure encapsulates the minimal data required to represent a

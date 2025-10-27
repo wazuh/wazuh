@@ -49,8 +49,9 @@ class IAgentSyncProtocol
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @param option Synchronization option.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
+        virtual bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) = 0;
 
         /// @brief Checks if a module index requires full synchronization
         /// @param index The index/table to check
@@ -90,8 +91,9 @@ class IAgentSyncProtocol
         /// @param timeout Timeout duration for waiting for server responses
         /// @param retries Number of retry attempts for each message
         /// @param maxEps Maximum events per second (0 = unlimited)
+        /// @param option Synchronization option.
         /// @return true if notification completed successfully and database was cleared, false otherwise
-        virtual bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
+        virtual bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) = 0;
 
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
