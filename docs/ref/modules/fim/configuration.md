@@ -18,6 +18,7 @@ The **FIM** module's persistence functionality can be configured through the `<s
         <interval>300</interval>                  <!-- Sync interval in seconds -->
         <response_timeout>60</response_timeout>   <!-- Response timeout in seconds -->
         <max_eps>10</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
+        <integrity_interval>86400</integrity_interval> <!-- Integrity check interval in seconds -->
     </synchronization>
 </syscheck>
 ```
@@ -30,6 +31,7 @@ The **FIM** module's persistence functionality can be configured through the `<s
 | `interval` | Integer | `300` | `1` - `∞` | How often to trigger synchronization with the manager (seconds) |
 | `response_timeout` | Integer | `60` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
 | `max_eps` | Integer | `10` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
+| `integrity_interval` | Integer | `86400` | `1` - `∞` | How often to perform integrity validation checks (seconds) |
 
 ### General Syscheck Parameters
 
@@ -116,6 +118,21 @@ long sync_max_eps;  /* Maximum events per second for synchronization messages. *
 **Special Values:**
 - `0`: No rate limiting (unlimited)
 - `1-1000000`: Events per second limit
+
+### Integrity Interval
+
+Controls how frequently the agent performs integrity validation checks to detect inconsistencies between the agent and manager databases:
+
+```xml
+<synchronization>
+    <integrity_interval>86400</integrity_interval>  <!-- 24 hours -->
+</synchronization>
+```
+
+**Implementation:**
+```c
+uint32_t integrity_interval;  /* Integrity check interval */
+```
 
 ---
 
@@ -210,6 +227,7 @@ unsigned int notify_first_scan;  /* Notify the first scan */
         <interval>300</interval>
         <response_timeout>60</response_timeout>
         <max_eps>10</max_eps>                  <!-- Sync-specific rate limit -->
+        <integrity_interval>86400</integrity_interval>  <!-- Integrity check every 24 hours -->
     </synchronization>
 </syscheck>
 ```
@@ -228,6 +246,7 @@ For environments with high file change rates:
         <interval>60</interval>                <!-- More frequent sync -->
         <response_timeout>60</response_timeout>
         <max_eps>500</max_eps>                 <!-- High sync rate limit -->
+        <integrity_interval>43200</integrity_interval>  <!-- More frequent integrity checks (12 hours) -->
     </synchronization>
 </syscheck>
 ```

@@ -605,8 +605,19 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         sleep(1);
     }
 
+#ifdef WIN32
+    int table_count = 3;
+    char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
+#else
+    int table_count = 1;
+    char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
+#endif
+
+    bool integrity_interval_elapsed = false;
     while (fim_sync_module_running) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+
 
         minfo("Running FIM synchronization.");
 
@@ -624,32 +635,29 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 mdebug2("db's first scan has been synched");
             }
 
-            minfo("Starting checksum validation process");
-#ifdef WIN32
-            int table_count = 3;
-            char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
-#else
-            int table_count = 1;
-            char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
-#endif
-            for (int i = 0; i < table_count; i++) {
-                bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i], 
-                                                                                   syscheck.sync_handle, 
-                                                                                   syscheck.sync_response_timeout, 
-                                                                                   syscheck.sync_max_eps);
-                if (full_sync_required) {
-                    fim_recovery_persist_table_and_resync(table_names[i], 
-                                                          syscheck.sync_handle, 
-                                                          syscheck.sync_response_timeout, 
-                                                          syscheck.sync_max_eps);
+            if (integrity_interval_elapsed) {
+                minfo("Starting integrity validation process");
+                for (int i = 0; i < table_count; i++) {
+                    bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i], 
+                                                                                       syscheck.sync_handle, 
+                                                                                       syscheck.sync_response_timeout, 
+                                                                                       syscheck.sync_max_eps);
+                    if (full_sync_required) {
+                        fim_recovery_persist_table_and_resync(table_names[i], 
+                                                              syscheck.sync_handle, 
+                                                              syscheck.sync_response_timeout, 
+                                                              syscheck.sync_max_eps);
+                    }
                 }
             }
         } else {
             minfo("Synchronization failed");
         }
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
         minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+
         for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
             sleep(1);
         }
