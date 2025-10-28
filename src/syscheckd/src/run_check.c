@@ -621,19 +621,13 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         minfo("Running FIM synchronization.");
 
-        bool first_scan_has_been_synched = fim_db_check_if_first_scan_has_been_synched();
         bool sync_result = asp_sync_module(syscheck.sync_handle, 
                                            MODE_DELTA, 
                                            syscheck.sync_response_timeout, 
                                            FIM_SYNC_RETRIES, 
-                                           syscheck.sync_max_eps, 
-                                           first_scan_has_been_synched);
+                                           syscheck.sync_max_eps); 
         if (sync_result) {
             minfo("Synchronization succeeded");
-            if (!first_scan_has_been_synched) {
-                fim_db_set_first_scan_has_been_synched();
-                mdebug2("db's first scan has been synched");
-            }
 
             for (int i = 0; i < table_count; i++) {
                 if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {

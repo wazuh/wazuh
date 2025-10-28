@@ -59,8 +59,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             Mode::FULL,
             std::chrono::seconds(sync_response_timeout),
             FIM_SYNC_RETRIES,
-            sync_max_eps,
-            false // Always false since the recovery process only happens after a succesful sync
+            sync_max_eps
         );
         if (success) {
             wrapper->impl->clearInMemoryData();

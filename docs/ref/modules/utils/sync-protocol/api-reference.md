@@ -305,8 +305,7 @@ bool asp_sync_module(AgentSyncProtocolHandle* handle,
                     Mode_t mode,
                     unsigned int sync_timeout,
                     unsigned int sync_retries,
-                    size_t max_eps,
-                    bool is_first = false)
+                    size_t max_eps)
 ```
 
 C wrapper for `synchronizeModule()`.
@@ -317,7 +316,6 @@ C wrapper for `synchronizeModule()`.
 - `sync_timeout`: Timeout in seconds
 - `sync_retries`: Number of retries
 - `max_eps`: Maximum events per second
-- `is_first`: true if this is the first synchronization attempt
 
 **Returns:** `true` on success, `false` on failure
 

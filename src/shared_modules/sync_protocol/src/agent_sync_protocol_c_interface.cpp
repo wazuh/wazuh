@@ -105,8 +105,7 @@ extern "C" {
                          Mode_t mode,
                          unsigned int sync_timeout,
                          unsigned int retries,
-                         size_t max_eps,
-                         bool is_first)
+                         size_t max_eps)
     {
         try
         {
@@ -116,8 +115,7 @@ extern "C" {
             return wrapper->impl->synchronizeModule(static_cast<Mode>(mode),
                                                     std::chrono::seconds(sync_timeout),
                                                     retries,
-                                                    max_eps,
-                                                    is_first);
+                                                    max_eps);
         }
         catch (const std::exception& ex)
         {
