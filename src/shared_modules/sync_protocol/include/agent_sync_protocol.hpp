@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 #include <condition_variable>
+
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
     public:
