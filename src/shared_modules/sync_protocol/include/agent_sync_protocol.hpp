@@ -68,6 +68,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
 
+        /// @copydoc IAgentSyncProtocol::stop
+        void stop() override;
+
+        /// @copydoc IAgentSyncProtocol::shouldStop
+        bool shouldStop() const override;
+
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
         /// @param length Size of the FlatBuffer message in bytes.
@@ -93,6 +99,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Sent message counter for eps control
         std::atomic<size_t> m_msgSent{0};
+
+        /// @brief Stop flag to abort ongoing operations
+        std::atomic<bool> m_stopRequested{false};
 
         /// @brief In-memory vector to store PersistedData for recovery scenarios
         std::vector<PersistedData> m_inMemoryData;

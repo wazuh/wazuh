@@ -442,25 +442,14 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // Translate DB mode to Schema mode
         const auto protocolMode = toProtocolMode(mode);
 
-        // Try to get metadata from provider, fallback to defaults if unavailable
+        // Try to get metadata from provider - fail if not available
         has_metadata = (metadata_provider_get(&metadata) == 0);
 
-        // If metadata not available, use safe defaults
+        // If metadata not available, abort synchronization
         if (!has_metadata)
         {
-            m_logger(LOG_DEBUG, "Metadata not available from provider, using defaults");
-            std::strncpy(metadata.agent_id, "000", sizeof(metadata.agent_id) - 1);
-            std::strncpy(metadata.agent_name, "unknown", sizeof(metadata.agent_name) - 1);
-            std::strncpy(metadata.agent_version, "unknown", sizeof(metadata.agent_version) - 1);
-            std::strncpy(metadata.architecture, "unknown", sizeof(metadata.architecture) - 1);
-            std::strncpy(metadata.hostname, "unknown", sizeof(metadata.hostname) - 1);
-            std::strncpy(metadata.os_name, "unknown", sizeof(metadata.os_name) - 1);
-            std::strncpy(metadata.os_type, "unknown", sizeof(metadata.os_type) - 1);
-            std::strncpy(metadata.os_version, "unknown", sizeof(metadata.os_version) - 1);
-            std::strncpy(metadata.checksum_metadata, "", sizeof(metadata.checksum_metadata) - 1);
-            metadata.global_version = 1000;
-            metadata.groups = nullptr;
-            metadata.groups_count = 0;
+            m_logger(LOG_ERROR, "Metadata not available from provider. Agent-info may not be initialized yet. Cannot proceed with synchronization.");
+            return false;
         }
 
         // Create flatbuffer strings from metadata
@@ -1119,4 +1108,15 @@ void AgentSyncProtocol::deleteDatabase()
     {
         m_logger(LOG_ERROR, std::string("Failed to delete database: ") + e.what());
     }
+}
+
+void AgentSyncProtocol::stop()
+{
+    m_stopRequested.store(true, std::memory_order_release);
+    m_logger(LOG_DEBUG, "Stop requested for sync protocol module: " + m_moduleName);
+}
+
+bool AgentSyncProtocol::shouldStop() const
+{
+    return m_stopRequested.load(std::memory_order_acquire);
 }
