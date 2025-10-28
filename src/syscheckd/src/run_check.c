@@ -635,9 +635,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 mdebug2("db's first scan has been synched");
             }
 
-            if (integrity_interval_elapsed) {
-                minfo("Starting integrity validation process");
-                for (int i = 0; i < table_count; i++) {
+            for (int i = 0; i < table_count; i++) {
+                if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
+                    minfo("Starting integrity validation process for %s", table_names[i]);
                     bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i], 
                                                                                        syscheck.sync_handle, 
                                                                                        syscheck.sync_response_timeout, 

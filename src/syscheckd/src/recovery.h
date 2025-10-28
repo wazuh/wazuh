@@ -40,6 +40,8 @@ EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
 
 EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
 
+EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
+
 #ifdef __cplusplus
 }
 #endif // _cplusplus

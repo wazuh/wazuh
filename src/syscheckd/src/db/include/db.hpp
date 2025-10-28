@@ -162,6 +162,27 @@ class EXPORTED DB final
         // TODO: fill
         std::vector<nlohmann::json> getEveryElement(const std::string& tableName);
 
+        /**
+         * @brief Initialize table_metadata entries for all FIM tables.
+         */
+        void initializeTableMetadata();
+
+        /**
+         * @brief Update the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to update.
+         * @param timestamp The sync timestamp to set (UNIX format).
+         */
+        void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
+
+        /**
+         * @brief Get the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to query.
+         * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
+         */
+        int64_t getLastSyncTime(const std::string& tableName);
+
     private:
         DB() = default;
         ~DB() = default;

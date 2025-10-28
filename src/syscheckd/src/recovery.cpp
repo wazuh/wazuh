@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <hashHelper.h>
@@ -14,6 +15,13 @@ extern "C" {
 #include "stringHelper.h"
 #include "ipersistent_queue.hpp"
 #include "syscheck.h"
+#include <chrono>
+
+int64_t getUnixTimeSeconds() {
+    return std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+}
 
 // TODO: add a description for the class
 extern "C"
@@ -60,6 +68,9 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         } else {
             minfo("Recovery synchronization failed, will retry later");
         }
+
+        // Update the last sync time regardless of the synchronization result since we always want to wait for intergrity_interval to try again.
+        DB::instance().updateLastSyncTime(table_name, getUnixTimeSeconds());
     }
 }
 
@@ -101,4 +112,11 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtoco
         return false;
     }
 
+}
+
+bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval){
+    int64_t current_time = getUnixTimeSeconds();
+    int64_t last_sync_time =  DB::instance().getLastSyncTime(table_name);
+    int64_t new_sync_time = current_time - last_sync_time;
+    return (new_sync_time >= integrity_interval) ;
 }
