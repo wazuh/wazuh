@@ -1079,7 +1079,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:HydraLSPipe|TermServLicensing|BROWSER'
-      - 'c:reg query "HKLM\System\CurrentControlSet\Services\LanManServer\Parameters" /v NullSessionPipes -> r:NullSessionPipes\s*\t*REG_MULTI_SZ^'
+      - 'c:reg query "HKLM\System\CurrentControlSet\Services\LanManServer\Parameters" /v NullSessionPipes -> r:NullSessionPipes\s*\t*REG_MULTI_SZ && !r:NullSessionPipes\s*\t*REG_MULTI_SZ\s*\t*\w+'
 
   # 2.3.10.8 (L1) Ensure 'Network access: Remotely accessible registry paths' is configured. (Automated)
   - id: 36551
