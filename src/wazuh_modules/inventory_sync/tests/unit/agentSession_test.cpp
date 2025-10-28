@@ -51,6 +51,7 @@ protected:
         startBuilder.add_module_(moduleOffset);
         startBuilder.add_size(size);
         startBuilder.add_mode(Wazuh::SyncSchema::Mode_ModuleFull);
+        startBuilder.add_option(Wazuh::SyncSchema::Option_Sync);
         startBuilder.add_agentid(agentIdOffset);
         startBuilder.add_agentname(agentNameOffset);
         startBuilder.add_agentversion(agentVersionOffset);
@@ -100,6 +101,7 @@ TEST_F(AgentSessionTest, Constructor_NullModule)
     Wazuh::SyncSchema::StartBuilder startBuilder(builder);
     startBuilder.add_size(10);
     startBuilder.add_mode(Wazuh::SyncSchema::Mode_ModuleFull);
+    startBuilder.add_option(Wazuh::SyncSchema::Option_Sync);
     auto startMsg = startBuilder.Finish();
 
     builder.Finish(startMsg);

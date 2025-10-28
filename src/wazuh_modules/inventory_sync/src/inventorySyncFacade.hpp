@@ -389,9 +389,34 @@ public:
                                 dataString.append(res.context->agentId);
                                 dataString.append(R"(","name":")");
                                 dataString.append(res.context->agentName);
-                                dataString.append(R"(", "version":")");
+                                dataString.append(R"(","version":")");
                                 dataString.append(res.context->agentVersion);
-                                dataString.append(R"("},"wazuh":{"cluster":{"name":")");
+                                dataString.append(R"(","groups":[)");
+                                bool firstGroup = true;
+                                for (const auto& group : res.context->groups)
+                                {
+                                    if (!firstGroup)
+                                    {
+                                        dataString.append(",");
+                                    }
+                                    dataString.append(R"(")");
+                                    dataString.append(group);
+                                    dataString.append(R"(")");
+                                    firstGroup = false;
+                                }
+                                dataString.append(R"(],"host":{"architecture":")");
+                                dataString.append(res.context->architecture);
+                                dataString.append(R"(","hostname":")");
+                                dataString.append(res.context->hostname);
+                                dataString.append(R"(","os":{"name":")");
+                                dataString.append(res.context->osname);
+                                dataString.append(R"(","platform":")");
+                                dataString.append(res.context->osplatform);
+                                dataString.append(R"(","type":")");
+                                dataString.append(res.context->ostype);
+                                dataString.append(R"(","version":")");
+                                dataString.append(res.context->osversion);
+                                dataString.append(R"("}}},"wazuh":{"cluster":{"name":")");
                                 dataString.append(m_clusterName);
                                 dataString.append(R"("}},)");
                                 dataString.append(

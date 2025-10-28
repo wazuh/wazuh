@@ -441,6 +441,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto architecture = builder.CreateString("hardcoded_architecture");
         auto hostname = builder.CreateString("hardcoded_hostname");
         auto osname = builder.CreateString("hardcoded_osname");
+        auto osplatform = builder.CreateString("hardcoded_osplatform");
         auto ostype = builder.CreateString("hardcoded_ostype");
         auto osversion = builder.CreateString("hardcoded_osversion");
         auto agentversion = builder.CreateString("hardcoded_agentversion");
@@ -477,6 +478,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_architecture(architecture);
         startBuilder.add_hostname(hostname);
         startBuilder.add_osname(osname);
+        startBuilder.add_osplatform(osplatform);
         startBuilder.add_ostype(ostype);
         startBuilder.add_osversion(osversion);
         startBuilder.add_agentversion(agentversion);

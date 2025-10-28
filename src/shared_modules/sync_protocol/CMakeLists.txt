@@ -55,7 +55,7 @@ set(GENERATED_HEADER ${CMAKE_CURRENT_BINARY_DIR}/inventorySync_generated.h)
 
 add_custom_command(
   OUTPUT ${GENERATED_HEADER}
-  COMMAND ${FLATC_EXECUTABLE} --cpp --scoped-enums --gen-object-api -o
+  COMMAND ${FLATC_EXECUTABLE} --cpp --scoped-enums -o
           ${CMAKE_CURRENT_BINARY_DIR} ${SCHEMA_FILE}
   DEPENDS ${SCHEMA_FILE}
   COMMENT "Generating FlatBuffers schema"

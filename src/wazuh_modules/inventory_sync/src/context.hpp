@@ -15,15 +15,24 @@
 #include "flatbuffers/include/inventorySync_generated.h"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 struct Context final
 {
     Wazuh::SyncSchema::Mode mode;
+    Wazuh::SyncSchema::Option option;
     uint64_t sessionId;
+    std::string moduleName;
     std::string agentId;
     std::string agentName;
     std::string agentVersion;
-    std::string moduleName;
+    std::string architecture;
+    std::string hostname;
+    std::string osname;
+    std::string osplatform;
+    std::string ostype;
+    std::string osversion;
+    std::vector<std::string> groups;
     bool transactionDispatched = false;
 };
 

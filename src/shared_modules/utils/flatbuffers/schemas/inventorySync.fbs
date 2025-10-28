@@ -54,6 +54,7 @@ table Start {
     architecture: string;
     hostname: string;
     osname: string;
+    osplatform: string;
     ostype: string;
     osversion: string;
     agentversion: string;
