@@ -168,7 +168,7 @@ checks:
       - cis: ["2.6.1.1"]
     condition: all
     rules:
-      - 'c:fdesetup status -> r:^FileVault\s*\t*is\s*\t*On$'
+      - "c:fdesetup status -> r:^FileVault is On"
 
   # 2.6.2 Enable Gatekeeper (Scored)
   - id: 9012
