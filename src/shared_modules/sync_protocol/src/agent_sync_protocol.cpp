@@ -582,7 +582,7 @@ bool AgentSyncProtocol::receiveStartAck(std::chrono::seconds timeout)
     std::unique_lock<std::mutex> lock(m_syncState.mtx);
     return m_syncState.cv.wait_for(lock, timeout, [&]
     {
-        return m_syncState.startAckReceived || m_syncState.syncFailed;
+        return m_syncState.startAckReceived || m_syncState.syncFailed || shouldStop();
     });
 }
 
@@ -594,6 +594,13 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
     {
         for (const auto& item : data)
         {
+            // Check if stop was requested
+            if (shouldStop())
+            {
+                m_logger(LOG_INFO, "Stop requested, aborting data message sending");
+                return false;
+            }
+
             flatbuffers::FlatBufferBuilder builder;
             auto idStr = builder.CreateString(item.id);
             auto idxStr = builder.CreateString(item.index);
@@ -834,7 +841,7 @@ bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
     std::unique_lock<std::mutex> lock(m_syncState.mtx);
     return m_syncState.cv.wait_for(lock, timeout, [&]
     {
-        return m_syncState.endAckReceived || m_syncState.reqRetReceived || m_syncState.syncFailed;
+        return m_syncState.endAckReceived || m_syncState.reqRetReceived || m_syncState.syncFailed || shouldStop();
     });
 }
 

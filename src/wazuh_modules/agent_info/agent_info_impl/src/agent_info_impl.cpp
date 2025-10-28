@@ -144,6 +144,12 @@ void AgentInfoImpl::stop()
         m_stopped = true;
     }
 
+    // Signal sync protocol to stop any ongoing operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
+    }
+
     m_cv.notify_one(); // Wake up the sleeping thread immediately
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
 }

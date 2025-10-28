@@ -157,6 +157,12 @@ void SecurityConfigurationAssessment::Stop()
 {
     m_keepRunning = false;
 
+    // Signal sync protocol to stop any ongoing operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
+    }
+
     for (auto& policy : m_policies)
     {
         policy->Stop();
