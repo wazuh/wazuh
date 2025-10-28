@@ -79,6 +79,7 @@ class EXPORTED Syscollector final
         bool parseResponseBuffer(const uint8_t* data, size_t length);
         bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
         void deleteDatabase();
+        std::string query(const std::string& jsonQuery);
     private:
         Syscollector();
         ~Syscollector() = default;

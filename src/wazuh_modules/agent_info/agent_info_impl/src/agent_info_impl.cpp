@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <map>
 #include <mutex>
+#include <set>
 #include <thread>
 
 constexpr auto QUEUE_SIZE = 4096;
@@ -144,8 +145,8 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
         {
             populateAgentMetadata();
 
-            // Test inter-module communication
-            testModuleCoordination();
+            // Coordinate modules for version synchronization
+            coordinateModules();
 
         }
         catch (const std::exception& e)
@@ -761,120 +762,260 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
     return ecsFormatted;
 }
 
-// TODO: change to real method name and implementation
-void AgentInfoImpl::testModuleCoordination()
+void AgentInfoImpl::coordinateModules()
 {
     // Check if query function is available
     if (!m_queryModuleFunction)
     {
-        m_logFunction(LOG_WARNING, "Module query function not available, skipping coordination test");
+        m_logFunction(LOG_WARNING, "Module query function not available, skipping coordination");
         return;
     }
 
-    auto queryModule = [this](const std::string& moduleName, const std::string& command) -> std::pair<bool, std::string>
+    // Configuration
+    const std::vector<std::string> modules = {"sca", "syscollector", "fim"};
+    const int MAX_RETRIES = 3;
+    const int RETRY_DELAY_MS = 1000;
+
+    // State tracking
+    std::set<std::string> availableModules;
+    std::set<std::string> pausedModules;
+    std::map<std::string, int> moduleVersions;
+
+    m_logFunction(LOG_INFO, "=== Starting module coordination process ===");
+
+    std::string agentId, agentName;
+    if (m_isAgent)
     {
-        m_logFunction(LOG_INFO, "Querying module '" + moduleName + "' with command: '" + command + "'");
-
-        char* response = nullptr;
-        int result = m_queryModuleFunction(moduleName, command, &response);
-
-        std::string responseStr = response ? std::string(response) : "no response";
-
-        if (result == 0)
+        if (!readClientKeys(agentId, agentName))
         {
-            m_logFunction(LOG_INFO, moduleName + " response: " + responseStr);
+            m_logFunction(LOG_WARNING, "Failed to read agent name from client.keys, using default");
+            agentName = "unknown";
         }
-        else
+    }
+    else
+    {
+        // For manager, use hostname
+        agentName = "manager";
+    }
+
+    // Helper function to create JSON command messages
+    auto createJsonCommand = [&agentName](const std::string& command, const std::map<std::string, nlohmann::json>& params = {}) -> std::string {
+        nlohmann::json jsonCmd;
+        jsonCmd["version"] = 1;
+
+        // Add origin information
+        jsonCmd["origin"]["name"] = agentName;
+        jsonCmd["origin"]["module"] = "agent-info";
+
+        jsonCmd["command"] = command;
+
+        // Always include parameters field (even if empty)
+        nlohmann::json paramObj = nlohmann::json::object();
+        for (const auto& [key, value] : params) {
+            paramObj[key] = value;
+        }
+        jsonCmd["parameters"] = paramObj;
+
+        return jsonCmd.dump();
+    };
+
+    // Helper function to query module with retries and error handling using JSON format
+    auto queryModuleWithRetry = [this, MAX_RETRIES, RETRY_DELAY_MS](const std::string& moduleName, const std::string& jsonMessage) -> std::pair<bool, std::string>
+    {
+        m_logFunction(LOG_INFO, "Sending JSON command to " + moduleName + ": " + jsonMessage);
+
+        for (int attempt = 1; attempt <= MAX_RETRIES; ++attempt)
         {
-            m_logFunction(LOG_WARNING, "Failed to query " + moduleName + " (result=" + std::to_string(result) + "): " + responseStr);
+            char* response = nullptr;
+            int result = m_queryModuleFunction(moduleName, jsonMessage, &response);
+            std::string responseStr = response ? std::string(response) : "no response";
+
+            if (response) {
+                free(response);
+            }
+
+            // Parse JSON response
+            if (result == 0) {
+                try {
+                    nlohmann::json responseJson = nlohmann::json::parse(responseStr);
+                    if (responseJson.contains("error") && responseJson["error"].is_number()) {
+                        int errorCode = responseJson["error"].get<int>();
+                        if (errorCode == 0) {
+                            // Success: error code is 0
+                            return std::make_pair(true, responseStr);
+                        } else {
+                            // Non-zero error code indicates failure
+                            m_logFunction(LOG_WARNING, "Module returned error code " + std::to_string(errorCode) +
+                                        ": " + (responseJson.contains("message") ? responseJson["message"].get<std::string>() : "no message"));
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    m_logFunction(LOG_WARNING, "Failed to parse JSON response: " + std::string(e.what()));
+                }
+            }
+
+            // Check if module is disabled or not available (specific error codes)
+            if (responseStr.find("\"error\":2") != std::string::npos ||  // Module not found or not configured
+                responseStr.find("\"error\":3") != std::string::npos ||  // Module does not support queries
+                responseStr.find("\"error\":4") != std::string::npos ||  // Module refused connection/disabled
+                responseStr.find("\"error\":5") != std::string::npos ||  // Module socket not found/not running
+                responseStr.find("disabled") != std::string::npos ||
+                responseStr.find("not running") != std::string::npos) {
+                m_logFunction(LOG_INFO, moduleName + " module is disabled, not configured, or not running: " + responseStr);
+                return std::make_pair(false, responseStr);
+            }
+
+            m_logFunction(LOG_WARNING, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_RETRIES) +
+                         " failed for " + moduleName + ": " + responseStr);
+
+            if (attempt < MAX_RETRIES) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
+            }
         }
 
-        std::string returnResponse = responseStr;
-        if (response)
-        {
-            free(response);
-        }
+        m_logFunction(LOG_ERROR, "Failed to query " + moduleName + " after " + std::to_string(MAX_RETRIES) + " attempts");
+        return std::make_pair(false, "max retries exceeded");
+    };
 
-        return std::make_pair(result == 0, returnResponse);
+    // Helper function to resume paused modules (for cleanup)
+    auto resumePausedModules = [&queryModuleWithRetry, &createJsonCommand, &pausedModules, this]()
+    {
+        for (const auto& module : pausedModules)
+        {
+            m_logFunction(LOG_INFO, "Resuming paused module: " + module);
+            std::string resumeMessage = createJsonCommand("resume");
+            auto [success, response] = queryModuleWithRetry(module, resumeMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response);
+            if (!success) {
+                m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response);
+            }
+        }
+        pausedModules.clear();
     };
 
     try
     {
-        m_logFunction(LOG_INFO, "=== Testing inter-module communication ===");
+        // Step 1: Identify available modules and send pause command
+        m_logFunction(LOG_INFO, "Step 1: Pausing modules...");
+        for (const auto& module : modules)
+        {
+            std::string pauseMessage = createJsonCommand("pause");
+            auto [success, response] = queryModuleWithRetry(module, pauseMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " pause: " + response);
+            if (success) {
+                availableModules.insert(module);
+                pausedModules.insert(module);
+                m_logFunction(LOG_INFO, "Successfully paused " + module);
+            } else {
+                m_logFunction(LOG_INFO, "Skipping " + module + " (not available): " + response);
+            }
+        }
 
-        // Test SCA module queries using the regular wm_module_query
-        m_logFunction(LOG_INFO, "--- Testing SCA module communication ---");
+        if (availableModules.empty()) {
+            m_logFunction(LOG_WARNING, "No modules available for coordination");
+            return;
+        }
 
-        m_logFunction(LOG_DEBUG, "About to query SCA pause...");
-        auto [scaResult1, scaResponse1] = queryModule("sca", "pause");
-        m_logFunction(LOG_INFO, "SCA pause response: " + scaResponse1);
+        // Step 2: Flush all available modules
+        m_logFunction(LOG_INFO, "Step 2: Flushing modules...");
+        for (const auto& module : availableModules)
+        {
+            std::string flushMessage = createJsonCommand("flush");
+            auto [success, response] = queryModuleWithRetry(module, flushMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " flush: " + response);
+            if (!success) {
+                m_logFunction(LOG_ERROR, "Failed to flush " + module + ", aborting coordination");
+                resumePausedModules();
+                return;
+            }
+            m_logFunction(LOG_INFO, "Successfully flushed " + module);
+        }
 
-        m_logFunction(LOG_DEBUG, "About to query SCA flush...");
-        auto [scaResult2, scaResponse2] = queryModule("sca", "flush");
-        m_logFunction(LOG_INFO, "SCA flush response: " + scaResponse2);
+        // Step 3: Get version from each module
+        m_logFunction(LOG_INFO, "Step 3: Getting module versions...");
+        int globalMaxVersion = 0;
+        for (const auto& module : availableModules)
+        {
+            std::string getVersionMessage = createJsonCommand("get_version");
+            auto [success, response] = queryModuleWithRetry(module, getVersionMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " get_version: " + response);
+            if (!success) {
+                m_logFunction(LOG_ERROR, "Failed to get version from " + module + ", aborting coordination");
+                resumePausedModules();
+                return;
+            }
 
-        m_logFunction(LOG_DEBUG, "About to query SCA get_max_version...");
-        auto [scaResult3, scaResponse3] = queryModule("sca", "get_max_version");
-        m_logFunction(LOG_INFO, "SCA get_max_version response: " + scaResponse3);
+            // Parse version from JSON format (strict)
+            int version = 0;
+            try {
+                nlohmann::json responseJson = nlohmann::json::parse(response);
+                if (responseJson.contains("data") && responseJson["data"].contains("version") &&
+                    responseJson["data"]["version"].is_number()) {
+                    version = responseJson["data"]["version"].get<int>();
+                } else {
+                    m_logFunction(LOG_ERROR, "Invalid JSON response format from " + module + ": missing or invalid version data");
+                    resumePausedModules();
+                    return;
+                }
+            } catch (const std::exception& e) {
+                m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " + std::string(e.what()) + " - Response: " + response);
+                resumePausedModules();
+                return;
+            }
 
-        m_logFunction(LOG_DEBUG, "About to query SCA set_version...");
-        auto [scaResult4, scaResponse4] = queryModule("sca", "set_version");
-        m_logFunction(LOG_INFO, "SCA set_version response: " + scaResponse4);
+            moduleVersions[module] = version;
+            globalMaxVersion = std::max(globalMaxVersion, version);
+            m_logFunction(LOG_INFO, module + " current version: " + std::to_string(version));
+        }
 
-        m_logFunction(LOG_DEBUG, "About to query SCA resume...");
-        auto [scaResult5, scaResponse5] = queryModule("sca", "resume");
-        m_logFunction(LOG_INFO, "SCA resume response: " + scaResponse5);
+        // Step 4: Calculate new version
+        int newVersion = globalMaxVersion + 1;
+        m_logFunction(LOG_INFO, "Step 4: Calculated new global version: " + std::to_string(newVersion));
 
-        // Test Syscollector module queries using the regular wm_module_query
-        m_logFunction(LOG_INFO, "--- Testing Syscollector module communication ---");
+        // Step 5: Set new version on all modules
+        m_logFunction(LOG_INFO, "Step 5: Setting new version on modules...");
+        for (const auto& module : availableModules)
+        {
+            std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
+            auto [success, response] = queryModuleWithRetry(module, setVersionMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " set_version: " + response);
+            if (!success) {
+                m_logFunction(LOG_ERROR, "Failed to set version on " + module + ", aborting coordination");
+                resumePausedModules();
+                return;
+            }
+            m_logFunction(LOG_INFO, "Successfully set version " + std::to_string(newVersion) + " on " + module);
+        }
 
-        m_logFunction(LOG_DEBUG, "About to query Syscollector pause...");
-        auto [syscollectorResult1, syscollectorResponse1] = queryModule("syscollector", "pause");
-        m_logFunction(LOG_INFO, "Syscollector pause response: " + syscollectorResponse1);
+        // Step 6: Resume all modules
+        m_logFunction(LOG_INFO, "Step 6: Resuming modules...");
+        for (const auto& module : pausedModules)
+        {
+            std::string resumeMessage = createJsonCommand("resume");
+            auto [success, response] = queryModuleWithRetry(module, resumeMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response);
+            if (!success) {
+                m_logFunction(LOG_ERROR, "Failed to resume " + module + ": " + response);
+                // Continue trying to resume other modules even if one fails
+            } else {
+                m_logFunction(LOG_INFO, "Successfully resumed " + module);
+            }
+        }
+        pausedModules.clear();
 
-        m_logFunction(LOG_DEBUG, "About to query Syscollector flush...");
-        auto [syscollectorResult2, syscollectorResponse2] = queryModule("syscollector", "flush");
-        m_logFunction(LOG_INFO, "Syscollector flush response: " + syscollectorResponse2);
+        m_logFunction(LOG_INFO, "=== Module coordination completed successfully ===");
+        m_logFunction(LOG_INFO, "Coordinated modules: " + std::to_string(availableModules.size()) +
+                     ", New version: " + std::to_string(newVersion));
 
-        m_logFunction(LOG_DEBUG, "About to query Syscollector get_max_version...");
-        auto [syscollectorResult3, syscollectorResponse3] = queryModule("syscollector", "get_max_version");
-        m_logFunction(LOG_INFO, "Syscollector get_max_version response: " + syscollectorResponse3);
-
-        m_logFunction(LOG_DEBUG, "About to query Syscollector set_version...");
-        auto [syscollectorResult4, syscollectorResponse4] = queryModule("syscollector", "set_version");
-        m_logFunction(LOG_INFO, "Syscollector set_version response: " + syscollectorResponse4);
-
-        m_logFunction(LOG_DEBUG, "About to query Syscollector resume...");
-        auto [syscollectorResult5, syscollectorResponse5] = queryModule("syscollector", "resume");
-        m_logFunction(LOG_INFO, "Syscollector resume response: " + syscollectorResponse5);
-
-        // Test FIM/syscheck module queries using the new syscom communication
-        m_logFunction(LOG_INFO, "--- Testing FIM/syscheck module communication ---");
-
-        m_logFunction(LOG_DEBUG, "About to query FIM pause...");
-        auto [result1, response1] = queryModule("fim", "pause");
-        m_logFunction(LOG_INFO, "FIM pause response: " + response1);
-
-        m_logFunction(LOG_DEBUG, "About to query FIM flush...");
-        auto [result2, response2] = queryModule("fim", "flush");
-        m_logFunction(LOG_INFO, "FIM flush response: " + response2);
-
-        m_logFunction(LOG_DEBUG, "About to query FIM get_max_version...");
-        auto [result3, response3] = queryModule("fim", "get_max_version");
-        m_logFunction(LOG_INFO, "FIM get_max_version response: " + response3);
-
-        m_logFunction(LOG_DEBUG, "About to query FIM set_version...");
-        auto [result4, response4] = queryModule("fim", "set_version");
-        m_logFunction(LOG_INFO, "FIM set_version response: " + response4);
-
-        m_logFunction(LOG_DEBUG, "About to query FIM resume...");
-        auto [result5, response5] = queryModule("fim", "resume");
-        m_logFunction(LOG_INFO, "FIM resume response: " + response5);
-
-        m_logFunction(LOG_INFO, "=== Inter-module communication tests completed ===");
     }
     catch (const std::exception& e)
     {
-        m_logFunction(LOG_ERROR, std::string("Error during module coordination test: ") + e.what());
+        m_logFunction(LOG_ERROR, "Exception during module coordination: " + std::string(e.what()));
+        resumePausedModules();
+    }
+    catch (...)
+    {
+        m_logFunction(LOG_ERROR, "Unknown exception during module coordination");
+        resumePausedModules();
     }
 }

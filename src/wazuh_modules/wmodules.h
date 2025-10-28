@@ -223,4 +223,33 @@ wmodule * wm_find_module(const char * name);
  */
 size_t wm_module_query(char * query, char ** output);
 
+/**
+ * @brief Query module with JSON format
+ *
+ * Run a command into a module structure, not in the same thread.
+ * JSON format: {"module": "<module name>", "command": "<command>", "parameters": {...}}
+ *
+ * @param json_command Command query in JSON format
+ * @param output Output payload
+ * @return Size of the output
+ */
+size_t wm_module_query_json(const char* json_command, char** output);
+
+/**
+ * @brief Query module with JSON format (efficient version with module_name parameter)
+ * @param module_name Name of the module to query
+ * @param json_command JSON command string
+ * @param output Output response
+ * @return size_t Size of the response
+ */
+size_t wm_module_query_json_ex(const char* module_name, const char* json_command, char** output);
+
+/**
+ * @brief Query FIM module directly via syscom socket
+ * @param command Command query
+ * @param response Output response
+ * @return size_t Size of the response
+ */
+size_t wm_fim_query_json(const char* command, char** response);
+
 #endif // W_MODULES

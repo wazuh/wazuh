@@ -368,6 +368,92 @@ void SCA::deleteDatabase()
     }
 }
 
+std::string SCA::query(const std::string& jsonQuery)
+{
+    // Log the received query
+    LoggingHelper::getInstance().log(LOG_INFO, "Received query: " + jsonQuery);
+
+    try
+    {
+        // Parse JSON command
+        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
+
+        if (!query_json.contains("command") || !query_json["command"].is_string())
+        {
+            nlohmann::json response;
+            response["error"] = 2;
+            response["message"] = "Missing or invalid command field";
+            return response.dump();
+        }
+
+        std::string command = query_json["command"];
+        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
+
+        // Log the command being executed
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Executing command: " + command);
+
+        nlohmann::json response;
+
+        // Handle coordination commands with JSON responses
+        if (command == "pause")
+        {
+            response["error"] = 0;
+            response["message"] = "SCA module paused successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "pause";
+        }
+        else if (command == "flush")
+        {
+            response["error"] = 0;
+            response["message"] = "SCA module flushed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "flush";
+        }
+        else if (command == "get_version")
+        {
+            response["error"] = 0;
+            response["message"] = "SCA version retrieved";
+            response["data"]["version"] = 4;
+        }
+        else if (command == "set_version")
+        {
+            // Extract version from parameters
+            int version = 0;
+            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
+            {
+                version = parameters["version"].get<int>();
+            }
+            response["error"] = 0;
+            response["message"] = "SCA version set successfully";
+            response["data"]["version"] = version;
+        }
+        else if (command == "resume")
+        {
+            response["error"] = 0;
+            response["message"] = "SCA module resumed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "resume";
+        }
+        else
+        {
+            response["error"] = 1;
+            response["message"] = "Unknown SCA query command: " + command;
+            response["data"]["command"] = command;
+        }
+
+        return response.dump();
+    }
+    catch (const std::exception& ex)
+    {
+        nlohmann::json response;
+        response["error"] = 98;
+        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
+
+        LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
+        return response.dump();
+    }
+}
+
 /// @brief C-style wrapper for SCA module synchronization.
 ///
 /// Provides a C-compatible interface for triggering database synchronization
@@ -465,55 +551,27 @@ void sca_delete_database()
 /// @brief Query handler for SCA module.
 ///
 /// Handles query commands sent to the SCA module from other modules.
-/// Supports commands like "pause", "resume", and "status".
 ///
-/// @param query Query command string
+/// @param json_query Json query command string
 /// @param output Pointer to output string (caller must free with os_free)
 /// @return Length of the output string
-size_t sca_query(const char* query, char** output)
+size_t sca_query(const char* json_query, char** output)
 {
-    if (!query || !output)
+    if (!json_query || !output)
     {
-        *output = strdup("err Invalid parameters");
+        *output = strdup("{\"error\":1,\"message\":\"Invalid parameters\"}");
         return strlen(*output);
     }
 
     try
     {
-        std::string query_str(query);
-
-        // TODO: Implement real SCA/AgentInfo query commands
-        if (query_str == "pause")
-        {
-            *output = strdup("ok SCA module paused successfully");
-        }
-        else if (query_str == "flush")
-        {
-            *output = strdup("ok SCA module flushed successfully");
-        }
-        else if (query_str == "get_max_version")
-        {
-            *output = strdup("ok SCA max version: 2.1.0");
-        }
-        else if (query_str == "set_version")
-        {
-            *output = strdup("ok SCA version set successfully");
-        }
-        else if (query_str == "resume")
-        {
-            *output = strdup("ok SCA module resumed successfully");
-        }
-        else
-        {
-            std::string error = "err Unknown SCA query command: " + query_str;
-            *output = strdup(error.c_str());
-        }
-
+        std::string result = SCA::instance().query(std::string(json_query));
+        *output = strdup(result.c_str());
         return strlen(*output);
     }
     catch (const std::exception& ex)
     {
-        std::string error = "err " + std::string(ex.what());
+        std::string error = "{\"error\":99,\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
         *output = strdup(error.c_str());
         return strlen(*output);
     }

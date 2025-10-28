@@ -13,7 +13,13 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "os_net/os_net.h"
 #include <sys/types.h>
+
+#ifdef WIN32
+// Forward declaration for syscom_dispatch function
+size_t syscom_dispatch(char* command, size_t command_len, char** output);
+#endif
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
@@ -388,6 +394,183 @@ size_t wm_module_query(char * query, char ** output) {
     }
 
     return module->context->query(module->data, args, output);
+}
+
+// Query module with JSON format
+// Internal implementation that accepts module_name directly
+static size_t wm_module_query_json_internal(const char* module_name, const char* json_command, char** output) {
+    cJSON *json_obj = NULL;
+    cJSON *command_item = NULL;
+    const char *command = NULL;
+
+    if (!module_name || !json_command || !output) {
+        os_strdup("{\"error\":1,\"message\":\"Invalid parameters\"}", *output);
+        return strlen(*output);
+    }
+
+    // Parse JSON command
+    json_obj = cJSON_Parse(json_command);
+    if (!json_obj) {
+        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        return strlen(*output);
+    }
+
+    // Extract command
+    command_item = cJSON_GetObjectItem(json_obj, "command");
+    if (!command_item || !cJSON_IsString(command_item)) {
+        cJSON_Delete(json_obj);
+        os_strdup("{\"error\":4,\"message\":\"Missing or invalid command field\"}", *output);
+        return strlen(*output);
+    }
+    command = cJSON_GetStringValue(command_item);
+
+    // Find the module
+    wmodule * module = wm_find_module(module_name);
+    if (module == NULL) {
+        cJSON_Delete(json_obj);
+        os_strdup("{\"error\":5,\"message\":\"Module not found or not configured\"}", *output);
+        return strlen(*output);
+    }
+
+    if (module->context->query == NULL) {
+        cJSON_Delete(json_obj);
+        os_strdup("{\"error\":6,\"message\":\"This module does not support queries\"}", *output);
+        return strlen(*output);
+    }
+
+    // For SCA and Syscollector, pass the JSON command directly (it already contains all needed fields)
+    if (strcmp(module_name, "sca") == 0 || strcmp(module_name, "syscollector") == 0) {
+        // Pass the original JSON directly - no need to reconstruct
+        // Cast to non-const as required by the query function signature
+        size_t result = module->context->query(module->data, (char*)json_command, output);
+        cJSON_Delete(json_obj);
+        return result;
+    } else {
+        // For other modules, pass just the command as before
+        size_t result = module->context->query(module->data, (char*)command, output);
+        cJSON_Delete(json_obj);
+        return result;
+    }
+}
+
+// External interface that extracts module name from JSON (for backward compatibility)
+size_t wm_module_query_json(const char* json_command, char** output) {
+    cJSON *json_obj = NULL;
+    cJSON *module_item = NULL;
+    const char *module_name = NULL;
+
+    if (!json_command || !output) {
+        os_strdup("{\"error\":1,\"message\":\"Invalid parameters\"}", *output);
+        return strlen(*output);
+    }
+
+    // Parse JSON command to extract module name
+    json_obj = cJSON_Parse(json_command);
+    if (!json_obj) {
+        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        return strlen(*output);
+    }
+
+    // Extract module name
+    module_item = cJSON_GetObjectItem(json_obj, "module");
+    if (!module_item || !cJSON_IsString(module_item)) {
+        cJSON_Delete(json_obj);
+        os_strdup("{\"error\":3,\"message\":\"Missing or invalid module field\"}", *output);
+        return strlen(*output);
+    }
+    module_name = cJSON_GetStringValue(module_item);
+
+    // Use internal implementation
+    size_t result = wm_module_query_json_internal(module_name, json_command, output);
+    cJSON_Delete(json_obj);
+    return result;
+}
+
+// New external interface that accepts module_name as parameter
+size_t wm_module_query_json_ex(const char* module_name, const char* json_command, char** output) {
+    return wm_module_query_json_internal(module_name, json_command, output);
+}
+
+// Query FIM module directly via syscom socket with JSON format
+size_t wm_fim_query_json(const char* command, char** response) {
+    if (!command || !response) {
+        os_strdup("{\"error\":1,\"message\":\"Invalid parameters\"}", *response);
+        return strlen(*response);
+    }
+
+    // Use the command directly as JSON (it's already in the new format)
+    char *json_string = strdup(command);
+
+#ifndef WIN32
+    int sock;
+    char *response_buffer = NULL;
+    ssize_t recv_length;
+
+    // Connect to syscheck syscom socket
+    mdebug1("WM_FIM_QUERY_JSON: Attempting to connect to socket: %s", SYS_LOCAL_SOCK);
+    if ((sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR)) < 0) {
+        merror("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        switch (errno) {
+            case ECONNREFUSED:
+                os_strdup("{\"error\":4,\"message\":\"Syscheck module refused connection. The component might be disabled\"}", *response);
+                break;
+            case ENOENT:
+                os_strdup("{\"error\":5,\"message\":\"Syscheck socket not found. The component might not be running\"}", *response);
+                break;
+            default:
+                os_strdup("{\"error\":6,\"message\":\"Could not connect to syscheck socket\"}", *response);
+        }
+        os_free(json_string);
+        return strlen(*response);
+    }
+
+    mdebug1("WM_FIM_QUERY_JSON: Sending JSON command: %s", json_string);
+
+    // Send the JSON query to syscheck
+    if (OS_SendSecureTCP(sock, strlen(json_string), json_string) < 0) {
+        merror("WM_FIM_QUERY_JSON: Failed to send command");
+        close(sock);
+        os_strdup("{\"error\":7,\"message\":\"Could not send query to syscheck\"}", *response);
+        os_free(json_string);
+        return strlen(*response);
+    }
+
+    // Allocate buffer for response
+    os_calloc(OS_MAXSTR, sizeof(char), response_buffer);
+
+    // Receive response from syscheck
+    switch (recv_length = OS_RecvSecureTCP(sock, response_buffer, OS_MAXSTR)) {
+        case OS_SOCKTERR:
+            close(sock);
+            os_free(response_buffer);
+            os_strdup("{\"error\":8,\"message\":\"Response from syscheck too large\"}", *response);
+            break;
+        case -1:
+            close(sock);
+            os_free(response_buffer);
+            os_strdup("{\"error\":9,\"message\":\"Error receiving response from syscheck\"}", *response);
+            break;
+        case 0:
+            close(sock);
+            os_free(response_buffer);
+            os_strdup("{\"error\":10,\"message\":\"Empty response from syscheck\"}", *response);
+            break;
+        default:
+            close(sock);
+            *response = response_buffer;
+            break;
+    }
+#else
+    // On Windows, use the syscom_dispatch function directly
+    size_t response_len = syscom_dispatch(json_string, strlen(json_string), response);
+
+    if (response_len == 0 || !(*response)) {
+        os_strdup("{\"error\":11,\"message\":\"No response from syscom\"}", *response);
+    }
+#endif
+
+    os_free(json_string);
+    return strlen(*response);
 }
 
 cJSON *getModulesInternalOptions(void) {

@@ -75,34 +75,134 @@ error:
     return strlen(*output);
 }
 
-size_t syscom_handle_agent_info_query(char * args, char ** output) {
-    assert(args != NULL);
+size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
+    assert(json_command != NULL);
     assert(output != NULL);
 
-    // Handle standardized agent_info commands
-    mdebug1("Processing FIM agent_info command with action: %s", args);
+    // Log received query
+    minfo("Received query: %s", json_command);
 
-    // TODO: Implement real FIM agent_info actions
-    if (strcmp(args, "pause") == 0) {
-        os_strdup("ok FIM module paused successfully", *output);
-    } else if (strcmp(args, "flush") == 0) {
-        os_strdup("ok FIM module flushed successfully", *output);
-    } else if (strcmp(args, "get_max_version") == 0) {
-        os_strdup("ok FIM max version: 1.2.3", *output);
-    } else if (strcmp(args, "set_version") == 0) {
-        os_strdup("ok FIM version set successfully", *output);
-    } else if (strcmp(args, "resume") == 0) {
-        os_strdup("ok FIM module resumed successfully", *output);
-    } else {
-        os_strdup("err Unknown FIM agent_info action", *output);
+    // Parse JSON command
+    cJSON *json_obj = cJSON_Parse(json_command);
+    if (!json_obj) {
+        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        return strlen(*output);
     }
 
+    cJSON *command_item = cJSON_GetObjectItem(json_obj, "command");
+    if (!command_item || !cJSON_IsString(command_item)) {
+        cJSON_Delete(json_obj);
+        os_strdup("{\"error\":3,\"message\":\"Missing or invalid command field\"}", *output);
+        return strlen(*output);
+    }
+
+    const char *command = cJSON_GetStringValue(command_item);
+    cJSON *param_item = cJSON_GetObjectItem(json_obj, "parameters");
+
+    mdebug1("Processing FIM JSON command: %s", command);
+
+    cJSON *response_json = cJSON_CreateObject();
+    cJSON *status_item = NULL;
+    cJSON *message_item = NULL;
+    cJSON *data_item = NULL;
+
+    if (strcmp(command, "pause") == 0) {
+        status_item = cJSON_CreateNumber(0);
+        message_item = cJSON_CreateString("FIM module paused successfully");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "module", "fim");
+        cJSON_AddStringToObject(data_item, "action", "pause");
+    } else if (strcmp(command, "flush") == 0) {
+        status_item = cJSON_CreateNumber(0);
+        message_item = cJSON_CreateString("FIM module flushed successfully");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "module", "fim");
+        cJSON_AddStringToObject(data_item, "action", "flush");
+    } else if (strcmp(command, "get_version") == 0) {
+        status_item = cJSON_CreateNumber(0);
+        message_item = cJSON_CreateString("FIM version retrieved");
+        data_item = cJSON_CreateObject();
+        cJSON_AddNumberToObject(data_item, "version", 5);
+    } else if (strcmp(command, "set_version") == 0) {
+        status_item = cJSON_CreateNumber(0);
+        message_item = cJSON_CreateString("FIM version set successfully");
+        data_item = cJSON_CreateObject();
+
+        // Extract version from parameters if present
+        if (param_item && cJSON_IsObject(param_item)) {
+            cJSON *version_item = cJSON_GetObjectItem(param_item, "version");
+            if (version_item && cJSON_IsNumber(version_item)) {
+                int version = (int)cJSON_GetNumberValue(version_item);
+                cJSON_AddNumberToObject(data_item, "version", version);
+            }
+        }
+    } else if (strcmp(command, "resume") == 0) {
+        status_item = cJSON_CreateNumber(0);
+        message_item = cJSON_CreateString("FIM module resumed successfully");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "module", "fim");
+        cJSON_AddStringToObject(data_item, "action", "resume");
+    } else {
+        status_item = cJSON_CreateNumber(1);
+        message_item = cJSON_CreateString("Unknown FIM agent_info action");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "command", command);
+    }
+
+    cJSON_AddItemToObject(response_json, "error", status_item);
+    cJSON_AddItemToObject(response_json, "message", message_item);
+    cJSON_AddItemToObject(response_json, "data", data_item);
+
+    char *json_string = cJSON_PrintUnformatted(response_json);
+    os_strdup(json_string, *output);
+
+    os_free(json_string);
+    cJSON_Delete(response_json);
+    cJSON_Delete(json_obj);
+
     return strlen(*output);
+}
+
+size_t syscom_handle_json_query(char * json_command, char ** output) {
+    assert(json_command != NULL);
+    assert(output != NULL);
+
+    if (syscheck.disabled) {
+        mdebug1("FIM module is disabled");
+        os_strdup("{\"error\":1,\"message\":\"FIM module is disabled\"}", *output);
+        return strlen(*output);
+    }
+
+    cJSON *json_obj = cJSON_Parse(json_command);
+    if (!json_obj) {
+        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        return strlen(*output);
+    }
+
+    cJSON *command_item = cJSON_GetObjectItem(json_obj, "command");
+    if (!command_item || !cJSON_IsString(command_item)) {
+        cJSON_Delete(json_obj);
+        os_strdup("{\"error\":3,\"message\":\"Missing or invalid command field\"}", *output);
+        return strlen(*output);
+    }
+
+    const char *command = cJSON_GetStringValue(command_item);
+    mdebug1("Processing JSON FIM command: %s", command);
+    size_t result = syscom_handle_agent_info_query(json_command, output);
+
+    cJSON_Delete(json_obj);
+    return result;
 }
 
 size_t syscom_dispatch(char * command, size_t command_len, char ** output){
     assert(command != NULL);
     assert(output != NULL);
+
+    // Check if this is a JSON command
+    if (command[0] == '{') {
+        mdebug1("Detected JSON command, routing to JSON handler");
+        return syscom_handle_json_query(command, output);
+    }
 
     if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
                strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0 ||
@@ -154,19 +254,6 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
             os_strdup("err FIM synchronization is disabled", *output);
             return strlen(*output);
         }
-    } else if (strncmp(command, "agent_info", strlen("agent_info")) == 0) {
-        // Handle agent_info queries
-        char *args = strchr(command, ' ');
-
-        if (!args) {
-            mdebug1("SYSCOM agent_info command needs arguments");
-            os_strdup("err SYSCOM agent_info needs arguments", *output);
-            return strlen(*output);
-        }
-
-        args++; // Skip the space
-
-        return syscom_handle_agent_info_query(args, output);
     }
 
     mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, command);

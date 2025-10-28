@@ -87,10 +87,9 @@ class AgentInfoImpl
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
-        // TODO: change to real method name and implementation
-        /// @brief Test module coordination by communicating with SCA and FIM modules
-        /// This method is called periodically to test inter-module communication
-        void testModuleCoordination();
+        /// @brief Coordinate modules for version synchronization
+        /// This method manages the coordination process: pause, flush, sync versions, resume
+        void coordinateModules();
 
     private:
         /// @brief Update the global metadata provider with current agent metadata
