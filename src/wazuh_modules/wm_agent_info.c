@@ -258,8 +258,7 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
         os_calloc(1, sizeof(wm_agent_info_t), agent_info);
     }
 
-    // Override configuration
-    agent_info->enabled = 1;
+    // Set default configuration values
     agent_info->interval = 60;
 
     // Database synchronization config values
@@ -292,18 +291,7 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
         }
         else if (!strcmp(nodes[i]->element, XML_ENABLED))
         {
-            if (!strcmp(nodes[i]->content, "yes"))
-            {
-                agent_info->enabled = 1;
-            }
-            else if (!strcmp(nodes[i]->content, "no"))
-            {
-                agent_info->enabled = 0;
-            }
-            else
-            {
-                mwarn(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-            }
+            mwarn("The 'enabled' option for agent-info is ignored. Agent-info is always enabled.");
         }
         else if (!strcmp(nodes[i]->element, XML_INTERVAL))
         {
@@ -391,9 +379,9 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     minfo("Starting agent-info module.");
 
-    if (!agent_info || !agent_info->enabled)
+    if (!agent_info)
     {
-        minfo("Agent-info module disabled. Exiting.");
+        merror("Agent-info configuration is NULL. Exiting.");
         return NULL;
     }
 
@@ -493,11 +481,11 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
 
     if (!agent_info)
     {
-        cJSON_AddStringToObject(wm_agent_info, "enabled", "no");
+        cJSON_AddStringToObject(wm_agent_info, "enabled", "yes");  // Always enabled
     }
     else
     {
-        cJSON_AddStringToObject(wm_agent_info, "enabled", agent_info->enabled ? "yes" : "no");
+        cJSON_AddStringToObject(wm_agent_info, "enabled", "yes");  // Always enabled
         cJSON_AddNumberToObject(wm_agent_info, "interval", agent_info->interval);
 
         // Database synchronization values
