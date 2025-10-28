@@ -457,6 +457,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto hostname = builder.CreateString(metadata.hostname);
         auto osname = builder.CreateString(metadata.os_name);
         auto ostype = builder.CreateString(metadata.os_type);
+        auto osplatform = builder.CreateString(metadata.os_platform);
         auto osversion = builder.CreateString(metadata.os_version);
         auto agentversion = builder.CreateString(metadata.agent_version);
         auto agentname = builder.CreateString(metadata.agent_name);

@@ -326,6 +326,7 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.hostname, sizeof(metadata.hostname), agentMetadata, "host_hostname");
     copyField(metadata.os_name, sizeof(metadata.os_name), agentMetadata, "host_os_name");
     copyField(metadata.os_type, sizeof(metadata.os_type), agentMetadata, "host_os_type");
+    copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
     copyField(metadata.checksum_metadata, sizeof(metadata.checksum_metadata), agentMetadata, "checksum");
 

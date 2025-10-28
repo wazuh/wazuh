@@ -30,7 +30,8 @@ typedef struct {
     char architecture[256];       ///< System architecture (e.g., "x86_64")
     char hostname[256];           ///< System hostname
     char os_name[256];            ///< Operating system name
-    char os_type[256];            ///< Operating system type (e.g., "linux", "windows")
+    char os_type[256];            ///< Operating system type (e.g., "linux", "windows", "darwin")
+    char os_platform[256];        ///< Operating system platform/distribution (e.g., "ubuntu", "centos", "windows")
     char os_version[256];         ///< Operating system version
     char checksum_metadata[256];  ///< Checksum of metadata fields
     uint64_t global_version;      ///< Global version counter

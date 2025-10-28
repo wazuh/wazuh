@@ -56,6 +56,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
             strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
             strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+            strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
             strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
             metadata.global_version = 1;
             metadata.groups = nullptr;
