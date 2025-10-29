@@ -88,8 +88,10 @@ class AgentInfoImpl
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
         /// @brief Coordinate modules for version synchronization
-        /// This method manages the coordination process: pause, flush, sync versions, resume
-        void coordinateModules();
+        /// This method manages the coordination process: pause, flush, sync versions, set version, sync table, resume
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        /// @return true if coordination was successful, false otherwise
+        bool coordinateModules(const std::string& table);
 
     private:
         /// @brief Update the global metadata provider with current agent metadata

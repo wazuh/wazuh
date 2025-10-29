@@ -144,10 +144,6 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
         try
         {
             populateAgentMetadata();
-
-            // Coordinate modules for version synchronization
-            coordinateModules();
-
         }
         catch (const std::exception& e)
         {
@@ -659,14 +655,36 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 
             m_reportDiffFunction(statelessEvent.dump());
 
-            if (m_spSyncProtocol)
+            // Coordinate modules: pause, flush, get versions, set new version, sync, resume
+            // Retry indefinitely if coordination fails
+            const int COORDINATION_RETRY_DELAY_SECONDS = 5;
+            int retryAttempt = 0;
+
+            while (!m_stopped)
             {
-                m_spSyncProtocol->synchronizeMetadataOrGroups(
-                    TABLE_MODE_MAP.at(table),
-                    ALL_MODULE_INDICES,
-                    std::chrono::seconds(m_syncResponseTimeout),
-                    m_syncRetries,
-                    m_syncMaxEps);
+                bool success = coordinateModules(table);
+
+                if (success)
+                {
+                    m_logFunction(LOG_INFO, "Module coordination completed successfully" +
+                                  (retryAttempt > 0 ? " after " + std::to_string(retryAttempt) + " retries" : ""));
+                    break;
+                }
+
+                retryAttempt++;
+                m_logFunction(LOG_WARNING, "Module coordination failed (attempt " + std::to_string(retryAttempt) +
+                             "), retrying in " + std::to_string(COORDINATION_RETRY_DELAY_SECONDS) + " seconds...");
+
+                // Wait before retrying, but check if we should stop
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_cv.wait_for(lock, std::chrono::seconds(COORDINATION_RETRY_DELAY_SECONDS),
+                             [this] { return m_stopped; });
+
+                if (m_stopped)
+                {
+                    m_logFunction(LOG_INFO, "Module stopping, aborting coordination retries");
+                    break;
+                }
             }
 
             std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result);
@@ -762,14 +780,19 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
     return ecsFormatted;
 }
 
-void AgentInfoImpl::coordinateModules()
+bool AgentInfoImpl::coordinateModules(const std::string& table)
 {
     // Check if query function is available
     if (!m_queryModuleFunction)
     {
         m_logFunction(LOG_WARNING, "Module query function not available, skipping coordination");
-        return;
+        return false;
     }
+
+    // Determine if we should increment version based on table
+    // AGENT_METADATA_TABLE -> increment (max + 1)
+    // AGENT_GROUPS_TABLE -> keep max (no increment)
+    bool incrementVersion = (table == AGENT_METADATA_TABLE);
 
     // Configuration
     const std::vector<std::string> modules = {"sca", "syscollector", "fim"};
@@ -911,111 +934,162 @@ void AgentInfoImpl::coordinateModules()
             }
         }
 
-        if (availableModules.empty()) {
-            m_logFunction(LOG_WARNING, "No modules available for coordination");
-            return;
-        }
-
-        // Step 2: Flush all available modules
-        m_logFunction(LOG_INFO, "Step 2: Flushing modules...");
-        for (const auto& module : availableModules)
-        {
-            std::string flushMessage = createJsonCommand("flush");
-            auto [success, response] = queryModuleWithRetry(module, flushMessage);
-            m_logFunction(LOG_INFO, "Response from " + module + " flush: " + response);
-            if (!success) {
-                m_logFunction(LOG_ERROR, "Failed to flush " + module + ", aborting coordination");
-                resumePausedModules();
-                return;
-            }
-            m_logFunction(LOG_INFO, "Successfully flushed " + module);
-        }
-
-        // Step 3: Get version from each module
-        m_logFunction(LOG_INFO, "Step 3: Getting module versions...");
+        // Calculate new version
+        int newVersion = 0;
         int globalMaxVersion = 0;
-        for (const auto& module : availableModules)
-        {
-            std::string getVersionMessage = createJsonCommand("get_version");
-            auto [success, response] = queryModuleWithRetry(module, getVersionMessage);
-            m_logFunction(LOG_INFO, "Response from " + module + " get_version: " + response);
-            if (!success) {
-                m_logFunction(LOG_ERROR, "Failed to get version from " + module + ", aborting coordination");
-                resumePausedModules();
-                return;
-            }
 
-            // Parse version from JSON format (strict)
-            int version = 0;
-            try {
-                nlohmann::json responseJson = nlohmann::json::parse(response);
-                if (responseJson.contains("data") && responseJson["data"].contains("version") &&
-                    responseJson["data"]["version"].is_number()) {
-                    version = responseJson["data"]["version"].get<int>();
-                } else {
-                    m_logFunction(LOG_ERROR, "Invalid JSON response format from " + module + ": missing or invalid version data");
+        if (availableModules.empty()) {
+            m_logFunction(LOG_WARNING, "No modules available for coordination, will synchronize anyway");
+            // When no modules are available, use version 1 for metadata, 0 for groups
+            newVersion = incrementVersion ? 1 : 0;
+        } else {
+            // Step 2: Flush all available modules
+            m_logFunction(LOG_INFO, "Step 2: Flushing modules...");
+            for (const auto& module : availableModules)
+            {
+                std::string flushMessage = createJsonCommand("flush");
+                auto [success, response] = queryModuleWithRetry(module, flushMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " flush: " + response);
+                if (!success) {
+                    m_logFunction(LOG_ERROR, "Failed to flush " + module + ", aborting coordination");
                     resumePausedModules();
-                    return;
+                    return false;
                 }
-            } catch (const std::exception& e) {
-                m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " + std::string(e.what()) + " - Response: " + response);
-                resumePausedModules();
-                return;
+                m_logFunction(LOG_INFO, "Successfully flushed " + module);
             }
 
-            moduleVersions[module] = version;
-            globalMaxVersion = std::max(globalMaxVersion, version);
-            m_logFunction(LOG_INFO, module + " current version: " + std::to_string(version));
+            // Step 3: Get version from each module
+            m_logFunction(LOG_INFO, "Step 3: Getting module versions...");
+            for (const auto& module : availableModules)
+            {
+                std::string getVersionMessage = createJsonCommand("get_version");
+                auto [success, response] = queryModuleWithRetry(module, getVersionMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " get_version: " + response);
+                if (!success) {
+                    m_logFunction(LOG_ERROR, "Failed to get version from " + module + ", aborting coordination");
+                    resumePausedModules();
+                    return false;
+                }
+
+                // Parse version from JSON format
+                int version = 0;
+                try {
+                    nlohmann::json responseJson = nlohmann::json::parse(response);
+                    if (responseJson.contains("data") && responseJson["data"].contains("version") &&
+                        responseJson["data"]["version"].is_number()) {
+                        version = responseJson["data"]["version"].get<int>();
+                    } else {
+                        m_logFunction(LOG_ERROR, "Invalid JSON response format from " + module + ": missing or invalid version data");
+                        resumePausedModules();
+                        return false;
+                    }
+                } catch (const std::exception& e) {
+                    m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " + std::string(e.what()) + " - Response: " + response);
+                    resumePausedModules();
+                    return false;
+                }
+
+                moduleVersions[module] = version;
+                globalMaxVersion = std::max(globalMaxVersion, version);
+                m_logFunction(LOG_INFO, module + " current version: " + std::to_string(version));
+            }
+
+            // Step 4: Calculate new version
+            // If incrementVersion is true (metadata update): newVersion = max + 1
+            // If incrementVersion is false (groups update): newVersion = max
+            newVersion = incrementVersion ? (globalMaxVersion + 1) : globalMaxVersion;
+            m_logFunction(LOG_INFO, "Step 4: Calculated new global version: " + std::to_string(newVersion) +
+                         (incrementVersion ? " (max + 1 for metadata update)" : " (max for groups update)"));
+
+            // Step 5: Set new version on all modules
+            m_logFunction(LOG_INFO, "Step 5: Setting new version on modules...");
+            for (const auto& module : availableModules)
+            {
+                std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
+                auto [success, response] = queryModuleWithRetry(module, setVersionMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " set_version: " + response);
+                if (!success) {
+                    m_logFunction(LOG_ERROR, "Failed to set version on " + module + ", aborting coordination");
+                    resumePausedModules();
+                    return false;
+                }
+                m_logFunction(LOG_INFO, "Successfully set version " + std::to_string(newVersion) + " on " + module);
+            }
         }
 
-        // Step 4: Calculate new version
-        int newVersion = globalMaxVersion + 1;
-        m_logFunction(LOG_INFO, "Step 4: Calculated new global version: " + std::to_string(newVersion));
-
-        // Step 5: Set new version on all modules
-        m_logFunction(LOG_INFO, "Step 5: Setting new version on modules...");
-        for (const auto& module : availableModules)
+        // Step 6: Synchronize metadata or groups
+        m_logFunction(LOG_INFO, "Step 6: Synchronizing " + table + "...");
+        if (m_spSyncProtocol)
         {
-            std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
-            auto [success, response] = queryModuleWithRetry(module, setVersionMessage);
-            m_logFunction(LOG_INFO, "Response from " + module + " set_version: " + response);
-            if (!success) {
-                m_logFunction(LOG_ERROR, "Failed to set version on " + module + ", aborting coordination");
+            bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
+                TABLE_MODE_MAP.at(table),
+                ALL_MODULE_INDICES,
+                std::chrono::seconds(m_syncResponseTimeout),
+                m_syncRetries,
+                m_syncMaxEps);
+
+            if (!syncSuccess)
+            {
+                m_logFunction(LOG_ERROR, "Failed to synchronize " + table);
                 resumePausedModules();
-                return;
+                return false;
             }
-            m_logFunction(LOG_INFO, "Successfully set version " + std::to_string(newVersion) + " on " + module);
+
+            m_logFunction(LOG_INFO, "Successfully synchronized " + table);
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
         }
 
-        // Step 6: Resume all modules
-        m_logFunction(LOG_INFO, "Step 6: Resuming modules...");
-        for (const auto& module : pausedModules)
+        // Step 7: Resume all modules
+        if (!pausedModules.empty())
         {
-            std::string resumeMessage = createJsonCommand("resume");
-            auto [success, response] = queryModuleWithRetry(module, resumeMessage);
-            m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response);
-            if (!success) {
-                m_logFunction(LOG_ERROR, "Failed to resume " + module + ": " + response);
-                // Continue trying to resume other modules even if one fails
-            } else {
-                m_logFunction(LOG_INFO, "Successfully resumed " + module);
+            m_logFunction(LOG_INFO, "Step 7: Resuming modules...");
+            for (const auto& module : pausedModules)
+            {
+                std::string resumeMessage = createJsonCommand("resume");
+                auto [success, response] = queryModuleWithRetry(module, resumeMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response);
+                if (!success) {
+                    m_logFunction(LOG_ERROR, "Failed to resume " + module + ": " + response);
+                    // Continue trying to resume other modules even if one fails
+                } else {
+                    m_logFunction(LOG_INFO, "Successfully resumed " + module);
+                }
             }
+            pausedModules.clear();
         }
-        pausedModules.clear();
+        else
+        {
+            m_logFunction(LOG_INFO, "Step 7: No modules to resume");
+        }
 
         m_logFunction(LOG_INFO, "=== Module coordination completed successfully ===");
-        m_logFunction(LOG_INFO, "Coordinated modules: " + std::to_string(availableModules.size()) +
-                     ", New version: " + std::to_string(newVersion));
 
+        if (availableModules.empty())
+        {
+            m_logFunction(LOG_INFO, "No modules coordinated, but synchronization was performed with version: " +
+                         std::to_string(newVersion));
+        }
+        else
+        {
+            m_logFunction(LOG_INFO, "Coordinated modules: " + std::to_string(availableModules.size()) +
+                         ", New version: " + std::to_string(newVersion));
+        }
+
+        return true;
     }
     catch (const std::exception& e)
     {
         m_logFunction(LOG_ERROR, "Exception during module coordination: " + std::string(e.what()));
         resumePausedModules();
+        return false;
     }
     catch (...)
     {
         m_logFunction(LOG_ERROR, "Unknown exception during module coordination");
         resumePausedModules();
+        return false;
     }
 }
