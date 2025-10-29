@@ -280,6 +280,10 @@ void AgentInfoImpl::populateAgentMetadata()
         groups = readAgentGroups();
     }
 
+    // Update the global metadata provider BEFORE updateChanges
+    // This ensures the metadata is available when syncProtocol is triggered
+    updateMetadataProvider(agentMetadata, groups);
+
     std::string groupLogMsg;
 
     if (groups.empty())
@@ -292,10 +296,6 @@ void AgentInfoImpl::populateAgentMetadata()
     }
 
     m_logFunction(LOG_DEBUG, groupLogMsg);
-
-    // Update the global metadata provider BEFORE updateChanges
-    // This ensures the metadata is available when syncProtocol is triggered
-    updateMetadataProvider(agentMetadata, groups);
 
     // Update agent metadata using dbsync to detect changes and emit events
     updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
