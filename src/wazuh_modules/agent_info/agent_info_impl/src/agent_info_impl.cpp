@@ -276,7 +276,7 @@ void AgentInfoImpl::populateAgentMetadata()
     updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
 
     auto logMsg = std::string("Agent metadata populated successfully");
-    m_logFunction(LOG_INFO, logMsg);
+    m_logFunction(LOG_DEBUG, logMsg);
 
     // Read agent groups from merged.mg (only for agents)
     std::vector<std::string> groups;
@@ -311,7 +311,7 @@ void AgentInfoImpl::populateAgentMetadata()
         groupLogMsg = "Agent groups populated successfully: " + std::to_string(groups.size()) + " groups";
     }
 
-    m_logFunction(LOG_INFO, groupLogMsg);
+    m_logFunction(LOG_DEBUG, groupLogMsg);
 
     // Update the global metadata provider
     updateMetadataProvider(agentMetadata, groups);
