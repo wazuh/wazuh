@@ -345,109 +345,140 @@ public:
                     // VD ?
                     preIndexerAction();
 
-                    // Send delete by query to indexer if mode is full.
-                    if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
+                    if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta)
                     {
-                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting by query...");
-                        m_indexerConnector->deleteByQuery(res.context->moduleName, res.context->agentId);
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Updating agent metadata for agent %s...",
+                                  res.context->agentId.c_str());
+
+                        // Lock indexer connector to avoid process with the timeout mechanism.
+                        auto lock = m_indexerConnector->scopeLock();
+
+                        // TODO: Call indexerConnector to update metadata (agent.id, agent.name, agent.version,
+                        // agent.host.*) for all documents matching this agent ID across all module indices Placeholder
+                        // for now - implementation depends on indexerConnector API
                     }
-
-                    const auto prefix = std::format("{}_", res.context->sessionId);
-
-                    // Lock indexer connector to avoid process with the timeout mechanism.
-                    auto lock = m_indexerConnector->scopeLock();
-
-                    // Send bulk query (with handling of 413 error).
-                    for (const auto& [key, value] : m_dataStore->seek(prefix))
+                    else if (res.context->mode == Wazuh::SyncSchema::Mode_GroupDelta)
                     {
-                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing data...");
-                        flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(value.data()), value.size());
-                        if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Updating agent groups for agent %s...",
+                                  res.context->agentId.c_str());
+
+                        // Lock indexer connector to avoid process with the timeout mechanism.
+                        auto lock = m_indexerConnector->scopeLock();
+
+                        // TODO: Call indexerConnector to update agent.groups field
+                        // for all documents matching this agent ID across all module indices
+                        // Placeholder for now - implementation depends on indexerConnector API
+                    }
+                    else
+                    {
+                        // Send delete by query to indexer if mode is full.
+                        if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
                         {
-                            auto message = Wazuh::SyncSchema::GetMessage(value.data());
-                            auto data = message->content_as_DataValue();
-                            if (!data)
+                            logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting by query...");
+                            m_indexerConnector->deleteByQuery(res.context->moduleName, res.context->agentId);
+                        }
+
+                        const auto prefix = std::format("{}_", res.context->sessionId);
+
+                        // Lock indexer connector to avoid process with the timeout mechanism.
+                        auto lock = m_indexerConnector->scopeLock();
+
+                        // Send bulk query (with handling of 413 error).
+                        for (const auto& [key, value] : m_dataStore->seek(prefix))
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing data...");
+                            flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(value.data()),
+                                                           value.size());
+                            if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
                             {
-                                throw InventorySyncException("Invalid data message");
-                            }
-
-                            thread_local std::string elementId;
-                            elementId.clear();
-
-                            elementId.append(m_clusterName);
-                            elementId.append("_");
-                            elementId.append(res.context->agentId);
-                            elementId.append("_");
-                            elementId.append(data->id()->string_view());
-
-                            if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
-                            {
-                                logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
-                                thread_local std::string dataString;
-                                dataString.clear();
-                                dataString.append(R"({"agent":{"id":")");
-                                dataString.append(res.context->agentId);
-                                dataString.append(R"(","name":")");
-                                dataString.append(res.context->agentName);
-                                dataString.append(R"(","version":")");
-                                dataString.append(res.context->agentVersion);
-                                dataString.append(R"(","groups":[)");
-                                bool firstGroup = true;
-                                for (const auto& group : res.context->groups)
+                                auto message = Wazuh::SyncSchema::GetMessage(value.data());
+                                auto data = message->content_as_DataValue();
+                                if (!data)
                                 {
-                                    if (!firstGroup)
-                                    {
-                                        dataString.append(",");
-                                    }
-                                    dataString.append(R"(")");
-                                    dataString.append(group);
-                                    dataString.append(R"(")");
-                                    firstGroup = false;
+                                    throw InventorySyncException("Invalid data message");
                                 }
-                                dataString.append(R"(],"host":{"architecture":")");
-                                dataString.append(res.context->architecture);
-                                dataString.append(R"(","hostname":")");
-                                dataString.append(res.context->hostname);
-                                dataString.append(R"(","os":{"name":")");
-                                dataString.append(res.context->osname);
-                                dataString.append(R"(","platform":")");
-                                dataString.append(res.context->osplatform);
-                                dataString.append(R"(","type":")");
-                                dataString.append(res.context->ostype);
-                                dataString.append(R"(","version":")");
-                                dataString.append(res.context->osversion);
-                                dataString.append(R"("}}},"wazuh":{"cluster":{"name":")");
-                                dataString.append(m_clusterName);
-                                dataString.append(R"("}},)");
-                                dataString.append(
-                                    std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
-                                const auto version = data->version();
-                                const auto indexName = data->index()->string_view();
-                                if (version && version > 0)
+
+                                thread_local std::string elementId;
+                                elementId.clear();
+
+                                elementId.append(m_clusterName);
+                                elementId.append("_");
+                                elementId.append(res.context->agentId);
+                                elementId.append("_");
+                                elementId.append(data->id()->string_view());
+
+                                if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                                 {
-                                    m_indexerConnector->bulkIndex(
-                                        elementId, indexName, dataString, std::to_string(version));
+                                    logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
+                                    thread_local std::string dataString;
+                                    dataString.clear();
+                                    dataString.append(R"({"agent":{"id":")");
+                                    dataString.append(res.context->agentId);
+                                    dataString.append(R"(","name":")");
+                                    dataString.append(res.context->agentName);
+                                    dataString.append(R"(","version":")");
+                                    dataString.append(res.context->agentVersion);
+                                    dataString.append(R"(","groups":[)");
+                                    bool firstGroup = true;
+                                    for (const auto& group : res.context->groups)
+                                    {
+                                        if (!firstGroup)
+                                        {
+                                            dataString.append(",");
+                                        }
+                                        dataString.append(R"(")");
+                                        dataString.append(group);
+                                        dataString.append(R"(")");
+                                        firstGroup = false;
+                                    }
+                                    dataString.append(R"(],"host":{"architecture":")");
+                                    dataString.append(res.context->architecture);
+                                    dataString.append(R"(","hostname":")");
+                                    dataString.append(res.context->hostname);
+                                    dataString.append(R"(","os":{"name":")");
+                                    dataString.append(res.context->osname);
+                                    dataString.append(R"(","platform":")");
+                                    dataString.append(res.context->osplatform);
+                                    dataString.append(R"(","type":")");
+                                    dataString.append(res.context->ostype);
+                                    dataString.append(R"(","version":")");
+                                    dataString.append(res.context->osversion);
+                                    dataString.append(R"("}}},"wazuh":{"cluster":{"name":")");
+                                    dataString.append(m_clusterName);
+                                    dataString.append(R"("}},)");
+                                    dataString.append(std::string_view((const char*)data->data()->data() + 1,
+                                                                       data->data()->size() - 1));
+                                    const auto version = data->version();
+                                    const auto indexName = data->index()->string_view();
+                                    if (version && version > 0)
+                                    {
+                                        m_indexerConnector->bulkIndex(
+                                            elementId, indexName, dataString, std::to_string(version));
+                                    }
+                                    else
+                                    {
+                                        m_indexerConnector->bulkIndex(elementId, indexName, dataString);
+                                    }
+                                }
+                                else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
+                                {
+                                    logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting data...");
+                                    m_indexerConnector->bulkDelete(elementId, data->index()->string_view());
                                 }
                                 else
                                 {
-                                    m_indexerConnector->bulkIndex(elementId, indexName, dataString);
+                                    throw InventorySyncException("Invalid operation");
                                 }
-                            }
-                            else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
-                            {
-                                logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting data...");
-                                m_indexerConnector->bulkDelete(elementId, data->index()->string_view());
                             }
                             else
                             {
-                                throw InventorySyncException("Invalid operation");
+                                throw InventorySyncException("Invalid message type");
                             }
                         }
-                        else
-                        {
-                            throw InventorySyncException("Invalid message type");
-                        }
-                    }
+                    } // End of else block for non-MetadataDelta/GroupDelta modes
+
                     m_indexerConnector->registerNotify(
                         [this, ctx = res.context]()
                         {
