@@ -35,6 +35,7 @@ class SecureCommunication;
 
 using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
 using ThreadSyncQueue = Utils::AsyncDispatcher<std::string, std::function<void(const std::string&)>>;
+using TimePoint = std::chrono::system_clock::time_point;
 
 /**
  * @brief IndexerConnector class.
@@ -56,7 +57,8 @@ class EXPORTED IndexerConnector final
     std::string m_indexName;
     std::mutex m_syncMutex;
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
-    std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
+    std::unordered_map<std::string, TimePoint> m_lastSync;
+    std::unordered_set<std::string> m_syncInProgress;
     uint32_t m_successCount {0};
     bool m_error413FirstTime {false};
     const bool m_useSeekDelete;
@@ -99,13 +101,6 @@ class EXPORTED IndexerConnector final
     nlohmann::json getAgentDocumentsIds(const std::string& url,
                                         const std::string& agentId,
                                         const SecureCommunication& secureCommunication) const;
-
-    /**
-     * @brief Abuse control.
-     * @param agentId Agent ID.
-     * @return True if the agent is abusing the indexer, false otherwise.
-     */
-    bool abuseControl(const std::string& agentId);
 
     /**
      * @brief Initializing steps before the module starts.
