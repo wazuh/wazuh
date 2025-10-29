@@ -284,19 +284,6 @@ void AgentInfoImpl::populateAgentMetadata()
     // This ensures the metadata is available when syncProtocol is triggered
     updateMetadataProvider(agentMetadata, groups);
 
-    std::string groupLogMsg;
-
-    if (groups.empty())
-    {
-        groupLogMsg = "Agent groups cleared (no groups found)";
-    }
-    else
-    {
-        groupLogMsg = "Agent groups populated successfully: " + std::to_string(groups.size()) + " groups";
-    }
-
-    m_logFunction(LOG_DEBUG, groupLogMsg);
-
     // Update agent metadata using dbsync to detect changes and emit events
     updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
 
@@ -316,6 +303,19 @@ void AgentInfoImpl::populateAgentMetadata()
 
     // Update agent groups using dbsync to detect changes and emit events
     updateChanges(AGENT_GROUPS_TABLE, groupsData);
+
+    std::string groupLogMsg;
+
+    if (groups.empty())
+    {
+        groupLogMsg = "Agent groups cleared (no groups found)";
+    }
+    else
+    {
+        groupLogMsg = "Agent groups populated successfully: " + std::to_string(groups.size()) + " groups";
+    }
+
+    m_logFunction(LOG_DEBUG, groupLogMsg);
 }
 
 void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups)
