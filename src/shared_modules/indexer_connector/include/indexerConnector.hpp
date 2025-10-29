@@ -20,10 +20,12 @@
 #endif
 
 static constexpr auto DEFAULT_INTERVAL = 60u;
+static constexpr auto DEFAULT_SYNC_TIME = 30u;
 static constexpr auto IC_NAME {"indexer-connector"};
 
 class ServerSelector;
 class SecureCommunication;
+#include "hashHelper.h"
 #include "threadDispatcher.h"
 #include "threadEventDispatcher.hpp"
 #include <json.hpp>
@@ -58,6 +60,9 @@ class EXPORTED IndexerConnector final
     uint32_t m_successCount {0};
     bool m_error413FirstTime {false};
     const bool m_useSeekDelete;
+    uint32_t m_minimumSyncTime;
+    bool m_blockedIndex {false};
+    bool m_deletedIndex {false};
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
@@ -145,7 +150,8 @@ public:
                                                        const std::string&,
                                                        const std::string&,
                                                        va_list)>& logFunction = {},
-                              const uint32_t& timeout = DEFAULT_INTERVAL);
+                              const uint32_t& timeout = DEFAULT_INTERVAL,
+                              const uint32_t& minimumSyncTime = DEFAULT_SYNC_TIME);
 
     /**
      * @brief Class constructor that initializes the publisher in a simplified state that doesn't index the data and
@@ -181,6 +187,34 @@ public:
      * @param agentId Agent ID.
      */
     void sync(const std::string& agentId);
+
+    /**
+     * @brief Hash mappings.
+     *
+     * @param mappings Mappings to be hashed.
+     * @return Hash of the mappings.
+     */
+    std::string hashMappings(const std::string& mappings);
+
+    /**
+     * @brief Validate mappings.
+     *
+     * @param templateData Template data.
+     * @param selector Server selector.
+     * @param secureCommunication Secure communication.
+     */
+    void validateMappings(const nlohmann::json& templateData,
+                          const std::shared_ptr<ServerSelector>& selector,
+                          const SecureCommunication& secureCommunication);
+
+    /**
+     * @brief Rollback index changes in case of failure during reindexing.
+     *
+     * @param selector Server selector.
+     * @param secureCommunication Secure communication.
+     */
+    void rollbackIndexChanges(const std::shared_ptr<ServerSelector>& selector,
+                              const SecureCommunication& secureCommunication);
 };
 
 #endif // _INDEXER_CONNECTOR_HPP

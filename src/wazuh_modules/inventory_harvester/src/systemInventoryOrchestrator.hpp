@@ -85,34 +85,39 @@ public:
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("packages",
                                                                               InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::System] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("system", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("system", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("system",
                                                                               InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Process] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("processes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes",
                                                                               InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Port] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("ports", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("ports", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("ports", InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hotfix] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("hotfixes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("hotfixes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hotfixes",
                                                                               InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hardware] =
             std::make_unique<IndexerConnector>(
                 PolicyHarvesterManager::instance().buildIndexerConfig("hardware", InventoryType::SYSTEM_INVENTORY),
@@ -121,7 +126,8 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hardware",
                                                                                   InventoryType::SYSTEM_INVENTORY),
                 false, // Don't use seek for delete operation
-                Log::GLOBAL_LOG_FUNCTION);
+                Log::GLOBAL_LOG_FUNCTION,
+                PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetProto] =
             std::make_unique<IndexerConnector>(
                 PolicyHarvesterManager::instance().buildIndexerConfig("protocols", InventoryType::SYSTEM_INVENTORY),
@@ -130,7 +136,8 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("protocols",
                                                                                   InventoryType::SYSTEM_INVENTORY),
                 false, // Don't use seek for delete operation
-                Log::GLOBAL_LOG_FUNCTION);
+                Log::GLOBAL_LOG_FUNCTION,
+                PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetIface] =
             std::make_unique<IndexerConnector>(
                 PolicyHarvesterManager::instance().buildIndexerConfig("interfaces", InventoryType::SYSTEM_INVENTORY),
@@ -139,7 +146,8 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("interfaces",
                                                                                   InventoryType::SYSTEM_INVENTORY),
                 false, // Don't use seek for delete operation
-                Log::GLOBAL_LOG_FUNCTION);
+                Log::GLOBAL_LOG_FUNCTION,
+                PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetworkAddress] =
             std::make_unique<IndexerConnector>(
                 PolicyHarvesterManager::instance().buildIndexerConfig("networks", InventoryType::SYSTEM_INVENTORY),
@@ -148,20 +156,23 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("networks",
                                                                                   InventoryType::SYSTEM_INVENTORY),
                 false, // Don't use seek for delete operation
-                Log::GLOBAL_LOG_FUNCTION);
+                Log::GLOBAL_LOG_FUNCTION,
+                PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::User] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("users", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("users", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("users", InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Group] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("groups", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("groups", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("groups",
                                                                               InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::BrowserExtension] =
             std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig(
                                                    "browser-extensions", InventoryType::SYSTEM_INVENTORY),
@@ -170,14 +181,16 @@ public:
                                                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath(
                                                    "browser-extensions", InventoryType::SYSTEM_INVENTORY),
                                                false, // Don't use seek for delete operation
-                                               Log::GLOBAL_LOG_FUNCTION);
+                                               Log::GLOBAL_LOG_FUNCTION,
+                                               PolicyHarvesterManager::instance().getMinimumSyncTime());
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Service] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("services", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("services", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("services",
                                                                               InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
-            Log::GLOBAL_LOG_FUNCTION);
+            Log::GLOBAL_LOG_FUNCTION,
+            PolicyHarvesterManager::instance().getMinimumSyncTime());
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

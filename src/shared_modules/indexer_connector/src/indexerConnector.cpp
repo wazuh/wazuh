@@ -20,6 +20,7 @@
 #include <grp.h>
 #include <mutex>
 #include <pwd.h>
+#include <stdint.h>
 #include <unistd.h>
 
 constexpr auto USER_GROUP {"wazuh"};
@@ -253,25 +254,6 @@ static inline void extractErrorInfo(const std::string& errorBody, std::string& t
 }
 
 // ------- IndexerConnector methods implementation -------
-
-bool IndexerConnector::abuseControl(const std::string& agentId)
-{
-    const auto currentTime = std::chrono::system_clock::now();
-    // If the agent is in the map, check if the last sync was less than MINIMAL_SYNC_TIME minutes ago.
-    if (const auto lastSync = m_lastSync.find(agentId); lastSync != m_lastSync.end())
-    {
-        const auto diff = std::chrono::duration_cast<std::chrono::minutes>(currentTime - lastSync->second);
-        // If the last sync was less than MINIMAL_SYNC_TIME minutes ago, return true.
-        if (diff.count() < MINIMAL_SYNC_TIME)
-        {
-            logDebug2(IC_NAME, "Agent '%s' sync omitted due to abuse control.", agentId.c_str());
-            return true;
-        }
-    }
-    // If the agent is not in the map, add it to the map with the current time.
-    m_lastSync[agentId] = currentTime;
-    return false;
-}
 
 nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
                                                       const std::string& agentId,
@@ -863,13 +845,18 @@ IndexerConnector::IndexerConnector(
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
-    const uint32_t& timeout)
+    const uint32_t& timeout,
+    const uint32_t& minimumSyncTime)
     : m_useSeekDelete(useSeekDelete)
 {
     preInitialization(logFunction, config);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
+
+    m_minimumSyncTime = minimumSyncTime;
+    logInfo(
+        IC_NAME, "Minimum sync time set to %u minutes for index: %s.", m_minimumSyncTime, m_indexName.c_str());
 
     // Read template file.
     std::ifstream templateFile(templatePath);
@@ -1169,13 +1156,13 @@ IndexerConnector::IndexerConnector(
             if (auto syncIt = m_lastSync.find(agentId); syncIt != m_lastSync.end())
             {
                 const auto elapsed = std::chrono::duration_cast<std::chrono::minutes>(now - syncIt->second);
-                if (elapsed.count() < MINIMAL_SYNC_TIME)
+                if (elapsed.count() < m_minimumSyncTime)
                 {
                     logDebug1(IC_NAME,
                               "Agent '%s' sync blocked by rate limit (elapsed: %ld min, remaining: %ld min).",
                               agentId.c_str(),
                               elapsed.count(),
-                              MINIMAL_SYNC_TIME - elapsed.count());
+                              m_minimumSyncTime - elapsed.count());
                     return;
                 }
             }

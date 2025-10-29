@@ -51,7 +51,7 @@ static void wm_inventory_harvester_log_config(cJSON* config_json)
     }
 }
 
-void* wm_inventory_harvester_main(__attribute__((unused))wm_inventory_harvester_t* data)
+void* wm_inventory_harvester_main(__attribute__((unused)) wm_inventory_harvester_t* data)
 {
     mtinfo(WM_INVENTORY_HARVESTER_LOGTAG, "Starting inventory_harvester module.");
     if (inventory_harvester_module = so_get_module_handle("inventory_harvester"), inventory_harvester_module)
@@ -71,6 +71,9 @@ void* wm_inventory_harvester_main(__attribute__((unused))wm_inventory_harvester_
             {
                 cJSON_AddItemToObject(config_json, "indexer", cJSON_Duplicate(indexer_config, TRUE));
             }
+
+            cJSON_AddNumberToObject(
+                config_json, "minimumSyncTime", getDefine_Int("indexer-connector", "min_sync_time", 1, 100000));
 
             /* Add cluster name to vulnerability detection configurations
              * If the cluster is enabled, the cluster name is the cluster name read from the configuration file.

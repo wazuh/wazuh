@@ -19,6 +19,7 @@
 #include <string>
 
 constexpr auto UNKNOWN_VALUE {" "};
+constexpr auto MINIMUM_SYNC_TIME {30};
 constexpr auto STATES_INDEX_NAME_PREFIX {"wazuh-states-"};
 
 enum class InventoryType : std::uint8_t
@@ -126,6 +127,10 @@ private:
         {
             newPolicy["clusterEnabled"] = false;
         }
+        if (!newPolicy.contains("minimumSyncTime"))
+        {
+            newPolicy["minimumSyncTime"] = MINIMUM_SYNC_TIME;
+        }
 
         return newPolicy;
     }
@@ -229,6 +234,16 @@ public:
     const nlohmann::json& getIndexerConfiguration() const
     {
         return m_configuration.at("indexer");
+    }
+
+    /**
+     * @brief Get minimum sync time.
+     *
+     * @return uint32_t minimum sync time.
+     */
+    uint32_t getMinimumSyncTime() const
+    {
+        return m_configuration.at("minimumSyncTime").get<uint32_t>();
     }
 
     /**
