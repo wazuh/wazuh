@@ -142,7 +142,11 @@ public:
         }
 
         // Create new session.
-        if (data->size() == 0)
+        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck don't send data messages, so size can
+        // be 0
+        if (data->size() == 0 && data->mode() != Wazuh::SyncSchema::Mode_MetadataDelta &&
+            data->mode() != Wazuh::SyncSchema::Mode_MetadataCheck &&
+            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck)
         {
             responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
             throw AgentSessionException("Invalid size");
