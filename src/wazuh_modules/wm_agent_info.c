@@ -90,7 +90,7 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
                                           .start = (wm_routine)wm_agent_info_main,
                                           .destroy = (void (*)(void*))wm_agent_info_destroy,
                                           .dump = (cJSON * (*)(const void*)) wm_agent_info_dump,
-                                          .sync = wm_agent_info_sync_message,
+                                          .sync = (int(*)(const char*, size_t)) wm_agent_info_sync_message,
                                           .stop = (void (*)(void*))wm_agent_info_stop,
                                           .query = NULL};
 
