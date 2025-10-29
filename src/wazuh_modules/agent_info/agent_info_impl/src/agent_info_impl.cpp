@@ -272,12 +272,6 @@ void AgentInfoImpl::populateAgentMetadata()
     // Calculate checksum
     agentMetadata["checksum"] = calculateMetadataChecksum(agentMetadata);
 
-    // Update agent metadata using dbsync to detect changes and emit events
-    updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
-
-    auto logMsg = std::string("Agent metadata populated successfully");
-    m_logFunction(LOG_DEBUG, logMsg);
-
     // Read agent groups from merged.mg (only for agents)
     std::vector<std::string> groups;
 
@@ -285,20 +279,6 @@ void AgentInfoImpl::populateAgentMetadata()
     {
         groups = readAgentGroups();
     }
-
-    // Always update agent groups in database (even if empty, to clear old groups)
-    auto groupsData = nlohmann::json::array();
-
-    for (const auto& group : groups)
-    {
-        nlohmann::json groupEntry;
-        groupEntry["agent_id"] = agentId;
-        groupEntry["group_name"] = group;
-        groupsData.push_back(groupEntry);
-    }
-
-    // Update agent groups using dbsync to detect changes and emit events
-    updateChanges(AGENT_GROUPS_TABLE, groupsData);
 
     std::string groupLogMsg;
 
@@ -313,8 +293,29 @@ void AgentInfoImpl::populateAgentMetadata()
 
     m_logFunction(LOG_DEBUG, groupLogMsg);
 
-    // Update the global metadata provider
+    // Update the global metadata provider BEFORE updateChanges
+    // This ensures the metadata is available when syncProtocol is triggered
     updateMetadataProvider(agentMetadata, groups);
+
+    // Update agent metadata using dbsync to detect changes and emit events
+    updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
+
+    auto logMsg = std::string("Agent metadata populated successfully");
+    m_logFunction(LOG_DEBUG, logMsg);
+
+    // Always update agent groups in database (even if empty, to clear old groups)
+    auto groupsData = nlohmann::json::array();
+
+    for (const auto& group : groups)
+    {
+        nlohmann::json groupEntry;
+        groupEntry["agent_id"] = agentId;
+        groupEntry["group_name"] = group;
+        groupsData.push_back(groupEntry);
+    }
+
+    // Update agent groups using dbsync to detect changes and emit events
+    updateChanges(AGENT_GROUPS_TABLE, groupsData);
 }
 
 void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups)
