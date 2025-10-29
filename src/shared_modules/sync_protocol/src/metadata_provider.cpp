@@ -85,7 +85,6 @@ namespace
                     std::strncpy(m_metadata.os_distribution_release, metadata->os_distribution_release, sizeof(m_metadata.os_distribution_release) - 1);
                     std::strncpy(m_metadata.os_full, metadata->os_full, sizeof(m_metadata.os_full) - 1);
                     std::strncpy(m_metadata.checksum_metadata, metadata->checksum_metadata, sizeof(m_metadata.checksum_metadata) - 1);
-                    m_metadata.global_version = metadata->global_version;
 
                     // Free old groups
                     freeGroups();
@@ -164,7 +163,6 @@ namespace
                 std::strncpy(out_metadata->os_distribution_release, m_metadata.os_distribution_release, sizeof(out_metadata->os_distribution_release) - 1);
                 std::strncpy(out_metadata->os_full, m_metadata.os_full, sizeof(out_metadata->os_full) - 1);
                 std::strncpy(out_metadata->checksum_metadata, m_metadata.checksum_metadata, sizeof(out_metadata->checksum_metadata) - 1);
-                out_metadata->global_version = m_metadata.global_version;
 
                 // Copy groups
                 if (m_metadata.groups_count > 0 && m_metadata.groups)

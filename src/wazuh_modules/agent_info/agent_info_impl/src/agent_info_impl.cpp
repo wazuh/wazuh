@@ -344,9 +344,6 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_full, sizeof(metadata.os_full), agentMetadata, "host_os_full");
     copyField(metadata.checksum_metadata, sizeof(metadata.checksum_metadata), agentMetadata, "checksum");
 
-    // Set global version (hardcoded for now, can be made dynamic)
-    metadata.global_version = 1000;
-
     // Copy groups
     if (!groups.empty())
     {

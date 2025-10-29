@@ -60,7 +60,6 @@ class AgentSyncProtocolTest : public ::testing::Test
             strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
             strncpy(metadata.os_distribution_release, "focal", sizeof(metadata.os_distribution_release) - 1);
             strncpy(metadata.os_full, "20.04 LTS", sizeof(metadata.os_full) - 1);
-            metadata.global_version = 1;
             metadata.groups = nullptr;
             metadata.groups_count = 0;
             metadata_provider_update(&metadata);

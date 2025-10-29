@@ -45,7 +45,6 @@ protected:
         std::strncpy(metadata.os_distribution_release, "jammy", sizeof(metadata.os_distribution_release) - 1);
         std::strncpy(metadata.os_full, "22.04 LTS", sizeof(metadata.os_full) - 1);
         std::strncpy(metadata.checksum_metadata, "abc123", sizeof(metadata.checksum_metadata) - 1);
-        metadata.global_version = 1000;
         metadata.groups = nullptr;
         metadata.groups_count = 0;
         return metadata;
@@ -92,7 +91,6 @@ TEST_F(MetadataProviderTest, GetMetadataAfterUpdate)
     EXPECT_STREQ(retrieved.os_distribution_release, "jammy");
     EXPECT_STREQ(retrieved.os_full, "22.04 LTS");
     EXPECT_STREQ(retrieved.checksum_metadata, "abc123");
-    EXPECT_EQ(retrieved.global_version, 1000);
     EXPECT_EQ(retrieved.groups_count, 0);
     EXPECT_EQ(retrieved.groups, nullptr);
 }
@@ -157,7 +155,6 @@ TEST_F(MetadataProviderTest, MultipleUpdates)
     agent_metadata_t metadata2 = createSampleMetadata();
     std::strncpy(metadata2.agent_id, "002", sizeof(metadata2.agent_id) - 1);
     std::strncpy(metadata2.hostname, "updated_host", sizeof(metadata2.hostname) - 1);
-    metadata2.global_version = 2000;
 
     ASSERT_EQ(metadata_provider_update(&metadata2), 0);
 
@@ -167,7 +164,6 @@ TEST_F(MetadataProviderTest, MultipleUpdates)
     // Should have the updated values
     EXPECT_STREQ(retrieved.agent_id, "002");
     EXPECT_STREQ(retrieved.hostname, "updated_host");
-    EXPECT_EQ(retrieved.global_version, 2000);
 }
 
 // Test free metadata with groups
