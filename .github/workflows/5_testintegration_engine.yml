@@ -19,7 +19,7 @@ jobs:
     name: Build Server
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Install CMake
         uses: ./.github/actions/reinstall_cmake
@@ -30,13 +30,13 @@ jobs:
           make -C src TARGET=server -j$(nproc)
 
       - name: Upload engine binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wazuh-engine
           path: src/build/engine/wazuh-engine
 
       - name: Upload wazuh shared libraries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wazuh-shared-libraries
           path: |
@@ -46,7 +46,7 @@ jobs:
             src/build/shared_modules/content_manager/libcontent_manager.so
 
       - name: Upload rocksdb shared libraries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rocksdb-shared-library
           path: |
@@ -65,28 +65,28 @@ jobs:
 
     steps:
     - name: Checkout Repo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: Download engine binary
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: wazuh-engine
         path: src/build/engine/
 
     - name: Download rocksdb shared libraries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: rocksdb-shared-library
         path: src/external/rocksdb/build/
 
     - name: Download wazuh shared libraries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: wazuh-shared-libraries
         path: src/
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: 3.12
 
@@ -131,28 +131,28 @@ jobs:
 
     steps:
     - name: Checkout Repo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: Download engine binary
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: wazuh-engine
         path: src/build/engine/
 
     - name: Download rocksdb shared libraries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: rocksdb-shared-library
         path: src/external/rocksdb/build/
 
     - name: Download wazuh shared libraries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: wazuh-shared-libraries
         path: src/
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: 3.12
 

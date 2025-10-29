@@ -24,10 +24,10 @@ jobs:
           skip_after_successful_duplicate: 'false'
 
       - name: Checkout wazuh/wazuh repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Get changed files
-        uses: dorny/paths-filter@v2
+        uses: dorny/paths-filter@v3
         id: changes
         with:
           filters: |

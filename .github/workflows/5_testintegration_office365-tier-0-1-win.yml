@@ -23,7 +23,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       # Install wingw required to build the winagent.
       - name: Install dependencies
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
@@ -44,7 +44,7 @@ jobs:
           cp ../wazuh.zip src/winagent/wazuh.zip
       # Upload build artifacts.
       - name: Upload Artifact winagent
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: winagent
           path: src/winagent
@@ -57,9 +57,9 @@ jobs:
     runs-on: windows-2025
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
@@ -68,7 +68,7 @@ jobs:
         run: echo "${WIX}bin" >> $GITHUB_PATH
       # Download the compressed winagent build.
       - name: Download Artifact winagent
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: winagent
           path: C:\winagent\

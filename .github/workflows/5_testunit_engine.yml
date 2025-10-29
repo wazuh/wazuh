@@ -20,7 +20,7 @@ jobs:
     name: Build Server
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install CMake
         uses: ./.github/actions/reinstall_cmake
@@ -53,7 +53,7 @@ jobs:
 
       - name: Upload ASAN/LSAN logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sanitizer-logs
           path: |

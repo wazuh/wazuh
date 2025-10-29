@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Generate dynamic matrix
         id: set-matrix
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const targets = '${{ inputs.targets || 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64' }}'.split(',');

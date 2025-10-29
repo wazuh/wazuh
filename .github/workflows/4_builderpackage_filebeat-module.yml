@@ -47,14 +47,14 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_after_successful_duplicate: 'false'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set package name
         run: |
           echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ inputs.revision }}.tar.gz" >> $GITHUB_ENV
 
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}

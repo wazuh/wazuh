@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -44,7 +44,7 @@ jobs:
       # Upload log files of the tests
       - name: Upload log files
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: QA log files
           path: ${{ github.workspace }}/qa_logs

@@ -117,7 +117,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_after_successful_duplicate: "false"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set ARCH and PACKAGE_ARCH
         run: |
@@ -344,7 +344,7 @@ jobs:
 
       - name: Upload package to GitHub
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ env.PACKAGE_NAME }}
           path: /tmp/${{ env.PACKAGE_NAME }}
@@ -352,7 +352,7 @@ jobs:
 
       - name: Upload debug symbols to GitHub
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
@@ -360,7 +360,7 @@ jobs:
 
       - name: Set up AWS CLI
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}

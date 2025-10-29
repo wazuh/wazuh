@@ -16,7 +16,7 @@ jobs:
       description: ${{ steps.vars.outputs.DESCRIPTION }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
@@ -48,7 +48,7 @@ jobs:
       packages: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
@@ -78,7 +78,7 @@ jobs:
         run: tar czf wazuh.tgz cov-int
 
       - name: Upload Coverity artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wazuh.tgz
           path: wazuh.tgz
@@ -88,12 +88,12 @@ jobs:
     needs: [prepare, build]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
       - name: Download Coverity artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: wazuh.tgz
 
