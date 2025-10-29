@@ -5,7 +5,7 @@ project(utils)
 enable_testing()
 
 if (NOT ${TARGET} STREQUAL "")
-  if (${TARGET} STREQUAL "server")
+  if (${TARGET} STREQUAL "server" OR ${TARGET} STREQUAL "local")
       set(CMAKE_CXX_STANDARD 17)
       set(CMAKE_CXX_STANDARD_REQUIRED ON)
       add_subdirectory(flatbuffers)

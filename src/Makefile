@@ -414,7 +414,7 @@ else
 	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
 endif
 
-ifeq (${TARGET},server)
+ifeq ($(filter ${TARGET},server local),${TARGET})
 	WAZUH_LIBS+=-lrouter
 	WAZUH_LDFLAGS+=-Lbuild/shared_modules/router
 endif
@@ -814,7 +814,7 @@ BUILD_AGENT+=wazuh-modulesd
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
-ifeq (${TARGET},server)
+ifeq ($(filter ${TARGET},server local),${TARGET})
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 endif
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -967,7 +967,7 @@ else ifeq (${uname_S},Darwin)
 endif
 
 # Adding libraries only for server
-ifeq (${TARGET},server)
+ifeq ($(filter ${TARGET},server local),${TARGET})
 	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB) $(SIMDJSON_LIB)
 	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
