@@ -110,13 +110,13 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
         if (msg.find("Agent metadata populated successfully") != std::string::npos)
         {
             foundMetadataLog = true;
-            EXPECT_EQ(level, LOG_INFO);
+            EXPECT_EQ(level, LOG_DEBUG);
         }
 
         if (msg.find("Agent groups populated successfully") != std::string::npos)
         {
             foundGroupsLog = true;
-            EXPECT_EQ(level, LOG_INFO);
+            EXPECT_EQ(level, LOG_DEBUG);
         }
     }
 
