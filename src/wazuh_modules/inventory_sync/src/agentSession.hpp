@@ -128,6 +128,19 @@ public:
             }
         }
 
+        // Extract indices
+        std::vector<std::string> indices;
+        if (data->index())
+        {
+            for (const auto* index : *data->index())
+            {
+                if (index)
+                {
+                    indices.emplace_back(index->str());
+                }
+            }
+        }
+
         // Create new session.
         if (data->size() == 0)
         {
@@ -142,6 +155,7 @@ public:
                                                .option = data->option(),
                                                .sessionId = sessionId,
                                                .moduleName = std::string(moduleName.data(), moduleName.size()),
+                                               .indices = std::move(indices),
                                                .agentId = std::move(agentIdString),
                                                .agentName = std::string(agentName.data(), agentName.size()),
                                                .agentVersion = std::string(agentVersion.data(), agentVersion.size()),

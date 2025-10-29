@@ -376,8 +376,14 @@ public:
                         // Send delete by query to indexer if mode is full.
                         if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
                         {
-                            logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting by query...");
-                            m_indexerConnector->deleteByQuery(res.context->moduleName, res.context->agentId);
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Deleting by query for %zu indices...",
+                                      res.context->indices.size());
+                            // Delete from all indices specified in the Start message
+                            for (const auto& index : res.context->indices)
+                            {
+                                m_indexerConnector->deleteByQuery(index, res.context->agentId);
+                            }
                         }
 
                         const auto prefix = std::format("{}_", res.context->sessionId);

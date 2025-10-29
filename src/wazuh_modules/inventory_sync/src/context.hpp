@@ -23,6 +23,7 @@ struct Context final
     Wazuh::SyncSchema::Option option;
     uint64_t sessionId;
     std::string moduleName;
+    std::vector<std::string> indices;
     std::string agentId;
     std::string agentName;
     std::string agentVersion;
