@@ -262,7 +262,7 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
 
     // Database synchronization config values
     agent_info->sync.enable_synchronization = 1;
-    agent_info->sync.sync_response_timeout = 10;
+    agent_info->sync.sync_response_timeout = 60;
     agent_info->sync.sync_retries = 1;
     agent_info->sync.sync_max_eps = 10;
 
