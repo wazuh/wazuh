@@ -118,7 +118,9 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeValue(R"("value")")}, opBuilderHelperEraseCustomFields, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperEraseCustomFields, FAILURE()),
         /*** Sanitize Fields ***/
+        TransformT({}, opBuilderHelperSanitizeFields, SUCCESS()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue("true")}, opBuilderHelperSanitizeFields, SUCCESS()),
         TransformT({makeRef("ref")}, opBuilderHelperSanitizeFields, FAILURE())),
     testNameFormatter<TransformBuilderTest>("JsonTransform"));
 } // namespace transformbuildtest
@@ -632,7 +634,7 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT(R"({"target":{"a":{"B-C":{"D E":1}}}})",
                    opBuilderHelperSanitizeFields,
                    "target",
-                   {},
+                   {makeValue("true")},
                    SUCCESS(makeEvent(R"({"target":{"a":{"b_c":{"d_e":1}}}})"))),
         TransformT(R"({"target":{"a":{"X Y":1},"b":{"Z W":2}}})",
                    opBuilderHelperSanitizeFields,

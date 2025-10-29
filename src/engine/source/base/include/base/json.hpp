@@ -882,11 +882,15 @@ public:
 
         const rapidjson::Pointer pp(path.data(), static_cast<rapidjson::SizeType>(path.size()));
         if (!pp.IsValid())
+        {
             throw std::runtime_error(fmt::format("Invalid pointer path '{}'", std::string(path)));
+        }
 
         auto* node = const_cast<rapidjson::Value*>(pp.Get(m_document));
         if (!node)
+        {
             throw std::runtime_error(fmt::format("Path '{}' not found", std::string(path)));
+        }
 
         auto& alloc = m_document.GetAllocator();
 
@@ -933,7 +937,9 @@ public:
             {
                 const auto count = v.MemberCount();
                 if (count == 0)
+                {
                     return false;
+                }
 
                 // Transform keys and check for collisions (without writing yet)
                 std::vector<std::string_view> oldNames;
@@ -950,7 +956,9 @@ public:
 
                     const auto out = apply_to_scratch(oldName);
                     if (out.empty())
+                    {
                         throw std::runtime_error(fmt::format("Sanitized key for '{}' is empty.", std::string(oldName)));
+                    }
 
                     newNames.emplace_back(out.data(), out.size());
 
@@ -1001,7 +1009,9 @@ public:
             {
                 const auto n = v.Size();
                 if (n == 0)
+                {
                     return false;
+                }
 
                 for (rapidjson::SizeType i = 0; i < n; ++i)
                 {
@@ -1015,8 +1025,11 @@ public:
                             std::string_view sv(el.GetString(), el.GetStringLength());
                             const auto out = apply_to_scratch(sv);
                             if (out.empty())
+                            {
                                 throw std::runtime_error(fmt::format("Sanitized string at array index {} became empty",
                                                                      static_cast<size_t>(i)));
+                            }
+
                             if (!bytes_equal(out, sv))
                             {
                                 stringEdits.push_back(StringEdit {&el, std::string(out.data(), out.size())});
@@ -1046,7 +1059,10 @@ public:
                 std::string_view sv(v.GetString(), v.GetStringLength());
                 const auto out = apply_to_scratch(sv);
                 if (out.empty())
+                {
                     throw std::runtime_error("Sanitized string became empty.");
+                }
+
                 if (!bytes_equal(out, sv))
                 {
                     stringEdits.push_back(StringEdit {&v, std::string(out.data(), out.size())});
@@ -1064,13 +1080,19 @@ public:
         // PRE: if launched, nothing is written (atomicity)
         bool changed = preflight(preflight, *node, /*array_is_obj_value=*/false);
         if (!changed)
+        {
             return false;
+        }
 
         for (auto& k : keyEdits)
+        {
             k.name->SetString(k.text.c_str(), static_cast<rapidjson::SizeType>(k.text.size()), alloc);
+        }
 
         for (auto& s : stringEdits)
+        {
             s.v->SetString(s.text.c_str(), static_cast<rapidjson::SizeType>(s.text.size()), alloc);
+        }
 
         return true;
     }
