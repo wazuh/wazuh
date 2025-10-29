@@ -8,20 +8,63 @@ from datetime import datetime
 import re
 
 
-def is_valid_date(value):
+def _is_numeric_string_timestamp(value: str) -> bool:
+    """Return True if value is a plain integer string (optional sign)."""
+    if not isinstance(value, str):
+        return False
+    trimmed = value.strip()
+    return bool(trimmed) and re.fullmatch(r"[+-]?\d+", trimmed) is not None
+
+
+def is_valid_temporal_field(value, *, accept_numeric_string: bool, max_fraction_digits: int) -> bool:
+    """
+    Shared validator for date/date_nanos.
+    Accepts ints, optional numeric strings (when enabled), and ISO-8601 strings with bounded fraction length.
+    """
+    if isinstance(value, int) and not isinstance(value, bool):
+        return True
+
+    if accept_numeric_string and _is_numeric_string_timestamp(value):
+        return True
+
+    if not isinstance(value, str):
+        return False
+
+    candidate = value.strip()
+    iso_timestamp_match = re.fullmatch(
+        r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?([Zz]|[+-]\d{2}:\d{2}|[+-]\d{4})?",
+        candidate
+    )
+    if not iso_timestamp_match:
+        return False
+
+    base, fraction, tz = iso_timestamp_match.groups()
+    tz = tz or "Z"
+    if tz and len(tz) == 5 and tz[0] in '+-' and ':' not in tz:
+        tz = f"{tz[:3]}:{tz[3:]}"
+    if fraction and len(fraction) > max_fraction_digits:
+        return False
+
+    # Normalize to microsecond precision just for parsing (we don't mutate the original value).
+    normalized_fraction = (fraction or "")
+    if normalized_fraction:
+        normalized_fraction = (normalized_fraction + "000000")[:6]
+        normalized = f"{base}.{normalized_fraction}{tz}"
+    else:
+        normalized = f"{base}{tz}"
+
     try:
-        # Normalizes microseconds to 6 digits
-        match = re.match(r"(.*\.\d+)(\+.*|Z)?", value)
-        if match:
-            dt_part, tz_part = match.groups()
-            if '.' in dt_part:
-                base, frac = dt_part.split('.')
-                frac = (frac + "000000")[:6]  # padded or truncated to 6 digits
-                value = base + '.' + frac + (tz_part or '')
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        datetime.fromisoformat(normalized.replace("Z", "+00:00").replace("z", "+00:00"))
         return True
     except ValueError:
         return False
+
+
+def is_valid_date(value):
+    return is_valid_temporal_field(value, accept_numeric_string=True, max_fraction_digits=9)
+
+
+is_valid_date_nanos = is_valid_date
 
 
 def is_valid_ip(value):
@@ -74,8 +117,11 @@ def get_validation_function(field_type):
     if field_type == 'boolean':
         return lambda v: isinstance(v, bool)
 
-    if field_type in {'date', 'date_nanos'}:
+    if field_type == 'date':
         return is_valid_date
+
+    if field_type == 'date_nanos':
+        return is_valid_date_nanos
 
     if field_type == 'geo_point':
 
@@ -339,9 +385,23 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
                 if ftype in {'object', 'flattened'} and isinstance(el, dict) and not el:
                     reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
 
-                if not validate_fn(el):
+                try:
+                    is_valid_element = validate_fn(el)
+                except TypeError:
+                    is_valid_element = False
+
+                if not is_valid_element:
                     got_t = infer_type_name_for_error(el, ftype)
-                    add_err(f"Field '{field}' array element type mismatch: expected '{ftype}', got '{got_t}' (value={repr(el)})")
+                    if ftype in {'date', 'date_nanos'}:
+                        add_err(
+                            f"Field '{field}' declared as '{ftype}' has incompatible scalar value "
+                            f"got '{got_t}' (value={repr(el)})"
+                        )
+                    else:
+                        add_err(
+                            f"Field '{field}' array element type mismatch: expected '{ftype}', "
+                            f"got '{got_t}' (value={repr(el)})"
+                        )
                     is_valid = False
         return is_valid
 
@@ -370,9 +430,23 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
         if ftype in {'object', 'flattened'} and isinstance(value, dict) and not value:
             reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
 
-        if not validate_fn(value):
+        try:
+            is_valid_value = validate_fn(value)
+        except TypeError:
+            is_valid_value = False
+
+        if not is_valid_value:
             got_t = infer_type_name_for_error(value, ftype)
-            add_err(f"Field '{field}' declared as '{ftype}' has incompatible scalar value (got type '{got_t}', value={repr(value)})")
+            if ftype in {'date', 'date_nanos'}:
+                add_err(
+                    f"Field '{field}' declared as '{ftype}' has incompatible scalar value "
+                    f"got '{got_t}' (value={repr(value)})"
+                )
+            else:
+                add_err(
+                    f"Field '{field}' declared as '{ftype}' has incompatible scalar value "
+                    f"(got type '{got_t}', value={repr(value)})"
+                )
             return False
         return True
 
@@ -498,6 +572,8 @@ def verify(schema, integration: Path, reporter):
 
     fields_info = schema_data.get("fields", {})
     allowed_custom_fields_type = {field_info.get("type") for field_info in fields_info.values()}
+    allowed_custom_fields_type.discard(None)
+    allowed_custom_fields_type.update({'date', 'date_nanos'})
     schema_field_names = set(fields_info.keys())
     schema_field_types = {k: v.get("type") for k, v in fields_info.items()}
 
