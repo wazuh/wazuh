@@ -96,6 +96,8 @@ TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)
     data["host_os_type"] = "Linux";
     data["host_os_platform"] = "ubuntu";
     data["host_os_version"] = "22.04";
+    data["host_os_distribution_release"] = "jammy";
+    data["host_os_full"] = "22.04 LTS";
     data["checksum"] = "abc123";
 
     nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_metadata");

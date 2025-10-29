@@ -82,6 +82,8 @@ namespace
                     std::strncpy(m_metadata.os_type, metadata->os_type, sizeof(m_metadata.os_type) - 1);
                     std::strncpy(m_metadata.os_platform, metadata->os_platform, sizeof(m_metadata.os_platform) - 1);
                     std::strncpy(m_metadata.os_version, metadata->os_version, sizeof(m_metadata.os_version) - 1);
+                    std::strncpy(m_metadata.os_distribution_release, metadata->os_distribution_release, sizeof(m_metadata.os_distribution_release) - 1);
+                    std::strncpy(m_metadata.os_full, metadata->os_full, sizeof(m_metadata.os_full) - 1);
                     std::strncpy(m_metadata.checksum_metadata, metadata->checksum_metadata, sizeof(m_metadata.checksum_metadata) - 1);
                     m_metadata.global_version = metadata->global_version;
 
@@ -159,6 +161,8 @@ namespace
                 std::strncpy(out_metadata->os_type, m_metadata.os_type, sizeof(out_metadata->os_type) - 1);
                 std::strncpy(out_metadata->os_platform, m_metadata.os_platform, sizeof(out_metadata->os_platform) - 1);
                 std::strncpy(out_metadata->os_version, m_metadata.os_version, sizeof(out_metadata->os_version) - 1);
+                std::strncpy(out_metadata->os_distribution_release, m_metadata.os_distribution_release, sizeof(out_metadata->os_distribution_release) - 1);
+                std::strncpy(out_metadata->os_full, m_metadata.os_full, sizeof(out_metadata->os_full) - 1);
                 std::strncpy(out_metadata->checksum_metadata, m_metadata.checksum_metadata, sizeof(out_metadata->checksum_metadata) - 1);
                 out_metadata->global_version = m_metadata.global_version;
 

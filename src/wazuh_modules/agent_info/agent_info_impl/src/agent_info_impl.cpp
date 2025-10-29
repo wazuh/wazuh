@@ -39,16 +39,18 @@ static const std::map<std::string, Mode> TABLE_MODE_MAP
 
 const char* AGENT_METADATA_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_metadata ("
-    "agent_id          TEXT NOT NULL PRIMARY KEY,"
-    "agent_name        TEXT,"
-    "agent_version     TEXT,"
-    "host_architecture TEXT,"
-    "host_hostname     TEXT,"
-    "host_os_name      TEXT,"
-    "host_os_type      TEXT,"
-    "host_os_platform  TEXT,"
-    "host_os_version   TEXT,"
-    "checksum          TEXT NOT NULL);";
+    "agent_id                   TEXT NOT NULL PRIMARY KEY,"
+    "agent_name                 TEXT,"
+    "agent_version              TEXT,"
+    "host_architecture          TEXT,"
+    "host_hostname              TEXT,"
+    "host_os_name               TEXT,"
+    "host_os_type               TEXT,"
+    "host_os_platform           TEXT,"
+    "host_os_version            TEXT,"
+    "host_os_distribution_release TEXT,"
+    "host_os_full               TEXT,"
+    "checksum                   TEXT NOT NULL);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -257,6 +259,16 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["host_os_version"] = osInfo["os_version"];
     }
 
+    if (osInfo.contains("os_distribution_release"))
+    {
+        agentMetadata["host_os_distribution_release"] = osInfo["os_distribution_release"];
+    }
+
+    if (osInfo.contains("os_full"))
+    {
+        agentMetadata["host_os_full"] = osInfo["os_full"];
+    }
+
     // Calculate checksum
     agentMetadata["checksum"] = calculateMetadataChecksum(agentMetadata);
 
@@ -328,6 +340,8 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_type, sizeof(metadata.os_type), agentMetadata, "host_os_type");
     copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
+    copyField(metadata.os_distribution_release, sizeof(metadata.os_distribution_release), agentMetadata, "host_os_distribution_release");
+    copyField(metadata.os_full, sizeof(metadata.os_full), agentMetadata, "host_os_full");
     copyField(metadata.checksum_metadata, sizeof(metadata.checksum_metadata), agentMetadata, "checksum");
 
     // Set global version (hardcoded for now, can be made dynamic)
@@ -571,7 +585,8 @@ std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metad
     {
         "agent_id", "agent_name", "agent_version",
         "host_architecture", "host_hostname",
-        "host_os_name", "host_os_type", "host_os_platform", "host_os_version"
+        "host_os_name", "host_os_type", "host_os_platform", "host_os_version",
+        "host_os_distribution_release", "host_os_full"
     };
 
     for (const auto& field : fields)
