@@ -51,7 +51,7 @@ class AgentInfoImplTest : public ::testing::Test
             m_mockDBSync.reset();
         }
 
-        std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
+        std::shared_ptr<MockDBSync> m_mockDBSync = nullptr;
         std::shared_ptr<AgentInfoImpl> m_agentInfo = nullptr;
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
         std::string m_logOutput;
@@ -179,6 +179,10 @@ TEST_F(AgentInfoImplTest, ConstructorWithDefaultDependenciesSucceeds)
 TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
 {
     m_logOutput.clear();
+
+    // Mock handle() to return nullptr - updateChanges will catch exceptions
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
 
     // Use atomic flag to ensure thread synchronization
     std::atomic<bool> startedFirstIteration{false};
