@@ -114,7 +114,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->queue_size                      = 16384;
 #endif
     syscheck->sync_interval                   = 300;
-    syscheck->sync_response_timeout           = 30;
+    syscheck->sync_response_timeout           = 60;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 50;
     syscheck->notify_first_scan               = 0; // Default value, no notification on first scan

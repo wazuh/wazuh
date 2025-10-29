@@ -105,7 +105,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         // Database synchronization config values
         syscollector->sync.enable_synchronization = 1;
         syscollector->sync.sync_interval = 300;
-        syscollector->sync.sync_response_timeout = 30;
+        syscollector->sync.sync_response_timeout = 60;
         syscollector->sync.sync_max_eps = 10;
 
         syscollector->max_eps = 50;
