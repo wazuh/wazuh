@@ -50,7 +50,6 @@
 #define mdebug2(msg, ...) _mtdebug2(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 // XML configuration constants
-static const char* XML_ENABLED = "enabled";
 static const char* XML_INTERVAL = "interval";
 static const char* XML_SYNC = "synchronization";
 
@@ -289,10 +288,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
             merror(XML_ELEMNULL);
             return OS_INVALID;
         }
-        else if (!strcmp(nodes[i]->element, XML_ENABLED))
-        {
-            mwarn("The 'enabled' option for agent-info is ignored. Agent-info is always enabled.");
-        }
         else if (!strcmp(nodes[i]->element, XML_INTERVAL))
         {
             char* end;
@@ -479,13 +474,8 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
     cJSON* root = cJSON_CreateObject();
     cJSON* wm_agent_info = cJSON_CreateObject();
 
-    if (!agent_info)
+    if (agent_info)
     {
-        cJSON_AddStringToObject(wm_agent_info, "enabled", "yes");  // Always enabled
-    }
-    else
-    {
-        cJSON_AddStringToObject(wm_agent_info, "enabled", "yes");  // Always enabled
         cJSON_AddNumberToObject(wm_agent_info, "interval", agent_info->interval);
 
         // Database synchronization values
