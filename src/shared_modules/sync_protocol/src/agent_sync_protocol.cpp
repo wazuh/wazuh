@@ -509,6 +509,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_agentid(agentid);
         startBuilder.add_groups(groups);
         startBuilder.add_checksum_metadata(checksum_metadata);
+        startBuilder.add_global_version(1);
 
         auto startOffset = startBuilder.Finish();
 
