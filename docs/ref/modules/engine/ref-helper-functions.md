@@ -16773,8 +16773,15 @@ normalize:
 
 ```
 
-field: sanitize_fields()
+field: sanitize_fields(recursive)
 ```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| recursive | boolean | value | Any string |
+
 
 ## Target Field
 
@@ -16785,10 +16792,19 @@ field: sanitize_fields()
 
 ## Description
 
-Normalize object keys, standalone strings, and strings inside arrays using basicNormalize:
-lowercase ASCII, separators (space, '/', '.', '-', '\', ':') collapsed to a single '_',
-trailing '_' trimmed, and non [a-z0-9_] characters dropped.
-Fails on empty sanitized keys or key collisions. Values other than strings are not modified.
+Normalize JSON object keys, nested object keys, standalone strings, and strings inside arrays using `basicNormalize`.
+
+### Behavior:
+- **Object keys** are sanitized: all keys in the object are normalized.
+- **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized.
+- **Arrays**:
+  - Arrays that are **not values of JSON object keys** are processed element-wise.
+  - Elements can be:
+    - **Strings:** normalized individually.
+    - **Objects:** their keys are sanitized.
+    - **Nested arrays:** processed recursively if `recursive` is true.
+  - Arrays containing unsupported primitives (numbers, booleans, null) cause failure.
+- **Standalone strings** (when `target_field` is a string node) are normalized directly.
 
 
 ## Keywords
@@ -16810,7 +16826,7 @@ Keys already normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -16846,7 +16862,7 @@ Keys lowercased and separators mapped to underscores
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -16884,7 +16900,7 @@ Both map to 'hello_world' -> collision
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -16917,7 +16933,7 @@ basicNormalize does not prefix underscores for leading digits
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -16953,7 +16969,7 @@ Strings in arrays normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -16991,7 +17007,7 @@ Object keys inside arrays normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17035,7 +17051,7 @@ Mixed string/object array supported
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17075,7 +17091,7 @@ Numbers in arrays not allowed by policy
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17110,7 +17126,7 @@ Booleans in arrays not allowed by policy
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17145,7 +17161,7 @@ Nulls in arrays not allowed by policy
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17180,7 +17196,7 @@ Nested arrays/objects processed recursively
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17230,7 +17246,7 @@ Deep object keys normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(True)
 ```
 
 #### Input Event
@@ -17272,7 +17288,7 @@ Duplicated normalized strings in arrays are allowed
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17310,7 +17326,7 @@ All characters dropped -> empty key is invalid
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17342,7 +17358,7 @@ Mixed '\\', '/', ':', spaces collapse to single underscores
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17376,7 +17392,7 @@ Trailing ':' produces '_' then it is trimmed at the end
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17410,7 +17426,7 @@ All characters are separators; normalized key becomes empty
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17442,7 +17458,7 @@ Backslash and colon in strings become underscores
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17478,7 +17494,7 @@ Single string node normalized directly
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event
@@ -17508,7 +17524,7 @@ Only separators -> sanitized string becomes empty
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields()
+      - target_field: sanitize_fields(False)
 ```
 
 #### Input Event

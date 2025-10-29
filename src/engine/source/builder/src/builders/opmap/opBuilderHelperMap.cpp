@@ -2002,7 +2002,22 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 0);
+    builder::builders::utils::assertSize(opArgs, 0, 1);
+
+    // default operation
+    auto op = false;
+    if (opArgs.size() > 0)
+    {
+        builder::builders::utils::assertValue(opArgs, 0);
+
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isBool())
+        {
+            throw std::runtime_error(fmt::format("Expected 'bool' parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+
+        op = std::static_pointer_cast<Value>(opArgs[0])->value().getBool().value();
+    }
 
     const auto name = buildCtx->context().opName;
 
@@ -2010,12 +2025,12 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
     // Return Op
-    return [runState = buildCtx->runState(), targetField = targetField.jsonPath(), successTrace, name](
+    return [runState = buildCtx->runState(), targetField = targetField.jsonPath(), successTrace, name, op](
                base::Event event) -> TransformResult
     {
         try
         {
-            event->renameIfKey(&sanitizer::basicNormalize, true, targetField);
+            event->renameIfKey(&sanitizer::basicNormalize, op, targetField);
             RETURN_SUCCESS(runState, event, successTrace);
         }
         catch (const std::exception& e)
