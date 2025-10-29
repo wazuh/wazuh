@@ -20,14 +20,14 @@ class MetadataProviderTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        // Initialize provider before each test
-        metadata_provider_init();
+        // Reset provider before each test to ensure test isolation
+        metadata_provider_reset();
     }
 
     void TearDown() override
     {
-        // Shutdown provider after each test
-        metadata_provider_shutdown();
+        // Reset provider after each test
+        metadata_provider_reset();
     }
 
     // Helper to create sample metadata
@@ -50,13 +50,6 @@ protected:
         return metadata;
     }
 };
-
-// Test initialization
-TEST_F(MetadataProviderTest, InitializeProvider)
-{
-    // Should succeed (already initialized in SetUp)
-    EXPECT_EQ(metadata_provider_init(), 0);
-}
 
 // Test update with valid metadata
 TEST_F(MetadataProviderTest, UpdateValidMetadata)
@@ -200,123 +193,6 @@ TEST_F(MetadataProviderTest, FreeMetadataWithoutGroups)
 
     // Should not crash
     metadata_provider_free_metadata(&metadata);
-}
-
-// Test callback registration
-TEST_F(MetadataProviderTest, RegisterCallback)
-{
-    bool callback_called = false;
-
-    auto callback = [](const agent_metadata_t* metadata, void* user_data) {
-        bool* called = static_cast<bool*>(user_data);
-        *called = true;
-    };
-
-    int callback_id = metadata_provider_register_callback(callback, &callback_called);
-    EXPECT_GE(callback_id, 0);
-
-    agent_metadata_t metadata = createSampleMetadata();
-    ASSERT_EQ(metadata_provider_update(&metadata), 0);
-
-    EXPECT_TRUE(callback_called);
-
-    // Clean up
-    EXPECT_EQ(metadata_provider_unregister_callback(callback_id), 0);
-}
-
-// Test callback with NULL function pointer
-TEST_F(MetadataProviderTest, RegisterNullCallback)
-{
-    EXPECT_EQ(metadata_provider_register_callback(nullptr, nullptr), -1);
-}
-
-// Test unregister callback
-TEST_F(MetadataProviderTest, UnregisterCallback)
-{
-    auto callback = [](const agent_metadata_t* metadata, void* user_data) {};
-
-    int callback_id = metadata_provider_register_callback(callback, nullptr);
-    ASSERT_GE(callback_id, 0);
-
-    EXPECT_EQ(metadata_provider_unregister_callback(callback_id), 0);
-
-    // Unregistering again should fail
-    EXPECT_EQ(metadata_provider_unregister_callback(callback_id), -1);
-}
-
-// Test unregister invalid callback ID
-TEST_F(MetadataProviderTest, UnregisterInvalidCallbackId)
-{
-    EXPECT_EQ(metadata_provider_unregister_callback(99999), -1);
-}
-
-// Test multiple callbacks
-TEST_F(MetadataProviderTest, MultipleCallbacks)
-{
-    int callback1_count = 0;
-    int callback2_count = 0;
-
-    auto callback1 = [](const agent_metadata_t* metadata, void* user_data) {
-        int* count = static_cast<int*>(user_data);
-        (*count)++;
-    };
-
-    auto callback2 = [](const agent_metadata_t* metadata, void* user_data) {
-        int* count = static_cast<int*>(user_data);
-        (*count)++;
-    };
-
-    int id1 = metadata_provider_register_callback(callback1, &callback1_count);
-    int id2 = metadata_provider_register_callback(callback2, &callback2_count);
-
-    ASSERT_GE(id1, 0);
-    ASSERT_GE(id2, 0);
-    ASSERT_NE(id1, id2);
-
-    agent_metadata_t metadata = createSampleMetadata();
-    ASSERT_EQ(metadata_provider_update(&metadata), 0);
-
-    EXPECT_EQ(callback1_count, 1);
-    EXPECT_EQ(callback2_count, 1);
-
-    // Clean up
-    EXPECT_EQ(metadata_provider_unregister_callback(id1), 0);
-    EXPECT_EQ(metadata_provider_unregister_callback(id2), 0);
-}
-
-// Test callback receives correct metadata
-TEST_F(MetadataProviderTest, CallbackReceivesCorrectMetadata)
-{
-    std::string received_agent_id;
-
-    auto callback = [](const agent_metadata_t* metadata, void* user_data) {
-        std::string* id = static_cast<std::string*>(user_data);
-        *id = metadata->agent_id;
-    };
-
-    int callback_id = metadata_provider_register_callback(callback, &received_agent_id);
-    ASSERT_GE(callback_id, 0);
-
-    agent_metadata_t metadata = createSampleMetadata();
-    ASSERT_EQ(metadata_provider_update(&metadata), 0);
-
-    EXPECT_EQ(received_agent_id, "001");
-
-    // Clean up
-    EXPECT_EQ(metadata_provider_unregister_callback(callback_id), 0);
-}
-
-// Test shutdown clears state
-TEST_F(MetadataProviderTest, ShutdownClearsState)
-{
-    agent_metadata_t metadata = createSampleMetadata();
-    ASSERT_EQ(metadata_provider_update(&metadata), 0);
-
-    metadata_provider_shutdown();
-
-    agent_metadata_t retrieved{};
-    // After shutdown, get should fail or require re-init
-    EXPECT_EQ(metadata_provider_get(&retrieved), -1);
 }
 
 // Test thread safety - concurrent updates

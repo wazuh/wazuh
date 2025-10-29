@@ -44,9 +44,6 @@ class AgentSyncProtocolTest : public ::testing::Test
     protected:
         void SetUp() override
         {
-            // Initialize metadata provider for tests
-            metadata_provider_init();
-
             // Create and set dummy metadata
             agent_metadata_t metadata = {};
             strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
@@ -88,8 +85,8 @@ class AgentSyncProtocolTest : public ::testing::Test
 
         void TearDown() override
         {
-            // Cleanup metadata provider
-            metadata_provider_shutdown();
+            // Reset metadata provider state for test isolation
+            metadata_provider_reset();
         }
 
         std::shared_ptr<MockPersistentQueue> mockQueue;

@@ -41,31 +41,12 @@ typedef struct {
 } agent_metadata_t;
 
 /**
- * @brief Callback function type for metadata updates
- *
- * @param metadata Pointer to the updated metadata structure
- * @param user_data Optional user data passed during registration
- */
-typedef void (*metadata_update_callback_t)(const agent_metadata_t* metadata, void* user_data);
-
-/**
- * @brief Initialize the metadata provider
- *
- * Must be called before any other metadata_provider functions.
- * Safe to call multiple times (idempotent).
- *
- * @return 0 on success, -1 on error
- */
-int metadata_provider_init(void);
-
-/**
  * @brief Update the stored metadata
  *
- * Thread-safe. Notifies all registered callbacks after update.
- * The provider makes an internal copy of the metadata.
+ * Thread-safe. The provider makes an internal copy of the metadata.
  *
  * @param metadata Pointer to metadata structure to store
- * @return 0 on success, -1 on error (NULL pointer or uninitialized)
+ * @return 0 on success, -1 on error (NULL pointer)
  */
 int metadata_provider_update(const agent_metadata_t* metadata);
 
@@ -76,29 +57,9 @@ int metadata_provider_update(const agent_metadata_t* metadata);
  * The caller is responsible for freeing the groups array if groups_count > 0.
  *
  * @param out_metadata Pointer to structure to fill with metadata
- * @return 0 on success, -1 on error (NULL pointer, uninitialized, or no metadata available)
+ * @return 0 on success, -1 on error (NULL pointer or no metadata available)
  */
 int metadata_provider_get(agent_metadata_t* out_metadata);
-
-/**
- * @brief Register a callback for metadata updates
- *
- * The callback will be invoked whenever metadata is updated via metadata_provider_update().
- * Callbacks are invoked synchronously in the context of the update call.
- *
- * @param callback Function to call on metadata updates
- * @param user_data Optional user data to pass to callback (can be NULL)
- * @return Callback ID on success (>= 0), -1 on error
- */
-int metadata_provider_register_callback(metadata_update_callback_t callback, void* user_data);
-
-/**
- * @brief Unregister a previously registered callback
- *
- * @param callback_id ID returned from metadata_provider_register_callback
- * @return 0 on success, -1 if callback_id not found
- */
-int metadata_provider_unregister_callback(int callback_id);
 
 /**
  * @brief Free resources allocated in agent_metadata_t structure
@@ -111,12 +72,12 @@ int metadata_provider_unregister_callback(int callback_id);
 void metadata_provider_free_metadata(agent_metadata_t* metadata);
 
 /**
- * @brief Shutdown the metadata provider and release all resources
+ * @brief Reset the metadata provider state (for testing purposes only)
  *
- * Unregisters all callbacks and frees internal state.
- * Safe to call multiple times.
+ * Clears all stored metadata. This function is intended for use in unit tests
+ * to ensure test isolation.
  */
-void metadata_provider_shutdown(void);
+void metadata_provider_reset(void);
 
 #ifdef __cplusplus
 }
