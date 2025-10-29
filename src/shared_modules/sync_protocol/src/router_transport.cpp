@@ -8,7 +8,6 @@
  */
 
 #include "router_transport.hpp"
-#include "agentInfo_generated.h"
 #include <thread>
 
 RouterTransport::RouterTransport(const std::string& agentId,
@@ -74,8 +73,7 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
             return false;
         }
 
-        auto wrappedMessage = wrapWithAgentInfo(message);
-        std::vector<char> routerMessage(wrappedMessage.begin(), wrappedMessage.end());
+        std::vector<char> routerMessage(message.begin(), message.end());
         m_provider->send(routerMessage);
 
         if (maxEps > 0)
@@ -93,26 +91,6 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
         m_logger(LOG_ERROR, std::string("Failed to publish sync message: ") + e.what());
         return false;
     }
-}
-
-std::vector<uint8_t> RouterTransport::wrapWithAgentInfo(const std::vector<uint8_t>& syncMessage)
-{
-    flatbuffers::FlatBufferBuilder builder;
-
-    auto id = builder.CreateString(m_agentId);
-    auto name = builder.CreateString(m_agentName);
-    auto ip = builder.CreateString(m_agentIp);
-    auto version = builder.CreateString("");
-    auto module = builder.CreateString(m_moduleName);
-    auto data = builder.CreateVector(syncMessage.data(), syncMessage.size());
-
-    auto agentInfo = Wazuh::Sync::CreateAgentInfo(builder, id, name, ip, version, module, data);
-    builder.Finish(agentInfo);
-
-    const uint8_t* buffer_ptr = builder.GetBufferPointer();
-    const size_t buffer_size = builder.GetSize();
-
-    return std::vector<uint8_t>(buffer_ptr, buffer_ptr + buffer_size);
 }
 
 void RouterTransport::subscribeToResponses()

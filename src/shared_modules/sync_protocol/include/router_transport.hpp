@@ -47,7 +47,6 @@ private:
     std::atomic<size_t> m_msgSent {0};
     std::function<void(const std::vector<char>&)> m_responseCallback;
 
-    std::vector<uint8_t> wrapWithAgentInfo(const std::vector<uint8_t>& message);
     void subscribeToResponses();
     std::string getResponseTopic() const;
     bool configRouter();  // Returns bool like ensureQueueAvailable()
