@@ -87,8 +87,7 @@ Persists a difference to in-memory vector instead of database. This method is us
 bool synchronizeModule(Mode mode,
                       std::chrono::seconds timeout,
                       unsigned int retries,
-                      size_t maxEps,
-                      bool isFirst)
+                      size_t maxEps)
 ```
 
 Initiates a synchronization session with the manager.
@@ -98,7 +97,6 @@ Initiates a synchronization session with the manager.
 - `timeout`: Maximum time to wait for each response
 - `retries`: Number of retry attempts for Start and End messages
 - `maxEps`: Maximum events per second (0 = unlimited)
-- `isFirst`: true if this is the first synchronization attempt
 
 **Returns:** `true` if synchronization completed successfully, `false` otherwise
 

@@ -17,13 +17,15 @@ extern "C" {
 #include "syscheck.h"
 #include <chrono>
 
+/**
+ * @brief Get the current timestamp in UNIX format
+ */
 int64_t getUnixTimeSeconds() {
     return std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count();
 }
 
-// TODO: add a description for the class
 extern "C"
 {
 void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps){
@@ -44,7 +46,6 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         {
             throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
         }
-        minfo("DBG Version: ", item["version"]);
         wrapper->impl->persistDifferenceInMemory(
             id,
             Operation::CREATE,

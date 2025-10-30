@@ -11,7 +11,7 @@
 
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
 #include "fimCommonDefs.h"
-#include "recovery.h"
+#include "recovery/recovery.h"
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -617,7 +617,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     while (fim_sync_module_running) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
         w_mutex_lock(&syscheck.fim_realtime_mutex);
-
 
         minfo("Running FIM synchronization.");
 

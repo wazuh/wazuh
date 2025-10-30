@@ -36,10 +36,31 @@ extern "C"
 
 #include <stdbool.h>
 
+/**
+ * @brief Persists a table's conents in memory and triggers a full resync
+ * @param table_name The table to resync
+ * @param handle Sync Protocol handle
+ * @param sync_response_timeout Timeout for the sync process
+ * @param sync_max_eps Max eps for the sync proces
+ */
 EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
 
+/**
+ * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
+ * @param table_name The table to check
+ * @param handle Sync Protocol handle
+ * @param sync_response_timeout Timeout for the checksum validation process
+ * @param sync_max_eps Max eps for the checksum validation proces
+ * @returns true if a full sync is required, false if a delta sync is sufficient
+ */
 EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
 
+/**
+ * @brief Checks if integrity_interval has elapsed for a table
+ * @param table_name The table to check
+ * @param integrity_interval Value to check
+ * @returns true if it interval has elapsed, false otherwise
+ */
 EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
 
 #ifdef __cplusplus

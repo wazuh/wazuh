@@ -159,7 +159,10 @@ class EXPORTED DB final
         std::string getConcatenatedChecksums(const std::string& tableName);
 
 
-        // TODO: fill
+        /**
+        * @brief Gets all the elements of a table
+        * @return a vector of elements in json format
+        */
         std::vector<nlohmann::json> getEveryElement(const std::string& tableName);
 
         /**
