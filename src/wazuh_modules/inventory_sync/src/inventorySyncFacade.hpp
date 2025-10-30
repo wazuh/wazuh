@@ -345,14 +345,32 @@ public:
                     // VD ?
                     preIndexerAction();
 
+                    // Lock indexer connector to avoid process with the timeout mechanism.
+                    auto lock = m_indexerConnector->scopeLock();
+
                     if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta)
                     {
                         logDebug2(LOGGER_DEFAULT_TAG,
                                   "InventorySyncFacade::start: Updating agent metadata for agent %s...",
                                   res.context->agentId.c_str());
 
-                        // Lock indexer connector to avoid process with the timeout mechanism.
-                        auto lock = m_indexerConnector->scopeLock();
+                        // Register notify callback BEFORE starting async operation to avoid race condition
+                        m_indexerConnector->registerNotify(
+                            [this, ctx = res.context]()
+                            {
+                                // Send ACK to agent.
+                                m_responseDispatcher->sendEndAck(
+                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // Delete data from database.
+                                m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                                // Delete Session.
+                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                {
+                                    logError(LOGGER_DEFAULT_TAG,
+                                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                             ctx->sessionId);
+                                }
+                            });
 
                         m_indexerConnector->updateAgentMetadataByQuery(res.context->indices,
                                                                        res.context->agentId,
@@ -372,8 +390,23 @@ public:
                                   "InventorySyncFacade::start: Updating agent groups for agent %s...",
                                   res.context->agentId.c_str());
 
-                        // Lock indexer connector to avoid process with the timeout mechanism.
-                        auto lock = m_indexerConnector->scopeLock();
+                        // Register notify callback BEFORE starting async operation to avoid race condition
+                        m_indexerConnector->registerNotify(
+                            [this, ctx = res.context]()
+                            {
+                                // Send ACK to agent.
+                                m_responseDispatcher->sendEndAck(
+                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // Delete data from database.
+                                m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                                // Delete Session.
+                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                {
+                                    logError(LOGGER_DEFAULT_TAG,
+                                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                             ctx->sessionId);
+                                }
+                            });
 
                         m_indexerConnector->updateAgentGroupsByQuery(res.context->indices,
                                                                      res.context->agentId,
@@ -396,9 +429,6 @@ public:
                         }
 
                         const auto prefix = std::format("{}_", res.context->sessionId);
-
-                        // Lock indexer connector to avoid process with the timeout mechanism.
-                        auto lock = m_indexerConnector->scopeLock();
 
                         // Send bulk query (with handling of 413 error).
                         for (const auto& [key, value] : m_dataStore->seek(prefix))
@@ -492,24 +522,25 @@ public:
                                 throw InventorySyncException("Invalid message type");
                             }
                         }
-                    } // End of else block for non-MetadataDelta/GroupDelta modes
 
-                    m_indexerConnector->registerNotify(
-                        [this, ctx = res.context]()
-                        {
-                            // Send ACK to agent.
-                            m_responseDispatcher->sendEndAck(
-                                Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
-                            // Delete data from database.
-                            m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
-                            // Delete Session.
-                            if (m_agentSessions.erase(ctx->sessionId) == 0)
+                        // Register notify callback for bulk operations (after accumulating all data)
+                        m_indexerConnector->registerNotify(
+                            [this, ctx = res.context]()
                             {
-                                logError(LOGGER_DEFAULT_TAG,
-                                         "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                         ctx->sessionId);
-                            }
-                        });
+                                // Send ACK to agent.
+                                m_responseDispatcher->sendEndAck(
+                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // Delete data from database.
+                                m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                                // Delete Session.
+                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                {
+                                    logError(LOGGER_DEFAULT_TAG,
+                                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                             ctx->sessionId);
+                                }
+                            });
+                    } // End of else block for non-MetadataDelta/GroupDelta modes
                 }
                 catch (const InventorySyncException& e)
                 {

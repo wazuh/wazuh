@@ -1,0 +1,42 @@
+{
+  "description": "Expected results for metadata delta flow test",
+  "expected_message_count": 2,
+  "validate_session_consistency": true,
+  "expected_messages": [
+    {
+      "type": "start",
+      "expected_status": "sent",
+      "description": "Start message with MetadataDelta mode should be sent successfully",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "start_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 5.0
+      }
+    },
+    {
+      "type": "end",
+      "expected_status": "sent",
+      "description": "End message should be sent successfully and receive Status_Ok after metadata update",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "end_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 30.0
+      }
+    }
+  ],
+  "validation_rules": {
+    "session_consistency": "Both messages should use the same session ID",
+    "message_order": "Messages should be sent in order: start -> end (no data messages)",
+    "response_format": "Start should receive StartAck, End should receive EndAck with Status_Ok",
+    "no_data_messages": "MetadataDelta mode should not send any data messages between start and end",
+    "indexer_updates": "Manager should update agent metadata across all specified indices"
+  }
+}

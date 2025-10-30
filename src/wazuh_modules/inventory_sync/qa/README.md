@@ -84,6 +84,28 @@ Tests the request-return mechanism for missing data.
 
 Tests basic request-return functionality.
 
+### 5. Metadata Delta Flow (`metadata_delta_flow`)
+
+Tests the metadata delta synchronization mode (Mode 4):
+- Start synchronization with MetadataDelta mode
+- No data messages are sent
+- Manager updates agent metadata across all specified indices
+- Updates: agent.id, agent.name, agent.version, agent.host.*, state.document_version, state.modified_at
+- End synchronization with Status_Ok response
+
+This mode is used when agent metadata changes (hostname, OS, architecture, etc.) and all existing documents need to be updated.
+
+### 6. Groups Delta Flow (`groups_delta_flow`)
+
+Tests the groups delta synchronization mode (Mode 6):
+- Start synchronization with GroupDelta mode
+- No data messages are sent
+- Manager updates agent groups across all specified indices
+- Updates: agent.groups, state.document_version, state.modified_at
+- End synchronization with Status_Ok response
+
+This mode is used when agent group membership changes and all existing documents need to reflect the new groups.
+
 ## Test Data Format
 
 Test files in `test_data/` and expected results in `expected_data/` use JSON format to define test scenarios and expected outcomes.
