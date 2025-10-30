@@ -618,7 +618,8 @@ std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metad
                                        "host_os_name",
                                        "host_os_type",
                                        "host_os_platform",
-                                       "host_os_version"};
+                                       "host_os_version"
+                                      };
 
     for (const auto& field : fields)
     {
