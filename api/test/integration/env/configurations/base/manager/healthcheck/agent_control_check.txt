@@ -1,14 +1,13 @@
 000,wazuh-master (server),127.0.0.1,Active/Local,
-001,wazuh-agent1,any,Active,
-002,wazuh-agent2,any,Active,
-003,wazuh-agent3,any,Active,
-004,wazuh-agent4,any,Active,
-005,wazuh-agent5,any,Active,
-006,wazuh-agent6,any,Active,
-007,wazuh-agent7,any,Active,
-008,wazuh-agent8,any,Active,
-009,wazuh-agent9,any,Disconnected,
-010,wazuh-agent10,any,Disconnected,
-011,wazuh-agent11,any,Never connected,
-012,wazuh-agent12,any,Never connected,
-
+   ID: 001, Name: wazuh-agent1, IP: any
+   ID: 002, Name: wazuh-agent2, IP: any
+   ID: 003, Name: wazuh-agent3, IP: any
+   ID: 004, Name: wazuh-agent4, IP: any
+   ID: 005, Name: wazuh-agent5, IP: any
+   ID: 006, Name: wazuh-agent6, IP: any
+   ID: 007, Name: wazuh-agent7, IP: any
+   ID: 008, Name: wazuh-agent8, IP: any
+   ID: 009, Name: wazuh-agent9, IP: any
+   ID: 010, Name: wazuh-agent10, IP: any
+   ID: 011, Name: wazuh-agent11, IP: any
+   ID: 012, Name: wazuh-agent12, IP: any
