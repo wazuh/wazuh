@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include "../../wmodules_def.h"
 #include "wmodules.h"
+#include "module_query_errors.h"
 #include "wm_syscollector.h"
 #include "syscollector.h"
 #include "sym_load.h"
@@ -496,7 +497,10 @@ static size_t wm_sys_query_handler(void *data, char *query, char **output) {
     (void)data;  // Unused parameter
 
     if (!query || !output) {
-        os_strdup("err Invalid parameters", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
@@ -504,7 +508,10 @@ static size_t wm_sys_query_handler(void *data, char *query, char **output) {
     if (syscollector_query_ptr) {
         return syscollector_query_ptr(query, output);
     } else {
-        os_strdup("err Syscollector query function not available", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 }

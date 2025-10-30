@@ -21,6 +21,7 @@
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
+#include "../../module_query_errors.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -1634,8 +1635,8 @@ std::string Syscollector::query(const std::string& jsonQuery)
         if (!query_json.contains("command") || !query_json["command"].is_string())
         {
             nlohmann::json response;
-            response["error"] = 2;
-            response["message"] = "Missing or invalid command field";
+            response["error"] = MQ_ERR_INVALID_PARAMS;
+            response["message"] = MQ_MSG_INVALID_PARAMS;
             return response.dump();
         }
 
@@ -1653,21 +1654,21 @@ std::string Syscollector::query(const std::string& jsonQuery)
         // Handle coordination commands with JSON responses
         if (command == "pause")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector module paused successfully";
             response["data"]["module"] = "syscollector";
             response["data"]["action"] = "pause";
         }
         else if (command == "flush")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector module flushed successfully";
             response["data"]["module"] = "syscollector";
             response["data"]["action"] = "flush";
         }
         else if (command == "get_version")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector version retrieved";
             response["data"]["version"] = 3;
         }
@@ -1679,21 +1680,21 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 version = parameters["version"].get<int>();
             }
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector version set successfully";
             response["data"]["version"] = version;
         }
         else if (command == "resume")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector module resumed successfully";
             response["data"]["module"] = "syscollector";
             response["data"]["action"] = "resume";
         }
         else
         {
-            response["error"] = 1;
-            response["message"] = "Unknown Syscollector query command: " + command;
+            response["error"] = MQ_ERR_UNKNOWN_COMMAND;
+            response["message"] = "Unknown Syscollector command: " + command;
             response["data"]["command"] = command;
         }
 
@@ -1702,7 +1703,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
     catch (const std::exception& ex)
     {
         nlohmann::json response;
-        response["error"] = 98;
+        response["error"] = MQ_ERR_INTERNAL;
         response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
 
         if (m_logFunction)

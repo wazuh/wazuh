@@ -11,6 +11,7 @@ extern "C"
 #endif
 
 #include "../../wm_sca.h"
+#include "../../module_query_errors.h"
 #include "../wazuh_modules/wmodules_def.h"
 
 #include "logging_helper.hpp"
@@ -381,8 +382,8 @@ std::string SCA::query(const std::string& jsonQuery)
         if (!query_json.contains("command") || !query_json["command"].is_string())
         {
             nlohmann::json response;
-            response["error"] = 2;
-            response["message"] = "Missing or invalid command field";
+            response["error"] = MQ_ERR_INVALID_PARAMS;
+            response["message"] = MQ_MSG_INVALID_PARAMS;
             return response.dump();
         }
 
@@ -397,21 +398,21 @@ std::string SCA::query(const std::string& jsonQuery)
         // Handle coordination commands with JSON responses
         if (command == "pause")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "SCA module paused successfully";
             response["data"]["module"] = "sca";
             response["data"]["action"] = "pause";
         }
         else if (command == "flush")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "SCA module flushed successfully";
             response["data"]["module"] = "sca";
             response["data"]["action"] = "flush";
         }
         else if (command == "get_version")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "SCA version retrieved";
             response["data"]["version"] = 4;
         }
@@ -423,21 +424,21 @@ std::string SCA::query(const std::string& jsonQuery)
             {
                 version = parameters["version"].get<int>();
             }
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "SCA version set successfully";
             response["data"]["version"] = version;
         }
         else if (command == "resume")
         {
-            response["error"] = 0;
+            response["error"] = MQ_SUCCESS;
             response["message"] = "SCA module resumed successfully";
             response["data"]["module"] = "sca";
             response["data"]["action"] = "resume";
         }
         else
         {
-            response["error"] = 1;
-            response["message"] = "Unknown SCA query command: " + command;
+            response["error"] = MQ_ERR_UNKNOWN_COMMAND;
+            response["message"] = "Unknown SCA command: " + command;
             response["data"]["command"] = command;
         }
 
@@ -446,7 +447,7 @@ std::string SCA::query(const std::string& jsonQuery)
     catch (const std::exception& ex)
     {
         nlohmann::json response;
-        response["error"] = 98;
+        response["error"] = MQ_ERR_INTERNAL;
         response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
 
         LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
@@ -559,7 +560,8 @@ size_t sca_query(const char* json_query, char** output)
 {
     if (!json_query || !output)
     {
-        *output = strdup("{\"error\":1,\"message\":\"Invalid parameters\"}");
+        std::string error = "{\"error\":" + std::to_string(MQ_ERR_INVALID_PARAMS) + ",\"message\":\"" + std::string(MQ_MSG_INVALID_PARAMS) + "\"}";
+        *output = strdup(error.c_str());
         return strlen(*output);
     }
 
@@ -571,7 +573,7 @@ size_t sca_query(const char* json_query, char** output)
     }
     catch (const std::exception& ex)
     {
-        std::string error = "{\"error\":99,\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
+        std::string error = "{\"error\":" + std::to_string(MQ_ERR_EXCEPTION) + ",\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
         *output = strdup(error.c_str());
         return strlen(*output);
     }

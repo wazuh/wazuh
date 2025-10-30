@@ -12,6 +12,7 @@
 #include "wmodules_def.h"
 
 #include "wmodules.h"
+#include "module_query_errors.h"
 #include <os_net/os_net.h>
 #include <sys/stat.h>
 #include "os_crypto/sha256/sha256_op.h"
@@ -519,7 +520,10 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
     (void)data;  // Unused parameter
 
     if (!query || !output) {
-        os_strdup("err Invalid parameters", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
@@ -527,7 +531,10 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
     if (sca_query_ptr) {
         return sca_query_ptr(query, output);
     } else {
-        os_strdup("err SCA query function not available", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 }

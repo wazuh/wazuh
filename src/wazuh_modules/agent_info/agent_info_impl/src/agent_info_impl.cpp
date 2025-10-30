@@ -11,6 +11,7 @@
 #include <file_io_utils.hpp>
 #include <filesystem_wrapper.hpp>
 #include <sysInfo.hpp>
+#include "../../../module_query_errors.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -877,15 +878,21 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 }
             }
 
-            // Check if module is disabled or not available (specific error codes)
-            if (responseStr.find("\"error\":2") != std::string::npos ||  // Module not found or not configured
-                responseStr.find("\"error\":3") != std::string::npos ||  // Module does not support queries
-                responseStr.find("\"error\":4") != std::string::npos ||  // Module refused connection/disabled
-                responseStr.find("\"error\":5") != std::string::npos ||  // Module socket not found/not running
-                responseStr.find("disabled") != std::string::npos ||
-                responseStr.find("not running") != std::string::npos) {
-                m_logFunction(LOG_INFO, moduleName + " module is disabled, not configured, or not running: " + responseStr);
-                return std::make_pair(false, responseStr);
+            // Check if module is unavailable using standard error codes
+            // Parse the response to get the error code
+            try {
+                nlohmann::json responseJson = nlohmann::json::parse(responseStr);
+                if (responseJson.contains("error") && responseJson["error"].is_number()) {
+                    int errorCode = responseJson["error"].get<int>();
+                    // Use the standard macro to check if module is unavailable
+                    if (MQ_IS_MODULE_UNAVAILABLE(errorCode)) {
+                        m_logFunction(LOG_INFO, moduleName + " module is unavailable (error " + std::to_string(errorCode) + "): " + responseStr);
+                        return std::make_pair(false, responseStr);
+                    }
+                }
+            } catch (const std::exception& e) {
+                // If we can't parse the response, continue with retries
+                m_logFunction(LOG_WARNING, "Failed to parse response JSON: " + std::string(e.what()));
             }
 
             m_logFunction(LOG_WARNING, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_RETRIES) +

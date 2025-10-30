@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include "module_query_errors.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
@@ -402,16 +403,21 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
     cJSON *json_obj = NULL;
     cJSON *command_item = NULL;
     const char *command = NULL;
+    char error_msg[512];
 
     if (!module_name || !json_command || !output) {
-        os_strdup("{\"error\":1,\"message\":\"Invalid parameters\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     // Parse JSON command
     json_obj = cJSON_Parse(json_command);
     if (!json_obj) {
-        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
@@ -419,7 +425,9 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
     command_item = cJSON_GetObjectItem(json_obj, "command");
     if (!command_item || !cJSON_IsString(command_item)) {
         cJSON_Delete(json_obj);
-        os_strdup("{\"error\":4,\"message\":\"Missing or invalid command field\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
     command = cJSON_GetStringValue(command_item);
@@ -428,13 +436,17 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
     wmodule * module = wm_find_module(module_name);
     if (module == NULL) {
         cJSON_Delete(json_obj);
-        os_strdup("{\"error\":5,\"message\":\"Module not found or not configured\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_FOUND, MQ_MSG_MODULE_NOT_FOUND);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     if (module->context->query == NULL) {
         cJSON_Delete(json_obj);
-        os_strdup("{\"error\":6,\"message\":\"This module does not support queries\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_SUPPORTED, MQ_MSG_MODULE_NOT_SUPPORTED);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
@@ -458,16 +470,21 @@ size_t wm_module_query_json(const char* json_command, char** output) {
     cJSON *json_obj = NULL;
     cJSON *module_item = NULL;
     const char *module_name = NULL;
+    char error_msg[512];
 
     if (!json_command || !output) {
-        os_strdup("{\"error\":1,\"message\":\"Invalid parameters\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     // Parse JSON command to extract module name
     json_obj = cJSON_Parse(json_command);
     if (!json_obj) {
-        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
@@ -475,7 +492,9 @@ size_t wm_module_query_json(const char* json_command, char** output) {
     module_item = cJSON_GetObjectItem(json_obj, "module");
     if (!module_item || !cJSON_IsString(module_item)) {
         cJSON_Delete(json_obj);
-        os_strdup("{\"error\":3,\"message\":\"Missing or invalid module field\"}", *output);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
     module_name = cJSON_GetStringValue(module_item);
@@ -493,8 +512,12 @@ size_t wm_module_query_json_ex(const char* module_name, const char* json_command
 
 // Query FIM module directly via syscom socket with JSON format
 size_t wm_fim_query_json(const char* command, char** response) {
+    char error_msg[512];
+
     if (!command || !response) {
-        os_strdup("{\"error\":1,\"message\":\"Invalid parameters\"}", *response);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *response);
         return strlen(*response);
     }
 
@@ -512,14 +535,18 @@ size_t wm_fim_query_json(const char* command, char** response) {
         merror("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
         switch (errno) {
             case ECONNREFUSED:
-                os_strdup("{\"error\":4,\"message\":\"Syscheck module refused connection. The component might be disabled\"}", *response);
+                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck module refused connection. The component might be disabled\"}",
+                         MQ_ERR_MODULE_NOT_RUNNING);
                 break;
             case ENOENT:
-                os_strdup("{\"error\":5,\"message\":\"Syscheck socket not found. The component might not be running\"}", *response);
+                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck socket not found. The component might not be running\"}",
+                         MQ_ERR_MODULE_NOT_RUNNING);
                 break;
             default:
-                os_strdup("{\"error\":6,\"message\":\"Could not connect to syscheck socket\"}", *response);
+                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not connect to syscheck socket\"}",
+                         MQ_ERR_MODULE_NOT_RUNNING);
         }
+        os_strdup(error_msg, *response);
         os_free(json_string);
         return strlen(*response);
     }
@@ -530,7 +557,9 @@ size_t wm_fim_query_json(const char* command, char** response) {
     if (OS_SendSecureTCP(sock, strlen(json_string), json_string) < 0) {
         merror("WM_FIM_QUERY_JSON: Failed to send command");
         close(sock);
-        os_strdup("{\"error\":7,\"message\":\"Could not send query to syscheck\"}", *response);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not send query to syscheck\"}",
+                 MQ_ERR_INTERNAL);
+        os_strdup(error_msg, *response);
         os_free(json_string);
         return strlen(*response);
     }
@@ -543,17 +572,23 @@ size_t wm_fim_query_json(const char* command, char** response) {
         case OS_SOCKTERR:
             close(sock);
             os_free(response_buffer);
-            os_strdup("{\"error\":8,\"message\":\"Response from syscheck too large\"}", *response);
+            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Response from syscheck too large\"}",
+                     MQ_ERR_INTERNAL);
+            os_strdup(error_msg, *response);
             break;
         case -1:
             close(sock);
             os_free(response_buffer);
-            os_strdup("{\"error\":9,\"message\":\"Error receiving response from syscheck\"}", *response);
+            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Error receiving response from syscheck\"}",
+                     MQ_ERR_INTERNAL);
+            os_strdup(error_msg, *response);
             break;
         case 0:
             close(sock);
             os_free(response_buffer);
-            os_strdup("{\"error\":10,\"message\":\"Empty response from syscheck\"}", *response);
+            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Empty response from syscheck\"}",
+                     MQ_ERR_INTERNAL);
+            os_strdup(error_msg, *response);
             break;
         default:
             close(sock);
@@ -565,7 +600,9 @@ size_t wm_fim_query_json(const char* command, char** response) {
     size_t response_len = syscom_dispatch(json_string, strlen(json_string), response);
 
     if (response_len == 0 || !(*response)) {
-        os_strdup("{\"error\":11,\"message\":\"No response from syscom\"}", *response);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"No response from syscom\"}",
+                 MQ_ERR_INTERNAL);
+        os_strdup(error_msg, *response);
     }
 #endif
 

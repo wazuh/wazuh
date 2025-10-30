@@ -13,6 +13,7 @@
 #include "../rootcheck/rootcheck.h"
 #include "../os_net/os_net.h"
 #include "../wazuh_modules/wmodules.h"
+#include "../wazuh_modules/module_query_errors.h"
 #include "db/include/db.h"
 #include "agent_sync_protocol_c_interface.h"
 
@@ -85,14 +86,20 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
     // Parse JSON command
     cJSON *json_obj = cJSON_Parse(json_command);
     if (!json_obj) {
-        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     cJSON *command_item = cJSON_GetObjectItem(json_obj, "command");
     if (!command_item || !cJSON_IsString(command_item)) {
         cJSON_Delete(json_obj);
-        os_strdup("{\"error\":3,\"message\":\"Missing or invalid command field\"}", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
@@ -107,24 +114,24 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
     cJSON *data_item = NULL;
 
     if (strcmp(command, "pause") == 0) {
-        status_item = cJSON_CreateNumber(0);
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
         message_item = cJSON_CreateString("FIM module paused successfully");
         data_item = cJSON_CreateObject();
         cJSON_AddStringToObject(data_item, "module", "fim");
         cJSON_AddStringToObject(data_item, "action", "pause");
     } else if (strcmp(command, "flush") == 0) {
-        status_item = cJSON_CreateNumber(0);
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
         message_item = cJSON_CreateString("FIM module flushed successfully");
         data_item = cJSON_CreateObject();
         cJSON_AddStringToObject(data_item, "module", "fim");
         cJSON_AddStringToObject(data_item, "action", "flush");
     } else if (strcmp(command, "get_version") == 0) {
-        status_item = cJSON_CreateNumber(0);
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
         message_item = cJSON_CreateString("FIM version retrieved");
         data_item = cJSON_CreateObject();
         cJSON_AddNumberToObject(data_item, "version", 5);
     } else if (strcmp(command, "set_version") == 0) {
-        status_item = cJSON_CreateNumber(0);
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
         message_item = cJSON_CreateString("FIM version set successfully");
         data_item = cJSON_CreateObject();
 
@@ -137,14 +144,14 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
             }
         }
     } else if (strcmp(command, "resume") == 0) {
-        status_item = cJSON_CreateNumber(0);
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
         message_item = cJSON_CreateString("FIM module resumed successfully");
         data_item = cJSON_CreateObject();
         cJSON_AddStringToObject(data_item, "module", "fim");
         cJSON_AddStringToObject(data_item, "action", "resume");
     } else {
-        status_item = cJSON_CreateNumber(1);
-        message_item = cJSON_CreateString("Unknown FIM agent_info action");
+        status_item = cJSON_CreateNumber(MQ_ERR_UNKNOWN_COMMAND);
+        message_item = cJSON_CreateString("Unknown FIM command");
         data_item = cJSON_CreateObject();
         cJSON_AddStringToObject(data_item, "command", command);
     }
@@ -169,20 +176,29 @@ size_t syscom_handle_json_query(char * json_command, char ** output) {
 
     if (syscheck.disabled) {
         mdebug1("FIM module is disabled");
-        os_strdup("{\"error\":1,\"message\":\"FIM module is disabled\"}", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_DISABLED, MQ_MSG_MODULE_DISABLED);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     cJSON *json_obj = cJSON_Parse(json_command);
     if (!json_obj) {
-        os_strdup("{\"error\":2,\"message\":\"Invalid JSON format\"}", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     cJSON *command_item = cJSON_GetObjectItem(json_obj, "command");
     if (!command_item || !cJSON_IsString(command_item)) {
         cJSON_Delete(json_obj);
-        os_strdup("{\"error\":3,\"message\":\"Missing or invalid command field\"}", *output);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
