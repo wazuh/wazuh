@@ -40,10 +40,10 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
         {
             parseResponseBuffer(reinterpret_cast<const uint8_t*>(data.data()), data.size());
         };
-        m_transport = SyncTransportFactory::createDefaultTransport("000", "manager", "127.0.0.1", moduleName, m_logger, std::move(responseCallback));
+        m_transport = SyncTransportFactory::createDefaultTransport(m_logger, std::move(responseCallback));
 #endif
 
-        if (!m_transport || !m_transport->initialize())
+        if (!m_transport)
         {
             m_logger(LOG_ERROR_EXIT, "Failed to initialize transport for module: " + moduleName);
         }

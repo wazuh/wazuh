@@ -10,17 +10,9 @@
 #include "router_transport.hpp"
 #include <thread>
 
-RouterTransport::RouterTransport(const std::string& agentId,
-                                 const std::string& agentName,
-                                 const std::string& agentIp,
-                                 const std::string& moduleName,
-                                 LoggerFunc logger,
+RouterTransport::RouterTransport(LoggerFunc logger,
                                  std::function<void(const std::vector<char>&)> callback)
-    : m_agentId(agentId)
-    , m_agentName(agentName)
-    , m_agentIp(agentIp)
-    , m_moduleName(moduleName)
-    , m_logger(std::move(logger))
+    : m_logger(std::move(logger))
     , m_responseCallback(callback)
     , m_subscriberReady(false)
 {
@@ -29,11 +21,6 @@ RouterTransport::RouterTransport(const std::string& agentId,
 RouterTransport::~RouterTransport()
 {
     shutdown();
-}
-
-bool RouterTransport::initialize()
-{
-    return true;
 }
 
 void RouterTransport::shutdown()
@@ -96,7 +83,7 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
 void RouterTransport::subscribeToResponses()
 {
     const std::string responseTopic = getResponseTopic();
-    const std::string subscriberId = "agent-sync-protocol-" + m_agentId;
+    const std::string subscriberId = "agent-000";
 
     // Let exceptions propagate to configRouter() - no LOG_ERROR_EXIT here
     m_subscriber = std::make_unique<RouterSubscriber>(responseTopic, subscriberId, true);
@@ -114,7 +101,12 @@ void RouterTransport::subscribeToResponses()
 
 std::string RouterTransport::getResponseTopic() const
 {
-    return "inventory-sync-agent-" + m_agentId + "-responses";
+    return "inventory-sync-agent-responses";
+}
+
+std::string RouterTransport::getPublishTopic() const
+{
+    return "inventory-states";
 }
 
 bool RouterTransport::configRouter()
@@ -124,9 +116,10 @@ bool RouterTransport::configRouter()
         // Check if already initialized (null check pattern like MQueue's m_queue < 0)
         if (!m_provider)
         {
-            m_provider = std::make_unique<RouterProvider>(m_inventoryStatesTopic, false);
+            const std::string publishTopic = getPublishTopic();
+            m_provider = std::make_unique<RouterProvider>(publishTopic, false);
             m_provider->start();
-            m_logger(LOG_INFO, "RouterProvider started for topic: " + std::string(m_inventoryStatesTopic));
+            m_logger(LOG_INFO, "RouterProvider started for topic: " + publishTopic);
         }
 
         // Check if subscriber already initialized

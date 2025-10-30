@@ -24,23 +24,14 @@
 class RouterTransport : public ISyncMessageTransport
 {
 public:
-    RouterTransport(const std::string& agentId,
-                    const std::string& agentName,
-                    const std::string& agentIp,
-                    const std::string& moduleName,
-                    LoggerFunc logger,
+    RouterTransport(LoggerFunc logger,
                     std::function<void(const std::vector<char>&)> callback);
     ~RouterTransport() override;
     bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
-    bool initialize() override;
     void shutdown() override;
     bool checkStatus() override;
 
 private:
-    std::string m_agentId;
-    std::string m_agentName;
-    std::string m_agentIp;
-    std::string m_moduleName;
     LoggerFunc m_logger;
     std::unique_ptr<RouterProvider> m_provider;
     std::unique_ptr<RouterSubscriber> m_subscriber;
@@ -49,8 +40,8 @@ private:
 
     void subscribeToResponses();
     std::string getResponseTopic() const;
-    bool configRouter();  // Returns bool like ensureQueueAvailable()
+    std::string getPublishTopic() const;
+    bool configRouter();
 
-    static constexpr const char* m_inventoryStatesTopic = "inventory-states";
     std::atomic<bool> m_subscriberReady;
 };

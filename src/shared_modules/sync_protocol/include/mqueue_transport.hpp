@@ -22,7 +22,6 @@ class MQueueTransport : public ISyncMessageTransport
 public:
     MQueueTransport(const std::string& moduleName, MQ_Functions mqFuncs, LoggerFunc logger);
     bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
-    bool initialize() override;
     void shutdown() override;
     bool checkStatus() override;
 

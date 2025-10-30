@@ -31,12 +31,6 @@ public:
     virtual bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) = 0;
 
     /**
-     * @brief Initialize the transport.
-     * @return true on success, false on failure
-     */
-    virtual bool initialize() = 0;
-
-    /**
      * @brief Shutdown the transport.
      */
     virtual void shutdown() = 0;
