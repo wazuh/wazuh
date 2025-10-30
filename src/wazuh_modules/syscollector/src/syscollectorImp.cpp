@@ -354,6 +354,12 @@ void Syscollector::start()
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
 
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
+
     syncLoop(lock);
 }
 

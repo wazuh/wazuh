@@ -73,6 +73,12 @@ void SecurityConfigurationAssessment::Run()
 
     m_keepRunning = true;
 
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
+
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
 
     bool firstScan = true;

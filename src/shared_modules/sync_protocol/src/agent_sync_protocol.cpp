@@ -1125,6 +1125,12 @@ void AgentSyncProtocol::stop()
     m_logger(LOG_DEBUG, "Stop requested for sync protocol module: " + m_moduleName);
 }
 
+void AgentSyncProtocol::reset()
+{
+    m_stopRequested.store(false, std::memory_order_release);
+    m_logger(LOG_DEBUG, "Reset stop flag for sync protocol module: " + m_moduleName);
+}
+
 bool AgentSyncProtocol::shouldStop() const
 {
     return m_stopRequested.load(std::memory_order_acquire);

@@ -102,6 +102,12 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
     std::unique_lock<std::mutex> lock(m_mutex);
     m_stopped = false;
 
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
+
     // Run at least once
     do
     {

@@ -319,6 +319,25 @@ extern "C" {
         }
     }
 
+    void asp_reset(AgentSyncProtocolHandle* handle)
+    {
+        try
+        {
+            if (!handle) return;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            wrapper->impl->reset();
+        }
+        catch (const std::exception& ex)
+        {
+            return;
+        }
+        catch (...)
+        {
+            return;
+        }
+    }
+
     bool asp_should_stop(const AgentSyncProtocolHandle* handle)
     {
         try

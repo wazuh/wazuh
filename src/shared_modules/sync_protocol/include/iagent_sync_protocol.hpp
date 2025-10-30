@@ -103,6 +103,10 @@ class IAgentSyncProtocol
         /// This method should be called when a module is shutting down to abort any ongoing or pending synchronization operations.
         virtual void stop() = 0;
 
+        /// @brief Resets the stop flag to allow restarting operations.
+        /// This method should be called when restarting the module after a stop to clear the stop flag.
+        virtual void reset() = 0;
+
         /// @brief Checks if stop has been requested.
         /// @return true if stop was requested, false otherwise.
         virtual bool shouldStop() const = 0;

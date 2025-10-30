@@ -71,6 +71,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::stop
         void stop() override;
 
+        /// @brief Reset the stop flag to allow restarting operations
+        /// This should be called when restarting the module after a stop
+        void reset();
+
         /// @copydoc IAgentSyncProtocol::shouldStop
         bool shouldStop() const override;
 
