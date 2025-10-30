@@ -480,6 +480,206 @@ public:
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
         it->second["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
     }
+
+    void updateAgentMetadataByQuery(const std::vector<std::string>& indices,
+                                    const std::string& agentId,
+                                    const std::string& agentName,
+                                    const std::string& agentVersion,
+                                    const std::string& architecture,
+                                    const std::string& hostname,
+                                    const std::string& osname,
+                                    const std::string& osplatform,
+                                    const std::string& ostype,
+                                    const std::string& osversion,
+                                    uint64_t globalVersion)
+    {
+        // Join indices with comma
+        std::string indexList;
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            if (i > 0)
+            {
+                indexList.append(",");
+            }
+            indexList.append(indices[i]);
+        }
+
+        // Build the update by query request
+        nlohmann::json updateQuery;
+        updateQuery["query"]["term"]["agent.id"] = agentId;
+
+        // Get current timestamp in ISO 8601 format
+        auto now = std::chrono::system_clock::now();
+        auto time_t_now = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        std::tm tm {};
+        gmtime_r(&time_t_now, &tm);
+        char timestamp[64];
+        snprintf(timestamp,
+                 sizeof(timestamp),
+                 "%04d-%02d-%02dT%02d:%02d:%02d.%03ldZ",
+                 tm.tm_year + 1900,
+                 tm.tm_mon + 1,
+                 tm.tm_mday,
+                 tm.tm_hour,
+                 tm.tm_min,
+                 tm.tm_sec,
+                 ms.count());
+
+        // Build the painless script
+        std::string script = "ctx._source.agent.id = params.id; "
+                             "ctx._source.agent.name = params.name; "
+                             "ctx._source.agent.version = params.version; "
+                             "if (ctx._source.agent.host == null) { ctx._source.agent.host = [:]; } "
+                             "ctx._source.agent.host.architecture = params.architecture; "
+                             "ctx._source.agent.host.hostname = params.hostname; "
+                             "if (ctx._source.agent.host.os == null) { ctx._source.agent.host.os = [:]; } "
+                             "ctx._source.agent.host.os.name = params.osname; "
+                             "ctx._source.agent.host.os.platform = params.osplatform; "
+                             "ctx._source.agent.host.os.type = params.ostype; "
+                             "ctx._source.agent.host.os.version = params.osversion; "
+                             "if (ctx._source.state == null) { ctx._source.state = [:]; } "
+                             "ctx._source.state.document_version = params.globalVersion; "
+                             "ctx._source.state.modified_at = params.timestamp;";
+
+        updateQuery["script"]["source"] = script;
+        updateQuery["script"]["lang"] = "painless";
+        updateQuery["script"]["params"]["id"] = agentId;
+        updateQuery["script"]["params"]["name"] = agentName;
+        updateQuery["script"]["params"]["version"] = agentVersion;
+        updateQuery["script"]["params"]["architecture"] = architecture;
+        updateQuery["script"]["params"]["hostname"] = hostname;
+        updateQuery["script"]["params"]["osname"] = osname;
+        updateQuery["script"]["params"]["osplatform"] = osplatform;
+        updateQuery["script"]["params"]["ostype"] = ostype;
+        updateQuery["script"]["params"]["osversion"] = osversion;
+        updateQuery["script"]["params"]["globalVersion"] = globalVersion;
+        updateQuery["script"]["params"]["timestamp"] = timestamp;
+
+        // Execute the update
+        executeUpdateByQuery(indexList, updateQuery);
+    }
+
+    void updateAgentGroupsByQuery(const std::vector<std::string>& indices,
+                                  const std::string& agentId,
+                                  const std::vector<std::string>& groups,
+                                  uint64_t globalVersion)
+    {
+        // Join indices with comma
+        std::string indexList;
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            if (i > 0)
+            {
+                indexList.append(",");
+            }
+            indexList.append(indices[i]);
+        }
+
+        // Build the update by query request
+        nlohmann::json updateQuery;
+        updateQuery["query"]["term"]["agent.id"] = agentId;
+
+        // Get current timestamp in ISO 8601 format
+        auto now = std::chrono::system_clock::now();
+        auto time_t_now = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        std::tm tm {};
+        gmtime_r(&time_t_now, &tm);
+        char timestamp[64];
+        snprintf(timestamp,
+                 sizeof(timestamp),
+                 "%04d-%02d-%02dT%02d:%02d:%02d.%03ldZ",
+                 tm.tm_year + 1900,
+                 tm.tm_mon + 1,
+                 tm.tm_mday,
+                 tm.tm_hour,
+                 tm.tm_min,
+                 tm.tm_sec,
+                 ms.count());
+
+        // Build the painless script
+        std::string script = "ctx._source.agent.groups = params.groups; "
+                             "if (ctx._source.state == null) { ctx._source.state = [:]; } "
+                             "ctx._source.state.document_version = params.globalVersion; "
+                             "ctx._source.state.modified_at = params.timestamp;";
+
+        updateQuery["script"]["source"] = script;
+        updateQuery["script"]["lang"] = "painless";
+        updateQuery["script"]["params"]["groups"] = groups;
+        updateQuery["script"]["params"]["globalVersion"] = globalVersion;
+        updateQuery["script"]["params"]["timestamp"] = timestamp;
+
+        // Execute the update
+        executeUpdateByQuery(indexList, updateQuery);
+    }
+
+    void executeUpdateByQuery(const std::string& indexList, const nlohmann::json& updateQuery)
+    {
+        bool needToRetry = false;
+
+        const auto onSuccess = [this](const std::string& response)
+        {
+            logDebug2(IC_NAME, "Update by query response: %s", response.c_str());
+            // Notify registered callbacks on success
+            for (const auto& notify : m_notify)
+            {
+                notify();
+            }
+            m_notify.clear();
+        };
+
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode)
+        {
+            logError(IC_NAME, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+            if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
+                needToRetry = true;
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                needToRetry = true;
+                logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+            }
+            else
+            {
+                logError(IC_NAME, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                m_notify.clear();
+                throw IndexerConnectorException(error);
+            }
+        };
+
+        do
+        {
+            if (m_stopping.load())
+            {
+                logDebug2(IC_NAME, "Stopping requested, aborting update by query");
+                m_notify.clear();
+                return;
+            }
+
+            needToRetry = false;
+            auto serverUrl = m_selector->getNext();
+            std::string url;
+            url += serverUrl;
+            url += "/";
+            url += indexList;
+            url += "/_update_by_query";
+
+            m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                   .data = updateQuery.dump(),
+                                                   .secureCommunication = m_secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                {});
+
+            if (needToRetry && RetryDelay > 0)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+            }
+        } while (needToRetry);
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};

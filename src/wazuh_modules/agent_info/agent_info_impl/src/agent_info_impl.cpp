@@ -37,17 +37,40 @@ static const std::map<std::string, Mode> TABLE_MODE_MAP
     {AGENT_GROUPS_TABLE, Mode::GROUP_DELTA},
 };
 
-const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_metadata ("
-                                           "agent_id                   TEXT NOT NULL PRIMARY KEY,"
-                                           "agent_name                 TEXT,"
-                                           "agent_version              TEXT,"
-                                           "host_architecture          TEXT,"
-                                           "host_hostname              TEXT,"
-                                           "host_os_name               TEXT,"
-                                           "host_os_type               TEXT,"
-                                           "host_os_platform           TEXT,"
-                                           "host_os_version            TEXT,"
-                                           "checksum                   TEXT NOT NULL);";
+// List of all module indices that should be updated when agent metadata or groups change
+static const std::vector<std::string> ALL_MODULE_INDICES
+{
+    "wazuh-states-fim-files",
+    "wazuh-states-fim-registry-keys",
+    "wazuh-states-fim-registry-values",
+    "wazuh-states-sca",
+    "wazuh-states-inventory-system",
+    "wazuh-states-inventory-hardware",
+    "wazuh-states-inventory-hotfixes",
+    "wazuh-states-inventory-packages",
+    "wazuh-states-inventory-processes",
+    "wazuh-states-inventory-ports",
+    "wazuh-states-inventory-interfaces",
+    "wazuh-states-inventory-protocols",
+    "wazuh-states-inventory-networks",
+    "wazuh-states-inventory-users",
+    "wazuh-states-inventory-groups",
+    "wazuh-states-inventory-services",
+    "wazuh-states-inventory-browser-extensions"
+};
+
+const char* AGENT_METADATA_SQL_STATEMENT =
+    "CREATE TABLE IF NOT EXISTS agent_metadata ("
+    "agent_id          TEXT NOT NULL PRIMARY KEY,"
+    "agent_name        TEXT,"
+    "agent_version     TEXT,"
+    "host_architecture TEXT,"
+    "host_hostname     TEXT,"
+    "host_os_name      TEXT,"
+    "host_os_type      TEXT,"
+    "host_os_platform  TEXT,"
+    "host_os_version   TEXT,"
+    "checksum          TEXT NOT NULL);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -609,6 +632,7 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
             {
                 m_spSyncProtocol->synchronizeMetadataOrGroups(
                     TABLE_MODE_MAP.at(table),
+                    ALL_MODULE_INDICES,
                     std::chrono::seconds(m_syncResponseTimeout),
                     m_syncRetries,
                     m_syncMaxEps);

@@ -1738,3 +1738,205 @@ TEST_F(IndexerConnectorSyncTest, ErrorHandlingForInvalidInputWithVersion)
     // Test with empty data - should not throw but log warning
     EXPECT_NO_THROW(connector.bulkIndex("doc2", "index1", "", "789"));
 }
+
+// Tests for updateAgentMetadataByQuery
+TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQuerySuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"wazuh-states-fim-files", "wazuh-states-sca"};
+    bool notifyCalled = false;
+
+    // Setup expectations
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
+                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Call the function
+    EXPECT_NO_THROW(connector.updateAgentMetadataByQuery(indices,
+                                                         "agent-001",
+                                                         "test-agent",
+                                                         "4.5.0",
+                                                         "x86_64",
+                                                         "test-host",
+                                                         "Ubuntu",
+                                                         "ubuntu",
+                                                         "linux",
+                                                         "22.04",
+                                                         12345));
+
+    // Verify the request was made
+    EXPECT_EQ(callCount, 1);
+    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called";
+
+    // Verify the request contained the correct data
+    auto requestData = nlohmann::json::parse(receivedData[0]);
+    EXPECT_EQ(requestData["query"]["term"]["agent.id"], "agent-001");
+    EXPECT_TRUE(requestData.contains("script"));
+    EXPECT_TRUE(requestData["script"].contains("source"));
+    EXPECT_EQ(requestData["script"]["params"]["id"], "agent-001");
+    EXPECT_EQ(requestData["script"]["params"]["name"], "test-agent");
+    EXPECT_EQ(requestData["script"]["params"]["version"], "4.5.0");
+    EXPECT_EQ(requestData["script"]["params"]["architecture"], "x86_64");
+    EXPECT_EQ(requestData["script"]["params"]["hostname"], "test-host");
+    EXPECT_EQ(requestData["script"]["params"]["osname"], "Ubuntu");
+    EXPECT_EQ(requestData["script"]["params"]["osplatform"], "ubuntu");
+    EXPECT_EQ(requestData["script"]["params"]["ostype"], "linux");
+    EXPECT_EQ(requestData["script"]["params"]["osversion"], "22.04");
+    EXPECT_EQ(requestData["script"]["params"]["globalVersion"], 12345);
+}
+
+TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQueryError)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"wazuh-states-fim-files"};
+    bool notifyCalled = false;
+
+    // Setup error expectation
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Internal server error", 500);
+                }
+            }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Call should throw exception on fatal error
+    EXPECT_THROW(connector.updateAgentMetadataByQuery(indices,
+                                                      "agent-001",
+                                                      "test-agent",
+                                                      "4.5.0",
+                                                      "x86_64",
+                                                      "test-host",
+                                                      "Ubuntu",
+                                                      "ubuntu",
+                                                      "linux",
+                                                      "22.04",
+                                                      12345),
+                 IndexerConnectorException);
+
+    EXPECT_FALSE(notifyCalled) << "Notify callback should not have been called on error";
+}
+
+// Tests for updateAgentGroupsByQuery
+TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQuerySuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"wazuh-states-fim-files", "wazuh-states-inventory-system"};
+    std::vector<std::string> groups = {"group1", "group2", "group3"};
+    bool notifyCalled = false;
+
+    // Setup expectations
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
+                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Call the function
+    EXPECT_NO_THROW(connector.updateAgentGroupsByQuery(indices, "agent-002", groups, 54321));
+
+    // Verify the request was made
+    EXPECT_EQ(callCount, 1);
+    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called";
+
+    // Verify the request contained the correct data
+    auto requestData = nlohmann::json::parse(receivedData[0]);
+    EXPECT_EQ(requestData["query"]["term"]["agent.id"], "agent-002");
+    EXPECT_TRUE(requestData.contains("script"));
+    EXPECT_TRUE(requestData["script"].contains("source"));
+    EXPECT_EQ(requestData["script"]["params"]["groups"][0], "group1");
+    EXPECT_EQ(requestData["script"]["params"]["groups"][1], "group2");
+    EXPECT_EQ(requestData["script"]["params"]["groups"][2], "group3");
+    EXPECT_EQ(requestData["script"]["params"]["globalVersion"], 54321);
+}
+
+TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQueryWithRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"wazuh-states-sca"};
+    std::vector<std::string> groups = {"default"};
+    bool notifyCalled = false;
+    int attempts = 0;
+
+    // First call fails with version conflict, second succeeds
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&attempts](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
+            {
+                attempts++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Version conflict", 409);
+                }
+            }))
+        .WillOnce(Invoke(
+            [this, &attempts](auto requestParams, const auto& postParams, auto configParams)
+            {
+                attempts++;
+                this->simulateSuccessfulPost(requestParams, postParams, configParams);
+            }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Call should succeed after retry
+    EXPECT_NO_THROW(connector.updateAgentGroupsByQuery(indices, "agent-003", groups, 99999));
+
+    EXPECT_EQ(attempts, 2) << "Should have retried once";
+    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called after successful retry";
+}
+
+TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQueryMultipleIndices)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"index1", "index2", "index3", "index4"};
+    bool notifyCalled = false;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
+                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    EXPECT_NO_THROW(connector.updateAgentMetadataByQuery(indices,
+                                                         "agent-004",
+                                                         "multi-index-agent",
+                                                         "5.0.0",
+                                                         "arm64",
+                                                         "host1",
+                                                         "Debian",
+                                                         "debian",
+                                                         "linux",
+                                                         "11",
+                                                         11111));
+
+    EXPECT_EQ(callCount, 1);
+    EXPECT_TRUE(notifyCalled);
+}

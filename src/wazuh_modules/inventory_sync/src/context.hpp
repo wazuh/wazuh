@@ -34,6 +34,7 @@ struct Context final
     std::string ostype;
     std::string osversion;
     std::vector<std::string> groups;
+    uint64_t globalVersion;
     bool transactionDispatched = false;
 };
 

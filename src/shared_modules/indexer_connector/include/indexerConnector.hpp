@@ -59,6 +59,46 @@ public:
     void deleteByQuery(const std::string& index, const std::string& agentId);
 
     /**
+     * @brief Update agent metadata by query for all documents of an agent across multiple indices.
+     *
+     * @param indices List of indices to update.
+     * @param agentId Agent ID to match.
+     * @param agentName New agent name.
+     * @param agentVersion New agent version.
+     * @param architecture New architecture.
+     * @param hostname New hostname.
+     * @param osname New OS name.
+     * @param osplatform New OS platform.
+     * @param ostype New OS type.
+     * @param osversion New OS version.
+     * @param globalVersion New global version to set in state.document_version.
+     */
+    void updateAgentMetadataByQuery(const std::vector<std::string>& indices,
+                                    const std::string& agentId,
+                                    const std::string& agentName,
+                                    const std::string& agentVersion,
+                                    const std::string& architecture,
+                                    const std::string& hostname,
+                                    const std::string& osname,
+                                    const std::string& osplatform,
+                                    const std::string& ostype,
+                                    const std::string& osversion,
+                                    uint64_t globalVersion);
+
+    /**
+     * @brief Update agent groups by query for all documents of an agent across multiple indices.
+     *
+     * @param indices List of indices to update.
+     * @param agentId Agent ID to match.
+     * @param groups New groups array.
+     * @param globalVersion New global version to set in state.document_version.
+     */
+    void updateAgentGroupsByQuery(const std::vector<std::string>& indices,
+                                  const std::string& agentId,
+                                  const std::vector<std::string>& groups,
+                                  uint64_t globalVersion);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.

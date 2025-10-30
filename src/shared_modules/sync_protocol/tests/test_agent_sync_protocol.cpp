@@ -2753,8 +2753,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
     {
+        std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::METADATA_DELTA,
+                          testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -2824,8 +2826,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
     {
+        std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::METADATA_CHECK,
+                          testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -2895,8 +2899,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
     {
+        std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_DELTA,
+                          testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -2966,8 +2972,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
     {
+        std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_CHECK,
+                          testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -3031,8 +3039,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithInvalidMode)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     // Try with Mode::DELTA (not allowed for synchronizeMetadataOrGroups)
+    std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     bool result = protocol->synchronizeMetadataOrGroups(
                       Mode::DELTA,
+                      testIndices,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -3056,8 +3066,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, mockQueue);
 
+    std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     bool result = protocol->synchronizeMetadataOrGroups(
                       Mode::METADATA_DELTA,
+                      testIndices,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -3081,8 +3093,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsStartAckTimeout)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
 
     // Don't send any response, causing timeout
+    std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     bool result = protocol->synchronizeMetadataOrGroups(
                       Mode::METADATA_CHECK,
+                      testIndices,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -3108,8 +3122,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
     {
+        std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_DELTA,
+                          testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -3158,8 +3174,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithStartAckError)
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
     {
+        std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::METADATA_DELTA,
+                          testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -3206,8 +3224,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
     {
+        std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_CHECK,
+                          testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps

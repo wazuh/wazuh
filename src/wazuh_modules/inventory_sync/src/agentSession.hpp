@@ -108,6 +108,7 @@ public:
         auto osplatform = data->osplatform() ? data->osplatform()->string_view() : std::string_view();
         auto ostype = data->ostype() ? data->ostype()->string_view() : std::string_view();
         auto osversion = data->osversion() ? data->osversion()->string_view() : std::string_view();
+        auto globalVersion = data->global_version();
 
         auto agentIdString = std::string(agentId.data(), agentId.size());
         if (agentIdString.length() < 3)
@@ -169,7 +170,8 @@ public:
                                                .osplatform = std::string(osplatform.data(), osplatform.size()),
                                                .ostype = std::string(ostype.data(), ostype.size()),
                                                .osversion = std::string(osversion.data(), osversion.size()),
-                                               .groups = std::move(groups)});
+                                               .groups = std::move(groups),
+                                               .globalVersion = globalVersion});
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "New session for module '%s' by agent '%s'. (Session %llu)",

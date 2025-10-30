@@ -265,6 +265,7 @@ void AgentSyncProtocol::clearInMemoryData()
 }
 
 bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
+                                                    const std::vector<std::string>& indices,
                                                     std::chrono::seconds timeout,
                                                     unsigned int retries,
                                                     size_t maxEps)
@@ -286,12 +287,11 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     clearSyncState();
 
     // For metadata and group modes, we don't send any data items
-    // We only send Start (with Size=0, First=false, and empty Index array) and End messages
-    std::vector<std::string> emptyIndices;
+    // We only send Start (with Size=0 and the indices array) and End messages
     bool success = false;
 
     // Step 1: Send Start message and wait for StartAck
-    if (sendStartAndWaitAck(mode, 0, emptyIndices, timeout, retries, maxEps))
+    if (sendStartAndWaitAck(mode, 0, indices, timeout, retries, maxEps))
     {
         // Step 2: Send End message and wait for EndAck (no Data messages)
         std::vector<PersistedData> emptyData;

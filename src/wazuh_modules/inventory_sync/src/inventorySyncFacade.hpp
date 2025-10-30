@@ -354,9 +354,17 @@ public:
                         // Lock indexer connector to avoid process with the timeout mechanism.
                         auto lock = m_indexerConnector->scopeLock();
 
-                        // TODO: Call indexerConnector to update metadata (agent.id, agent.name, agent.version,
-                        // agent.host.*) for all documents matching this agent ID across all module indices Placeholder
-                        // for now - implementation depends on indexerConnector API
+                        m_indexerConnector->updateAgentMetadataByQuery(res.context->indices,
+                                                                       res.context->agentId,
+                                                                       res.context->agentName,
+                                                                       res.context->agentVersion,
+                                                                       res.context->architecture,
+                                                                       res.context->hostname,
+                                                                       res.context->osname,
+                                                                       res.context->osplatform,
+                                                                       res.context->ostype,
+                                                                       res.context->osversion,
+                                                                       res.context->globalVersion);
                     }
                     else if (res.context->mode == Wazuh::SyncSchema::Mode_GroupDelta)
                     {
@@ -367,9 +375,10 @@ public:
                         // Lock indexer connector to avoid process with the timeout mechanism.
                         auto lock = m_indexerConnector->scopeLock();
 
-                        // TODO: Call indexerConnector to update agent.groups field
-                        // for all documents matching this agent ID across all module indices
-                        // Placeholder for now - implementation depends on indexerConnector API
+                        m_indexerConnector->updateAgentGroupsByQuery(res.context->indices,
+                                                                     res.context->agentId,
+                                                                     res.context->groups,
+                                                                     res.context->globalVersion);
                     }
                     else
                     {
