@@ -30,6 +30,7 @@ include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
+include_directories(${CMAKE_SOURCE_DIR}/src/recovery/)
 
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
@@ -76,10 +77,12 @@ if(APPLE)
 endif(APPLE)
 
 add_subdirectory("src/db")
+add_subdirectory("src/recovery")
 
 file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/*.c"
      "${CMAKE_SOURCE_DIR}/src/*.cpp"
+     "${CMAKE_SOURCE_DIR}/src/recovery/*.cpp"
      "${CMAKE_SOURCE_DIR}/src/file/*.c"
      "${CMAKE_SOURCE_DIR}/src/registry/*.c"
      "${CMAKE_SOURCE_DIR}/src/whodata/*.c")

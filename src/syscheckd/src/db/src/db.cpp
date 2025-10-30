@@ -88,11 +88,13 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
     return count;
 }
 
-bool DB::checkIfFirstScanHasBeenSynched() const{
+bool DB::checkIfFirstScanHasBeenSynched() const
+{
     return DB::instance().first_scan_has_been_synched;
 }
 
-void DB::setFirstScanHasBeenSynched(){
+void DB::setFirstScanHasBeenSynched()
+{
     DB::instance().first_scan_has_been_synched = true;
 }
 
@@ -100,7 +102,7 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
 {
     std::string concatenatedChecksums;
 
-    auto callback {[&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json& jsonResult)
+    auto callback {[&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
     {
         if (ReturnTypeCallback::SELECTED == type)
         {
@@ -120,9 +122,11 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
     return concatenatedChecksums;
 }
 
-std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName){
+std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName)
+{
     std::vector<nlohmann::json> recoveryItems;
-    auto callback {[&recoveryItems](ReturnTypeCallback type, const nlohmann::json& jsonResult){
+    auto callback {[&recoveryItems](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
         if (ReturnTypeCallback::SELECTED == type)
         {
             recoveryItems.push_back(jsonResult);
@@ -141,22 +145,22 @@ void DB::initializeTableMetadata()
 {
     auto fileEntrySyncQuery = SyncRowQuery::builder()
                               .table("table_metadata")
-                              .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
-                              .build();
+    .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
+    .build();
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
     FIMDB::instance().updateItem(fileEntrySyncQuery.query(), emptyCallback);
 
 #ifdef WIN32
     auto registryKeySyncQuery = SyncRowQuery::builder()
                                 .table("table_metadata")
-                                .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
-                                .build();
+    .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
+    .build();
     FIMDB::instance().updateItem(registryKeySyncQuery.query(), emptyCallback);
 
     auto registryDataSyncQuery = SyncRowQuery::builder()
                                  .table("table_metadata")
-                                 .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
-                                 .build();
+    .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
+    .build();
     FIMDB::instance().updateItem(registryDataSyncQuery.query(), emptyCallback);
 #endif
 }
@@ -167,8 +171,8 @@ void DB::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
 
     auto syncQuery = SyncRowQuery::builder()
                      .table("table_metadata")
-                     .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
-                     .build();
+    .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
+    .build();
 
     FIMDB::instance().updateItem(syncQuery.query(), emptyCallback);
 }
@@ -177,7 +181,7 @@ int64_t DB::getLastSyncTime(const std::string& tableName)
 {
     int64_t lastSyncTime = 0;
 
-    auto callback = [&lastSyncTime](ReturnTypeCallback result, const nlohmann::json& data)
+    auto callback = [&lastSyncTime](ReturnTypeCallback result, const nlohmann::json & data)
     {
         if (result == ReturnTypeCallback::SELECTED && data.contains("last_sync_time"))
         {
@@ -188,8 +192,8 @@ int64_t DB::getLastSyncTime(const std::string& tableName)
     auto selectQuery = SelectQuery::builder()
                        .table("table_metadata")
                        .columnList({"last_sync_time"})
-                       .rowFilter(nlohmann::json{{"table_name", tableName}}.dump())
-                       .build();
+    .rowFilter(nlohmann::json{{"table_name", tableName}}.dump())
+    .build();
 
     FIMDB::instance().executeQuery(selectQuery.query(), callback);
 
@@ -332,14 +336,17 @@ void fim_db_close_and_delete_database()
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+
     // LCOV_EXCL_STOP
 }
 
-bool fim_db_check_if_first_scan_has_been_synched(){
+bool fim_db_check_if_first_scan_has_been_synched()
+{
     return DB::instance().checkIfFirstScanHasBeenSynched();
 }
 
-void fim_db_set_first_scan_has_been_synched(){
+void fim_db_set_first_scan_has_been_synched()
+{
     DB::instance().setFirstScanHasBeenSynched();
 }
 

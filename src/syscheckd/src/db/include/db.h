@@ -169,26 +169,26 @@ EXPORTED void fim_db_teardown();
  */
 EXPORTED void fim_db_close_and_delete_database();
 
-    /**
-     * @brief Check if the first scan has been synched.
-     * @return true if it has been synched, false otherwise
-     */
-    EXPORTED bool fim_db_check_if_first_scan_has_been_synched();
+/**
+ * @brief Check if the first scan has been synched.
+ * @return true if it has been synched, false otherwise
+ */
+EXPORTED bool fim_db_check_if_first_scan_has_been_synched();
 
-    /**
-     * @brief Set the first_scan_has_been_synched flag.
-     */
-    EXPORTED void fim_db_set_first_scan_has_been_synched();
+/**
+ * @brief Set the first_scan_has_been_synched flag.
+ */
+EXPORTED void fim_db_set_first_scan_has_been_synched();
 
-    /**
-     * @brief Gets the concatenated checksums from every entry in a table.
-     * @param out_string_ptr Pointer to a char* where the result will be written into.
-     * @retval FIMDB_OK on success.
-     * @retval FIMDB_FULL if the table limit was reached.
-     * @retval FIMDB_ERR on failure.
-     * @note Caller must free(*out_string_ptr) when done.
-     */
-    EXPORTED FIMDBErrorCode fim_db_get_table_concatenated_checksums(char* table_name, char** out_string_ptr);
+/**
+ * @brief Gets the concatenated checksums from every entry in a table.
+ * @param out_string_ptr Pointer to a char* where the result will be written into.
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_FULL if the table limit was reached.
+ * @retval FIMDB_ERR on failure.
+ * @note Caller must free(*out_string_ptr) when done.
+ */
+EXPORTED FIMDBErrorCode fim_db_get_table_concatenated_checksums(char* table_name, char** out_string_ptr);
 
 #ifdef WIN32
 

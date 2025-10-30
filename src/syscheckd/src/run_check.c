@@ -613,7 +613,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
 #endif
 
-    bool integrity_interval_elapsed = false;
     while (fim_sync_module_running) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
         w_mutex_lock(&syscheck.fim_realtime_mutex);
@@ -646,7 +645,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         } else {
             minfo("Synchronization failed");
         }
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
         minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);

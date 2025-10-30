@@ -53,25 +53,24 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             item.dump(),
             item["version"]
         );
-        }
-        minfo("Persisted %zu recovery items in memory", recoveryItems.size());
-        minfo("Starting recovery synchronizattion...");
-        bool success = wrapper->impl->synchronizeModule(
-            Mode::FULL,
-            std::chrono::seconds(sync_response_timeout),
-            FIM_SYNC_RETRIES,
-            sync_max_eps
-        );
-        if (success) {
-            wrapper->impl->clearInMemoryData();
-            minfo("Recovery completed successfully, in-memory data cleared");
-        } else {
-            minfo("Recovery synchronization failed, will retry later");
-        }
-
-        // Update the last sync time regardless of the synchronization result since we always want to wait for intergrity_interval to try again.
-        DB::instance().updateLastSyncTime(table_name, getUnixTimeSeconds());
     }
+    minfo("Persisted %zu recovery items in memory", recoveryItems.size());
+    minfo("Starting recovery synchronization...");
+    bool success = wrapper->impl->synchronizeModule(
+        Mode::FULL,
+        std::chrono::seconds(sync_response_timeout),
+        FIM_SYNC_RETRIES,
+        sync_max_eps
+    );
+    if (success) {
+        wrapper->impl->clearInMemoryData();
+        minfo("Recovery completed successfully, in-memory data cleared");
+    } else {
+        minfo("Recovery synchronization failed, will retry later");
+    }
+
+    // Update the last sync time regardless of the synchronization result since we always want to wait for integrity_interval to try again.
+    DB::instance().updateLastSyncTime(table_name, getUnixTimeSeconds());
 }
 
 bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps){
@@ -119,4 +118,5 @@ bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integ
     int64_t last_sync_time =  DB::instance().getLastSyncTime(table_name);
     int64_t new_sync_time = current_time - last_sync_time;
     return (new_sync_time >= integrity_interval) ;
+}
 }
