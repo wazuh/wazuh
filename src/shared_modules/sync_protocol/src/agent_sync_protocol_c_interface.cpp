@@ -220,7 +220,8 @@ extern "C" {
                                      size_t indices_count,
                                      unsigned int sync_timeout,
                                      unsigned int retries,
-                                     size_t max_eps)
+                                     size_t max_eps,
+                                     uint64_t global_version)
     {
         try
         {
@@ -241,11 +242,13 @@ extern "C" {
             if (indices_vec.empty()) return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+
             return wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
                                                               indices_vec,
                                                               std::chrono::seconds(sync_timeout),
                                                               retries,
-                                                              max_eps);
+                                                              max_eps,
+                                                              global_version);
         }
         catch (const std::exception& ex)
         {

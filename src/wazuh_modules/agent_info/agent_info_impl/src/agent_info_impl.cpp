@@ -1025,7 +1025,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         }
 
         // Step 6: Synchronize metadata or groups
-        m_logFunction(LOG_INFO, "Step 6: Synchronizing " + table + "...");
+        m_logFunction(LOG_INFO, "Step 6: Synchronizing " + table + " with global version " + std::to_string(newVersion) + "...");
         if (m_spSyncProtocol)
         {
             bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
@@ -1033,7 +1033,8 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 ALL_MODULE_INDICES,
                 std::chrono::seconds(m_syncResponseTimeout),
                 m_syncRetries,
-                m_syncMaxEps);
+                m_syncMaxEps,
+                newVersion);
 
             if (!syncSuccess)
             {

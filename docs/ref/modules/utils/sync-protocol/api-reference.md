@@ -145,7 +145,8 @@ Clears the in-memory data queue. This method removes all entries from the in-mem
 bool synchronizeMetadataOrGroups(Mode mode,
                                 std::chrono::seconds timeout,
                                 unsigned int retries,
-                                size_t maxEps)
+                                size_t maxEps,
+                                uint64_t globalVersion)
 ```
 
 Synchronizes metadata or groups with the server without sending data. This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck. The sequence is: Start → StartAck → End → EndAck (no Data messages).
@@ -155,6 +156,7 @@ Synchronizes metadata or groups with the server without sending data. This metho
 - `timeout`: Timeout duration for waiting for server responses
 - `retries`: Number of retry attempts for each message
 - `maxEps`: Maximum events per second (0 = unlimited)
+- `globalVersion`: Global version to include in the Start message.
 
 **Returns:** `true` if synchronization completed successfully, `false` otherwise
 
@@ -356,7 +358,8 @@ bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
                                  Mode_t mode,
                                  unsigned int sync_timeout,
                                  unsigned int sync_retries,
-                                 size_t max_eps)
+                                 size_t max_eps,
+                                 uint64_t global_version)
 ```
 
 C wrapper for `synchronizeMetadataOrGroups()`. Synchronizes metadata or groups with the server without sending data.
@@ -367,6 +370,7 @@ C wrapper for `synchronizeMetadataOrGroups()`. Synchronizes metadata or groups w
 - `sync_timeout`: Timeout in seconds
 - `sync_retries`: Number of retries
 - `max_eps`: Maximum events per second
+- `global_version`: Global version to include in the Start message.
 
 **Returns:** `true` on success, `false` on failure
 

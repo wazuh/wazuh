@@ -335,7 +335,8 @@ void sync_agent_metadata() {
         MODE_METADATA_DELTA,
         30,  // timeout in seconds
         3,   // retries
-        0    // no EPS limit
+        0,   // no EPS limit
+        0
     );
 
     if (success) {

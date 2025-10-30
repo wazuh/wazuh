@@ -60,7 +60,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         void clearInMemoryData() override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
-        bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+        bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) override;
@@ -122,6 +122,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @param option Synchronization option.
+        /// @param globalVersion Optional global version to include in the Start message
         /// @return True on success, false on failure or timeout
         bool sendStartAndWaitAck(Mode mode,
                                  size_t dataSize,
@@ -129,7 +130,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                  const std::chrono::seconds timeout,
                                  unsigned int retries,
                                  size_t maxEps,
-                                 Option option = Option::SYNC);
+                                 Option option = Option::SYNC,
+                                 std::optional<uint64_t> globalVersion = std::nullopt);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack

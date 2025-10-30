@@ -387,7 +387,7 @@ sequenceDiagram
     participant AD as Wazuh agentd
     participant Manager as Wazuh Manager
 
-    Module->>ASP: synchronizeMetadataOrGroups(METADATA_DELTA, timeout, retries, maxEps)
+    Module->>ASP: synchronizeMetadataOrGroups(METADATA_DELTA, timeout, retries, maxEps, globalVersion?)
 
     Note over ASP,Manager: Session Establishment
     ASP->>ASP: Validate mode (METADATA/GROUP)
