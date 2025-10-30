@@ -33,8 +33,6 @@ typedef struct {
     char os_type[256];                  ///< Operating system type (e.g., "linux", "windows", "darwin")
     char os_platform[256];              ///< Operating system platform/distribution (e.g., "ubuntu", "centos", "windows")
     char os_version[256];               ///< Operating system version
-    char os_distribution_release[256];  ///< Operating system distribution release (e.g., "1903", "sp1")
-    char os_full[256];                  ///< Operating system full version/display version (e.g., "19H1")
     char checksum_metadata[256];        ///< Checksum of metadata fields
     char** groups;                      ///< Array of group names (NULL-terminated strings)
     size_t groups_count;                ///< Number of groups in the array

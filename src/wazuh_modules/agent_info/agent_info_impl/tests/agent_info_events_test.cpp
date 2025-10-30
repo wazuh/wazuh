@@ -92,8 +92,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
     testData["host_os_type"] = "Linux";
     testData["host_os_platform"] = "ubuntu";
     testData["host_os_version"] = "22.04";
-    testData["host_os_distribution_release"] = "jammy";
-    testData["host_os_full"] = "22.04 LTS";
     testData["checksum"] = "abc123";
 
     // Process the event
