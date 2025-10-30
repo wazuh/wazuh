@@ -13,12 +13,9 @@
 #include "db.h"
 #include "db.hpp"
 #include "dbFileItem.hpp"
-#include "debug_op.h"
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "json.hpp"
-#include <cstring>
-#include <string>
 
 enum SEARCH_FIELDS
 {

@@ -77,7 +77,6 @@ if(APPLE)
 endif(APPLE)
 
 add_subdirectory("src/db")
-add_subdirectory("src/recovery")
 
 file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/*.c"
