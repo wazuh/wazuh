@@ -63,7 +63,7 @@ set_target_properties(
   LINKER_LANGUAGE C
   )
 
-target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread agent_sync_protocol dbsync)
 
 if(${TARGET} STREQUAL "winagent")
     link_directories(${SRC_FOLDER}/syscheckd/build/bin)
@@ -75,6 +75,10 @@ include_directories(${SRC_FOLDER}/syscheckd/src)
 include_directories(${SRC_FOLDER}/unit_tests)
 include_directories(${SRC_FOLDER}/unit_tests/syscheckd)
 include_directories(${SRC_FOLDER}/config)
+
+# Link directories for sync_protocol and dbsync libraries
+link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 
 add_library(fim_shared STATIC expect_run_check.c
                               expect_fim_diff_changes.c
@@ -107,7 +111,7 @@ if(${TARGET} STREQUAL "winagent")
     LINKER_LANGUAGE C
     )
 
-  target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+  target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread agent_sync_protocol dbsync)
 
   add_subdirectory(registry)
 endif()
