@@ -174,6 +174,10 @@ void SecurityConfigurationAssessment::Stop()
         policy->Stop();
     }
 
+    // Explicitly release DBSync before static destruction to avoid use-after-free
+    // during shutdown when DBSyncImplementation singleton may be destroyed first
+    m_dBSync.reset();
+
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module stopped.");
 }
 
