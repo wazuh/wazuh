@@ -428,10 +428,10 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
     }
 
     // merged.mg has two possible formats:
-    // 1. Single group: First line is "#groupname"
-    // 2. Multiple groups: First line is "#hash_id", groups appear as "<!-- Source file: groupname/agent.conf -->"
+    // 1. Single group: First line is "#groupname" (where groupname is not a hash)
+    // 2. Multiple groups: First line is "#hash_id" (8-char hex), groups appear as "<!-- Source file: groupname/agent.conf -->"
     bool isFirstLine = true;
-    bool isSingleGroupFormat = false;
+    bool foundXMLComments = false;
 
     m_fileIO->readLineByLine(mergedFile,
                              [&](const std::string & line)
@@ -449,20 +449,38 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
                 std::string firstLineValue = trimmedLine.substr(1); // Remove the '#'
                 firstLineValue = Utils::trim(firstLineValue);
 
-                // If the first line is not a hash (hashes are typically 8 chars),
-                // it's the actual group name in single-group format
-                // We'll check if the file contains XML comments to determine format
-                // For now, tentatively store it
                 if (!firstLineValue.empty())
                 {
-                    // We'll determine if this is a group name or hash based on subsequent lines
-                    // Store it temporarily - we'll validate later
-                    isSingleGroupFormat = true;
-                    groups.push_back(firstLineValue);
+                    // Check if this looks like a hash (8 hex characters) or a group name
+                    // Hashes are typically 8 characters and all hexadecimal
+                    bool looksLikeHash = (firstLineValue.length() == 8);
+
+                    if (looksLikeHash)
+                    {
+                        for (char c : firstLineValue)
+                        {
+                            if (!std::isxdigit(c))
+                            {
+                                looksLikeHash = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!looksLikeHash)
+                    {
+                        // Single-group format: the first line is the actual group name
+                        groups.push_back(firstLineValue);
+                        return false; // Stop reading, we have the single group
+                    }
+
+                    // Otherwise, it's a hash - continue reading to find XML comments
                 }
+
+                return true; // Continue to next line
             }
 
-            return true;
+            // If first line doesn't start with '#', continue processing as it might be an XML comment
         }
 
         // Look for multi-group format: XML comments with "Source file:"
@@ -470,13 +488,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
         if (sourceFilePos != std::string::npos && trimmedLine.find("<!--") == 0)
         {
-            // If we found XML comment format, we're in multi-group mode
-            if (isSingleGroupFormat)
-            {
-                // Clear the group name we stored from first line (it was a hash, not a group name)
-                groups.clear();
-                isSingleGroupFormat = false;
-            }
+            foundXMLComments = true;
 
             // Extract the path after "Source file:"
             size_t pathStart = sourceFilePos + 12; // Length of "Source file:"
