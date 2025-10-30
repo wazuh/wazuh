@@ -420,10 +420,12 @@ std::string SCA::query(const std::string& jsonQuery)
         {
             // Extract version from parameters
             int version = 0;
+
             if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
             {
                 version = parameters["version"].get<int>();
             }
+
             response["error"] = MQ_SUCCESS;
             response["message"] = "SCA version set successfully";
             response["data"]["version"] = version;

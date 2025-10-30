@@ -37,6 +37,10 @@ class AgentInfoEventProcessingTest : public ::testing::Test
             m_mockFileIO = std::make_shared<MockFileIOUtils>();
             m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
 
+            // Configure expected calls to avoid warnings
+            EXPECT_CALL(*m_mockDBSync, handle())
+            .WillRepeatedly(::testing::Return(nullptr));
+
             // Set up callbacks to capture events
             m_reportDiffFunc = [this](const std::string & event)
             {
@@ -49,6 +53,18 @@ class AgentInfoEventProcessingTest : public ::testing::Test
             m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
                 m_logOutput += msg + "\n";
+            };
+
+            // Create a mock query module function
+            m_queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+            {
+                // Mock implementation that returns success
+                if (response)
+                {
+                    *response = nullptr;
+                }
+
+                return 0;
             };
         }
 
@@ -68,6 +84,7 @@ class AgentInfoEventProcessingTest : public ::testing::Test
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
         std::function<void(const std::string&)> m_reportDiffFunc;
         std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
         std::vector<nlohmann::json> m_reportedEvents;
         std::string m_logOutput;
 };
@@ -78,6 +95,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
                       ":memory:",
                       m_reportDiffFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -116,6 +134,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
                       ":memory:",
                       m_reportDiffFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -153,6 +172,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
                       ":memory:",
                       m_reportDiffFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -178,6 +198,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessAgentGroupsEvent)
                       ":memory:",
                       m_reportDiffFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -208,6 +229,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessEventWithExceptionInCallback)
                       ":memory:",
                       throwingReportFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 

@@ -87,12 +87,13 @@ void agent_info_set_query_module_function(query_module_callback_t query_module_c
 
     if (g_query_module_callback)
     {
-        g_query_module_function_wrapper = [](const std::string& module_name, const std::string& query, char** response)
+        g_query_module_function_wrapper = [](const std::string & module_name, const std::string & query, char** response)
         {
             if (g_query_module_callback)
             {
                 return g_query_module_callback(module_name.c_str(), query.c_str(), response);
             }
+
             return -1;
         };
     }

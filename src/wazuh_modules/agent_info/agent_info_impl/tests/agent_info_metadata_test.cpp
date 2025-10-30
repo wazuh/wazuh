@@ -37,10 +37,26 @@ class AgentInfoMetadataTest : public ::testing::Test
                 m_logOutput += "\n";
             };
 
+            // Create a mock query module function
+            m_queryModuleFunction = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+            {
+                // Mock implementation that returns success
+                if (response)
+                {
+                    *response = nullptr;
+                }
+
+                return 0;
+            };
+
             m_mockDBSync = std::make_shared<MockDBSync>();
             m_mockSysInfo = std::make_shared<MockSysInfo>();
             m_mockFileIO = std::make_shared<MockFileIOUtils>();
             m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+
+            // Configure expected calls to avoid warnings
+            EXPECT_CALL(*m_mockDBSync, handle())
+            .WillRepeatedly(::testing::Return(nullptr));
         }
 
         void TearDown() override
@@ -58,6 +74,7 @@ class AgentInfoMetadataTest : public ::testing::Test
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
+        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunction;
         std::string m_logOutput;
 };
 
@@ -100,7 +117,7 @@ TEST_F(AgentInfoMetadataTest, PopulatesMetadataSuccessfully)
 
     // Create agent info and start
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -126,7 +143,7 @@ TEST_F(AgentInfoMetadataTest, HandlesClientKeysNotFound)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -164,7 +181,7 @@ TEST_F(AgentInfoMetadataTest, HandlesEmptyGroups)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -201,7 +218,7 @@ TEST_F(AgentInfoMetadataTest, HandlesInvalidClientKeysFormat)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -241,7 +258,7 @@ TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -257,7 +274,7 @@ TEST_F(AgentInfoMetadataTest, HandlesExceptionDuringPopulate)
     .WillOnce(::testing::Throw(std::runtime_error("Filesystem error")));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // start() should catch the exception and log it
     EXPECT_NO_THROW(m_agentInfo->start(1, []()
@@ -301,7 +318,7 @@ TEST_F(AgentInfoMetadataTest, IncludesAllOSFieldsInMetadata)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -342,7 +359,7 @@ TEST_F(AgentInfoMetadataTest, HandlesPartialOSData)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -385,7 +402,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_FileNotFound)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -426,7 +443,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_OnlyDefaultGroup)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -469,7 +486,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroup)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -519,7 +536,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultipleGroups)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -562,7 +579,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_WithWhitespaceAndExtraLines)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -603,7 +620,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MalformedComments)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;

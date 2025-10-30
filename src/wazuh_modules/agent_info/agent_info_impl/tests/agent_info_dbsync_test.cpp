@@ -30,6 +30,10 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
 
             m_mockDBSync = std::make_shared<MockDBSync>();
 
+            // Configure expected calls to avoid warnings
+            EXPECT_CALL(*m_mockDBSync, handle())
+            .WillRepeatedly(::testing::Return(nullptr));
+
             // Set up callbacks to capture events
             m_reportDiffFunc = [this](const std::string & event)
             {
@@ -50,6 +54,18 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
             {
                 m_logOutput += msg + "\n";
             };
+
+            // Create a mock query module function
+            m_queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+            {
+                // Mock implementation that returns success
+                if (response)
+                {
+                    *response = nullptr;
+                }
+
+                return 0;
+            };
         }
 
         void TearDown() override
@@ -63,6 +79,7 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
         std::function<void(const std::string&)> m_reportDiffFunc;
         std::function<void(const std::string&, Operation, const std::string&, const std::string&)> m_persistDiffFunc;
         std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
         std::vector<std::string> m_reportedEvents;
         std::vector<nlohmann::json> m_persistedEvents;
         std::string m_logOutput;
@@ -74,6 +91,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, ConstructorWithCallbacksSucceeds)
                       "test_path",
                       m_reportDiffFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -88,6 +106,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, CallbacksAreOptional)
                       ":memory:",
                       nullptr,  // No report callback
                       m_logFunc, // Log function is required
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -106,6 +125,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
                       ":memory:",
                       nullptr,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -116,7 +136,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
 
 TEST_F(AgentInfoDBSyncIntegrationTest, SetSyncParametersConfiguresValues)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_mockDBSync);
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     // Set sync parameters
     EXPECT_NO_THROW(m_agentInfo->setSyncParameters(60, 5, 1000));
@@ -130,7 +150,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, SetSyncParametersConfiguresValues)
 
 TEST_F(AgentInfoDBSyncIntegrationTest, InitSyncProtocolLogsMessages)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_mockDBSync);
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     MQ_Functions mq_funcs = {nullptr, nullptr};
 

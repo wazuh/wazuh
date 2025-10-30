@@ -1676,10 +1676,12 @@ std::string Syscollector::query(const std::string& jsonQuery)
         {
             // Extract version from parameters
             int version = 0;
+
             if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
             {
                 version = parameters["version"].get<int>();
             }
+
             response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector version set successfully";
             response["data"]["version"] = version;
@@ -1710,6 +1712,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
         {
             m_logFunction(LOG_ERROR, "Query error: " + std::string(ex.what()));
         }
+
         return response.dump();
     }
 }
