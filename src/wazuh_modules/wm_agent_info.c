@@ -444,8 +444,6 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
-    minfo("Agent-info module started successfully.");
-
     // The module has completed its initialization and metadata collection
     // The thread will now exit as agent-info is a one-time collection module
     return NULL;
