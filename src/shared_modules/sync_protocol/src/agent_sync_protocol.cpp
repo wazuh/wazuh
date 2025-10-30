@@ -1122,6 +1122,14 @@ void AgentSyncProtocol::deleteDatabase()
 void AgentSyncProtocol::stop()
 {
     m_stopRequested.store(true, std::memory_order_release);
+
+    // Wake up any threads waiting on the condition variable to check the stop flag
+    // This prevents crashes when the object is destroyed while waiting
+    {
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        m_syncState.cv.notify_all();
+    }
+
     m_logger(LOG_DEBUG, "Stop requested for sync protocol module: " + m_moduleName);
 }
 
