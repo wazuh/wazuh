@@ -37,11 +37,11 @@ extern "C"
 #include <stdbool.h>
 
 /**
- * @brief Persists a table's conents in memory and triggers a full resync
+ * @brief Persists a table's contents in memory and triggers a full resync
  * @param table_name The table to resync
  * @param handle Sync Protocol handle
  * @param sync_response_timeout Timeout for the sync process
- * @param sync_max_eps Max eps for the sync proces
+ * @param sync_max_eps Max eps for the sync process
  */
 EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
 
@@ -50,7 +50,7 @@ EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
  * @param table_name The table to check
  * @param handle Sync Protocol handle
  * @param sync_response_timeout Timeout for the checksum validation process
- * @param sync_max_eps Max eps for the checksum validation proces
+ * @param sync_max_eps Max eps for the checksum validation process
  * @returns true if a full sync is required, false if a delta sync is sufficient
  */
 EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
