@@ -225,7 +225,8 @@ TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
     .WillOnce(::testing::Invoke(
                   [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
-        // Multiple groups in XML comments
+        // Multiple groups in XML comments - multi-group format
+        callback("#abcd1234");  // Hash in first line for multi-group format
         callback("<!-- Source file: default/agent.conf -->");
         callback("<!-- Source file: web-servers/agent.conf -->");
         callback("<!-- Source file: database/agent.conf -->");
@@ -587,6 +588,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MalformedComments)
     .WillOnce(::testing::Invoke(
                   [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
+        callback("#12345678");  // Multi-group format: hash in first line
         callback("<!-- Source file: valid-group/agent.conf -->");
         callback("<!-- Source file: /agent.conf -->");  // Missing group name
         callback("<!-- Source file: another-group/wrong.conf -->");  // Wrong file name (not agent.conf)
@@ -609,4 +611,132 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MalformedComments)
 
     // Should only find 1 valid group
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 1 groups"));
+}
+
+TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroupFormat_Default)
+{
+    // Test single-group format with "default" group
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillOnce(::testing::Return(true))  // client.keys exists
+    .WillOnce(::testing::Return(true)); // merged.mg exists
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillOnce(
+        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("001 agent1 192.168.1.1 key123");
+    }))
+    .WillOnce(::testing::Invoke(
+                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        // Single group format: first line is #groupname
+        callback("#default");
+        callback("!77 ar.conf");
+        callback("restart-ossec0 - restart-ossec.sh - 0");
+        callback("!76 agent.conf");
+        callback("<agent_config>");
+        callback("</agent_config>");
+    }));
+
+    nlohmann::json osData = {{"os_name", "Ubuntu"}};
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
+
+    // Should find default group in single-group format
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 1 groups"));
+}
+
+TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroupFormat_CustomGroup)
+{
+    // Test single-group format with custom group name
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillOnce(::testing::Return(true))  // client.keys exists
+    .WillOnce(::testing::Return(true)); // merged.mg exists
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillOnce(
+        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("001 agent1 192.168.1.1 key123");
+    }))
+    .WillOnce(::testing::Invoke(
+                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        // Single group format: first line is #groupname
+        callback("#web-servers");
+        callback("!77 ar.conf");
+        callback("restart-ossec0 - restart-ossec.sh - 0");
+        callback("!76 agent.conf");
+        callback("<agent_config>");
+        callback("</agent_config>");
+    }));
+
+    nlohmann::json osData = {{"os_name", "Ubuntu"}};
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
+
+    // Should find web-servers group in single-group format
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 1 groups"));
+}
+
+TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultiGroupFormat_WithHash)
+{
+    // Test multi-group format with hash in first line
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillOnce(::testing::Return(true))  // client.keys exists
+    .WillOnce(::testing::Return(true)); // merged.mg exists
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillOnce(
+        ::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("001 agent1 192.168.1.1 key123");
+    }))
+    .WillOnce(::testing::Invoke(
+                  [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        // Multi-group format: first line is #hash_id
+        callback("#93f39afe");
+        callback("!234 agent.conf");
+        callback("<!-- Source file: default/agent.conf -->");
+        callback("<agent_config>");
+        callback("</agent_config>");
+        callback("<!-- Source file: web-servers/agent.conf -->");
+        callback("<agent_config>");
+        callback("</agent_config>");
+    }));
+
+    nlohmann::json osData = {{"os_name", "Ubuntu"}};
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
+
+    // Should find 2 groups from XML comments
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 2 groups"));
 }
