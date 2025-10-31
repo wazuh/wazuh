@@ -635,10 +635,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                                                                                        syscheck.sync_max_eps,
                                                                                        syscheck.sync_handle);
                     if (full_sync_required) {
-                        fim_recovery_persist_table_and_resync(table_names[i], 
-                                                              syscheck.sync_handle, 
-                                                              syscheck.sync_response_timeout, 
-                                                              syscheck.sync_max_eps);
+                        fim_recovery_persist_table_and_resync(table_names[i],
+                                                              syscheck.sync_response_timeout,
+                                                              syscheck.sync_max_eps,
+                                                              syscheck.sync_handle,
+                                                              NULL);
                     }
                 }
             }

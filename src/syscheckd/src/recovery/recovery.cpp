@@ -53,11 +53,11 @@ std::string calculateTableChecksum(const char* table_name) {
 
 extern "C"
 {
-void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps){
+void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback){
     std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(table_name);
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-    Utils::HashData hash(Utils::HashType::Sha1);
 
+    Utils::HashData hash(Utils::HashType::Sha1);
     for (const nlohmann::json& item : recoveryItems) {
         // Calculate SHA1 hash to get an id for persistDifferenceInMemory()
         std::string id = item["path"];
@@ -81,12 +81,24 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     }
     minfo("Persisted %zu recovery items in memory", recoveryItems.size());
     minfo("Starting recovery synchronization...");
-    bool success = wrapper->impl->synchronizeModule(
-        Mode::FULL,
-        std::chrono::seconds(sync_response_timeout),
-        FIM_SYNC_RETRIES,
-        sync_max_eps
-    );
+
+    // The test_callback parameter allows unit tests to inject custom synchronizeModule behavior.
+    // This is necessary because AgentSyncProtocolWrapper's implementation cannot be easily mocked
+    // without significant refactoring of the wrapper architecture.
+    bool success;
+    if (test_callback) {
+        // Use test callback in tests
+        success = test_callback();
+    } else {
+        // Use real implementation in production
+        success = wrapper->impl->synchronizeModule(
+            Mode::FULL,
+            std::chrono::seconds(sync_response_timeout),
+            FIM_SYNC_RETRIES,
+            sync_max_eps
+        );
+    }
+
     if (success) {
         wrapper->impl->clearInMemoryData();
         minfo("Recovery completed successfully, in-memory data cleared");

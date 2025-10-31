@@ -46,15 +46,22 @@ extern "C"
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+// Callback type for testing synchronizeModule: allows mocking sync behavior
+typedef bool (*SynchronizeModuleCallback)(void);
+#else
+typedef bool (*SynchronizeModuleCallback)(void);
+#endif
 
 /**
  * @brief Persists a table's contents in memory and triggers a full resync
  * @param table_name The table to resync
- * @param handle Sync Protocol handle
  * @param sync_response_timeout Timeout for the sync process
  * @param sync_max_eps Max eps for the sync process
+ * @param handle Sync Protocol handle
+ * @param test_callback Optional callback for testing synchronizeModule (pass NULL for production use)
  */
-EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
+EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback);
 
 /**
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
