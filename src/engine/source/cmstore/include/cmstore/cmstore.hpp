@@ -9,7 +9,7 @@
 namespace cm::store
 {
 
-class CMStore : public ICMstoreReader
+class CMStore : public ICMstore
 {
 public:
 
