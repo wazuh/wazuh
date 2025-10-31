@@ -375,6 +375,11 @@ void Syscollector::destroy()
     {
         m_spSyncProtocol->stop();
     }
+
+    // Explicitly release DBSync before static destructors run
+    // This prevents use-after-free when Syscollector singleton destructs
+    // after DBSyncImplementation singleton has already been destroyed
+    m_spDBSync.reset();
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)

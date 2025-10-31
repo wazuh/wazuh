@@ -203,17 +203,20 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t *sys) {
             };
             size_t indices_count = sizeof(indices) / sizeof(indices[0]);
             bool ret = false;
-            while (!ret) {
+            while (!ret && !is_shutdown_process_started())
+            {
                 ret = syscollector_notify_data_clean_ptr(indices, indices_count, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
                 if (!ret) {
-                    for (uint32_t i = 0; i < sync_interval; i++) {
+                    for (uint32_t i = 0; i < sync_interval && !is_shutdown_process_started(); i++) {
                         sleep(1);
                     }
                 }
+                else
+                {
+                    mtdebug1(WM_SYS_LOGTAG, "Syscollector data clean notification sent successfully.");
+                    syscollector_delete_database_ptr();
+                }
             }
-            mtdebug1(WM_SYS_LOGTAG, "Syscollector data clean notification sent successfully.");
-
-            syscollector_delete_database_ptr();
         } else {
             mtwarn(WM_SYS_LOGTAG, "Syscollector notify data clean functions not available.");
         }
@@ -383,11 +386,6 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
         shutdown_process_started = true;
         syscollector_stop_ptr();
     }
-    w_mutex_lock(&sys_stop_mutex);
-    if (need_shutdown_wait) {
-        w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
-    }
-    w_mutex_unlock(&sys_stop_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {

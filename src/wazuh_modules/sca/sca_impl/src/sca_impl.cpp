@@ -89,7 +89,8 @@ void SecurityConfigurationAssessment::Run()
         // Otherwise, wait for the scan interval before scanning
         if (!m_scanOnStart || !firstScan)
         {
-            std::this_thread::sleep_for(m_scanInterval);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cv.wait_for(lock, m_scanInterval, [this] { return !m_keepRunning; });
         }
 
         if (!m_keepRunning)
@@ -161,13 +162,19 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
 
 void SecurityConfigurationAssessment::Stop()
 {
+    LoggingHelper::getInstance().log(LOG_INFO, "SecurityConfigurationAssessment::Stop() called");
     m_keepRunning = false;
+
+    // Wake up the Run() loop if it's sleeping
+    m_cv.notify_one();
 
     // Signal sync protocol to stop any ongoing operations
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
     }
+
+    LoggingHelper::getInstance().log(LOG_INFO, "Stopping policies");
 
     for (auto& policy : m_policies)
     {

@@ -149,7 +149,15 @@ void AgentInfoImpl::stop()
         m_stopped = true;
     }
 
-    // Signal sync protocol to stop any ongoing operations
+    // Reset DBSync FIRST to flush any pending callbacks before stopping sync protocol
+    // This prevents callbacks from triggering new sync operations during shutdown
+    if (m_dBSync)
+    {
+        m_dBSync.reset();
+    }
+
+    // Signal sync protocol to stop any ongoing operations AFTER DBSync is cleaned up
+    // This ensures no new sync operations are started from DBSync callbacks
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
