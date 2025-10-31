@@ -19,17 +19,17 @@
  */
 class MQueueTransport : public ISyncMessageTransport
 {
-public:
-    MQueueTransport(const std::string& moduleName, MQ_Functions mqFuncs, LoggerFunc logger);
-    bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
-    void shutdown() override;
-    bool checkStatus() override;
+    public:
+        MQueueTransport(const std::string& moduleName, MQ_Functions mqFuncs, LoggerFunc logger);
+        bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
+        void shutdown() override;
+        bool checkStatus() override;
 
-private:
-    bool ensureQueueAvailable();
-    std::string m_moduleName;
-    MQ_Functions m_mqFuncs;
-    LoggerFunc m_logger;
-    int m_queue = -1;
-    std::atomic<size_t> m_msgSent {0};
+    private:
+        bool ensureQueueAvailable();
+        std::string m_moduleName;
+        MQ_Functions m_mqFuncs;
+        LoggerFunc m_logger;
+        int m_queue = -1;
+        std::atomic<size_t> m_msgSent {0};
 };

@@ -10,29 +10,30 @@
 #include "sync_message_transport.hpp"
 
 #if CLIENT
-  #include "mqueue_transport.hpp"
+#include "mqueue_transport.hpp"
 #else
-  #include "router_transport.hpp"
+#include "router_transport.hpp"
 #endif
 
-namespace SyncTransportFactory {
+namespace SyncTransportFactory
+{
 
 #if CLIENT
-std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
-    const std::string& moduleName,
-    const MQ_Functions& mqFuncs,
-    LoggerFunc logger,
-    std::function<void(const std::vector<char>&)>)
-{
-    return std::make_unique<MQueueTransport>(moduleName, mqFuncs, std::move(logger));
-}
+    std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
+        const std::string& moduleName,
+        const MQ_Functions& mqFuncs,
+        LoggerFunc logger,
+        std::function<void(const std::vector<char>&)>)
+    {
+        return std::make_unique<MQueueTransport>(moduleName, mqFuncs, std::move(logger));
+    }
 #else
-std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
-    LoggerFunc logger,
-    std::function<void(const std::vector<char>&)> responseCallback)
-{
-    return std::make_unique<RouterTransport>(std::move(logger), std::move(responseCallback));
-}
+    std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
+        LoggerFunc logger,
+        std::function<void(const std::vector<char>&)> responseCallback)
+    {
+        return std::make_unique<RouterTransport>(std::move(logger), std::move(responseCallback));
+    }
 #endif
 
 } // namespace SyncTransportFactory

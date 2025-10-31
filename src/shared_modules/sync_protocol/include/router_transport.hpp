@@ -23,25 +23,25 @@
  */
 class RouterTransport : public ISyncMessageTransport
 {
-public:
-    RouterTransport(LoggerFunc logger,
-                    std::function<void(const std::vector<char>&)> callback);
-    ~RouterTransport() override;
-    bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
-    void shutdown() override;
-    bool checkStatus() override;
+    public:
+        RouterTransport(LoggerFunc logger,
+                        std::function<void(const std::vector<char>&)> callback);
+        ~RouterTransport() override;
+        bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
+        void shutdown() override;
+        bool checkStatus() override;
 
-private:
-    LoggerFunc m_logger;
-    std::unique_ptr<RouterProvider> m_provider;
-    std::unique_ptr<RouterSubscriber> m_subscriber;
-    std::atomic<size_t> m_msgSent {0};
-    std::function<void(const std::vector<char>&)> m_responseCallback;
+    private:
+        LoggerFunc m_logger;
+        std::unique_ptr<RouterProvider> m_provider;
+        std::unique_ptr<RouterSubscriber> m_subscriber;
+        std::atomic<size_t> m_msgSent {0};
+        std::function<void(const std::vector<char>&)> m_responseCallback;
 
-    void subscribeToResponses();
-    std::string getResponseTopic() const;
-    std::string getPublishTopic() const;
-    bool configRouter();
+        void subscribeToResponses();
+        std::string getResponseTopic() const;
+        std::string getPublishTopic() const;
+        bool configRouter();
 
-    std::atomic<bool> m_subscriberReady;
+        std::atomic<bool> m_subscriberReady;
 };

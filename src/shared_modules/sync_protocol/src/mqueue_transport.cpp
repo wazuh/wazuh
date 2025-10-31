@@ -32,6 +32,7 @@ bool MQueueTransport::checkStatus()
         m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false;
     }
+
     return true;
 }
 
@@ -41,8 +42,9 @@ bool MQueueTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
     {
         m_logger(LOG_ERROR, "SendMSG failed, attempting to reinitialize queue...");
         m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
+
         if (m_queue < 0 ||
-            m_mqFuncs.send_binary(m_queue, message.data(), message.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
+                m_mqFuncs.send_binary(m_queue, message.data(), message.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
         {
             m_logger(LOG_ERROR, "SendMSG failed to send message after retry");
             return false;

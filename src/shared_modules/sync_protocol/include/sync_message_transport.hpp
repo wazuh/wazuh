@@ -18,20 +18,21 @@
 #include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
 
-namespace SyncTransportFactory {
+namespace SyncTransportFactory
+{
 
 #if CLIENT
-// Agent build (MQ)
-std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
-    const std::string& moduleName,
-    const MQ_Functions& mqFuncs,
-    LoggerFunc logger,
-    std::function<void(const std::vector<char>&)> /*responseCallback*/ = nullptr);
+    // Agent build (MQ)
+    std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
+        const std::string& moduleName,
+        const MQ_Functions& mqFuncs,
+        LoggerFunc logger,
+        std::function<void(const std::vector<char>&)> /*responseCallback*/ = nullptr);
 #else
-// Manager build (Router)
-std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
-    LoggerFunc logger,
-    std::function<void(const std::vector<char>&)> responseCallback);
+    // Manager build (Router)
+    std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
+        LoggerFunc logger,
+        std::function<void(const std::vector<char>&)> responseCallback);
 #endif
 
 } // namespace SyncTransportFactory

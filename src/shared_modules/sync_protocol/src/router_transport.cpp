@@ -46,6 +46,7 @@ bool RouterTransport::checkStatus()
         m_logger(LOG_ERROR, "Failed to initialize Router");
         return false;  // Graceful failure, will retry on next sync attempt
     }
+
     return true;
 }
 
@@ -71,6 +72,7 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
                 m_msgSent.store(0);
             }
         }
+
         return true;
     }
     catch (const std::exception& e)

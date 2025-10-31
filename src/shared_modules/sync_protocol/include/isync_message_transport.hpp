@@ -19,24 +19,24 @@
  */
 class ISyncMessageTransport
 {
-public:
-    virtual ~ISyncMessageTransport() = default;
+    public:
+        virtual ~ISyncMessageTransport() = default;
 
-    /**
-     * @brief Send a sync message.
-     * @param message FlatBuffer message to send
-     * @param maxEps Max events per second (0 = unlimited)
-     * @return true on success, false on failure
-     */
-    virtual bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) = 0;
+        /**
+         * @brief Send a sync message.
+         * @param message FlatBuffer message to send
+         * @param maxEps Max events per second (0 = unlimited)
+         * @return true on success, false on failure
+         */
+        virtual bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) = 0;
 
-    /**
-     * @brief Shutdown the transport.
-     */
-    virtual void shutdown() = 0;
+        /**
+         * @brief Shutdown the transport.
+         */
+        virtual void shutdown() = 0;
 
-    /**
-     * @brief Check the status of the transport.
-     */
-    virtual bool checkStatus() = 0;
+        /**
+         * @brief Check the status of the transport.
+         */
+        virtual bool checkStatus() = 0;
 };
