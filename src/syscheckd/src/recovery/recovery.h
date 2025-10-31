@@ -28,6 +28,15 @@
 
 #ifdef __cplusplus
 #include "agent_sync_protocol.hpp"
+#include <string>
+
+/**
+ * @brief Calculate the checksum-of-checksums for a table (exported for testing)
+ * @param table_name The table to calculate checksum for
+ * @return The SHA1 checksum-of-checksums as a hex string
+ */
+std::string calculateTableChecksum(const char* table_name);
+
 extern "C"
 {
 #else
@@ -35,6 +44,8 @@ extern "C"
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
+
 
 /**
  * @brief Persists a table's contents in memory and triggers a full resync
@@ -48,21 +59,20 @@ EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
 /**
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
  * @param table_name The table to check
- * @param handle Sync Protocol handle
  * @param sync_response_timeout Timeout for the checksum validation process
  * @param sync_max_eps Max eps for the checksum validation process
+ * @param handle Sync Protocol handle
  * @returns true if a full sync is required, false if a delta sync is sufficient
  */
-EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, uint32_t sync_response_timeout, long sync_max_eps);
+EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle);
 
 /**
  * @brief Checks if integrity_interval has elapsed for a table
  * @param table_name The table to check
  * @param integrity_interval Value to check
- * @param db_instance DB instance handle (pass NULL to use singleton)
  * @returns true if interval has elapsed, false otherwise
  */
-EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval, void* db_instance);
+EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
 
 #ifdef __cplusplus
 }

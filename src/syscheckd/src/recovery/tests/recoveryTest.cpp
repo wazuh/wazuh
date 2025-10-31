@@ -87,8 +87,7 @@ TEST_F(RecoveryTest, IntegrityIntervalNotElapsed)
     // Check immediately - should not have elapsed
     bool result = fim_recovery_integrity_interval_has_elapsed(
         const_cast<char*>("file_entry"),
-        integrity_interval,
-        nullptr  // Use singleton
+        integrity_interval
     );
 
     EXPECT_FALSE(result);
@@ -104,10 +103,25 @@ TEST_F(RecoveryTest, IntegrityIntervalElapsed)
     // Check after interval has elapsed
     bool result = fim_recovery_integrity_interval_has_elapsed(
         const_cast<char*>("file_entry"),
-        integrity_interval,
-        nullptr
+        integrity_interval
     );
 
     EXPECT_TRUE(result);
+}
+
+// Test: Checksum calculation with multiple entries
+TEST_F(RecoveryTest, ChecksumCalculationMultipleEntries)
+{
+    const auto fileEntry1 = R"({"table": "file_entry", "data":[{"path": "/tmp/test1.txt", "checksum": "aaaa", "attributes": "10", "device": 1234, "gid": "0", "group_": "root", "hash_md5": "1234567890abcdef", "hash_sha1": "1234567890abcdef12345678", "hash_sha256": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "inode": 5678, "mtime": 1234567890, "permissions": "-rw-r--r--", "size": 1024, "uid": "0", "owner": "root", "version": 1}]})"_json;
+
+    const auto fileEntry2 = R"({"table": "file_entry", "data":[{"path": "/tmp/test2.txt", "checksum": "bbbb", "attributes": "10", "device": 1235, "gid": "0", "group_": "root", "hash_md5": "1234567890abcdef", "hash_sha1": "1234567890abcdef12345678", "hash_sha256": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "inode": 5679, "mtime": 1234567891, "permissions": "-rw-r--r--", "size": 2048, "uid": "0", "owner": "root", "version": 1}]})"_json;
+
+    DB::instance().updateFile(fileEntry1, [](int, const nlohmann::json&) {});
+    DB::instance().updateFile(fileEntry2, [](int, const nlohmann::json&) {});
+
+    std::string checksum = calculateTableChecksum("file_entry");
+
+    // The actual checksum returned by the DB (depends on internal ordering/formatting)
+    EXPECT_EQ(checksum, "c55e94247fbfc4f11842fc3bd979e5beb5ed1080");
 }
 
