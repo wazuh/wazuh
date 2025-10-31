@@ -85,10 +85,7 @@ add_library(agent_sync_protocol SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ}
 )
 
-if($ENV{TARGET} STREQUAL "agent")
-  target_sources(agent_sync_protocol PRIVATE src/mqueue_transport.cpp)
-  target_compile_definitions(agent_sync_protocol PRIVATE CLIENT=1)
-else()
+if($ENV{TARGET} STREQUAL "server")
   # Manager build: use Router transport and link router library
   target_sources(agent_sync_protocol PRIVATE src/router_transport.cpp)
 
@@ -102,7 +99,11 @@ else()
   target_link_directories(agent_sync_protocol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../build/shared_modules/router)
   target_link_libraries(agent_sync_protocol PRIVATE router)
   message(STATUS "Linking router from: ${CMAKE_CURRENT_SOURCE_DIR}/../../build/shared_modules/router")
+else()
+  target_sources(agent_sync_protocol PRIVATE src/mqueue_transport.cpp)
+  target_compile_definitions(agent_sync_protocol PRIVATE CLIENT=1)
 endif()
+
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
 target_include_directories(agent_sync_protocol
