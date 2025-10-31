@@ -27,7 +27,6 @@ All notable changes to this project will be documented in this file.
 - Fixed JSON validation issues in Analysisd and SCA components. ([#32057](https://github.com/wazuh/wazuh/pull/32057))
 - Fixed a bug in Vulnerability Scanner where the DB offset was updated even in error cases. ([#32829](https://github.com/wazuh/wazuh/pull/32829))
 
-
 ### Agent
 
 #### Added
@@ -75,7 +74,7 @@ All notable changes to this project will be documented in this file.
 - Updated libarchive to version 3.8.0. ([#32294](https://github.com/wazuh/wazuh/pull/32294))
 
 
-## [v4.14.0]
+## [v4.14.0] - 2025-10-23
 
 ### Manager
 
@@ -172,10 +171,11 @@ All notable changes to this project will be documented in this file.
 - Updated OpenSSL to 3.0.15 and cpp-httplib to v0.25.0. ([#31779](https://github.com/wazuh/wazuh/pull/31779))
 - Updated SQLite dependency to version 3.50.4. ([#29586](https://github.com/wazuh/wazuh/issues/29586))
 
-## [v4.13.1]
+
+## [v4.13.1] - 2025-09-25
 
 
-## [v4.13.0]
+## [v4.13.0] - 2025-09-19
 
 ### Manager
 
@@ -285,7 +285,7 @@ All notable changes to this project will be documented in this file.
 - Removed unused Python Azure dependencies. ([#28564](https://github.com/wazuh/wazuh/pull/28564))
 
 
-## [v4.12.0]
+## [v4.12.0] - 2025-05-08
 
 ### Manager
 
@@ -370,7 +370,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3. ([#27451](https://github.com/wazuh/wazuh/pull/27451))
 
 
-## [v4.11.2]
+## [v4.11.2] - 2025-04-02
 
 ### Manager
 
@@ -385,7 +385,7 @@ All notable changes to this project will be documented in this file.
 - Added the `authentication_pool_size` option to customize the number of authentication processes in the Wazuh API configuration. ([#28653](https://github.com/wazuh/wazuh/pull/28653))
 
 
-## [v4.11.1]
+## [v4.11.1] - 2025-03-13
 
 ### Manager
 
@@ -408,7 +408,7 @@ All notable changes to this project will be documented in this file.
 - Removed "ca.com" domain filter from Rootcheck malware ruleset. ([#28045](https://github.com/wazuh/wazuh/pull/28045))
 
 
-## [v4.11.0]
+## [v4.11.0] - 2025-02-24
 
 ### Manager
 
@@ -450,7 +450,7 @@ All notable changes to this project will be documented in this file.
 - Added the `security:revoke` action to the `PUT /security/user/revoke` endpoint. ([#26255](https://github.com/wazuh/wazuh/pull/26255))
 
 
-## [v4.10.1]
+## [v4.10.1] - 2025-01-17
 
 ### Manager
 
@@ -459,7 +459,7 @@ All notable changes to this project will be documented in this file.
 - Handled HTTP 413 response code in the Indexer connector. ([#27502](https://github.com/wazuh/wazuh/pull/27502))
 
 
-## [v4.10.0]
+## [v4.10.0] - 2025-01-10
 
 ### Manager
 
@@ -559,7 +559,7 @@ All notable changes to this project will be documented in this file.
 - Removal of check with high CPU utilization in multiple SCA. ([#25190](https://github.com/wazuh/wazuh/pull/25190))
 
 
-## [v4.9.2]
+## [v4.9.2] - 2024-11-04
 
 ### Manager
 
@@ -568,7 +568,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an unhandled exception during IPC event parsing. ([#26453](https://github.com/wazuh/wazuh/pull/26453))
 
 
-## [v4.9.1]
+## [v4.9.1] - 2024-10-17
 
 ### Manager
 
@@ -615,7 +615,7 @@ All notable changes to this project will be documented in this file.
 - Changed the error status code thrown when basic services are down to 500. ([#26103](https://github.com/wazuh/wazuh/pull/26103))
 
 
-## [v4.9.0]
+## [v4.9.0] - 2024-09-05
 
 ### Manager
 
@@ -739,7 +739,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a buffer overflow hazard in HMAC internal library. ([#19794](https://github.com/wazuh/wazuh/pull/19794))
 
 
-## [v4.8.2]
+## [v4.8.2] - 2024-08-22
 
 ### Manager
 
@@ -748,7 +748,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory management in wazuh-remoted that might cause data corruption in incoming messages. ([#25225](https://github.com/wazuh/wazuh/issues/25225))
 
 
-## [v4.8.1]
+## [v4.8.1] - 2024-07-22
 
 ### Manager
 
@@ -781,7 +781,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded external requests library dependency version to 2.32.2. ([#23925](https://github.com/wazuh/wazuh/pull/23925))
 
 
-## [v4.8.0]
+## [v4.8.0] - 2024-06-13
 
 ### Manager
 
@@ -913,7 +913,7 @@ All notable changes to this project will be documented in this file.
 - Removed external `python-jose` and `ecdsa` library dependencies. ([#21749](https://github.com/wazuh/wazuh/pull/21749))
 
 
-## [v4.7.5]
+## [v4.7.5] - 2024-05-31
 
 ### Manager
 
@@ -934,7 +934,7 @@ All notable changes to this project will be documented in this file.
 - Fixed crash in fim when processing paths with non UTF-8 characters. ([#23543](https://github.com/wazuh/wazuh/pull/23543))
 
 
-## [v4.7.4]
+## [v4.7.4] - 2024-04-30
 
 ### Manager
 
@@ -944,7 +944,7 @@ All notable changes to this project will be documented in this file.
 - Improved stability by ensuring workers resume normal operations even during master node downtime. ([#22994](https://github.com/wazuh/wazuh/pull/22994))
 
 
-## [v4.7.3]
+## [v4.7.3] - 2024-03-05
 
 ### Manager
 
@@ -954,7 +954,7 @@ All notable changes to this project will be documented in this file.
 - Wazuh DB internal SQL queries have been optimized by tuning database indexes to improve performance. ([#21977](https://github.com/wazuh/wazuh/pull/21977))
 
 
-## [v4.7.2]
+## [v4.7.2] - 2024-01-11
 
 ### Manager
 
@@ -999,7 +999,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded pip dependency version to 23.3.2. ([#20632](https://github.com/wazuh/wazuh/issues/20632))
 
 
-## [v4.7.1]
+## [v4.7.1] - 2023-12-22
 
 ### Manager
 
@@ -1043,7 +1043,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded external requests library dependency version to 2.31.0. ([#20149](https://github.com/wazuh/wazuh/pull/20149))
 - Upgraded embedded Python version to 3.9.18. ([#18800](https://github.com/wazuh/wazuh/issues/18800))
 
-## [v4.7.0]
+## [v4.7.0] - 2023-11-28
 
 ### Manager
 
@@ -1115,7 +1115,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the signature of the internal function `OSHash_GetIndex()`. ([#17040](https://github.com/wazuh/wazuh/pull/17040))
 
-## [v4.6.0]
+## [v4.6.0] - 2023-11-07
 
 ### Manager
 
@@ -1278,7 +1278,7 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. ([#14138](https://github.com/wazuh/wazuh/pull/14138))
 
 
-## [v4.5.4]
+## [v4.5.4] - 2023-10-23
 
 ### Manager
 
