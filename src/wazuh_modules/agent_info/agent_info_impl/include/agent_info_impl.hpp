@@ -120,6 +120,18 @@ class AgentInfoImpl
         /// @param values Values to sync
         void updateChanges(const std::string& table, const nlohmann::json& values);
 
+        /// @brief Set sync flag in database for a specific table
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        /// @param value Flag value (true/false)
+        void setSyncFlag(const std::string& table, bool value);
+
+        /// @brief Load sync flags from database to memory
+        void loadSyncFlags();
+
+        /// @brief Reset sync flag for a specific table in database and memory
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        void resetSyncFlag(const std::string& table);
+
         /// @brief Pointer to IDBSync
         std::shared_ptr<IDBSync> m_dBSync;
 
@@ -164,4 +176,13 @@ class AgentInfoImpl
 
         /// @brief True if the module is running on an agent, false if on a manager
         bool m_isAgent = true;
+
+        /// @brief Flag indicating if metadata needs to be synchronized
+        bool m_shouldSyncMetadata = false;
+
+        /// @brief Flag indicating if groups need to be synchronized
+        bool m_shouldSyncGroups = false;
+
+        /// @brief Mutex for synchronizing access to sync flags
+        std::mutex m_syncFlagsMutex;
 };

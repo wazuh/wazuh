@@ -81,6 +81,12 @@ const char* AGENT_GROUPS_SQL_STATEMENT =
     "PRIMARY KEY (agent_id, group_name),"
     "FOREIGN KEY (agent_id) REFERENCES agent_metadata(agent_id) ON DELETE CASCADE);";
 
+const char* DB_METADATA_SQL_STATEMENT =
+    "CREATE TABLE IF NOT EXISTS db_metadata ("
+    "id                    INTEGER PRIMARY KEY CHECK (id = 1),"
+    "should_sync_metadata  INTEGER NOT NULL DEFAULT 0,"
+    "should_sync_groups    INTEGER NOT NULL DEFAULT 0);";
+
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
                              std::function<void(const modules_log_level_t, const std::string&)> logFunction,
@@ -128,6 +134,9 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
 {
     m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) + " seconds.");
 
+    // Load sync flags from database at startup
+    loadSyncFlags();
+
     std::unique_lock<std::mutex> lock(m_mutex);
     m_stopped = false;
 
@@ -149,6 +158,56 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
         catch (const std::exception& e)
         {
             m_logFunction(LOG_ERROR, std::string("Failed to populate agent metadata: ") + e.what());
+        }
+
+        // After populateAgentMetadata(), check if synchronization is needed
+
+        // Perform coordination for metadata if needed
+        if (m_shouldSyncMetadata)
+        {
+            try
+            {
+                m_logFunction(LOG_INFO, "Synchronization needed for " + std::string(AGENT_METADATA_TABLE));
+                bool success = coordinateModules(AGENT_METADATA_TABLE);
+
+                if (success)
+                {
+                    m_logFunction(LOG_INFO, "Successfully coordinated " + std::string(AGENT_METADATA_TABLE));
+                    resetSyncFlag(AGENT_METADATA_TABLE);
+                }
+                else
+                {
+                    m_logFunction(LOG_WARNING, "Failed to coordinate " + std::string(AGENT_METADATA_TABLE) + ", will retry in next cycle");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                m_logFunction(LOG_ERROR, std::string("Exception during metadata coordination: ") + e.what());
+            }
+        }
+
+        // Perform coordination for groups if needed
+        if (m_shouldSyncGroups)
+        {
+            try
+            {
+                m_logFunction(LOG_INFO, "Synchronization needed for " + std::string(AGENT_GROUPS_TABLE));
+                bool success = coordinateModules(AGENT_GROUPS_TABLE);
+
+                if (success)
+                {
+                    m_logFunction(LOG_INFO, "Successfully coordinated " + std::string(AGENT_GROUPS_TABLE));
+                    resetSyncFlag(AGENT_GROUPS_TABLE);
+                }
+                else
+                {
+                    m_logFunction(LOG_WARNING, "Failed to coordinate " + std::string(AGENT_GROUPS_TABLE) + ", will retry in next cycle");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                m_logFunction(LOG_ERROR, std::string("Exception during groups coordination: ") + e.what());
+            }
         }
 
         lock.lock();
@@ -249,6 +308,7 @@ std::string AgentInfoImpl::GetCreateStatement() const
     std::string ret;
     ret += AGENT_METADATA_SQL_STATEMENT;
     ret += AGENT_GROUPS_SQL_STATEMENT;
+    ret += DB_METADATA_SQL_STATEMENT;
     return ret;
 }
 
@@ -656,39 +716,11 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 
             m_reportDiffFunction(statelessEvent.dump());
 
-            // Coordinate modules: pause, flush, get versions, set new version, sync, resume
-            // Retry indefinitely if coordination fails
-            const int COORDINATION_RETRY_DELAY_SECONDS = 5;
-            int retryAttempt = 0;
+            // Mark that synchronization is needed for this table
+            // The actual coordination will be done in the main loop after populateAgentMetadata
+            setSyncFlag(table, true);
 
-            while (!m_stopped)
-            {
-                bool success = coordinateModules(table);
-
-                if (success)
-                {
-                    m_logFunction(LOG_INFO, "Module coordination completed successfully" +
-                                  (retryAttempt > 0 ? " after " + std::to_string(retryAttempt) + " retries" : ""));
-                    break;
-                }
-
-                retryAttempt++;
-                m_logFunction(LOG_WARNING, "Module coordination failed (attempt " + std::to_string(retryAttempt) +
-                              "), retrying in " + std::to_string(COORDINATION_RETRY_DELAY_SECONDS) + " seconds...");
-
-                // Wait before retrying, but check if we should stop
-                std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait_for(lock, std::chrono::seconds(COORDINATION_RETRY_DELAY_SECONDS),
-                              [this] { return m_stopped; });
-
-                if (m_stopped)
-                {
-                    m_logFunction(LOG_INFO, "Module stopping, aborting coordination retries");
-                    break;
-                }
-            }
-
-            std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result);
+            std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result) + " (sync flag set)";
             m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
         }
     }
@@ -918,6 +950,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
             // If no response received, create structured error JSON
             std::string responseStr;
+
             if (response)
             {
                 responseStr = std::string(response.get());
@@ -945,7 +978,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             if (moduleResp.isModuleUnavailable)
             {
                 m_logFunction(LOG_INFO, moduleName + " module is unavailable (error " +
-                             std::to_string(moduleResp.errorCode) + "): " + responseStr);
+                              std::to_string(moduleResp.errorCode) + "): " + responseStr);
                 return moduleResp;
             }
 
@@ -1017,13 +1050,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 {
                     // Module is disabled/not found/not running - skip it (not an error)
                     m_logFunction(LOG_INFO, "Skipping " + module + " (unavailable, error " +
-                                 std::to_string(response.errorCode) + "): " + response.response);
+                                  std::to_string(response.errorCode) + "): " + response.response);
                 }
                 else
                 {
                     // Communication error or other failure - abort coordination
                     m_logFunction(LOG_ERROR, "Failed to pause " + module + " (communication error " +
-                                 std::to_string(response.errorCode) + "), aborting coordination: " + response.response);
+                                  std::to_string(response.errorCode) + "), aborting coordination: " + response.response);
                     resumePausedModules();
                     return false;
                 }
@@ -1054,7 +1087,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 if (!response.success)
                 {
                     m_logFunction(LOG_ERROR, "Failed to flush " + module + " (error " +
-                                 std::to_string(response.errorCode) + "), aborting coordination");
+                                  std::to_string(response.errorCode) + "), aborting coordination");
                     resumePausedModules();
                     return false;
                 }
@@ -1074,7 +1107,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 if (!response.success)
                 {
                     m_logFunction(LOG_ERROR, "Failed to get version from " + module + " (error " +
-                                 std::to_string(response.errorCode) + "), aborting coordination");
+                                  std::to_string(response.errorCode) + "), aborting coordination");
                     resumePausedModules();
                     return false;
                 }
@@ -1101,7 +1134,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 catch (const std::exception& e)
                 {
                     m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " +
-                                 std::string(e.what()) + " - Response: " + response.response);
+                                  std::string(e.what()) + " - Response: " + response.response);
                     resumePausedModules();
                     return false;
                 }
@@ -1130,7 +1163,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 if (!response.success)
                 {
                     m_logFunction(LOG_ERROR, "Failed to set version on " + module + " (error " +
-                                 std::to_string(response.errorCode) + "), aborting coordination");
+                                  std::to_string(response.errorCode) + "), aborting coordination");
                     resumePausedModules();
                     return false;
                 }
@@ -1180,7 +1213,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 if (!response.success)
                 {
                     m_logFunction(LOG_ERROR, "Failed to resume " + module + " (error " +
-                                 std::to_string(response.errorCode) + "): " + response.response);
+                                  std::to_string(response.errorCode) + "): " + response.response);
                     // Continue trying to resume other modules even if one fails
                 }
                 else
@@ -1222,5 +1255,157 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         m_logFunction(LOG_ERROR, "Unknown exception during module coordination");
         resumePausedModules();
         return false;
+    }
+}
+
+void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
+{
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot set sync flag: DBSync not available");
+        return;
+    }
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Update in-memory flag
+        if (table == AGENT_METADATA_TABLE)
+        {
+            m_shouldSyncMetadata = value;
+        }
+        else if (table == AGENT_GROUPS_TABLE)
+        {
+            m_shouldSyncGroups = value;
+        }
+
+        // Use DBSyncTxn for immediate commit
+        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
+        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+
+        m_logFunction(LOG_DEBUG, "Set sync flag for " + table + " to " + std::to_string(value));
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to set sync flag for " + table + ": " + std::string(e.what()));
+    }
+}
+
+void AgentInfoImpl::loadSyncFlags()
+{
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot load sync flags: DBSync not available");
+        return;
+    }
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Query the db_metadata table
+        auto callback = [this](ReturnTypeCallback, const nlohmann::json & data)
+        {
+            if (data.contains("should_sync_metadata") && data["should_sync_metadata"].is_number())
+            {
+                m_shouldSyncMetadata = (data["should_sync_metadata"].get<int>() != 0);
+            }
+
+            if (data.contains("should_sync_groups") && data["should_sync_groups"].is_number())
+            {
+                m_shouldSyncGroups = (data["should_sync_groups"].get<int>() != 0);
+            }
+        };
+
+        // Build JSON for selectRows
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["query"]["column_list"] = nlohmann::json::array({"*"});
+        input["query"]["row_filter"] = "";
+        input["query"]["distinct_opt"] = false;
+        input["query"]["order_by_opt"] = "";
+        input["query"]["count_opt"] = 100;
+
+        // Try to select from db_metadata
+        m_dBSync->selectRows(input, callback);
+
+        m_logFunction(LOG_INFO, "Loaded sync flags from database: metadata=" +
+                      std::to_string(m_shouldSyncMetadata) + ", groups=" +
+                      std::to_string(m_shouldSyncGroups));
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_WARNING, "Failed to load sync flags (may be first run): " + std::string(e.what()));
+        // Initialize with defaults if table doesn't exist yet
+        m_shouldSyncMetadata = false;
+        m_shouldSyncGroups = false;
+    }
+}
+
+void AgentInfoImpl::resetSyncFlag(const std::string& table)
+{
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot reset sync flag: DBSync not available");
+        return;
+    }
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Determine which flag to reset
+        if (table == AGENT_METADATA_TABLE)
+        {
+            m_shouldSyncMetadata = false;
+        }
+        else if (table == AGENT_GROUPS_TABLE)
+        {
+            m_shouldSyncGroups = false;
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Unknown table for sync flag reset: " + table);
+            return;
+        }
+
+        // Use DBSyncTxn for immediate commit
+        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
+        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+
+        m_logFunction(LOG_INFO, "Resetting sync flag for " + table + " to false in database. m_shouldSyncMetadata=" +
+                      std::to_string(m_shouldSyncMetadata) + ", m_shouldSyncGroups=" +
+                      std::to_string(m_shouldSyncGroups));
+
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+
+        m_logFunction(LOG_DEBUG, "Reset sync flag for " + table);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to reset sync flag for " + table + ": " + std::string(e.what()));
     }
 }
