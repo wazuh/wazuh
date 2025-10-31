@@ -10,25 +10,51 @@ All notable changes to this project will be documented in this file.
 - Added IAM role support for VPC flow logs in the AWS wodle. ([#32009](https://github.com/wazuh/wazuh/pull/32009))
 - Added support for static and temporary AWS credentials in the Amazon Security Lake subscriber. ([#32514](https://github.com/wazuh/wazuh/pull/32514))
 
-#### Fixed
-
-- Fixed manager vulnerability scan not triggering due to incorrect syscollector event provider topic name. ([#32045](https://github.com/wazuh/wazuh/pull/32045))
-- Fixed IndexerConnector abuse control to prevent data loss on failed syncs. ([#32787](https://github.com/wazuh/wazuh/pull/32787))
-- Fixed user tag handling by adding 'user' as an alias for the 'dstuser' static field. ([#32107](https://github.com/wazuh/wazuh/pull/32107))
-
 #### Changed
 
 - Optimized wazuh-db startup by executing agent schema creation in a single transaction. ([#32401](https://github.com/wazuh/wazuh/pull/32401))
 - Improved vulnerabilities index upgrade with hash-based mapping validation, automatic safe reindex, and backup cleanup. ([#32463](https://github.com/wazuh/wazuh/pull/32463))
 - Improved C++ logging mechanism to avoid unnecessary heap allocations. ([#32069](https://github.com/wazuh/wazuh/pull/32069))
 - Improved IndexerConnector error handling and response parsing to provide structured logging of 4xx/5xx errors. ([#32521](https://github.com/wazuh/wazuh/pull/32521))
+- Reduced default verbosity of wazuh-authd when handling invalid connections. ([#32525](https://github.com/wazuh/wazuh/pull/32525))
+- Remoted now reads internal options at process startup. ([#32697](https://github.com/wazuh/wazuh/pull/32697))
+
+#### Fixed
+
+- Fixed manager vulnerability scan not triggering due to incorrect syscollector event provider topic name. ([#32045](https://github.com/wazuh/wazuh/pull/32045))
+- Fixed IndexerConnector abuse control to prevent data loss on failed syncs. ([#32787](https://github.com/wazuh/wazuh/pull/32787))
+- Fixed user tag handling by adding 'user' as an alias for the 'dstuser' static field. ([#32107](https://github.com/wazuh/wazuh/pull/32107))
+- Fixed JSON validation issues in Analysisd and SCA components. ([#32057](https://github.com/wazuh/wazuh/pull/32057))
+- Fixed a bug in Vulnerability Scanner where the DB offset was updated even in error cases. ([#32829](https://github.com/wazuh/wazuh/pull/32829))
+
 
 ### Agent
+
+#### Added
+
+- Added support for Homebrew 2.0+ in IT Hygiene for macOS. ([#32746](https://github.com/wazuh/wazuh/pull/32746))
 
 #### Changed
 
 - Changed how the fim_check_ignore function works in case of negative regex cases. ([#31080](https://github.com/wazuh/wazuh/pull/31080))
 - Changed how null values for hotfixes are handled in the Windows agent. ([#31375](https://github.com/wazuh/wazuh/pull/31375))
+- Improved service shutdown procedure. ([#32874](https://github.com/wazuh/wazuh/pull/32874))
+
+#### Fixed
+
+- Fixed indefinite waiting in FIM whodata health check. ([#32383](https://github.com/wazuh/wazuh/pull/32383))
+- Fixed graceful shutdown in FIM. ([#31241](https://github.com/wazuh/wazuh/pull/31241))
+- SHA256 of commands is now verified on every execution. ([#32049](https://github.com/wazuh/wazuh/pull/32049))
+- Fixed duplicate `<ca_store>` configuration block during RPM package upgrades. ([#32528](https://github.com/wazuh/wazuh/pull/32528))
+- Fixed a bug that prevented overwriting `<registry_limit>` or `<file_limit>` options from remote configuration. ([#31144](https://github.com/wazuh/wazuh/pull/31144))
+- Fixed a bug in Logcollector that prevented following symlinks when resolving wildcarded files. ([#29853](https://github.com/wazuh/wazuh/pull/29853))
+- Unified detection logs for wildcarded files in Logcollector. ([#31222](https://github.com/wazuh/wazuh/pull/31222))
+- Fixed a bug in FIM that did not recognize Registry keys unless they were UTF-8. ([#32027](https://github.com/wazuh/wazuh/pull/32027))
+- Fixed a bug in Logcollector that ignored all files with `<age>` filter on Windows. ([#32731](https://github.com/wazuh/wazuh/pull/32731))
+- Reverted IT Hygiene package vendor format on Debian: now includes name and email again. ([#32812](https://github.com/wazuh/wazuh/pull/32812))
+- Fixed a bug in IT Hygiene that reported duplicated Edge browser extensions. ([#32785](https://github.com/wazuh/wazuh/pull/32785))
+- Fixed reload of the `<labels>` block via remote configuration. ([#32838](https://github.com/wazuh/wazuh/pull/32838))
+- Fixed Windows installer to deploy SCA policies for Windows 2022 instead of Windows Server 2025. ([#32836](https://github.com/wazuh/wazuh/pull/32836))
 
 ### Ruleset
 
@@ -45,6 +71,8 @@ All notable changes to this project will be documented in this file.
 - Upgraded the `starlette` dependency to 0.47.2. ([#31422](https://github.com/wazuh/wazuh/pull/31422))
 - Upgraded Python embedded interpreter to 3.10.19. ([#32782](https://github.com/wazuh/wazuh/pull/32782))
 - Updated curl dependency to 8.12.1. ([#32900](https://github.com/wazuh/wazuh/pull/32900))
+- Updated LUA to version 5.4.6. ([#32294](https://github.com/wazuh/wazuh/pull/32294))
+- Updated libarchive to version 3.8.0. ([#32294](https://github.com/wazuh/wazuh/pull/32294))
 
 
 ## [v4.14.0]
