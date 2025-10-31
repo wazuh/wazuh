@@ -421,7 +421,17 @@ public:
                                 dataString.append(R"("}},)");
                                 dataString.append(
                                     std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
-                                m_indexerConnector->bulkIndex(elementId, data->index()->string_view(), dataString);
+                                const auto version = data->version();
+                                const auto indexName = data->index()->string_view();
+                                if (version && version > 0)
+                                {
+                                    m_indexerConnector->bulkIndex(
+                                        elementId, indexName, dataString, std::to_string(version));
+                                }
+                                else
+                                {
+                                    m_indexerConnector->bulkIndex(elementId, indexName, dataString);
+                                }
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
