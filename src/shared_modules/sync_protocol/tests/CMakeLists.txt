@@ -29,9 +29,9 @@ set(TEST_SOURCES
 )
 
 # Add Router-specific tests only for SERVER builds
-if($ENV{TARGET} STREQUAL "server")
+if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
     list(APPEND TEST_SOURCES test_agent_sync_protocol_router.cpp)
-else() 
+else()
     list(APPEND TEST_SOURCES test_agent_sync_protocol.cpp)
 endif()
 

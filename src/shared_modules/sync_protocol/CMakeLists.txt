@@ -85,7 +85,7 @@ add_library(agent_sync_protocol SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ}
 )
 
-if($ENV{TARGET} STREQUAL "server")
+if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
   # Manager build: use Router transport and link router library
   target_sources(agent_sync_protocol PRIVATE src/router_transport.cpp)
 
