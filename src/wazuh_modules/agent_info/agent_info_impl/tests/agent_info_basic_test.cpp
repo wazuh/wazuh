@@ -196,10 +196,12 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
             std::this_thread::yield();
         }
 
+        // Add a small delay to ensure we're in the wait phase
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         m_agentInfo->stop();
     });
 
-    // Start with a shouldContinue that returns true for a bit
+    // Start with a shouldContinue that keeps running until stopped
     int iterations = 0;
     m_agentInfo->start(1, [&iterations, &startedFirstIteration]()
     {
@@ -210,7 +212,7 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
             startedFirstIteration.store(true, std::memory_order_release);
         }
 
-        return iterations < 2;  // Run for at least one iteration with wait
+        return true;  // Keep running until stopped externally
     });
 
     stopThread.join();
