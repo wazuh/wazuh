@@ -13,6 +13,7 @@
 #include "agent_sync_protocol.hpp"
 #include "ipersistent_queue.hpp"
 #include "agent_sync_protocol_c_interface.h"
+#include "metadata_provider.h"
 
 #include <thread>
 #include <iostream>
@@ -43,6 +44,21 @@ class AgentSyncProtocolTest : public ::testing::Test
     protected:
         void SetUp() override
         {
+            // Create and set dummy metadata
+            agent_metadata_t metadata = {};
+            strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+            strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+            strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+            strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+            strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+            strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+            strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+            strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+            strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
+            metadata.groups = nullptr;
+            metadata.groups_count = 0;
+            metadata_provider_update(&metadata);
+
             // Set logger via asp_create
             MQ_Functions tmpMq
             {
@@ -63,6 +79,12 @@ class AgentSyncProtocolTest : public ::testing::Test
             }
                           );
             asp_destroy(handle);
+        }
+
+        void TearDown() override
+        {
+            // Reset metadata provider state for test isolation
+            metadata_provider_reset();
         }
 
         std::shared_ptr<MockPersistentQueue> mockQueue;

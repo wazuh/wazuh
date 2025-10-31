@@ -76,6 +76,10 @@ class AgentInfoImpl
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
     private:
+        /// @brief Update the global metadata provider with current agent metadata
+        /// @param agentMetadata Agent metadata JSON
+        /// @param groups List of agent groups
+        void updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups);
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
 

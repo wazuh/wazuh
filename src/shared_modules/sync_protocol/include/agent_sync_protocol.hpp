@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 #include <condition_variable>
+
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
     public:
@@ -67,6 +68,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
 
+        /// @copydoc IAgentSyncProtocol::stop
+        void stop() override;
+
+        /// @brief Reset the stop flag to allow restarting operations
+        /// This should be called when restarting the module after a stop
+        void reset();
+
+        /// @copydoc IAgentSyncProtocol::shouldStop
+        bool shouldStop() const override;
+
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
         /// @param length Size of the FlatBuffer message in bytes.
@@ -92,6 +103,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Sent message counter for eps control
         std::atomic<size_t> m_msgSent{0};
+
+        /// @brief Stop flag to abort ongoing operations
+        std::atomic<bool> m_stopRequested{false};
 
         /// @brief In-memory vector to store PersistedData for recovery scenarios
         std::vector<PersistedData> m_inMemoryData;
@@ -250,6 +264,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
             /// @brief Last sync operation result for detailed error reporting.
             SyncResult lastSyncResult = SyncResult::SUCCESS;
+
+            /// @brief Destructor ensures all waiting threads are woken up before destruction.
+            ///
+            /// This prevents deadlocks when the condition variable is destroyed while threads are still waiting.
+            ~SyncState()
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                syncFailed = true;
+                cv.notify_all();
+            }
 
             /// @brief Resets all internal flags and clears received ranges.
             ///

@@ -11,8 +11,10 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -146,6 +148,12 @@ class SecurityConfigurationAssessment
 
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};
+
+        /// @brief Condition variable for sleep interruption
+        std::condition_variable m_cv;
+
+        /// @brief Mutex for condition variable
+        std::mutex m_mutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;

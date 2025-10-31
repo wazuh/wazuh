@@ -300,6 +300,63 @@ extern "C" {
         }
     }
 
+    void asp_stop(AgentSyncProtocolHandle* handle)
+    {
+        try
+        {
+            if (!handle) return;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            wrapper->impl->stop();
+        }
+        catch (const std::exception& ex)
+        {
+            return;
+        }
+        catch (...)
+        {
+            return;
+        }
+    }
+
+    void asp_reset(AgentSyncProtocolHandle* handle)
+    {
+        try
+        {
+            if (!handle) return;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            wrapper->impl->reset();
+        }
+        catch (const std::exception& ex)
+        {
+            return;
+        }
+        catch (...)
+        {
+            return;
+        }
+    }
+
+    bool asp_should_stop(const AgentSyncProtocolHandle* handle)
+    {
+        try
+        {
+            if (!handle) return false;
+
+            auto* wrapper = reinterpret_cast<const AgentSyncProtocolWrapper*>(handle);
+            return wrapper->impl->shouldStop();
+        }
+        catch (const std::exception& ex)
+        {
+            return false;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
 } // extern "C"
 
 // LCOV_EXCL_STOP

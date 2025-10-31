@@ -11,6 +11,7 @@
 #include "ipersistent_queue.hpp"
 #include "persistent_queue.hpp"
 #include "defs.h"
+#include "metadata_provider.h"
 
 #include <flatbuffers/flatbuffers.h>
 #include <thread>
@@ -427,6 +428,10 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t maxEps,
                                             Option option)
 {
+    // Declare metadata variables outside try block for proper cleanup in catch
+    agent_metadata_t metadata{};
+    bool has_metadata = false;
+
     try
     {
         flatbuffers::FlatBufferBuilder builder;
@@ -437,23 +442,43 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // Translate DB mode to Schema mode
         const auto protocolMode = toProtocolMode(mode);
 
-        // Create hardcoded agent information
-        auto architecture = builder.CreateString("hardcoded_architecture");
-        auto hostname = builder.CreateString("hardcoded_hostname");
-        auto osname = builder.CreateString("hardcoded_osname");
-        auto osplatform = builder.CreateString("hardcoded_osplatform");
-        auto ostype = builder.CreateString("hardcoded_ostype");
-        auto osversion = builder.CreateString("hardcoded_osversion");
-        auto agentversion = builder.CreateString("hardcoded_agentversion");
-        auto agentname = builder.CreateString("hardcoded_agentname");
-        auto agentid = builder.CreateString("001");
-        auto checksum_metadata = builder.CreateString("hardcoded_checksum_metadata");
-        uint64_t global_version = 1000; // Hardcoded global version as ulong
+        // Try to get metadata from provider - fail if not available
+        has_metadata = (metadata_provider_get(&metadata) == 0);
 
-        // Create groups vector
+        // If metadata not available, abort synchronization
+        if (!has_metadata)
+        {
+            m_logger(LOG_DEBUG,
+                     "Metadata not available from provider. Agent-info may not be initialized yet. Cannot proceed with "
+                     "synchronization.");
+            return false;
+        }
+
+        m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
+
+        // Create flatbuffer strings from metadata
+        auto architecture = builder.CreateString(metadata.architecture);
+        auto hostname = builder.CreateString(metadata.hostname);
+        auto osname = builder.CreateString(metadata.os_name);
+        auto ostype = builder.CreateString(metadata.os_type);
+        auto osplatform = builder.CreateString(metadata.os_platform);
+        auto osversion = builder.CreateString(metadata.os_version);
+        auto agentversion = builder.CreateString(metadata.agent_version);
+        auto agentname = builder.CreateString(metadata.agent_name);
+        auto agentid = builder.CreateString(metadata.agent_id);
+        auto checksum_metadata = builder.CreateString(metadata.checksum_metadata);
+
+        // Create groups vector from metadata
         std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
-        groups_vec.push_back(builder.CreateString("hardcoded_group1"));
-        groups_vec.push_back(builder.CreateString("hardcoded_group2"));
+
+        if (metadata.groups && metadata.groups_count > 0)
+        {
+            for (size_t i = 0; i < metadata.groups_count; ++i)
+            {
+                groups_vec.push_back(builder.CreateString(metadata.groups[i]));
+            }
+        }
+
         auto groups = builder.CreateVector(groups_vec);
 
         // Create index vector from uniqueIndices parameter
@@ -486,7 +511,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_agentid(agentid);
         startBuilder.add_groups(groups);
         startBuilder.add_checksum_metadata(checksum_metadata);
-        startBuilder.add_global_version(global_version);
+        startBuilder.add_global_version(1);
 
         auto startOffset = startBuilder.Finish();
 
@@ -521,16 +546,35 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 }
 
                 m_logger(LOG_DEBUG, "StartAck received. Session: " + std::to_string(m_syncState.session));
+
+                // Clean up metadata before returning success
+                if (has_metadata)
+                {
+                    metadata_provider_free_metadata(&metadata);
+                }
+
                 return true;
             }
 
             m_logger(LOG_DEBUG, "Timed out waiting for StartAck. Retrying...");
         }
 
+        // Clean up metadata if we successfully retrieved it
+        if (has_metadata)
+        {
+            metadata_provider_free_metadata(&metadata);
+        }
+
         return false;
     }
     catch (const std::exception& e)
     {
+        // Clean up metadata on exception
+        if (has_metadata)
+        {
+            metadata_provider_free_metadata(&metadata);
+        }
+
         m_logger(LOG_ERROR, std::string("Exception when sending Start message: ") + e.what());
     }
 
@@ -542,7 +586,7 @@ bool AgentSyncProtocol::receiveStartAck(std::chrono::seconds timeout)
     std::unique_lock<std::mutex> lock(m_syncState.mtx);
     return m_syncState.cv.wait_for(lock, timeout, [&]
     {
-        return m_syncState.startAckReceived || m_syncState.syncFailed;
+        return m_syncState.startAckReceived || m_syncState.syncFailed || shouldStop();
     });
 }
 
@@ -554,6 +598,13 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
     {
         for (const auto& item : data)
         {
+            // Check if stop was requested
+            if (shouldStop())
+            {
+                m_logger(LOG_INFO, "Stop requested, aborting data message sending");
+                return false;
+            }
+
             flatbuffers::FlatBufferBuilder builder;
             auto idStr = builder.CreateString(item.id);
             auto idxStr = builder.CreateString(item.index);
@@ -794,7 +845,7 @@ bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
     std::unique_lock<std::mutex> lock(m_syncState.mtx);
     return m_syncState.cv.wait_for(lock, timeout, [&]
     {
-        return m_syncState.endAckReceived || m_syncState.reqRetReceived || m_syncState.syncFailed;
+        return m_syncState.endAckReceived || m_syncState.reqRetReceived || m_syncState.syncFailed || shouldStop();
     });
 }
 
@@ -1068,4 +1119,29 @@ void AgentSyncProtocol::deleteDatabase()
     {
         m_logger(LOG_ERROR, std::string("Failed to delete database: ") + e.what());
     }
+}
+
+void AgentSyncProtocol::stop()
+{
+    m_stopRequested.store(true, std::memory_order_release);
+
+    // Wake up any threads waiting on the condition variable to check the stop flag
+    // This prevents crashes when the object is destroyed while waiting
+    {
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        m_syncState.cv.notify_all();
+    }
+
+    m_logger(LOG_DEBUG, "Stop requested for sync protocol module: " + m_moduleName);
+}
+
+void AgentSyncProtocol::reset()
+{
+    m_stopRequested.store(false, std::memory_order_release);
+    m_logger(LOG_DEBUG, "Reset stop flag for sync protocol module: " + m_moduleName);
+}
+
+bool AgentSyncProtocol::shouldStop() const
+{
+    return m_stopRequested.load(std::memory_order_acquire);
 }

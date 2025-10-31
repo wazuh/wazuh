@@ -50,7 +50,6 @@
 #define mdebug2(msg, ...) _mtdebug2(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 // XML configuration constants
-static const char* XML_ENABLED = "enabled";
 static const char* XML_INTERVAL = "interval";
 static const char* XML_SYNC = "synchronization";
 
@@ -249,24 +248,27 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     unsigned int i;
     wm_agent_info_t* agent_info;
 
-    if (!module->data)
+    if (module->data)
+    {
+        agent_info = module->data;
+    }
+    else
     {
         os_calloc(1, sizeof(wm_agent_info_t), agent_info);
-        agent_info->enabled = 1;    // Enabled by default
-        agent_info->interval = 300; // 5 minutes default interval
-
-        // Database synchronization config values
-        agent_info->sync.enable_synchronization = 1;
-        agent_info->sync.sync_response_timeout = 30;
-        agent_info->sync.sync_retries = 5;
-        agent_info->sync.sync_max_eps = 10;
-
-        module->context = &WM_AGENT_INFO_CONTEXT;
-        module->tag = strdup(module->context->name);
-        module->data = agent_info;
     }
 
-    agent_info = module->data;
+    // Set default configuration values
+    agent_info->interval = 60;
+
+    // Database synchronization config values
+    agent_info->sync.enable_synchronization = 1;
+    agent_info->sync.sync_response_timeout = 60;
+    agent_info->sync.sync_retries = 3;
+    agent_info->sync.sync_max_eps = 10;
+
+    module->context = &WM_AGENT_INFO_CONTEXT;
+    module->tag = strdup(module->context->name);
+    module->data = agent_info;
 
 #ifdef CLIENT
     agent_info->is_agent = true;
@@ -285,21 +287,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
         {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        }
-        else if (!strcmp(nodes[i]->element, XML_ENABLED))
-        {
-            if (!strcmp(nodes[i]->content, "yes"))
-            {
-                agent_info->enabled = 1;
-            }
-            else if (!strcmp(nodes[i]->content, "no"))
-            {
-                agent_info->enabled = 0;
-            }
-            else
-            {
-                mwarn(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-            }
         }
         else if (!strcmp(nodes[i]->element, XML_INTERVAL))
         {
@@ -387,9 +374,9 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     minfo("Starting agent-info module.");
 
-    if (!agent_info || !agent_info->enabled)
+    if (!agent_info)
     {
-        minfo("Agent-info module disabled. Exiting.");
+        merror("Agent-info configuration is NULL. Exiting.");
         return NULL;
     }
 
@@ -457,8 +444,6 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
-    minfo("Agent-info module started successfully.");
-
     // The module has completed its initialization and metadata collection
     // The thread will now exit as agent-info is a one-time collection module
     return NULL;
@@ -487,13 +472,8 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
     cJSON* root = cJSON_CreateObject();
     cJSON* wm_agent_info = cJSON_CreateObject();
 
-    if (!agent_info)
+    if (agent_info)
     {
-        cJSON_AddStringToObject(wm_agent_info, "enabled", "no");
-    }
-    else
-    {
-        cJSON_AddStringToObject(wm_agent_info, "enabled", agent_info->enabled ? "yes" : "no");
         cJSON_AddNumberToObject(wm_agent_info, "interval", agent_info->interval);
 
         // Database synchronization values

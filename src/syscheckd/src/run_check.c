@@ -114,22 +114,24 @@ STATIC void handle_fim_disabled(void) {
         minfo( "Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
 
         bool ret = false;
-        while (!ret) {
+        while (!ret && !fim_shutdown_process_on())
+        {
             ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
             if (!ret) {
-                for (uint32_t i = 0; i < syscheck.sync_interval; i++) {
+                for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
                     sleep(1);
                 }
             }
+            else
+            {
+                mdebug1("Data clean notification sent successfully.");
+                asp_delete_database(syscheck.sync_handle);
+                fim_db_close_and_delete_database();
+            }
         }
-        mdebug1("Data clean notification sent successfully.");
-
     } else {
         minfo( "Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
     }
-
-    asp_delete_database(syscheck.sync_handle);
-    fim_db_close_and_delete_database();
 }
 
 // Send a message
@@ -416,6 +418,11 @@ void start_daemon()
 
         // Check if syscheck should be restarted
         run_now = os_check_restart_syscheck();
+
+        // Reset sync protocol stop flag if restart was requested
+        if (run_now && syscheck.sync_handle) {
+            asp_reset(syscheck.sync_handle);
+        }
 
         // Check if a day_time or scan_time is set
         if (syscheck.scan_time || syscheck.scan_day) {

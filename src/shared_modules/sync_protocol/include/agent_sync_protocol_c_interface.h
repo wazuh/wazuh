@@ -146,6 +146,25 @@ bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
 /// @param handle Pointer to the AgentSyncProtocol handle.
 void asp_delete_database(AgentSyncProtocolHandle* handle);
 
+/// @brief Signals the sync protocol to stop all operations.
+///
+/// This function should be called when a module is shutting down to abort any ongoing
+/// or pending synchronization operations.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+void asp_stop(AgentSyncProtocolHandle* handle);
+
+/// @brief Resets the stop flag to allow restarting operations.
+///
+/// This function should be called when a module is restarted after being stopped.
+/// It clears the stop flag, allowing synchronization operations to proceed again.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+void asp_reset(AgentSyncProtocolHandle* handle);
+
+/// @brief Checks if stop has been requested.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @return true if stop was requested, false otherwise.
+bool asp_should_stop(const AgentSyncProtocolHandle* handle);
+
 #ifdef __cplusplus
 }
 #endif

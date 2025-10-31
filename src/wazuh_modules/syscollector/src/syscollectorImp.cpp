@@ -354,6 +354,12 @@ void Syscollector::start()
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
 
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
+
     syncLoop(lock);
 }
 
@@ -363,6 +369,17 @@ void Syscollector::destroy()
     m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
+
+    // Signal sync protocol to stop any ongoing operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
+    }
+
+    // Explicitly release DBSync before static destructors run
+    // This prevents use-after-free when Syscollector singleton destructs
+    // after DBSyncImplementation singleton has already been destroyed
+    m_spDBSync.reset();
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)

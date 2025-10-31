@@ -5,6 +5,7 @@
 #include "hashHelper.h"
 #include "stringHelper.h"
 #include "timeHelper.h"
+#include "metadata_provider.h"
 
 #include <dbsync.hpp>
 #include <file_io_utils.hpp>
@@ -36,18 +37,17 @@ static const std::map<std::string, Mode> TABLE_MODE_MAP
     {AGENT_GROUPS_TABLE, Mode::GROUP_DELTA},
 };
 
-const char* AGENT_METADATA_SQL_STATEMENT =
-    "CREATE TABLE IF NOT EXISTS agent_metadata ("
-    "agent_id          TEXT NOT NULL PRIMARY KEY,"
-    "agent_name        TEXT,"
-    "agent_version     TEXT,"
-    "host_architecture TEXT,"
-    "host_hostname     TEXT,"
-    "host_os_name      TEXT,"
-    "host_os_type      TEXT,"
-    "host_os_platform  TEXT,"
-    "host_os_version   TEXT,"
-    "checksum          TEXT NOT NULL);";
+const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_metadata ("
+                                           "agent_id                   TEXT NOT NULL PRIMARY KEY,"
+                                           "agent_name                 TEXT,"
+                                           "agent_version              TEXT,"
+                                           "host_architecture          TEXT,"
+                                           "host_hostname              TEXT,"
+                                           "host_os_name               TEXT,"
+                                           "host_os_type               TEXT,"
+                                           "host_os_platform           TEXT,"
+                                           "host_os_version            TEXT,"
+                                           "checksum                   TEXT NOT NULL);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -99,6 +99,12 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
     std::unique_lock<std::mutex> lock(m_mutex);
     m_stopped = false;
 
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
+
     // Run at least once
     do
     {
@@ -141,6 +147,20 @@ void AgentInfoImpl::stop()
         }
 
         m_stopped = true;
+    }
+
+    // Reset DBSync FIRST to flush any pending callbacks before stopping sync protocol
+    // This prevents callbacks from triggering new sync operations during shutdown
+    if (m_dBSync)
+    {
+        m_dBSync.reset();
+    }
+
+    // Signal sync protocol to stop any ongoing operations AFTER DBSync is cleaned up
+    // This ensures no new sync operations are started from DBSync callbacks
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
     }
 
     m_cv.notify_one(); // Wake up the sleeping thread immediately
@@ -253,12 +273,6 @@ void AgentInfoImpl::populateAgentMetadata()
     // Calculate checksum
     agentMetadata["checksum"] = calculateMetadataChecksum(agentMetadata);
 
-    // Update agent metadata using dbsync to detect changes and emit events
-    updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
-
-    auto logMsg = std::string("Agent metadata populated successfully");
-    m_logFunction(LOG_INFO, logMsg);
-
     // Read agent groups from merged.mg (only for agents)
     std::vector<std::string> groups;
 
@@ -266,6 +280,16 @@ void AgentInfoImpl::populateAgentMetadata()
     {
         groups = readAgentGroups();
     }
+
+    // Update the global metadata provider BEFORE updateChanges
+    // This ensures the metadata is available when syncProtocol is triggered
+    updateMetadataProvider(agentMetadata, groups);
+
+    // Update agent metadata using dbsync to detect changes and emit events
+    updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
+
+    auto logMsg = std::string("Agent metadata populated successfully");
+    m_logFunction(LOG_DEBUG, logMsg);
 
     // Always update agent groups in database (even if empty, to clear old groups)
     auto groupsData = nlohmann::json::array();
@@ -292,7 +316,68 @@ void AgentInfoImpl::populateAgentMetadata()
         groupLogMsg = "Agent groups populated successfully: " + std::to_string(groups.size()) + " groups";
     }
 
-    m_logFunction(LOG_INFO, groupLogMsg);
+    m_logFunction(LOG_DEBUG, groupLogMsg);
+}
+
+void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups)
+{
+    agent_metadata_t metadata{};
+
+    // Copy string fields safely
+    auto copyField = [](char* dest, size_t dest_size, const nlohmann::json & json, const char* field)
+    {
+        if (json.contains(field) && json[field].is_string())
+        {
+            std::strncpy(dest, json[field].get<std::string>().c_str(), dest_size - 1);
+            dest[dest_size - 1] = '\0';
+        }
+    };
+
+    copyField(metadata.agent_id, sizeof(metadata.agent_id), agentMetadata, "agent_id");
+    copyField(metadata.agent_name, sizeof(metadata.agent_name), agentMetadata, "agent_name");
+    copyField(metadata.agent_version, sizeof(metadata.agent_version), agentMetadata, "agent_version");
+    copyField(metadata.architecture, sizeof(metadata.architecture), agentMetadata, "host_architecture");
+    copyField(metadata.hostname, sizeof(metadata.hostname), agentMetadata, "host_hostname");
+    copyField(metadata.os_name, sizeof(metadata.os_name), agentMetadata, "host_os_name");
+    copyField(metadata.os_type, sizeof(metadata.os_type), agentMetadata, "host_os_type");
+    copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
+    copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
+    copyField(metadata.checksum_metadata, sizeof(metadata.checksum_metadata), agentMetadata, "checksum");
+
+    // Copy groups
+    if (!groups.empty())
+    {
+        metadata.groups = new char* [groups.size()];
+        metadata.groups_count = groups.size();
+
+        for (size_t i = 0; i < groups.size(); ++i)
+        {
+            const size_t len = groups[i].length();
+            metadata.groups[i] = new char[len + 1];
+            std::strcpy(metadata.groups[i], groups[i].c_str());
+        }
+    }
+
+    // Update the provider
+    if (metadata_provider_update(&metadata) == 0)
+    {
+        m_logFunction(LOG_DEBUG, "Successfully updated metadata provider");
+    }
+    else
+    {
+        m_logFunction(LOG_WARNING, "Failed to update metadata provider");
+    }
+
+    // Free allocated groups
+    if (metadata.groups)
+    {
+        for (size_t i = 0; i < metadata.groups_count; ++i)
+        {
+            delete[] metadata.groups[i];
+        }
+
+        delete[] metadata.groups;
+    }
 }
 
 bool AgentInfoImpl::readClientKeys(std::string& agentId, std::string& agentName) const
@@ -350,17 +435,69 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
         return groups;
     }
 
-    // Look for group names in XML comments in merged.mg
-    // Format: <!-- Source file: groupname/agent.conf --> or <!--Source file: groupname/agent.conf-->
+    // merged.mg has two possible formats:
+    // 1. Single group: First line is "#groupname" (where groupname is not a hash)
+    // 2. Multiple groups: First line is "#hash_id" (8-char hex), groups appear as "<!-- Source file: groupname/agent.conf -->"
+    bool isFirstLine = true;
+    bool foundXMLComments = false;
+
     m_fileIO->readLineByLine(mergedFile,
                              [&](const std::string & line)
     {
-        // Look for XML comment with "Source file:" (with or without space after <!--)
         std::string trimmedLine = Utils::trim(line);
+
+        // Check first line for group name or hash
+        if (isFirstLine)
+        {
+            isFirstLine = false;
+
+            // First line should start with '#'
+            if (!trimmedLine.empty() && trimmedLine[0] == '#')
+            {
+                std::string firstLineValue = trimmedLine.substr(1); // Remove the '#'
+                firstLineValue = Utils::trim(firstLineValue);
+
+                if (!firstLineValue.empty())
+                {
+                    // Check if this looks like a hash (8 hex characters) or a group name
+                    // Hashes are typically 8 characters and all hexadecimal
+                    bool looksLikeHash = (firstLineValue.length() == 8);
+
+                    if (looksLikeHash)
+                    {
+                        for (char c : firstLineValue)
+                        {
+                            if (!std::isxdigit(c))
+                            {
+                                looksLikeHash = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!looksLikeHash)
+                    {
+                        // Single-group format: the first line is the actual group name
+                        groups.push_back(firstLineValue);
+                        return false; // Stop reading, we have the single group
+                    }
+
+                    // Otherwise, it's a hash - continue reading to find XML comments
+                }
+
+                return true; // Continue to next line
+            }
+
+            // If first line doesn't start with '#', continue processing as it might be an XML comment
+        }
+
+        // Look for multi-group format: XML comments with "Source file:"
         size_t sourceFilePos = trimmedLine.find("Source file:");
 
         if (sourceFilePos != std::string::npos && trimmedLine.find("<!--") == 0)
         {
+            foundXMLComments = true;
+
             // Extract the path after "Source file:"
             size_t pathStart = sourceFilePos + 12; // Length of "Source file:"
 
@@ -493,12 +630,16 @@ std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metad
     std::string checksumInput;
 
     // Add fields in a specific order for deterministic checksum
-    std::vector<std::string> fields =
-    {
-        "agent_id", "agent_name", "agent_version",
-        "host_architecture", "host_hostname",
-        "host_os_name", "host_os_type", "host_os_platform", "host_os_version"
-    };
+    std::vector<std::string> fields = {"agent_id",
+                                       "agent_name",
+                                       "agent_version",
+                                       "host_architecture",
+                                       "host_hostname",
+                                       "host_os_name",
+                                       "host_os_type",
+                                       "host_os_platform",
+                                       "host_os_version"
+                                      };
 
     for (const auto& field : fields)
     {

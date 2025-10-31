@@ -743,7 +743,9 @@ DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
 
 DBSync::~DBSync()
 {
-    if (m_shouldBeRemoved)
+    // Only release context if we own it AND the singleton is not being destroyed
+    // This prevents use-after-free during static destruction order issues
+    if (m_shouldBeRemoved && !DBSyncImplementation::isShuttingDown())
     {
         DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
     }

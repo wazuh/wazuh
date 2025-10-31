@@ -26,6 +26,7 @@ add_executable(agent_sync_protocol_tests
     test_agent_sync_protocol.cpp
     test_persistent_queue_storage.cpp
     test_persistent_queue.cpp
+    test_metadata_provider.cpp
 )
 
 # Include paths

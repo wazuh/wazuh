@@ -15,6 +15,13 @@
 
 using namespace DbSync;
 
+std::atomic<bool> DBSyncImplementation::s_shuttingDown{false};
+
+DBSyncImplementation::~DBSyncImplementation()
+{
+    s_shuttingDown = true;
+}
+
 DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType                  hostType,
                                                const DbEngineType              dbType,
                                                const std::string&              path,

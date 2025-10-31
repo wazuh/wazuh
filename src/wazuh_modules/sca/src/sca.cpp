@@ -303,7 +303,6 @@ void SCA::destroy()
     }
 
     m_sca->Stop();
-    m_sca.reset();
 }
 
 // LCOV_EXCL_START

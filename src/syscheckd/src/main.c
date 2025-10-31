@@ -11,10 +11,11 @@
 /* Syscheck
  * Copyright (C) 2003 Daniel B. Cid <daniel@underlinux.com.br>
  */
+#include "../rootcheck/rootcheck.h"
+#include "agent_sync_protocol_c_interface.h"
+#include "db.h"
 #include "shared.h"
 #include "syscheck.h"
-#include "../rootcheck/rootcheck.h"
-#include "db.h"
 
 #ifndef WIN32
 
@@ -50,6 +51,13 @@ static void fim_shutdown(int sig)
     minfo(SK_SHUTDOWN);
     is_fim_shutdown = true;
     fim_sync_module_running = 0;
+
+    /* Stop sync protocol */
+    if (syscheck.sync_handle)
+    {
+        asp_stop(syscheck.sync_handle);
+    }
+
     fim_db_teardown();
     HandleSIG(sig);
 }
