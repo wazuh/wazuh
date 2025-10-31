@@ -15,6 +15,12 @@
 #include "dbsync_implementation.h"
 #include "pipelineNodesImp.h"
 
+namespace Log
+{
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION = nullptr;
+}
+
 namespace DbSync
 {
     class Pipeline final : public IPipeline

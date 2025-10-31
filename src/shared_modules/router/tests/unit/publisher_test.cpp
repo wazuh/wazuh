@@ -17,6 +17,12 @@
 #include <thread>
 #include <vector>
 
+namespace Log
+{
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION = nullptr;
+}
+
 /**
  * @brief Runs unit tests for Publisher class
  */
