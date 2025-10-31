@@ -3,6 +3,26 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.1]
 
+### Manager
+
+#### Added
+
+- Added IAM role support for VPC flow logs in the AWS wodle. ([#32009](https://github.com/wazuh/wazuh/pull/32009))
+- Added support for static and temporary AWS credentials in the Amazon Security Lake subscriber. ([#32514](https://github.com/wazuh/wazuh/pull/32514))
+
+#### Fixed
+
+- Fixed manager vulnerability scan not triggering due to incorrect syscollector event provider topic name. ([#32045](https://github.com/wazuh/wazuh/pull/32045))
+- Fixed IndexerConnector abuse control to prevent data loss on failed syncs. ([#32787](https://github.com/wazuh/wazuh/pull/32787))
+- Fixed user tag handling by adding 'user' as an alias for the 'dstuser' static field. ([#32107](https://github.com/wazuh/wazuh/pull/32107))
+
+#### Changed
+
+- Optimized wazuh-db startup by executing agent schema creation in a single transaction. ([#32401](https://github.com/wazuh/wazuh/pull/32401))
+- Improved vulnerabilities index upgrade with hash-based mapping validation, automatic safe reindex, and backup cleanup. ([#32463](https://github.com/wazuh/wazuh/pull/32463))
+- Improved C++ logging mechanism to avoid unnecessary heap allocations. ([#32069](https://github.com/wazuh/wazuh/pull/32069))
+- Improved IndexerConnector error handling and response parsing to provide structured logging of 4xx/5xx errors. ([#32521](https://github.com/wazuh/wazuh/pull/32521))
+
 ### Agent
 
 #### Changed
@@ -23,6 +43,8 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Upgraded the `starlette` dependency to 0.47.2. ([#31422](https://github.com/wazuh/wazuh/pull/31422))
+- Upgraded Python embedded interpreter to 3.10.19. ([#32782](https://github.com/wazuh/wazuh/pull/32782))
+- Updated curl dependency to 8.12.1. ([#32900](https://github.com/wazuh/wazuh/pull/32900))
 
 
 ## [v4.14.0]
