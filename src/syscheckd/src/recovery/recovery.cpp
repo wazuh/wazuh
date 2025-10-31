@@ -113,10 +113,11 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtoco
 
 }
 
-bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval){
+bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval, void* db_instance){
     int64_t current_time = getUnixTimeSeconds();
-    int64_t last_sync_time =  DB::instance().getLastSyncTime(table_name);
+    DB* db = db_instance ? static_cast<DB*>(db_instance) : &DB::instance();
+    int64_t last_sync_time = db->getLastSyncTime(table_name);
     int64_t new_sync_time = current_time - last_sync_time;
-    return (new_sync_time >= integrity_interval) ;
+    return (new_sync_time >= integrity_interval);
 }
 }

@@ -628,7 +628,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             minfo("Synchronization succeeded");
 
             for (int i = 0; i < table_count; i++) {
-                if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
+                if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval, NULL)) {
                     minfo("Starting integrity validation process for %s", table_names[i]);
                     bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i], 
                                                                                        syscheck.sync_handle, 

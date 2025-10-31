@@ -144,23 +144,23 @@ std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName)
 void DB::initializeTableMetadata()
 {
     auto fileEntrySyncQuery = SyncRowQuery::builder()
-                                .table("table_metadata")
-                                .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
-                                .build();
+                              .table("table_metadata")
+    .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
+    .build();
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
     FIMDB::instance().updateItem(fileEntrySyncQuery.query(), emptyCallback);
 
 #ifdef WIN32
     auto registryKeySyncQuery = SyncRowQuery::builder()
                                 .table("table_metadata")
-                                .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
-                                .build();
+    .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
+    .build();
     FIMDB::instance().updateItem(registryKeySyncQuery.query(), emptyCallback);
 
     auto registryDataSyncQuery = SyncRowQuery::builder()
-                                    .table("table_metadata")
-                                    .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
-                                    .build();
+                                 .table("table_metadata")
+    .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
+    .build();
     FIMDB::instance().updateItem(registryDataSyncQuery.query(), emptyCallback);
 #endif
 }
@@ -170,9 +170,9 @@ void DB::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
     auto syncQuery = SyncRowQuery::builder()
-                        .table("table_metadata")
-                        .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
-                        .build();
+                     .table("table_metadata")
+    .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
+    .build();
 
     FIMDB::instance().updateItem(syncQuery.query(), emptyCallback);
 }
@@ -190,10 +190,10 @@ int64_t DB::getLastSyncTime(const std::string& tableName)
     };
 
     auto selectQuery = SelectQuery::builder()
-                        .table("table_metadata")
-                        .columnList({"last_sync_time"})
-                        .rowFilter(nlohmann::json{{"table_name", tableName}}.dump())
-                        .build();
+                       .table("table_metadata")
+                       .columnList({"last_sync_time"})
+                       .rowFilter("WHERE table_name = '" + tableName + "'")
+                       .build();
 
     FIMDB::instance().executeQuery(selectQuery.query(), callback);
 

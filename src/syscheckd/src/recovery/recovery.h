@@ -59,9 +59,10 @@ EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSy
  * @brief Checks if integrity_interval has elapsed for a table
  * @param table_name The table to check
  * @param integrity_interval Value to check
- * @returns true if it interval has elapsed, false otherwise
+ * @param db_instance DB instance handle (pass NULL to use singleton)
+ * @returns true if interval has elapsed, false otherwise
  */
-EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
+EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval, void* db_instance);
 
 #ifdef __cplusplus
 }
