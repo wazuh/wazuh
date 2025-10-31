@@ -63,9 +63,10 @@ private:
                                    url.filename()};
 
         // Lambda used on error case.
-        const auto onError {[](const std::string& errorMessage, const long& errorCode)
+        const auto onError {[](const std::string& errorMessage, const long& errorCode, const std::string& responseBody)
                             {
-                                throw std::runtime_error {"(" + std::to_string(errorCode) + ") " + errorMessage};
+                                throw std::runtime_error {"(" + std::to_string(errorCode) + ") " + errorMessage +
+                                                          " - Response body: " + responseBody};
                             }};
 
         // Download and store file.

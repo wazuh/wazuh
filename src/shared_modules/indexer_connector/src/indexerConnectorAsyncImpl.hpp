@@ -320,7 +320,9 @@ public:
                     // Dispatch to error logger.
                 };
 
-                const auto onError = [this, &bulkData, bulkSize](const std::string& error, const long statusCode)
+                const auto onError = [this, &bulkData, bulkSize](const std::string& error,
+                                                                 const long statusCode,
+                                                                 const std::string& responseBody)
                 {
                     logError(IC_NAME, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)

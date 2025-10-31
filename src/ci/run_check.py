@@ -480,6 +480,8 @@ def runTestTool(moduleName, testToolCommand, element):
         os.chdir(smokeTestsFolder)
         if not os.path.exists(outputFolder):
             os.makedirs(outputFolder)
+    else:
+        os.chdir(currentmoduleNameDir)
     out = subprocess.run(testToolCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,

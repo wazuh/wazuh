@@ -34,6 +34,8 @@ constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
 // Name of the field that contains the server status
 constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 
+auto constexpr MONITOR_NAME {"monitoring"};
+
 /**
  * @brief Monitoring class.
  *
@@ -103,10 +105,85 @@ class TMonitoring final
         };
 
         // On error callback
-        const auto onError = [&serverStatus](const std::string& /*error*/, const long /*statusCode*/)
+        const auto onError =
+            [&serverAddress](const std::string& error, const long statusCode, const std::string& errorBody)
         {
-            serverStatus = false;
+            // LCOV_EXCL_START
+            //  Try to extract error details from JSON
+            std::string errorType, errorReason;
+            try
+            {
+                const auto errorJson = nlohmann::json::parse(errorBody);
+                if (errorJson.contains("error"))
+                {
+                    const auto& err = errorJson.at("error");
+                    if (err.contains("type"))
+                    {
+                        errorType = err.at("type").get_ref<const std::string&>();
+                    }
+                    if (err.contains("reason"))
+                    {
+                        errorReason = err.at("reason").get_ref<const std::string&>();
+                    }
+                }
+            }
+            catch (const nlohmann::json::exception&)
+            {
+                // Ignore JSON parsing errors
+            }
+
+            // Log based on status code
+            if (statusCode == 401)
+            {
+                if (!errorType.empty() && !errorReason.empty())
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - type: '%s', reason: '%s' - Check indexer credentials",
+                            serverAddress.c_str(),
+                            errorType.c_str(),
+                            errorReason.c_str());
+                }
+                else
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - Unauthorized - Check indexer credentials",
+                            serverAddress.c_str());
+                }
+            }
+            else if (statusCode == 403)
+            {
+                if (!errorType.empty() && !errorReason.empty())
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - type: '%s', reason: '%s' - Check user permissions",
+                            serverAddress.c_str(),
+                            errorType.c_str(),
+                            errorReason.c_str());
+                }
+                else
+                {
+                    logWarn(MONITOR_NAME,
+                            "Health check failed for '%s' - Forbidden - Check user permissions",
+                            serverAddress.c_str());
+                }
+            }
+            else if (statusCode >= 500)
+            {
+                logWarn(MONITOR_NAME,
+                        "Health check failed for '%s' - Server error (%ld)",
+                        serverAddress.c_str(),
+                        statusCode);
+            }
+            else
+            {
+                logWarn(MONITOR_NAME,
+                        "Health check failed for '%s' - status: %ld, error: %s",
+                        serverAddress.c_str(),
+                        statusCode,
+                        error.c_str());
+            }
         };
+        // LCOV_EXCL_STOP
 
         // Get the health of the server.
         thread_local std::string url;

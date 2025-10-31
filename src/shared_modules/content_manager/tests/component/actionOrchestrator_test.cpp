@@ -367,3 +367,24 @@ TEST_F(ActionOrchestratorTest, FileHashUpdateDataInvalidHashThrows)
 {
     EXPECT_THROW(ActionOrchestrator::UpdateData::createHashUpdateData(""), std::invalid_argument);
 }
+
+/**
+ * @brief Tests that exceptions from runFullContentDownload are properly re-thrown during content update.
+ *
+ */
+TEST_F(ActionOrchestratorTest, ContentUpdateStdExceptionRethrown)
+{
+    m_parameters["configData"]["contentSource"] = "cti-offset";
+    m_parameters["configData"]["url"] = "http://localhost:4444/invalid_endpoint"; // This will cause download failure
+
+    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(m_parameters,
+                                                                  m_spStopActionCondition,
+                                                                  [](const std::string& msg) -> FileProcessingResult {
+                                                                      return {0, "", false};
+                                                                  })};
+
+    // Test that when runFullContentDownload throws a std::exception (not SnapshotProcessingException),
+    // it is properly re-thrown instead of being swallowed.
+    EXPECT_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(0)),
+                 std::runtime_error);
+}
