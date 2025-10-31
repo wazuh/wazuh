@@ -406,10 +406,7 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
     char error_msg[512];
 
     if (!module_name || !json_command || !output) {
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
-        os_strdup(error_msg, *output);
-        return strlen(*output);
+        return 0;
     }
 
     // Parse JSON command
@@ -473,10 +470,7 @@ size_t wm_module_query_json(const char* json_command, char** output) {
     char error_msg[512];
 
     if (!json_command || !output) {
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
-        os_strdup(error_msg, *output);
-        return strlen(*output);
+        return 0;
     }
 
     // Parse JSON command to extract module name
@@ -515,10 +509,7 @@ size_t wm_fim_query_json(const char* command, char** response) {
     char error_msg[512];
 
     if (!command || !response) {
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
-        os_strdup(error_msg, *response);
-        return strlen(*response);
+        return 0;
     }
 
     // Use the command directly as JSON (it's already in the new format)
@@ -568,7 +559,8 @@ size_t wm_fim_query_json(const char* command, char** response) {
     os_calloc(OS_MAXSTR, sizeof(char), response_buffer);
 
     // Receive response from syscheck
-    switch (recv_length = OS_RecvSecureTCP(sock, response_buffer, OS_MAXSTR)) {
+    recv_length = OS_RecvSecureTCP(sock, response_buffer, OS_MAXSTR);
+    switch (recv_length) {
         case OS_SOCKTERR:
             close(sock);
             os_free(response_buffer);

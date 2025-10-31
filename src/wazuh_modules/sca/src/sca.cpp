@@ -369,6 +369,11 @@ void SCA::deleteDatabase()
     }
 }
 
+// LCOV_EXCL_START
+
+// Excluded from code coverage as it is not the real implementation of the query method.
+// This is just a placeholder to comply with the module interface requirements.
+// The real implementation should be done in the future iterations.
 std::string SCA::query(const std::string& jsonQuery)
 {
     // Log the received query
@@ -456,6 +461,8 @@ std::string SCA::query(const std::string& jsonQuery)
         return response.dump();
     }
 }
+
+// LCOV_EXCL_STOP
 
 /// @brief C-style wrapper for SCA module synchronization.
 ///
@@ -562,9 +569,7 @@ size_t sca_query(const char* json_query, char** output)
 {
     if (!json_query || !output)
     {
-        std::string error = "{\"error\":" + std::to_string(MQ_ERR_INVALID_PARAMS) + ",\"message\":\"" + std::string(MQ_MSG_INVALID_PARAMS) + "\"}";
-        *output = strdup(error.c_str());
-        return strlen(*output);
+        return 0;
     }
 
     try

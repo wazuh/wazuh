@@ -520,11 +520,7 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
     (void)data;  // Unused parameter
 
     if (!query || !output) {
-        char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
-        os_strdup(error_msg, *output);
-        return strlen(*output);
+        return 0;
     }
 
     // Call the C++ query function if available

@@ -1619,6 +1619,11 @@ void Syscollector::deleteDatabase()
     }
 }
 
+// LCOV_EXCL_START
+
+// Excluded from code coverage as it is not the real implementation of the query method.
+// This is just a placeholder to comply with the module interface requirements.
+// The real implementation should be done in the future iterations.
 std::string Syscollector::query(const std::string& jsonQuery)
 {
     // Log the received query
@@ -1716,3 +1721,4 @@ std::string Syscollector::query(const std::string& jsonQuery)
         return response.dump();
     }
 }
+// LCOV_EXCL_STOP

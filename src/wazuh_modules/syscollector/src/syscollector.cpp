@@ -208,9 +208,7 @@ size_t syscollector_query(const char* json_query, char** output)
 {
     if (!json_query || !output)
     {
-        std::string error = "{\"error\":" + std::to_string(MQ_ERR_INVALID_PARAMS) + ",\"message\":\"" + std::string(MQ_MSG_INVALID_PARAMS) + "\"}";
-        *output = strdup(error.c_str());
-        return strlen(*output);
+        return 0;
     }
 
     try
