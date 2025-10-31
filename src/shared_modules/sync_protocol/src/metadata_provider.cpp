@@ -12,110 +12,211 @@
 #include <cstring>
 #include <mutex>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <pthread.h>
+#endif
+
+#define MAX_GROUPS_PER_MULTIGROUP 128
+#define MAX_GROUP_NAME_LEN 256  // 255 + 1 for null terminator
+
+#ifdef _WIN32
+#define SHM_PATH "Global\\WazuhAgentMetadata"
+#else
+#define SHM_PATH "var/run/.wazuh_agent_metadata"
+#endif
+
 namespace
 {
+    /**
+     * @brief Shared memory structure for agent metadata
+     *
+     * This structure is mapped to shared memory and accessible across processes.
+     * Groups are stored inline to avoid pointer issues across process boundaries.
+     */
+    struct SharedMetadata
+    {
+#ifdef _WIN32
+        LONG lock;  // Simple spinlock for Windows
+#else
+        pthread_mutex_t mutex;
+#endif
+        bool has_metadata;
+        agent_metadata_t base_metadata;
+        size_t groups_count;
+        char groups[MAX_GROUPS_PER_MULTIGROUP][MAX_GROUP_NAME_LEN];
+    };
 
     /**
-     * @brief Thread-safe singleton metadata provider implementation
+     * @brief Cross-platform lock/unlock helpers
      */
-    class MetadataProviderImpl
+    class ShmLock
     {
         public:
-            static MetadataProviderImpl& instance()
+            explicit ShmLock(SharedMetadata* shm) : m_shm(shm)
             {
-                static MetadataProviderImpl instance;
+#ifdef _WIN32
+
+                while (InterlockedCompareExchange(&m_shm->lock, 1, 0) != 0)
+                {
+                    SwitchToThread();
+                }
+
+#else
+                pthread_mutex_lock(&m_shm->mutex);
+#endif
+            }
+
+            ~ShmLock()
+            {
+#ifdef _WIN32
+                InterlockedExchange(&m_shm->lock, 0);
+#else
+                pthread_mutex_unlock(&m_shm->mutex);
+#endif
+            }
+
+        private:
+            SharedMetadata* m_shm;
+    };
+
+    /**
+     * @brief RAII wrapper for shared memory
+     */
+    class SharedMemoryProvider
+    {
+        public:
+            static SharedMemoryProvider& instance()
+            {
+                static SharedMemoryProvider instance;
                 return instance;
             }
 
-            // Delete copy/move constructors
-            MetadataProviderImpl(const MetadataProviderImpl&) = delete;
-            MetadataProviderImpl& operator=(const MetadataProviderImpl&) = delete;
+            SharedMemoryProvider(const SharedMemoryProvider&) = delete;
+            SharedMemoryProvider& operator=(const SharedMemoryProvider&) = delete;
 
             int update(const agent_metadata_t* metadata)
             {
-                if (!metadata)
+                if (!metadata || !m_shm)
                 {
                     return -1;
                 }
 
-                std::lock_guard<std::mutex> lock(m_mutex);
+                ShmLock lock(m_shm);
 
                 // Copy scalar fields
-                std::strncpy(m_metadata.agent_id, metadata->agent_id, sizeof(m_metadata.agent_id) - 1);
-                std::strncpy(m_metadata.agent_name, metadata->agent_name, sizeof(m_metadata.agent_name) - 1);
-                std::strncpy(m_metadata.agent_version, metadata->agent_version, sizeof(m_metadata.agent_version) - 1);
-                std::strncpy(m_metadata.architecture, metadata->architecture, sizeof(m_metadata.architecture) - 1);
-                std::strncpy(m_metadata.hostname, metadata->hostname, sizeof(m_metadata.hostname) - 1);
-                std::strncpy(m_metadata.os_name, metadata->os_name, sizeof(m_metadata.os_name) - 1);
-                std::strncpy(m_metadata.os_type, metadata->os_type, sizeof(m_metadata.os_type) - 1);
-                std::strncpy(m_metadata.os_platform, metadata->os_platform, sizeof(m_metadata.os_platform) - 1);
-                std::strncpy(m_metadata.os_version, metadata->os_version, sizeof(m_metadata.os_version) - 1);
-                std::strncpy(m_metadata.checksum_metadata, metadata->checksum_metadata, sizeof(m_metadata.checksum_metadata) - 1);
+                std::strncpy(m_shm->base_metadata.agent_id, metadata->agent_id, sizeof(m_shm->base_metadata.agent_id) - 1);
+                m_shm->base_metadata.agent_id[sizeof(m_shm->base_metadata.agent_id) - 1] = '\0';
 
-                // Free old groups
-                freeGroups();
+                std::strncpy(m_shm->base_metadata.agent_name, metadata->agent_name, sizeof(m_shm->base_metadata.agent_name) - 1);
+                m_shm->base_metadata.agent_name[sizeof(m_shm->base_metadata.agent_name) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.agent_version, metadata->agent_version, sizeof(m_shm->base_metadata.agent_version) - 1);
+                m_shm->base_metadata.agent_version[sizeof(m_shm->base_metadata.agent_version) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.architecture, metadata->architecture, sizeof(m_shm->base_metadata.architecture) - 1);
+                m_shm->base_metadata.architecture[sizeof(m_shm->base_metadata.architecture) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.hostname, metadata->hostname, sizeof(m_shm->base_metadata.hostname) - 1);
+                m_shm->base_metadata.hostname[sizeof(m_shm->base_metadata.hostname) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.os_name, metadata->os_name, sizeof(m_shm->base_metadata.os_name) - 1);
+                m_shm->base_metadata.os_name[sizeof(m_shm->base_metadata.os_name) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.os_type, metadata->os_type, sizeof(m_shm->base_metadata.os_type) - 1);
+                m_shm->base_metadata.os_type[sizeof(m_shm->base_metadata.os_type) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.os_platform, metadata->os_platform, sizeof(m_shm->base_metadata.os_platform) - 1);
+                m_shm->base_metadata.os_platform[sizeof(m_shm->base_metadata.os_platform) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.os_version, metadata->os_version, sizeof(m_shm->base_metadata.os_version) - 1);
+                m_shm->base_metadata.os_version[sizeof(m_shm->base_metadata.os_version) - 1] = '\0';
+
+                std::strncpy(m_shm->base_metadata.checksum_metadata, metadata->checksum_metadata, sizeof(m_shm->base_metadata.checksum_metadata) - 1);
+                m_shm->base_metadata.checksum_metadata[sizeof(m_shm->base_metadata.checksum_metadata) - 1] = '\0';
 
                 // Copy groups
-                if (metadata->groups_count > 0 && metadata->groups)
-                {
-                    m_metadata.groups = new char* [metadata->groups_count];
-                    m_metadata.groups_count = metadata->groups_count;
+                m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
 
-                    for (size_t i = 0; i < metadata->groups_count; ++i)
+                for (size_t i = 0; i < m_shm->groups_count; ++i)
+                {
+                    if (metadata->groups && metadata->groups[i])
                     {
-                        const size_t len = std::strlen(metadata->groups[i]);
-                        m_metadata.groups[i] = new char[len + 1];
-                        std::strcpy(m_metadata.groups[i], metadata->groups[i]);
+                        std::strncpy(m_shm->groups[i], metadata->groups[i], MAX_GROUP_NAME_LEN - 1);
+                        m_shm->groups[i][MAX_GROUP_NAME_LEN - 1] = '\0';
+                    }
+                    else
+                    {
+                        m_shm->groups[i][0] = '\0';
                     }
                 }
-                else
-                {
-                    m_metadata.groups = nullptr;
-                    m_metadata.groups_count = 0;
-                }
 
-                m_has_metadata = true;
+                m_shm->has_metadata = true;
 
                 return 0;
             }
 
             int get(agent_metadata_t* out_metadata) const
             {
-                if (!out_metadata)
+                if (!out_metadata || !m_shm)
                 {
                     return -1;
                 }
 
-                std::lock_guard<std::mutex> lock(m_mutex);
+                ShmLock lock(m_shm);
 
-                if (!m_has_metadata)
+                if (!m_shm->has_metadata)
                 {
                     return -1;
                 }
 
                 // Copy scalar fields
-                std::strncpy(out_metadata->agent_id, m_metadata.agent_id, sizeof(out_metadata->agent_id) - 1);
-                std::strncpy(out_metadata->agent_name, m_metadata.agent_name, sizeof(out_metadata->agent_name) - 1);
-                std::strncpy(out_metadata->agent_version, m_metadata.agent_version, sizeof(out_metadata->agent_version) - 1);
-                std::strncpy(out_metadata->architecture, m_metadata.architecture, sizeof(out_metadata->architecture) - 1);
-                std::strncpy(out_metadata->hostname, m_metadata.hostname, sizeof(out_metadata->hostname) - 1);
-                std::strncpy(out_metadata->os_name, m_metadata.os_name, sizeof(out_metadata->os_name) - 1);
-                std::strncpy(out_metadata->os_type, m_metadata.os_type, sizeof(out_metadata->os_type) - 1);
-                std::strncpy(out_metadata->os_platform, m_metadata.os_platform, sizeof(out_metadata->os_platform) - 1);
-                std::strncpy(out_metadata->os_version, m_metadata.os_version, sizeof(out_metadata->os_version) - 1);
-                std::strncpy(out_metadata->checksum_metadata, m_metadata.checksum_metadata, sizeof(out_metadata->checksum_metadata) - 1);
+                std::strncpy(out_metadata->agent_id, m_shm->base_metadata.agent_id, sizeof(out_metadata->agent_id) - 1);
+                out_metadata->agent_id[sizeof(out_metadata->agent_id) - 1] = '\0';
+
+                std::strncpy(out_metadata->agent_name, m_shm->base_metadata.agent_name, sizeof(out_metadata->agent_name) - 1);
+                out_metadata->agent_name[sizeof(out_metadata->agent_name) - 1] = '\0';
+
+                std::strncpy(out_metadata->agent_version, m_shm->base_metadata.agent_version, sizeof(out_metadata->agent_version) - 1);
+                out_metadata->agent_version[sizeof(out_metadata->agent_version) - 1] = '\0';
+
+                std::strncpy(out_metadata->architecture, m_shm->base_metadata.architecture, sizeof(out_metadata->architecture) - 1);
+                out_metadata->architecture[sizeof(out_metadata->architecture) - 1] = '\0';
+
+                std::strncpy(out_metadata->hostname, m_shm->base_metadata.hostname, sizeof(out_metadata->hostname) - 1);
+                out_metadata->hostname[sizeof(out_metadata->hostname) - 1] = '\0';
+
+                std::strncpy(out_metadata->os_name, m_shm->base_metadata.os_name, sizeof(out_metadata->os_name) - 1);
+                out_metadata->os_name[sizeof(out_metadata->os_name) - 1] = '\0';
+
+                std::strncpy(out_metadata->os_type, m_shm->base_metadata.os_type, sizeof(out_metadata->os_type) - 1);
+                out_metadata->os_type[sizeof(out_metadata->os_type) - 1] = '\0';
+
+                std::strncpy(out_metadata->os_platform, m_shm->base_metadata.os_platform, sizeof(out_metadata->os_platform) - 1);
+                out_metadata->os_platform[sizeof(out_metadata->os_platform) - 1] = '\0';
+
+                std::strncpy(out_metadata->os_version, m_shm->base_metadata.os_version, sizeof(out_metadata->os_version) - 1);
+                out_metadata->os_version[sizeof(out_metadata->os_version) - 1] = '\0';
+
+                std::strncpy(out_metadata->checksum_metadata, m_shm->base_metadata.checksum_metadata, sizeof(out_metadata->checksum_metadata) - 1);
+                out_metadata->checksum_metadata[sizeof(out_metadata->checksum_metadata) - 1] = '\0';
 
                 // Copy groups
-                if (m_metadata.groups_count > 0 && m_metadata.groups)
+                if (m_shm->groups_count > 0)
                 {
-                    out_metadata->groups = new char* [m_metadata.groups_count];
-                    out_metadata->groups_count = m_metadata.groups_count;
+                    out_metadata->groups = new char* [m_shm->groups_count];
+                    out_metadata->groups_count = m_shm->groups_count;
 
-                    for (size_t i = 0; i < m_metadata.groups_count; ++i)
+                    for (size_t i = 0; i < m_shm->groups_count; ++i)
                     {
-                        const size_t len = std::strlen(m_metadata.groups[i]);
+                        const size_t len = std::strlen(m_shm->groups[i]);
                         out_metadata->groups[i] = new char[len + 1];
-                        std::strcpy(out_metadata->groups[i], m_metadata.groups[i]);
+                        std::strcpy(out_metadata->groups[i], m_shm->groups[i]);
                     }
                 }
                 else
@@ -129,38 +230,148 @@ namespace
 
             void reset()
             {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                freeGroups();
-                m_has_metadata = false;
+                if (m_shm)
+                {
+                    ShmLock lock(m_shm);
+                    m_shm->has_metadata = false;
+                    m_shm->groups_count = 0;
+                }
             }
 
         private:
-            MetadataProviderImpl() = default;
-            ~MetadataProviderImpl()
+            SharedMemoryProvider()
+                : m_shm(nullptr)
+#ifdef _WIN32
+                , m_hMapFile(NULL)
+#else
+                , m_shm_fd(-1)
+#endif
             {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                freeGroups();
-            }
+#ifdef _WIN32
+                // Windows: Use CreateFileMapping
+                m_hMapFile = CreateFileMappingA(
+                                 INVALID_HANDLE_VALUE,
+                                 NULL,
+                                 PAGE_READWRITE,
+                                 0,
+                                 sizeof(SharedMetadata),
+                                 SHM_PATH);
 
-            void freeGroups()
-            {
-                if (m_metadata.groups)
+                if (!m_hMapFile)
                 {
-                    for (size_t i = 0; i < m_metadata.groups_count; ++i)
-                    {
-                        delete[] m_metadata.groups[i];
-                    }
-
-                    delete[] m_metadata.groups;
-                    m_metadata.groups = nullptr;
+                    return;
                 }
 
-                m_metadata.groups_count = 0;
+                bool created = (GetLastError() != ERROR_ALREADY_EXISTS);
+
+                m_shm = static_cast<SharedMetadata*>(MapViewOfFile(
+                                                         m_hMapFile,
+                                                         FILE_MAP_ALL_ACCESS,
+                                                         0,
+                                                         0,
+                                                         sizeof(SharedMetadata)));
+
+                if (!m_shm)
+                {
+                    CloseHandle(m_hMapFile);
+                    m_hMapFile = NULL;
+                    return;
+                }
+
+                if (created)
+                {
+                    m_shm->lock = 0;
+                    m_shm->has_metadata = false;
+                    m_shm->groups_count = 0;
+                }
+
+#else
+                // Unix/Linux: Use mmap on a file
+                m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT, 0600);
+
+                if (m_shm_fd == -1)
+                {
+                    return;
+                }
+
+                struct stat st;
+
+                bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size < static_cast<off_t>(sizeof(SharedMetadata)));
+
+                // Always set correct size
+                if (ftruncate(m_shm_fd, sizeof(SharedMetadata)) == -1)
+                {
+                    close(m_shm_fd);
+                    m_shm_fd = -1;
+                    return;
+                }
+
+                m_shm = static_cast<SharedMetadata*>(mmap(
+                                                         nullptr,
+                                                         sizeof(SharedMetadata),
+                                                         PROT_READ | PROT_WRITE,
+                                                         MAP_SHARED,
+                                                         m_shm_fd,
+                                                         0));
+
+                if (m_shm == MAP_FAILED)
+                {
+                    close(m_shm_fd);
+                    m_shm_fd = -1;
+                    m_shm = nullptr;
+                    return;
+                }
+
+                if (created)
+                {
+                    pthread_mutexattr_t attr;
+                    pthread_mutexattr_init(&attr);
+                    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+                    pthread_mutex_init(&m_shm->mutex, &attr);
+                    pthread_mutexattr_destroy(&attr);
+
+                    m_shm->has_metadata = false;
+                    m_shm->groups_count = 0;
+                }
+
+#endif
             }
 
-            mutable std::mutex m_mutex;
-            bool m_has_metadata{false};
-            agent_metadata_t m_metadata{};
+            ~SharedMemoryProvider()
+            {
+#ifdef _WIN32
+
+                if (m_shm)
+                {
+                    UnmapViewOfFile(m_shm);
+                }
+
+                if (m_hMapFile)
+                {
+                    CloseHandle(m_hMapFile);
+                }
+
+#else
+
+                if (m_shm && m_shm != MAP_FAILED)
+                {
+                    munmap(m_shm, sizeof(SharedMetadata));
+                }
+
+                if (m_shm_fd != -1)
+                {
+                    close(m_shm_fd);
+                }
+
+#endif
+            }
+
+            SharedMetadata* m_shm;
+#ifdef _WIN32
+            HANDLE m_hMapFile;
+#else
+            int m_shm_fd;
+#endif
     };
 }
 
@@ -168,12 +379,12 @@ namespace
 
 int metadata_provider_update(const agent_metadata_t* metadata)
 {
-    return MetadataProviderImpl::instance().update(metadata);
+    return SharedMemoryProvider::instance().update(metadata);
 }
 
 int metadata_provider_get(agent_metadata_t* out_metadata)
 {
-    return MetadataProviderImpl::instance().get(out_metadata);
+    return SharedMemoryProvider::instance().get(out_metadata);
 }
 
 void metadata_provider_free_metadata(agent_metadata_t* metadata)
@@ -199,5 +410,5 @@ void metadata_provider_free_metadata(agent_metadata_t* metadata)
 
 void metadata_provider_reset(void)
 {
-    MetadataProviderImpl::instance().reset();
+    SharedMemoryProvider::instance().reset();
 }
