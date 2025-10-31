@@ -12,6 +12,7 @@
 #ifndef _DBSYNC_IMPLEMENTATION_H
 #define _DBSYNC_IMPLEMENTATION_H
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -83,6 +84,12 @@ namespace DbSync
             void releaseContext(const DBSYNC_HANDLE handle);
 
             void closeAndDeleteDatabase(const DBSYNC_HANDLE handle, const std::string& path);
+
+            static bool isShuttingDown()
+            {
+                return s_shuttingDown.load(std::memory_order_acquire);
+            }
+
         private:
 
             struct TransactionContext final
@@ -137,11 +144,13 @@ namespace DbSync
             std::shared_ptr<DbEngineContext> dbEngineContext(const DBSYNC_HANDLE handle);
 
             DBSyncImplementation() = default;
-            ~DBSyncImplementation() = default;
+            ~DBSyncImplementation();
             DBSyncImplementation(const DBSyncImplementation&) = delete;
             DBSyncImplementation& operator=(const DBSyncImplementation&) = delete;
+
             std::map<DBSYNC_HANDLE, std::shared_ptr<DbEngineContext>> m_dbSyncContexts;
             std::mutex m_mutex;
+            static std::atomic<bool> s_shuttingDown;
     };
 }
 

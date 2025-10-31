@@ -448,9 +448,13 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // If metadata not available, abort synchronization
         if (!has_metadata)
         {
-            m_logger(LOG_ERROR, "Metadata not available from provider. Agent-info may not be initialized yet. Cannot proceed with synchronization.");
+            m_logger(LOG_DEBUG,
+                     "Metadata not available from provider. Agent-info may not be initialized yet. Cannot proceed with "
+                     "synchronization.");
             return false;
         }
+
+        m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
 
         // Create flatbuffer strings from metadata
         auto architecture = builder.CreateString(metadata.architecture);
