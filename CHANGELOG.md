@@ -62,6 +62,11 @@ All notable changes to this project will be documented in this file.
 - Reworked SCA Policy for Microsoft Windows 10 Enterprise. ([#31449](https://github.com/wazuh/wazuh/pull/31449))
 - Fixed bug in Windows SCA. ([#31349](https://github.com/wazuh/wazuh/pull/31349))
 - Fixed mistaken alert due to expected regex. ([#31102](https://github.com/wazuh/wazuh/pull/31102))
+- Fixed SCA checks in Oracle Linux 9. ([#31886](https://github.com/wazuh/wazuh/pull/31886))
+- Fixed bugs in Windows Server 2016 SCA. ([#32509](https://github.com/wazuh/wazuh/pull/32509))
+- Fixed bugs in PAM decoder. ([#32523](https://github.com/wazuh/wazuh/pull/32523))
+- Fixed MacOS Sequoia SCA scans with errors. ([#32480](https://github.com/wazuh/wazuh/pull/32480))
+- Windows Server 2016 SCA policy not configured correctly. ([#32802](https://github.com/wazuh/wazuh/pull/32802))
 
 ### Other
 
