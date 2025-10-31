@@ -265,6 +265,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Last sync operation result for detailed error reporting.
             SyncResult lastSyncResult = SyncResult::SUCCESS;
 
+            /// @brief Destructor ensures all waiting threads are woken up before destruction.
+            ///
+            /// This prevents deadlocks when the condition variable is destroyed while threads are still waiting.
+            ~SyncState()
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                syncFailed = true;
+                cv.notify_all();
+            }
+
             /// @brief Resets all internal flags and clears received ranges.
             ///
             /// This should be called before starting a new synchronization cycle.
