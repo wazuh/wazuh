@@ -1681,9 +1681,7 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
             [&capturedBulkData, &processingCompletedPromise](
                 RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
             {
-                std::visit([&capturedBulkData](auto&& request) {
-                    capturedBulkData = request.data;
-                }, requestParams);
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
@@ -1776,7 +1774,13 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQuerySuccess)
 
     // Verify the request contained the correct data
     auto requestData = nlohmann::json::parse(receivedData[0]);
-    EXPECT_EQ(requestData["query"]["term"]["agent.id"], "agent-001");
+    // Check the new bool query structure with version filtering
+    EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["agent.id"], "agent-001");
+    EXPECT_TRUE(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"].is_string());
+    EXPECT_EQ(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"],
+              "state.document_version");
+    EXPECT_EQ(requestData["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"], 12345);
+    EXPECT_EQ(requestData["query"]["bool"]["minimum_should_match"], 1);
     EXPECT_TRUE(requestData.contains("script"));
     EXPECT_TRUE(requestData["script"].contains("source"));
     EXPECT_EQ(requestData["script"]["params"]["id"], "agent-001");
@@ -1860,7 +1864,13 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQuerySuccess)
 
     // Verify the request contained the correct data
     auto requestData = nlohmann::json::parse(receivedData[0]);
-    EXPECT_EQ(requestData["query"]["term"]["agent.id"], "agent-002");
+    // Check the new bool query structure with version filtering
+    EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["agent.id"], "agent-002");
+    EXPECT_TRUE(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"].is_string());
+    EXPECT_EQ(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"],
+              "state.document_version");
+    EXPECT_EQ(requestData["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"], 54321);
+    EXPECT_EQ(requestData["query"]["bool"]["minimum_should_match"], 1);
     EXPECT_TRUE(requestData.contains("script"));
     EXPECT_TRUE(requestData["script"].contains("source"));
     EXPECT_EQ(requestData["script"]["params"]["groups"][0], "group1");

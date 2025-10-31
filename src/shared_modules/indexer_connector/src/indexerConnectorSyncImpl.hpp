@@ -505,8 +505,13 @@ public:
         }
 
         // Build the update by query request
+        // Use bool query to match agent.id AND only update if version <= globalVersion (external_gte behavior)
         nlohmann::json updateQuery;
-        updateQuery["query"]["term"]["agent.id"] = agentId;
+        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        // Only update documents where version is null OR version <= globalVersion
+        updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
+        updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = globalVersion;
+        updateQuery["query"]["bool"]["minimum_should_match"] = 1;
 
         // Get current timestamp in ISO 8601 format
         auto now = std::chrono::system_clock::now();
@@ -577,8 +582,13 @@ public:
         }
 
         // Build the update by query request
+        // Use bool query to match agent.id AND only update if version <= globalVersion (external_gte behavior)
         nlohmann::json updateQuery;
-        updateQuery["query"]["term"]["agent.id"] = agentId;
+        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        // Only update documents where version is null OR version <= globalVersion
+        updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
+        updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = globalVersion;
+        updateQuery["query"]["bool"]["minimum_should_match"] = 1;
 
         // Get current timestamp in ISO 8601 format
         auto now = std::chrono::system_clock::now();
@@ -714,12 +724,16 @@ public:
 
         if (data.empty())
         {
-            logWarn(IC_NAME, "Empty data provided for document %.*s in index %.*s",
-                   static_cast<int>(id.size()), id.data(),
-                   static_cast<int>(index.size()), index.data());
+            logWarn(IC_NAME,
+                    "Empty data provided for document %.*s in index %.*s",
+                    static_cast<int>(id.size()),
+                    id.data(),
+                    static_cast<int>(index.size()),
+                    index.data());
         }
 
-        const auto totalSize = m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
+        const auto totalSize =
+            m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
 
         if (totalSize > MaxBulkSize)
         {
@@ -744,9 +758,12 @@ public:
             m_bulkData.append(R"(","version":")");
             m_bulkData.append(version);
             m_bulkData.append(R"(","version_type":"external_gte)");
-            logDebug2(IC_NAME, "Using external version %.*s for document %.*s",
-                     static_cast<int>(version.size()), version.data(),
-                     static_cast<int>(id.size()), id.data());
+            logDebug2(IC_NAME,
+                      "Using external version %.*s for document %.*s",
+                      static_cast<int>(version.size()),
+                      version.data(),
+                      static_cast<int>(id.size()),
+                      id.data());
         }
         else
         {
@@ -755,8 +772,10 @@ public:
                 m_bulkData.append(R"(","_id":")");
                 m_bulkData.append(id);
             }
-            logDebug2(IC_NAME, "No version specified for document %.*s, using default versioning",
-                     static_cast<int>(id.size()), id.data());
+            logDebug2(IC_NAME,
+                      "No version specified for document %.*s, using default versioning",
+                      static_cast<int>(id.size()),
+                      id.data());
         }
         m_bulkData.append(R"("}})");
         m_bulkData.append("\n");
