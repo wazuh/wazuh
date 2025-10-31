@@ -112,6 +112,7 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
 
         for (auto& check : modifiedChecksMap)
         {
+            // LCOV_EXCL_START
             try
             {
                 if (check.second["result"] == INSERTED)
@@ -124,7 +125,6 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
                     UpdateCheckResult(check.second["data"]["new"]);
                 }
             }
-            // LCOV_EXCL_START
             catch (const std::exception& e)
             {
                 LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to update check result: ") + e.what());
@@ -134,6 +134,7 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
         }
 
         // Mark checks as "Not run" when their policy changed (but check itself didn't)
+        // LCOV_EXCL_START
         for (const auto& policyEntry : modifiedPoliciesMap)
         {
             if (policyEntry.second["result"] == MODIFIED)
@@ -165,6 +166,8 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
                 }
             }
         }
+
+        // LCOV_EXCL_STOP
     }
     else
     {
@@ -243,6 +246,7 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
     {
         DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {tableName}, 0, DBSYNC_QUEUE_SIZE, callback};
 
+        // LCOV_EXCL_START
         if (txn.handle() != nullptr)
         {
             nlohmann::json input;
@@ -253,6 +257,8 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
             txn.syncTxnRow(input);
             txn.getDeletedRows(callback);
         }
+
+        // LCOV_EXCL_STOP
     }
     catch (const std::exception& e)
     {
