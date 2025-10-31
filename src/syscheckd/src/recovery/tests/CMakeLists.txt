@@ -30,6 +30,8 @@ include_directories(${SRC_FOLDER}/headers/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/external/zlib/)
 
 # Source files being tested
 file(GLOB RECOVERY_SRC
