@@ -57,12 +57,12 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(table_name);
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
-    Utils::HashData hash(Utils::HashType::Sha1);
     for (const nlohmann::json& item : recoveryItems) {
         // Calculate SHA1 hash to get an id for persistDifferenceInMemory()
         std::string id = item["path"];
         try
         {
+            Utils::HashData hash(Utils::HashType::Sha1);
             hash.update(id.c_str(), id.length());
             const std::vector<unsigned char> hashResult = hash.hash();
             id = Utils::asciiToHex(hashResult);

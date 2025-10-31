@@ -58,6 +58,11 @@ set_source_files_properties(
 
 set_target_properties(
   SYSCHECK_O
+  PROPERTIES
+  LINKER_LANGUAGE CXX
+  )
+
+set_target_properties(
   ROOTCHECK_O
   PROPERTIES
   LINKER_LANGUAGE C
