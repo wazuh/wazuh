@@ -7,6 +7,8 @@ else()
   file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
                      ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
   list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
+  # Exclude C++ recovery module files (these are wrapped/mocked in unit tests)
+  list(FILTER sysfiles EXCLUDE REGEX ".*/recovery/.*")
 endif()
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
@@ -58,11 +60,6 @@ set_source_files_properties(
 
 set_target_properties(
   SYSCHECK_O
-  PROPERTIES
-  LINKER_LANGUAGE CXX
-  )
-
-set_target_properties(
   ROOTCHECK_O
   PROPERTIES
   LINKER_LANGUAGE C
