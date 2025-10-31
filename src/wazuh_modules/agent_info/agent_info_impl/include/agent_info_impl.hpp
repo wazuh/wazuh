@@ -87,17 +87,18 @@ class AgentInfoImpl
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
+    private:
+        /// @brief Update the global metadata provider with current agent metadata
+        /// @param agentMetadata Agent metadata JSON
+        /// @param groups List of agent groups
+        void updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups);
+
         /// @brief Coordinate modules for version synchronization
         /// This method manages the coordination process: pause, flush, sync versions, set version, sync table, resume
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
         /// @return true if coordination was successful, false otherwise
         bool coordinateModules(const std::string& table);
 
-    private:
-        /// @brief Update the global metadata provider with current agent metadata
-        /// @param agentMetadata Agent metadata JSON
-        /// @param groups List of agent groups
-        void updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups);
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
 

@@ -781,6 +781,61 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
     return ecsFormatted;
 }
 
+namespace
+{
+    /// @brief Structure to represent a module query response
+    struct ModuleResponse
+    {
+        bool success;              ///< True if operation succeeded (error code 0)
+        std::string response;      ///< Raw response string
+        int errorCode;             ///< Parsed error code (0 if success)
+        bool isModuleUnavailable;  ///< True if error indicates module is unavailable (50-53)
+    };
+
+    /// @brief Parse JSON response and extract error information
+    /// @param responseStr Raw JSON response string
+    /// @return ModuleResponse with parsed information
+    ModuleResponse parseModuleResponse(const std::string& responseStr)
+    {
+        ModuleResponse result;
+        result.response = responseStr;
+        result.success = false;
+        result.errorCode = -1;
+        result.isModuleUnavailable = false;
+
+        try
+        {
+            nlohmann::json responseJson = nlohmann::json::parse(responseStr);
+
+            if (responseJson.contains("error") && responseJson["error"].is_number())
+            {
+                result.errorCode = responseJson["error"].get<int>();
+                result.success = (result.errorCode == 0);
+                result.isModuleUnavailable = MQ_IS_MODULE_UNAVAILABLE(result.errorCode);
+            }
+        }
+        catch (const std::exception&)
+        {
+            // If parsing fails, keep default values
+        }
+
+        return result;
+    }
+
+    /// @brief RAII wrapper for C-style strings allocated with malloc/strdup
+    struct CStringDeleter
+    {
+        void operator()(char* ptr) const
+        {
+            if (ptr)
+            {
+                free(ptr);
+            }
+        }
+    };
+    using UniqueCString = std::unique_ptr<char, CStringDeleter>;
+}
+
 bool AgentInfoImpl::coordinateModules(const std::string& table)
 {
     // Check if query function is available
@@ -849,77 +904,54 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     };
 
     // Helper function to query module with retries and error handling using JSON format
-    auto queryModuleWithRetry = [this, MAX_RETRIES, RETRY_DELAY_MS](const std::string & moduleName, const std::string & jsonMessage) -> std::pair<bool, std::string>
+    auto queryModuleWithRetry = [this, MAX_RETRIES, RETRY_DELAY_MS](const std::string & moduleName, const std::string & jsonMessage) -> ModuleResponse
     {
         m_logFunction(LOG_INFO, "Sending JSON command to " + moduleName + ": " + jsonMessage);
 
         for (int attempt = 1; attempt <= MAX_RETRIES; ++attempt)
         {
-            char* response = nullptr;
-            int result = m_queryModuleFunction(moduleName, jsonMessage, &response);
-            std::string responseStr = response ? std::string(response) : "no response";
+            char* rawResponse = nullptr;
+            int result = m_queryModuleFunction(moduleName, jsonMessage, &rawResponse);
 
+            // Use RAII to manage C string memory
+            UniqueCString response(rawResponse);
+
+            // If no response received, create structured error JSON
+            std::string responseStr;
             if (response)
             {
-                free(response);
+                responseStr = std::string(response.get());
             }
-
-            // Parse JSON response
-            if (result == 0)
+            else
             {
-                try
-                {
-                    nlohmann::json responseJson = nlohmann::json::parse(responseStr);
-
-                    if (responseJson.contains("error") && responseJson["error"].is_number())
-                    {
-                        int errorCode = responseJson["error"].get<int>();
-
-                        if (errorCode == 0)
-                        {
-                            // Success: error code is 0
-                            return std::make_pair(true, responseStr);
-                        }
-                        else
-                        {
-                            // Non-zero error code indicates failure
-                            m_logFunction(LOG_WARNING, "Module returned error code " + std::to_string(errorCode) +
-                                          ": " + (responseJson.contains("message") ? responseJson["message"].get<std::string>() : "no message"));
-                        }
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    m_logFunction(LOG_WARNING, "Failed to parse JSON response: " + std::string(e.what()));
-                }
+                // Create structured error response for null pointer
+                nlohmann::json errorJson;
+                errorJson["error"] = MQ_ERR_INTERNAL;
+                errorJson["message"] = "No response received from module query function";
+                responseStr = errorJson.dump();
             }
 
-            // Check if module is unavailable using standard error codes
-            // Parse the response to get the error code
-            try
+            // Parse response using helper function
+            ModuleResponse moduleResp = parseModuleResponse(responseStr);
+
+            // If query succeeded (error code 0), return immediately
+            if (result == 0 && moduleResp.success)
             {
-                nlohmann::json responseJson = nlohmann::json::parse(responseStr);
-
-                if (responseJson.contains("error") && responseJson["error"].is_number())
-                {
-                    int errorCode = responseJson["error"].get<int>();
-
-                    // Use the standard macro to check if module is unavailable
-                    if (MQ_IS_MODULE_UNAVAILABLE(errorCode))
-                    {
-                        m_logFunction(LOG_INFO, moduleName + " module is unavailable (error " + std::to_string(errorCode) + "): " + responseStr);
-                        return std::make_pair(false, responseStr);
-                    }
-                }
+                m_logFunction(LOG_DEBUG, moduleName + " query succeeded");
+                return moduleResp;
             }
-            catch (const std::exception& e)
+
+            // If module is unavailable (disabled/not found/not running), return immediately without retrying
+            if (moduleResp.isModuleUnavailable)
             {
-                // If we can't parse the response, continue with retries
-                m_logFunction(LOG_WARNING, "Failed to parse response JSON: " + std::string(e.what()));
+                m_logFunction(LOG_INFO, moduleName + " module is unavailable (error " +
+                             std::to_string(moduleResp.errorCode) + "): " + responseStr);
+                return moduleResp;
             }
 
+            // For other errors, log and retry
             m_logFunction(LOG_WARNING, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_RETRIES) +
-                          " failed for " + moduleName + ": " + responseStr);
+                          " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) + "): " + responseStr);
 
             if (attempt < MAX_RETRIES)
             {
@@ -928,7 +960,18 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         }
 
         m_logFunction(LOG_ERROR, "Failed to query " + moduleName + " after " + std::to_string(MAX_RETRIES) + " attempts");
-        return std::make_pair(false, "max retries exceeded");
+
+        // Return failure response with structured error JSON
+        nlohmann::json errorJson;
+        errorJson["error"] = MQ_ERR_INTERNAL;
+        errorJson["message"] = "Max retries exceeded (" + std::to_string(MAX_RETRIES) + " attempts)";
+
+        ModuleResponse failedResp;
+        failedResp.success = false;
+        failedResp.response = errorJson.dump();
+        failedResp.errorCode = MQ_ERR_INTERNAL;
+        failedResp.isModuleUnavailable = false;
+        return failedResp;
     };
 
     // Helper function to resume paused modules (for cleanup)
@@ -938,12 +981,12 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         {
             m_logFunction(LOG_INFO, "Resuming paused module: " + module);
             std::string resumeMessage = createJsonCommand("resume");
-            auto [success, response] = queryModuleWithRetry(module, resumeMessage);
-            m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response);
+            ModuleResponse response = queryModuleWithRetry(module, resumeMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response.response);
 
-            if (!success)
+            if (!response.success)
             {
-                m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response);
+                m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response.response);
             }
         }
 
@@ -958,10 +1001,10 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         for (const auto& module : modules)
         {
             std::string pauseMessage = createJsonCommand("pause");
-            auto [success, response] = queryModuleWithRetry(module, pauseMessage);
-            m_logFunction(LOG_INFO, "Response from " + module + " pause: " + response);
+            ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
+            m_logFunction(LOG_INFO, "Response from " + module + " pause: " + response.response);
 
-            if (success)
+            if (response.success)
             {
                 availableModules.insert(module);
                 pausedModules.insert(module);
@@ -969,7 +1012,21 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             }
             else
             {
-                m_logFunction(LOG_INFO, "Skipping " + module + " (not available): " + response);
+                // Distinguish between "module unavailable" and "communication error"
+                if (response.isModuleUnavailable)
+                {
+                    // Module is disabled/not found/not running - skip it (not an error)
+                    m_logFunction(LOG_INFO, "Skipping " + module + " (unavailable, error " +
+                                 std::to_string(response.errorCode) + "): " + response.response);
+                }
+                else
+                {
+                    // Communication error or other failure - abort coordination
+                    m_logFunction(LOG_ERROR, "Failed to pause " + module + " (communication error " +
+                                 std::to_string(response.errorCode) + "), aborting coordination: " + response.response);
+                    resumePausedModules();
+                    return false;
+                }
             }
         }
 
@@ -991,12 +1048,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             for (const auto& module : availableModules)
             {
                 std::string flushMessage = createJsonCommand("flush");
-                auto [success, response] = queryModuleWithRetry(module, flushMessage);
-                m_logFunction(LOG_INFO, "Response from " + module + " flush: " + response);
+                ModuleResponse response = queryModuleWithRetry(module, flushMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " flush: " + response.response);
 
-                if (!success)
+                if (!response.success)
                 {
-                    m_logFunction(LOG_ERROR, "Failed to flush " + module + ", aborting coordination");
+                    m_logFunction(LOG_ERROR, "Failed to flush " + module + " (error " +
+                                 std::to_string(response.errorCode) + "), aborting coordination");
                     resumePausedModules();
                     return false;
                 }
@@ -1010,12 +1068,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             for (const auto& module : availableModules)
             {
                 std::string getVersionMessage = createJsonCommand("get_version");
-                auto [success, response] = queryModuleWithRetry(module, getVersionMessage);
-                m_logFunction(LOG_INFO, "Response from " + module + " get_version: " + response);
+                ModuleResponse response = queryModuleWithRetry(module, getVersionMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " get_version: " + response.response);
 
-                if (!success)
+                if (!response.success)
                 {
-                    m_logFunction(LOG_ERROR, "Failed to get version from " + module + ", aborting coordination");
+                    m_logFunction(LOG_ERROR, "Failed to get version from " + module + " (error " +
+                                 std::to_string(response.errorCode) + "), aborting coordination");
                     resumePausedModules();
                     return false;
                 }
@@ -1025,7 +1084,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
                 try
                 {
-                    nlohmann::json responseJson = nlohmann::json::parse(response);
+                    nlohmann::json responseJson = nlohmann::json::parse(response.response);
 
                     if (responseJson.contains("data") && responseJson["data"].contains("version") &&
                             responseJson["data"]["version"].is_number())
@@ -1041,7 +1100,8 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 }
                 catch (const std::exception& e)
                 {
-                    m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " + std::string(e.what()) + " - Response: " + response);
+                    m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " +
+                                 std::string(e.what()) + " - Response: " + response.response);
                     resumePausedModules();
                     return false;
                 }
@@ -1064,12 +1124,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             for (const auto& module : availableModules)
             {
                 std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
-                auto [success, response] = queryModuleWithRetry(module, setVersionMessage);
-                m_logFunction(LOG_INFO, "Response from " + module + " set_version: " + response);
+                ModuleResponse response = queryModuleWithRetry(module, setVersionMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " set_version: " + response.response);
 
-                if (!success)
+                if (!response.success)
                 {
-                    m_logFunction(LOG_ERROR, "Failed to set version on " + module + ", aborting coordination");
+                    m_logFunction(LOG_ERROR, "Failed to set version on " + module + " (error " +
+                                 std::to_string(response.errorCode) + "), aborting coordination");
                     resumePausedModules();
                     return false;
                 }
@@ -1113,12 +1174,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             for (const auto& module : pausedModules)
             {
                 std::string resumeMessage = createJsonCommand("resume");
-                auto [success, response] = queryModuleWithRetry(module, resumeMessage);
-                m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response);
+                ModuleResponse response = queryModuleWithRetry(module, resumeMessage);
+                m_logFunction(LOG_INFO, "Response from " + module + " resume: " + response.response);
 
-                if (!success)
+                if (!response.success)
                 {
-                    m_logFunction(LOG_ERROR, "Failed to resume " + module + ": " + response);
+                    m_logFunction(LOG_ERROR, "Failed to resume " + module + " (error " +
+                                 std::to_string(response.errorCode) + "): " + response.response);
                     // Continue trying to resume other modules even if one fails
                 }
                 else
