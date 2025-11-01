@@ -428,14 +428,3 @@ TEST_F(AgentSyncProtocolRouterTest, DeleteDatabaseCallsQueue)
     EXPECT_NO_THROW(protocol->deleteDatabase());
 }
 
-/*
- * NOTE: Integration tests with actual Router communication require:
- * 1. Router infrastructure running in remoted
- * 2. RouterProvider and RouterSubscriber initialized
- * 3. Proper IPC communication setup
- *
- * These tests above verify the AgentSyncProtocol logic for SERVER builds.
- * For full Router transport testing, integration tests are needed where
- * the actual Router system is running.
- */
-

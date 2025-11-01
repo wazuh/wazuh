@@ -27,14 +27,27 @@ void RouterTransport::shutdown()
 {
     try
     {
+        // Stop subscriber first to prevent new callbacks from being queued
+        if (m_subscriber)
+        {
+            // Reset the unique_ptr, which triggers ~RouterSubscriber() -> unsubscribe()
+            // This ensures no more callbacks will be invoked
+            m_subscriber.reset();
+        }
+
+        // Stop and reset provider to ensure clean state for re-initialization
         if (m_provider)
         {
             m_provider->stop();
+            m_provider.reset();  // Must reset so configRouter() creates a new one
         }
+
+        // Reset ready flag to ensure proper re-initialization
+        m_subscriberReady = false;
     }
     catch (const std::exception& ex)
     {
-        m_logger(LOG_ERROR, "Exception in RouterTransport destructor: " + std::string(ex.what()));
+        m_logger(LOG_ERROR, "Exception in RouterTransport shutdown: " + std::string(ex.what()));
     }
 }
 
@@ -127,6 +140,8 @@ bool RouterTransport::configRouter()
         // Check if subscriber already initialized
         if (!m_subscriber)
         {
+            // Reset ready flag when creating new subscriber (in case of re-initialization after shutdown)
+            m_subscriberReady = false;
             subscribeToResponses();
         }
 
