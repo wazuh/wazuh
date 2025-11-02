@@ -84,6 +84,13 @@ const cJSON* get_alert_from_json(const cJSON *input);
 const char* get_srcip_from_json(const cJSON *input);
 
 /**
+ * Get dest_ip from input
+ * @param input Input
+ * @return char * with the dest_ip or NULL on fail
+ * */
+const char* get_dest_ip_from_json(const cJSON *input);
+
+/**
  * Get username from input
  * @param input Input
  * @return char * with the username or NULL on fail

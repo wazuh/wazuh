@@ -261,6 +261,47 @@ const char* get_srcip_from_json(const cJSON *input) {
     return NULL;
 }
 
+
+const char* get_dest_ip_from_json(const cJSON *input) {
+    cJSON *parameters_json = NULL;
+    cJSON *alert_json = NULL;
+    cJSON *data_json = NULL;
+    cJSON *srcip_json = NULL;
+
+    // Detect parameters
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
+        return NULL;
+    }
+
+    // Detect alert
+    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
+    if (!cJSON_IsObject(alert_json)) {
+        return NULL;
+    }
+
+    // Detect data
+    data_json = cJSON_GetObjectItem(alert_json, "data");
+    if (!cJSON_IsObject(data_json)) {
+        return NULL;
+    }
+
+    // Detect srcip from win.eventdata
+    // TODO: rewrite to parse dest_ip from win_eventdata
+    // srcip_json = get_srcip_from_win_eventdata(data_json); 
+    // if (cJSON_IsString(srcip_json)) {
+    //     return srcip_json->valuestring;
+    // }
+    
+    // Detect srcip from data
+    srcip_json = cJSON_GetObjectItem(data_json, "dest_ip");
+    if (cJSON_IsString(srcip_json)) {
+        return srcip_json->valuestring;
+    }
+
+    return NULL;
+}
+
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
     cJSON *win_json = NULL;
     cJSON *eventdata_json = NULL;
