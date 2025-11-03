@@ -66,8 +66,8 @@ add_executable(fim_recovery_test
     ${REGISTRY_SRC})
 
 # Link ASan FIRST to avoid initialization warnings in CI
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(fim_recovery_test -Wl,--no-as-needed asan ubsan)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(fim_recovery_test asan ubsan)
 endif()
 
 target_link_libraries(fim_recovery_test

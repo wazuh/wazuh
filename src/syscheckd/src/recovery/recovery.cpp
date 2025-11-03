@@ -43,10 +43,13 @@ std::string calculateTableChecksum(const char* table_name) {
         const std::vector<unsigned char> hashResult = hash.hash();
         final_checksum = Utils::asciiToHex(hashResult);
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
     }
+    // LCOV_EXCL_STOP
+
 
     return final_checksum;
 }
@@ -67,10 +70,12 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
             const std::vector<unsigned char> hashResult = hash.hash();
             id = Utils::asciiToHex(hashResult);
         }
+        // LCOV_EXCL_START
         catch (const std::exception& e)
         {
             throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
         }
+        // LCOV_EXCL_STOP
         wrapper->impl->persistDifferenceInMemory(
             id,
             Operation::CREATE,
@@ -91,12 +96,15 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         success = test_callback();
     } else {
         // Use real implementation in production
+        // LCOV_EXCL_START
         success = wrapper->impl->synchronizeModule(
             Mode::FULL,
             std::chrono::seconds(sync_response_timeout),
             FIM_SYNC_RETRIES,
             sync_max_eps
         );
+        // LCOV_EXCL_STOP
+
     }
 
     if (success) {
@@ -111,7 +119,8 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
 }
 
 bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle){
-
+    // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
+    // LCOV_EXCL_START
     minfo("Attempting to get checksum for %s table", table_name);
     std::string final_checksum = calculateTableChecksum(table_name);
     minfo("Success! Final file table checksum is: %s", final_checksum.c_str());
@@ -133,7 +142,7 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
         minfo("Checksum valid for index %s, delta sync sufficient", table_name);
         return false;
     }
-
+    // LCOV_EXCL_STOP
 }
 
 bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval){

@@ -137,6 +137,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
     set(SYSCHECK_EBPF_FLAGS "-Wl,--wrap,fimebpf_initialize"
                             "-Wl,--wrap,ebpf_whodata_healthcheck"
 			                "-Wl,--wrap=_minfo -Wl,--wrap,_merror"
+                            "-Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required"
+                            "-Wl,--wrap,fim_recovery_persist_table_and_resync"
                             "-Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff"
                             "-Wl,--wrap,asp_notify_data_clean"
                             "-Wl,--wrap,asp_delete_database"

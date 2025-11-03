@@ -112,10 +112,7 @@ void fim_initialize() {
 
     if (db_file_exists) {
         fim_db_set_first_scan_has_been_synched();
-        mdebug2("db's first scan has previously been synched");
-    } else {
-           mdebug2("db's first scan has not been synched yet");
-    }
+    } 
 
     w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
