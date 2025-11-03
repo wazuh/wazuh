@@ -118,6 +118,12 @@ void SecurityConfigurationAssessment::Run()
         );
         // *INDENT-ON*
 
+        // Check again after policy loading in case stop was called during load
+        if (!m_keepRunning)
+        {
+            return;
+        }
+
         auto reportCheckResult = [this](const CheckResult & checkResult)
         {
             const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
