@@ -461,7 +461,7 @@ INSTANTIATE_TEST_SUITE_P(
                                  {base::And::create("condition",
                                                     {base::And::create("stage.check",
                                                                        {base::Term<base::EngineOp>::create(
-                                                                           "wazuh.queue: filter(49)", {})}),
+                                                                           "wazuh.protocol.queue: filter(49)", {})}),
                                                      base::Term<base::EngineOp>::create("AcceptAll", {})})}),
                SUCCESS(
                    [](const std::shared_ptr<MockStore>& store,

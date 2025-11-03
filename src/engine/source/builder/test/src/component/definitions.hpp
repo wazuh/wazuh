@@ -45,7 +45,7 @@ auto constexpr DECODER_JSON = R"({
 auto constexpr FILTER_JSON = R"({
     "name": "filter/test/0",
     "check": [{
-        "wazuh.queue": 49
+        "wazuh.protocol.queue": 49
     }
     ]
 })";
