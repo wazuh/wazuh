@@ -165,7 +165,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -218,7 +219,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version Conflict", 409, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Version Conflict", 409, "");
                     }
                 }
                 else
@@ -289,7 +291,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError429TooManyRequests)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 429, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 429, "");
                     }
                 }
                 else
@@ -355,7 +358,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError500InternalServerError)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
                 }
             }));
 
@@ -631,7 +635,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 // First call should fail with 413
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -1026,7 +1031,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError429TooManyRequestsWithRetr
                 callCount++;
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Too many requests", 429, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Too many requests", 429, "");
                 }
                 else
                 {
@@ -1081,7 +1087,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkGenericServerErrorThrowsExcepti
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
                 }
             }));
 
@@ -1215,7 +1222,8 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryError429DoesNotThrow)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Too many requests", 429, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Too many requests", 429, "");
                 }
                 else
                 {
@@ -1246,7 +1254,8 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal server error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal server error", 500, "");
                 }
             }));
 
@@ -1278,7 +1287,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkDirectExecution)
                 // First call fails with 413 to trigger splitAndProcessBulk
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -1350,7 +1360,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkOnErrorExecution)
                 // First call fails with 413 to trigger splitAndProcessBulk
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -1372,7 +1383,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkOnErrorExecution)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
                 }
             }));
 
@@ -1429,7 +1441,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else if (callCount == 2)
@@ -1442,7 +1455,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 429, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 429, "");
                     }
                 }
                 else if (callCount == 3)
@@ -1528,7 +1542,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else if (callCount == 2)
@@ -1541,7 +1556,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 413, "");
                     }
                 }
                 else
@@ -1612,7 +1628,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenException)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else if (callCount == 2)
@@ -1625,7 +1642,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenException)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 413, "");
                     }
                 }
                 else
@@ -1808,12 +1826,14 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQueryError)
     // Setup error expectation
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillOnce(Invoke(
-            [](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
+            [](auto requestParams, const auto& postParams, auto /*configParams*/)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
+                    std::string url;
+                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Internal server error", 500);
+                        .onError(url, 500, "Internal server error");
                 }
             }));
 
@@ -1895,12 +1915,15 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQueryWithRetry)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(2)
         .WillOnce(Invoke(
-            [&attempts](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
+            [&attempts](auto requestParams, const auto& postParams, auto /*configParams*/)
             {
                 attempts++;
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Version conflict", 409);
+                    std::string url;
+                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError(url, 409, "Version conflict");
                 }
             }))
         .WillOnce(Invoke(

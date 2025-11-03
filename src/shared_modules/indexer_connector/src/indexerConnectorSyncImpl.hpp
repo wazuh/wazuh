@@ -639,7 +639,8 @@ public:
             m_notify.clear();
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode)
+        const auto onError =
+            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
         {
             logError(IC_NAME, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_VERSION_CONFLICT)
