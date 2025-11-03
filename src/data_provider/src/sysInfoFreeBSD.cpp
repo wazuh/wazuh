@@ -210,6 +210,9 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["os_kernel_release"] = uts.release;
     }
 
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "unix";
+
     return ret;
 }
 
@@ -239,7 +242,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
             package["name"] = data[0];
             package["vendor"] = data[1];
-            package["version"] = data[2];
+            package["version_"] = data[2];
             package["installed"] = UNKNOWN_VALUE;
             package["path"] = UNKNOWN_VALUE;
             package["architecture"] = data[3];

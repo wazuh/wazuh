@@ -48,6 +48,11 @@ void DB::teardown()
     FIMDB::instance().teardown();
 }
 
+void DB::closeAndDeleteDatabase()
+{
+    FIMDB::instance().closeAndDeleteDatabase();
+}
+
 const std::map<COUNT_SELECT_TYPE, std::vector<std::string>> COUNT_SELECT_TYPE_MAP
 {
     {COUNT_SELECT_TYPE::COUNT_ALL, {"count(*) AS count"}},
@@ -193,6 +198,21 @@ void fim_db_teardown()
     try
     {
         DB::instance().teardown();
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
+}
+
+void fim_db_close_and_delete_database()
+{
+    try
+    {
+        DB::instance().closeAndDeleteDatabase();
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)

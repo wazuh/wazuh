@@ -268,8 +268,22 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                         // LCOV_EXCL_START
                         if (callback)
                         {
+                            // Add version field if table has it and entry doesn't
+                            nlohmann::json entryWithVersion = entry;
+                            const auto& tableFields = m_tableFields[table];
+                            const bool hasVersion = std::any_of(tableFields.begin(), tableFields.end(),
+                                                                [](const ColumnData & column)
+                            {
+                                return std::get<TableHeader::Name>(column) == "version";
+                            });
+
+                            if (hasVersion && !entryWithVersion.contains("version"))
+                            {
+                                entryWithVersion["version"] = 1;  // Default value from schema
+                            }
+
                             lock.unlock();
-                            callback(INSERTED, entry);
+                            callback(INSERTED, entryWithVersion);
                             lock.lock();
                         }
 
@@ -630,20 +644,32 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
 
     if (path.compare(":memory") != 0)
     {
-        if (std::ifstream(path))
+        // List of database files to remove (main db + auxiliary files)
+        const std::vector<std::string> filesToRemove =
         {
-            isRemoved = std::remove(path.c_str());
+            path,
+            path + "-journal",
+            path + "-wal",
+            path + "-shm"
+        };
 
-            for (uint8_t amountTries = 0; amountTries < MAX_TRIES && isRemoved; amountTries++)
+        for (const auto& file : filesToRemove)
+        {
+            if (std::ifstream(file))
             {
-                std::this_thread::sleep_for(1s); //< Sleep for 1s
-                std::cerr << "Sleep for 1s and try to delete database again.\n";
-                isRemoved = std::remove(path.c_str());
-            }
+                isRemoved = std::remove(file.c_str());
 
-            if (isRemoved)
-            {
-                ret = false;
+                for (uint8_t amountTries = 0; amountTries < MAX_TRIES && isRemoved; amountTries++)
+                {
+                    std::this_thread::sleep_for(1s); //< Sleep for 1s
+                    std::cerr << "Sleep for 1s and try to delete database file again: " << file << "\n";
+                    isRemoved = std::remove(file.c_str());
+                }
+
+                if (isRemoved)
+                {
+                    ret = false;
+                }
             }
         }
     }
@@ -734,6 +760,12 @@ std::string SQLiteDBEngine::buildInsertDataSqlQuery(const std::string& table,
         for (const auto& field : tableFields)
         {
             const auto& fieldName { std::get<TableHeader::Name>(field) };
+
+            // Skip version field if not in data, to use DEFAULT value (1 for new entries)
+            if (fieldName == "version" && !data.empty() && data.find(fieldName) == data.end())
+            {
+                continue;
+            }
 
             if (data.empty() || data.find(fieldName) != data.end())
             {
@@ -1432,6 +1464,13 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
                     updatedData[value.first] = *it;
                 }
+                else if (value.first == "version")
+                {
+                    // Always include version field in updatedData (will be incremented by DB)
+                    // The DB does version=version+1, so we add 1 to the current value
+                    updatedData["version"] = object["version"].get<int>() + 1;
+                    oldData["version"] = object["version"];
+                }
             }
         }
     }
@@ -1601,6 +1640,23 @@ std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& ta
             {
                 sql += it.key() + "=?,";
             }
+        }
+
+        // Auto-increment version if table has version column and actual data changed
+        // Don't increment if only status field is being updated (status-only updates during scans)
+        const auto& tableFields = m_tableFields[table];
+        const bool hasVersion = std::any_of(tableFields.begin(), tableFields.end(),
+                                            [](const auto & field)
+        {
+            return std::get<TableHeader::Name>(field) == "version";
+        });
+
+        const bool onlyStatusUpdate = (data.size() == primaryKeyList.size() + 1) &&
+                                      data.find(STATUS_FIELD_NAME) != data.end();
+
+        if (hasVersion && data.find("version") == data.end() && !onlyStatusUpdate)
+        {
+            sql += "version=version+1,";
         }
 
         sql = sql.substr(0, sql.size() - 1); // Remove the last " , "
@@ -2155,5 +2211,32 @@ void SQLiteDBEngine::updateTableRowCounter(const std::string& table, const long 
             it->second.currentRows = 0;
             throw dbengine_error { ERROR_COUNT_MAX_ROWS };
         }
+    }
+}
+
+void SQLiteDBEngine::closeAndDeleteDatabase(const std::string& path)
+{
+    std::lock_guard<std::mutex> lock(m_stmtMutex);
+
+    // Clear the statement cache
+    m_statementsCache.clear();
+
+    // Commit and release the transaction
+    if (m_transaction)
+    {
+        m_transaction->commit();
+        m_transaction.reset();
+    }
+
+    // Close the SQLite connection
+    if (m_sqliteConnection)
+    {
+        m_sqliteConnection.reset();
+    }
+
+    // Delete the database file
+    if (!cleanDB(path))
+    {
+        throw dbengine_error {DELETE_OLD_DB_ERROR};
     }
 }

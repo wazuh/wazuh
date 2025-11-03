@@ -215,3 +215,108 @@ Each inventory type is synchronized with its specific index:
 | Network Address | `dbsync_network_address` | `wazuh-states-inventory-networks` |
 
 ---
+
+## Syscollector Disabled Cleanup Flow
+
+### Overview
+
+When the Syscollector module is disabled, the `wm_handle_sys_disabled_and_notify_data_clean()` function executes a cleanup procedure to notify the manager and remove local databases. This ensures the manager's state remains synchronized with the agent's actual inventory monitoring status.
+
+### Execution Trigger
+
+The function is called during module startup in `wm_sys_main()` when `sys->flags.enabled` is false:
+
+```c
+if (!sys->flags.enabled) {
+    wm_handle_sys_disabled_and_notify_data_clean(sys);
+    mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
+    pthread_exit(NULL);
+}
+```
+
+### Cleanup Flow
+
+```
+Module Startup (wm_sys_main)
+      │
+      ▼
+Check sys->flags.enabled
+      │
+      ▼ (if disabled)
+wm_handle_sys_disabled_and_notify_data_clean()
+      │
+      ├─► Check for database file ────► w_is_file(SYSCOLLECTOR_DB_DISK_PATH)
+      │                                           │
+      │                                           ├─► File exists
+      │                                           │   (proceed with cleanup)
+      │                                           │
+      │                                           └─► File not exists
+      │                                               (skip notification, exit)
+      │
+Load Syscollector module dynamically
+      │
+      ▼
+Configure Syscollector minimally
+      │
+      ├─► Initialize sync protocol ──────► syscollector_init_sync()
+      │   (module name, DB path, MQ funcs)
+      │
+      └─► Initialize module ──────────────► syscollector_init()
+      │
+      │
+      ▼
+Prepare indices array
+      │
+      ├─► All 13 inventory indices:
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_SYSTEM
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_HARDWARE
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_HOTFIXES
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_PACKAGES
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_PROCESSES
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_PORTS
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_INTERFACES
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_NETWORKS
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_USERS
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_GROUPS
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_SERVICES
+      │   └─► SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS
+      │
+      ▼
+Send data clean notification ────────► syscollector_notify_data_clean()
+      │                                     │
+      │                                     ├─► All 13 indices
+      │                                     ├─► Retry on failure
+      │                                     │   (wait sync_interval)
+      │                                     │
+      │                                     └─► Success confirmation
+      │
+      └─► Delete databases ─────────────► syscollector_delete_database()
+          (both sync protocol and DBSync)
+```
+
+### Behavior Scenarios
+
+#### Scenario 1: Syscollector Disabled with Existing Database
+
+```
+1. Agent starts with Syscollector disabled (sys->flags.enabled = false)
+2. Syscollector database file exists at SYSCOLLECTOR_DB_DISK_PATH
+3. Load Syscollector module dynamically
+4. Initialize sync protocol with MQ functions
+5. Initialize Syscollector module with full configuration
+6. Prepare all 13 inventory indices
+7. Send data clean notification to manager (with infinite retries)
+8. Manager removes all 13 indices from agent's state
+9. Delete both sync protocol and DBSync databases
+10. Exit module startup
+```
+
+#### Scenario 2: Syscollector Disabled with No Database
+
+```
+1. Agent starts with Syscollector disabled (sys->flags.enabled = false)
+2. Syscollector database file does not exist
+3. Skip data clean notification (nothing to clean)
+4. Exit module startup immediately
+```

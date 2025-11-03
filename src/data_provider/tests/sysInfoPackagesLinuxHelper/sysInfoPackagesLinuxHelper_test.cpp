@@ -40,7 +40,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -66,7 +66,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationLibRpm)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -106,7 +106,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     EXPECT_EQ(0, jsPackageInfo["size"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["installed"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["category"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version_"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["vendor"]);
@@ -127,7 +127,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -151,7 +151,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochNoReleaseLibRpm)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("4.16", jsPackageInfo["version"]);
+    EXPECT_EQ("4.16", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -176,7 +176,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochLibRpm)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("1:4.16", jsPackageInfo["version"]);
+    EXPECT_EQ("1:4.16", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -196,7 +196,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonRelease)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -216,7 +216,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonRelease)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("3:1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("3:1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -236,7 +236,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochWithNone)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -256,7 +256,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonReleaseWithNone)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("3:1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("3:1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -276,7 +276,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonReleaseWith
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
-    EXPECT_EQ("1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -321,7 +321,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ(4111221760, jsPackageInfo["size"]);
     EXPECT_EQ("libdevel", jsPackageInfo["category"]);
     EXPECT_EQ("same", jsPackageInfo["multiarch"]);
-    EXPECT_EQ("1:1.2.11.dfsg-2ubuntu1.2", jsPackageInfo["version"]);
+    EXPECT_EQ("1:1.2.11.dfsg-2ubuntu1.2", jsPackageInfo["version_"]);
     EXPECT_EQ("amd64", jsPackageInfo["architecture"]);
     EXPECT_EQ("deb", jsPackageInfo["type"]);
     EXPECT_EQ("Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>", jsPackageInfo["vendor"]);
@@ -361,7 +361,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("1970-01-01T00:00:00.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ(PKG_GROUP, jsPackageInfo["category"]);
-    EXPECT_EQ(PKG_VERSION, jsPackageInfo["version"]);
+    EXPECT_EQ(PKG_VERSION, jsPackageInfo["version_"]);
     EXPECT_EQ(PKG_ARCH, jsPackageInfo["architecture"]);
     EXPECT_EQ("pacman", jsPackageInfo["type"]);
     EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
@@ -429,7 +429,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
     EXPECT_EQ(0, jsPackageInfo["size"]);
     EXPECT_EQ("1970-01-01T00:00:00.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["category"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version_"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
     EXPECT_EQ("pacman", jsPackageInfo["type"]);
     EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
@@ -470,7 +470,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseApkArchitectureKeyNotFound)
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
     EXPECT_EQ("musl", jsPackageInfo.at("name"));
-    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version"));
+    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version_"));
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo.at("architecture"));
     EXPECT_EQ(4111222333, jsPackageInfo.at("size"));
     EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
@@ -515,7 +515,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseApkSizeValueEmpty)
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
     EXPECT_EQ("musl", jsPackageInfo.at("name"));
-    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version"));
+    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version_"));
     EXPECT_EQ("x86_64", jsPackageInfo.at("architecture"));
     EXPECT_EQ(0, jsPackageInfo.at("size"));
     EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
@@ -534,7 +534,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseApkSuccess)
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseApk(input) };
     EXPECT_EQ("musl", jsPackageInfo.at("name"));
-    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version"));
+    EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version_"));
     EXPECT_EQ(4111222333, jsPackageInfo.at("size"));
     EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
     EXPECT_EQ("apk", jsPackageInfo.at("type"));
@@ -588,7 +588,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapCorrectMapping)
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
     EXPECT_EQ("2022-11-23T20:33:59.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ(" ", jsPackageInfo["category"]);
-    EXPECT_EQ("0+git.6f39565", jsPackageInfo["version"]);
+    EXPECT_EQ("0+git.6f39565", jsPackageInfo["version_"]);
     EXPECT_EQ(" ", jsPackageInfo["architecture"]);
     EXPECT_EQ("snap", jsPackageInfo["type"]);
     EXPECT_EQ("Canonical", jsPackageInfo["vendor"]);

@@ -68,3 +68,26 @@ void FIMDB::teardown()
 
     // LCOV_EXCL_STOP
 }
+
+void FIMDB::closeAndDeleteDatabase()
+{
+    try
+    {
+        m_stopping = true;
+        std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
+
+        if (m_dbsyncHandler)
+        {
+            m_dbsyncHandler->closeAndDeleteDatabase();
+            m_dbsyncHandler = nullptr;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& ex)
+    {
+        auto errmsg {"There is a problem to close and delete FIMDB " + std::string(ex.what())};
+        m_loggingFunction(LOG_ERROR, errmsg);
+    }
+
+    // LCOV_EXCL_STOP
+}

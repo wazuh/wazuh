@@ -33,7 +33,7 @@ This enables the SCA module with default settings:
   <synchronization>
     <enabled>yes</enabled>
     <interval>300</interval>
-    <response_timeout>30</response_timeout>
+    <response_timeout>60</response_timeout>
     <max_eps>10</max_eps>
   </synchronization>
 </sca>
@@ -65,7 +65,7 @@ This enables the SCA module with default settings:
 |--------|------|---------|-------------|
 | `synchronization/enabled` | boolean | `yes` | Enable database synchronization |
 | `synchronization/interval` | time | `300s` | Database synchronization interval |
-| `synchronization/response_timeout` | time | `30s` | Synchronization response timeout |
+| `synchronization/response_timeout` | time | `60s` | Synchronization response timeout |
 | `synchronization/max_eps` | number | `10` | Max events per second for sync |
 
 ---

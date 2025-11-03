@@ -34,6 +34,7 @@ public:
     MOCK_METHOD(void, deleteRows, (const nlohmann::json&), (override));
     MOCK_METHOD(void, syncRow, (const nlohmann::json&, ResultCallbackData), (override));
     MOCK_METHOD(void, selectRows, (const nlohmann::json&, ResultCallbackData), (override));
+    MOCK_METHOD(void, closeAndDeleteDatabase, (), (override));
 };
 
 class MockFIMDB : public FIMDB

@@ -76,6 +76,16 @@ public:
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data);
 
     /**
+     * @brief Bulk index with version.
+     *
+     * @param id ID.
+     * @param index Index name.
+     * @param data Data.
+     * @param version Document version for external versioning.
+     */
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
+
+    /**
      * @brief Flush the bulk data.
      */
     void flush();
@@ -152,6 +162,16 @@ public:
      * @param data Data.
      */
     void index(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Index a document with version.
+     *
+     * @param id ID of the document.
+     * @param index Index name.
+     * @param data Data.
+     * @param version Document version for external versioning.
+     */
+    void index(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
 
     /**
      * @brief Index a document.

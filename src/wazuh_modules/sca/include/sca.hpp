@@ -95,7 +95,8 @@ class EXPORTED SCA final
         /// @param operation Type of operation (CREATE, MODIFY, DELETE, NO_OP)
         /// @param index Index or key associated with the change
         /// @param data Serialized data content of the change
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+        /// @param version Version of the data
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
 
         /// @brief Parses a response buffer from synchronization operations.
         ///
@@ -106,6 +107,17 @@ class EXPORTED SCA final
         /// @param length Size of the response data buffer in bytes
         /// @return true if parsing succeeds, false on error or invalid data
         bool parseResponseBuffer(const uint8_t* data, size_t length);
+
+        /// @brief Notifies that data associated with specified indices needs to be cleaned.
+        /// @param indices Vector of indices whose data needs to be cleaned.
+        /// @param timeout Timeout value in seconds for the operation.
+        /// @param retries Number of retry attempts on failure.
+        /// @param maxEps Maximum events per second during the operation.
+        /// @return true if the operation succeeds, false otherwise.
+        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+
+        /// @brief Deletes the database.
+        void deleteDatabase();
 
     private:
         /// @brief Private constructor for singleton pattern.

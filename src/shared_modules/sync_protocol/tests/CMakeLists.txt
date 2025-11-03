@@ -26,6 +26,7 @@ add_executable(agent_sync_protocol_tests
     test_agent_sync_protocol.cpp
     test_persistent_queue_storage.cpp
     test_persistent_queue.cpp
+    test_metadata_provider.cpp
 )
 
 # Include paths
@@ -33,6 +34,8 @@ target_include_directories(agent_sync_protocol_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_BINARY_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../file_helper/filesystem/tests/mocks
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../file_helper/filesystem/include
 )
 
 target_link_libraries(agent_sync_protocol_tests

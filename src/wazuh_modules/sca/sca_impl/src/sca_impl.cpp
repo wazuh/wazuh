@@ -42,7 +42,8 @@ constexpr auto CHECK_SQL_STATEMENT
     condition TEXT,
     compliance TEXT,
     rules TEXT,
-    regex_type TEXT DEFAULT 'pcre2');)"
+    regex_type TEXT DEFAULT 'pcre2',
+    version INTEGER NOT NULL DEFAULT 1);)"
 };
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
@@ -72,6 +73,12 @@ void SecurityConfigurationAssessment::Run()
 
     m_keepRunning = true;
 
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
+
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
 
     bool firstScan = true;
@@ -82,7 +89,8 @@ void SecurityConfigurationAssessment::Run()
         // Otherwise, wait for the scan interval before scanning
         if (!m_scanOnStart || !firstScan)
         {
-            std::this_thread::sleep_for(m_scanInterval);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cv.wait_for(lock, m_scanInterval, [this] { return !m_keepRunning; });
         }
 
         if (!m_keepRunning)
@@ -154,12 +162,28 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
 
 void SecurityConfigurationAssessment::Stop()
 {
+    LoggingHelper::getInstance().log(LOG_INFO, "SecurityConfigurationAssessment::Stop() called");
     m_keepRunning = false;
+
+    // Wake up the Run() loop if it's sleeping
+    m_cv.notify_one();
+
+    // Signal sync protocol to stop any ongoing operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
+    }
+
+    LoggingHelper::getInstance().log(LOG_INFO, "Stopping policies");
 
     for (auto& policy : m_policies)
     {
         policy->Stop();
     }
+
+    // Explicitly release DBSync before static destruction to avoid use-after-free
+    // during shutdown when DBSyncImplementation singleton may be destroyed first
+    m_dBSync.reset();
 
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module stopped.");
 }
@@ -174,7 +198,7 @@ void SecurityConfigurationAssessment::SetPushStatelessMessageFunction(const std:
     m_pushStatelessMessage = pushMessage;
 }
 
-void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)>& pushMessage)
+void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>& pushMessage)
 {
     m_pushStatefulMessage = pushMessage;
 }
@@ -220,11 +244,11 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode, std::chrono::seconds
     return false;
 }
 
-void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_spSyncProtocol)
     {
-        m_spSyncProtocol->persistDifference(id, operation, index, data);
+        m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
 
@@ -236,6 +260,29 @@ bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, s
     }
 
     return false;
+}
+
+bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void SecurityConfigurationAssessment::deleteDatabase()
+{
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->deleteDatabase();
+    }
+
+    if (m_dBSync)
+    {
+        m_dBSync->closeAndDeleteDatabase();
+    }
 }
 
 // LCOV_EXCL_STOP

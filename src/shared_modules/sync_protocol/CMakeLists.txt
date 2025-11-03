@@ -33,35 +33,17 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # -----------------------------------------------------------------------------
-# Build native flatc using ExternalProject
+# Use pre-built flatc from src/Makefile
 # -----------------------------------------------------------------------------
-include(ExternalProject)
-
 set(FLATBUFFERS_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers")
+set(FLATC_EXECUTABLE ${FLATBUFFERS_ROOT_DIR}/build/flatc)
 
-find_program(HOST_C_COMPILER NAMES cc gcc)
-find_program(HOST_CXX_COMPILER NAMES c++ g++)
-
-if(NOT HOST_C_COMPILER OR NOT HOST_CXX_COMPILER)
-  message(FATAL_ERROR "Could not find native C/C++ compilers for host tools.")
+# Verify flatc exists
+if(NOT EXISTS ${FLATC_EXECUTABLE})
+  message(FATAL_ERROR "flatc not found at ${FLATC_EXECUTABLE}.")
 endif()
 
-message(STATUS "Using native host C compiler: ${HOST_C_COMPILER}")
-message(STATUS "Using native host CXX compiler: ${HOST_CXX_COMPILER}")
-
-ExternalProject_Add(
-  flatc_host_tool
-  SOURCE_DIR ${FLATBUFFERS_ROOT_DIR}
-  CMAKE_ARGS -DCMAKE_C_COMPILER=${HOST_C_COMPILER}
-             -DCMAKE_CXX_COMPILER=${HOST_CXX_COMPILER}
-             -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=OFF
-             -DFLATBUFFERS_BUILD_FLATLIB=OFF -DFLATBUFFERS_BUILD_FLATC=ON
-             -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-  BUILD_ALWAYS 1
-  BUILD_BYPRODUCTS <INSTALL_DIR>/bin/flatc)
-
-ExternalProject_Get_Property(flatc_host_tool install_dir)
-set(FLATC_EXECUTABLE ${install_dir}/bin/flatc)
+message(STATUS "Using flatc from: ${FLATC_EXECUTABLE}")
 
 # -----------------------------------------------------------------------------
 # Use flatc to generate schema
@@ -73,9 +55,9 @@ set(GENERATED_HEADER ${CMAKE_CURRENT_BINARY_DIR}/inventorySync_generated.h)
 
 add_custom_command(
   OUTPUT ${GENERATED_HEADER}
-  COMMAND ${FLATC_EXECUTABLE} --cpp --scoped-enums --gen-object-api -o
+  COMMAND ${FLATC_EXECUTABLE} --cpp --scoped-enums -o
           ${CMAKE_CURRENT_BINARY_DIR} ${SCHEMA_FILE}
-  DEPENDS ${SCHEMA_FILE} flatc_host_tool
+  DEPENDS ${SCHEMA_FILE}
   COMMENT "Generating FlatBuffers schema"
   VERBATIM)
 
@@ -84,9 +66,9 @@ add_custom_target(generate_flatbuffers ALL DEPENDS ${GENERATED_HEADER})
 # -----------------------------------------------------------------------------
 # Build FlatBuffers library (only needed headers/lib, not flatc)
 # -----------------------------------------------------------------------------
-# Disable sample builds to avoid INTERFACE_LIBRARY issues
 set(FLATBUFFERS_BUILD_SAMPLES OFF CACHE BOOL "Build the samples" FORCE)
 set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "Build the unit tests" FORCE)
+set(FLATBUFFERS_BUILD_FLATC OFF CACHE BOOL "Build flatc compiler" FORCE)
 add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build EXCLUDE_FROM_ALL)
 
 # -----------------------------------------------------------------------------
@@ -96,6 +78,7 @@ add_library(agent_sync_protocol SHARED
   src/agent_sync_protocol.cpp
   src/persistent_queue.cpp
   src/persistent_queue_storage.cpp
+  src/metadata_provider.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ}
@@ -111,11 +94,18 @@ target_include_directories(agent_sync_protocol
     ${CMAKE_CURRENT_SOURCE_DIR}/../../
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/
     ${CMAKE_SOURCE_DIR}/../../headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/filesystem/include
+)
+
+target_link_directories(agent_sync_protocol
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/build/lib
 )
 
 target_link_libraries(agent_sync_protocol
   PRIVATE
   flatbuffers
+  FilesystemWrapper
   ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a
 )
 
@@ -139,6 +129,14 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if(UNIT_TEST)
   enable_testing()
   add_subdirectory(tests)
+
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(agent_sync_protocol PRIVATE -fprofile-arcs -ftest-coverage)
+    target_link_libraries(agent_sync_protocol PRIVATE -fprofile-arcs)
+  else()
+    target_compile_options(agent_sync_protocol PRIVATE --coverage)
+    target_link_libraries(agent_sync_protocol PRIVATE --coverage)
+  endif()
 endif()
 
 add_subdirectory(testtool)

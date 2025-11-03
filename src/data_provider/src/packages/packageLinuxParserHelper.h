@@ -142,7 +142,7 @@ namespace PackageLinuxHelper
             ret["multiarch"]    = multiarch;
             ret["architecture"] = architecture;
             ret["source"]       = source;
-            ret["version"]      = version;
+            ret["version_"]     = version;
             ret["type"]         = "deb";
             ret["path"]         = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
@@ -245,7 +245,7 @@ namespace PackageLinuxHelper
 
         ret["name"]             = name;
         ret["path"]             = "/snap/" + name;
-        ret["version"]          = version;
+        ret["version_"]         = version;
         ret["vendor"]           = vendor;
         ret["installed"]        = install_time == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(install_time);
         ret["description"]      = description;

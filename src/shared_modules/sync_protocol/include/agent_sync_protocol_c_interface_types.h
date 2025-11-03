@@ -30,9 +30,23 @@ typedef enum
 /// @brief Defines the type of mode synchronization.
 typedef enum
 {
-    MODE_FULL  = 0,  ///< Full synchronization
-    MODE_DELTA = 1   ///< Delta synchronization
+    MODE_FULL  = 0,         ///< Full synchronization
+    MODE_DELTA = 1,         ///< Delta synchronization
+    MODE_CHECK = 2,         ///< Integrity check mode
+    MODE_METADATA_DELTA = 3, ///< Metadata delta synchronization
+    MODE_METADATA_CHECK = 4, ///< Metadata integrity check
+    MODE_GROUP_DELTA = 5,    ///< Group delta synchronization
+    MODE_GROUP_CHECK = 6     ///< Group integrity check
 } Mode_t;
+
+/// @brief Defines additional synchronization options.
+typedef enum
+{
+    OPTION_SYNC    = 0,     ///< Standard synchronization option.
+    OPTION_VD_FIRST = 1,    ///< Vulnerability detection first synchronization option.
+    OPTION_VD_SYNC  = 2,    ///< Vulnerability detection synchronization option.
+    OPTION_VD_CLEAN = 3     ///< Vulnerability detection cleanup synchronization option.
+} Option_t;
 
 /// @brief Opaque handle to the AgentSyncProtocol C++ object.
 ///

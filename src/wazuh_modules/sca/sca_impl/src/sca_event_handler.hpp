@@ -32,7 +32,7 @@ class SCAEventHandler
         /// @param pushStatefulMessage Callback function used to push stateful messages to the message queue.
         SCAEventHandler(std::shared_ptr<IDBSync> dBSync = nullptr,
                         std::function<int(const std::string&)> pushStatelessMessage = nullptr,
-                        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> pushStatefulMessage = nullptr);
+                        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage = nullptr);
 
         /// @brief Destructor
         virtual ~SCAEventHandler() = default;
@@ -68,8 +68,8 @@ class SCAEventHandler
         /// the current state.
         ///
         /// @param event JSON containing check and policy data.
-        /// @return A pair containing the stateful event object and the operation type.
-        std::pair<nlohmann::json, ReturnTypeCallback> ProcessStateful(const nlohmann::json& event) const;
+        /// @return A tuple containing the stateful event object, the operation type, and the document version.
+        std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> ProcessStateful(const nlohmann::json& event) const;
 
         /// @brief Creates a stateless event containing changed fields.
         ///
@@ -84,7 +84,7 @@ class SCAEventHandler
         ///
         /// @param event The complete event data.
         /// @param operation The operation type for the stateful message.
-        void PushStateful(const nlohmann::json& event, ReturnTypeCallback operation) const;
+        void PushStateful(const nlohmann::json& event, ReturnTypeCallback operation, uint64_t version) const;
 
         /// @brief Sends a stateless (delta) event using the push message callback.
         ///
@@ -139,7 +139,7 @@ class SCAEventHandler
         std::function<int(const std::string&)> m_pushStatelessMessage;
 
         /// @brief Callback function used to push stateful messages to the message queue.
-        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> m_pushStatefulMessage;
+        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_pushStatefulMessage;
 
     private:
         /// @brief Pointer to the IDBSync object for database synchronization.

@@ -61,7 +61,7 @@ namespace PackageLinuxHelper
                 ret["installed"]    = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : install_time;
                 ret["path"]         = UNKNOWN_VALUE;
                 ret["category"]     = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : groups;
-                ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
+                ret["version_"]     = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
                 ret["priority"]     = UNKNOWN_VALUE;
                 ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : architecture;
                 ret["source"]       = UNKNOWN_VALUE;

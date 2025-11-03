@@ -139,6 +139,19 @@ WriteConfigurationAssessment()
 }
 
 ##########
+# WriteAgentInfo()
+##########
+WriteAgentInfo()
+{
+    # Adding to the config file
+    AGENT_INFO_TEMPLATE=$(GetTemplate "wodle-agent-info.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ ! "$AGENT_INFO_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      cat ${AGENT_INFO_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+}
+
+##########
 # InstallSecurityConfigurationAssessmentFiles()
 ##########
 InstallSecurityConfigurationAssessmentFiles()
@@ -370,6 +383,9 @@ WriteAgent()
     # Configuration assessment configuration
     WriteConfigurationAssessment
 
+    # Agent info configuration
+    WriteAgentInfo
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -466,6 +482,9 @@ WriteManager()
 
     # Configuration assessment
     WriteConfigurationAssessment
+
+    # Agent info configuration
+    WriteAgentInfo
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -850,6 +869,22 @@ InstallCommon()
         fi
     fi
 
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f wazuh_modules/agent_info/build/lib/libagent_info.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/agent_info/build/lib/libagent_info.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_info.dylib ${INSTALLDIR}/lib/libagent_info.dylib
+        fi
+    elif [ -f wazuh_modules/agent_info/build/lib/libagent_info.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh_modules/agent_info/build/lib/libagent_info.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_info.so
+        fi
+    fi
+
 
     if [ -f libstdc++.so.6 ]
     then
@@ -885,6 +920,8 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca/db
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset

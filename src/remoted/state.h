@@ -45,7 +45,6 @@ typedef struct _sent_msgs_t {
     uint64_t ack_count;
     uint64_t shared_count;
     uint32_t ar_count;
-    uint32_t sca_count;
     uint32_t request_count;
     uint32_t discarded_count;
 } sent_msgs_t;
@@ -177,12 +176,6 @@ void rem_inc_send_shared(const char *agent_id);
  * @param agent_id Id of the agent that corresponds to the message
  */
 void rem_inc_send_ar(const char *agent_id);
-
-/**
- * @brief Increment sent CFGA messages counter
- * @param agent_id Id of the agent that corresponds to the message
- */
-void rem_inc_send_cfga(const char *agent_id);
 
 /**
  * @brief Increment sent request messages counter

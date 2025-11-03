@@ -1664,3 +1664,77 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenException)
     EXPECT_GE(callCount.load(), 2) << "Should have made at least 3 calls";
     EXPECT_FALSE(finished.load()) << "Test should have thrown an exception";
 }
+
+// Test version handling in bulk index operations for sync connector
+TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) {
+                    capturedBulkData = request.data;
+                }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test with version
+    connector.bulkIndex("doc1", "index1", R"({"field":"value1"})", "12345");
+    // Test without version
+    connector.bulkIndex("doc2", "index1", R"({"field":"value2"})");
+
+    connector.flush();
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for version test processing";
+
+    // Verify version is included in the bulk data for doc1
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version":"12345")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version_type":"external_gte")"));
+
+    // Verify doc2 does not have version information
+    std::size_t doc2_pos = capturedBulkData.find("doc2");
+    EXPECT_NE(doc2_pos, std::string::npos);
+    std::size_t doc2_end = capturedBulkData.find('\n', doc2_pos);
+    std::string doc2_metadata = capturedBulkData.substr(doc2_pos, doc2_end - doc2_pos);
+    EXPECT_THAT(doc2_metadata, ::testing::Not(::testing::HasSubstr("version")));
+}
+
+// Test error handling for invalid input with version in sync connector
+TEST_F(IndexerConnectorSyncTest, ErrorHandlingForInvalidInputWithVersion)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test with empty index - should throw exception
+    EXPECT_THROW(connector.bulkIndex("doc1", "", R"({"field":"value"})", "123"), IndexerConnectorException);
+
+    // Test with version provided but empty id - should throw exception
+    EXPECT_THROW(connector.bulkIndex("", "index1", R"({"field":"value"})", "456"), IndexerConnectorException);
+
+    // Test with empty data - should not throw but log warning
+    EXPECT_NO_THROW(connector.bulkIndex("doc2", "index1", "", "789"));
+}

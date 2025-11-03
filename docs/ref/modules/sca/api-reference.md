@@ -160,6 +160,65 @@ EXPORTED bool sca_parse_response(const unsigned char* data, size_t length);
 
 ---
 
+#### `sca_notify_data_clean()`
+
+Notifies the manager that specific indices have been cleaned and should be removed.
+
+```c
+EXPORTED bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps);
+```
+
+**Parameters:**
+- `indices`: Array of index names to clean
+- `indices_count`: Number of indices in the array
+- `timeout`: Timeout value in seconds for the notification operation
+- `retries`: Number of retry attempts on failure
+- `max_eps`: Maximum events per second during the notification
+
+**Returns:**
+- `true`: Notification succeeded
+- `false`: Notification failed
+
+**Description:**
+
+Sends a data clean notification to the manager, informing it that specific SCA indices should be removed from the agent's state. This is typically used when the SCA module is disabled or when specific policies are removed.
+
+**Usage Example:**
+```c
+// Notify data clean for SCA policies
+const char* indices_to_clean[] = {
+    "wazuh-states-sca-policy1",
+    "wazuh-states-sca-policy2"
+};
+
+bool notify_success = sca_notify_data_clean(indices_to_clean, 2,
+                                           sca_config->sync_response_timeout,
+                                           SCA_SYNC_RETRIES,
+                                           sca_config->sync_max_eps);
+```
+
+---
+
+#### `sca_delete_database()`
+
+Deletes the SCA synchronization database.
+
+```c
+EXPORTED void sca_delete_database();
+```
+
+**Description:**
+
+Removes the SCA synchronization database file from disk. This function is called when the SCA module is disabled or when a complete cleanup is required. Should typically be called after successfully notifying the manager with `sca_notify_data_clean()`.
+
+**Usage Example:**
+```c
+// Delete SCA sync database when module is disabled
+sca_delete_database();
+```
+
+---
+
 ## YAML Processing
 
 #### `sca_set_yaml_to_cjson_func()`
@@ -251,4 +310,6 @@ void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPa
 bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
 void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
 bool parseResponseBuffer(const uint8_t* data, size_t length);
+bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+void deleteDatabase();
 ```

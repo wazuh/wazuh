@@ -8,12 +8,15 @@
  */
 
 #include "persistent_queue_storage.hpp"
+#include "filesystem_wrapper.hpp"
 #include "logging_helper.hpp"
 #include <filesystem>
 
-PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger)
+PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_connection(createOrOpenDatabase(dbPath)),
-      m_logger(std::move(logger))
+      m_dbPath(dbPath),
+      m_logger(std::move(logger)),
+      m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_shared<file_system::FileSystemWrapper>())
 {
     if (!m_logger)
     {
@@ -26,11 +29,14 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
         m_connection.execute("PRAGMA synchronous = NORMAL;");
         m_connection.execute("PRAGMA journal_mode = WAL;");
     }
+    // LCOV_EXCL_START
     catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
     }
+
+    // LCOV_EXCL_STOP
 }
 
 SQLite3Wrapper::Connection PersistentQueueStorage::createOrOpenDatabase(const std::string& dbPath)
@@ -54,11 +60,14 @@ void PersistentQueueStorage::createTableIfNotExists()
 
         m_connection.execute(query);
     }
+    // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
@@ -163,12 +172,15 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
 
         m_connection.execute("COMMIT;");
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in submitOrCoalesce: ") + e.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
+
+    // LCOV_EXCL_STOP
 }
 
 std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
@@ -239,12 +251,15 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
 
         m_connection.execute("COMMIT;");
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in fetchAndMarkForSync: ") + e.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
+
+    // LCOV_EXCL_STOP
 
     return result;
 }
@@ -274,12 +289,15 @@ void PersistentQueueStorage::removeAllSynced()
 
         m_connection.execute("COMMIT;");
     }
+    // LCOV_EXCL_START
     catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void PersistentQueueStorage::resetAllSyncing()
@@ -304,10 +322,67 @@ void PersistentQueueStorage::resetAllSyncing()
 
         m_connection.execute("COMMIT;");
     }
+    // LCOV_EXCL_START
     catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
+        throw;
+    }
+
+    // LCOV_EXCL_STOP
+}
+
+void PersistentQueueStorage::removeByIndex(const std::string& index)
+{
+    m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    try
+    {
+        const std::string query = "DELETE FROM persistent_queue WHERE idx = ?;";
+        SQLite3Wrapper::Statement stmt(m_connection, query);
+        stmt.bind(1, index);
+        stmt.step();
+
+        m_connection.execute("COMMIT;");
+    }
+    // LCOV_EXCL_START
+    catch (const SQLite3Wrapper::Sqlite3Error& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in removeByIndex: ") + ex.what());
+        m_connection.execute("ROLLBACK;");
+        throw;
+    }
+
+    // LCOV_EXCL_STOP
+}
+
+void PersistentQueueStorage::deleteDatabase()
+{
+    try
+    {
+        // Close the database connection first
+        m_connection.close();
+
+        // Remove the database file from the filesystem
+        if (m_fileSystemWrapper->exists(m_dbPath))
+        {
+            m_fileSystemWrapper->remove(m_dbPath);
+            m_logger(LOG_DEBUG, std::string("PersistentQueueStorage: Database file deleted: ") + m_dbPath);
+        }
+        else
+        {
+            m_logger(LOG_WARNING, std::string("PersistentQueueStorage: Database file not found: ") + m_dbPath);
+        }
+    }
+    catch (const std::filesystem::filesystem_error& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Filesystem error deleting database: ") + ex.what());
+        throw;
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Error deleting database: ") + ex.what());
         throw;
     }
 }

@@ -10,6 +10,8 @@
 #include <system_error>
 
 #include "logging_helper.hpp"
+
+// LCOV_EXCL_START
 namespace
 {
     std::pair<std::string, std::string> SplitRegistryKey(std::string_view fullKey)
@@ -128,6 +130,7 @@ namespace
         return RuleResult::NotFound;
     }
 } // namespace
+// LCOV_EXCL_STOP
 
 RegistryRuleEvaluator::RegistryRuleEvaluator(PolicyEvaluationContext ctx,
                                              IsValidKeyFunc isValidKey,
@@ -212,12 +215,15 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
         {
             for (const auto& value : m_enumValues(m_ctx.rule))
             {
+                // LCOV_EXCL_START
                 if (CheckMatch(value, pattern, isRegex) == RuleResult::Found)
                 {
                     result = RuleResult::Found;
                     LoggingHelper::getInstance().log(LOG_DEBUG, "Value '" + pattern + "' exists");
                     break;
                 }
+
+                // LCOV_EXCL_STOP
             }
         }
     }
