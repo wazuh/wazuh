@@ -57,6 +57,10 @@ class AgentInfoMetadataTest : public ::testing::Test
             // Configure expected calls to avoid warnings
             EXPECT_CALL(*m_mockDBSync, handle())
             .WillRepeatedly(::testing::Return(nullptr));
+
+            // Configure selectRows call for loadSyncFlags()
+            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Return());
         }
 
         void TearDown() override
@@ -852,4 +856,43 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_RealWorld_MultiGroup)
 
     // Should find 2 groups: "default" and "mygroup"
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 2 groups"));
+}
+
+TEST_F(AgentInfoMetadataTest, ReadAgentGroupsWithInvalidHash)
+{
+    // Setup merged.mg with invalid hash (contains non-hex character)
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillOnce(::testing::Return(true))  // client.keys exists
+    .WillOnce(::testing::Return(true)); // merged.mg exists
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        // Simulate client.keys content
+        callback("123 test-agent 10.0.0.1 key");
+    }))
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        // Simulate merged.mg with 8 characters but contains non-hex char 'g'
+        // This should be treated as a group name, not a hash
+        callback("#12345g78");
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      "test_path", nullptr, m_logFunction, m_queryModuleFunction,
+                      m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    m_agentInfo->setIsAgent(true);
+
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
+
+    // Should treat "12345g78" as a group name since it's not a valid hexadecimal hash
+    // This covers the case where looksLikeHash becomes false (line 541)
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 1 groups"));
 }

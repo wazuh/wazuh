@@ -63,3 +63,13 @@ add_test(NAME AgentInfoLoggingTest COMMAND agent_info_logging_test)
 add_executable(agent_info_integration_test agent_info_integration_test.cpp)
 target_link_libraries(agent_info_integration_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoIntegrationTest COMMAND agent_info_integration_test)
+
+# Agent Info Coordination Tests (module coordination, query handling, resetSyncFlag)
+add_executable(agent_info_coordination_test agent_info_coordination_test.cpp)
+target_link_libraries(agent_info_coordination_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoCoordinationTest COMMAND agent_info_coordination_test)
+
+# Agent Info Successful Coordination Tests (complete coordination flow)
+add_executable(agent_info_successful_coordination_test agent_info_successful_coordination_test.cpp)
+target_link_libraries(agent_info_successful_coordination_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoSuccessfulCoordinationTest COMMAND agent_info_successful_coordination_test)

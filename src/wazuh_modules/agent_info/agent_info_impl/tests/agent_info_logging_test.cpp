@@ -42,6 +42,10 @@ class AgentInfoLoggingTest : public ::testing::Test
             EXPECT_CALL(*m_mockDBSync, handle())
             .WillRepeatedly(::testing::Return(nullptr));
 
+            // Configure selectRows call for loadSyncFlags()
+            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Return());
+
             m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
                 m_logMessages.push_back({level, msg});

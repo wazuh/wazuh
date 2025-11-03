@@ -197,4 +197,5 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
     EXPECT_TRUE(foundMetadataEvent);
     // Groups event may or may not be present depending on initial state,
     // but if present it should be a delete event for empty groups
+    (void)foundGroupsEvent; // May or may not be set depending on DB state
 }

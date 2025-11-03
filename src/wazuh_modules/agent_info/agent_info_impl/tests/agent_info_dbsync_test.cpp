@@ -34,6 +34,10 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
             EXPECT_CALL(*m_mockDBSync, handle())
             .WillRepeatedly(::testing::Return(nullptr));
 
+            // Configure selectRows call for loadSyncFlags()
+            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Return());
+
             // Set up callbacks to capture events
             m_reportDiffFunc = [this](const std::string & event)
             {
@@ -50,7 +54,7 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
                 m_persistedEvents.push_back(persistedEvent);
             };
 
-            m_logFunc = [this](modules_log_level_t level, const std::string & msg)
+            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
             {
                 m_logOutput += msg + "\n";
             };
@@ -163,4 +167,66 @@ TEST_F(AgentInfoDBSyncIntegrationTest, InitSyncProtocolLogsMessages)
     // Verify initialization log
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent-info sync protocol initialized"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(":memory:"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsWithException)
+{
+    // Create mock that throws on selectRows
+    auto throwingDBSync = std::make_shared<MockDBSync>();
+    EXPECT_CALL(*throwingDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+
+    EXPECT_CALL(*throwingDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+
+    m_logOutput.clear();
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", nullptr, m_logFunc, m_queryModuleFunc, throwingDBSync);
+
+    // start() calls loadSyncFlags internally, which should catch the exception
+    // Run for only one iteration to avoid timeout
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
+
+    // Should log warning about failed load (line 1307)
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to load sync flags"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsCallbackWithData)
+{
+    // Create a custom MockDBSync that safely handles selectRows callback
+    auto mockDBSync = std::make_shared<MockDBSync>();
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+
+    EXPECT_CALL(*mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Mock selectRows to simulate sync flags being loaded from database
+    bool callbackExecuted = false;
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&callbackExecuted](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        // Simulate finding sync flags in the database
+        nlohmann::json flagData;
+        flagData["should_sync_metadata"] = 0;
+        flagData["should_sync_groups"] = 0;
+        callback(SELECTED, flagData);
+        callbackExecuted = true;
+    }));
+
+    m_logOutput.clear();
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", nullptr, m_logFunc, m_queryModuleFunc, mockDBSync);
+
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
+
+    // Verify that the callback was executed (which means selectRows was called)
+    EXPECT_TRUE(callbackExecuted);
 }

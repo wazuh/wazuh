@@ -58,6 +58,10 @@ class AgentInfoImplTest : public ::testing::Test
             EXPECT_CALL(*m_mockDBSync, handle())
             .WillRepeatedly(::testing::Return(nullptr));
 
+            // Configure selectRows call for loadSyncFlags()
+            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Return());
+
             m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync);
         }
 
@@ -239,4 +243,22 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module started"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module stopped"));
     EXPECT_GE(iterations, 1);  // At least one iteration should have completed
+}
+
+TEST_F(AgentInfoImplTest, ConstructorThrowsWhenLogFunctionIsNull)
+{
+    EXPECT_THROW(
+    {
+        AgentInfoImpl agentInfo("test_path", nullptr, nullptr, m_queryModuleFunction, m_mockDBSync);
+    },
+    std::invalid_argument);
+}
+
+TEST_F(AgentInfoImplTest, ConstructorThrowsWhenQueryModuleFunctionIsNull)
+{
+    EXPECT_THROW(
+    {
+        AgentInfoImpl agentInfo("test_path", nullptr, m_logFunction, nullptr, m_mockDBSync);
+    },
+    std::invalid_argument);
 }

@@ -50,7 +50,7 @@ class AgentInfoEventProcessingTest : public ::testing::Test
             // Note: persist callback removed as per PR feedback - new implementation uses
             // synchronizeMetadataOrGroups instead of persistDifference with callbacks
 
-            m_logFunc = [this](modules_log_level_t level, const std::string & msg)
+            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
             {
                 m_logOutput += msg + "\n";
             };
@@ -116,7 +116,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
     m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
 
     // Verify report callback was invoked
-    ASSERT_EQ(m_reportedEvents.size(), 1);
+    ASSERT_EQ(m_reportedEvents.size(), 1u);
     EXPECT_EQ(m_reportedEvents[0]["module"], "agent_info");
     EXPECT_EQ(m_reportedEvents[0]["type"], "agent_metadata");
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "created");
@@ -154,7 +154,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
     m_agentInfo->processEvent(MODIFIED, testData, "agent_metadata");
 
     // Verify report callback was invoked
-    ASSERT_EQ(m_reportedEvents.size(), 1);
+    ASSERT_EQ(m_reportedEvents.size(), 1u);
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "modified");
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["name"], "updated-agent");
 
@@ -185,7 +185,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
     m_agentInfo->processEvent(DELETED, testData, "agent_groups");
 
     // Verify report callback was invoked
-    ASSERT_EQ(m_reportedEvents.size(), 1);
+    ASSERT_EQ(m_reportedEvents.size(), 1u);
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "deleted");
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "001");
 
@@ -211,7 +211,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessAgentGroupsEvent)
     m_agentInfo->processEvent(INSERTED, testData, "agent_groups");
 
     // Verify ECS format for groups
-    ASSERT_EQ(m_reportedEvents.size(), 1);
+    ASSERT_EQ(m_reportedEvents.size(), 1u);
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "002");
     EXPECT_TRUE(m_reportedEvents[0]["data"]["agent"]["groups"].is_array());
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["groups"][0], "web-servers");
