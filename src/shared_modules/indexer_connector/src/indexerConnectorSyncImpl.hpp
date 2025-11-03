@@ -89,7 +89,8 @@ class IndexerConnectorSyncImpl final
             logDebug2(IC_NAME, "Response: %s", response.c_str());
         };
 
-        const auto onErrorDeleteByQuery = [this](const std::string& error, const long statusCode)
+        const auto onErrorDeleteByQuery =
+            [this](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_VERSION_CONFLICT)
@@ -139,7 +140,9 @@ class IndexerConnectorSyncImpl final
             needToRetry = false;
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode) -> void
+        const auto onError = [this, &needToRetry](const std::string& error,
+                                                  const long statusCode,
+                                                  const std::string& responseBody) -> void
         {
             logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -283,7 +286,8 @@ class IndexerConnectorSyncImpl final
         {
             logDebug2(IC_NAME, "Chunk processed successfully: %s", response.c_str());
         };
-        const auto onError = [this, &needToRetry, boundaries](const std::string& error, const long statusCode)
+        const auto onError = [this, &needToRetry, boundaries](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
             logError(IC_NAME, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)

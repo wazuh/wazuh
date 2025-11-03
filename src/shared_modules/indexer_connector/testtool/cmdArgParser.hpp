@@ -39,6 +39,8 @@ public:
         , m_numberOfEvents {paramValueOf(argc, argv, "-n", std::make_pair(false, ""))}
         , m_waitTime {paramValueOf(argc, argv, "-w", std::make_pair(false, "0"))}
         , m_logFilePath {paramValueOf(argc, argv, "-l", std::make_pair(false, ""))}
+        , m_loopSyncCount {paramValueOf(argc, argv, "-L", std::make_pair(false, "0"))}
+        , m_loopDelaySeconds {paramValueOf(argc, argv, "-D", std::make_pair(false, "0"))}
     {
     }
 
@@ -125,6 +127,24 @@ public:
     }
 
     /**
+     * @brief Gets the loop sync count.
+     * @return Loop sync count.
+     */
+    uint64_t getLoopSyncCount() const
+    {
+        return !m_loopSyncCount.empty() ? std::stoull(m_loopSyncCount) : 0;
+    }
+
+    /**
+     * @brief Gets the loop delay in seconds.
+     * @return Loop delay in seconds.
+     */
+    uint64_t getLoopDelaySeconds() const
+    {
+        return !m_loopDelaySeconds.empty() ? std::stoull(m_loopDelaySeconds) : 0;
+    }
+
+    /**
      * @brief Shows the help to the user.
      */
     static void showHelp()
@@ -138,13 +158,15 @@ public:
                   << "\t-a AUTO_GENERATED\tSpecifies if the events are auto generated.\n"
                   << "\t-n NUMBER_OF_EVENTS\tSpecifies the number of events to generate.\n"
                   << "\t-s SYNC_EVENT\tSend sync event before push event.\n"
+                  << "\t-L LOOP_COUNT\tNumber of times to call sync() for the agent.\n"
+                  << "\t-D DELAY_SECONDS\tDelay in seconds between sync calls (default: 0).\n"
                   << "\t-w WAIT_TIME\tSpecifies the wait time before close.\n"
                   << "\t-u UPDATE_MAPPINGS_FILE\tSpecifies the update mappings file.\n"
+                  << "\t-l LOG_FILE\tSpecifies the log file path.\n"
                   << "\nExample:"
                   << "\n\t./indexer_connector_testtool -c config.json -t template.json\n"
-                  << "\n\t./indexer_connector_testtool -c config.json -t template.json -e events.json\n"
-                  << "\n\t./indexer_connector_testtool -c config.json -t template.json -a true -n 10000\n"
-                  << "\n\t./indexer_connector_testtool -c config.json -t template.json -s 000 -w 5\n\n";
+                  << "\n\t./indexer_connector_testtool -c config.json -t template.json -s 000 -L 30\n"
+                  << "\n\t./indexer_connector_testtool -c config.json -t template.json -s 000 -L 3 -D 120\n\n";
     }
 
 private:
@@ -180,6 +202,8 @@ private:
     const std::string m_agentForSyncEvent;
     const std::string m_waitTime;
     const std::string m_logFilePath;
+    const std::string m_loopSyncCount;
+    const std::string m_loopDelaySeconds;
 };
 
 #endif // _CMD_ARGS_PARSER_HPP_

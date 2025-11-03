@@ -80,6 +80,7 @@ void run_notify()
 {
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     static char tmp_labels[OS_MAXSTR - OS_SIZE_2048] = { '\0' };
+    static wlabel_t *last_labels_ptr = NULL;
     os_md5 md5sum;
     time_t curr_time;
     static char agent_ip[IPSIZE + 1] = { '\0' };
@@ -126,8 +127,12 @@ void run_notify()
     /* Format labeled data
      * Limit maximum size of the labels to avoid truncation of the keep-alive message
      */
-    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_SIZE_2048) < 0) {
-        mwarn("Too large labeled data. Not all labels will be shown in the keep-alive messages.");
+    if (agt->labels != last_labels_ptr) {
+        tmp_labels[0] = '\0';
+        if (labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_SIZE_2048) < 0) {
+            mwarn("Too large labeled data. Not all labels will be shown in the keep-alive messages.");
+        }
+        last_labels_ptr = agt->labels;
     }
 
     /* Get shared files */

@@ -192,22 +192,23 @@ protected:
                                const std::string& outputFilepath = "") const
     {
         // On download error routine.
-        const auto onError {
-            [](const std::string& message, const long statusCode)
-            {
-                const std::string exceptionMessage {"Error " + std::to_string(statusCode) + " from server: " + message};
+        const auto onError {[](const std::string& message, const long statusCode, const std::string& responseBody)
+                            {
+                                const std::string exceptionMessage {"Error " + std::to_string(statusCode) +
+                                                                    " from server: " + message +
+                                                                    " - Response body: " + responseBody};
 
-                if (statusCode == 429)
-                {
-                    throw cti_server_error {exceptionMessage, CtiErrorType::TOO_MANY_REQUESTS};
-                }
+                                if (statusCode == 429)
+                                {
+                                    throw cti_server_error {exceptionMessage, CtiErrorType::TOO_MANY_REQUESTS};
+                                }
 
-                if (statusCode >= 500 && statusCode <= 599)
-                {
-                    throw cti_server_error {exceptionMessage, CtiErrorType::GENERIC_SERVER_ERROR};
-                }
-                throw std::runtime_error {exceptionMessage};
-            }};
+                                if (statusCode >= 500 && statusCode <= 599)
+                                {
+                                    throw cti_server_error {exceptionMessage, CtiErrorType::GENERIC_SERVER_ERROR};
+                                }
+                                throw std::runtime_error {exceptionMessage};
+                            }};
 
         unsigned int sleepTime {0};
         unsigned int retryAttempt;

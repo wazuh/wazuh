@@ -38,7 +38,7 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
         PostRequestParameters {
             .onSuccess = [&readBuffer](const std::string& response) { readBuffer = response; },
             .onError =
-                [&readBuffer, url](const std::string& error, const long statusCode)
+                [&readBuffer, url](const std::string& error, const long statusCode, const std::string& responseBody)
             {
                 readBuffer = base::Error {fmt::format(
                     "Failed to download file from '{}', error: {}, status code: {}.", url, error.c_str(), statusCode)};

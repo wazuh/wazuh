@@ -416,6 +416,11 @@ void start_daemon()
         int run_now = 0;
         curr_time = time(0);
 
+        // Check for shutdown before processing
+        if (fim_shutdown_process_on()) {
+            break;
+        }
+
         // Check if syscheck should be restarted
         run_now = os_check_restart_syscheck();
 
@@ -464,7 +469,7 @@ void start_daemon()
         }
 
         // If time elapsed is higher than the syscheck time, run syscheck time
-        if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
+        if (!fim_shutdown_process_on() && (((curr_time - prev_time_sk) > syscheck.time) || run_now)) {
             prev_time_sk = fim_scan();
         }
         sleep(SYSCHECK_WAIT);

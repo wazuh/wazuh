@@ -239,13 +239,9 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {
             const auto data{Utils::split(line, '|')};
             nlohmann::json package;
-            std::string vendor       { UNKNOWN_VALUE };
-            std::string email        { UNKNOWN_VALUE };
-
-            Utils::splitMaintainerField(data[1], vendor, email);
 
             package["name"] = data[0];
-            package["vendor"] = vendor;
+            package["vendor"] = data[1];
             package["version_"] = data[2];
             package["installed"] = UNKNOWN_VALUE;
             package["path"] = UNKNOWN_VALUE;
