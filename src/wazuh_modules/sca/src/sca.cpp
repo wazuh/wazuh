@@ -377,7 +377,7 @@ void SCA::deleteDatabase()
 std::string SCA::query(const std::string& jsonQuery)
 {
     // Log the received query
-    LoggingHelper::getInstance().log(LOG_INFO, "Received query: " + jsonQuery);
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
 
     try
     {

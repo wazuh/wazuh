@@ -81,7 +81,7 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
     assert(output != NULL);
 
     // Log received query
-    minfo("Received query: %s", json_command);
+    mdebug1("Received query: %s", json_command);
 
     // Parse JSON command
     cJSON *json_obj = cJSON_Parse(json_command);

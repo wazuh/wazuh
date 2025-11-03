@@ -1629,7 +1629,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
     // Log the received query
     if (m_logFunction)
     {
-        m_logFunction(LOG_INFO, "Received query: " + jsonQuery);
+        m_logFunction(LOG_DEBUG, "Received query: " + jsonQuery);
     }
 
     try
