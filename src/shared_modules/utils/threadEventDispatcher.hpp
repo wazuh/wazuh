@@ -231,7 +231,7 @@ private:
                 }
                 else
                 {
-                    logInfo(LOGGER_DEFAULT_TAG, "ThreadEventDispatcher dispatch end.");
+                    logDebug1(LOGGER_DEFAULT_TAG, "ThreadEventDispatcher dispatch end.");
                 }
             }
         }

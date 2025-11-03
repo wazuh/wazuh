@@ -152,3 +152,67 @@ TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
     promise.get_future().wait_for(std::chrono::seconds(10));
     EXPECT_EQ(MESSAGES_TO_SEND, counter);
 }
+
+TEST_F(ThreadEventDispatcherTest, CaptureWarningMsg)
+{
+    std::promise<void> promise;
+    std::atomic<bool> warningCaptured {false};
+    // Custom function that will capture and compare the warning log message.
+    Log::assignLogFunction(
+        [&promise, &warningCaptured](const int logLevel,
+                                     const char* tag,
+                                     const char* file,
+                                     const int line,
+                                     const char* func,
+                                     const char* message,
+                                     va_list args)
+        {
+            // Receives the exception message from the dispatch method.
+            if (logLevel == Log::LOGLEVEL_WARNING && strcmp(message, "Test exception") != 0)
+            {
+                // Format the message.
+                char buffer[4096];
+                vsnprintf(buffer, sizeof(buffer), message, args);
+                std::string formatedMsg(buffer);
+                // Compare expected message.
+                EXPECT_EQ("Dispatch handler error, Test exception", formatedMsg);
+                warningCaptured = true;
+                // Avoid multiple captures.
+                try
+                {
+                    promise.set_value();
+                }
+                catch (...)
+                {
+                }
+            }
+        });
+
+    std::string testMsg {"Test message"};
+    ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
+        [testMsg](std::queue<std::string>& data)
+        {
+            // Pops and compare the dummy enqueued log message.
+            while (!data.empty())
+            {
+                auto value = data.front();
+                data.pop();
+                EXPECT_EQ(testMsg.c_str(), value);
+                throw std::runtime_error("Test exception");
+            }
+        },
+        "test.db");
+
+    // Force the dispatch method to throw an exception.
+    dispatcher.push("Test message");
+
+    // Wait for the warning log to be captured.
+    auto status = promise.get_future().wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready);
+
+    EXPECT_EQ(warningCaptured.load(), true);
+
+    // Teardown
+    dispatcher.cancel();
+    Log::deassignLogFunction();
+}
