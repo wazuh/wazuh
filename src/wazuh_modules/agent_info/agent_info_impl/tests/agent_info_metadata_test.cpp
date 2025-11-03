@@ -662,7 +662,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroupFormat_Default)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -704,7 +704,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroupFormat_CustomGroup)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -748,7 +748,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultiGroupFormat_WithHash)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -794,7 +794,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_RealWorld_SingleGroup)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
@@ -844,7 +844,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_RealWorld_MultiGroup)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start(1, []()
     {
         return false;
