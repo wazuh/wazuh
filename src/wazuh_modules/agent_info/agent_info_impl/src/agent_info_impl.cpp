@@ -149,6 +149,8 @@ void AgentInfoImpl::stop()
         m_stopped = true;
     }
 
+    m_cv.notify_one(); // Wake up the sleeping thread immediately
+
     // Reset DBSync FIRST to flush any pending callbacks before stopping sync protocol
     // This prevents callbacks from triggering new sync operations during shutdown
     if (m_dBSync)
@@ -163,7 +165,6 @@ void AgentInfoImpl::stop()
         m_spSyncProtocol->stop();
     }
 
-    m_cv.notify_one(); // Wake up the sleeping thread immediately
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
 }
 
