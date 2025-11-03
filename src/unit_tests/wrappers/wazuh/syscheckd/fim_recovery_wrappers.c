@@ -35,6 +35,6 @@ bool __wrap_fim_recovery_integrity_interval_has_elapsed(__attribute__((unused)) 
     return mock_type(bool);
 }
 
-void __wrap_fim_db_set_first_scan_has_been_synched(__attribute__((unused)) bool value) {
+void __wrap_fim_db_set_first_scan_has_been_synched(void) {
     function_called();
 }

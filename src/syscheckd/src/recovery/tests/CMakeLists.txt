@@ -65,6 +65,11 @@ add_executable(fim_recovery_test
     ${WINDOWS_DB_SRC}
     ${REGISTRY_SRC})
 
+# Link ASan FIRST to avoid initialization warnings in CI
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(fim_recovery_test -Wl,--no-as-needed asan ubsan)
+endif()
+
 target_link_libraries(fim_recovery_test
     debug gtestd
     debug gmockd

@@ -7,6 +7,8 @@
 #include <memory>
 #include <string>
 
+// Excluding from coverage since these are simple wrappers for their C++ counterparts, which are already included in the coverage.
+// LCOV_EXCL_START
 extern "C" {
 
     AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger)

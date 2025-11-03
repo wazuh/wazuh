@@ -9,6 +9,10 @@ else()
   list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
   # Exclude C++ recovery module files
   list(FILTER sysfiles EXCLUDE REGEX ".*/recovery/.*")
+
+  # Add syscheckd wrappers for Linux
+  file(GLOB syscheckd_wrapper_files ${SRC_FOLDER}/unit_tests/wrappers/wazuh/syscheckd/*.o)
+  list(APPEND sysfiles ${syscheckd_wrapper_files})
 endif()
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
