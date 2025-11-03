@@ -19,17 +19,17 @@ constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 
 // Defines to replace inline JSON in EXPECT_CALLs
 #define EXPECT_CALL_HARDWARE_JSON R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})"
-#define EXPECT_CALL_OS_JSON R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})"
+#define EXPECT_CALL_OS_JSON R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601","os_type":"windows"})"
 #define EXPECT_CALL_NETWORKS_JSON R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})"
 #define EXPECT_CALL_PORTS_JSON R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])"
 #define EXPECT_CALL_PORTS_ALL_JSON R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0},{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])"
-#define EXPECT_CALL_PACKAGES_JSON R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"
+#define EXPECT_CALL_PACKAGES_JSON R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})"
 #define EXPECT_CALL_HOTFIXES_JSON R"([{"hotfix_name":"KB12345678"}])"
 #define EXPECT_CALL_PROCESSES_JSON R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"
 #define EXPECT_CALL_GROUPS_JSON R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"
 #define EXPECT_CALL_USERS_JSON R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"
 #define EXPECT_CALL_SERVICES_JSON R"([{"service_id":"wazuh-agent","service_name":"Wazuh Agent","service_description":"Monitors system activity","service_state":"running","service_sub_state":"subState","service_start_type":"auto","service_type":"type","process_pid":1234,"service_exit_code":0,"service_win32_exit_code":0,"process_executable":"/usr/bin/wazuh-agent","service_address":"/lib/systemd/system/wazuh-agent.service","user_name":"root","service_enabled":"enabled","service_following":"following","service_object_path":"objectPath","service_target_ephemeral_id":0,"service_target_type":"jobType","service_target_address":"jobPath","file_path":"sourcePath"}])"
-#define EXPECT_CALL_BROWSER_EXTENSIONS_JSON R"([{"browser_name":"chrome","user_id":"S-1-5-21-1234567890-987654321-1122334455-1001","package_name":"uBlock Origin","package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_version":"1.52.2","package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_vendor":"Raymond Hill","package_build_version":"","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","package_reference":"https://clients2.google.com/service/update2/crx","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_type":"extension","package_enabled":1,"package_visible":0,"package_autoupdate":1,"package_persistent":0,"package_from_webstore":1,"browser_profile_referenced":1,"package_installed":"1710489821000","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","scan_time":"2020/12/28 21:49:50"}])"
+#define EXPECT_CALL_BROWSER_EXTENSIONS_JSON R"([{"browser_name":"chrome","user_id":"S-1-5-21-1234567890-987654321-1122334455-1001","package_name":"uBlock Origin","package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_version_":"1.52.2","package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_vendor":"Raymond Hill","package_build_version":"","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","package_reference":"https://clients2.google.com/service/update2/crx","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_type":"extension","package_enabled":1,"package_visible":0,"package_autoupdate":1,"package_persistent":0,"package_from_webstore":1,"browser_profile_referenced":1,"package_installed":"1710489821000","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","scan_time":"2020/12/28 21:49:50"}])"
 
 const auto expected_dbsync_hwinfo
 {
@@ -37,7 +37,7 @@ const auto expected_dbsync_hwinfo
 };
 const auto expected_dbsync_osinfo
 {
-    R"({"collector":"dbsync_osinfo","data":{"event":{"changed_fields":[],"type":"created"},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"distribution":{"release":"sp1"},"full":null,"kernel":{"name":null,"release":null,"version":null},"major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"version":"6.1.7601"}}},"module":"inventory"})"
+    R"({"collector":"dbsync_osinfo","data":{"event":{"changed_fields":[],"type":"created"},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"distribution":{"release":"sp1"},"full":null,"kernel":{"name":null,"release":null,"version":null},"major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"type":"windows","version":"6.1.7601"}}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_iface
 {
@@ -116,7 +116,7 @@ class CallbackMockPersist
     public:
         CallbackMockPersist() = default;
         ~CallbackMockPersist() = default;
-        MOCK_METHOD(void, callbackMock, (const std::string&, Operation_t, const std::string&, const std::string&), ());
+        MOCK_METHOD(void, callbackMock, (const std::string&, Operation_t, const std::string&, const std::string&, uint64_t), ());
 };
 
 void reportFunction(const std::string& /*payload*/)
@@ -124,7 +124,7 @@ void reportFunction(const std::string& /*payload*/)
     //std::cout << payload << std::endl;
 }
 
-void persistFunction(const std::string&, Operation_t, const std::string&, const std::string& /*payload*/)
+void persistFunction(const std::string&, Operation_t, const std::string&, const std::string& /*payload*/, uint64_t /*version*/)
 {
     // std::cout << payload << std::endl;
 }
@@ -148,7 +148,7 @@ static const auto expectedPersistHW
 };
 static const auto expectedPersistOS
 {
-    R"({"checksum":{"hash":{"sha1":"f3c7fafbb0479a090c16a6954650654a957f30c3"}},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"distribution":{"release":"sp1"},"full":null,"kernel":{"name":null,"release":null,"version":null},"major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"version":"6.1.7601"}}})"
+    R"({"checksum":{"hash":{"sha1":"5f16f23e53a4549d34861187bf592a76bee51282"}},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"distribution":{"release":"sp1"},"full":null,"kernel":{"name":null,"release":null,"version":null},"major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"type":"windows","version":"6.1.7601"}}})"
 };
 static const auto expectedPersistNetIface
 {
@@ -184,7 +184,7 @@ static const auto expectedPersistProcess
 };
 static const auto expectedPersistPackage
 {
-    R"({"checksum":{"hash":{"sha1":"9148999562df0ea8c1cdf97fa99499a0ee7e6299"}},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}})"
+    R"({"checksum":{"hash":{"sha1":"403cf592e642409153762c635d50c05415f74dc0"}},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}})"
 };
 static const auto expectedPersistHotfix
 {
@@ -204,7 +204,7 @@ static const auto expectedPersistService
 };
 static const auto expectedPersistBrowserExtension
 {
-    R"({"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"checksum":{"hash":{"sha1":"f0bce58613164a2c31b6fb871da747946625d547"}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":null,"description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":1710489821000,"name":"uBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":["[\\\"activeTab\\\"","\\\"storage\\\"","\\\"tabs\\\"","\\\"webNavigation\\\"]"],"persistent":false,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2","visible":false},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"}})"
+    R"({"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"checksum":{"hash":{"sha1":"e3a871756b2489415d8e6b985bf8ca7c8a43ede2"}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":null,"description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":1710489821000,"name":"uBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":["[\\\"activeTab\\\"","\\\"storage\\\"","\\\"tabs\\\"","\\\"webNavigation\\\"]"],"persistent":false,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2","visible":false},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"}})"
 };
 
 TEST_F(SyscollectorImpTest, defaultCtor)
@@ -249,18 +249,25 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -281,21 +288,21 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -309,6 +316,8 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                           "",
                                           "",
                                           5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -337,7 +346,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(2))
     .WillRepeatedly(::testing::InvokeArgument<0>
-                    (R"({"name":"TEXT", "version":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+                    (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
@@ -357,6 +366,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
                                           "",
                                           1, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
 
+            Syscollector::instance().start();
         }
     };
 
@@ -394,6 +404,8 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
                                           "",
                                           "",
                                           3600, false);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -448,18 +460,25 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -479,20 +498,20 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Hardware (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -506,6 +525,8 @@ TEST_F(SyscollectorImpTest, noHardware)
                                           "",
                                           "",
                                           3600, true, false, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -561,18 +582,25 @@ TEST_F(SyscollectorImpTest, noOs)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -592,20 +620,20 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except OS (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -619,6 +647,8 @@ TEST_F(SyscollectorImpTest, noOs)
                                           "",
                                           "",
                                           3600, true, true, false, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -673,18 +703,25 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -700,16 +737,16 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Network (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -723,6 +760,8 @@ TEST_F(SyscollectorImpTest, noNetwork)
                                           "",
                                           "",
                                           3600, true, true, true, false, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -772,18 +811,25 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -803,20 +849,20 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Packages (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -830,6 +876,8 @@ TEST_F(SyscollectorImpTest, noPackages)
                                           "",
                                           "",
                                           3600, true, true, true, true, false, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -884,18 +932,25 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -915,20 +970,20 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Ports (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -942,6 +997,8 @@ TEST_F(SyscollectorImpTest, noPorts)
                                           "",
                                           "",
                                           5, true, true, true, true, true, false, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -997,18 +1054,25 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1030,22 +1094,22 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except PortsAll
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPortsUdp)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPortsUdp, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1059,6 +1123,8 @@ TEST_F(SyscollectorImpTest, noPortsAll)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, false, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1108,18 +1174,25 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1139,20 +1212,20 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Processes (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1166,6 +1239,8 @@ TEST_F(SyscollectorImpTest, noProcesses)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, false, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1220,18 +1295,25 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1251,20 +1333,20 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Hotfixes (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1278,6 +1360,8 @@ TEST_F(SyscollectorImpTest, noHotfixes)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, false, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1332,18 +1416,25 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1363,20 +1454,20 @@ TEST_F(SyscollectorImpTest, noUsers)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Users (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1390,6 +1481,8 @@ TEST_F(SyscollectorImpTest, noUsers)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, true, false, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1444,18 +1537,25 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1475,20 +1575,20 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Groups (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1502,6 +1602,8 @@ TEST_F(SyscollectorImpTest, noGroups)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, false, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1556,18 +1658,25 @@ TEST_F(SyscollectorImpTest, noServices)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1587,20 +1696,20 @@ TEST_F(SyscollectorImpTest, noServices)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules except Services (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1614,6 +1723,8 @@ TEST_F(SyscollectorImpTest, noServices)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, true, true, false, true, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1668,18 +1779,25 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1699,20 +1817,20 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
 
     // All modules except Browser Extensions (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1726,6 +1844,8 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, true, true, true, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -1827,18 +1947,25 @@ TEST_F(SyscollectorImpTest, portAllEnable)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -1888,10 +2015,10 @@ TEST_F(SyscollectorImpTest, portAllEnable)
     };
 
     // Only ports enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts1)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts2)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts3)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts1, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts2, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts3, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts4, testing::_)).Times(1);
 
     std::thread t
     {
@@ -1905,6 +2032,8 @@ TEST_F(SyscollectorImpTest, portAllEnable)
                                           "",
                                           "",
                                           3600, true, false, false, false, false, true, true, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -2006,18 +2135,25 @@ TEST_F(SyscollectorImpTest, portAllDisable)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -2056,9 +2192,9 @@ TEST_F(SyscollectorImpTest, portAllDisable)
     };
 
     // Only ports enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts1)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts2)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts3)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts1, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts2, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts3, testing::_)).Times(1);
 
     std::thread t
     {
@@ -2072,6 +2208,8 @@ TEST_F(SyscollectorImpTest, portAllDisable)
                                           "",
                                           "",
                                           3600, true, false, false, false, false, true, false, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -2092,9 +2230,9 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::DoAll(
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json),
+                  (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json),
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json)));
+                  (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -2113,25 +2251,32 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
     EXPECT_CALL(wrapper, callbackMock(expected_dbsync_packages)).Times(1);
 
     // Only packages enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
 
     std::thread t
     {
@@ -2145,6 +2290,8 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
                                           "",
                                           "",
                                           3600, true, false, false, false, true, false, false, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
         }
     };
 
@@ -2163,7 +2310,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft Windows 7 ","os_distribution_release":"   sp1","os_version":"6.1.7601   "})")));
+                                                                R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft Windows 7 ","os_distribution_release":"   sp1","os_version":"6.1.7601   ","os_type":" windows "})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"   ethernet", "interface_state":"up   ", "network_dhcp":0,"interface_mtu":1500,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -2171,7 +2318,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":" amd64", "category":"  x11  ","name":" xserver-xorg","priority":"optional ","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
+              (R"({"architecture":" amd64", "category":"  x11  ","name":" xserver-xorg","priority":"optional ","size":4111222333,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":" KB12345678 "}])"_json));
 
@@ -2206,18 +2353,25 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
 
     CallbackMockPersist wrapperPersist;
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
-            wrapperPersist.callbackMock(id, operation, index, persist.dump());
+            wrapperPersist.callbackMock(id, operation, index, persist.dump(), version);
         }
     };
 
@@ -2238,21 +2392,21 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     // All modules enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
 
     std::thread t
     {
@@ -2266,6 +2420,8 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           "",
                                           "",
                                           5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
         }
     };
 

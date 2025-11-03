@@ -18,10 +18,6 @@
 
 int __wrap_router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size);
 
-int __wrap_router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
-
-int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg, void* agent_ctx, int schema_type);
-
 ROUTER_PROVIDER_HANDLE __wrap_router_provider_create(const char* name);
 
 // Router subscriber wrappers for agent upgrade module

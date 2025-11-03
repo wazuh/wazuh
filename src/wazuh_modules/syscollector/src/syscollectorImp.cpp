@@ -70,19 +70,19 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
 static const std::map<std::string, std::string> INDEX_MAP
 {
     // LCOV_EXCL_START
-    {OS_TABLE, "wazuh-states-inventory-system"},
-    {HW_TABLE, "wazuh-states-inventory-hardware"},
-    {HOTFIXES_TABLE, "wazuh-states-inventory-hotfixes"},
-    {PACKAGES_TABLE, "wazuh-states-inventory-packages"},
-    {PROCESSES_TABLE, "wazuh-states-inventory-processes"},
-    {PORTS_TABLE, "wazuh-states-inventory-ports"},
-    {NET_IFACE_TABLE, "wazuh-states-inventory-interfaces"},
-    {NET_PROTOCOL_TABLE, "wazuh-states-inventory-protocols"},
-    {NET_ADDRESS_TABLE, "wazuh-states-inventory-networks"},
-    {USERS_TABLE, "wazuh-states-inventory-users"},
-    {GROUPS_TABLE, "wazuh-states-inventory-groups"},
-    {SERVICES_TABLE, "wazuh-states-inventory-services"},
-    {BROWSER_EXTENSIONS_TABLE, "wazuh-states-inventory-browser-extensions"},
+    {OS_TABLE, SYSCOLLECTOR_SYNC_INDEX_SYSTEM},
+    {HW_TABLE, SYSCOLLECTOR_SYNC_INDEX_HARDWARE},
+    {HOTFIXES_TABLE, SYSCOLLECTOR_SYNC_INDEX_HOTFIXES},
+    {PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES},
+    {PROCESSES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PROCESSES},
+    {PORTS_TABLE, SYSCOLLECTOR_SYNC_INDEX_PORTS},
+    {NET_IFACE_TABLE, SYSCOLLECTOR_SYNC_INDEX_INTERFACES},
+    {NET_PROTOCOL_TABLE, SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS},
+    {NET_ADDRESS_TABLE, SYSCOLLECTOR_SYNC_INDEX_NETWORKS},
+    {USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS},
+    {GROUPS_TABLE, SYSCOLLECTOR_SYNC_INDEX_GROUPS},
+    {SERVICES_TABLE, SYSCOLLECTOR_SYNC_INDEX_SERVICES},
+    {BROWSER_EXTENSIONS_TABLE, SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS},
     // LCOV_EXCL_STOP
 };
 
@@ -183,18 +183,16 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 
 void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
-    nlohmann::json newData;
-
     nlohmann::json aux = result == MODIFIED && data.contains("new") ? data["new"] : data;
 
-    newData = ecsData(aux, table);
+    auto [newData, version] = ecsData(aux, table);
 
     const auto statefulToSend{newData.dump()};
     auto indexIt = INDEX_MAP.find(table);
 
     if (indexIt != INDEX_MAP.end())
     {
-        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend);
+        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -211,12 +209,11 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     if (m_notify)
     {
         nlohmann::json stateless;
-        nlohmann::json oldData;
 
         stateless["collector"] = table;
         stateless["module"] = "inventory";
 
-        oldData = (result == MODIFIED) ? ecsData(data["old"], table, false) : nlohmann::json {};
+        auto [oldData, oldVersion] = (result == MODIFIED) ? ecsData(data["old"], table, false) : std::make_pair(nlohmann::json{}, uint64_t(0));
 
         auto changedFields = addPreviousFields(newData, oldData);
 
@@ -303,7 +300,7 @@ std::string Syscollector::getCreateStatement() const
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
-                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> persistDiffFunction,
+                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
                         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
@@ -347,11 +344,21 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
+    m_spDBSync      = std::move(dbSync);
+    m_spNormalizer  = std::move(normalizer);
+
+}
+
+void Syscollector::start()
+{
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
 
-    m_spDBSync      = std::move(dbSync);
-    m_spNormalizer  = std::move(normalizer);
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
 
     syncLoop(lock);
 }
@@ -362,11 +369,23 @@ void Syscollector::destroy()
     m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
+
+    // Signal sync protocol to stop any ongoing operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
+    }
+
+    // Explicitly release DBSync before static destructors run
+    // This prevents use-after-free when Syscollector singleton destructs
+    // after DBSyncImplementation singleton has already been destroyed
+    m_spDBSync.reset();
 }
 
-nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
+std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
 {
     nlohmann::json ret;
+    uint64_t document_version = 0;
 
     if (table == OS_TABLE)
     {
@@ -425,13 +444,21 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
     {
         setJsonField(ret, data, "/checksum/hash/sha1", "checksum", true);
 
-        // Add state modified_at field for stateful events only
+        // Add state modified_at and version fields for stateful events only
         nlohmann::json state;
         state["modified_at"] = Utils::getCurrentISO8601();
+
+        // Include document_version field in state for synchronization
+        if (data.contains("version"))
+        {
+            document_version = data["version"].get<uint64_t>();
+            state["document_version"] = document_version;
+        }
+
         ret["state"] = state;
     }
 
-    return ret;
+    return {ret, document_version};
 }
 
 nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, bool createFields)
@@ -450,6 +477,7 @@ nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, b
     setJsonField(ret, originalData, "/host/os/major", "os_major", createFields);
     setJsonField(ret, originalData, "/host/os/minor", "os_minor", createFields);
     setJsonField(ret, originalData, "/host/os/name", "os_name", createFields);
+    setJsonField(ret, originalData, "/host/os/type", "os_type", createFields);
     setJsonField(ret, originalData, "/host/os/patch", "os_patch", createFields);
     setJsonField(ret, originalData, "/host/os/platform", "os_platform", createFields);
     setJsonField(ret, originalData, "/host/os/version", "os_version", createFields);
@@ -497,7 +525,7 @@ nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, 
     setJsonField(ret, originalData, "/package/source", "source", createFields);
     setJsonField(ret, originalData, "/package/type", "type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "vendor", createFields);
-    setJsonField(ret, originalData, "/package/version", "version", createFields);
+    setJsonField(ret, originalData, "/package/version", "version_", createFields);
 
     return ret;
 }
@@ -704,7 +732,7 @@ nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& orig
     setJsonField(ret, originalData, "/package/reference", "package_reference", createFields);
     setJsonField(ret, originalData, "/package/type", "package_type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "package_vendor", createFields);
-    setJsonField(ret, originalData, "/package/version", "package_version", createFields);
+    setJsonField(ret, originalData, "/package/version", "package_version_", createFields);
     setJsonField(ret, originalData, "/package/visible", "package_visible", createFields, true);
     setJsonField(ret, originalData, "/user/id", "user_id", createFields);
 
@@ -1273,7 +1301,7 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     else if (table == PACKAGES_TABLE)
     {
         std::string name = data.contains("name") ? data["name"].get<std::string>() : "";
-        std::string version = data.contains("version") ? data["version"].get<std::string>() : "";
+        std::string version = data.contains("version_") ? data["version_"].get<std::string>() : "";
         std::string architecture = data.contains("architecture") ? data["architecture"].get<std::string>() : "";
         std::string type = data.contains("type") ? data["type"].get<std::string>() : "";
         std::string path = data.contains("path") ? data["path"].get<std::string>() : "";
@@ -1337,7 +1365,7 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
         std::string user_id = data.contains("user_id") ? data["user_id"].get<std::string>() : "";
         std::string browser_profile_path = data.contains("browser_profile_path") ? data["browser_profile_path"].get<std::string>() : "";
         std::string package_name = data.contains("package_name") ? data["package_name"].get<std::string>() : "";
-        std::string package_version = data.contains("package_version") ? data["package_version"].get<std::string>() : "";
+        std::string package_version = data.contains("package_version_") ? data["package_version_"].get<std::string>() : "";
 
         ret = browser_name + ":" + user_id + ":" + browser_profile_path + ":" + package_name + ":" + package_version;
     }
@@ -1524,11 +1552,11 @@ bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned 
     return false;
 }
 
-void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_spSyncProtocol)
     {
-        m_spSyncProtocol->persistDifference(id, operation, index, data);
+        m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
 
@@ -1540,4 +1568,27 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
     }
 
     return false;
+}
+
+bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void Syscollector::deleteDatabase()
+{
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->deleteDatabase();
+    }
+
+    if (m_spDBSync)
+    {
+        m_spDBSync->closeAndDeleteDatabase();
+    }
 }

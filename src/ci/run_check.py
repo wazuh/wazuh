@@ -219,8 +219,8 @@ def runCoverage(moduleName):
     elif moduleName == "syscheckd":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
-    elif moduleName == "wazuh_modules/sca":
-        # SCA has nested structure: build/sca_impl/CMakeFiles/*.dir and build/sca_impl/tests/CMakeFiles/*.dir
+    elif moduleName in ["wazuh_modules/sca", "wazuh_modules/agent_info"]:
+        # Modules with nested structure (e.g., build/sca_impl/CMakeFiles/*.dir, build/agent_info_impl/CMakeFiles/*.dir)
         # Only include directories that have .gcda coverage files
         all_dirs = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
@@ -246,10 +246,18 @@ def runCoverage(moduleName):
     for aux in paths:
         folders += "--directory {} ".format(aux)
 
+    # Build exclusion patterns based on module
+    excludePatterns = ["*/tests/*"]
+    if moduleName == "shared_modules/sync_protocol":
+        excludePatterns.extend(["*inventorySync_generated*"])
+
+    excludeArgs = " ".join('--exclude="{}"'.format(pattern) for pattern in excludePatterns)
+
     coverageCommand = "lcov {} --capture --output-file {}/code_coverage.info \
-                       -rc lcov_branch_coverage=0 --exclude=\"*/tests/*\" \
+                       -rc lcov_branch_coverage=0 {} \
                        --include \"{}/*\" -q".format(folders,
                                                      reportFolder,
+                                                     excludeArgs,
                                                      includeDir)
     out = subprocess.run(coverageCommand,
                          stdout=subprocess.PIPE,
@@ -378,7 +386,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
     # Running this type of check in Windows will be analyzed in #17019
-    if moduleName != "shared_modules/utils" and moduleName != "shared_modules/file_helper" and target != "winagent" and moduleName != "wazuh_modules/sca":
+    if moduleName != "shared_modules/utils" and moduleName != "shared_modules/file_helper" and target != "winagent" and moduleName != "wazuh_modules/sca" and moduleName != "wazuh_modules/agent_info":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
     if clean:

@@ -16,6 +16,7 @@
 #include <cJSON.h>
 
 #ifdef WIN32
+#include <windows.h>
 #define PATH_SEP '\\'
 #else
 #define PATH_SEP '/'

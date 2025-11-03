@@ -22,12 +22,14 @@ constexpr auto OS_SQL_STATEMENT
     os_patch TEXT,
     os_build TEXT,
     os_platform TEXT,
+    os_type TEXT,
     os_kernel_name TEXT,
     os_kernel_release TEXT,
     os_kernel_version TEXT,
     os_distribution_release TEXT,
     os_full TEXT,
     checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (os_name)) WITHOUT ROWID;)"
 };
 
@@ -42,6 +44,7 @@ constexpr auto HW_SQL_STATEMENT
     memory_free INTEGER,
     memory_used INTEGER,
     checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (serial_number)) WITHOUT ROWID;)"
 };
 
@@ -50,6 +53,7 @@ constexpr auto HOTFIXES_SQL_STATEMENT
     R"(CREATE TABLE dbsync_hotfixes(
     hotfix_name TEXT,
     checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (hotfix_name)) WITHOUT ROWID;)"
 };
 
@@ -57,7 +61,7 @@ constexpr auto PACKAGES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_packages(
     name TEXT,
-    version TEXT,
+    version_ TEXT,
     vendor TEXT,
     installed TEXT,
     path TEXT,
@@ -70,7 +74,8 @@ constexpr auto PACKAGES_SQL_STATEMENT
     source TEXT,
     type TEXT,
     checksum TEXT,
-    PRIMARY KEY (name,version,architecture,type,path)) WITHOUT ROWID;)"
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (name,version_,architecture,type,path)) WITHOUT ROWID;)"
 };
 
 constexpr auto PROCESSES_SQL_STATEMENT
@@ -87,6 +92,7 @@ constexpr auto PROCESSES_SQL_STATEMENT
     args_count BIGINT,
     start BIGINT,
     checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (pid)) WITHOUT ROWID;)"
 };
 
@@ -105,6 +111,7 @@ constexpr auto PORTS_SQL_STATEMENT
        process_pid BIGINT,
        process_name TEXT,
        checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;)"
 };
 
@@ -126,6 +133,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
        host_network_egress_drops INTEGER,
        host_network_ingress_drops INTEGER,
        checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (interface_name,interface_alias,interface_type)) WITHOUT ROWID;)"
 };
 
@@ -138,6 +146,7 @@ constexpr auto NETPROTO_SQL_STATEMENT
        network_dhcp INTEGER,
        network_metric TEXT,
        checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (interface_name,network_type)) WITHOUT ROWID;)"
 };
 
@@ -150,6 +159,7 @@ constexpr auto NETADDR_SQL_STATEMENT
        network_netmask TEXT,
        network_broadcast TEXT,
        checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (interface_name,network_type,network_ip)) WITHOUT ROWID;)"
 };
 
@@ -188,6 +198,7 @@ constexpr auto USERS_SQL_STATEMENT
         login_tty TEXT,
         login_type TEXT,
         checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (user_name)) WITHOUT ROWID;)"
 };
 
@@ -202,6 +213,7 @@ constexpr auto GROUPS_SQL_STATEMENT
     group_is_hidden INTEGER,
     group_users TEXT,
     checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (group_name)) WITHOUT ROWID;)"
 };
 
@@ -241,6 +253,7 @@ constexpr auto SERVICES_SQL_STATEMENT
         service_target_type TEXT,
         service_target_address TEXT,
         checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"
 };
 
@@ -251,7 +264,7 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         user_id TEXT,
         package_name TEXT,
         package_id TEXT,
-        package_version TEXT,
+        package_version_ TEXT,
         package_description TEXT,
         package_vendor TEXT,
         package_build_version TEXT,
@@ -270,7 +283,8 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         package_installed TEXT,
         file_hash_sha256 TEXT,
         checksum TEXT,
-        PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version)) WITHOUT ROWID;)"
+        version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
 };
 
 constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };

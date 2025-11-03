@@ -145,7 +145,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         // Database synchronization config values
         sca->sync.enable_synchronization = 1;
         sca->sync.sync_interval = 300;
-        sca->sync.sync_response_timeout = 30;
+        sca->sync.sync_response_timeout = 60;
         sca->sync.sync_max_eps = 10;
     }
 

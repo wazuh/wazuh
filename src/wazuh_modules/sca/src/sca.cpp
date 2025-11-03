@@ -18,17 +18,6 @@ extern "C"
 #include <unistd.h>
 #include <chrono>
 
-/* SCA db directory */
-#ifndef WAZUH_UNIT_TESTING
-#define SCA_DB_DISK_PATH "queue/sca/db/sca.db"
-#else
-#ifndef WIN32
-#define SCA_DB_DISK_PATH    "./sca.db"
-#else
-#define SCA_DB_DISK_PATH    ".\\sca.db"
-#endif // WIN32
-#endif // WAZUH_UNIT_TESTING
-
 static push_stateless_func g_push_stateless_func = NULL;
 static push_stateful_func g_push_stateful_func = NULL;
 static yaml_to_cjson_func g_yaml_to_cjson_func = NULL;
@@ -79,6 +68,18 @@ void sca_start(const struct wm_sca_t* sca_config)
         SCA::instance().init();
         SCA::instance().setup(sca_config);
         SCA::instance().run();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, ex.what());
+    }
+}
+
+void sca_init()
+{
+    try
+    {
+        SCA::instance().init();
     }
     catch (const std::exception& ex)
     {
@@ -215,11 +216,11 @@ void SCA::init()
 
         m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
 
-        auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message) -> int
+        auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
         {
             if (g_push_stateful_func)
             {
-                return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str());
+                return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str(), version);
             }
 
             LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
@@ -302,7 +303,6 @@ void SCA::destroy()
     }
 
     m_sca->Stop();
-    m_sca.reset();
 }
 
 // LCOV_EXCL_START
@@ -317,11 +317,11 @@ bool SCA::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retri
     return false;
 }
 
-void SCA::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void SCA::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_sca)
     {
-        m_sca->persistDifference(id, operation, index, data);
+        m_sca->persistDifference(id, operation, index, data, version);
     }
 }
 
@@ -333,6 +333,24 @@ bool SCA::parseResponseBuffer(const uint8_t* data, size_t length)
     }
 
     return false;
+}
+
+bool SCA::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_sca)
+    {
+        return m_sca->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void SCA::deleteDatabase()
+{
+    if (m_sca)
+    {
+        m_sca->deleteDatabase();
+    }
 }
 
 /// @brief C-style wrapper for SCA module synchronization.
@@ -360,14 +378,15 @@ bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, un
 /// @param operation Type of operation performed (CREATE, MODIFY, DELETE)
 /// @param index Index or key associated with the change
 /// @param data Serialized data content of the change
-void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data)
+/// @param version Version of the data
+void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)
 {
     if (id && index && data)
     {
         Operation cppOperation = (operation == OPERATION_CREATE) ? Operation::CREATE :
                                  (operation == OPERATION_MODIFY) ? Operation::MODIFY :
                                  (operation == OPERATION_DELETE) ? Operation::DELETE_ : Operation::NO_OP;
-        SCA::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data));
+        SCA::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data), version);
     }
 }
 
@@ -387,6 +406,43 @@ bool sca_parse_response(const unsigned char* data, size_t length)
     }
 
     return false;
+}
+
+/// @brief C-style wrapper for notifying data clean in SCA module.
+/// @param indices Array of index strings to notify as clean
+/// @param indices_count Number of indices in the array
+/// @param timeout Timeout value in seconds for the notification operation
+/// @param retries Number of retry attempts on failure
+/// @param max_eps Maximum events per second during the notification
+/// @return true if the operation succeeds, false otherwise
+bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps)
+{
+    if (indices && indices_count > 0)
+    {
+        std::vector<std::string> indicesVec;
+        indicesVec.reserve(indices_count);
+
+        for (size_t i = 0; i < indices_count; ++i)
+        {
+            if (indices[i])
+            {
+                indicesVec.emplace_back(indices[i]);
+            }
+        }
+
+        if (!indicesVec.empty())
+        {
+            return SCA::instance().notifyDataClean(indicesVec, std::chrono::seconds(timeout), retries, max_eps);
+        }
+    }
+
+    return false;
+}
+
+/// @brief C-style wrapper for deleting the SCA database.
+void sca_delete_database()
+{
+    SCA::instance().deleteDatabase();
 }
 
 // LCOV_EXCL_STOP

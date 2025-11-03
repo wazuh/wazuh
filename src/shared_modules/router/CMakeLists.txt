@@ -28,6 +28,7 @@ include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
 include_directories(${SRC_FOLDER}/external/simdjson/include)
 include_directories(${SHARED_MODULES}/utils)
+include_directories(${SHARED_MODULES}/utils/flatbuffers/include)
 
 # Link directories
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)

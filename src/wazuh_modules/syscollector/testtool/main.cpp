@@ -50,9 +50,9 @@ int main(int argc, const char* argv[])
 
     const auto persistDiffFunction
     {
-        [](const std::string&, Operation_t, const std::string&, const std::string & payload)
+        [](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t version)
         {
-            std::cout << "persist output payload:" << std::endl;
+            std::cout << "persist output payload (version: " << version << "):" << std::endl;
             std::cout << payload << std::endl;
         }
     };

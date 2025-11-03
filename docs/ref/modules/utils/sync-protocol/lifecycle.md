@@ -53,7 +53,7 @@ table StartAck {
 
 **State Transition**: `WaitingStartAck` → `DataTransfer`
 
-### 3. Data Message
+### 3. DataValue Message
 
 Transmits individual differences to the manager.
 
@@ -63,24 +63,51 @@ Transmits individual differences to the manager.
 - Sequence number
 - Session ID
 - Operation type (Upsert/Delete)
+- Data identifier
 - Target index
+- Version number
 - Data payload
 
 **FlatBuffer Schema**:
 ```
-table Data {
+table DataValue {
     seq: ulong;
     session: ulong;
     operation: Operation;
     id: string;
     index: string;
+    version: ulong;
     data: [byte];
 }
 ```
 
 **State**: Remains in `DataTransfer`
 
-### 4. End Message
+### 4. DataClean Message
+
+Notifies the manager that specific indices should be cleaned.
+
+**Direction**: Agent → Manager
+
+**Content**:
+- Sequence number
+- Session ID
+- Index name to clean
+
+**FlatBuffer Schema**:
+```
+table DataClean {
+    seq: ulong;
+    session: ulong;
+    index: string;
+}
+```
+
+**State**: Remains in `DataTransfer`
+
+**Usage**: Sent during data cleaning synchronization mode when notifying the manager that specific indices have been disabled or should be cleared.
+
+### 5. End Message
 
 Signals completion of data transmission.
 
@@ -98,7 +125,7 @@ table End {
 
 **State Transition**: `DataTransfer` → `WaitingEndAck`
 
-### 5. ReqRet Message (Request Retransmission)
+### 6. ReqRet Message (Request Retransmission)
 
 Manager requests retransmission of specific data ranges.
 
@@ -123,9 +150,9 @@ table Pair {
 
 **State**: Remains in `DataTransfer`
 
-**Agent Response**: Retransmits requested data messages
+**Agent Response**: Retransmits requested DataValue messages
 
-### 6. EndAck Message
+### 7. EndAck Message
 
 Confirms successful session completion.
 
@@ -145,6 +172,163 @@ table EndAck {
 
 **State Transition**: `WaitingEndAck` → `Idle`
 
+### 8. ChecksumModule Message
+
+Transmits checksum information for integrity verification.
+
+**Direction**: Agent → Manager
+
+**Content**:
+- Session ID
+- Index identifier
+- Checksum value
+
+**FlatBuffer Schema**:
+```
+table ChecksumModule {
+    session: ulong;
+    index: string;
+    checksum: string;
+}
+```
+
+**State**: Used during integrity check mode, sent between StartAck and End
+
+## Special Synchronization Modes
+
+### Integrity Check Mode (requiresFullSync)
+
+The `requiresFullSync` method implements a specialized synchronization flow for checksum verification:
+
+```
+Agent                                   Manager
+  |                                        |
+  |-------------- Start ---------------->  |
+  |    (mode=CHECK, checksum)              |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |            (session_id)                |
+  |                                        |
+  |---------- ChecksumModule ----------->  |
+  |          (index, checksum)             |
+  |                                        |
+  |--------------- End ------------------> |
+  |             (session_id)               |
+  |                                        |
+  |<------------- EndAck ----------------- |
+  |       (status: match/mismatch)         |
+  |                                        |
+```
+
+**Process:**
+1. Agent sends Start message with CHECK mode
+2. Agent sends checksum message
+3. Agent sends End message
+4. Manager responds with EndAck indicating if checksums match
+5. Return `Error` if mismatch (full sync needed), `Ok` if valid
+
+### Metadata/Groups Synchronization Mode
+
+The `synchronizeMetadataOrGroups` method implements a simplified flow without data transfer:
+
+```
+Agent                                   Manager
+  |                                        |
+  |-------------- Start ---------------->  |
+  |  (mode=METADATA_DELTA/GROUP_DELTA)     |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |            (session_id)                |
+  |                                        |
+  |--------------- End ------------------> |
+  |             (session_id)               |
+  |                                        |
+  |<------------- EndAck ----------------- |
+  |              (success)                 |
+  |                                        |
+```
+
+**Supported Modes:**
+- `METADATA_DELTA`: Metadata delta synchronization
+- `METADATA_CHECK`: Metadata integrity check
+- `GROUP_DELTA`: Group delta synchronization
+- `GROUP_CHECK`: Group integrity check
+
+**Process:**
+1. Agent sends Start message with metadata/group mode
+2. No DataValue messages are sent
+3. Agent immediately sends End message
+4. Manager processes metadata/group information and responds with EndAck
+
+### Data Clean Synchronization Mode (notifyDataClean)
+
+The `notifyDataClean` method implements a specialized flow for notifying the manager about data cleaning when modules are disabled:
+
+```
+Agent                                   Manager
+  |                                        |
+  |-------------- Start ---------------->  |
+  |   (mode=DELTA, size=N, indices=[...])  |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |            (session_id)                |
+  |                                        |
+  |---------- DataClean[0] -------------->  |
+  |    (seq=0, session, index="fim_files") |
+  |                                        |
+  |---------- DataClean[1] -------------->  |
+  |  (seq=1, session, index="fim_registry")|
+  |                                        |
+  |              ...                       |
+  |                                        |
+  |---------- DataClean[N-1] ------------>  |
+  |    (seq=N-1, session, index=...)       |
+  |                                        |
+  |--------------- End ------------------> |
+  |             (session_id)               |
+  |                                        |
+  |<------------- EndAck ----------------- |
+  |         (status: Ok/PartialOk)         |
+  |                                        |
+  | clearItemsByIndex() for each index     |
+  | (cleanup local database entries)       |
+  |                                        |
+```
+
+### In-Memory Recovery Mode
+
+When using `persistDifferenceInMemory` for recovery scenarios:
+
+```
+Agent (Recovery)                       Manager
+  |                                        |
+  | persistDifferenceInMemory() × N        |
+  | (storing recovery data in memory)      |
+  |                                        |
+  |-------------- Start ---------------->  |
+  |          (mode=FULL)                   |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |                                        |
+  |------- DataValue (from memory) ------> |
+  |------- DataValue (from memory) ------> |
+  |              ...                       |
+  |                                        |
+  |--------------- End ------------------> |
+  |                                        |
+  |<------------- EndAck ----------------- |
+  |                                        |
+  | clearInMemoryData()                    |
+  | (cleanup after successful sync)        |
+  |                                        |
+```
+
+**Process:**
+1. Agent persists recovery data in memory using `persistDifferenceInMemory()`
+2. Agent triggers full synchronization
+3. DataValue messages are sent from in-memory vector (not from database)
+4. After successful sync, agent calls `clearInMemoryData()` to free memory
+
 ## Complete Synchronization Flow
 
 ### Successful Synchronization
@@ -158,11 +342,11 @@ Agent                                   Manager
   |<------------ StartAck ---------------- |
   |            (session_id)                |
   |                                        |
-  |------------- Data[0] ----------------> |
-  |------------- Data[1] ----------------> |
-  |------------- Data[2] ----------------> |
+  |----------- DataValue[0] -------------> |
+  |----------- DataValue[1] -------------> |
+  |----------- DataValue[2] -------------> |
   |              ...                       |
-  |------------- Data[N] ----------------> |
+  |----------- DataValue[N] -------------> |
   |                                        |
   |--------------- End ------------------> |
   |             (session_id)               |
@@ -181,18 +365,18 @@ Agent                                   Manager
   |                                        |
   |<------------ StartAck ---------------- |
   |                                        |
-  |------------- Data[0] ----------------> |
-  |------------- Data[1] ----------------> |
-  |------------- Data[2] -------X (lost)   |
-  |------------- Data[3] ----------------> |
-  |------------- Data[4] ----------------> |
+  |----------- DataValue[0] -------------> |
+  |----------- DataValue[1] -------------> |
+  |----------- DataValue[2] -----X (lost)  |
+  |----------- DataValue[3] -------------> |
+  |----------- DataValue[4] -------------> |
   |                                        |
   |--------------- End ------------------> |
   |                                        |
   |<------------- ReqRet ----------------- |
   |           (ranges: [[2,2]])            |
   |                                        |
-  |------------- Data[2] ----------------> | (retransmission)
+  |----------- DataValue[2] -------------> | (retransmission)
   |                                        |
   |<------------- EndAck ----------------- |
   |                                        |
@@ -209,7 +393,7 @@ stateDiagram-v2
     WaitingStartAck --> DataTransfer: Receive StartAck
     WaitingStartAck --> Idle: Timeout/Error
 
-    DataTransfer --> DataTransfer: Send Data
+    DataTransfer --> DataTransfer: Send DataValue/DataClean
     DataTransfer --> WaitingEndAck: Send End
 
     WaitingEndAck --> Idle: Receive EndAck

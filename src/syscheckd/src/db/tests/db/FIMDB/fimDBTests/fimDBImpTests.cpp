@@ -171,6 +171,12 @@ TEST_F(FimDBFixture, logAnExceptionErr)
     fimDBMock.logFunction(LOG_DEBUG_VERBOSE, "This is an error");
 }
 
+TEST_F(FimDBFixture, closeAndDeleteDatabaseSuccess)
+{
+    EXPECT_CALL(*mockDBSync, closeAndDeleteDatabase());
+    fimDBMock.closeAndDeleteDatabase();
+}
+
 TEST(FimDB, notInitalizedDbSyncException)
 {
     MockFIMDB fimDBMock;

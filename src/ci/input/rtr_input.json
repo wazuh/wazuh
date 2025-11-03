@@ -38,6 +38,10 @@
         {
             "name": "wazuh_modules/sca",
             "flags": "-r"
+        },
+        {
+            "name": "wazuh_modules/agent_info",
+            "flags": "-r"
         }
     ]
 }

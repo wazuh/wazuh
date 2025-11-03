@@ -82,11 +82,6 @@ class AgentSessionImpl final
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
-                              std::string_view agentId,
-                              std::string_view moduleName,
-                              std::string_view agentName,
-                              std::string_view agentIp,
-                              std::string_view agentVersion,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
@@ -100,10 +95,37 @@ public:
             throw AgentSessionException("Invalid data");
         }
 
+        // Extract module
+        auto moduleName = data->module_() ? data->module_()->string_view() : std::string_view();
+
+        // Extract agent details
+        auto agentId = data->agentid() ? data->agentid()->string_view() : std::string_view();
+        auto agentName = data->agentname() ? data->agentname()->string_view() : std::string_view();
+        auto agentVersion = data->agentversion() ? data->agentversion()->string_view() : std::string_view();
+        auto architecture = data->architecture() ? data->architecture()->string_view() : std::string_view();
+        auto hostname = data->hostname() ? data->hostname()->string_view() : std::string_view();
+        auto osname = data->osname() ? data->osname()->string_view() : std::string_view();
+        auto osplatform = data->osplatform() ? data->osplatform()->string_view() : std::string_view();
+        auto ostype = data->ostype() ? data->ostype()->string_view() : std::string_view();
+        auto osversion = data->osversion() ? data->osversion()->string_view() : std::string_view();
+
         auto agentIdString = std::string(agentId.data(), agentId.size());
         if (agentIdString.length() < 3)
         {
             agentIdString.insert(0, 3 - agentIdString.length(), '0');
+        }
+
+        // Extract groups
+        std::vector<std::string> groups;
+        if (data->groups())
+        {
+            for (const auto* group : *data->groups())
+            {
+                if (group)
+                {
+                    groups.emplace_back(group->str());
+                }
+            }
         }
 
         // Create new session.
@@ -117,12 +139,19 @@ public:
 
         m_context =
             std::make_shared<Context>(Context {.mode = data->mode(),
+                                               .option = data->option(),
                                                .sessionId = sessionId,
+                                               .moduleName = std::string(moduleName.data(), moduleName.size()),
                                                .agentId = std::move(agentIdString),
                                                .agentName = std::string(agentName.data(), agentName.size()),
-                                               .agentIp = std::string(agentIp.data(), agentIp.size()),
                                                .agentVersion = std::string(agentVersion.data(), agentVersion.size()),
-                                               .moduleName = std::string(moduleName.data(), moduleName.size())});
+                                               .architecture = std::string(architecture.data(), architecture.size()),
+                                               .hostname = std::string(hostname.data(), hostname.size()),
+                                               .osname = std::string(osname.data(), osname.size()),
+                                               .osplatform = std::string(osplatform.data(), osplatform.size()),
+                                               .ostype = std::string(ostype.data(), ostype.size()),
+                                               .osversion = std::string(osversion.data(), osversion.size()),
+                                               .groups = std::move(groups)});
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "New session for module '%s' by agent '%s'. (Session %llu)",
@@ -152,8 +181,9 @@ public:
      *
      * @param data Parsed flatbuffer metadata (e.g., sequence number).
      * @param dataRaw Raw binary payload of the chunk.
+     * @param dataSize Size of the raw payload.
      */
-    void handleData(Wazuh::SyncSchema::Data const* data, flatbuffers::Vector<uint8_t> const* dataRaw)
+    void handleData(Wazuh::SyncSchema::DataValue const* data, const uint8_t* dataRaw, size_t dataSize)
     {
         if (data == nullptr)
         {
@@ -168,7 +198,7 @@ public:
         logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
         m_store.put(std::format("{}_{}", session, seq),
-                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw->data()), dataRaw->size()));
+                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
 
         m_gapSet->observe(data->seq());
 

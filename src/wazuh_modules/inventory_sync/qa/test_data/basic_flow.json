@@ -4,8 +4,12 @@
     {
       "type": "start",
       "data": {
+        "module": "inventory_sync",
         "mode": 0,
-        "size": 1
+        "size": 1,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
       },
       "description": "Start synchronization session",
       "delay": 0.5,

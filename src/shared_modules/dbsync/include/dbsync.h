@@ -258,6 +258,18 @@ EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
  */
 EXPORTED void dbsync_free_result(cJSON** js_data);
 
+/**
+ * @brief Closes the database connection and deletes the database file.
+ *
+ * @param handle Handle instance assigned as part of the \ref dbsync_create method().
+ * @param path   Path to the database file to be deleted.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_close_and_delete_db(const DBSYNC_HANDLE handle,
+                                        const char*         path);
+
 #ifdef __cplusplus
 }
 #endif
