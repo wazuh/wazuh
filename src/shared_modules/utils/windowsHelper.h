@@ -503,7 +503,7 @@ namespace Utils
                 static const auto MAX_BITS_LENGTH { 128 };
                 std::string netmask;
 
-                if (maskLength < MAX_BITS_LENGTH)
+                if (maskLength <= MAX_BITS_LENGTH)
                 {
                     // For a unicast IPv6 address, any value greater than 128 is an illegal value
 
