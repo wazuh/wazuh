@@ -194,7 +194,7 @@ TEST(DBTest, TestFimDBSetAndCheckScan)
 {
     bool has_been_synched = fim_db_check_if_first_scan_has_been_synched();
     ASSERT_FALSE(has_been_synched);
-    
+
     fim_db_set_first_scan_has_been_synched();
     has_been_synched = fim_db_check_if_first_scan_has_been_synched();
     ASSERT_TRUE(has_been_synched);

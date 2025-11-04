@@ -65,11 +65,6 @@ add_executable(fim_recovery_test
     ${WINDOWS_DB_SRC}
     ${REGISTRY_SRC})
 
-# Link ASan FIRST to avoid initialization warnings in CI
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(fim_recovery_test asan ubsan)
-endif()
-
 target_link_libraries(fim_recovery_test
     debug gtestd
     debug gmockd
@@ -86,6 +81,8 @@ target_link_libraries(fim_recovery_test
     wazuhext
     agent_sync_protocol
     z
+    $<$<BOOL:${FSANITIZE}>:-fsanitize=address>
+    $<$<BOOL:${FSANITIZE}>:-fsanitize=undefined>
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
