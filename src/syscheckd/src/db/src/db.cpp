@@ -113,6 +113,7 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({"checksum"})
+                      .orderByOpt({"path"})
                       .rowFilter("")
                       .distinctOpt(false)
                       .build()};

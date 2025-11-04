@@ -11,7 +11,7 @@
 
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
 #include "fimCommonDefs.h"
-#include "recovery/recovery.h"
+#include "recovery/include/recovery.h"
 #ifdef __linux__
 #include <sched.h>
 #endif

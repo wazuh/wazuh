@@ -24,8 +24,8 @@ extern "C" {
     }
 }
 
-#include "../recovery.h"
-#include "../../db/include/db.hpp"
+#include "recovery.h"
+#include "db.hpp"
 #include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol_c_wrapper.hpp"
 #include <chrono>
