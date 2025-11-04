@@ -118,9 +118,9 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     DB::instance().updateLastSyncTime(table_name, getUnixTimeSeconds());
 }
 
+// Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
+// LCOV_EXCL_START
 bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle){
-    // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
-    // LCOV_EXCL_START
     minfo("Attempting to get checksum for %s table", table_name);
     std::string final_checksum = calculateTableChecksum(table_name);
     minfo("Success! Final file table checksum is: %s", final_checksum.c_str());
@@ -142,8 +142,8 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
         minfo("Checksum valid for index %s, delta sync sufficient", table_name);
         return false;
     }
-    // LCOV_EXCL_STOP
 }
+// LCOV_EXCL_STOP
 
 bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval){
     int64_t current_time = getUnixTimeSeconds();

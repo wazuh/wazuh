@@ -6,14 +6,16 @@ if(${TARGET} STREQUAL "winagent")
 else()
   file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
                      ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
+
   list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
-  # Exclude C++ recovery module files
-  list(FILTER sysfiles EXCLUDE REGEX ".*/recovery/.*")
 
   # Add syscheckd wrappers for Linux
   file(GLOB syscheckd_wrapper_files ${SRC_FOLDER}/unit_tests/wrappers/wazuh/syscheckd/*.o)
   list(APPEND sysfiles ${syscheckd_wrapper_files})
 endif()
+
+# Exclude C++ recovery module files
+list(FILTER sysfiles EXCLUDE REGEX ".*[\\/]recovery[\\/].*")
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
@@ -101,6 +103,9 @@ if(${TARGET} STREQUAL "winagent")
   file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
                                  ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
   list(REMOVE_ITEM sysfiles {SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/main.obj)
+  # Exclude C++ recovery module files
+  list(FILTER syscheck_event_files EXCLUDE REGEX ".*\\.cpp\\.obj$")
+
   add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
   set_source_files_properties(

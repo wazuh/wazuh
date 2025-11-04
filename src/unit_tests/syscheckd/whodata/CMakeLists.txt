@@ -175,6 +175,10 @@ else()
                            -Wl,--wrap=utf8_GetNamedSecurityInfo -Wl,--wrap=utf8_SetNamedSecurityInfo \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                           -Wl,--wrap,fim_recovery_check_if_full_sync_required \
+                           -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
+                           -Wl,--wrap,fim_db_set_first_scan_has_been_synched\
                            ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 
