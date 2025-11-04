@@ -10,9 +10,10 @@
 #include "router_transport.hpp"
 #include <thread>
 
-RouterTransport::RouterTransport(LoggerFunc logger,
+RouterTransport::RouterTransport(const std::string& moduleName, LoggerFunc logger,
                                  std::function<void(const std::vector<char>&)> callback)
-    : m_logger(std::move(logger))
+    : m_moduleName(moduleName)
+    , m_logger(std::move(logger))
     , m_responseCallback(callback)
     , m_subscriberReady(false)
 {
@@ -116,7 +117,7 @@ void RouterTransport::subscribeToResponses()
 
 std::string RouterTransport::getResponseTopic() const
 {
-    return "inventory-sync-agent-responses";
+    return m_moduleName + "-agent-responses";
 }
 
 std::string RouterTransport::getPublishTopic() const

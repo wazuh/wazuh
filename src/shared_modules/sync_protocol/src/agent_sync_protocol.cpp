@@ -40,7 +40,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
         {
             parseResponseBuffer(reinterpret_cast<const uint8_t*>(data.data()), data.size());
         };
-        m_transport = SyncTransportFactory::createDefaultTransport(m_logger, std::move(responseCallback));
+        m_transport = SyncTransportFactory::createDefaultTransport(moduleName, m_logger, std::move(responseCallback));
 #endif
 
         if (!m_transport)

@@ -24,7 +24,7 @@
 class RouterTransport : public ISyncMessageTransport
 {
     public:
-        RouterTransport(LoggerFunc logger,
+        RouterTransport(const std::string& moduleName, LoggerFunc logger,
                         std::function<void(const std::vector<char>&)> callback);
         ~RouterTransport() override;
         bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
@@ -32,6 +32,7 @@ class RouterTransport : public ISyncMessageTransport
         bool checkStatus() override;
 
     private:
+        std::string m_moduleName;
         LoggerFunc m_logger;
         std::unique_ptr<RouterProvider> m_provider;
         std::unique_ptr<RouterSubscriber> m_subscriber;

@@ -29,10 +29,11 @@ namespace SyncTransportFactory
     }
 #else
     std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
+        const std::string& moduleName,
         LoggerFunc logger,
         std::function<void(const std::vector<char>&)> responseCallback)
     {
-        return std::make_unique<RouterTransport>(std::move(logger), std::move(responseCallback));
+        return std::make_unique<RouterTransport>(moduleName, std::move(logger), std::move(responseCallback));
     }
 #endif
 

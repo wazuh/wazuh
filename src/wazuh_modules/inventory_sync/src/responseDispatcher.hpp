@@ -52,15 +52,16 @@ class ResponseDispatcherImpl
 {
 private:
     std::unique_ptr<TQueue> m_responseDispatcher;
-    std::unique_ptr<RouterProvider> m_routerProvider; // For Agent 0 responses
+    std::vector<std::pair<std::string, std::unique_ptr<RouterProvider>>> m_routerProviders; // For Agent 0 responses
 
     /**
-     * @brief Gets the Router response topic for Agent 0.
+     * @brief Gets the Router response topic for a specific module.
+     * @param moduleName The name of the module.
      * @return The response topic string.
      */
-    static std::string getAgent0ResponseTopic()
+    static std::string getModuleResponseTopic(const std::string& moduleName)
     {
-        return std::string("inventory-sync-agent-responses");
+        return moduleName + "-agent-responses";
     }
 
 public:
@@ -81,33 +82,52 @@ public:
             },
             SOCK_DGRAM);
 
-        // Initialize Router provider for Agent 0 (local IPC)
-        try
+        // Initialize Router providers for Agent 0 (local IPC) - one per module
+        // Make sure to add every new module here
+        const std::vector<std::string> modules = {"syscollector", "sca", "fim", "agent-info"};
+        for (const auto& moduleName : modules)
         {
-            const std::string responseTopic = getAgent0ResponseTopic();
-            m_routerProvider = std::make_unique<RouterProvider>(responseTopic, true);
-            m_routerProvider->start();
-            logInfo(LOGGER_DEFAULT_TAG,
-                    "ResponseDispatcher: Initialized Router support for Agent 0 (topic: %s)",
-                    responseTopic.c_str());
-        }
-        catch (const std::exception& ex)
-        {
-            logError(LOGGER_DEFAULT_TAG,
-                     "ResponseDispatcher: Failed to initialize RouterProvider for Agent 0: %s",
-                     ex.what());
-            // Continue without Router - will use ARQUEUE for all agents
+            try
+            {
+                const std::string responseTopic = getModuleResponseTopic(moduleName);
+                auto provider = std::make_unique<RouterProvider>(responseTopic, true);
+                provider->start();
+                m_routerProviders.emplace_back(moduleName, std::move(provider));
+                logInfo(LOGGER_DEFAULT_TAG,
+                        "ResponseDispatcher: Initialized Router support for Agent 0, module '%s' (topic: %s)",
+                        moduleName.c_str(),
+                        responseTopic.c_str());
+            }
+            catch (const std::exception& ex)
+            {
+                logError(LOGGER_DEFAULT_TAG,
+                         "ResponseDispatcher: Failed to initialize RouterProvider for module '%s': %s",
+                         moduleName.c_str(),
+                         ex.what());
+                // Continue without this Router - will use ARQUEUE for this module
+            }
         }
 
         // Response queue callback - handles both Agent 0 (Router) and remote agents (ARQUEUE)
         m_responseDispatcher = std::make_unique<ResponseQueue>(
-            [responseSocketClient, routerProvider = m_routerProvider.get()](const ResponseMessage& data)
+            [responseSocketClient, routerProviders = &m_routerProviders](const ResponseMessage& data)
             {
                 // Check if this is Agent 0
                 if (data.agentId == AGENT_ZERO_ID)
                 {
                     // Agent 0: Send via Router (local IPC)
-                    if (routerProvider)
+                    // Find the right provider for this module
+                    RouterProvider* targetProvider = nullptr;
+                    for (const auto& [moduleName, provider] : *routerProviders)
+                    {
+                        if (data.moduleName == moduleName)
+                        {
+                            targetProvider = provider.get();
+                            break;
+                        }
+                    }
+
+                    if (targetProvider)
                     {
                         try
                         {
@@ -117,19 +137,22 @@ public:
                             std::vector<char> routerMessage(bufferPtr, bufferPtr + bufferSize);
 
                             // Send via Router
-                            routerProvider->send(routerMessage);
+                            targetProvider->send(routerMessage);
                         }
                         catch (const std::exception& ex)
                         {
                             logError(LOGGER_DEFAULT_TAG,
-                                     "ResponseDispatcher: Failed to send to Agent 0 via Router: %s",
+                                     "ResponseDispatcher: Failed to send to Agent 0 module '%s' via Router: %s",
+                                     data.moduleName.c_str(),
                                      ex.what());
                         }
                     }
                     else
                     {
                         logError(LOGGER_DEFAULT_TAG,
-                                 "ResponseDispatcher: RouterProvider not initialized, cannot send to Agent 0");
+                                 "ResponseDispatcher: RouterProvider for module '%s' not initialized, cannot send to "
+                                 "Agent 0",
+                                 data.moduleName.c_str());
                     }
                 }
                 else

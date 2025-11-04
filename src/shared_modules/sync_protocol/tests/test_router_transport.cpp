@@ -80,7 +80,7 @@ TEST_F(RouterTransportTest, ConstructorInitializesCorrectly)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
 
     // Constructor should not log errors
     EXPECT_TRUE(logMessages.empty());
@@ -95,7 +95,7 @@ TEST_F(RouterTransportTest, DestructorCallsShutdown)
     auto callback = createResponseCallback();
 
     {
-        RouterTransport transport(logger, callback);
+        RouterTransport transport("test", logger, callback);
         // Initialize router
         transport.checkStatus();
     }  // Destructor called here
@@ -120,7 +120,7 @@ TEST_F(RouterTransportTest, CheckStatusInitializesRouter)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
 
     bool result = transport.checkStatus();
 
@@ -152,7 +152,7 @@ TEST_F(RouterTransportTest, CheckStatusReturnsSuccessWhenAlreadyInitialized)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
 
     // First call
     bool result1 = transport.checkStatus();
@@ -187,7 +187,7 @@ TEST_F(RouterTransportTest, SendMessageFailsWhenRouterNotInitialized)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
 
     // Don't call checkStatus() - router not initialized
 
@@ -206,7 +206,7 @@ TEST_F(RouterTransportTest, SendMessageSucceedsWhenRouterInitialized)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
 
     // Initialize router
     bool initResult = transport.checkStatus();
@@ -229,7 +229,7 @@ TEST_F(RouterTransportTest, ShutdownCanBeCalledMultipleTimes)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
     transport.checkStatus();
 
     // Wait for initialization
@@ -261,7 +261,7 @@ TEST_F(RouterTransportTest, ReInitializationAfterShutdown)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
 
     // First initialization
     bool initResult1 = transport.checkStatus();
@@ -288,7 +288,7 @@ TEST_F(RouterTransportTest, ShutdownWithoutInitialization)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
 
     // Shutdown without initializing
     transport.shutdown();
@@ -305,7 +305,7 @@ TEST_F(RouterTransportTest, SendMessageAfterShutdown)
     auto logger = createMockLogger();
     auto callback = createResponseCallback();
 
-    RouterTransport transport(logger, callback);
+    RouterTransport transport("test", logger, callback);
     transport.checkStatus();
 
     // Wait for initialization

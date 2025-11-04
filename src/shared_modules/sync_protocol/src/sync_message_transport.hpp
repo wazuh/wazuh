@@ -31,6 +31,7 @@ namespace SyncTransportFactory
 #else
     // Manager build (Router)
     std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
+        const std::string& moduleName,
         LoggerFunc logger,
         std::function<void(const std::vector<char>&)> responseCallback);
 #endif
