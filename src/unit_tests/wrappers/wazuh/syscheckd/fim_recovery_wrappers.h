@@ -43,4 +43,8 @@ bool __wrap_fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_
  */
 void __wrap_fim_db_set_first_scan_has_been_synched(void);
 
+/**
+ * @brief Wrapper for fim_db_check_if_first_scan_has_been_synched
+ */
+bool __wrap_fim_db_check_if_first_scan_has_been_synched(void);
 #endif

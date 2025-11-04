@@ -38,3 +38,8 @@ bool __wrap_fim_recovery_integrity_interval_has_elapsed(__attribute__((unused)) 
 void __wrap_fim_db_set_first_scan_has_been_synched(void) {
     function_called();
 }
+
+bool __wrap_fim_db_check_if_first_scan_has_been_synched(void) {
+    function_called();
+    return mock_type(bool);
+}
