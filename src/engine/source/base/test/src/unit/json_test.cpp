@@ -6,6 +6,7 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <base/utils/sanitizers.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
@@ -2792,3 +2793,159 @@ INSTANTIATE_TEST_SUITE_P(CheckDuplicateKey,
         "check": "$event == 2",
         "check": "$event.id == 2"
         })")));
+
+// ---------- Functors (templated-friendly) ----------
+struct Identity
+{
+    void operator()(std::string_view s, std::string& out) const { out = s; }
+};
+
+struct Snake
+{
+    void operator()(std::string_view in, std::string& out) const
+    {
+        bool lastU = false;
+        for (unsigned char c : std::string(in))
+        {
+            if (c >= 'A' && c <= 'Z')
+                c = static_cast<unsigned char>(c + 32);
+            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+            {
+                out.push_back(static_cast<char>(c));
+                lastU = false;
+            }
+            else
+            {
+                if (!out.empty() && !lastU)
+                {
+                    out.push_back('_');
+                    lastU = true;
+                }
+            }
+        }
+        if (!out.empty() && out.back() == '_')
+            out.pop_back();
+        if (out.empty())
+            out = "_";
+    }
+};
+
+struct EmptyTransform
+{
+    void operator()(std::string_view, std::string&) const {}
+};
+
+struct Prefix
+{
+    void operator()(std::string_view s, std::string& out) const
+    {
+        out += "p__";
+        out.append(s.begin(), s.end());
+    }
+};
+
+struct DigitGuard
+{
+    void operator()(std::string_view sv, std::string& out) const noexcept
+    {
+        if (!sv.empty() && std::isdigit(static_cast<unsigned char>(sv.front())))
+        {
+            out.push_back('_');
+        }
+        out.append(sv.begin(), sv.end());
+    }
+};
+
+enum class TK
+{
+    Identity,
+    Basic,
+    Snake,
+    Empty,
+    Prefix,
+    DigitGuard
+};
+struct RenameCase
+{
+    const char* input_json;
+    std::string_view path;
+    bool recursive;
+    TK tk;
+    bool expect_throw;
+    const char* expect_json;
+};
+
+class RenameKeysFastTest : public ::testing::TestWithParam<RenameCase>
+{
+};
+
+// ---------- Test ----------
+TEST_P(RenameKeysFastTest, RunsTemplated)
+{
+    const auto& P = GetParam();
+    json::Json J(P.input_json);
+
+    auto call = [&](auto&& transformer)
+    {
+        if (P.expect_throw)
+        {
+            EXPECT_THROW({ (void)J.renameIfKey(transformer, P.recursive, P.path); }, std::exception);
+        }
+        else
+        {
+            EXPECT_NO_THROW({
+                bool changed = J.renameIfKey(transformer, P.recursive, P.path);
+                (void)changed;
+            });
+            EXPECT_EQ(J.str(), std::string(P.expect_json));
+        }
+    };
+
+    switch (P.tk)
+    {
+        case TK::Identity: call(Identity {}); break;
+        case TK::Basic: call(sanitizer::basicNormalize); break;
+        case TK::Snake: call(Snake {}); break;
+        case TK::Empty: call(EmptyTransform {}); break;
+        case TK::Prefix: call(Prefix {}); break;
+        case TK::DigitGuard: call(DigitGuard {}); break;
+    }
+}
+
+static const RenameCase kCases[] = {
+    // 1) Standalone string: basic normalization
+    {R"("HELLO  world")", "", true, TK::Snake, false, R"("hello_world")"},
+    {R"("A\\B:C D")", "", true, TK::Basic, false, R"("a_b_c_d")"},
+    {R"("a\\\\b///c::d  e")", "", true, TK::Basic, false, R"("a_b_c_d_e")"},
+    {R"("hello_world")", "", true, TK::Identity, false, R"("hello_world")"},
+
+    // 2) Digit guard (only string allowed)
+    {R"("123abc")", "", true, TK::DigitGuard, false, R"("_123abc")"},
+
+    // 3) Trailing separator trimmed
+    {R"("name:")", "", true, TK::Snake, false, R"("name")"},
+
+    // 4) Backslash and colon become underscores
+    {R"("HELLO-world\\TEST")", "", true, TK::Snake, false, R"("hello_world_test")"},
+    {R"("A\\B:C")", "", true, TK::Snake, false, R"("a_b_c")"},
+
+    // 5) Becomes empty after normalization -> fail
+    {R"("::::")", "", true, TK::Snake, false, R"("_")"},
+    {R"(" .-/\\ ")", "", true, TK::Basic, true, "{}"},
+
+    // 6) Using path to select a string inside an object
+    {R"({"msg":"HELLO-world"})", "/msg", true, TK::Snake, false, R"({"msg":"hello_world"})"},
+
+    // 7) Using path to select a string inside an array
+    {R"(["HELLO world","x"])", "/0", true, TK::Snake, false, R"(["hello_world","x"])"},
+    {R"(["A\\B:C D","keep_me"])", "/0", true, TK::Basic, false, R"(["a_b_c_d","keep_me"])"},
+
+    // 8) Path errors / type errors (must target string)
+    {R"({"a":123,"b":"HELLO world"})", "/a", true, TK::Snake, true, "{}"}, // not a string at /a
+    {R"({"a":"HELLO world"})", "/noexiste", true, TK::Snake, true, "{}"},  // path not found
+    {R"(["HELLO world", {"k":"v"}])", "", true, TK::Snake, false, R"(["hello_world",{"k":"v"}])"},
+
+    // 9) Empty transform policy (produces empty -> fail)
+    {R"("X")", "", true, TK::Empty, true, "{}"}};
+
+INSTANTIATE_TEST_SUITE_P(RenameKeysFast_Matrix, RenameKeysFastTest, ::testing::ValuesIn(kCases));

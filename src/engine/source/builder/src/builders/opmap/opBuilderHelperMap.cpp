@@ -21,6 +21,7 @@
 #include <base/error.hpp>
 #include <base/utils/communityId.hpp>
 #include <base/utils/ipUtils.hpp>
+#include <base/utils/sanitizers.hpp>
 #include <base/utils/stringUtils.hpp>
 
 #include "base/error.hpp"
@@ -2140,6 +2141,51 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
         // Erase custom fields
         event->eraseIfKey(isCustomField, false, targetField);
         RETURN_SUCCESS(runState, event, successTrace);
+    };
+}
+
+// event: +sanitize_fields
+TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 0, 1);
+
+    // default operation
+    auto op = false;
+    if (opArgs.size() > 0)
+    {
+        builder::builders::utils::assertValue(opArgs, 0);
+
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isBool())
+        {
+            throw std::runtime_error(fmt::format("Expected 'bool' parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+
+        op = std::static_pointer_cast<Value>(opArgs[0])->value().getBool().value();
+    }
+
+    const auto name = buildCtx->context().opName;
+
+    // Tracing
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+
+    // Return Op
+    return [runState = buildCtx->runState(), targetField = targetField.jsonPath(), successTrace, name, op](
+               base::Event event) -> TransformResult
+    {
+        try
+        {
+            event->renameIfKey(&sanitizer::basicNormalize, op, targetField);
+            RETURN_SUCCESS(runState, event, successTrace);
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(
+                runState, event, fmt::format("{} -> An error has occurred during sanitization: '{}'", name, e.what()));
+        }
     };
 }
 
