@@ -132,7 +132,7 @@ bool RouterTransport::configRouter()
         if (!m_provider)
         {
             const std::string publishTopic = getPublishTopic();
-            m_provider = std::make_unique<RouterProvider>(publishTopic, false);
+            m_provider = std::make_unique<RouterProvider>(publishTopic, true);
             m_provider->start();
             m_logger(LOG_INFO, "RouterProvider started for topic: " + publishTopic);
         }

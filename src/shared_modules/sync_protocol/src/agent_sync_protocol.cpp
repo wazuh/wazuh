@@ -410,8 +410,6 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     return success;
 }
 
-// Removed ensureQueueAvailable; handled by transport implementation
-
 bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,
                                             const std::vector<std::string>& uniqueIndices,

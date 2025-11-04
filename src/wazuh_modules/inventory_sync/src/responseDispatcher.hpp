@@ -134,7 +134,7 @@ public:
                 }
                 else
                 {
-                    // Remote agents (001+): Send via ARQUEUE (existing logic)
+                    // Remote agents (001+): Send via ARQUEUE
                     thread_local std::vector<uint8_t> messageVector;
                     constexpr auto header = "(msg_to_agent) [] N!s ";
                     constexpr auto headerLength = 22;
