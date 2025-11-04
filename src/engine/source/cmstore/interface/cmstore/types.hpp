@@ -21,14 +21,16 @@ enum class ResourceType : uint8_t
     DECODER = 1,
     OUTPUT = 2,
     RULE = 3,
-    INTEGRATION = 4,
-    KVDB = 5
+    FILTER = 4,
+    INTEGRATION = 5,
+    KVDB = 6
 };
 
 constexpr std::string_view RESOURCE_TYPE_UNDEFINED_STR = "undefined";
 constexpr std::string_view RESOURCE_TYPE_DECODER_STR = "decoder";
 constexpr std::string_view RESOURCE_TYPE_OUTPUT_STR = "output";
 constexpr std::string_view RESOURCE_TYPE_RULE_STR = "rule";
+constexpr std::string_view RESOURCE_TYPE_FILTER_STR = "filter";
 constexpr std::string_view RESOURCE_TYPE_INTEGRATION_STR = "integration";
 constexpr std::string_view RESOURCE_TYPE_KVDB_STR = "kvdb";
 
@@ -47,6 +49,11 @@ constexpr ResourceType resourceTypeFromString(std::string_view typeStr)
     if (typeStr == RESOURCE_TYPE_RULE_STR)
     {
         return ResourceType::RULE;
+    }
+
+    if (typeStr == RESOURCE_TYPE_FILTER_STR)
+    {
+        return ResourceType::FILTER;
     }
 
     if (typeStr == RESOURCE_TYPE_INTEGRATION_STR)
@@ -69,6 +76,7 @@ constexpr std::string_view resourceTypeToString(ResourceType type)
         case ResourceType::DECODER: return RESOURCE_TYPE_DECODER_STR;
         case ResourceType::OUTPUT: return RESOURCE_TYPE_OUTPUT_STR;
         case ResourceType::RULE: return RESOURCE_TYPE_RULE_STR;
+        case ResourceType::FILTER: return RESOURCE_TYPE_FILTER_STR;
         case ResourceType::KVDB: return RESOURCE_TYPE_KVDB_STR;
         case ResourceType::INTEGRATION: return RESOURCE_TYPE_INTEGRATION_STR;
         default: return RESOURCE_TYPE_UNDEFINED_STR;
