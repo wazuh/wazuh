@@ -425,7 +425,7 @@ stages:
       verify: False
       <<: *packages_request_003
       params:
-        vendor: "Ubuntu Core developers"
+        vendor: "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
         limit: 1
     response:
       status_code: 200
