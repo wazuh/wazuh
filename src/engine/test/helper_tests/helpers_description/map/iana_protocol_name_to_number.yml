@@ -1,0 +1,83 @@
+# Name of the helper function
+name: iana_protocol_name_to_number
+
+metadata:
+  description: |
+    Resolves an IANA IP protocol keyword to its numeric code, returned as a string (e.g., "6").
+    Normalization rules:
+      - Lowercased.
+      - Spaces/underscores converted to '-'.
+      - Aliases recognized:
+          * "icmpv6" → "ipv6-icmp"
+          * "udp-lite" / "udp_lite" → "udplite"
+          * "ip-in-ip" → "ipip"
+    The helper rejects generic/unspecific categories and returns failure.
+
+  keywords:
+    - iana
+    - protocol
+
+helper_type: map
+
+arguments:
+  protocol_name:
+    type: string
+    generate: string
+    source: reference
+
+skipped:
+  - success_cases
+
+is_variadic: False
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      protocol_name: "tcp"
+    should_pass: true
+    expected: "6"
+    description: canonical keyword
+  - arguments:
+      protocol_name: "UDP"
+    should_pass: true
+    expected: "17"
+    description: case-insensitive
+  - arguments:
+      protocol_name: "ipv6-icmp"
+    should_pass: true
+    expected: "58"
+    description: canonical hyphenated form
+  - arguments:
+      protocol_name: "udp_lite"
+    should_pass: true
+    expected: "136"
+    description: underscore alias normalized → "udplite"
+  - arguments:
+      protocol_name: "ip-in-ip"
+    should_pass: true
+    expected: "94"
+    description: alias normalized → "ipip"
+  - arguments:
+      protocol_name: "ICMPv6"
+    should_pass: true
+    expected: "58"
+    description: alias normalized → "ipv6-icmp"
+  - arguments:
+      protocol_name: "any-host-internal-protocol"
+    should_pass: false
+    description: reject generic/unspecific categories
+  - arguments:
+      protocol_name: "smtp"
+    should_pass: false
+    description: application-layer name → not an IANA IP protocol keyword
+  - arguments:
+      protocol_name: ""
+    should_pass: false
+    description: empty string
+  - arguments:
+      protocol_name: 123
+    should_pass: false
+    description: non-string input rejected (must be a reference to string)
