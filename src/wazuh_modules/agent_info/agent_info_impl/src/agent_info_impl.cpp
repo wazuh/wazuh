@@ -216,6 +216,17 @@ void AgentInfoImpl::setSyncParameters(uint32_t timeout, uint32_t retries, long m
                   std::to_string(retries) + ", maxEps=" + std::to_string(maxEps));
 }
 
+bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
+{
+    if (m_spSyncProtocol && data)
+    {
+        return m_spSyncProtocol->parseResponseBuffer(data, length);
+    }
+
+    m_logFunction(LOG_ERROR, "Sync protocol not initialized or invalid data");
+    return false;
+}
+
 std::string AgentInfoImpl::GetCreateStatement() const
 {
     std::string ret;
