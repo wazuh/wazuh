@@ -145,9 +145,9 @@ namespace Utils
         private:
             void dispatch()
             {
-                try
+                while (m_running)
                 {
-                    while (m_running)
+                    try
                     {
                         std::function<void()> fnc;
 
@@ -156,10 +156,10 @@ namespace Utils
                             fnc();
                         }
                     }
-                }
-                catch (const std::exception& ex)
-                {
-                    logWarn(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                    catch (const std::exception& ex)
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                    }
                 }
             }
             void joinThreads()
