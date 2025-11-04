@@ -204,7 +204,7 @@ TEST_F(ThreadEventDispatcherTest, CaptureWarningMsg)
         "test.db");
 
     // Force the dispatch method to throw an exception.
-    dispatcher.push("Test message");
+    dispatcher.push(testMsg);
 
     // Wait for the warning log to be captured.
     auto status = promise.get_future().wait_for(std::chrono::seconds(5));

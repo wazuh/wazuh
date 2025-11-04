@@ -296,7 +296,7 @@ TEST_F(AsyncValueDispatcherTest, CaptureWarningMsg)
             throw std::runtime_error("Test exception");
         });
 
-    dispatcher.push("Test message");
+    dispatcher.push(testMsg);
     // Wait for the warning log to be captured.
     auto status = promise.get_future().wait_for(std::chrono::seconds(5));
     EXPECT_EQ(status, std::future_status::ready);

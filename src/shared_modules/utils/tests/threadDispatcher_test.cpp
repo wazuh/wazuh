@@ -116,23 +116,36 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherQueue)
 TEST_F(ThreadDispatcherTest, CaptureWarningMsg)
 {
     std::atomic<bool> warningCaptured {false};
+    std::promise<void> promise;
+    Log::deassignLogFunction();
 
+    // Custom function that will capture and compare the warning log message.
     Log::assignLogFunction(
-        [&warningCaptured](const int logLevel,
-                           const char* tag,
-                           const char* file,
-                           const int line,
-                           const char* func,
-                           const char* message,
-                           va_list args)
+        [&warningCaptured, &promise](const int logLevel,
+                                     const char* tag,
+                                     const char* file,
+                                     const int line,
+                                     const char* func,
+                                     const char* message,
+                                     va_list args)
         {
+            // Receives the exception message from the dispatch method.
             if (logLevel == Log::LOGLEVEL_WARNING)
             {
                 char buffer[4096];
                 vsnprintf(buffer, sizeof(buffer), message, args);
                 std::string formatedMsg(buffer);
+                // Compare expected message.
                 EXPECT_EQ("Dispatch handler error, Test exception", formatedMsg);
                 warningCaptured = true;
+                // Avoid multiple captures.
+                try
+                {
+                    promise.set_value();
+                }
+                catch (...)
+                {
+                }
             }
         });
 
@@ -144,10 +157,17 @@ TEST_F(ThreadDispatcherTest, CaptureWarningMsg)
             throw std::runtime_error("Test exception");
         });
 
-    dispatcher.push("Test message");
+    dispatcher.push(testMsg);
     dispatcher.rundown();
+
+    // Wait for the warning log to be captured.
+    auto status = promise.get_future().wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready);
 
     EXPECT_TRUE(warningCaptured.load());
 
+    // Moving dispatcher.rundown() here does not work.
+    // Teardown
+    dispatcher.cancel();
     Log::deassignLogFunction();
 }
