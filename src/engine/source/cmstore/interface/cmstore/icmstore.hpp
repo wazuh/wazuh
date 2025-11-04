@@ -26,28 +26,27 @@ public:
     // Integration access methods
     virtual dataType::Integration getIntegrationByName(const std::string& name) const = 0;
     virtual dataType::Integration getIntegrationByUUID(const std::string& uuid) const = 0;
+    virtual bool integrationExistsByName(const std::string& name) const = 0;
+    virtual bool integrationExistsByUUID(const std::string& uuid) const = 0;
 
     // KVDB Dump access method
     virtual json::Json getKVDBByName(const std::string& name) const = 0;
     virtual json::Json getKVDBByUUID(const std::string& uuid) const = 0;
-    // virtual bool kvdbExistsByName(const base::Name& name) const = 0;
-    // virtual bool kvdbExistsByUUID(const std::string& uuid) const = 0;
+    virtual bool kvdbExistsByName(const base::Name& name) const = 0;
+    virtual bool kvdbExistsByUUID(const std::string& uuid) const = 0;
 
     // Asset access methods
     virtual json::Json getAssetByName(const base::Name& name) const = 0;
     virtual json::Json getAssetByUUID(const std::string& uuid) const = 0;
 
-    // virtual bool assetExistsByName(const base::Name& name) const = 0;
-    // virtual bool assetExistsByUUID(const std::string& uuid) const = 0;
+    virtual bool assetExistsByName(const base::Name& name) const = 0;
+    virtual bool assetExistsByUUID(const std::string& uuid) const = 0;
 
     // Collection access methods
     virtual std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const = 0;
 
     virtual std::tuple<std::string, ResourceType> resolveNameFromUUID(const std::string& uuid) const = 0;
     virtual std::string resolveUUIDFromName(const std::string& name, ResourceType type) const = 0;
-
-    virtual bool isCustomResource(const std::string& uuid) const = 0;
-    virtual bool isCustomResource(const std::string& name, ResourceType type) const = 0;
 
     // Get lock for read transaction
     // virtual TransaccionLock getSharedLock() const = 0;
@@ -84,7 +83,7 @@ public:
 
 };
 
-
+// TODO Make an reader interface separate from the NS interface
 class ICMstore
 {
 public:
