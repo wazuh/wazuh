@@ -188,3 +188,14 @@ TEST(DBTest, TestFimDBCloseAndDeleteWithoutInit)
 
     delete mockLog;
 }
+
+// Validate a recently initialized DB doesn't have its has_been_syched flag set yet and that its setting method works correctly
+TEST(DBTest, TestFimDBSetAndCheckScan)
+{
+    bool has_been_synched = fim_db_check_if_first_scan_has_been_synched();
+    ASSERT_FALSE(has_been_synched);
+    
+    fim_db_set_first_scan_has_been_synched();
+    has_been_synched = fim_db_check_if_first_scan_has_been_synched();
+    ASSERT_TRUE(has_been_synched);
+}
