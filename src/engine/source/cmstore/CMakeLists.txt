@@ -6,7 +6,7 @@ set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 # INTERFACE
 add_library(cmstore_icmstore INTERFACE)
 target_include_directories(cmstore_icmstore INTERFACE ${IFACE_DIR})
-target_link_libraries(cmstore_icmstore INTERFACE base ctistore::ictistore)
+target_link_libraries(cmstore_icmstore INTERFACE base)
 add_library(cmstore::icmstore ALIAS cmstore_icmstore)
 
 # Implementation
@@ -59,4 +59,3 @@ target_link_libraries(cmstore_ctest PRIVATE cmstore::cmstore GTest::gtest_main)
 gtest_discover_tests(cmstore_ctest)
 
 endif(ENGINE_BUILD_TEST)
-
