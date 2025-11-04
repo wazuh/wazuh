@@ -1125,3 +1125,89 @@ def test_migrate_data(db_setup, from_id, to_id, users):
                         user_id=user2.id, hashed_password=True, check_default=False,
                     ),
                 ])
+
+
+@patch("wazuh.rbac.orm.safe_move")
+@patch("wazuh.rbac.orm.os.remove")
+@patch("wazuh.rbac.orm.chown")
+@patch("wazuh.rbac.orm.os.chmod")
+def test_check_database_integrity_missing_default_policy(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
+    """Checks that the migration process runs correctly when a default policy is missing."""
+    db_mock = MagicMock()
+
+    # Handles the case where a default policy is not present in the YAML files
+    def insert_defaults_stub(_target_db):
+        return None
+
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock):
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=True):
+            with patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999):
+                db_mock.insert_default_resources.side_effect = insert_defaults_stub
+                fresh_in_memory_db.check_database_integrity()
+
+                db_mock.assert_has_calls([
+                    call.connect(fresh_in_memory_db.DB_FILE_TMP),
+                    call.get_database_version(fresh_in_memory_db.DB_FILE),
+                    call.create_database(fresh_in_memory_db.DB_FILE_TMP),
+                    call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.WAZUH_USER_ID,
+                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
+                                      to_id=fresh_in_memory_db.MAX_ID_RESERVED),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.MAX_ID_RESERVED + 1),
+                    call.set_database_version(fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.CURRENT_ORM_VERSION),
+                    call.close_sessions()
+                ], any_order=True)
+
+    safe_move_mock.assert_called_once_with(
+        fresh_in_memory_db.DB_FILE_TMP,
+        fresh_in_memory_db.DB_FILE,
+        ownership=(fresh_in_memory_db.wazuh_uid(), fresh_in_memory_db.wazuh_gid()),
+        permissions=0o640
+    )
+
+
+@patch("wazuh.rbac.orm.safe_move")
+@patch("wazuh.rbac.orm.os.remove")
+@patch("wazuh.rbac.orm.chown")
+@patch("wazuh.rbac.orm.os.chmod")
+def test_check_database_integrity_modified_default_policy(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
+    """Checks that the migration process runs correctly when a default policy has been modified."""
+    db_mock = MagicMock()
+
+    # Handles the case where a default policy is not present in the YAML files
+    def insert_defaults_modified(_target_db):
+        return None
+
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock):
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=True):
+            with patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999):
+                db_mock.insert_default_resources.side_effect = insert_defaults_modified
+                fresh_in_memory_db.check_database_integrity()
+
+                db_mock.assert_has_calls([
+                    call.connect(fresh_in_memory_db.DB_FILE_TMP),
+                    call.get_database_version(fresh_in_memory_db.DB_FILE),
+                    call.create_database(fresh_in_memory_db.DB_FILE_TMP),
+                    call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.WAZUH_USER_ID,
+                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
+                                      to_id=fresh_in_memory_db.MAX_ID_RESERVED),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.MAX_ID_RESERVED + 1),
+                    call.set_database_version(fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.CURRENT_ORM_VERSION),
+                    call.close_sessions()
+                ], any_order=True)
+
+    safe_move_mock.assert_called_once_with(
+        fresh_in_memory_db.DB_FILE_TMP,
+        fresh_in_memory_db.DB_FILE,
+        ownership=(fresh_in_memory_db.wazuh_uid(), fresh_in_memory_db.wazuh_gid()),
+        permissions=0o640
+    )
