@@ -14,6 +14,7 @@
 
 #include "agentSession.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
+#include "inventorySyncQueryBuilder.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
@@ -372,17 +373,21 @@ public:
                                 }
                             });
 
-                        m_indexerConnector->updateAgentMetadataByQuery(res.context->indices,
-                                                                       res.context->agentId,
-                                                                       res.context->agentName,
-                                                                       res.context->agentVersion,
-                                                                       res.context->architecture,
-                                                                       res.context->hostname,
-                                                                       res.context->osname,
-                                                                       res.context->osplatform,
-                                                                       res.context->ostype,
-                                                                       res.context->osversion,
-                                                                       res.context->globalVersion);
+                        // Build the metadata update query using domain logic
+                        auto metadataQuery =
+                            InventorySyncQueryBuilder::buildMetadataUpdateQuery(res.context->agentId,
+                                                                                res.context->agentName,
+                                                                                res.context->agentVersion,
+                                                                                res.context->architecture,
+                                                                                res.context->hostname,
+                                                                                res.context->osname,
+                                                                                res.context->osplatform,
+                                                                                res.context->ostype,
+                                                                                res.context->osversion,
+                                                                                res.context->globalVersion);
+
+                        // Execute the update using generic infrastructure method
+                        m_indexerConnector->executeUpdateByQuery(res.context->indices, metadataQuery);
                     }
                     else if (res.context->mode == Wazuh::SyncSchema::Mode_GroupDelta)
                     {
@@ -408,10 +413,12 @@ public:
                                 }
                             });
 
-                        m_indexerConnector->updateAgentGroupsByQuery(res.context->indices,
-                                                                     res.context->agentId,
-                                                                     res.context->groups,
-                                                                     res.context->globalVersion);
+                        // Build the groups update query using domain logic
+                        auto groupsQuery = InventorySyncQueryBuilder::buildGroupsUpdateQuery(
+                            res.context->agentId, res.context->groups, res.context->globalVersion);
+
+                        // Execute the update using generic infrastructure method
+                        m_indexerConnector->executeUpdateByQuery(res.context->indices, groupsQuery);
                     }
                     else
                     {

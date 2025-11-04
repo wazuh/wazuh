@@ -481,17 +481,7 @@ public:
         it->second["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
     }
 
-    void updateAgentMetadataByQuery(const std::vector<std::string>& indices,
-                                    const std::string& agentId,
-                                    const std::string& agentName,
-                                    const std::string& agentVersion,
-                                    const std::string& architecture,
-                                    const std::string& hostname,
-                                    const std::string& osname,
-                                    const std::string& osplatform,
-                                    const std::string& ostype,
-                                    const std::string& osversion,
-                                    uint64_t globalVersion)
+    void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
     {
         // Join indices with comma
         std::string indexList;
@@ -504,128 +494,6 @@ public:
             indexList.append(indices[i]);
         }
 
-        // Build the update by query request
-        // Use bool query to match agent.id AND only update if version <= globalVersion (external_gte behavior)
-        nlohmann::json updateQuery;
-        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
-        // Only update documents where version is null OR version <= globalVersion
-        updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
-        updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = globalVersion;
-        updateQuery["query"]["bool"]["minimum_should_match"] = 1;
-
-        // Get current timestamp in ISO 8601 format
-        auto now = std::chrono::system_clock::now();
-        auto time_t_now = std::chrono::system_clock::to_time_t(now);
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-        std::tm tm {};
-        gmtime_r(&time_t_now, &tm);
-        char timestamp[64];
-        snprintf(timestamp,
-                 sizeof(timestamp),
-                 "%04d-%02d-%02dT%02d:%02d:%02d.%03ldZ",
-                 tm.tm_year + 1900,
-                 tm.tm_mon + 1,
-                 tm.tm_mday,
-                 tm.tm_hour,
-                 tm.tm_min,
-                 tm.tm_sec,
-                 ms.count());
-
-        // Build the painless script
-        std::string script = "ctx._source.agent.id = params.id; "
-                             "ctx._source.agent.name = params.name; "
-                             "ctx._source.agent.version = params.version; "
-                             "if (ctx._source.agent.host == null) { ctx._source.agent.host = [:]; } "
-                             "ctx._source.agent.host.architecture = params.architecture; "
-                             "ctx._source.agent.host.hostname = params.hostname; "
-                             "if (ctx._source.agent.host.os == null) { ctx._source.agent.host.os = [:]; } "
-                             "ctx._source.agent.host.os.name = params.osname; "
-                             "ctx._source.agent.host.os.platform = params.osplatform; "
-                             "ctx._source.agent.host.os.type = params.ostype; "
-                             "ctx._source.agent.host.os.version = params.osversion; "
-                             "if (ctx._source.state == null) { ctx._source.state = [:]; } "
-                             "ctx._source.state.document_version = params.globalVersion; "
-                             "ctx._source.state.modified_at = params.timestamp;";
-
-        updateQuery["script"]["source"] = script;
-        updateQuery["script"]["lang"] = "painless";
-        updateQuery["script"]["params"]["id"] = agentId;
-        updateQuery["script"]["params"]["name"] = agentName;
-        updateQuery["script"]["params"]["version"] = agentVersion;
-        updateQuery["script"]["params"]["architecture"] = architecture;
-        updateQuery["script"]["params"]["hostname"] = hostname;
-        updateQuery["script"]["params"]["osname"] = osname;
-        updateQuery["script"]["params"]["osplatform"] = osplatform;
-        updateQuery["script"]["params"]["ostype"] = ostype;
-        updateQuery["script"]["params"]["osversion"] = osversion;
-        updateQuery["script"]["params"]["globalVersion"] = globalVersion;
-        updateQuery["script"]["params"]["timestamp"] = timestamp;
-
-        // Execute the update
-        executeUpdateByQuery(indexList, updateQuery);
-    }
-
-    void updateAgentGroupsByQuery(const std::vector<std::string>& indices,
-                                  const std::string& agentId,
-                                  const std::vector<std::string>& groups,
-                                  uint64_t globalVersion)
-    {
-        // Join indices with comma
-        std::string indexList;
-        for (size_t i = 0; i < indices.size(); ++i)
-        {
-            if (i > 0)
-            {
-                indexList.append(",");
-            }
-            indexList.append(indices[i]);
-        }
-
-        // Build the update by query request
-        // Use bool query to match agent.id AND only update if version <= globalVersion (external_gte behavior)
-        nlohmann::json updateQuery;
-        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
-        // Only update documents where version is null OR version <= globalVersion
-        updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
-        updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = globalVersion;
-        updateQuery["query"]["bool"]["minimum_should_match"] = 1;
-
-        // Get current timestamp in ISO 8601 format
-        auto now = std::chrono::system_clock::now();
-        auto time_t_now = std::chrono::system_clock::to_time_t(now);
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-        std::tm tm {};
-        gmtime_r(&time_t_now, &tm);
-        char timestamp[64];
-        snprintf(timestamp,
-                 sizeof(timestamp),
-                 "%04d-%02d-%02dT%02d:%02d:%02d.%03ldZ",
-                 tm.tm_year + 1900,
-                 tm.tm_mon + 1,
-                 tm.tm_mday,
-                 tm.tm_hour,
-                 tm.tm_min,
-                 tm.tm_sec,
-                 ms.count());
-
-        // Build the painless script
-        std::string script = "ctx._source.agent.groups = params.groups; "
-                             "if (ctx._source.state == null) { ctx._source.state = [:]; } "
-                             "ctx._source.state.document_version = params.globalVersion; "
-                             "ctx._source.state.modified_at = params.timestamp;";
-
-        updateQuery["script"]["source"] = script;
-        updateQuery["script"]["lang"] = "painless";
-        updateQuery["script"]["params"]["groups"] = groups;
-        updateQuery["script"]["params"]["globalVersion"] = globalVersion;
-        updateQuery["script"]["params"]["timestamp"] = timestamp;
-
-        // Execute the update
-        executeUpdateByQuery(indexList, updateQuery);
-    }
-
-    void executeUpdateByQuery(const std::string& indexList, const nlohmann::json& updateQuery)
-    {
         bool needToRetry = false;
 
         const auto onSuccess = [this](const std::string& response)

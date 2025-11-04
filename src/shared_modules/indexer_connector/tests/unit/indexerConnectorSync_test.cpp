@@ -1755,8 +1755,8 @@ TEST_F(IndexerConnectorSyncTest, ErrorHandlingForInvalidInputWithVersion)
     EXPECT_NO_THROW(connector.bulkIndex("doc2", "index1", "", "789"));
 }
 
-// Tests for updateAgentMetadataByQuery
-TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQuerySuccess)
+// Tests for executeUpdateByQuery - generic update by query operation
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
@@ -1773,18 +1773,18 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQuerySuccess)
 
     connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
 
-    // Call the function
-    EXPECT_NO_THROW(connector.updateAgentMetadataByQuery(indices,
-                                                         "agent-001",
-                                                         "test-agent",
-                                                         "4.5.0",
-                                                         "x86_64",
-                                                         "test-host",
-                                                         "Ubuntu",
-                                                         "ubuntu",
-                                                         "linux",
-                                                         "22.04",
-                                                         12345));
+    // Build a sample update query (simulating what inventory_sync would build)
+    nlohmann::json updateQuery;
+    updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = "agent-001";
+    updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
+    updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = 12345;
+    updateQuery["query"]["bool"]["minimum_should_match"] = 1;
+    updateQuery["script"]["source"] = "ctx._source.field = params.value";
+    updateQuery["script"]["lang"] = "painless";
+    updateQuery["script"]["params"]["value"] = "test-value";
+
+    // Call the generic function
+    EXPECT_NO_THROW(connector.executeUpdateByQuery(indices, updateQuery));
 
     // Verify the request was made
     EXPECT_EQ(callCount, 1);
@@ -1792,28 +1792,17 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQuerySuccess)
 
     // Verify the request contained the correct data
     auto requestData = nlohmann::json::parse(receivedData[0]);
-    // Check the new bool query structure with version filtering
     EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["agent.id"], "agent-001");
-    EXPECT_TRUE(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"].is_string());
     EXPECT_EQ(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"],
               "state.document_version");
     EXPECT_EQ(requestData["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"], 12345);
     EXPECT_EQ(requestData["query"]["bool"]["minimum_should_match"], 1);
     EXPECT_TRUE(requestData.contains("script"));
-    EXPECT_TRUE(requestData["script"].contains("source"));
-    EXPECT_EQ(requestData["script"]["params"]["id"], "agent-001");
-    EXPECT_EQ(requestData["script"]["params"]["name"], "test-agent");
-    EXPECT_EQ(requestData["script"]["params"]["version"], "4.5.0");
-    EXPECT_EQ(requestData["script"]["params"]["architecture"], "x86_64");
-    EXPECT_EQ(requestData["script"]["params"]["hostname"], "test-host");
-    EXPECT_EQ(requestData["script"]["params"]["osname"], "Ubuntu");
-    EXPECT_EQ(requestData["script"]["params"]["osplatform"], "ubuntu");
-    EXPECT_EQ(requestData["script"]["params"]["ostype"], "linux");
-    EXPECT_EQ(requestData["script"]["params"]["osversion"], "22.04");
-    EXPECT_EQ(requestData["script"]["params"]["globalVersion"], 12345);
+    EXPECT_EQ(requestData["script"]["source"], "ctx._source.field = params.value");
+    EXPECT_EQ(requestData["script"]["params"]["value"], "test-value");
 }
 
-TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQueryError)
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryError)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
@@ -1839,67 +1828,20 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQueryError)
 
     connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
 
+    // Build a sample update query
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["field"] = "value";
+    updateQuery["script"]["source"] = "ctx._source.field = params.value";
+    updateQuery["script"]["params"]["value"] = "new-value";
+
     // Call should throw exception on fatal error
-    EXPECT_THROW(connector.updateAgentMetadataByQuery(indices,
-                                                      "agent-001",
-                                                      "test-agent",
-                                                      "4.5.0",
-                                                      "x86_64",
-                                                      "test-host",
-                                                      "Ubuntu",
-                                                      "ubuntu",
-                                                      "linux",
-                                                      "22.04",
-                                                      12345),
-                 IndexerConnectorException);
+    EXPECT_THROW(connector.executeUpdateByQuery(indices, updateQuery), IndexerConnectorException);
 
     EXPECT_FALSE(notifyCalled) << "Notify callback should not have been called on error";
 }
 
-// Tests for updateAgentGroupsByQuery
-TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQuerySuccess)
-{
-    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
-    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
-
-    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
-
-    std::vector<std::string> indices = {"wazuh-states-fim-files", "wazuh-states-inventory-system"};
-    std::vector<std::string> groups = {"group1", "group2", "group3"};
-    bool notifyCalled = false;
-
-    // Setup expectations
-    EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
-                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
-
-    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
-
-    // Call the function
-    EXPECT_NO_THROW(connector.updateAgentGroupsByQuery(indices, "agent-002", groups, 54321));
-
-    // Verify the request was made
-    EXPECT_EQ(callCount, 1);
-    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called";
-
-    // Verify the request contained the correct data
-    auto requestData = nlohmann::json::parse(receivedData[0]);
-    // Check the new bool query structure with version filtering
-    EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["agent.id"], "agent-002");
-    EXPECT_TRUE(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"].is_string());
-    EXPECT_EQ(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"],
-              "state.document_version");
-    EXPECT_EQ(requestData["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"], 54321);
-    EXPECT_EQ(requestData["query"]["bool"]["minimum_should_match"], 1);
-    EXPECT_TRUE(requestData.contains("script"));
-    EXPECT_TRUE(requestData["script"].contains("source"));
-    EXPECT_EQ(requestData["script"]["params"]["groups"][0], "group1");
-    EXPECT_EQ(requestData["script"]["params"]["groups"][1], "group2");
-    EXPECT_EQ(requestData["script"]["params"]["groups"][2], "group3");
-    EXPECT_EQ(requestData["script"]["params"]["globalVersion"], 54321);
-}
-
-TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQueryWithRetry)
+// Test with version conflict retry
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
@@ -1907,7 +1849,6 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQueryWithRetry)
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     std::vector<std::string> indices = {"wazuh-states-sca"};
-    std::vector<std::string> groups = {"default"};
     bool notifyCalled = false;
     int attempts = 0;
 
@@ -1935,41 +1876,15 @@ TEST_F(IndexerConnectorSyncTest, UpdateAgentGroupsByQueryWithRetry)
 
     connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
 
+    // Build a sample update query
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["agent.id"] = "agent-003";
+    updateQuery["script"]["source"] = "ctx._source.groups = params.groups";
+    updateQuery["script"]["params"]["groups"] = std::vector<std::string> {"default"};
+
     // Call should succeed after retry
-    EXPECT_NO_THROW(connector.updateAgentGroupsByQuery(indices, "agent-003", groups, 99999));
+    EXPECT_NO_THROW(connector.executeUpdateByQuery(indices, updateQuery));
 
     EXPECT_EQ(attempts, 2) << "Should have retried once";
     EXPECT_TRUE(notifyCalled) << "Notify callback should have been called after successful retry";
-}
-
-TEST_F(IndexerConnectorSyncTest, UpdateAgentMetadataByQueryMultipleIndices)
-{
-    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
-    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
-
-    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
-
-    std::vector<std::string> indices = {"index1", "index2", "index3", "index4"};
-    bool notifyCalled = false;
-
-    EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
-                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
-
-    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
-
-    EXPECT_NO_THROW(connector.updateAgentMetadataByQuery(indices,
-                                                         "agent-004",
-                                                         "multi-index-agent",
-                                                         "5.0.0",
-                                                         "arm64",
-                                                         "host1",
-                                                         "Debian",
-                                                         "debian",
-                                                         "linux",
-                                                         "11",
-                                                         11111));
-
-    EXPECT_EQ(callCount, 1);
-    EXPECT_TRUE(notifyCalled);
 }

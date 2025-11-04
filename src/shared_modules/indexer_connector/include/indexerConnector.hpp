@@ -59,44 +59,27 @@ public:
     void deleteByQuery(const std::string& index, const std::string& agentId);
 
     /**
-     * @brief Update agent metadata by query for all documents of an agent across multiple indices.
+     * @brief Execute an update by query operation on OpenSearch/Elasticsearch.
      *
-     * @param indices List of indices to update.
-     * @param agentId Agent ID to match.
-     * @param agentName New agent name.
-     * @param agentVersion New agent version.
-     * @param architecture New architecture.
-     * @param hostname New hostname.
-     * @param osname New OS name.
-     * @param osplatform New OS platform.
-     * @param ostype New OS type.
-     * @param osversion New OS version.
-     * @param globalVersion New global version to set in state.document_version.
-     */
-    void updateAgentMetadataByQuery(const std::vector<std::string>& indices,
-                                    const std::string& agentId,
-                                    const std::string& agentName,
-                                    const std::string& agentVersion,
-                                    const std::string& architecture,
-                                    const std::string& hostname,
-                                    const std::string& osname,
-                                    const std::string& osplatform,
-                                    const std::string& ostype,
-                                    const std::string& osversion,
-                                    uint64_t globalVersion);
-
-    /**
-     * @brief Update agent groups by query for all documents of an agent across multiple indices.
+     * This is a generic method that allows callers to execute arbitrary update_by_query
+     * operations. The caller is responsible for constructing the appropriate query JSON
+     * with the query structure and Painless script.
      *
-     * @param indices List of indices to update.
-     * @param agentId Agent ID to match.
-     * @param groups New groups array.
-     * @param globalVersion New global version to set in state.document_version.
+     * @param indices List of indices to update (will be joined with commas).
+     * @param updateQuery JSON object containing the complete update_by_query request body,
+     *                    including "query" and "script" sections.
+     *
+     * Example updateQuery structure:
+     * {
+     *   "query": { "term": { "agent.id": "001" } },
+     *   "script": {
+     *     "source": "ctx._source.field = params.value",
+     *     "lang": "painless",
+     *     "params": { "value": "new_value" }
+     *   }
+     * }
      */
-    void updateAgentGroupsByQuery(const std::vector<std::string>& indices,
-                                  const std::string& agentId,
-                                  const std::vector<std::string>& groups,
-                                  uint64_t globalVersion);
+    void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery);
 
     /**
      * @brief Bulk delete.

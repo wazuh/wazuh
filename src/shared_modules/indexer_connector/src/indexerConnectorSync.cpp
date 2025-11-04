@@ -35,37 +35,9 @@ public:
         m_impl.deleteByQuery(index, agentId);
     }
 
-    void updateAgentMetadataByQuery(const std::vector<std::string>& indices,
-                                    const std::string& agentId,
-                                    const std::string& agentName,
-                                    const std::string& agentVersion,
-                                    const std::string& architecture,
-                                    const std::string& hostname,
-                                    const std::string& osname,
-                                    const std::string& osplatform,
-                                    const std::string& ostype,
-                                    const std::string& osversion,
-                                    uint64_t globalVersion)
+    void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
     {
-        m_impl.updateAgentMetadataByQuery(indices,
-                                          agentId,
-                                          agentName,
-                                          agentVersion,
-                                          architecture,
-                                          hostname,
-                                          osname,
-                                          osplatform,
-                                          ostype,
-                                          osversion,
-                                          globalVersion);
-    }
-
-    void updateAgentGroupsByQuery(const std::vector<std::string>& indices,
-                                  const std::string& agentId,
-                                  const std::vector<std::string>& groups,
-                                  uint64_t globalVersion)
-    {
-        m_impl.updateAgentGroupsByQuery(indices, agentId, groups, globalVersion);
+        m_impl.executeUpdateByQuery(indices, updateQuery);
     }
 
     void bulkDelete(std::string_view id, std::string_view index)
@@ -119,37 +91,10 @@ void IndexerConnectorSync::deleteByQuery(const std::string& index, const std::st
     m_impl->deleteByQuery(index, agentId);
 }
 
-void IndexerConnectorSync::updateAgentMetadataByQuery(const std::vector<std::string>& indices,
-                                                      const std::string& agentId,
-                                                      const std::string& agentName,
-                                                      const std::string& agentVersion,
-                                                      const std::string& architecture,
-                                                      const std::string& hostname,
-                                                      const std::string& osname,
-                                                      const std::string& osplatform,
-                                                      const std::string& ostype,
-                                                      const std::string& osversion,
-                                                      uint64_t globalVersion)
+void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& indices,
+                                                const nlohmann::json& updateQuery)
 {
-    m_impl->updateAgentMetadataByQuery(indices,
-                                       agentId,
-                                       agentName,
-                                       agentVersion,
-                                       architecture,
-                                       hostname,
-                                       osname,
-                                       osplatform,
-                                       ostype,
-                                       osversion,
-                                       globalVersion);
-}
-
-void IndexerConnectorSync::updateAgentGroupsByQuery(const std::vector<std::string>& indices,
-                                                    const std::string& agentId,
-                                                    const std::vector<std::string>& groups,
-                                                    uint64_t globalVersion)
-{
-    m_impl->updateAgentGroupsByQuery(indices, agentId, groups, globalVersion);
+    m_impl->executeUpdateByQuery(indices, updateQuery);
 }
 
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)
@@ -162,7 +107,10 @@ void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index
     m_impl->bulkIndex(id, index, data);
 }
 
-void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+void IndexerConnectorSync::bulkIndex(std::string_view id,
+                                     std::string_view index,
+                                     std::string_view data,
+                                     std::string_view version)
 {
     m_impl->bulkIndex(id, index, data, version);
 }
