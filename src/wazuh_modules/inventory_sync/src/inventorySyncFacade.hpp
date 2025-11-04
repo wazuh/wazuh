@@ -346,6 +346,14 @@ public:
                     // VD ?
                     preIndexerAction();
 
+                    // CRITICAL: Flush any pending bulk operations BEFORE metadata/groups updates
+                    // to ensure we don't insert documents with old data after the update
+                    if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta ||
+                        res.context->mode == Wazuh::SyncSchema::Mode_GroupDelta)
+                    {
+                        m_indexerConnector->flush();
+                    }
+
                     // Lock indexer connector to avoid process with the timeout mechanism.
                     auto lock = m_indexerConnector->scopeLock();
 
