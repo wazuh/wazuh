@@ -4,6 +4,9 @@
 #include <array>
 #include <cstdint>
 #include <iostream>
+#include <optional>
+#include <string_view>
+#include <unordered_map>
 
 namespace utils::ip
 {
@@ -75,6 +78,29 @@ bool isSpecialIPv4Address(const std::string& ip);
  * @throws std::invalid_argument If the given IP address is not a valid IPv6 address.
  */
 bool isSpecialIPv6Address(const std::string& ip);
+
+/**
+ * @brief Normalize a candidate IANA protocol name to canonical lookup form:
+ * - lower-case
+ * - spaces/underscores replaced with '-'
+ * - common aliases: "icmpv6"->"ipv6-icmp", "udp-lite"/"udp_lite" → "udplite", "ip-in-ip" → "ipip"
+ */
+std::string normalizeIanaProtocolName(std::string_view in);
+
+/**
+ * @brief Returns the IANA number for a given protocol name (strict: names only).
+ * If the name is unknown (e.g., application-layer like "smtp"), returns std::nullopt.
+ */
+std::optional<uint8_t> ianaProtocolNameToNumber(std::string_view name);
+
+/**
+ * @brief Lookup the canonical IANA protocol keyword for a given code.
+ * Returns std::nullopt if the code is unassigned/experimental/reserved or unknown.
+ *
+ * @param code IANA protocol number (0..255)
+ * @return std::optional<std::string_view> Canonical keyword if found, std::nullopt otherwise.
+ */
+std::optional<std::string_view> ianaProtocolNumberToName(uint8_t code);
 
 } // namespace utils::ip
 

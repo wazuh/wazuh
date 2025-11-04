@@ -194,6 +194,12 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "hex_to_number", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opBuilderHelperHexToNumber});
     registry->template add<builders::OpBuilderEntry>(
+        "iana_protocol_name_to_number",
+        {schemf::STypeToken::create(schemf::Type::KEYWORD), builders::opBuilderHelperIanaProtocolNameToNumber});
+    registry->template add<builders::OpBuilderEntry>(
+        "iana_protocol_number_to_name",
+        {schemf::STypeToken::create(schemf::Type::KEYWORD), builders::opBuilderHelperIanaProtocolNumberToName});
+    registry->template add<builders::OpBuilderEntry>(
         "ip_version",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperIPVersionFromIPStr});
     registry->template add<builders::OpBuilderEntry>(
