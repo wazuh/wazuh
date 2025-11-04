@@ -302,6 +302,17 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Function that sanitizes object keys, array elements, or simple strings
+ *
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return A HelperBuilder object that erases custom fields from an event.
+ */
+TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
 //*************************************************
 //*           Regex tranform                      *
 //*************************************************

@@ -130,6 +130,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [parse_xml](#parse_xml)
 - [rename](#rename)
 - [replace](#replace)
+- [sanitize_fields](#sanitize_fields)
 - [split](#split)
 - [trim](#trim)
 
@@ -18068,6 +18069,787 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# sanitize_fields
+
+## Signature
+
+```
+
+field: sanitize_fields(recursive)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| recursive | boolean | value | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [object, array, string] | - |
+
+
+## Description
+
+Normalize JSON object keys, nested object keys, standalone strings, and strings inside arrays using `basicNormalize`.
+
+### Behavior:
+- **Object keys** are sanitized: all keys in the object are normalized.
+- **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized.
+- **Arrays**:
+  - Arrays that are **not values of JSON object keys** are processed element-wise.
+  - Elements can be:
+    - **Strings:** normalized individually.
+    - **Objects:** their keys are sanitized.
+    - **Nested arrays:** processed recursively if `recursive` is true.
+  - Arrays containing unsupported primitives (numbers, booleans, null) cause failure.
+- **Standalone strings** (when `target_field` is a string node) are normalized directly.
+
+
+## Keywords
+
+- `sanitize` 
+
+- `rename` 
+
+- `normalize` 
+
+## Examples
+
+### Example 1
+
+Keys already normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": 1,
+    "b": 2
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a": 1,
+    "b": 2
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Keys lowercased and separators mapped to underscores
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "Full Name": "Ana",
+    "e-mail": "x",
+    "Pais": "AR"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "full_name": "Ana",
+    "e_mail": "x",
+    "pais": "AR"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Both map to 'hello_world' -> collision
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "hello world": 1,
+    "hello-world": 2
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+basicNormalize does not prefix underscores for leading digits
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "123abc": 1,
+    "x": 2
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "123abc": 1,
+    "x": 2
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Strings in arrays normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "Hello world",
+    "hello-world",
+    "HELLO  world"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "hello_world",
+    "hello_world",
+    "hello_world"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+Object keys inside arrays normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    {
+      "Full Name": "Ana"
+    },
+    {
+      "e-mail": "x"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    {
+      "full_name": "Ana"
+    },
+    {
+      "e_mail": "x"
+    }
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Mixed string/object array supported
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "Hello world",
+    {
+      "Full Name": "Ana"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "hello_world",
+    {
+      "full_name": "Ana"
+    }
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 8
+
+Numbers in arrays not allowed by policy
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    1,
+    {
+      "a": 1
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 9
+
+Booleans in arrays not allowed by policy
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    true,
+    {
+      "a": 1
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 10
+
+Nulls in arrays not allowed by policy
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    null,
+    {
+      "a": 1
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 11
+
+Nested arrays/objects processed recursively
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    [
+      "Hello world",
+      "hello-world"
+    ],
+    [
+      {
+        "Full Name": "Ana"
+      }
+    ]
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    [
+      "hello_world",
+      "hello_world"
+    ],
+    [
+      {
+        "full_name": "Ana"
+      }
+    ]
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 12
+
+Deep object keys normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(True)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": {
+      "B-C": {
+        "D E": 1
+      }
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a": {
+      "b_c": {
+        "d_e": 1
+      }
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 13
+
+Duplicated normalized strings in arrays are allowed
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "a b",
+    "a-b",
+    "a_b"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "a_b",
+    "a_b",
+    "a_b"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 14
+
+All characters dropped -> empty key is invalid
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "***": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 15
+
+Mixed '\\', '/', ':', spaces collapse to single underscores
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a\\\\b///c::d  e": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a_b_c_d_e": 1
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 16
+
+Trailing ':' produces '_' then it is trimmed at the end
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "name:": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "name": 1
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 17
+
+All characters are separators; normalized key becomes empty
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    ":\\ /- .": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 18
+
+Backslash and colon in strings become underscores
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "A\\B:C",
+    "X:Y\\Z"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "a_b_c",
+    "x_y_z"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 19
+
+Single string node normalized directly
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "HELLO-world\\TEST"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": "hello_world_test"
+}
+```
+
+*The operation was successful*
+
+### Example 20
+
+Only separators -> sanitized string becomes empty
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "::::"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
 
 
 
