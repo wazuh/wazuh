@@ -895,24 +895,8 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
     m_logFunction(LOG_DEBUG, "Starting module coordination process");
 
-    std::string agentId, agentName;
-
-    if (m_isAgent)
-    {
-        if (!readClientKeys(agentId, agentName))
-        {
-            m_logFunction(LOG_WARNING, "Failed to read agent name from client.keys, using default");
-            agentName = "unknown";
-        }
-    }
-    else
-    {
-        // For manager, use hostname
-        agentName = "manager";
-    }
-
     // Helper function to create JSON command messages
-    auto createJsonCommand = [&agentName](const std::string & command, const std::map<std::string, nlohmann::json>& params = {}) -> std::string
+    auto createJsonCommand = [](const std::string & command, const std::map<std::string, nlohmann::json>& params = {}) -> std::string
     {
         nlohmann::json jsonCmd;
 
@@ -1164,12 +1148,12 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         if (m_spSyncProtocol)
         {
             bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
-                TABLE_MODE_MAP.at(table),
-                ALL_MODULE_INDICES,
-                std::chrono::seconds(m_syncResponseTimeout),
-                m_syncRetries,
-                m_syncMaxEps,
-                newVersion);
+                                   TABLE_MODE_MAP.at(table),
+                                   ALL_MODULE_INDICES,
+                                   std::chrono::seconds(m_syncResponseTimeout),
+                                   m_syncRetries,
+                                   m_syncMaxEps,
+                                   newVersion);
 
             if (!syncSuccess)
             {
