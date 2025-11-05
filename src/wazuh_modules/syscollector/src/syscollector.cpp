@@ -118,13 +118,13 @@ void syscollector_stop()
     Syscollector::instance().destroy();
 }
 
-void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs)
+void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs)
 {
-    if (moduleName && syncDbPath && mqFuncs)
+    if (moduleName && syncDbPath && syncDbPathVD && mqFuncs)
     {
         try
         {
-            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), *mqFuncs);
+            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD), *mqFuncs);
         }
         catch (const std::exception& ex)
         {

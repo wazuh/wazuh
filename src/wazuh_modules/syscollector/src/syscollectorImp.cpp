@@ -1547,7 +1547,7 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs)
 {
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
@@ -1556,8 +1556,13 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
     try
     {
+        // Initialize non-VD sync protocol (existing tables)
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Initialize VD sync protocol (OS, packages, hotfixes)
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(moduleName + "_vd", syncDbPathVD, mqFuncs, logger_func, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD);
     }
     catch (const std::exception& ex)
     {
@@ -1569,17 +1574,35 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
+    bool result = true;
+
+    // Sync non-VD protocol
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps);
+        result = m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps) && result;
     }
 
-    return false;
+    // Sync VD protocol
+    if (m_spSyncProtocolVD)
+    {
+        result = m_spSyncProtocolVD->synchronizeModule(mode, timeout, retries, maxEps) && result;
+    }
+
+    return result;
 }
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
-    if (m_spSyncProtocol)
+    // Route to VD sync protocol if it's a VD table (OS, packages, hotfixes)
+    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+    if (isVDTable && m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version);
+    }
+    else if (!isVDTable && m_spSyncProtocol)
     {
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
@@ -1587,12 +1610,21 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    bool result = false;
+
+    // Try to parse with non-VD protocol first
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->parseResponseBuffer(data, length);
+        result = m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    return false;
+    // If that didn't work, try VD protocol
+    if (!result && m_spSyncProtocolVD)
+    {
+        result = m_spSyncProtocolVD->parseResponseBuffer(data, length);
+    }
+
+    return result;
 }
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
@@ -1607,11 +1639,19 @@ bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std:
 
 void Syscollector::deleteDatabase()
 {
+    // Delete non-VD sync database
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->deleteDatabase();
     }
 
+    // Delete VD sync database
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->deleteDatabase();
+    }
+
+    // Delete local inventory database
     if (m_spDBSync)
     {
         m_spDBSync->closeAndDeleteDatabase();
