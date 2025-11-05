@@ -25,7 +25,7 @@ void monitor_send_deletion_msg(char *agent) {
     if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
         mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
         mdebug1("Could not generate removed agent alert for '%s'", agent);
-        merror(QUEUE_SEND);
+        mdebug1(QUEUE_SEND);
     }
 }
 
@@ -243,7 +243,7 @@ int mon_send_agent_msg(char *agent, char *msg) {
         snprintf(header, OS_SIZE_256, "[%03d] (%s) %s", ag_id, ag_name, ag_ip);
         if (SendMSG(mond.a_queue, msg, header, SECURE_MQ) < 0) {
             mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
-            merror(QUEUE_SEND);
+            mdebug1(QUEUE_SEND);
             return 1;
         }
         return 0;

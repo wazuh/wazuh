@@ -120,7 +120,7 @@ static void *RequestDBThread() {
                     if ((rc = OS_SendUnix(cfga_socket, dump_db_msg, 0)) < 0) {
                         /* Error on the socket */
                         if (rc == OS_SOCKTERR) {
-                            merror("socketerr (not available)");
+                            mdebug1("socketerr (not available)");
                             close(cfga_socket);
                         }
                         /* Unable to send. Socket busy */
@@ -138,7 +138,7 @@ static void *RequestDBThread() {
                     if ((rc = OS_SendUnix(cfgar_socket, msg, 0)) < 0) {
                         /* Error on the socket */
                         if (rc == OS_SOCKTERR) {
-                            merror("socketerr (not available).");
+                            mdebug1("socketerr (not available).");
                             close(cfgar_socket);
                         }
                         /* Unable to send. Socket busy */

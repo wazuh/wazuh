@@ -271,13 +271,13 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     mdebug2("Sending event: %s",msg);
 
     if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        mdebug1(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if ((data->queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
             if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
-                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                mdebug1(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
         }
     }
@@ -3180,7 +3180,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
     /* Create request socket */
     int cfga_queue;
     if ((cfga_queue = StartMQWithSpecificOwnerAndPerms(CFGAQUEUE, READ, 0, getuid(), wm_getGroupID(), 0660)) < 0) {
-        merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
+        mdebug1(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
         pthread_exit(NULL);
     }
 

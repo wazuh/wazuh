@@ -58,7 +58,7 @@ static int send_intcheck_msg(const char *script, const char *host, const char *m
     snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
 
     if (SendMSG(lessdc.queue, msg, sys_location, SYSCHECK_MQ) < 0) {
-        merror(QUEUE_SEND);
+        mdebug1(QUEUE_SEND);
 
         if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
@@ -80,7 +80,7 @@ static int send_log_msg(const char *script, const char *host, const char *msg)
     snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
 
     if (SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND);
+        mdebug1(QUEUE_SEND);
         if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
@@ -135,7 +135,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     snprintf(buf, 1024, "(%s) %s->%s", script, host, ARGV0);
 
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND);
+        mdebug1(QUEUE_SEND);
 
         if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
