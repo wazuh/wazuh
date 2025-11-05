@@ -14,6 +14,8 @@
 
 #include "IURLRequest.hpp"
 #include "componentsHelper.hpp"
+#include "ctiCredentialsProvider.hpp"
+#include "ctiSignedUrlProvider.hpp"
 #include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -106,6 +108,58 @@ protected:
     };
 
     /**
+     * @brief Get the effective URL for downloading content.
+     *
+     * If OAuth providers are configured, this method:
+     * 1. Obtains an access token from the credentials provider
+     * 2. Exchanges the token for a signed URL via the signed URL provider
+     * 3. Returns the signed URL
+     *
+     * If no providers are configured, returns the original URL unchanged.
+     * This maintains backward compatibility with non-authenticated downloads.
+     *
+     * @param originalUrl The original CTI resource URL
+     * @return std::string The effective URL to use (signed URL or original URL)
+     * @throws std::runtime_error If OAuth authentication fails
+     */
+    std::string getEffectiveUrl(const std::string& originalUrl)
+    {
+        // If no providers configured, return original URL (backward compatibility)
+        if (!m_credentialsProvider || !m_signedUrlProvider)
+        {
+            logDebug2(WM_CONTENTUPDATER, "CtiDownloader: No OAuth providers configured, using original URL");
+            return originalUrl;
+        }
+
+        try
+        {
+            logDebug1(WM_CONTENTUPDATER, "CtiDownloader: Obtaining signed URL for resource: %s", originalUrl.c_str());
+
+            // Step 1: Get access token from credentials provider
+            // This automatically handles token refresh if needed
+            auto accessToken = m_credentialsProvider->getAccessToken();
+
+            logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Access token obtained (length: %zu)", accessToken.length());
+
+            // Step 2: Set the access token in the signed URL provider
+            m_signedUrlProvider->setAccessToken(accessToken);
+
+            // Step 3: Exchange token for signed URL
+            auto signedUrl = m_signedUrlProvider->exchangeForSignedUrl(originalUrl);
+
+            logInfo(WM_CONTENTUPDATER, "CtiDownloader: Signed URL obtained successfully");
+            logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Signed URL: %s", signedUrl.c_str());
+
+            return signedUrl;
+        }
+        catch (const std::exception& e)
+        {
+            logError(WM_CONTENTUPDATER, "CtiDownloader: Failed to obtain signed URL: %s", e.what());
+            throw std::runtime_error("Failed to authenticate CTI request: " + std::string(e.what()));
+        }
+    }
+
+    /**
      * @brief Get the CTI API base parameters.
      *
      * @param ctiURL Base URL from where to download the CTI parameters.
@@ -191,6 +245,21 @@ protected:
                                const std::string& queryParameters = "",
                                const std::string& outputFilepath = "") const
     {
+        // Get effective URL (transform to signed URL if OAuth is enabled)
+        std::string effectiveURL;
+        try
+        {
+            // Note: getEffectiveUrl() is const-correct because it doesn't modify observable state
+            // (credential/token refresh is internal cache management)
+            effectiveURL = const_cast<CtiDownloader*>(this)->getEffectiveUrl(URL);
+        }
+        catch (const std::exception& e)
+        {
+            // If OAuth authentication fails, propagate the error
+            logError(WM_CONTENTUPDATER, "CtiDownloader: Failed to authenticate request: %s", e.what());
+            throw;
+        }
+
         // On download error routine.
         const auto onError {[](const std::string& message, const long statusCode, const std::string& responseBody)
                             {
@@ -219,8 +288,9 @@ protected:
         {
             try
             {
+                // Use effective URL (signed URL if OAuth enabled, original URL otherwise)
                 m_urlRequest.get(
-                    RequestParameters {.url = HttpURL(URL + queryParameters)},
+                    RequestParameters {.url = HttpURL(effectiveURL + queryParameters)},
                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError, .outputFile = outputFilepath},
                     ConfigurationParameters {.userAgent = m_spUpdaterContext->spUpdaterBaseContext->httpUserAgent});
                 return;
@@ -282,6 +352,8 @@ protected:
     const std::string m_componentName;                  ///< Stage name.
     std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< Updater context.
     const unsigned int m_tooManyRequestsRetryTime; ///< Time between retries when receiving a "too many requests" error.
+    std::shared_ptr<CTICredentialsProvider> m_credentialsProvider; ///< OAuth credentials provider (optional).
+    std::shared_ptr<CTISignedUrlProvider> m_signedUrlProvider;     ///< Signed URL provider (optional).
 
 public:
     // LCOV_EXCL_START
@@ -294,13 +366,19 @@ public:
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
      * @param componentName Component name used to update the stage status.
      * @param tooManyRequestsRetryTime Time between retries when a "too many requests" error is received.
+     * @param credentialsProvider Optional OAuth credentials provider for authenticated requests.
+     * @param signedUrlProvider Optional signed URL provider for token exchange.
      */
     explicit CtiDownloader(IURLRequest& urlRequest,
                            std::string componentName,
-                           unsigned int tooManyRequestsRetryTime = TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME)
+                           unsigned int tooManyRequestsRetryTime = TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME,
+                           std::shared_ptr<CTICredentialsProvider> credentialsProvider = nullptr,
+                           std::shared_ptr<CTISignedUrlProvider> signedUrlProvider = nullptr)
         : m_urlRequest(urlRequest)
         , m_componentName(std::move(componentName))
         , m_tooManyRequestsRetryTime(tooManyRequestsRetryTime)
+        , m_credentialsProvider(std::move(credentialsProvider))
+        , m_signedUrlProvider(std::move(signedUrlProvider))
     {
     }
 
