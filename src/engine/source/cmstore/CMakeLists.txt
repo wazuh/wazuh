@@ -12,6 +12,7 @@ add_library(cmstore::icmstore ALIAS cmstore_icmstore)
 # Implementation
 add_library(cmstore_cmstore STATIC
     ${SRC_DIR}/cmstore.cpp
+    ${SRC_DIR}/storens.cpp
 )
 target_include_directories(cmstore_cmstore
     PUBLIC
