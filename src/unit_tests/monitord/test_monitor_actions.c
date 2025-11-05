@@ -117,7 +117,7 @@ void test_monitor_send_deletion_msg_fail(void **state) {
     will_return(__wrap_SendMSG, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Could not generate removed agent alert for 'Agent1-any'");
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
+    expect_string(__wrap__mdebug1, formatted_msg, QUEUE_SEND);
 
     monitor_send_deletion_msg(agent);
 
@@ -166,7 +166,7 @@ void test_monitor_send_disconnection_msg_send_msg_fail(void **state) {
     expect_value(__wrap_SendMSG, loc, SECURE_MQ);
     will_return(__wrap_SendMSG, -1);
     mond.a_queue = 1;
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
+    expect_string(__wrap__mdebug1, formatted_msg, QUEUE_SEND);
     expect_string(__wrap__mdebug1, formatted_msg, "Could not generate disconnected agent alert for 'Agent1-any'");
 
     monitor_send_disconnection_msg(agent);
