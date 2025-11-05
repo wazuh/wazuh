@@ -20,13 +20,8 @@ public:
     MOCK_METHOD(std::shared_ptr<IKVDBHandler>,
                 getKVDBHandler,
                 (const cm::store::ICMStoreNSReader& nsReader, const std::string& dbName),
-                (const, noexcept, override));
+                (noexcept, override));
 };
-
-inline std::shared_ptr<IKVDBHandler> kvdbGetKVDBHandlerNull()
-{
-    return nullptr;
-}
 
 } // namespace kvdbStore::mocks
 

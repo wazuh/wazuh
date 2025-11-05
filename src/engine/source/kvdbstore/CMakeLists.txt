@@ -6,7 +6,7 @@ set(INC_DIR   ${CMAKE_CURRENT_LIST_DIR}/include)
 # INTERFACE
 add_library(kvdbstore_ikvdb INTERFACE)
 target_include_directories(kvdbstore_ikvdb INTERFACE ${IFACE_DIR})
-target_link_libraries(kvdbstore_ikvdb INTERFACE base)
+target_link_libraries(kvdbstore_ikvdb INTERFACE base cmstore::icmstore)
 add_library(kvdbstore::ikvdb ALIAS kvdbstore_ikvdb)
 
 # Implementation
@@ -17,12 +17,13 @@ add_library(kvdbstore_kvdb STATIC
 target_include_directories(kvdbstore_kvdb
     PUBLIC
     ${INC_DIR}
+    PRIVATE
+    ${SRC_DIR}
+    ${INC_DIR}/kvdb
 )
 target_link_libraries(kvdbstore_kvdb
     PUBLIC
     kvdbstore::ikvdb
-    base
-    cmstore::icmstore
 )
 add_library(kvdbstore::kvdb ALIAS kvdbstore_kvdb)
 
