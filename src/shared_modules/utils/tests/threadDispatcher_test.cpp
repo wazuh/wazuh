@@ -130,7 +130,7 @@ TEST_F(ThreadDispatcherTest, CaptureWarningMsg)
                                      va_list args)
         {
             // Receives the exception message from the dispatch method.
-            if (logLevel == Log::LOGLEVEL_WARNING)
+            if (logLevel == Log::LOGLEVEL_DEBUG)
             {
                 char buffer[4096];
                 vsnprintf(buffer, sizeof(buffer), message, args);

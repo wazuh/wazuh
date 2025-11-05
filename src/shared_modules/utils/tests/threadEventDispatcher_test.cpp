@@ -168,14 +168,17 @@ TEST_F(ThreadEventDispatcherTest, CaptureWarningMsg)
                                      va_list args)
         {
             // Receives the exception message from the dispatch method.
-            if (logLevel == Log::LOGLEVEL_WARNING)
+            if (logLevel == Log::LOGLEVEL_DEBUG)
             {
                 // Format the message.
                 char buffer[4096];
                 vsnprintf(buffer, sizeof(buffer), message, args);
                 std::string formatedMsg(buffer);
                 // Compare expected message.
-                EXPECT_EQ("Dispatch handler error, Test exception", formatedMsg);
+                if (formatedMsg.find("ThreadEventDispatcher dispatch end.") == std::string::npos)
+                {
+                    EXPECT_EQ("Dispatch handler error, Test exception", formatedMsg);
+                }
                 warningCaptured = true;
                 // Avoid multiple captures.
                 try

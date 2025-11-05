@@ -268,7 +268,7 @@ TEST_F(AsyncValueDispatcherTest, CaptureWarningMsg)
                                      va_list args)
         {
             // Receives the exception message from the dispatch method.
-            if (logLevel == Log::LOGLEVEL_WARNING)
+            if (logLevel == Log::LOGLEVEL_DEBUG)
             {
                 // Format the message.
                 char buffer[4096];

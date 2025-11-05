@@ -159,7 +159,7 @@ namespace Utils
                 }
                 catch (const std::exception& ex)
                 {
-                    logWarn(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                    logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
                 }
             }
             void joinThreads()

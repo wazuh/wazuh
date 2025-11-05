@@ -227,7 +227,7 @@ private:
                 if (m_running)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
-                    logWarn(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                    logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
                 }
                 else
                 {
