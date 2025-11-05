@@ -5,3 +5,5 @@ The **FIM (File Integrity Monitoring)** module has been enhanced with a reliable
 The module implements a **dual event system** that provides both real-time alerts and reliable state synchronization. It leverages the **Agent Sync Protocol** to persist differences in a local SQLite database and synchronizes them periodically with the manager through a session-based protocol.
 
 FIM persistence supports **stateful synchronization** for complete file/registry metadata including checksums, while maintaining **stateless real-time alerts** for immediate threat detection.
+
+FIM includes **automatic recovery capabilities** to detect and resolve synchronization inconsistencies between agent and manager databases. Recovery is triggered automatically during a periodic synchronization cycle determined by the `integrity_interval` option.

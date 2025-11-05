@@ -6,7 +6,6 @@ if(${TARGET} STREQUAL "winagent")
 else()
   file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
                      ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
-
   list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
 endif()
 
