@@ -111,12 +111,14 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
     return concatenatedChecksums;
 }
 
-std::string DB::calculateTableChecksum(const char* table_name) {
+std::string DB::calculateTableChecksum(const char* table_name)
+{
     std::string concatenated_checksums = DB::instance().getConcatenatedChecksums(table_name);
 
     // Build checksum-of-checksums
     Utils::HashData hash(Utils::HashType::Sha1);
     std::string final_checksum;
+
     try
     {
         hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
@@ -128,6 +130,7 @@ std::string DB::calculateTableChecksum(const char* table_name) {
     {
         throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
     }
+
     // LCOV_EXCL_STOP
 
 

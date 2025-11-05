@@ -471,7 +471,11 @@ void start_daemon()
 
         // If time elapsed is higher than the syscheck time, run syscheck time
         if (!fim_shutdown_process_on() && (((curr_time - prev_time_sk) > syscheck.time) || run_now)) {
+            w_mutex_lock(&syscheck.fim_scan_mutex);
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
             prev_time_sk = fim_scan();
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
         }
         sleep(SYSCHECK_WAIT);
     }
