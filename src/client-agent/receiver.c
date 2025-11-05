@@ -108,7 +108,7 @@ int receive_msg()
 #ifndef WIN32
                 if (agt->execdq >= 0) {
                     if (OS_SendUnix(agt->execdq, tmp_msg, 0) < 0) {
-                        merror("Error communicating with execd");
+                        mdebug1("Error communicating with execd");
                     }
                 }
 #else
@@ -167,27 +167,27 @@ int receive_msg()
                 /* Connect to the Security configuration assessment queue */
                 if (agt->cfgadq >= 0) {
                     if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                        mwarn("Error communicating with Security configuration assessment");
+                        mdebug1("Error communicating with Security configuration assessment");
                         close(agt->cfgadq);
 
                         if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-                            mwarn("Unable to connect to the Security configuration assessment "
+                            mdebug1("Unable to connect to the Security configuration assessment "
                                     "queue (disabled).");
                             agt->cfgadq = -1;
                         } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            mwarn("Error communicating with Security configuration assessment");
+                            mdebug1("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }
                     }
                 } else {
                     if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-                        mwarn("Unable to connect to the Security configuration assessment "
+                        mdebug1("Unable to connect to the Security configuration assessment "
                             "queue (disabled).");
                         agt->cfgadq = -1;
                     } else {
                          if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            mwarn("Error communicating with Security configuration assessment");
+                            mdebug1("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }
