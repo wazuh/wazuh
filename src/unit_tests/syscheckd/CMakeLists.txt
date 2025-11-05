@@ -10,9 +10,6 @@ else()
   list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
 endif()
 
-# # Exclude C++ recovery module files
-# list(FILTER sysfiles EXCLUDE REGEX ".*[\\/]recovery[\\/].*")
-
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/store_op.o)
