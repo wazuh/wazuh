@@ -11,6 +11,12 @@ extern "C" {
 #include "db.hpp"
 #include "stringHelper.h"
 #include "syscheck.h"
+#include "../../config/syscheck-config.h"
+
+// The time() macro from common.h (Included when running unit_tests) interferes with std::time calls in timeHelper.h
+#ifdef time
+#undef time
+#endif
 #include "timeHelper.h"
 
 /**
@@ -25,9 +31,29 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(table_name);
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
+    std::string id;
+    std::string index;
     for (const nlohmann::json& item : recoveryItems) {
         // Calculate SHA1 hash to get an id for persistDifferenceInMemory()
-        std::string id = item["path"];
+#ifdef WIN32
+        // We use the value of 'arch' in this way to use the same format for the hash as the one used by registry_key_transaction_callback from registry.c
+        // This guarantees persisted entries share a consistent id format.
+        int arch = (item["arch"].get<std::string>() == "[x32]") ? ARCH_32BIT: ARCH_64BIT;
+#endif // WIN32
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            id = item["path"];
+            index = FIM_FILES_SYNC_INDEX;
+        }
+#ifdef WIN32
+        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+            id = std::to_string(arch) + ":" + item["path"].get<std::string>();
+            index = FIM_REGISTRY_KEYS_SYNC_INDEX;
+        }
+        else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+            id = item["path"].get<std::string>() + ":" + std::to_string(arch) + ":" + item["value"].get<std::string>();
+            index = FIM_REGISTRY_VALUES_SYNC_INDEX;
+        }
+#endif // WIN32
         try
         {
             Utils::HashData hash(Utils::HashType::Sha1);
@@ -44,7 +70,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         wrapper->impl->persistDifferenceInMemory(
             id,
             Operation::CREATE,
-            table_name,
+            index,
             item.dump(),
             item["version"]
         );
@@ -69,7 +95,6 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
             sync_max_eps
         );
         // LCOV_EXCL_STOP
-
     }
 
     if (success) {
@@ -92,8 +117,20 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
 
     bool needs_full_sync;
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+    std::string index;
+    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        index = FIM_FILES_SYNC_INDEX;
+    }
+#ifdef WIN32
+    else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+        index = FIM_REGISTRY_KEYS_SYNC_INDEX;
+    }
+    else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        index = FIM_REGISTRY_VALUES_SYNC_INDEX;
+    }
+#endif // WIN32
     needs_full_sync = wrapper->impl->requiresFullSync(
-        table_name,
+        index,
         final_checksum,
         std::chrono::seconds(sync_response_timeout),
         FIM_SYNC_RETRIES,
