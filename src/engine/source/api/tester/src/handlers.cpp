@@ -21,22 +21,9 @@ using TesterAndRequest = std::pair<std::shared_ptr<::router::ITesterAPI>, Reques
 namespace
 {
 
-eTester::Sync getHashSatus(const ::router::test::Entry& entry,
-                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eTester::Sync getHashSatus(const ::router::test::Entry& entry)
 {
-    auto policyManager = wPolicyManager.lock();
-    if (!policyManager)
-    {
-        return eTester::Sync::SYNC_UNKNOWN;
-    }
-
-    auto resPolicy = policyManager->getHash(entry.policy());
-    if (base::isError(resPolicy))
-    {
-        return eTester::Sync::ERROR;
-    }
-
-    return base::getResponse(resPolicy) == entry.hash() ? eTester::Sync::UPDATED : eTester::Sync::OUTDATED;
+    return eTester::Sync::SYNC_UNKNOWN;
 }
 
 /**
@@ -46,12 +33,11 @@ eTester::Sync getHashSatus(const ::router::test::Entry& entry,
  * @param wPolicyManager Policy manager to get the policy hash
  * @return eTester::Session
  */
-eTester::Session toSession(const ::router::test::Entry& entry,
-                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eTester::Session toSession(const ::router::test::Entry& entry)
 {
     eTester::Session session;
     session.set_name(entry.name());
-    session.set_policy(entry.policy().fullName());
+    session.set_policy(entry.policy().toStr());
     session.set_lifetime(static_cast<uint32_t>(entry.lifetime()));
     if (entry.description().has_value())
     {
@@ -62,7 +48,7 @@ eTester::Session toSession(const ::router::test::Entry& entry,
                            : ::router::env::State::DISABLED == entry.status() ? eTester::State::DISABLED
                                                                               : eTester::State::STATE_UNKNOWN;
 
-    session.set_policy_sync(getHashSatus(entry, wPolicyManager));
+    session.set_policy_sync(getHashSatus(entry));
     session.set_entry_status(state);
     session.set_last_use(static_cast<uint32_t>(entry.lastUse()));
     return session;
@@ -185,8 +171,11 @@ adapter::RouteHandler sessionPost(const std::shared_ptr<::router::ITesterAPI>& t
             return;
         }
 
-        auto policyName = tryGetProperty<ResponseType, base::Name>(
-            true, [&protoSession]() { return base::Name(adapter::getRes(protoSession).policy()); }, "policy", "name");
+        auto policyName = tryGetProperty<ResponseType, cm::store::NamespaceId>(
+            true,
+            [&protoSession]() { return cm::store::NamespaceId(adapter::getRes(protoSession).policy()); },
+            "policy",
+            "name");
         if (adapter::isError(policyName))
         {
             res = adapter::getErrorResp(policyName);
@@ -254,11 +243,9 @@ adapter::RouteHandler sessionDelete(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                                 const std::shared_ptr<api::policy::IPolicy>& policy)
+adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester)](const auto& req, auto& res)
     {
         using RequestType = eTester::SessionGet_Request;
         using ResponseType = eTester::SessionGet_Response;
@@ -273,13 +260,6 @@ adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& te
 
         auto [tester, protoReq] = adapter::getRes(result);
 
-        auto policy = wPolicyManager.lock();
-        if (!policy)
-        {
-            res = adapter::internalErrorResponse<ResponseType>("Error: Policy Manager is not initialized");
-            return;
-        }
-
         // Get the session
         auto entry = tester->getTestEntry(protoReq.name());
         if (base::isError(entry))
@@ -289,7 +269,7 @@ adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& te
         }
 
         ResponseType eResponse;
-        eResponse.mutable_session()->CopyFrom(toSession(base::getResponse(entry), wPolicyManager));
+        eResponse.mutable_session()->CopyFrom(toSession(base::getResponse(entry)));
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };
@@ -334,11 +314,9 @@ adapter::RouteHandler sessionReload(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                               const std::shared_ptr<api::policy::IPolicy>& policy)
+adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester)](const auto& req, auto& res)
     {
         using RequestType = eTester::TableGet_Request;
         using ResponseType = eTester::TableGet_Response;
@@ -359,7 +337,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
         ResponseType eResponse;
         for (const auto& entry : entries)
         {
-            eResponse.add_sessions()->CopyFrom(toSession(entry, wPolicyManager));
+            eResponse.add_sessions()->CopyFrom(toSession(entry));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
