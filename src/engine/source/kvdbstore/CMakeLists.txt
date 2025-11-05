@@ -19,7 +19,6 @@ target_include_directories(kvdbstore_kvdb
     ${INC_DIR}
     PRIVATE
     ${SRC_DIR}
-    ${INC_DIR}/kvdb
 )
 target_link_libraries(kvdbstore_kvdb
     PUBLIC
@@ -52,6 +51,7 @@ target_link_libraries(kvdbstore_utest
         GTest::gmock
         kvdbstore::kvdb
         kvdbstore::mocks
+        cmstore::mocks
 )
 target_include_directories(kvdbstore_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(kvdbstore_utest)
@@ -63,7 +63,9 @@ add_executable(kvdbstore_ctest
 target_link_libraries(kvdbstore_ctest
     PRIVATE
         GTest::gtest_main
+        GTest::gmock
         kvdbstore::kvdb
+        cmstore::mocks
 )
 gtest_discover_tests(kvdbstore_ctest)
 
