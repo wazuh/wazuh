@@ -30,13 +30,6 @@
 #include "agent_sync_protocol.hpp"
 #include <string>
 
-/**
- * @brief Calculate the checksum-of-checksums for a table (exported for testing)
- * @param table_name The table to calculate checksum for
- * @return The SHA1 checksum-of-checksums as a hex string
- */
-std::string calculateTableChecksum(const char* table_name);
-
 extern "C"
 {
 #else

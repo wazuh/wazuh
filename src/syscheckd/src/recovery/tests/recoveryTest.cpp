@@ -128,7 +128,7 @@ TEST_F(RecoveryTest, ChecksumCalculationMultipleEntries)
     DB::instance().updateFile(fileEntry1, [](int, const nlohmann::json&) {});
     DB::instance().updateFile(fileEntry2, [](int, const nlohmann::json&) {});
 
-    std::string checksum = calculateTableChecksum("file_entry");
+    std::string checksum = DB::instance().calculateTableChecksum("file_entry");
 
     // The actual checksum returned by the DB (depends on internal ordering/formatting)
     EXPECT_EQ(checksum, "c55e94247fbfc4f11842fc3bd979e5beb5ed1080");

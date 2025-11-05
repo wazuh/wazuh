@@ -23,28 +23,6 @@ extern "C" {
  * @param table_name The table to calculate checksum for
  * @return The SHA1 checksum-of-checksums as a hex string
  */
-std::string calculateTableChecksum(const char* table_name) {
-    std::string concatenated_checksums = DB::instance().getConcatenatedChecksums(table_name);
-
-    // Build checksum-of-checksums
-    Utils::HashData hash(Utils::HashType::Sha1);
-    std::string final_checksum;
-    try
-    {
-        hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
-        const std::vector<unsigned char> hashResult = hash.hash();
-        final_checksum = Utils::asciiToHex(hashResult);
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
-    }
-    // LCOV_EXCL_STOP
-
-
-    return final_checksum;
-}
 
 extern "C"
 {
@@ -114,7 +92,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
 // LCOV_EXCL_START
 bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle){
     minfo("Attempting to get checksum for %s table", table_name);
-    std::string final_checksum = calculateTableChecksum(table_name);
+    std::string final_checksum = DB::instance().calculateTableChecksum(table_name);
     minfo("Success! Final file table checksum is: %s", final_checksum.c_str());
 
     bool needs_full_sync;
