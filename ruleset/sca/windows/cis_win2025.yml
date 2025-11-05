@@ -300,7 +300,7 @@ checks:
       - soc_2: ["CC6.3"]
     condition: all
     rules:
-      - "not c:net user -> r:Admin|Администратор|Amministratore|Beheerder|Järjestelmänvalvoja|Správce|Rendszergazda|Yönetici |Διαχειριστής|管理者|管理员|系統管理員|관리자|مسؤول | מנהל |ผู้ดูแลระบบ"
+      - "not c:net user -> r:Administrator|Администратор|Amministratore|Beheerder|Järjestelmänvalvoja|Správce|Rendszergazda|Yönetici |Διαχειριστής|管理者|管理员|系統管理員|관리자|مسؤول | מנהל |ผู้ดูแลระบบ"
 
   # 2.3.1.4 (L1) Configure 'Accounts: Rename guest account'. (Automated)
   - id: 36511
