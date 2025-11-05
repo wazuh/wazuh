@@ -1324,8 +1324,52 @@ EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 SHARED_RES := http-request
 SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 
+# Indexer plugin templates
+INDEXER_PLUGINS_DIR := external/indexer-plugins
+INDEXER_PLUGINS_BASE_URL := https://raw.githubusercontent.com/wazuh/wazuh-indexer-plugins
+INDEXER_PLUGINS_STATES_PATH := plugins/setup/src/main/resources/templates/states
+INDEXER_PLUGINS_STREAMS_PATH := plugins/setup/src/main/resources/templates/streams
+
+# Base templates (always downloaded)
+INDEXER_TEMPLATES_BASE := \
+	fim-files.json \
+	fim-registry-keys.json \
+	fim-registry-values.json \
+	inventory-browser-extensions.json \
+	inventory-groups.json \
+	inventory-hardware.json \
+	inventory-hotfixes.json \
+	inventory-interfaces.json \
+	inventory-networks.json \
+	inventory-packages.json \
+	inventory-ports.json \
+	inventory-processes.json \
+	inventory-protocols.json \
+	inventory-services.json \
+	inventory-system.json \
+	inventory-users.json \
+	sca.json
+
+# Additional templates for server target
+INDEXER_TEMPLATES_SERVER_STATES := \
+	vulnerabilities.json
+
+INDEXER_TEMPLATES_SERVER_STREAMS := \
+	alerts.json
+
+# Select templates based on TARGET
+ifeq (${TARGET}, agent)
+INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE)
+INDEXER_TEMPLATES_STREAMS :=
+else
+INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE) $(INDEXER_TEMPLATES_SERVER_STATES)
+INDEXER_TEMPLATES_STREAMS := $(INDEXER_TEMPLATES_SERVER_STREAMS)
+endif
+
+INDEXER_TEMPLATE_FILES := $(INDEXER_TEMPLATES_STATES:%=$(INDEXER_PLUGINS_DIR)/%) $(INDEXER_TEMPLATES_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%)
+
 .PHONY: deps
-deps: $(EXTERNAL_TAR) $(SHARED_TAR)
+deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES)
 
 external/$(CPYTHON).tar.gz:
 # Python interpreter
@@ -1386,6 +1430,49 @@ shared_modules/http-request.tar.gz:
 	($(GUNZIP) $@ || (rm -f $@ && echo "Error decompressing $@ maybe wrong branch was supplied!" && false)) &&\
 	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) &&\
 	rm $(patsubst %.gz,%,$@)) || true
+
+# Indexer plugin templates download
+# Get refs from get_git_refs.sh if INDEXER_PLUGINS_REFS is not set
+ifdef INDEXER_PLUGINS_REFS
+INDEXER_PLUGIN_REFS_LIST := $(INDEXER_PLUGINS_REFS)
+else
+INDEXER_PLUGIN_REFS_LIST := $(shell $(ROUTE_PATH)/../tools/get_git_refs.sh 2>/dev/null)
+endif
+
+$(INDEXER_PLUGINS_DIR):
+	mkdir -p $(INDEXER_PLUGINS_DIR)
+
+# Rule for streams templates (alerts.json)
+$(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
+	@success=0; \
+	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
+		echo "curl -f -s -o $@ $$url"; \
+		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+			success=1; \
+			break; \
+		fi; \
+	done; \
+	if [ $$success -eq 0 ]; then \
+		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		exit 1; \
+	fi
+
+# Rule for states templates (all other .json files)
+$(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
+	@success=0; \
+	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
+		echo "curl -f -s -o $@ $$url"; \
+		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+			success=1; \
+			break; \
+		fi; \
+	done; \
+	if [ $$success -eq 0 ]; then \
+		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		exit 1; \
+	fi
 
 ####################
 #### OSSEC Libs ####
@@ -2355,7 +2442,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??*
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??* $(INDEXER_PLUGINS_DIR)
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
