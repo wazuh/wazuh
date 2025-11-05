@@ -25,8 +25,6 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                         -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
                         -Wl,--wrap,fim_db_close_and_delete_database \
-                        -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                        -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
                         -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                         -Wl,--wrap,fim_recovery_persist_table_and_resync \
                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
@@ -54,8 +52,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                               -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
-                              -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                              -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                              -Wl,--wrap,fim_db_close_and_delete_database \
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                               -Wl,--wrap,fim_recovery_persist_table_and_resync \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
@@ -89,8 +86,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                               -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                              -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                              -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                              -Wl,--wrap,fim_db_close_and_delete_database \
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                               -Wl,--wrap,fim_recovery_persist_table_and_resync \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
@@ -123,8 +119,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init \
                            -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                            -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                           -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                           -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                           -Wl,--wrap,fim_db_close_and_delete_database \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                            -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
@@ -183,8 +178,6 @@ else()
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                            -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
-                           -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                           -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
                            ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 

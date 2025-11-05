@@ -141,23 +141,10 @@ class EXPORTED DB final
         void closeAndDeleteDatabase();
 
         /**
-        * @brief Check if the first scan has been synched.
-        *
-        * @return true if first scan has been synched, false otherwise.
-        */
-        bool checkIfFirstScanHasBeenSynched() const;
-
-        /**
-        * @brief Set the first_scan_has_been_synched flag.
-        */
-        void setFirstScanHasBeenSynched();
-
-        /**
         * @brief Gets the concatenated checksums from all the elements of a table
         * @return the concatenated checksum
         */
         std::string getConcatenatedChecksums(const std::string& tableName);
-
 
         /**
          * @brief Calculate the checksum-of-checksums for a table
@@ -198,7 +185,6 @@ class EXPORTED DB final
         ~DB() = default;
         DB(const DB&) = delete;
         DB& operator=(const DB&) = delete;
-        bool first_scan_has_been_synched = false;
 };
 
 #endif //_IFIMDB_HPP

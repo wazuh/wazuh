@@ -10,8 +10,8 @@ else()
   list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
 endif()
 
-# Exclude C++ recovery module files
-list(FILTER sysfiles EXCLUDE REGEX ".*[\\/]recovery[\\/].*")
+# # Exclude C++ recovery module files
+# list(FILTER sysfiles EXCLUDE REGEX ".*[\\/]recovery[\\/].*")
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
@@ -137,8 +137,7 @@ set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckC
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
-                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                           -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                            ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
@@ -171,8 +170,7 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                  -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                  -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
-                                 -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                                 -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                                 -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                                  ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "fim_diff_changes")
@@ -199,8 +197,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                              -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
-                             -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                             -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                             -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                              ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_realtime")
@@ -235,8 +232,7 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthr
                                 -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                 -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                 -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
-                                -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                                -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                                -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "config")
@@ -265,8 +261,6 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--w
                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                          -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
-                         -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                         -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
                          ${DEBUG_OP_WRAPPERS}")
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
@@ -305,8 +299,7 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
-                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                          -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                           ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_check")
@@ -428,8 +421,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_sysche
                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
-                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_set_first_scan_has_been_synched \
-                          -Wl,--wrap,fim_db_check_if_first_scan_has_been_synched \
+                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                           ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_scan SYSCHECK_O ${TEST_DEPS} fim_shared)

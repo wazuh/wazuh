@@ -625,10 +625,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         if (sync_result) {
             minfo("Synchronization succeeded");
 
-            if (!fim_db_check_if_first_scan_has_been_synched()) {
-                fim_db_set_first_scan_has_been_synched();
-            }
-
             for (int i = 0; i < table_count; i++) {
                 if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
                     minfo("Starting integrity validation process for %s", table_names[i]);
