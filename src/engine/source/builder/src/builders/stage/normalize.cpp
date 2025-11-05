@@ -172,6 +172,7 @@ base::Expression processItem(const json::Json& block, const std::shared_ptr<cons
         {syntax::asset::CHECK_KEY, 0}, {syntax::asset::PARSE_KEY, 1}, {syntax::asset::MAP_KEY, 2}};
 
     int lastOrder = -1;
+    int parseCount = 0;
     for (const auto& [key, _] : blockObj)
     {
         // Normalize the key for order validation (parse|field -> parse)
@@ -187,6 +188,18 @@ base::Expression processItem(const json::Json& block, const std::shared_ptr<cons
             }
             lastOrder = it->second;
         }
+
+        if (normalizedKey == syntax::asset::PARSE_KEY)
+        {
+            ++parseCount;
+        }
+    }
+
+    if (parseCount > 1)
+    {
+        throw std::runtime_error(
+            fmt::format("Stage '{}': only one 'parse|' (or 'parse') is allowed inside the same object.",
+                        syntax::asset::NORMALIZE_KEY));
     }
 
     // Process each subblock of the item

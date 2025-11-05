@@ -108,7 +108,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Name cannot be empty"); },
+            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: "); },
             [](auto&) {}),
         // Invalid filter
         HandlerT(
@@ -125,7 +125,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Name cannot be empty"); },
+            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: "); },
             [](auto&) {}),
         // Route with description
         HandlerT(

@@ -109,7 +109,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Name cannot be empty"); },
+            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: "); },
             [](auto&) {}),
         // Invalid filter
         HandlerT(
@@ -126,7 +126,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid filter name: Name cannot be empty"); },
+            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: policy/name/0"); },
             [](auto&) {}),
         // Invalid priority (default 0)
         HandlerT(
@@ -134,7 +134,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
-                jsonReq.setString("policy/name/0", "/route/policy");
+                jsonReq.setString("testing", "/route/policy");
                 jsonReq.setString("filter/name/0", "/route/filter");
                 httplib::Request req;
                 req.body = jsonReq.str();

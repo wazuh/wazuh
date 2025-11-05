@@ -8,10 +8,8 @@
 #include <vector>
 
 #include <api/archiver/handlers.hpp>
-#include <api/catalog/catalog.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
-#include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
 #include <base/hostInfo.hpp>
@@ -26,6 +24,10 @@
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <cmstore/cmstore.hpp>
+<<<<<<< HEAD
+=======
+//#include <cmsync/cmsync.hpp>
+>>>>>>> 0920aac1b0 (Replace store for cmstore and modify interfaces)
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -220,7 +222,6 @@ int main(int argc, char* argv[])
 
     std::shared_ptr<store::Store> store;
     std::shared_ptr<builder::Builder> builder;
-    std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
@@ -228,10 +229,13 @@ int main(int argc, char* argv[])
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
-    std::shared_ptr<api::policy::IPolicy> policyManager;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
+<<<<<<< HEAD
+=======
+    // std::shared_ptr<cm::sync::CMSync> cmsync;
+>>>>>>> 0920aac1b0 (Replace store for cmstore and modify interfaces)
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
     std::shared_ptr<cm::store::CMStore> cmStore;
@@ -450,8 +454,8 @@ int main(int argc, char* argv[])
             builder::BuilderDeps builderDeps;
             builderDeps.logparDebugLvl = 0;
             builderDeps.logpar = logpar;
-            builderDeps.kvdbScopeName = "builder";
-            builderDeps.kvdbManager = kvdbManager;
+            // builderDeps.kvdbScopeName = "builder";
+            // builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
             builderDeps.iConnector = indexerConnector;
@@ -474,22 +478,8 @@ int main(int argc, char* argv[])
                     std::make_shared<builder::AllowedFields>(base::getResponse<store::Doc>(allowedFieldsDoc));
             }
 
-            builder = std::make_shared<builder::Builder>(store, schema, defs, allowedFields, builderDeps);
+            builder = std::make_shared<builder::Builder>(nullptr /*cm::store::CMStore*/, schema, defs, allowedFields, builderDeps);
             LOG_INFO("Builder initialized.");
-        }
-
-        // Catalog
-        {
-            api::catalog::Config catalogConfig {store, builder};
-
-            catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
-            LOG_INFO("Catalog initialized.");
-        }
-
-        // Policy manager
-        {
-            policyManager = std::make_shared<api::policy::Policy>(store, builder);
-            LOG_INFO("Policy manager initialized.");
         }
 
         // Router
@@ -540,38 +530,46 @@ int main(int argc, char* argv[])
         }
 
 
-        // CTI Store (initialized after CMSync to pass deploy callback)
-        if (confManager.get<bool>(conf::key::CTI_ENABLED)) {
-            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
-            cti::store::ContentManagerConfig ctiCfg;
-            ctiCfg.basePath = baseCtiPath;
+        // // CTI Store (initialized after CMSync to pass deploy callback)
+        // if (confManager.get<bool>(conf::key::CTI_ENABLED)) {
+        //     const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
+        //     cti::store::ContentManagerConfig ctiCfg;
+        //     ctiCfg.basePath = baseCtiPath;
 
-            auto deployCallback = [](const std::shared_ptr<cti::store::ICMReader>& cmstore)
-            {
-                LOG_INFO("CTI Store deploy callback triggered. TODO: IMPLMENT");
-            };
+            // auto deployCallback = [](const std::shared_ptr<cti::store::ICMReader>& cmstore)
+            // {
+            //     LOG_INFO("CTI Store deploy callback triggered. TODO: IMPLMENT");
+            // };
 
-            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, deployCallback);
-            LOG_INFO("CTI Store initialized");
+        //     ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, deployCallback);
+        //     LOG_INFO("CTI Store initialized");
 
             // TODO: Find a better way to do this - This cannot going to production
             if (orchestrator->getEntries().empty())
             {
                 try
                 {
-                    LOG_WARNING("TODO: IMPLEMENT: No environments found, deploying CTI content at startup. This may take a while...");
-                    //cmsync->deploy(ctiStoreManager);
-
-                }
-                catch (const std::exception& e)
-                {
                     LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
                 }
             }
 
-            ctiStoreManager->startSync();
-            exitHandler.add([ctiStoreManager]() { ctiStoreManager->shutdown(); });
-        }
+        //     // TODO: Find a better way to do this - This cannot going to production
+        //     if (orchestrator->getEntries().empty())
+        //     {
+        //         try
+        //         {
+        //             LOG_WARNING("No environments found, deploying CTI content at startup. This may take a while...");
+        //             cmsync->deploy(ctiStoreManager);
+        //         }
+        //         catch (const std::exception& e)
+        //         {
+        //             LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
+        //         }
+        //     }
+
+        //     ctiStoreManager->startSync();
+        //     exitHandler.add([ctiStoreManager]() { ctiStoreManager->shutdown(); });
+        // }
 
         // Create and configure the api endpints
         {
@@ -587,10 +585,6 @@ int main(int argc, char* argv[])
 
             // TODO Add Metrics API registration
 
-            // Catalog
-            api::catalog::handlers::registerHandlers(catalog, apiServer);
-            LOG_DEBUG("Catalog API registered.");
-
             // Geo
             api::geo::handlers::registerHandlers(geoManager, apiServer);
             LOG_DEBUG("Geo API registered.");
@@ -599,16 +593,12 @@ int main(int argc, char* argv[])
             api::kvdb::handlers::registerHandlers(kvdbManager, apiServer);
             LOG_DEBUG("KVDB API registered.");
 
-            // Policy
-            api::policy::handlers::registerHandlers(policyManager, apiServer);
-            LOG_DEBUG("Policy API registered.");
-
             // Router
-            api::router::handlers::registerHandlers(orchestrator, policyManager, apiServer);
+            api::router::handlers::registerHandlers(orchestrator, apiServer);
             LOG_DEBUG("Router API registered.");
 
             // Tester
-            api::tester::handlers::registerHandlers(orchestrator, store, policyManager, apiServer);
+            api::tester::handlers::registerHandlers(orchestrator, store, apiServer);
             LOG_DEBUG("Tester API registered.");
 
             // Archiver

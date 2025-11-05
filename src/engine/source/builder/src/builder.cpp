@@ -19,19 +19,19 @@ class Builder::Registry final : public builders::RegistryType
 {
 };
 
-Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
+Builder::Builder(const std::shared_ptr<cm::store::ICMstore>& cmStore,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                  const std::shared_ptr<IAllowedFields>& allowedFields,
                  const BuilderDeps& builderDeps)
-    : m_storeRead {storeRead}
+    : m_cmStore {cmStore}
     , m_schema {schema}
     , m_definitionsBuilder {definitionsBuilder}
     , m_allowedFields {allowedFields}
 {
-    if (!m_storeRead)
+    if (!m_cmStore)
     {
-        throw std::runtime_error {"Store reader interface is null"};
+        throw std::runtime_error {"CMStore interface is null"};
     }
 
     if (!m_schema)
@@ -56,34 +56,18 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
 }
 
-std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name, bool trace, bool sandbox) const
+std::shared_ptr<IPolicy> Builder::buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace, bool sandbox) const
 {
-    auto policyDoc = m_storeRead->readInternalDoc(name);
-    if (base::isError(policyDoc))
-    {
-        throw std::runtime_error(base::getError(policyDoc).message);
-    }
-
-    auto policy = std::make_shared<policy::Policy>(base::getResponse<store::Doc>(policyDoc),
-                                                   m_storeRead,
-                                                   m_definitionsBuilder,
-                                                   m_registry,
-                                                   m_schema,
-                                                   m_allowedFields,
-                                                   trace,
-                                                   sandbox);
+    auto policy = std::make_shared<policy::Policy>(
+        namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_allowedFields, trace, sandbox);
 
     return policy;
 }
 
-base::Expression Builder::buildAsset(const base::Name& name) const
+base::Expression Builder::buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const
 {
-    auto assetDoc = store::utils::get(m_storeRead, name);
-    if (base::isError(assetDoc))
-    {
-        throw std::runtime_error(base::getError(assetDoc).message);
-    }
-
+    const auto nsReader = m_cmStore->getNSReader(namespaceId);
+    const auto& jsonAsset = nsReader->getAssetByName(name);
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(m_registry);
     buildCtx->setValidator(m_schema);
@@ -92,81 +76,44 @@ base::Expression Builder::buildAsset(const base::Name& name) const
     buildCtx->runState().sandbox = false;
 
     auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
-    auto asset = (*assetBuilder)(base::getResponse<store::Doc>(assetDoc));
+    auto asset = (*assetBuilder)(jsonAsset);
 
     return asset.expression();
 }
 
-base::OptError Builder::validateIntegration(const json::Json& json, const std::string& namespaceId) const
+base::OptError Builder::validateIntegration(const base::Name& name, const cm::store::NamespaceId& namespaceId) const
 {
-    // TODO: Make factory so this can be implemented without duplicating code
-    policy::factory::PolicyData policyData;
-    try
+    const auto nsReader = m_cmStore->getNSReader(namespaceId);
+    const auto& integration = nsReader->getIntegrationByName(name);
+    for (const auto& uuid : integration.getDecodersByUUID())
     {
-        policyData = policy::factory::PolicyData({.name = "policy/fake/0", .hash = "fakehash"});
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("Error creating dummy policy: {}", e.what())};
-    }
-
-    auto namePath = json::Json::formatJsonPath(syntax::asset::NAME_KEY);
-    auto integrationNameResp = json.getString(namePath);
-    if (!integrationNameResp)
-    {
-        return base::Error {"Integration name not found"};
-    }
-    auto integrationName = integrationNameResp.value();
-    try
-    {
-        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::DECODER,
-                                                syntax::integration::DECODER_PATH,
-                                                json,
-                                                m_storeRead,
-                                                integrationName,
-                                                namespaceId,
-                                                policyData);
-        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::RULE,
-                                                syntax::integration::RULE_PATH,
-                                                json,
-                                                m_storeRead,
-                                                integrationName,
-                                                namespaceId,
-                                                policyData);
-        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::OUTPUT,
-                                                syntax::integration::OUTPUT_PATH,
-                                                json,
-                                                m_storeRead,
-                                                integrationName,
-                                                namespaceId,
-                                                policyData);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
+        if (!nsReader->assetExistsByUUID(uuid))
+        {
+            return base::Error {fmt::format("Decoder UUID '{}' does not exist in the namespace.", uuid)};
+        }
     }
 
-    auto buildCtx = std::make_shared<builders::BuildCtx>();
-    buildCtx->setRegistry(m_registry);
-    buildCtx->setValidator(m_schema);
-    buildCtx->setAllowedFields(m_allowedFields);
-    buildCtx->runState().trace = true;
-
-    auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
-
-    try
+    for (const auto& uuid : integration.getKVDBsByUUID())
     {
-        policy::factory::buildAssets(policyData, m_storeRead, assetBuilder);
+        if (!nsReader->kvdbExistsByUUID(uuid))
+        {
+            return base::Error {fmt::format("KVDB UUID '{}' does not exist in the namespace.", uuid)};
+        }
     }
-    catch (const std::exception& e)
+
+    if (const auto& opt = integration.getDefaultParent(); opt.has_value())
     {
-        return base::Error {e.what()};
+        const base::Name& parentName = *opt;
+        if (!nsReader->assetExistsByName(parentName))
+        {
+            return base::Error {fmt::format("Default parent '{}' does not exist as asset.", parentName.toStr())};
+        }
     }
 
     return base::noError();
 }
 
-base::OptError Builder::validateAsset(const json::Json& json) const
+base::OptError Builder::validateAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const
 {
     try
     {
@@ -175,7 +122,10 @@ base::OptError Builder::validateAsset(const json::Json& json) const
         buildCtx->setValidator(m_schema);
         buildCtx->setAllowedFields(m_allowedFields);
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
-        auto asset = (*assetBuilder)(json);
+
+        const auto nsReader = m_cmStore->getNSReader(namespaceId);
+        const auto& jsonAsset = nsReader->getAssetByName(name);
+        auto asset = (*assetBuilder)(jsonAsset);
     }
     catch (const std::exception& e)
     {
@@ -185,12 +135,12 @@ base::OptError Builder::validateAsset(const json::Json& json) const
     return base::noError();
 }
 
-base::OptError Builder::validatePolicy(const json::Json& json) const
+base::OptError Builder::validatePolicy(const cm::store::NamespaceId& namespaceId) const
 {
     try
     {
         auto policy = std::make_shared<policy::Policy>(
-            json, m_storeRead, m_definitionsBuilder, m_registry, m_schema, m_allowedFields);
+            namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_allowedFields);
     }
     catch (const std::exception& e)
     {
