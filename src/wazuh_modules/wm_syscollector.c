@@ -47,7 +47,7 @@ bool shutdown_process_started = false;
 static size_t wm_sys_query_handler(void *data, char *query, char **output); // Query handler
 
 const wm_context WM_SYS_CONTEXT = {
-    .name = "syscollector",
+    .name = SYSCOLLECTOR_WM_NAME,
     .start = (wm_routine)wm_sys_main,
     .destroy = (void(*)(void *))wm_sys_destroy,
     .dump = (cJSON * (*)(const void *))wm_sys_dump,

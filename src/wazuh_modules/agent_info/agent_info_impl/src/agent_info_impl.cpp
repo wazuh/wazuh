@@ -12,6 +12,7 @@
 #include <filesystem_wrapper.hpp>
 #include <sysInfo.hpp>
 #include "../../../module_query_errors.h"
+#include "../../../wmodules.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -23,6 +24,11 @@
 constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
+
+// Module coordination configuration
+const std::vector<std::string> COORDINATION_MODULES = {SCA_WM_NAME, SYSCOLLECTOR_WM_NAME, FIM_NAME};
+constexpr int MAX_COORDINATION_RETRIES = 3;
+constexpr int COORDINATION_RETRY_DELAY_MS = 1000;
 
 // Map DBSync callback results to operation strings for stateless events
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
@@ -125,9 +131,9 @@ AgentInfoImpl::~AgentInfoImpl()
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
-void AgentInfoImpl::setIsAgent(bool isAgent)
+void AgentInfoImpl::setIsAgent(bool value)
 {
-    m_isAgent = isAgent;
+    m_isAgent = value;
 }
 
 void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
@@ -882,11 +888,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     // AGENT_GROUPS_TABLE -> keep max (no increment)
     bool incrementVersion = (table == AGENT_METADATA_TABLE);
 
-    // Configuration
-    const std::vector<std::string> modules = {"sca", "syscollector", "fim"};
-    const int MAX_RETRIES = 3;
-    const int RETRY_DELAY_MS = 1000;
-
     // State tracking
     std::set<std::string> availableModules;
     std::set<std::string> pausedModules;
@@ -931,11 +932,11 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     };
 
     // Helper function to query module with retries and error handling using JSON format
-    auto queryModuleWithRetry = [this, MAX_RETRIES, RETRY_DELAY_MS](const std::string & moduleName, const std::string & jsonMessage) -> ModuleResponse
+    auto queryModuleWithRetry = [this](const std::string & moduleName, const std::string & jsonMessage) -> ModuleResponse
     {
         m_logFunction(LOG_DEBUG, "Sending JSON command to " + moduleName + ": " + jsonMessage);
 
-        for (int attempt = 1; attempt <= MAX_RETRIES; ++attempt)
+        for (int attempt = 1; attempt <= MAX_COORDINATION_RETRIES; ++attempt)
         {
             char* rawResponse = nullptr;
             int result = m_queryModuleFunction(moduleName, jsonMessage, &rawResponse);
@@ -978,21 +979,21 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             }
 
             // For other errors, log and retry
-            m_logFunction(LOG_WARNING, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_RETRIES) +
+            m_logFunction(LOG_WARNING, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_COORDINATION_RETRIES) +
                           " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) + "): " + responseStr);
 
-            if (attempt < MAX_RETRIES)
+            if (attempt < MAX_COORDINATION_RETRIES)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
+                std::this_thread::sleep_for(std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS));
             }
         }
 
-        m_logFunction(LOG_WARNING, "Failed to query " + moduleName + " after " + std::to_string(MAX_RETRIES) + " attempts");
+        m_logFunction(LOG_WARNING, "Failed to query " + moduleName + " after " + std::to_string(MAX_COORDINATION_RETRIES) + " attempts");
 
         // Return failure response with structured error JSON
         nlohmann::json errorJson;
         errorJson["error"] = MQ_ERR_INTERNAL;
-        errorJson["message"] = "Max retries exceeded (" + std::to_string(MAX_RETRIES) + " attempts)";
+        errorJson["message"] = "Max retries exceeded (" + std::to_string(MAX_COORDINATION_RETRIES) + " attempts)";
 
         ModuleResponse failedResp;
         failedResp.success = false;
@@ -1024,7 +1025,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     try
     {
         // Step 1: Identify available modules and send pause command
-        for (const auto& module : modules)
+        for (const auto& module : COORDINATION_MODULES)
         {
             std::string pauseMessage = createJsonCommand("pause");
             ModuleResponse response = queryModuleWithRetry(module, pauseMessage);

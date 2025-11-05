@@ -48,8 +48,8 @@ class AgentInfoImpl
         void stop();
 
         /// @brief Set whether this instance is running on an agent or manager
-        /// @param isAgent True if running on an agent, false if on a manager
-        void setIsAgent(bool isAgent);
+        /// @param value True if running on an agent, false if on a manager
+        void setIsAgent(bool value);
 
         /// @brief Initialize the synchronization protocol
         /// @param moduleName Name of the module

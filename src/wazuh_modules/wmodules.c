@@ -402,7 +402,6 @@ size_t wm_module_query(char * query, char ** output) {
 static size_t wm_module_query_json_internal(const char* module_name, const char* json_command, char** output) {
     cJSON *json_obj = NULL;
     cJSON *command_item = NULL;
-    const char *command = NULL;
     char error_msg[512];
 
     if (!module_name || !json_command || !output) {
@@ -418,7 +417,7 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
         return strlen(*output);
     }
 
-    // Extract command
+    // Validate command field exists
     command_item = cJSON_GetObjectItem(json_obj, "command");
     if (!command_item || !cJSON_IsString(command_item)) {
         cJSON_Delete(json_obj);
@@ -427,7 +426,6 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
         os_strdup(error_msg, *output);
         return strlen(*output);
     }
-    command = cJSON_GetStringValue(command_item);
 
     // Find the module
     wmodule * module = wm_find_module(module_name);
@@ -448,18 +446,15 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
     }
 
     // For SCA and Syscollector, pass the JSON command directly (it already contains all needed fields)
-    if (strcmp(module_name, "sca") == 0 || strcmp(module_name, "syscollector") == 0) {
+    if (strcmp(module_name, SCA_WM_NAME) == 0 || strcmp(module_name, SYSCOLLECTOR_WM_NAME) == 0) {
         // Pass the original JSON directly - no need to reconstruct
         // Cast to non-const as required by the query function signature
         size_t result = module->context->query(module->data, (char*)json_command, output);
         cJSON_Delete(json_obj);
         return result;
-    } else {
-        // For other modules, pass just the command as before
-        size_t result = module->context->query(module->data, (char*)command, output);
-        cJSON_Delete(json_obj);
-        return result;
     }
+
+    return 0;
 }
 
 // External interface that extracts module name from JSON (for backward compatibility)

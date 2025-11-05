@@ -210,10 +210,10 @@ static int wm_agent_info_query_module_wrapper(const char* module_name, const cha
         return -1;
     }
 
-    mdebug1("AGENT_INFO: Received JSON for %s: %s", module_name, json_query);
+    mdebug1("Received JSON for %s: %s", module_name, json_query);
 
-    // Check if this is a request for FIM/syscheck module (separate process)
-    if (strcmp(module_name, "fim") == 0 || strcmp(module_name, "syscheck") == 0) {
+    // Check if this is a request for FIM module (separate process)
+    if (strcmp(module_name, FIM_NAME) == 0) {
         size_t result_len = wm_fim_query_json(json_query, response);
 
         if (result_len > 0 && *response) {

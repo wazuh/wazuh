@@ -40,6 +40,9 @@
 #define GITHUB_WM_NAME "github"
 #define OFFICE365_WM_NAME "office365"
 #define MS_GRAPH_WM_NAME "ms-graph"
+#define AGENT_INFO_WM_NAME   "agent-info"
+#define SYSCOLLECTOR_WM_NAME "syscollector"
+#define FIM_NAME "fim"                      // FIM module name. It is not a wm:module, but we define the name for query it.
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
