@@ -103,7 +103,9 @@ EntryConverter::operator test::EntryPost() const
     {
         throw std::runtime_error {"Cannot load the entry: lifetime is missing"};
     }
-    auto entryPost = test::EntryPost(m_name, m_policy, m_lifetime.value());
+
+    const auto& namespaceId = cm::store::NamespaceId(m_policy);
+    auto entryPost = test::EntryPost(m_name, namespaceId, m_lifetime.value());
     if (m_description)
     {
         entryPost.description(m_description.value());
@@ -122,7 +124,9 @@ EntryConverter::operator prod::EntryPost() const
     {
         throw std::runtime_error {"Cannot load the entry: priority is missing"};
     }
-    auto entryPost = prod::EntryPost(m_name, m_policy, m_filter.value(), m_priority.value());
+
+    const auto& namespaceId = cm::store::NamespaceId(m_policy);
+    auto entryPost = prod::EntryPost(m_name, namespaceId, m_filter.value(), m_priority.value());
     if (m_description)
     {
         entryPost.description(m_description.value());

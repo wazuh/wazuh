@@ -15,7 +15,6 @@ target_link_libraries(api_tester
     base
     api::adapter
     router::irouter
-    api::policy::ipolicy
     api::event
 )
 add_library(api::tester ALIAS api_tester)

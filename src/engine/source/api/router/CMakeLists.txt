@@ -15,7 +15,6 @@ target_link_libraries(api_router
     base
     api::adapter
     router::irouter
-    api::policy::ipolicy
 )
 add_library(api::router ALIAS api_router)
 
