@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <vector>
 #include <string>
 #include <hashHelper.h>
@@ -8,15 +7,11 @@ extern "C" {
 }
 
 #include "recovery.h"
-#include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol_c_wrapper.hpp"
 #include "db.hpp"
-#include "fimCommonDefs.h"
 #include "stringHelper.h"
-#include "ipersistent_queue.hpp"
 #include "syscheck.h"
 #include "timeHelper.h"
-#include <chrono>
 
 /**
  * @brief Calculate the checksum-of-checksums for a table

@@ -2,8 +2,6 @@
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "agent_sync_protocol_c_wrapper.hpp"
-#include "persistent_queue.hpp"
-#include <chrono>
 #include <memory>
 #include <string>
 

@@ -18,13 +18,11 @@
 #include "dbRegistryValue.hpp"
 #include "dbsync.h"
 #include "dbsync.hpp"
-#include "debug_op.h"
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBSpecialization.h"
 #include <hashHelper.h>
 #include "stringHelper.h"
-#include "ipersistent_queue.hpp"
 
 void DB::init(const int storage,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,

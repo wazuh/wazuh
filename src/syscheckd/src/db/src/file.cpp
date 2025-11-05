@@ -140,7 +140,6 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
     FIMDB::instance().executeQuery(selectQuery.query(), localCallback);
 }
 
-
 #ifdef __cplusplus
 extern "C"
 {

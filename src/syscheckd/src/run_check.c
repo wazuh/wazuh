@@ -10,7 +10,6 @@
 
 
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
-#include "fimCommonDefs.h"
 #include "recovery/include/recovery.h"
 #ifdef __linux__
 #include <sched.h>
@@ -28,7 +27,6 @@
 #include "db/include/db.h"
 #include "ebpf/include/ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
-#include "db.h"
 
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
