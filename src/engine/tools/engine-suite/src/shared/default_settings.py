@@ -17,7 +17,7 @@ class Constants:
     DEFAULT_POLICY: str = 'policy/wazuh/0'
     DEFAULT_SESSION: str = 'default'
     DEFAULT_NS: str = 'user'
-    INDEX_PATTERN: str = 'wazuh-alerts-5.x-0001'
+    INDEX_PATTERN: str = 'wazuh-alerts-v5-0001'
     DEFAULT_API_TIMEOUT: int = 1000000
 
 class CONFIG_ENV_KEYS(Enum):
