@@ -12,18 +12,6 @@
 namespace kvdbStore::mocks
 {
 
-inline constexpr std::string_view kJsonValueDefault = R"("value")";
-
-inline std::optional<std::string_view> kvdbGetSome(std::string_view sv = kJsonValueDefault)
-{
-    return sv;
-}
-
-inline std::optional<std::string_view> kvdbGetNone()
-{
-    return std::nullopt;
-}
-
 class MockKVDBHandler : public kvdbStore::IKVDBHandler
 {
 public:
