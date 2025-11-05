@@ -69,9 +69,17 @@ public:
      * @brief Class constructor.
      *
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
+     * @param credentialsProvider Optional OAuth credentials provider for authenticated requests.
+     * @param signedUrlProvider Optional signed URL provider for token exchange.
      */
-    explicit CtiSnapshotDownloader(IURLRequest& urlRequest)
-        : CtiDownloader(urlRequest, "CtiSnapshotDownloader")
+    explicit CtiSnapshotDownloader(IURLRequest& urlRequest,
+                                   std::shared_ptr<CTICredentialsProvider> credentialsProvider = nullptr,
+                                   std::shared_ptr<CTISignedUrlProvider> signedUrlProvider = nullptr)
+        : CtiDownloader(urlRequest,
+                        "CtiSnapshotDownloader",
+                        TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME,
+                        credentialsProvider,
+                        signedUrlProvider)
     {
     }
 };
