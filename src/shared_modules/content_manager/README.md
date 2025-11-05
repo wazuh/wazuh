@@ -22,6 +22,25 @@ The input configuration of the Content Manager is described below:
 
 > The Content Manager counts with a [test tool](./testtool/main.cpp) that can be used to perform tests, try out different configurations, and to better understand the module.
 
+## OAuth 2.0 Authentication
+
+The Content Manager supports optional OAuth 2.0 authentication for accessing protected CTI APIs. This feature enables:
+
+- **Secure credential management** through Wazuh Indexer integration
+- **Token exchange** for HMAC-signed URLs with 5-minute lifetime
+- **Automatic token refresh** before expiration
+- **Backward compatibility** - OAuth is completely optional
+
+OAuth authentication is implemented through two provider classes:
+- **CTICredentialsProvider**: Fetches OAuth credentials from Wazuh Indexer
+- **CTISignedUrlProvider**: Exchanges access tokens for signed URLs
+
+For detailed information about OAuth configuration and usage, see the [CTI OAuth Providers documentation](./doc/components/CTI_OAUTH_PROVIDERS.md).
+
+OAuth is currently supported by:
+- [CTI Offset Downloader](./doc/components/CTI_OFFSET_DOWNLOADER.md#oauth-20-authentication-optional)
+- [CTI Snapshot Downloader](./doc/components/CTI_SNAPSHOT_DOWNLOADER.md#oauth-20-authentication-optional)
+
 ## Use cases
 
 The Content Manager module can be used in many ways depending on the user's needs. Here is a summary of the possible use cases:
