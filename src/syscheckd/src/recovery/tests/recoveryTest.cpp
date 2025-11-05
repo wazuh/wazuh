@@ -30,6 +30,7 @@ extern "C" {
 #include "agent_sync_protocol_c_wrapper.hpp"
 #include <chrono>
 #include <thread>
+#include "timeHelper.h"
 
 extern "C" {
     #include "debug_op.h"
@@ -82,13 +83,6 @@ protected:
         delete mockLog;
     }
 
-    // Helper to get current Unix time
-    int64_t getCurrentTime()
-    {
-        return std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch()
-        ).count();
-    }
 };
 
 // Test: integrity_interval has NOT elapsed (last sync recent)
@@ -97,7 +91,7 @@ TEST_F(RecoveryTest, IntegrityIntervalNotElapsed)
     const int64_t integrity_interval = 86400; // 24 hours in seconds
 
     // Set last sync time to current time (just synced)
-    DB::instance().updateLastSyncTime("file_entry", getCurrentTime());
+    DB::instance().updateLastSyncTime("file_entry", Utils::getSecondsFromEpoch());
 
     // Check immediately - should not have elapsed
     bool result = fim_recovery_integrity_interval_has_elapsed(
@@ -113,7 +107,7 @@ TEST_F(RecoveryTest, IntegrityIntervalElapsed)
 {
     const int64_t integrity_interval = 86400; // 24 hours in seconds
     // Set last sync time to 48h before current time
-    DB::instance().updateLastSyncTime("file_entry", getCurrentTime() - 2*integrity_interval);
+    DB::instance().updateLastSyncTime("file_entry",  Utils::getSecondsFromEpoch()- 2*integrity_interval);
 
     // Check after interval has elapsed
     bool result = fim_recovery_integrity_interval_has_elapsed(

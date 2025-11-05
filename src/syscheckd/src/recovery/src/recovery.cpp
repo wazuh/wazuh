@@ -15,16 +15,8 @@ extern "C" {
 #include "stringHelper.h"
 #include "ipersistent_queue.hpp"
 #include "syscheck.h"
+#include "timeHelper.h"
 #include <chrono>
-
-/**
- * @brief Get the current timestamp in UNIX format
- */
-int64_t getUnixTimeSeconds() {
-    return std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now().time_since_epoch()
-    ).count();
-}
 
 /**
  * @brief Calculate the checksum-of-checksums for a table
@@ -115,7 +107,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     }
 
     // Update the last sync time regardless of the synchronization result since we always want to wait for integrity_interval to try again.
-    DB::instance().updateLastSyncTime(table_name, getUnixTimeSeconds());
+    DB::instance().updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
 }
 
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
@@ -146,7 +138,7 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
 // LCOV_EXCL_STOP
 
 bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval){
-    int64_t current_time = getUnixTimeSeconds();
+    int64_t current_time = Utils::getSecondsFromEpoch();
     int64_t last_sync_time = DB::instance().getLastSyncTime(table_name);
     int64_t new_sync_time = current_time - last_sync_time;
     return (new_sync_time >= integrity_interval);
