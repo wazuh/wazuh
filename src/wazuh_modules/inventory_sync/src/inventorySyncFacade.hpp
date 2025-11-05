@@ -375,9 +375,9 @@ public:
                                 // Delete Session.
                                 if (m_agentSessions.erase(ctx->sessionId) == 0)
                                 {
-                                    logError(LOGGER_DEFAULT_TAG,
-                                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                             ctx->sessionId);
+                                    logDebug2(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                              ctx->sessionId);
                                 }
                             });
 
@@ -415,9 +415,9 @@ public:
                                 // Delete Session.
                                 if (m_agentSessions.erase(ctx->sessionId) == 0)
                                 {
-                                    logError(LOGGER_DEFAULT_TAG,
-                                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                             ctx->sessionId);
+                                    logDebug2(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                              ctx->sessionId);
                                 }
                             });
 
@@ -550,9 +550,9 @@ public:
                                 // Delete Session.
                                 if (m_agentSessions.erase(ctx->sessionId) == 0)
                                 {
-                                    logError(LOGGER_DEFAULT_TAG,
-                                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                             ctx->sessionId);
+                                    logDebug2(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                              ctx->sessionId);
                                 }
                             });
                     } // End of else block for non-MetadataDelta/GroupDelta modes
@@ -570,9 +570,9 @@ public:
                     // Delete Session.
                     if (m_agentSessions.erase(res.context->sessionId) == 0)
                     {
-                        logError(LOGGER_DEFAULT_TAG,
-                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                 res.context->sessionId);
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                  res.context->sessionId);
                     }
                 }
                 catch (const std::exception& e)
@@ -588,9 +588,9 @@ public:
                     // Delete Session.
                     if (m_agentSessions.erase(res.context->sessionId) == 0)
                     {
-                        logError(LOGGER_DEFAULT_TAG,
-                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                 res.context->sessionId);
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                  res.context->sessionId);
                     }
                 }
             },
