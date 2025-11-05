@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -138,5 +139,17 @@ public:
 };
 
 } // namespace cm::store
+
+namespace std
+{
+template<>
+struct hash<cm::store::NamespaceId>
+{
+    size_t operator()(const cm::store::NamespaceId& ns) const noexcept
+    {
+        return std::hash<std::string_view> {}(static_cast<std::string_view>(ns));
+    }
+};
+} // namespace std
 
 #endif // _CMSTORE_ITYPES
