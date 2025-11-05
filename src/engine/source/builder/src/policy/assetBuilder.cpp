@@ -7,6 +7,12 @@
 
 namespace builder::policy
 {
+
+builder::builders::Context& AssetBuilder::getContext() const
+{
+    return m_buildCtx->context();
+}
+
 base::Name AssetBuilder::getName(const json::Json& value) const
 {
     auto resp = value.getString();
@@ -197,10 +203,22 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
         consequenceExpressions.emplace_back(std::move(consequence));
     }
 
-    if (consequenceExpressions.empty())
-    {
-        return base::And::create(name, {std::move(condition)});
-    }
+    // Inject integration.categories from context (non-invasive, independent of "normalize")
+    const auto integrationName = newContext->context().integrationName;
+    const auto integrationCategory = newContext->context().integrationCategory;
+
+    auto automapping =
+        base::Term<base::EngineOp>::create("Automapping",
+                                           [integrationCategory, integrationName, name](auto e)
+                                           {
+                                               {
+                                                   e->setString(syntax::asset::CATEGORY_PATH, integrationCategory);
+                                                   e->setString(syntax::asset::INTEGRATION_PATH, integrationName);
+                                                   e->appendString(name.toStr(), syntax::asset::DECODERS_PATH);
+                                               }
+                                               return base::result::makeSuccess(e, "");
+                                           });
+    consequenceExpressions.emplace_back(std::move(automapping));
 
     // Delete variables from the event when asset is executed (TODO: Find a better way to manage variables)
     {
@@ -222,7 +240,7 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     return base::Implication::create(name, std::move(condition), std::move(consequence));
 }
 
-Asset AssetBuilder::operator()(const store::Doc& document) const
+Asset AssetBuilder::operator()(const json::Json& document) const
 {
     // Check document is an object
     auto objDocOpt = document.getObject();
