@@ -111,12 +111,16 @@ void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 /// The sequence is: Start → StartAck → End → EndAck (no Data messages).
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param mode Synchronization mode (must be MODE_METADATA_DELTA, MODE_METADATA_CHECK, MODE_GROUP_DELTA, or MODE_GROUP_CHECK)
+/// @param indices Array of index name strings that will be updated by the manager.
+/// @param indices_count Number of indices in the array.
 /// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
 /// @param sync_retries The maximum number of attempts for re-sending messages.
 /// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if synchronization completed successfully, false otherwise
 bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
                                  Mode_t mode,
+                                 const char** indices,
+                                 size_t indices_count,
                                  unsigned int sync_timeout,
                                  unsigned int sync_retries,
                                  size_t max_eps);

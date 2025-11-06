@@ -23,6 +23,7 @@ struct Context final
     Wazuh::SyncSchema::Option option;
     uint64_t sessionId;
     std::string moduleName;
+    std::vector<std::string> indices;
     std::string agentId;
     std::string agentName;
     std::string agentVersion;
@@ -33,6 +34,7 @@ struct Context final
     std::string ostype;
     std::string osversion;
     std::vector<std::string> groups;
+    uint64_t globalVersion;
     bool transactionDispatched = false;
 };
 
