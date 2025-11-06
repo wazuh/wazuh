@@ -457,43 +457,6 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
     return 0;
 }
 
-// External interface that extracts module name from JSON (for backward compatibility)
-size_t wm_module_query_json(const char* json_command, char** output) {
-    cJSON *json_obj = NULL;
-    cJSON *module_item = NULL;
-    const char *module_name = NULL;
-    char error_msg[512];
-
-    if (!json_command || !output) {
-        return 0;
-    }
-
-    // Parse JSON command to extract module name
-    json_obj = cJSON_Parse(json_command);
-    if (!json_obj) {
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
-        os_strdup(error_msg, *output);
-        return strlen(*output);
-    }
-
-    // Extract module name
-    module_item = cJSON_GetObjectItem(json_obj, "module");
-    if (!module_item || !cJSON_IsString(module_item)) {
-        cJSON_Delete(json_obj);
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
-        os_strdup(error_msg, *output);
-        return strlen(*output);
-    }
-    module_name = cJSON_GetStringValue(module_item);
-
-    // Use internal implementation
-    size_t result = wm_module_query_json_internal(module_name, json_command, output);
-    cJSON_Delete(json_obj);
-    return result;
-}
-
 // New external interface that accepts module_name as parameter
 size_t wm_module_query_json_ex(const char* module_name, const char* json_command, char** output) {
     return wm_module_query_json_internal(module_name, json_command, output);

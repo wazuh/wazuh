@@ -15,12 +15,6 @@
 
 size_t wmcom_dispatch(char * command, size_t length, char ** output){
 
-    // Check if this is a JSON command
-    if (command[0] == '{') {
-        mdebug1("WMCOM: Detected JSON command, routing to JSON handler");
-        return wm_module_query_json(command, output);
-    }
-
     if (strncmp(command, "getconfig", 9) == 0){
         /*
          * getconfig wmodules
