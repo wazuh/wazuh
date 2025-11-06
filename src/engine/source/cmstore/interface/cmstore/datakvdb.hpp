@@ -63,6 +63,15 @@ public:
         , m_name(std::move(name))
         , m_data(std::move(data))
     {
+        if (m_uuid.empty())
+        {
+            throw std::runtime_error("KVDB UUID cannot be empty");
+            // TODO CHECK LENGHT
+        }
+        if (m_name.empty())
+        {
+            throw std::runtime_error("KVDB name cannot be empty");
+        }
         updateHash();
     }
 
@@ -101,6 +110,9 @@ public:
     }
 
     const json::Json& getData() const { return m_data; }
+    const std::string& getUUID() const { return m_uuid; }
+    const std::string& getName() const { return m_name; }
+    const std::string& getHash() const { return m_hash; }
 
     ~KVDB() = default;
 };

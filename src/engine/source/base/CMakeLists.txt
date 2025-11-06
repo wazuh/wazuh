@@ -33,6 +33,8 @@ target_link_libraries(base
     spdlog::spdlog
     RapidJSON::RapidJSON
     Threads::Threads
+    OpenSSL::SSL
+    OpenSSL::Crypto
     ${CMAKE_DL_LIBS}
 )
 
@@ -79,8 +81,6 @@ target_link_libraries(base_utest
     PRIVATE
     base
     GTest::gtest_main
-    OpenSSL::Crypto
-    OpenSSL::SSL
 )
 gtest_discover_tests(base_utest)
 
