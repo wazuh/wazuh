@@ -30,7 +30,7 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
         m_connection.execute("PRAGMA journal_mode = WAL;");
     }
     // LCOV_EXCL_START
-    catch (const SQLite3Wrapper::Sqlite3Error& ex)
+    catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
@@ -290,7 +290,7 @@ void PersistentQueueStorage::removeAllSynced()
         m_connection.execute("COMMIT;");
     }
     // LCOV_EXCL_START
-    catch (const SQLite3Wrapper::Sqlite3Error& ex)
+    catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
@@ -323,7 +323,7 @@ void PersistentQueueStorage::resetAllSyncing()
         m_connection.execute("COMMIT;");
     }
     // LCOV_EXCL_START
-    catch (const SQLite3Wrapper::Sqlite3Error& ex)
+    catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
@@ -347,7 +347,7 @@ void PersistentQueueStorage::removeByIndex(const std::string& index)
         m_connection.execute("COMMIT;");
     }
     // LCOV_EXCL_START
-    catch (const SQLite3Wrapper::Sqlite3Error& ex)
+    catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in removeByIndex: ") + ex.what());
         m_connection.execute("ROLLBACK;");
