@@ -8,13 +8,43 @@
 
 #include <cmstore/icmstore.hpp>
 
+#include "cachens.hpp"
 namespace cm::store
 {
+
+namespace pathns
+{
+constexpr std::string_view CACHE_NS_FILE = "cache_ns.json";
+// KVDB
+constexpr std::string_view KVDBS_DIR = "kvdbs";
+
+
+constexpr std::string_view POLICIES_DIR = "policies";
+constexpr std::string_view INTEGRATIONS_DIR = "integrations";
+
+constexpr std::string_view ASSETS_DIR = "assets";
+} // namespace pathns
+
+/**
+ * @brief Concrete implementation of ICMstoreNS interface, representing a namespace in the CMStore
+ * @warning Only one instance of CMStoreNS should exist per NamespaceId to avoid race conditions on files and cache
+ */
 class CMStoreNS : public ICMstoreNS
 {
 private:
-    std::filesystem::path m_storagePath; ///< Path to the storage directory for this namespace
     NamespaceId m_namespaceId;           ///< Namespace ID associated to this CMStoreNS
+    std::filesystem::path m_storagePath; ///< Path to the storage directory for this namespace
+    std::filesystem::path m_cachePath;   ///< Path to the cache file for this namespace
+    CacheNS m_cache;                  ///< Cache for UUID to name-type mappings
+    mutable std::shared_mutex m_mutex;        ///< Mutex for file and cache access
+
+    /**
+     * @brief Flush the current cache to disk
+     * @throws std::runtime_error if flushing fails (This never should happen)
+     */
+    void flushCacheToDisk();
+
+    // TODO: Load and rebuild cache from disk on construction
 public:
     /**
      * @brief Construct a new CMStoreNS
@@ -24,6 +54,9 @@ public:
     CMStoreNS(NamespaceId nsId, std::filesystem::path storagePath)
         : m_namespaceId(std::move(nsId))
         , m_storagePath(std::move(storagePath))
+        , m_cachePath(m_storagePath / pathns::CACHE_NS_FILE)
+        , m_cache()
+        , m_mutex()
     {
         // Check if storage path exists, if path exist and is a directory
         if (!std::filesystem::exists(m_storagePath))
@@ -34,9 +67,11 @@ public:
         {
             throw std::runtime_error("Storage path is not a directory: " + m_storagePath.string());
         }
+
+        // TODO: Load cache from disk
     }
 
-    ~CMStoreNS() override = default;
+    ~CMStoreNS() override = default; // TODO Dump cache to disk on destruction
 
     /** @copydoc ICMStoreNSReader::getNamespaceId */
     const NamespaceId& getNamespaceId() const override;
@@ -60,10 +95,10 @@ public:
 
     json::Json getKVDBByName(const std::string& name) const override;
     json::Json getKVDBByUUID(const std::string& uuid) const override;
-    bool kvdbExistsByName(const base::Name& name) const override;
+    bool kvdbExistsByName(const std::string& name) const override;
     bool kvdbExistsByUUID(const std::string& uuid) const override;
-    std::string createKVDB(const dataType::KVDB&) override;
-    void updateKVDB(const dataType::KVDB&) override;
+    std::string createKVDB(const std::string& name, json::Json&& data) override;
+    void updateKVDB(const dataType::KVDB& kvdb) override;
     void deleteKVDBByName(const std::string& name) override;
     void deleteKVDBByUUID(const std::string& uuid) override;
 
