@@ -38,7 +38,7 @@ class CacheNS
 private:
     std::unordered_map<std::string, NameType> m_uuidToNameTypeMap;               ///< Map from UUID to (Name, Type)
     std::unordered_map<NameType, std::string, NameTypeHash> m_nameTypeToUUIDMap; ///< Map from (Name, Type) to UUID
-    mutable std::shared_mutex m_mutex;                                           ///< Mutex for thread-safe access
+    mutable std::shared_mutex m_mutex;     // TODO: Remove this mutex, the ns should handle this                                      ///< Mutex for thread-safe access
 
 public:
     CacheNS() = default;

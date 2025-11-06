@@ -91,7 +91,7 @@ public:
      * @param name Name of the KVDB to check
      * @return bool 'true' if the KVDB exists, false otherwise
      */
-    virtual bool kvdbExistsByName(const base::Name& name) const = 0;
+    virtual bool kvdbExistsByName(const std::string& name) const = 0;
 
     /**
      * @brief Check if a KVDB exists by its UUID
@@ -222,18 +222,19 @@ public:
 
     /**
      * @brief Add a new KVDB to the namespace
-     * @param kvdb The KVDB to add
+     * @param name Name of the KVDB to add
+     * @param data Data of the KVDB to add
      * @return std::string UUID of the created KVDB
      * @throw std::runtime_error if a KVDB with the same name already exists
      */
-    virtual std::string createKVDB(const dataType::KVDB&) = 0;
+    virtual std::string createKVDB(const std::string& name, json::Json&& data) = 0;
 
     /**
      * @brief Update an existing KVDB in the namespace
      * @param kvdb The KVDB to update
      * @throw std::runtime_error if the KVDB does not exist, or if updating the KVDB would cause a name conflict
      */
-    virtual void updateKVDB(const dataType::KVDB&) = 0;
+    virtual void updateKVDB(const dataType::KVDB& kvdb) = 0;
 
     /**
      * @brief Delete a KVDB by its name
