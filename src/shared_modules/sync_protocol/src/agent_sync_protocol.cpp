@@ -40,6 +40,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
         // Re-throw to allow caller to handle gracefully
         throw;
     }
+
     // LCOV_EXCL_STOP
 }
 
