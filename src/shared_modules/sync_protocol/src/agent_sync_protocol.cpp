@@ -36,9 +36,10 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
     // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
-        m_logger(LOG_ERROR_EXIT, "Failed to initialize PersistentQueue: " + std::string(ex.what()));
+        m_logger(LOG_ERROR, "Failed to initialize PersistentQueue: " + std::string(ex.what()));
+        // Re-throw to allow caller to handle gracefully
+        throw;
     }
-
     // LCOV_EXCL_STOP
 }
 

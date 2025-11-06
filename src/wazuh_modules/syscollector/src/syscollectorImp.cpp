@@ -1539,7 +1539,18 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     {
         this->m_logFunction(level, msg);
     };
-    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+
+    try
+    {
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logFunction(LOG_ERROR, "Failed to initialize Syscollector sync protocol: " + std::string(ex.what()));
+        // Re-throw to allow caller to handle
+        throw;
+    }
 }
 
 bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
