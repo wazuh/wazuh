@@ -36,9 +36,6 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     for (const nlohmann::json& item : recoveryItems) {
         // Calculate SHA1 hash to get an id for persistDifferenceInMemory()
 #ifdef WIN32
-        // We use the value of 'arch' in this way to use the same format for the hash as the one used by registry_key_transaction_callback from registry.c
-        // This guarantees persisted entries share a consistent id format.
-        int arch = (item["arch"].get<std::string>() == "[x32]") ? ARCH_32BIT: ARCH_64BIT;
 #endif // WIN32
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
             id = item["path"];
@@ -46,10 +43,14 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         }
 #ifdef WIN32
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+            // We use the value of 'architecture' in this way to use the same format for the hash as the one used by registry_key_transaction_callback from registry.c
+            // This guarantees persisted entries share a consistent id format.
+            int arch = (item["architecture"].get<std::string>() == "[x32]") ? ARCH_32BIT: ARCH_64BIT;
             id = std::to_string(arch) + ":" + item["path"].get<std::string>();
             index = FIM_REGISTRY_KEYS_SYNC_INDEX;
         }
         else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+            int arch = (item["architecture"].get<std::string>() == "[x32]") ? ARCH_32BIT: ARCH_64BIT;
             id = item["path"].get<std::string>() + ":" + std::to_string(arch) + ":" + item["value"].get<std::string>();
             index = FIM_REGISTRY_VALUES_SYNC_INDEX;
         }
