@@ -31,6 +31,9 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(table_name);
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
+    // Make sure memory is clean before we start to persist
+    wrapper->impl->clearInMemoryData();
+
     std::string id;
     std::string index;
     for (const nlohmann::json& item : recoveryItems) {
@@ -99,7 +102,6 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     }
 
     if (success) {
-        wrapper->impl->clearInMemoryData();
         minfo("Recovery completed successfully, in-memory data cleared");
     } else {
         minfo("Recovery synchronization failed, will retry later");

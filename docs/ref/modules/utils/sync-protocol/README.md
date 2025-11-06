@@ -83,6 +83,6 @@ To integrate the Agent Sync Protocol in your module:
    - `synchronizeMetadataOrGroups()` / `asp_sync_metadata_or_groups()` for metadata/groups
 
 7. Clean up in-memory data (if used):
-   - `clearInMemoryData()` / `asp_clear_in_memory_data()` after recovery
+   - `clearInMemoryData()` / `asp_clear_in_memory_data()` before recovery
 
 See the [Integration Guide](integration-guide.md) for detailed examples.

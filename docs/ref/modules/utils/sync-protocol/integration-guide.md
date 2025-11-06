@@ -178,6 +178,9 @@ void persist_policy_check(const char* policy_id, CheckResult* result) {
 void recoverModuleData() {
     info("Starting module recovery process");
 
+    // Clear in-memory data before sync attempt
+    protocol->clearInMemoryData();
+
     // Read recovery data from backup source
     std::vector<RecoveryItem> recoveryItems = loadRecoveryData();
 
@@ -202,9 +205,7 @@ void recoverModuleData() {
     );
 
     if (success) {
-        // Clear in-memory data after successful sync
-        protocol->clearInMemoryData();
-        info("Recovery completed successfully, in-memory data cleared");
+        info("Recovery completed successfully");
     } else {
         error("Recovery synchronization failed, will retry later");
     }
@@ -581,7 +582,6 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
    - Monitor queue size and implement flow control
    - Use EPS limiting to control memory usage
    - Implement periodic cleanup of old data
-   - Remember to call `clearInMemoryData()` after recovery syncs
 
 5. **Checksum Mismatch Issues**
    - Ensure consistent checksum calculation algorithm

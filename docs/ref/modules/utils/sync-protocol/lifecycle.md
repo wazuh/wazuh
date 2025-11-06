@@ -302,6 +302,9 @@ When using `persistDifferenceInMemory` for recovery scenarios:
 ```
 Agent (Recovery)                       Manager
   |                                        |
+  | clearInMemoryData()                    |
+  | (cleanup before sync)                  |
+  |                                        |
   | persistDifferenceInMemory() × N        |
   | (storing recovery data in memory)      |
   |                                        |
@@ -318,16 +321,13 @@ Agent (Recovery)                       Manager
   |                                        |
   |<------------- EndAck ----------------- |
   |                                        |
-  | clearInMemoryData()                    |
-  | (cleanup after successful sync)        |
-  |                                        |
 ```
 
 **Process:**
-1. Agent persists recovery data in memory using `persistDifferenceInMemory()`
-2. Agent triggers full synchronization
-3. DataValue messages are sent from in-memory vector (not from database)
-4. After successful sync, agent calls `clearInMemoryData()` to free memory
+1. Before a sync attempt, agent calls `clearInMemoryData()` to make sure memory is clean before persisting
+2. Agent persists recovery data in memory using `persistDifferenceInMemory()`
+3. Agent triggers full synchronization
+4. DataValue messages are sent from in-memory vector (not from database)
 
 ## Complete Synchronization Flow
 
