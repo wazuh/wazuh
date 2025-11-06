@@ -45,26 +45,38 @@ static const std::map<std::string, Mode> TABLE_MODE_MAP
     {AGENT_GROUPS_TABLE, Mode::GROUP_DELTA},
 };
 
-// List of all module indices that should be updated when agent metadata or groups change
-static const std::vector<std::string> ALL_MODULE_INDICES
+// Map modules to their corresponding indices that should be updated when agent metadata or groups change
+static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
 {
-    "wazuh-states-fim-files",
-    "wazuh-states-fim-registry-keys",
-    "wazuh-states-fim-registry-values",
-    "wazuh-states-sca",
-    "wazuh-states-inventory-system",
-    "wazuh-states-inventory-hardware",
-    "wazuh-states-inventory-hotfixes",
-    "wazuh-states-inventory-packages",
-    "wazuh-states-inventory-processes",
-    "wazuh-states-inventory-ports",
-    "wazuh-states-inventory-interfaces",
-    "wazuh-states-inventory-protocols",
-    "wazuh-states-inventory-networks",
-    "wazuh-states-inventory-users",
-    "wazuh-states-inventory-groups",
-    "wazuh-states-inventory-services",
-    "wazuh-states-inventory-browser-extensions"
+    {
+        FIM_NAME, {
+            "wazuh-states-fim-files",
+            "wazuh-states-fim-registry-keys",
+            "wazuh-states-fim-registry-values"
+        }
+    },
+    {
+        SCA_WM_NAME, {
+            "wazuh-states-sca"
+        }
+    },
+    {
+        SYSCOLLECTOR_WM_NAME, {
+            "wazuh-states-inventory-system",
+            "wazuh-states-inventory-hardware",
+            "wazuh-states-inventory-hotfixes",
+            "wazuh-states-inventory-packages",
+            "wazuh-states-inventory-processes",
+            "wazuh-states-inventory-ports",
+            "wazuh-states-inventory-interfaces",
+            "wazuh-states-inventory-protocols",
+            "wazuh-states-inventory-networks",
+            "wazuh-states-inventory-users",
+            "wazuh-states-inventory-groups",
+            "wazuh-states-inventory-services",
+            "wazuh-states-inventory-browser-extensions"
+        }
+    }
 };
 
 const char* AGENT_METADATA_SQL_STATEMENT =
@@ -889,7 +901,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     bool incrementVersion = (table == AGENT_METADATA_TABLE);
 
     // State tracking
-    std::set<std::string> availableModules;
     std::set<std::string> pausedModules;
     std::map<std::string, int> moduleVersions;
 
@@ -1017,7 +1028,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
             if (response.success)
             {
-                availableModules.insert(module);
                 pausedModules.insert(module);
                 m_logFunction(LOG_DEBUG, "Successfully paused " + module);
             }
@@ -1045,16 +1055,15 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         int newVersion = 0;
         int globalMaxVersion = 0;
 
-        if (availableModules.empty())
+        if (pausedModules.empty())
         {
-            m_logFunction(LOG_DEBUG, "No modules available for coordination, will synchronize anyway");
-            // When no modules are available, use version 1 for metadata, 0 for groups
-            newVersion = incrementVersion ? 1 : 0;
+            m_logFunction(LOG_DEBUG, "No modules available for coordination, skipping synchronization");
+            return true;
         }
-        else
+
         {
             // Step 2: Flush all available modules
-            for (const auto& module : availableModules)
+            for (const auto& module : pausedModules)
             {
                 std::string flushMessage = createJsonCommand("flush");
                 ModuleResponse response = queryModuleWithRetry(module, flushMessage);
@@ -1072,7 +1081,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             }
 
             // Step 3: Get version from each module
-            for (const auto& module : availableModules)
+            for (const auto& module : pausedModules)
             {
                 std::string getVersionMessage = createJsonCommand("get_version");
                 ModuleResponse response = queryModuleWithRetry(module, getVersionMessage);
@@ -1126,7 +1135,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                           (incrementVersion ? " (max + 1 for metadata update)" : " (max for groups update)"));
 
             // Step 5: Set new version on all modules
-            for (const auto& module : availableModules)
+            for (const auto& module : pausedModules)
             {
                 std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
                 ModuleResponse response = queryModuleWithRetry(module, setVersionMessage);
@@ -1144,12 +1153,25 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             }
         }
 
-        // Step 6: Synchronize metadata or groups
+        // Step 6: Build indices list based on enabled modules and synchronize
+        std::vector<std::string> indicesToSync;
+
+        for (const auto& module : pausedModules)
+        {
+            auto it = MODULE_INDICES_MAP.find(module);
+
+            if (it != MODULE_INDICES_MAP.end())
+            {
+                const auto& moduleIndices = it->second;
+                indicesToSync.insert(indicesToSync.end(), moduleIndices.begin(), moduleIndices.end());
+            }
+        }
+
         if (m_spSyncProtocol)
         {
             bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
                                    TABLE_MODE_MAP.at(table),
-                                   ALL_MODULE_INDICES,
+                                   indicesToSync,
                                    std::chrono::seconds(m_syncResponseTimeout),
                                    m_syncRetries,
                                    m_syncMaxEps,
@@ -1170,45 +1192,12 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         }
 
         // Step 7: Resume all modules
-        if (!pausedModules.empty())
-        {
-            for (const auto& module : pausedModules)
-            {
-                std::string resumeMessage = createJsonCommand("resume");
-                ModuleResponse response = queryModuleWithRetry(module, resumeMessage);
-                m_logFunction(LOG_DEBUG, "Response from " + module + " resume: " + response.response);
-
-                if (!response.success)
-                {
-                    m_logFunction(LOG_WARNING, "Failed to resume " + module + " (error " +
-                                  std::to_string(response.errorCode) + "): " + response.response);
-                    // Continue trying to resume other modules even if one fails
-                }
-                else
-                {
-                    m_logFunction(LOG_DEBUG, "Successfully resumed " + module);
-                }
-            }
-
-            pausedModules.clear();
-        }
-        else
-        {
-            m_logFunction(LOG_DEBUG, "No modules to resume");
-        }
+        size_t coordinatedModulesCount = pausedModules.size();
+        resumePausedModules();
 
         m_logFunction(LOG_DEBUG, "Module coordination completed successfully");
-
-        if (availableModules.empty())
-        {
-            m_logFunction(LOG_DEBUG, "No modules coordinated, but synchronization was performed with version: " +
-                          std::to_string(newVersion));
-        }
-        else
-        {
-            m_logFunction(LOG_DEBUG, "Coordinated modules: " + std::to_string(availableModules.size()) +
-                          ", New version: " + std::to_string(newVersion));
-        }
+        m_logFunction(LOG_DEBUG, "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
+                      ", New version: " + std::to_string(newVersion));
 
         return true;
     }
