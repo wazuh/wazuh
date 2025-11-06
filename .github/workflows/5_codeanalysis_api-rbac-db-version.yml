@@ -36,7 +36,7 @@ jobs:
             exit 1
           fi
           git fetch origin ${{ github.base_ref }}
-          DB_VERSION_CHANGED=$(git diff "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -E 'CURRENT_ORM_VERSION\s*=\s*\d+' | wc -l)
+          DB_VERSION_CHANGED=$(git diff "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -U0 'CURRENT_ORM_VERSION' | wc -l)
           if [ "$DB_VERSION_CHANGED" -eq "0" ]; then
             echo "Error: CURRENT_ORM_VERSION was not bumped in orm.py."
             exit 1
