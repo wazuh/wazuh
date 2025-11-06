@@ -362,6 +362,7 @@ void Syscollector::start()
         {
             m_logFunction(LOG_ERROR, "Cannot start Syscollector - module initialization failed");
         }
+
         return;
     }
 
