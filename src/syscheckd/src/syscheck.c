@@ -124,9 +124,7 @@ void fim_initialize() {
 
     syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction);
     if (!syscheck.sync_handle) {
-        merror("Failed to initialize FIM AgentSyncProtocol - sync functionality will be disabled");
-        // Don't exit - allow FIM to continue without sync protocol
-        // The module will still function for local file monitoring
+        merror_exit("Failed to initialize AgentSyncProtocol");
     }
 }
 
