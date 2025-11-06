@@ -231,7 +231,7 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
 // LCOV_EXCL_START
 
 // Sync protocol methods implementation
-void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
+void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, unsigned int syncEndDelayMs)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -240,7 +240,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr, syncEndDelayMs);
         LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
     }
     catch (const std::exception& ex)

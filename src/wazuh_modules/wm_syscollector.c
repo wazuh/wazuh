@@ -78,6 +78,7 @@ unsigned int enable_synchronization = 1;     // Database synchronization enabled
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
 uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
 long sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
+long sync_end_delay_ms = 1000;               // Database synchronization end delay in milliseconds (default value)
 
 long syscollector_max_eps = 50;          // Number of events per second (default value)
 int queue_fd = 0;                        // Output queue file descriptor
@@ -167,7 +168,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t *sys) {
                 .start = wm_sys_startmq,
                 .send_binary = wm_sys_send_binary_msg
             };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sync_end_delay_ms);
 
         syscollector_init_ptr(sys->interval,
                                wm_sys_send_diff_message,
@@ -300,6 +301,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             sync_interval = sys->sync.sync_interval;
             sync_response_timeout = sys->sync.sync_response_timeout;
             sync_max_eps = sys->sync.sync_max_eps;
+            sync_end_delay_ms = sys->sync.sync_end_delay_ms;
         }
 
         if (sys->max_eps) {

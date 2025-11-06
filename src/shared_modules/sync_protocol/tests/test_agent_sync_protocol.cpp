@@ -77,7 +77,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             {
                 std::cout << s << std::endl;
             }
-                          );
+                              , 1000);
             asp_destroy(handle);
         }
 

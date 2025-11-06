@@ -73,7 +73,7 @@ class EXPORTED Syscollector final
         void destroy();
 
         // Sync protocol methods
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs);
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, unsigned int syncEndDelayMs = 1000);
         bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
         bool parseResponseBuffer(const uint8_t* data, size_t length);

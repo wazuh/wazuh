@@ -79,7 +79,7 @@ class SecurityConfigurationAssessment
         /// @param moduleName Name of the module
         /// @param syncDbPath Path to the sync database
         /// @param mqFuncs Message queue functions
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs);
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, unsigned int syncEndDelayMs = 1000);
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode

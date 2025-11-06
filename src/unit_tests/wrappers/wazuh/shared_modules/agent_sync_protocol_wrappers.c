@@ -9,7 +9,7 @@
 
 #include "agent_sync_protocol_wrappers.h"
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger) {
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelayMs) {
     check_expected_ptr(module);
     (void)mq_funcs;
     (void)db_path;

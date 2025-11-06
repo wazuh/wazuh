@@ -26,6 +26,7 @@ static yaml_to_cjson_func g_yaml_to_cjson_func = NULL;
 static const char* g_module_name = NULL;
 static const char* g_sync_db_path = NULL;
 static const MQ_Functions* g_mq_functions = NULL;
+static unsigned int g_sync_end_delay_ms = 1000;
 
 /// @brief Sets the message pushing functions for SCA module.
 ///
@@ -48,11 +49,12 @@ void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_fu
 /// @param module_name Name identifier for the SCA module
 /// @param sync_db_path Path to the synchronization database file
 /// @param mq_funcs Pointer to message queue function structure for communication
-void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs)
+void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs, unsigned int sync_end_delay_ms)
 {
     g_module_name = module_name;
     g_sync_db_path = sync_db_path;
     g_mq_functions = mq_funcs;
+    g_sync_end_delay_ms = sync_end_delay_ms;
 }
 
 /// @brief Starts the SCA module with the given configuration.
@@ -217,7 +219,7 @@ void SCA::init()
         {
             m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
 
-            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
+            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions, g_sync_delay_ms);
 
             auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
             {

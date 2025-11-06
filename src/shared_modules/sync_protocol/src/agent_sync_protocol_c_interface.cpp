@@ -9,7 +9,7 @@
 // LCOV_EXCL_START
 extern "C" {
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger)
+    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelayMs)
     {
         try
         {
@@ -29,7 +29,7 @@ extern "C" {
                 logger(level, msg.c_str());
             };
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, db_path, *mq_funcs, logger_wrapper));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, db_path, *mq_funcs, logger_wrapper, syncEndDelayMs));
         }
         catch (const std::exception& ex)
         {

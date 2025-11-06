@@ -31,7 +31,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue = nullptr);
+        /// @param syncEndDelayMs Delay in milliseconds for synchronization messages.
+        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue = nullptr,
+                                   unsigned int syncEndDelayMs = 1000);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -98,6 +100,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Logger function
         LoggerFunc m_logger;
+
+        /// @brief Delay in milliseconds for synchronization messages
+        unsigned int m_syncEndDelayMs;
 
         /// @brief Stop flag to abort ongoing operations
         std::atomic<bool> m_stopRequested{false};

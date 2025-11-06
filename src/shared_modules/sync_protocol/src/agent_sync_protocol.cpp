@@ -19,10 +19,13 @@
 #include <memory>
 #include <thread>
 #include <set>
+#include <unistd.h>
 
-AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue)
+AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue,
+                                     unsigned int syncEndDelayMs)
     : m_moduleName(moduleName),
-      m_logger(std::move(logger))
+      m_logger(std::move(logger)),
+      m_syncEndDelayMs(syncEndDelayMs)
 {
     if (!m_logger)
     {
@@ -748,6 +751,10 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         }
 
         bool sendEnd = true;
+
+        // Configurable delay to wait for last messages to arrive before sending End
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_syncEndDelayMs));
+        m_logger(LOG_DEBUG, "Delayed " + std::to_string(m_syncEndDelayMs) + " milliseconds before sending End message.");
 
         for (unsigned int attempt = 0; attempt <= retries; ++attempt)
         {

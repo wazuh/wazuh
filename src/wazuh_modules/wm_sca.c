@@ -44,6 +44,7 @@ unsigned int sca_enable_synchronization = 1;     // Database synchronization ena
 uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
 uint32_t sca_sync_response_timeout = 30;         // Database synchronization response timeout (default value)
 long sca_sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
+long sca_sync_end_delay_ms = 1000;               // Database synchronization end delay in milliseconds (default value)
 
 // Forward declarations
 static bool wm_sca_is_shutting_down(void);
@@ -182,7 +183,7 @@ static void wm_handle_sca_disable_and_notify_data_clean()
         if (sca_set_sync_parameters_ptr)
         {
             MQ_Functions mq_funcs = {.start = wm_sca_startmq, .send_binary = wm_sca_send_binary_msg};
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay_ms);
         }
 
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
@@ -286,7 +287,7 @@ void * wm_sca_main(wm_sca_t * data) {
                 .start = wm_sca_startmq,
                 .send_binary = wm_sca_send_binary_msg
             };
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay_ms);
         }
 
         // Set the yaml to cjson function
@@ -335,6 +336,7 @@ static int wm_sca_start(wm_sca_t *sca) {
         sca_sync_interval = sca->sync.sync_interval;
         sca_sync_response_timeout = sca->sync.sync_response_timeout;
         sca_sync_max_eps = sca->sync.sync_max_eps;
+        sca_sync_end_delay_ms = sca->sync.sync_end_delay_ms;
     }
 
     if (sca->max_eps) {

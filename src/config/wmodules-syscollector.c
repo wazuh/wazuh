@@ -35,6 +35,7 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
     const char *XML_DB_SYNC_INTERVAL = "interval";
     const char *XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
+    const char *XML_DB_SYNC_END_DELAY_MS = "sync_end_delay_ms";
 
     for (int i = 0; node[i]; ++i) {
         if (strcmp(node[i]->element, XML_DB_SYNC_ENABLED) == 0) {
@@ -69,6 +70,15 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscollector->sync.sync_max_eps = value;
+            }
+        } else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY_MS) == 0) {
+            char * end;
+            const long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 0 || value > 1000000 || *end) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscollector->sync.sync_end_delay_ms = value;
             }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
@@ -107,6 +117,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->sync.sync_interval = 300;
         syscollector->sync.sync_response_timeout = 60;
         syscollector->sync.sync_max_eps = 10;
+        syscollector->sync.sync_end_delay_ms = 1000;
 
         syscollector->max_eps = 50;
         syscollector->flags.notify_first_scan = 0; // Default value, no notification on first scan
