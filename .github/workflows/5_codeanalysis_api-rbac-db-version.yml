@@ -1,10 +1,10 @@
-name: 5.X - RBAC (Framework) - Defaults version guard
+name: 5.X - API RBAC DB Version Check
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - ".github/workflows/5_rbac-defaults-version-guard.yml"
+      - ".github/workflows/5_codeanalysis_api-rbac-db-version.yml"
       - "framework/wazuh/rbac/default/**"
       - "framework/wazuh/rbac/orm.py"
 
@@ -12,71 +12,34 @@ jobs:
   guard:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo (shallow ok)
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Fetch base and PR head explicitly
-        id: fetch
+      - name: Get changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rbac_defaults:
+              - 'framework/wazuh/rbac/default/**'
+            orm_handler:
+              - 'framework/wazuh/rbac/orm.py'
+
+      - name: Require API RBAC DB version bump when defaults changed
+        if: steps.filter.outputs.rbac_defaults == 'true'
         run: |
-          set -euo pipefail
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          BASE_REF="${{ github.base_ref || 'main' }}"
-
-          # Fetch the full base branch (with history)
-          git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
-
-          # Fetch the real PR head into a local branch called 'prhead'
-          git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:prhead"
-
-          # Print which commits will be compared
-          echo "BASE: origin/${BASE_REF}"
-          echo "HEAD: prhead"
-
-      - name: Detect defaults changes
-        id: diff
-        run: |
-          set -euo pipefail
-          # Compare RBAC defaults between base and PR head
-          CHANGED=$(git diff --name-only "origin/${{ github.base_ref || 'main' }}"...prhead -- 'framework/wazuh/rbac/default/')
-          echo "Detected changes:"
-          echo "$CHANGED"
-
-          {
-            echo "changed_files<<EOF"
-            echo "$CHANGED"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Require DB version bump when defaults changed
-        if: steps.diff.outputs.changed_files != ''
-        run: |
-          set -euo pipefail
-          BASE_REF="${{ github.base_ref || 'main' }}"
-
-          # Read current ORM version from PR branch
-          CURR=$(grep -E 'CURRENT_ORM_VERSION\s*=\s*[0-9]+' framework/wazuh/rbac/orm.py | head -n1 | sed -E 's/.*=\s*([0-9]+).*/\1/')
-
-          # Read ORM version from the base branch
-          BASE_VER=$(git show "refs/remotes/origin/${BASE_REF}:framework/wazuh/rbac/orm.py" | grep -E 'CURRENT_ORM_VERSION\s*=\s*[0-9]+' | sed -E 's/.*=\s*([0-9]+).*/\1/' || true)
-
-          echo "Current ORM version: $CURR"
-          echo "Base ORM version: $BASE_VER"
-
-          # Validate that both versions were read correctly
-          if [ -z "$CURR" ] || [ -z "$BASE_VER" ]; then
-            echo "::error::Could not read CURRENT_ORM_VERSION in orm.py (current/base)."
+          echo "RBAC default files and ORM handler changed. Checking DB version bump..."
+          if [ "${{ steps.filter.outputs.orm_handler }}" != "true" ]; then
+            echo "Error: RBAC default files were modified but orm.py was not changed."
             exit 1
           fi
-
-          # Fail if defaults changed but version wasn’t incremented
-          if [ "$CURR" = "$BASE_VER" ]; then
-            echo "::error::RBAC defaults changed but CURRENT_ORM_VERSION was not incremented."
-            echo "Changed files:"
-            git diff --name-only "origin/${BASE_REF}" prhead -- 'framework/wazuh/rbac/default/'
+          git fetch origin ${{ github.base_ref }}
+          DB_VERSION_CHANGED=$(git diff "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -E 'CURRENT_ORM_VERSION\s*=\s*\d+' | wc -l)
+          if [ "$DB_VERSION_CHANGED" -eq "0" ]; then
+            echo "Error: CURRENT_ORM_VERSION was not bumped in orm.py."
             exit 1
+          else
+            echo "CURRENT_ORM_VERSION version bump detected."
           fi
-
-          # Pass if version bump detected
-          echo " OK: defaults changed and version bumped ($BASE_VER → $CURR)"
