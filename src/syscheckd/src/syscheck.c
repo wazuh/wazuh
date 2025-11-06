@@ -112,7 +112,9 @@ void fim_initialize() {
     w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
-#ifndef WIN32
+#ifdef WIN32
+    w_mutex_init(&syscheck.fim_registry_scan_mutex, NULL)
+#else
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
 #endif
 

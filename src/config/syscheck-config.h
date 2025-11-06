@@ -438,10 +438,12 @@ typedef struct _config {
     pthread_rwlock_t directories_lock;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
-#ifndef WIN32
+#ifdef WIN32
+    pthread_mutex_t fim_registry_scan_mutex;
+#else
     pthread_mutex_t fim_symlink_mutex;
     unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
-#endif
+#endif // WIN32
     rtfim *realtime;
     fdb_t *database;
 
