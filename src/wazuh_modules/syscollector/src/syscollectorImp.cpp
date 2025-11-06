@@ -270,6 +270,7 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
+    , m_initialized { false }
     , m_notify { false }
     , m_groups { false }
     , m_users { false }
@@ -346,12 +347,24 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
+    m_initialized   = true;
 
 }
 
 void Syscollector::start()
 {
     std::unique_lock<std::mutex> lock{m_mutex};
+
+    // Don't start if initialization failed
+    if (!m_initialized)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Cannot start Syscollector - module initialization failed");
+        }
+        return;
+    }
+
     m_stopping = false;
 
     // Reset sync protocol stop flag to allow restarting operations

@@ -298,27 +298,7 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         wm_sys_log_config(sys);
 
-        // Initialize sync protocol if enabled
-        if (enable_synchronization && syscollector_init_sync_ptr && syscollector_sync_module_ptr) {
-            MQ_Functions mq_funcs = {
-                .start = wm_sys_startmq,
-                .send_binary = wm_sys_send_binary_msg
-            };
-            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
-#ifndef WIN32
-            // Launch inventory synchronization thread
-            sync_module_running = 1;
-            w_create_thread(wm_sync_module, NULL);
-#else
-            sync_module_running = 1;
-            if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL) {
-                mterror(WM_SYS_LOGTAG, THREAD_ERROR);
-            }
-#endif
-        } else {
-            mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
-        }
-
+        // Initialize syscollector FIRST to set up the logger callback
         syscollector_init_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_persist_diff_message,
@@ -340,6 +320,27 @@ void* wm_sys_main(wm_sys_t *sys) {
                                sys->flags.services,
                                sys->flags.browser_extensions,
                                sys->flags.notify_first_scan);
+
+        // Initialize sync protocol AFTER init (so logger is available)
+        if (enable_synchronization && syscollector_init_sync_ptr && syscollector_sync_module_ptr) {
+            MQ_Functions mq_funcs = {
+                .start = wm_sys_startmq,
+                .send_binary = wm_sys_send_binary_msg
+            };
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+#ifndef WIN32
+            // Launch inventory synchronization thread
+            sync_module_running = 1;
+            w_create_thread(wm_sync_module, NULL);
+#else
+            sync_module_running = 1;
+            if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL) {
+                mterror(WM_SYS_LOGTAG, THREAD_ERROR);
+            }
+#endif
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
+        }
 
         syscollector_start_ptr();
     } else {
