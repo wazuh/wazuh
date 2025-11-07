@@ -276,6 +276,7 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
+    , m_vdHasModifyOrDelete { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -1259,20 +1260,34 @@ void Syscollector::scanBrowserExtensions()
     }
 }
 
-void Syscollector::scan()
+void Syscollector::scanVDTables()
 {
-    m_logFunction(LOG_INFO, "Starting evaluation.");
-    TRY_CATCH_TASK(scanHardware);
+    m_logFunction(LOG_INFO, "Starting VD tables evaluation.");
     TRY_CATCH_TASK(scanOs);
-    TRY_CATCH_TASK(scanNetwork);
     TRY_CATCH_TASK(scanPackages);
     TRY_CATCH_TASK(scanHotfixes);
+    m_logFunction(LOG_INFO, "VD tables evaluation finished.");
+}
+
+void Syscollector::scanNonVDTables()
+{
+    m_logFunction(LOG_INFO, "Starting non-VD tables evaluation.");
+    TRY_CATCH_TASK(scanHardware);
+    TRY_CATCH_TASK(scanNetwork);
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
     TRY_CATCH_TASK(scanGroups);
     TRY_CATCH_TASK(scanUsers);
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
+    m_logFunction(LOG_INFO, "Non-VD tables evaluation finished.");
+}
+
+void Syscollector::scan()
+{
+    m_logFunction(LOG_INFO, "Starting evaluation.");
+    scanVDTables();
+    scanNonVDTables();
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -1576,16 +1591,30 @@ bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned 
 {
     bool result = true;
 
-    // Sync non-VD protocol
+    // Sync non-VD protocol with default Option::SYNC
     if (m_spSyncProtocol)
     {
-        result = m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps) && result;
+        result = m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps, Option::SYNC) && result;
     }
 
-    // Sync VD protocol
+    // Sync VD protocol with appropriate Option flag
     if (m_spSyncProtocolVD)
     {
-        result = m_spSyncProtocolVD->synchronizeModule(mode, timeout, retries, maxEps) && result;
+        // Determine Option based on operation types seen during scan:
+        // - If only CREATE operations seen (no MODIFY/DELETE) -> VDFIRST (first scan)
+        // - If any MODIFY/DELETE operations seen -> VDSYNC (delta scan)
+        Option vdOption = m_vdHasModifyOrDelete ? Option::VDSYNC : Option::VDFIRST;
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Syncing VD tables with option: " +
+                         std::string(vdOption == Option::VDFIRST ? "VDFIRST" : "VDSYNC"));
+        }
+
+        result = m_spSyncProtocolVD->synchronizeModule(mode, timeout, retries, maxEps, vdOption) && result;
+
+        // Reset the flag after sync for next scan cycle
+        m_vdHasModifyOrDelete = false;
     }
 
     return result;
@@ -1600,10 +1629,19 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
 
     if (isVDTable && m_spSyncProtocolVD)
     {
+        // Track if we see any MODIFY or DELETE operations for VD tables
+        // This helps determine if it's first scan (all CREATE) or delta scan (has MODIFY/DELETE)
+        if (operation == Operation::MODIFY || operation == Operation::DELETE_)
+        {
+            m_vdHasModifyOrDelete = true;
+        }
+
+        // VD tables go only to VD sync protocol
         m_spSyncProtocolVD->persistDifference(id, operation, index, data, version);
     }
-    else if (!isVDTable && m_spSyncProtocol)
+    else if (m_spSyncProtocol)
     {
+        // Non-VD tables go only to non-VD sync protocol
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
