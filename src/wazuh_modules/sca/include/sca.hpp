@@ -119,6 +119,11 @@ class EXPORTED SCA final
         /// @brief Deletes the database.
         void deleteDatabase();
 
+        /// @brief Handles query commands for the SCA module.
+        /// @param jsonQuery JSON-formatted query command string
+        /// @return JSON-formatted response string
+        std::string query(const std::string& jsonQuery);
+
     private:
         /// @brief Private constructor for singleton pattern.
         SCA();

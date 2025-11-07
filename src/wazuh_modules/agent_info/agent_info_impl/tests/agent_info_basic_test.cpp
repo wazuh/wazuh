@@ -40,8 +40,29 @@ class AgentInfoImplTest : public ::testing::Test
                 m_logOutput += "\n";
             };
 
+            // Create a mock query module function
+            m_queryModuleFunction = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+            {
+                // Mock implementation that returns success
+                if (response)
+                {
+                    *response = nullptr;
+                }
+
+                return 0;
+            };
+
             m_mockDBSync = std::make_shared<MockDBSync>();
-            m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync);
+
+            // Configure expected calls to avoid warnings
+            EXPECT_CALL(*m_mockDBSync, handle())
+            .WillRepeatedly(::testing::Return(nullptr));
+
+            // Configure selectRows call for loadSyncFlags()
+            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Return());
+
+            m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync);
         }
 
         void TearDown() override
@@ -54,6 +75,7 @@ class AgentInfoImplTest : public ::testing::Test
         std::shared_ptr<MockDBSync> m_mockDBSync = nullptr;
         std::shared_ptr<AgentInfoImpl> m_agentInfo = nullptr;
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
+        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunction;
         std::string m_logOutput;
 };
 
@@ -158,7 +180,7 @@ TEST_F(AgentInfoImplTest, ConstructorWithCustomSysInfoSucceeds)
     m_logOutput.clear();
 
     // Create AgentInfoImpl with custom SysInfo
-    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, mockSysInfo);
+    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
@@ -170,7 +192,7 @@ TEST_F(AgentInfoImplTest, ConstructorWithDefaultDependenciesSucceeds)
 
     // Create AgentInfoImpl without passing dbSync or sysInfo (creates defaults)
     // Using in-memory database to avoid file I/O in tests
-    auto agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunction);
+    auto agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunction, m_queryModuleFunction);
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
@@ -221,4 +243,22 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module started"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module stopped"));
     EXPECT_GE(iterations, 1);  // At least one iteration should have completed
+}
+
+TEST_F(AgentInfoImplTest, ConstructorThrowsWhenLogFunctionIsNull)
+{
+    EXPECT_THROW(
+    {
+        AgentInfoImpl agentInfo("test_path", nullptr, nullptr, m_queryModuleFunction, m_mockDBSync);
+    },
+    std::invalid_argument);
+}
+
+TEST_F(AgentInfoImplTest, ConstructorThrowsWhenQueryModuleFunctionIsNull)
+{
+    EXPECT_THROW(
+    {
+        AgentInfoImpl agentInfo("test_path", nullptr, m_logFunction, nullptr, m_mockDBSync);
+    },
+    std::invalid_argument);
 }

@@ -270,7 +270,8 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
                                                     const std::vector<std::string>& indices,
                                                     std::chrono::seconds timeout,
                                                     unsigned int retries,
-                                                    size_t maxEps)
+                                                    size_t maxEps,
+                                                    uint64_t globalVersion)
 {
     // Validate synchronization mode - only allow metadata and group modes
     if (mode != Mode::METADATA_DELTA && mode != Mode::METADATA_CHECK &&
@@ -293,7 +294,7 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     bool success = false;
 
     // Step 1: Send Start message and wait for StartAck
-    if (sendStartAndWaitAck(mode, 0, indices, timeout, retries, maxEps))
+    if (sendStartAndWaitAck(mode, 0, indices, timeout, retries, maxEps, Option::SYNC, globalVersion))
     {
         // Step 2: Send End message and wait for EndAck (no Data messages)
         std::vector<PersistedData> emptyData;
@@ -428,7 +429,8 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             const std::chrono::seconds timeout,
                                             unsigned int retries,
                                             size_t maxEps,
-                                            Option option)
+                                            Option option,
+                                            std::optional<uint64_t> globalVersion)
 {
     // Declare metadata variables outside try block for proper cleanup in catch
     agent_metadata_t metadata{};
@@ -513,7 +515,12 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_agentid(agentid);
         startBuilder.add_groups(groups);
         startBuilder.add_checksum_metadata(checksum_metadata);
-        startBuilder.add_global_version(1000);
+
+        // Only add global_version if provided
+        if (globalVersion.has_value())
+        {
+            startBuilder.add_global_version(globalVersion.value());
+        }
 
         auto startOffset = startBuilder.Finish();
 

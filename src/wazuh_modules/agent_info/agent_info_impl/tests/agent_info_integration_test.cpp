@@ -40,6 +40,18 @@ class AgentInfoRealDBSyncTest : public ::testing::Test
                 m_logOutput += msg + "\n";
             };
 
+            // Create a mock query module function
+            m_queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+            {
+                // Mock implementation that returns success
+                if (response)
+                {
+                    *response = nullptr;
+                }
+
+                return 0;
+            };
+
             m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
             m_mockFileIO = std::make_shared<MockFileIOUtils>();
             m_mockSysInfo = std::make_shared<MockSysInfo>();
@@ -59,6 +71,7 @@ class AgentInfoRealDBSyncTest : public ::testing::Test
         std::shared_ptr<MockSysInfo> m_mockSysInfo;
         std::function<void(const std::string&)> m_reportDiffFunc;
         std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
         std::vector<nlohmann::json> m_reportedEvents;
         std::string m_logOutput;
 };
@@ -67,17 +80,24 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
 {
     // Setup mocks to provide data
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillOnce(::testing::Return(true))
-    .WillOnce(::testing::Return(true));
+    .WillRepeatedly(::testing::Return(true));
 
     EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
     {
-        callback("456 real-dbsync-test 10.0.0.1 key");
-    }))
-    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        callback("#group: dbsync-test-group");
+        // Check which file is being read and provide appropriate content
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("456 real-dbsync-test 10.0.0.1 key");
+        }
+        else if (pathStr.find("merged.mg") != std::string::npos)
+        {
+            callback("#group: dbsync-test-group");
+        }
+
+        // For any other files, just return without calling callback (simulating empty file)
     }));
 
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
@@ -89,6 +109,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
                       ":memory:",
                       m_reportDiffFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       nullptr,  // Use real DBSync
                       m_mockSysInfo,
                       m_mockFileIO,
@@ -134,6 +155,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
                                                   m_reportDiffFunc,
                                                   m_logFunc,
+                                                  m_queryModuleFunc,
                                                   nullptr, // Use real DBSync
                                                   m_mockSysInfo,
                                                   m_mockFileIO,
@@ -175,4 +197,5 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
     EXPECT_TRUE(foundMetadataEvent);
     // Groups event may or may not be present depending on initial state,
     // but if present it should be a delete event for empty groups
+    (void)foundGroupsEvent; // May or may not be set depending on DB state
 }

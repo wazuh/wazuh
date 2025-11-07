@@ -21,6 +21,7 @@
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
+#include "../../module_query_errors.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -1617,3 +1618,107 @@ void Syscollector::deleteDatabase()
         m_spDBSync->closeAndDeleteDatabase();
     }
 }
+
+// LCOV_EXCL_START
+
+// Excluded from code coverage as it is not the real implementation of the query method.
+// This is just a placeholder to comply with the module interface requirements.
+// The real implementation should be done in the future iterations.
+std::string Syscollector::query(const std::string& jsonQuery)
+{
+    // Log the received query
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Received query: " + jsonQuery);
+    }
+
+    try
+    {
+        // Parse JSON command
+        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
+
+        if (!query_json.contains("command") || !query_json["command"].is_string())
+        {
+            nlohmann::json response;
+            response["error"] = MQ_ERR_INVALID_PARAMS;
+            response["message"] = MQ_MSG_INVALID_PARAMS;
+            return response.dump();
+        }
+
+        std::string command = query_json["command"];
+        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
+
+        // Log the command being executed
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Executing command: " + command);
+        }
+
+        nlohmann::json response;
+
+        // Handle coordination commands with JSON responses
+        if (command == "pause")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector module paused successfully";
+            response["data"]["module"] = "syscollector";
+            response["data"]["action"] = "pause";
+        }
+        else if (command == "flush")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector module flushed successfully";
+            response["data"]["module"] = "syscollector";
+            response["data"]["action"] = "flush";
+        }
+        else if (command == "get_version")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector version retrieved";
+            response["data"]["version"] = 3;
+        }
+        else if (command == "set_version")
+        {
+            // Extract version from parameters
+            int version = 0;
+
+            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
+            {
+                version = parameters["version"].get<int>();
+            }
+
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector version set successfully";
+            response["data"]["version"] = version;
+        }
+        else if (command == "resume")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector module resumed successfully";
+            response["data"]["module"] = "syscollector";
+            response["data"]["action"] = "resume";
+        }
+        else
+        {
+            response["error"] = MQ_ERR_UNKNOWN_COMMAND;
+            response["message"] = "Unknown Syscollector command: " + command;
+            response["data"]["command"] = command;
+        }
+
+        return response.dump();
+    }
+    catch (const std::exception& ex)
+    {
+        nlohmann::json response;
+        response["error"] = MQ_ERR_INTERNAL;
+        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Query error: " + std::string(ex.what()));
+        }
+
+        return response.dump();
+    }
+}
+// LCOV_EXCL_STOP

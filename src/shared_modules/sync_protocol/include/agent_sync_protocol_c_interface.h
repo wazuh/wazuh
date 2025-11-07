@@ -116,6 +116,7 @@ void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 /// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
 /// @param sync_retries The maximum number of attempts for re-sending messages.
 /// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @param global_version Global version to include in the Start message
 /// @return true if synchronization completed successfully, false otherwise
 bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
                                  Mode_t mode,
@@ -123,7 +124,8 @@ bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
                                  size_t indices_count,
                                  unsigned int sync_timeout,
                                  unsigned int sync_retries,
-                                 size_t max_eps);
+                                 size_t max_eps,
+                                 uint64_t global_version);
 
 /// @brief Notifies the manager about data cleaning for specified indices.
 ///

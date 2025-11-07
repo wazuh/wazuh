@@ -38,9 +38,29 @@ class AgentInfoLoggingTest : public ::testing::Test
             m_mockFileIO = std::make_shared<MockFileIOUtils>();
             m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
 
+            // Configure expected calls to avoid warnings
+            EXPECT_CALL(*m_mockDBSync, handle())
+            .WillRepeatedly(::testing::Return(nullptr));
+
+            // Configure selectRows call for loadSyncFlags()
+            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Return());
+
             m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
                 m_logMessages.push_back({level, msg});
+            };
+
+            // Create a mock query module function
+            m_queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+            {
+                // Mock implementation that returns success
+                if (response)
+                {
+                    *response = nullptr;
+                }
+
+                return 0;
             };
         }
 
@@ -59,6 +79,7 @@ class AgentInfoLoggingTest : public ::testing::Test
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
         std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
         std::vector<std::pair<modules_log_level_t, std::string>> m_logMessages;
         std::string m_logOutput;
 };
@@ -90,6 +111,7 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
                       "test_path",
                       nullptr,
                       m_logFunc,  // Use log function
+                      m_queryModuleFunc,
                       m_mockDBSync,
                       m_mockSysInfo,
                       m_mockFileIO,
@@ -140,6 +162,7 @@ TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
                       "test_path",
                       nullptr,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync,
                       m_mockSysInfo,
                       m_mockFileIO,
@@ -175,6 +198,7 @@ TEST_F(AgentInfoLoggingTest, ProcessEventDebugUsesLogFunction)
                       ":memory:",
                       reportFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 
@@ -212,6 +236,7 @@ TEST_F(AgentInfoLoggingTest, ProcessEventErrorUsesLogFunction)
                       ":memory:",
                       throwingReportFunc,
                       m_logFunc,
+                      m_queryModuleFunc,
                       m_mockDBSync
                   );
 

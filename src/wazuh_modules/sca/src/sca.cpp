@@ -11,6 +11,7 @@ extern "C"
 #endif
 
 #include "../../wm_sca.h"
+#include "../../module_query_errors.h"
 #include "../wazuh_modules/wmodules_def.h"
 
 #include "logging_helper.hpp"
@@ -368,6 +369,101 @@ void SCA::deleteDatabase()
     }
 }
 
+// LCOV_EXCL_START
+
+// Excluded from code coverage as it is not the real implementation of the query method.
+// This is just a placeholder to comply with the module interface requirements.
+// The real implementation should be done in the future iterations.
+std::string SCA::query(const std::string& jsonQuery)
+{
+    // Log the received query
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
+
+    try
+    {
+        // Parse JSON command
+        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
+
+        if (!query_json.contains("command") || !query_json["command"].is_string())
+        {
+            nlohmann::json response;
+            response["error"] = MQ_ERR_INVALID_PARAMS;
+            response["message"] = MQ_MSG_INVALID_PARAMS;
+            return response.dump();
+        }
+
+        std::string command = query_json["command"];
+        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
+
+        // Log the command being executed
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Executing command: " + command);
+
+        nlohmann::json response;
+
+        // Handle coordination commands with JSON responses
+        if (command == "pause")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA module paused successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "pause";
+        }
+        else if (command == "flush")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA module flushed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "flush";
+        }
+        else if (command == "get_version")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA version retrieved";
+            response["data"]["version"] = 4;
+        }
+        else if (command == "set_version")
+        {
+            // Extract version from parameters
+            int version = 0;
+
+            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
+            {
+                version = parameters["version"].get<int>();
+            }
+
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA version set successfully";
+            response["data"]["version"] = version;
+        }
+        else if (command == "resume")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA module resumed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "resume";
+        }
+        else
+        {
+            response["error"] = MQ_ERR_UNKNOWN_COMMAND;
+            response["message"] = "Unknown SCA command: " + command;
+            response["data"]["command"] = command;
+        }
+
+        return response.dump();
+    }
+    catch (const std::exception& ex)
+    {
+        nlohmann::json response;
+        response["error"] = MQ_ERR_INTERNAL;
+        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
+
+        LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
+        return response.dump();
+    }
+}
+
+// LCOV_EXCL_STOP
+
 /// @brief C-style wrapper for SCA module synchronization.
 ///
 /// Provides a C-compatible interface for triggering database synchronization
@@ -461,6 +557,34 @@ void sca_delete_database()
 }
 
 // LCOV_EXCL_STOP
+
+/// @brief Query handler for SCA module.
+///
+/// Handles query commands sent to the SCA module from other modules.
+///
+/// @param json_query Json query command string
+/// @param output Pointer to output string (caller must free with os_free)
+/// @return Length of the output string
+size_t sca_query(const char* json_query, char** output)
+{
+    if (!json_query || !output)
+    {
+        return 0;
+    }
+
+    try
+    {
+        std::string result = SCA::instance().query(std::string(json_query));
+        *output = strdup(result.c_str());
+        return strlen(*output);
+    }
+    catch (const std::exception& ex)
+    {
+        std::string error = "{\"error\":" + std::to_string(MQ_ERR_EXCEPTION) + ",\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
+        *output = strdup(error.c_str());
+        return strlen(*output);
+    }
+}
 
 #ifdef __cplusplus
 }

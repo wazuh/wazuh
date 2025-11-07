@@ -11,16 +11,24 @@
 #include <file_io_utils.hpp>
 #include <filesystem_wrapper.hpp>
 #include <sysInfo.hpp>
+#include "../../../module_query_errors.h"
+#include "../../../wmodules.h"
 
 #include <chrono>
 #include <condition_variable>
 #include <map>
 #include <mutex>
+#include <set>
 #include <thread>
 
 constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
+
+// Module coordination configuration
+const std::vector<std::string> COORDINATION_MODULES = {SCA_WM_NAME, SYSCOLLECTOR_WM_NAME, FIM_NAME};
+constexpr int MAX_COORDINATION_RETRIES = 3;
+constexpr int COORDINATION_RETRY_DELAY_MS = 1000;
 
 // Map DBSync callback results to operation strings for stateless events
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
@@ -37,26 +45,38 @@ static const std::map<std::string, Mode> TABLE_MODE_MAP
     {AGENT_GROUPS_TABLE, Mode::GROUP_DELTA},
 };
 
-// List of all module indices that should be updated when agent metadata or groups change
-static const std::vector<std::string> ALL_MODULE_INDICES
+// Map modules to their corresponding indices that should be updated when agent metadata or groups change
+static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
 {
-    "wazuh-states-fim-files",
-    "wazuh-states-fim-registry-keys",
-    "wazuh-states-fim-registry-values",
-    "wazuh-states-sca",
-    "wazuh-states-inventory-system",
-    "wazuh-states-inventory-hardware",
-    "wazuh-states-inventory-hotfixes",
-    "wazuh-states-inventory-packages",
-    "wazuh-states-inventory-processes",
-    "wazuh-states-inventory-ports",
-    "wazuh-states-inventory-interfaces",
-    "wazuh-states-inventory-protocols",
-    "wazuh-states-inventory-networks",
-    "wazuh-states-inventory-users",
-    "wazuh-states-inventory-groups",
-    "wazuh-states-inventory-services",
-    "wazuh-states-inventory-browser-extensions"
+    {
+        FIM_NAME, {
+            "wazuh-states-fim-files",
+            "wazuh-states-fim-registry-keys",
+            "wazuh-states-fim-registry-values"
+        }
+    },
+    {
+        SCA_WM_NAME, {
+            "wazuh-states-sca"
+        }
+    },
+    {
+        SYSCOLLECTOR_WM_NAME, {
+            "wazuh-states-inventory-system",
+            "wazuh-states-inventory-hardware",
+            "wazuh-states-inventory-hotfixes",
+            "wazuh-states-inventory-packages",
+            "wazuh-states-inventory-processes",
+            "wazuh-states-inventory-ports",
+            "wazuh-states-inventory-interfaces",
+            "wazuh-states-inventory-protocols",
+            "wazuh-states-inventory-networks",
+            "wazuh-states-inventory-users",
+            "wazuh-states-inventory-groups",
+            "wazuh-states-inventory-services",
+            "wazuh-states-inventory-browser-extensions"
+        }
+    }
 };
 
 const char* AGENT_METADATA_SQL_STATEMENT =
@@ -79,9 +99,16 @@ const char* AGENT_GROUPS_SQL_STATEMENT =
     "PRIMARY KEY (agent_id, group_name),"
     "FOREIGN KEY (agent_id) REFERENCES agent_metadata(agent_id) ON DELETE CASCADE);";
 
+const char* DB_METADATA_SQL_STATEMENT =
+    "CREATE TABLE IF NOT EXISTS db_metadata ("
+    "id                    INTEGER PRIMARY KEY CHECK (id = 1),"
+    "should_sync_metadata  INTEGER NOT NULL DEFAULT 0,"
+    "should_sync_groups    INTEGER NOT NULL DEFAULT 0);";
+
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
                              std::function<void(const modules_log_level_t, const std::string&)> logFunction,
+                             module_query_callback_t queryModuleFunction,
                              std::shared_ptr<IDBSync> dbSync,
                              std::shared_ptr<ISysInfo> sysInfo,
                              std::shared_ptr<IFileIOUtils> fileIO,
@@ -95,10 +122,16 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
     , m_fileSystem(fileSystem ? std::move(fileSystem) : std::make_shared<file_system::FileSystemWrapper>())
     , m_reportDiffFunction(std::move(reportDiffFunction))
     , m_logFunction(std::move(logFunction))
+    , m_queryModuleFunction(std::move(queryModuleFunction))
 {
     if (!m_logFunction)
     {
         throw std::invalid_argument("Log function must be provided");
+    }
+
+    if (!m_queryModuleFunction)
+    {
+        throw std::invalid_argument("Query module function must be provided");
     }
 
     m_logFunction(LOG_INFO, "AgentInfo initialized.");
@@ -110,14 +143,17 @@ AgentInfoImpl::~AgentInfoImpl()
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
-void AgentInfoImpl::setIsAgent(bool isAgent)
+void AgentInfoImpl::setIsAgent(bool value)
 {
-    m_isAgent = isAgent;
+    m_isAgent = value;
 }
 
 void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
 {
     m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) + " seconds.");
+
+    // Load sync flags from database at startup
+    loadSyncFlags();
 
     std::unique_lock<std::mutex> lock(m_mutex);
     m_stopped = false;
@@ -140,6 +176,56 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
         catch (const std::exception& e)
         {
             m_logFunction(LOG_ERROR, std::string("Failed to populate agent metadata: ") + e.what());
+        }
+
+        // After populateAgentMetadata(), check if synchronization is needed
+
+        // Perform coordination for metadata if needed
+        if (m_shouldSyncMetadata)
+        {
+            try
+            {
+                m_logFunction(LOG_DEBUG, "Synchronization needed for " + std::string(AGENT_METADATA_TABLE));
+                bool success = coordinateModules(AGENT_METADATA_TABLE);
+
+                if (success)
+                {
+                    m_logFunction(LOG_DEBUG, "Successfully coordinated " + std::string(AGENT_METADATA_TABLE));
+                    resetSyncFlag(AGENT_METADATA_TABLE);
+                }
+                else
+                {
+                    m_logFunction(LOG_WARNING, "Failed to coordinate " + std::string(AGENT_METADATA_TABLE) + ", will retry in next cycle");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                m_logFunction(LOG_ERROR, std::string("Exception during metadata coordination: ") + e.what());
+            }
+        }
+
+        // Perform coordination for groups if needed
+        if (m_shouldSyncGroups)
+        {
+            try
+            {
+                m_logFunction(LOG_DEBUG, "Synchronization needed for " + std::string(AGENT_GROUPS_TABLE));
+                bool success = coordinateModules(AGENT_GROUPS_TABLE);
+
+                if (success)
+                {
+                    m_logFunction(LOG_DEBUG, "Successfully coordinated " + std::string(AGENT_GROUPS_TABLE));
+                    resetSyncFlag(AGENT_GROUPS_TABLE);
+                }
+                else
+                {
+                    m_logFunction(LOG_WARNING, "Failed to coordinate " + std::string(AGENT_GROUPS_TABLE) + ", will retry in next cycle");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                m_logFunction(LOG_ERROR, std::string("Exception during groups coordination: ") + e.what());
+            }
         }
 
         lock.lock();
@@ -240,6 +326,7 @@ std::string AgentInfoImpl::GetCreateStatement() const
     std::string ret;
     ret += AGENT_METADATA_SQL_STATEMENT;
     ret += AGENT_GROUPS_SQL_STATEMENT;
+    ret += DB_METADATA_SQL_STATEMENT;
     return ret;
 }
 
@@ -647,17 +734,11 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 
             m_reportDiffFunction(statelessEvent.dump());
 
-            if (m_spSyncProtocol)
-            {
-                m_spSyncProtocol->synchronizeMetadataOrGroups(
-                    TABLE_MODE_MAP.at(table),
-                    ALL_MODULE_INDICES,
-                    std::chrono::seconds(m_syncResponseTimeout),
-                    m_syncRetries,
-                    m_syncMaxEps);
-            }
+            // Mark that synchronization is needed for this table
+            // The actual coordination will be done in the main loop after populateAgentMetadata
+            setSyncFlag(table, true);
 
-            std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result);
+            std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result) + " (sync flag set)";
             m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
         }
     }
@@ -748,4 +829,537 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
     }
 
     return ecsFormatted;
+}
+
+namespace
+{
+    /// @brief Structure to represent a module query response
+    struct ModuleResponse
+    {
+        bool success;              ///< True if operation succeeded (error code 0)
+        std::string response;      ///< Raw response string
+        int errorCode;             ///< Parsed error code (0 if success)
+        bool isModuleUnavailable;  ///< True if error indicates module is unavailable (50-53)
+    };
+
+    /// @brief Parse JSON response and extract error information
+    /// @param responseStr Raw JSON response string
+    /// @return ModuleResponse with parsed information
+    ModuleResponse parseModuleResponse(const std::string& responseStr)
+    {
+        ModuleResponse result;
+        result.response = responseStr;
+        result.success = false;
+        result.errorCode = -1;
+        result.isModuleUnavailable = false;
+
+        try
+        {
+            nlohmann::json responseJson = nlohmann::json::parse(responseStr);
+
+            if (responseJson.contains("error") && responseJson["error"].is_number())
+            {
+                result.errorCode = responseJson["error"].get<int>();
+                result.success = (result.errorCode == 0);
+                result.isModuleUnavailable = MQ_IS_MODULE_UNAVAILABLE(result.errorCode);
+            }
+        }
+        catch (const std::exception&)
+        {
+            // If parsing fails, keep default values
+        }
+
+        return result;
+    }
+
+    /// @brief RAII wrapper for C-style strings allocated with malloc/strdup
+    struct CStringDeleter
+    {
+        void operator()(char* ptr) const
+        {
+            if (ptr)
+            {
+                free(ptr);
+            }
+        }
+    };
+    using UniqueCString = std::unique_ptr<char, CStringDeleter>;
+}
+
+bool AgentInfoImpl::coordinateModules(const std::string& table)
+{
+    // Check if query function is available
+    if (!m_queryModuleFunction)
+    {
+        m_logFunction(LOG_WARNING, "Module query function not available, skipping coordination");
+        return false;
+    }
+
+    // Determine if we should increment version based on table
+    // AGENT_METADATA_TABLE -> increment (max + 1)
+    // AGENT_GROUPS_TABLE -> keep max (no increment)
+    bool incrementVersion = (table == AGENT_METADATA_TABLE);
+
+    // State tracking
+    std::set<std::string> pausedModules;
+    std::map<std::string, int> moduleVersions;
+
+    m_logFunction(LOG_DEBUG, "Starting module coordination process");
+
+    // Helper function to create JSON command messages
+    auto createJsonCommand = [](const std::string & command, const std::map<std::string, nlohmann::json>& params = {}) -> std::string
+    {
+        nlohmann::json jsonCmd;
+
+        jsonCmd["command"] = command;
+
+        // Always include parameters field (even if empty)
+        nlohmann::json paramObj = nlohmann::json::object();
+
+        for (const auto& [key, value] : params)
+        {
+            paramObj[key] = value;
+        }
+
+        jsonCmd["parameters"] = paramObj;
+
+        return jsonCmd.dump();
+    };
+
+    // Helper function to query module with retries and error handling using JSON format
+    auto queryModuleWithRetry = [this](const std::string & moduleName, const std::string & jsonMessage) -> ModuleResponse
+    {
+        m_logFunction(LOG_DEBUG, "Sending JSON command to " + moduleName + ": " + jsonMessage);
+
+        for (int attempt = 1; attempt <= MAX_COORDINATION_RETRIES; ++attempt)
+        {
+            char* rawResponse = nullptr;
+            int result = m_queryModuleFunction(moduleName, jsonMessage, &rawResponse);
+
+            // Use RAII to manage C string memory
+            UniqueCString response(rawResponse);
+
+            // If no response received, create structured error JSON
+            std::string responseStr;
+
+            if (response)
+            {
+                responseStr = std::string(response.get());
+            }
+            else
+            {
+                // Create structured error response for null pointer
+                nlohmann::json errorJson;
+                errorJson["error"] = MQ_ERR_INTERNAL;
+                errorJson["message"] = "No response received from module query function";
+                responseStr = errorJson.dump();
+            }
+
+            // Parse response using helper function
+            ModuleResponse moduleResp = parseModuleResponse(responseStr);
+
+            // If query succeeded (error code 0), return immediately
+            if (result == 0 && moduleResp.success)
+            {
+                m_logFunction(LOG_DEBUG, moduleName + " query succeeded");
+                return moduleResp;
+            }
+
+            // If module is unavailable (disabled/not found/not running), return immediately without retrying
+            if (moduleResp.isModuleUnavailable)
+            {
+                m_logFunction(LOG_DEBUG, moduleName + " module is unavailable (error " +
+                              std::to_string(moduleResp.errorCode) + "): " + responseStr);
+                return moduleResp;
+            }
+
+            // For other errors, log and retry
+            m_logFunction(LOG_WARNING, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_COORDINATION_RETRIES) +
+                          " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) + "): " + responseStr);
+
+            if (attempt < MAX_COORDINATION_RETRIES)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS));
+            }
+        }
+
+        m_logFunction(LOG_WARNING, "Failed to query " + moduleName + " after " + std::to_string(MAX_COORDINATION_RETRIES) + " attempts");
+
+        // Return failure response with structured error JSON
+        nlohmann::json errorJson;
+        errorJson["error"] = MQ_ERR_INTERNAL;
+        errorJson["message"] = "Max retries exceeded (" + std::to_string(MAX_COORDINATION_RETRIES) + " attempts)";
+
+        ModuleResponse failedResp;
+        failedResp.success = false;
+        failedResp.response = errorJson.dump();
+        failedResp.errorCode = MQ_ERR_INTERNAL;
+        failedResp.isModuleUnavailable = false;
+        return failedResp;
+    };
+
+    // Helper function to resume paused modules (for cleanup)
+    auto resumePausedModules = [&queryModuleWithRetry, &createJsonCommand, &pausedModules, this]()
+    {
+        for (const auto& module : pausedModules)
+        {
+            m_logFunction(LOG_DEBUG, "Resuming paused module: " + module);
+            std::string resumeMessage = createJsonCommand("resume");
+            ModuleResponse response = queryModuleWithRetry(module, resumeMessage);
+            m_logFunction(LOG_DEBUG, "Response from " + module + " resume: " + response.response);
+
+            if (!response.success)
+            {
+                m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response.response);
+            }
+        }
+
+        pausedModules.clear();
+    };
+
+    try
+    {
+        // Step 1: Identify available modules and send pause command
+        for (const auto& module : COORDINATION_MODULES)
+        {
+            std::string pauseMessage = createJsonCommand("pause");
+            ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
+            m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
+
+            if (response.success)
+            {
+                pausedModules.insert(module);
+                m_logFunction(LOG_DEBUG, "Successfully paused " + module);
+            }
+            else
+            {
+                // Distinguish between "module unavailable" and "communication error"
+                if (response.isModuleUnavailable)
+                {
+                    // Module is disabled/not found/not running - skip it (not an error)
+                    m_logFunction(LOG_DEBUG, "Skipping " + module + " (unavailable, error " +
+                                  std::to_string(response.errorCode) + "): " + response.response);
+                }
+                else
+                {
+                    // Communication error or other failure - abort coordination
+                    m_logFunction(LOG_WARNING, "Failed to pause " + module + " (communication error " +
+                                  std::to_string(response.errorCode) + "), aborting coordination: " + response.response);
+                    resumePausedModules();
+                    return false;
+                }
+            }
+        }
+
+        // Calculate new version
+        int newVersion = 0;
+        int globalMaxVersion = 0;
+
+        if (pausedModules.empty())
+        {
+            m_logFunction(LOG_DEBUG, "No modules available for coordination, skipping synchronization");
+            return true;
+        }
+
+        {
+            // Step 2: Flush all available modules
+            for (const auto& module : pausedModules)
+            {
+                std::string flushMessage = createJsonCommand("flush");
+                ModuleResponse response = queryModuleWithRetry(module, flushMessage);
+                m_logFunction(LOG_DEBUG, "Response from " + module + " flush: " + response.response);
+
+                if (!response.success)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to flush " + module + " (error " +
+                                  std::to_string(response.errorCode) + "), aborting coordination");
+                    resumePausedModules();
+                    return false;
+                }
+
+                m_logFunction(LOG_DEBUG, "Successfully flushed " + module);
+            }
+
+            // Step 3: Get version from each module
+            for (const auto& module : pausedModules)
+            {
+                std::string getVersionMessage = createJsonCommand("get_version");
+                ModuleResponse response = queryModuleWithRetry(module, getVersionMessage);
+                m_logFunction(LOG_DEBUG, "Response from " + module + " get_version: " + response.response);
+
+                if (!response.success)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to get version from " + module + " (error " +
+                                  std::to_string(response.errorCode) + "), aborting coordination");
+                    resumePausedModules();
+                    return false;
+                }
+
+                // Parse version from JSON format
+                int version = 0;
+
+                try
+                {
+                    nlohmann::json responseJson = nlohmann::json::parse(response.response);
+
+                    if (responseJson.contains("data") && responseJson["data"].contains("version") &&
+                            responseJson["data"]["version"].is_number())
+                    {
+                        version = responseJson["data"]["version"].get<int>();
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_WARNING, "Invalid JSON response format from " + module + ": missing or invalid version data");
+                        resumePausedModules();
+                        return false;
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " +
+                                  std::string(e.what()) + " - Response: " + response.response);
+                    resumePausedModules();
+                    return false;
+                }
+
+                moduleVersions[module] = version;
+                globalMaxVersion = std::max(globalMaxVersion, version);
+                m_logFunction(LOG_DEBUG, module + " current version: " + std::to_string(version));
+            }
+
+            // Step 4: Calculate new version
+            // If incrementVersion is true (metadata update): newVersion = max + 1
+            // If incrementVersion is false (groups update): newVersion = max
+            newVersion = incrementVersion ? (globalMaxVersion + 1) : globalMaxVersion;
+            m_logFunction(LOG_DEBUG, "Calculated new global version: " + std::to_string(newVersion) +
+                          (incrementVersion ? " (max + 1 for metadata update)" : " (max for groups update)"));
+
+            // Step 5: Set new version on all modules
+            for (const auto& module : pausedModules)
+            {
+                std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
+                ModuleResponse response = queryModuleWithRetry(module, setVersionMessage);
+                m_logFunction(LOG_DEBUG, "Response from " + module + " set_version: " + response.response);
+
+                if (!response.success)
+                {
+                    m_logFunction(LOG_WARNING, "Failed to set version on " + module + " (error " +
+                                  std::to_string(response.errorCode) + "), aborting coordination");
+                    resumePausedModules();
+                    return false;
+                }
+
+                m_logFunction(LOG_INFO, "Successfully set version " + std::to_string(newVersion) + " on " + module);
+            }
+        }
+
+        // Step 6: Build indices list based on enabled modules and synchronize
+        std::vector<std::string> indicesToSync;
+
+        for (const auto& module : pausedModules)
+        {
+            auto it = MODULE_INDICES_MAP.find(module);
+
+            if (it != MODULE_INDICES_MAP.end())
+            {
+                const auto& moduleIndices = it->second;
+                indicesToSync.insert(indicesToSync.end(), moduleIndices.begin(), moduleIndices.end());
+            }
+        }
+
+        if (m_spSyncProtocol)
+        {
+            bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
+                                   TABLE_MODE_MAP.at(table),
+                                   indicesToSync,
+                                   std::chrono::seconds(m_syncResponseTimeout),
+                                   m_syncRetries,
+                                   m_syncMaxEps,
+                                   newVersion);
+
+            if (!syncSuccess)
+            {
+                m_logFunction(LOG_WARNING, "Failed to synchronize " + table);
+                resumePausedModules();
+                return false;
+            }
+
+            m_logFunction(LOG_DEBUG, "Successfully synchronized " + table);
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
+        }
+
+        // Step 7: Resume all modules
+        size_t coordinatedModulesCount = pausedModules.size();
+        resumePausedModules();
+
+        m_logFunction(LOG_DEBUG, "Module coordination completed successfully");
+        m_logFunction(LOG_DEBUG, "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
+                      ", New version: " + std::to_string(newVersion));
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Exception during module coordination: " + std::string(e.what()));
+        resumePausedModules();
+        return false;
+    }
+    catch (...)
+    {
+        m_logFunction(LOG_ERROR, "Unknown exception during module coordination");
+        resumePausedModules();
+        return false;
+    }
+}
+
+void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
+{
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot set sync flag: DBSync not available");
+        return;
+    }
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Update in-memory flag
+        if (table == AGENT_METADATA_TABLE)
+        {
+            m_shouldSyncMetadata = value;
+        }
+        else if (table == AGENT_GROUPS_TABLE)
+        {
+            m_shouldSyncGroups = value;
+        }
+
+        // Use DBSyncTxn for immediate commit
+        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
+        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+
+        m_logFunction(LOG_DEBUG, "Set sync flag for " + table + " to " + std::to_string(value));
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to set sync flag for " + table + ": " + std::string(e.what()));
+    }
+}
+
+void AgentInfoImpl::loadSyncFlags()
+{
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot load sync flags: DBSync not available");
+        return;
+    }
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Query the db_metadata table
+        auto callback = [this](ReturnTypeCallback, const nlohmann::json & data)
+        {
+            if (data.contains("should_sync_metadata") && data["should_sync_metadata"].is_number())
+            {
+                m_shouldSyncMetadata = (data["should_sync_metadata"].get<int>() != 0);
+            }
+
+            if (data.contains("should_sync_groups") && data["should_sync_groups"].is_number())
+            {
+                m_shouldSyncGroups = (data["should_sync_groups"].get<int>() != 0);
+            }
+        };
+
+        // Build JSON for selectRows
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["query"]["column_list"] = nlohmann::json::array({"*"});
+        input["query"]["row_filter"] = "";
+        input["query"]["distinct_opt"] = false;
+        input["query"]["order_by_opt"] = "";
+        input["query"]["count_opt"] = 100;
+
+        // Try to select from db_metadata
+        m_dBSync->selectRows(input, callback);
+
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_WARNING, "Failed to load sync flags (may be first run): " + std::string(e.what()));
+        // Initialize with defaults if table doesn't exist yet
+        m_shouldSyncMetadata = false;
+        m_shouldSyncGroups = false;
+    }
+}
+
+void AgentInfoImpl::resetSyncFlag(const std::string& table)
+{
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot reset sync flag: DBSync not available");
+        return;
+    }
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Determine which flag to reset
+        if (table == AGENT_METADATA_TABLE)
+        {
+            m_shouldSyncMetadata = false;
+        }
+        else if (table == AGENT_GROUPS_TABLE)
+        {
+            m_shouldSyncGroups = false;
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Unknown table for sync flag reset: " + table);
+            return;
+        }
+
+        // Use DBSyncTxn for immediate commit
+        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
+        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+
+        m_logFunction(LOG_INFO, "Resetting sync flag for " + table + " to false in database. m_shouldSyncMetadata=" +
+                      std::to_string(m_shouldSyncMetadata) + ", m_shouldSyncGroups=" +
+                      std::to_string(m_shouldSyncGroups));
+
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+
+        m_logFunction(LOG_DEBUG, "Reset sync flag for " + table);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to reset sync flag for " + table + ": " + std::string(e.what()));
+    }
 }

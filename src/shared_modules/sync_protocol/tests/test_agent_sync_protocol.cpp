@@ -2759,7 +2759,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
                           testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
-                          maxEps
+                          maxEps,
+                          12345 // globalVersion
                       );
         EXPECT_TRUE(result);
     });
@@ -2832,7 +2833,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
                           testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
-                          maxEps
+                          maxEps,
+                          12345 // globalVersion
                       );
         EXPECT_TRUE(result);
     });
@@ -2905,7 +2907,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
                           testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
-                          maxEps
+                          maxEps,
+                          12345 // globalVersion
                       );
         EXPECT_TRUE(result);
     });
@@ -2978,7 +2981,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
                           testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
-                          maxEps
+                          maxEps,
+                          12345 // globalVersion
                       );
         EXPECT_TRUE(result);
     });
@@ -3045,7 +3049,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithInvalidMode)
                       testIndices,
                       std::chrono::seconds(min_timeout),
                       retries,
-                      maxEps
+                      maxEps,
+                      12345 // globalVersion
                   );
 
     EXPECT_FALSE(result);
@@ -3072,7 +3077,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
                       testIndices,
                       std::chrono::seconds(min_timeout),
                       retries,
-                      maxEps
+                      maxEps,
+                      12345 // globalVersion
                   );
 
     EXPECT_FALSE(result);
@@ -3099,7 +3105,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsStartAckTimeout)
                       testIndices,
                       std::chrono::seconds(min_timeout),
                       retries,
-                      maxEps
+                      maxEps,
+                      12345 // globalVersion
                   );
 
     EXPECT_FALSE(result);
@@ -3128,7 +3135,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
                           testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
-                          maxEps
+                          maxEps,
+                          12345 // globalVersion
                       );
         EXPECT_FALSE(result);
     });
@@ -3180,7 +3188,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithStartAckError)
                           testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
-                          maxEps
+                          maxEps,
+                          12345 // globalVersion
                       );
         EXPECT_FALSE(result);
     });
@@ -3230,7 +3239,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
                           testIndices,
                           std::chrono::seconds(max_timeout),
                           retries,
-                          maxEps
+                          maxEps,
+                          12345 // globalVersion
                       );
         EXPECT_FALSE(result);
     });

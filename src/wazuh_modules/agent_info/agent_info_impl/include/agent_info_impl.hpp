@@ -18,6 +18,10 @@
 #include <string>
 #include <vector>
 
+// Type definition for module query callback function
+// Returns 0 on success, -1 on error. Response must be freed by caller.
+using module_query_callback_t = std::function<int(const std::string& module_name, const std::string& query, char** response)>;
+
 class AgentInfoImpl
 {
     public:
@@ -25,6 +29,7 @@ class AgentInfoImpl
         /// @param dbPath Path to the database file
         /// @param reportDiffFunction Function to report stateless diffs
         /// @param logFunction Function to log messages
+        /// @param queryModuleFunction Function to query other modules
         /// @param dbSync Pointer to IDBSync for database synchronization
         /// @param sysInfo Pointer to ISysInfo for system information gathering
         /// @param fileIO Pointer to IFileIOUtils for file I/O operations
@@ -32,6 +37,7 @@ class AgentInfoImpl
         AgentInfoImpl(std::string dbPath,
                       std::function<void(const std::string&)> reportDiffFunction = nullptr,
                       std::function<void(const modules_log_level_t, const std::string&)> logFunction = nullptr,
+                      module_query_callback_t queryModuleFunction = nullptr,
                       std::shared_ptr<IDBSync> dbSync = nullptr,
                       std::shared_ptr<ISysInfo> sysInfo = nullptr,
                       std::shared_ptr<IFileIOUtils> fileIO = nullptr,
@@ -42,8 +48,8 @@ class AgentInfoImpl
         void stop();
 
         /// @brief Set whether this instance is running on an agent or manager
-        /// @param isAgent True if running on an agent, false if on a manager
-        void setIsAgent(bool isAgent);
+        /// @param value True if running on an agent, false if on a manager
+        void setIsAgent(bool value);
 
         /// @brief Initialize the synchronization protocol
         /// @param moduleName Name of the module
@@ -86,6 +92,13 @@ class AgentInfoImpl
         /// @param agentMetadata Agent metadata JSON
         /// @param groups List of agent groups
         void updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups);
+
+        /// @brief Coordinate modules for version synchronization
+        /// This method manages the coordination process: pause, flush, sync versions, set version, sync table, resume
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        /// @return true if coordination was successful, false otherwise
+        bool coordinateModules(const std::string& table);
+
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
 
@@ -107,6 +120,18 @@ class AgentInfoImpl
         /// @param values Values to sync
         void updateChanges(const std::string& table, const nlohmann::json& values);
 
+        /// @brief Set sync flag in database for a specific table
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        /// @param value Flag value (true/false)
+        void setSyncFlag(const std::string& table, bool value);
+
+        /// @brief Load sync flags from database to memory
+        void loadSyncFlags();
+
+        /// @brief Reset sync flag for a specific table in database and memory
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        void resetSyncFlag(const std::string& table);
+
         /// @brief Pointer to IDBSync
         std::shared_ptr<IDBSync> m_dBSync;
 
@@ -124,6 +149,9 @@ class AgentInfoImpl
 
         /// @brief Function to log messages
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
+
+        /// @brief Function to query other modules
+        module_query_callback_t m_queryModuleFunction;
 
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
@@ -148,4 +176,13 @@ class AgentInfoImpl
 
         /// @brief True if the module is running on an agent, false if on a manager
         bool m_isAgent = true;
+
+        /// @brief Flag indicating if metadata needs to be synchronized
+        bool m_shouldSyncMetadata = false;
+
+        /// @brief Flag indicating if groups need to be synchronized
+        bool m_shouldSyncGroups = false;
+
+        /// @brief Mutex for synchronizing access to sync flags
+        std::mutex m_syncFlagsMutex;
 };

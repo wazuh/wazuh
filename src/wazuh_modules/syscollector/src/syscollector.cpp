@@ -18,6 +18,7 @@
 extern "C" {
 #endif
 #include "../../wm_syscollector.h"
+#include "../../module_query_errors.h"
 
 void syscollector_init(const unsigned int inverval,
                        send_data_callback_t callbackDiff,
@@ -193,6 +194,35 @@ bool syscollector_notify_data_clean(const char** indices, size_t indices_count, 
 void syscollector_delete_database()
 {
     Syscollector::instance().deleteDatabase();
+}
+
+/// @brief Query handler for Syscollector module.
+///
+/// Handles query commands sent to the Syscollector module from other modules.
+/// Supports commands like "pause", "resume", and "status".
+///
+/// @param json_query Json query command string
+/// @param output Pointer to output string (caller must free with os_free)
+/// @return Length of the output string
+size_t syscollector_query(const char* json_query, char** output)
+{
+    if (!json_query || !output)
+    {
+        return 0;
+    }
+
+    try
+    {
+        std::string result = Syscollector::instance().query(std::string(json_query));
+        *output = strdup(result.c_str());
+        return strlen(*output);
+    }
+    catch (const std::exception& ex)
+    {
+        std::string error = "{\"error\":" + std::to_string(MQ_ERR_EXCEPTION) + ",\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
+        *output = strdup(error.c_str());
+        return strlen(*output);
+    }
 }
 
 #ifdef __cplusplus

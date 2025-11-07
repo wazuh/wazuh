@@ -22,6 +22,7 @@
 #include "mq_op.h"
 #include "rc.h"
 #include "sym_load.h"
+#include <os_net/os_net.h>
 
 // Unit testing support
 #ifdef WAZUH_UNIT_TESTING
@@ -68,6 +69,7 @@ agent_info_stop_func agent_info_stop_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
+agent_info_set_query_module_function_func agent_info_set_query_module_function_ptr = NULL;
 
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
@@ -88,7 +90,7 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
                                           .start = (wm_routine)wm_agent_info_main,
                                           .destroy = (void (*)(void*))wm_agent_info_destroy,
                                           .dump = (cJSON * (*)(const void*)) wm_agent_info_dump,
-                                          .sync = wm_agent_info_sync_message,
+                                          .sync = (int(*)(const char*, size_t)) wm_agent_info_sync_message,
                                           .stop = (void (*)(void*))wm_agent_info_stop,
                                           .query = NULL};
 
@@ -198,6 +200,57 @@ static int
 wm_agent_info_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
 {
     return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+}
+
+// Wrapper function to adapt wm_module_query signature to the expected callback type
+static int wm_agent_info_query_module_wrapper(const char* module_name, const char* json_query, char** response)
+{
+    if (!module_name || !json_query || !response)
+    {
+        return -1;
+    }
+
+    mdebug1("Received JSON for %s: %s", module_name, json_query);
+
+    // Check if this is a request for FIM module (separate process)
+    if (strcmp(module_name, FIM_NAME) == 0) {
+        size_t result_len = wm_fim_query_json(json_query, response);
+
+        if (result_len > 0 && *response) {
+            // Parse JSON response to check for success
+            cJSON *json_obj = cJSON_Parse(*response);
+            if (json_obj) {
+                cJSON *error_item = cJSON_GetObjectItem(json_obj, "error");
+                if (error_item && cJSON_IsNumber(error_item)) {
+                    int error_code = (int)cJSON_GetNumberValue(error_item);
+                    cJSON_Delete(json_obj);
+                    return (error_code == 0) ? 0 : -1;
+                }
+                cJSON_Delete(json_obj);
+            }
+        }
+        return -1;
+    }
+
+    // For SCA, Syscollector and other wm_modules
+    // Use wm_module_query_json_ex which accepts module_name directly (more efficient)
+    size_t result_len = wm_module_query_json_ex(module_name, json_query, response);
+
+    if (result_len > 0 && *response) {
+        // Parse JSON response to check for success
+        cJSON *json_obj = cJSON_Parse(*response);
+        if (json_obj) {
+            cJSON *error_item = cJSON_GetObjectItem(json_obj, "error");
+            if (error_item && cJSON_IsNumber(error_item)) {
+                int error_code = (int)cJSON_GetNumberValue(error_item);
+                cJSON_Delete(json_obj);
+                return (error_code == 0) ? 0 : -1;
+            }
+            cJSON_Delete(json_obj);
+        }
+    }
+
+    return -1;
 }
 
 // Callback to send stateless messages
@@ -403,6 +456,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
+        agent_info_set_query_module_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_query_module_function");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
@@ -417,6 +471,12 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         if (agent_info_set_report_function_ptr)
         {
             agent_info_set_report_function_ptr(wm_agent_info_send_stateless);
+        }
+
+        // Set the query module function for inter-module communication
+        if (agent_info_set_query_module_function_ptr)
+        {
+            agent_info_set_query_module_function_ptr(wm_agent_info_query_module_wrapper);
         }
     }
     else
@@ -436,6 +496,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     if (agent_info_start_ptr)
     {
         minfo("Starting agent-info module...");
+
         agent_info_start_ptr(agent_info);
     }
     else
