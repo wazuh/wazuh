@@ -1,21 +1,8 @@
 from engine_schema.field import Field, FieldTree, IndexerType
 
 
-def _ecs_to_indexer_type(ecs_type: str) -> IndexerType:
-    if 'match_only_text' == ecs_type:
-        return IndexerType.TEXT
-    if 'constant_keyword' == ecs_type:
-        return IndexerType.KEYWORD
-    if 'flat_object' == ecs_type:
-        return IndexerType.OBJECT
-    if 'number' == ecs_type:
-        return IndexerType.LONG
-    else:
-        return IndexerType.from_str(ecs_type)
-
-
 def _flat_entry_to_field(entry_name: str, entry_value: dict) -> Field:
-    indexer_type = _ecs_to_indexer_type(entry_value['type'])
+    indexer_type = IndexerType.from_str(entry_value['type'])
     description = entry_value["description"]
 
     # Indexer details
@@ -31,7 +18,7 @@ def _flat_entry_to_field(entry_name: str, entry_value: dict) -> Field:
 
         indexer_details['multi_fields'] = entry_value['multi_fields']
         for field in indexer_details['multi_fields']:
-            field['type'] = str(_ecs_to_indexer_type(field['type']))
+            field['type'] = str(IndexerType.from_str(field['type']))
 
     return Field('ecs', entry_name, description, indexer_type, indexer_details)
 
