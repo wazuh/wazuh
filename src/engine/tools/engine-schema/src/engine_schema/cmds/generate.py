@@ -26,8 +26,6 @@ def run(args, resource_handler: rs.ResourceHandler):
     resource_handler.save_file(
         output_dir, 'fields_rule', rule_fields_schema, rs.Format.JSON)
     resource_handler.save_file(
-        output_dir, 'wazuh-template', jmappings, rs.Format.JSON)
-    resource_handler.save_file(
         output_dir, 'wazuh-logpar-overrides', jlogpar, rs.Format.JSON)
     resource_handler.save_file(
         output_dir, 'engine-schema', jengine, rs.Format.JSON)

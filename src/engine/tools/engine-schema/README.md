@@ -30,6 +30,5 @@ engine-schema generate --wcs-path /path/to/wcs_directory/ --output-dir ./output 
 The tool generates the following files:
 - `fields_decoder.json`: Schema for decoder fields
 - `fields_rule.json`: Schema for rule fields
-- `wazuh-template.json`: Wazuh index template
 - `wazuh-logpar-overrides.json`: Logpar configuration overrides
 - `engine-schema.json`: Engine schema definition
