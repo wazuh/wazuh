@@ -27,7 +27,6 @@ src/wazuh_modules/sca/coverage_report
 # Compiled programs
 src/clear_stats
 src/isbigendian
-src/list_agents
 src/manage_agents
 src/ossec-agentd
 src/ossec-agentlessd
