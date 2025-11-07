@@ -1,5 +1,8 @@
 from typing import Dict, Set, Tuple
 from copy import deepcopy
+import os
+import tempfile
+from pathlib import Path
 
 from . import resource_handler as rs
 
@@ -70,6 +73,65 @@ def _partition_node(schema: dict, path: str, allowed: Set[str]) -> Tuple[dict | 
     return None, deepcopy(schema)
 
 
+def _merge_yaml_dicts(dict1: dict, dict2: dict) -> dict:
+    """
+    Deep merge two dictionaries, avoiding key duplication.
+    If a key exists in both dictionaries and both values are dictionaries,
+    they are merged recursively. Otherwise, dict2's value takes precedence.
+    """
+    result = deepcopy(dict1)
+
+    for key, value in dict2.items():
+        if key in result:
+            if isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = _merge_yaml_dicts(result[key], value)
+            else:
+                result[key] = deepcopy(value)
+        else:
+            result[key] = deepcopy(value)
+
+    return result
+
+
+def _merge_yaml_files_in_directory(directory_path: str, resource_handler: rs.ResourceHandler) -> str:
+    """
+    Merges all .yml files in a directory into a single temporary file.
+    """
+    dir_path = Path(directory_path)
+
+    if not dir_path.exists() or not dir_path.is_dir():
+        raise ValueError(f"Directory does not exist or is not a directory: {directory_path}")
+
+    yml_files = list(dir_path.glob("*.yml")) + list(dir_path.glob("*.yaml"))
+    if not yml_files:
+        raise ValueError(f"No .yml or .yaml files found in directory: {directory_path}")
+    print(f"Found {len(yml_files)} YAML files to merge: {[f.name for f in yml_files]}")
+
+    merged_data = {}
+    for yml_file in sorted(yml_files):
+        print(f"Loading {yml_file.name}...")
+        try:
+            file_data = resource_handler.load_file(str(yml_file), rs.Format.YML)
+            merged_data = _merge_yaml_dicts(merged_data, file_data)
+        except Exception as e:
+            print(f"Error loading {yml_file.name}: {e}")
+            raise
+
+    # Temporary file
+    temp_fd, temp_path = tempfile.mkstemp(suffix='.yml', prefix='merged_wcs_')
+
+    try:
+        resource_handler.save_file(os.path.dirname(temp_path), os.path.basename(temp_path), merged_data, rs.Format.YML)
+        os.close(temp_fd)
+        print(f"Successfully merged {len(yml_files)} files into temporary file: {temp_path}")
+        return temp_path
+    except Exception as e:
+        os.close(temp_fd)
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        raise e
+
+
 def _build_fields_schema(base_template: dict, properties: dict, file_id: str, name: str) -> dict:
     t = deepcopy(base_template)
     t['$id'] = file_id            # p.ej. "rule_fields.json" or "decoder_fields.json"
@@ -81,61 +143,79 @@ def _build_fields_schema(base_template: dict, properties: dict, file_id: str, na
 def generate(wcs_path: str, resource_handler: rs.ResourceHandler, allowed_fields_path: str) -> Tuple[dict, dict, dict, dict, dict]:
 
     print('Loading resources...')
-    print(f'Loading WCS file from {wcs_path}...')
-    wcs_flat = resource_handler.load_file(wcs_path)
-    print(f'Loading schema template...')
-    fields_template = resource_handler.load_internal_file('fields.template')
-    print(f'Loading mappings template...')
-    mappings_template = resource_handler.load_internal_file(
-        'mappings.template')
-    print(f'Loading logpar overrides template...')
-    logpar_template = resource_handler.load_internal_file('logpar_types')
+    wcs_path_obj = Path(wcs_path)
+    temp_file_path = None
+    try:
+        if wcs_path_obj.is_dir():
+            print(f'Loading WCS files from directory {wcs_path}...')
+            temp_file_path = _merge_yaml_files_in_directory(wcs_path, resource_handler)
+            wcs_flat = resource_handler.load_file(temp_file_path)
+        else:
+            print(f'Loading WCS file from {wcs_path}...')
+            wcs_flat = resource_handler.load_file(wcs_path)
 
-    # Generate field tree from ecs_flat
-    print('Building field tree from WCS definition...')
-    field_tree = ecs.build_field_tree(wcs_flat)
-    field_tree.add_logpar_overrides(logpar_template["fields"])
-    print('Success.')
+        print(f'Loading schema template...')
+        fields_template = resource_handler.load_internal_file('fields.template')
+        print(f'Loading mappings template...')
+        mappings_template = resource_handler.load_internal_file(
+            'mappings.template')
+        print(f'Loading logpar overrides template...')
+        logpar_template = resource_handler.load_internal_file('logpar_types')
 
-    # Engine schema
-    print('Generating engine schema...')
-    engine_schema = dict()
-    engine_schema['name'] = 'schema/engine-schema/0'
-    engine_schema['fields'] = dict()
-    engine_schema['fields'] = ecs.to_engine_schema(wcs_flat)
+        # Generate field tree from ecs_flat
+        print('Building field tree from WCS definition...')
+        field_tree = ecs.build_field_tree(wcs_flat)
+        field_tree.add_logpar_overrides(logpar_template["fields"])
+        print('Success.')
 
-    # Get schema properties
-    print('Generating fields schema properties...')
-    jproperties = field_tree.get_jschema()
-    # Load allowed_fields.json
-    allowed_json = resource_handler.load_file(allowed_fields_path)
-    allowed_set = set(allowed_json.get('allowed_fields', {}).get('rule', []))
+        # Engine schema
+        print('Generating engine schema...')
+        engine_schema = dict()
+        engine_schema['name'] = 'schema/engine-schema/0'
+        engine_schema['fields'] = dict()
+        engine_schema['fields'] = ecs.to_engine_schema(wcs_flat)
 
-    # Split the tree
-    rules_props, dec_props = _partition_schema(jproperties, allowed_set, parent_path="")
+        # Get schema properties
+        print('Generating fields schema properties...')
+        jproperties = field_tree.get_jschema()
+        # Load allowed_fields.json
+        allowed_json = resource_handler.load_file(allowed_fields_path)
+        allowed_set = set(allowed_json.get('allowed_fields', {}).get('rule', []))
 
-    # Build the two schemas from the template
-    rule_fields_schema = _build_fields_schema(fields_template, rules_props,
-                                              file_id='fields_rule.json',
-                                              name='schema/fields-rule/0')
+        # Split the tree
+        rules_props, dec_props = _partition_schema(jproperties, allowed_set, parent_path="")
 
-    decoder_fields_schema = _build_fields_schema(fields_template, dec_props,
-                                                 file_id='fields_decoder.json',
-                                                 name='schema/fields-decoder/0')
-    print('Success.')
+        # Build the two schemas from the template
+        rule_fields_schema = _build_fields_schema(fields_template, rules_props,
+                                                  file_id='fields_rule.json',
+                                                  name='schema/fields-rule/0')
 
-    # Get index mappings
-    print('Generating indexer mappings...')
-    jmappings = field_tree.get_jmapping()
-    mappings_template['template']['mappings']['properties'] = {
-        **mappings_template['template']['mappings'].get('properties', {}),
-        **jmappings
-    }
-    print('Success.')
+        decoder_fields_schema = _build_fields_schema(fields_template, dec_props,
+                                                     file_id='fields_decoder.json',
+                                                     name='schema/fields-decoder/0')
+        print('Success.')
 
-    # Get the logpar configuration file
-    print('Generating logpar configuration...')
-    logpar_template["fields"] = field_tree.get_jlogpar()
-    print('Success.')
+        # Get index mappings
+        print('Generating indexer mappings...')
+        jmappings = field_tree.get_jmapping()
+        mappings_template['template']['mappings']['properties'] = {
+            **mappings_template['template']['mappings'].get('properties', {}),
+            **jmappings
+        }
+        print('Success.')
 
-    return decoder_fields_schema, rule_fields_schema, mappings_template, logpar_template, engine_schema
+        # Get the logpar configuration file
+        print('Generating logpar configuration...')
+        logpar_template["fields"] = field_tree.get_jlogpar()
+        print('Success.')
+
+        return decoder_fields_schema, rule_fields_schema, mappings_template, logpar_template, engine_schema
+
+    finally:
+        # Clean up temporary file if it was created
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+                print(f'Cleaned up temporary file: {temp_file_path}')
+            except Exception as e:
+                print(f'Warning: Could not delete temporary file {temp_file_path}: {e}')
