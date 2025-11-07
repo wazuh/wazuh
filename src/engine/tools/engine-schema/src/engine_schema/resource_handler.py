@@ -5,7 +5,6 @@ from enum import Enum, auto
 from pathlib import Path, PurePath
 from typing import Tuple, List
 import socket
-import shared.executor as exec
 
 import yaml
 try:
@@ -34,7 +33,23 @@ def StringToFormat(string: str) -> Format:
 
 class ResourceHandler:
     def __init__(self):
-        self._files = files('engine-suite')
+        # TODO: check if there's a way of avoiding this
+        try:
+            self._files = files('engine-schema')
+            self._use_package_files = True
+        except Exception:
+            # Package not installed, use local files
+            self._files = None
+            self._use_package_files = False
+            # Get the path to the engine_schema module directory
+            import sys
+            engine_schema_path = None
+            for path in sys.path:
+                potential_path = Path(path) / 'engine_schema'
+                if potential_path.exists():
+                    engine_schema_path = potential_path
+                    break
+            self._local_engine_schema_path = engine_schema_path
 
     ############################################################################
     #                          File operations
@@ -79,8 +94,32 @@ class ResourceHandler:
 
     def load_internal_file(self, name: str, module: str = '', format: Format = Format.JSON) -> dict:
         full_name = '/'.join([module, name]) if len(module) > 0 else name
-        file = [p for p in self._files if full_name in str(p)][0]
-        content = file.read_text()
+
+        # TODO: check if there's a way of avoiding this
+        if self._use_package_files:
+            # Use installed package files
+            file = [p for p in self._files if full_name in str(p)][0]
+            content = file.read_text()
+        else:
+            # Use local files when not installed
+            if self._local_engine_schema_path is None:
+                raise Exception(f'Cannot find engine_schema module path for {full_name}')
+
+            # Handle template files
+            if name == 'fields.template':
+                file_path = self._local_engine_schema_path / 'fields.template.json'
+            elif name == 'mappings.template':
+                file_path = self._local_engine_schema_path / 'mappings.template.json'
+            elif name == 'logpar_types':
+                file_path = self._local_engine_schema_path / 'logpar_types.json'
+            else:
+                # Generic file lookup
+                file_path = self._local_engine_schema_path / f'{name}.json'
+
+            if not file_path.exists():
+                raise Exception(f'Template file not found: {file_path}')
+
+            content = file_path.read_text()
 
         readed = self._read(content, format)
         if not readed:
@@ -94,7 +133,7 @@ class ResourceHandler:
     def download_file(self, url: str, format: Format = Format.YML) -> dict:
         file = requests.get(url)
         if not file.ok:
-            raise Exception(f"Error downloading {url}: {rFlat.status_code}")
+            raise Exception(f"Error downloading {url}: {file.status_code}")
 
         readed = self._read(file.text, format)
         if not readed:

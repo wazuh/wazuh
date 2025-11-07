@@ -1,7 +1,7 @@
 from typing import Dict, Set, Tuple
 from copy import deepcopy
 
-import shared.resource_handler as rs
+from . import resource_handler as rs
 
 from .drivers import ecs
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from engine_schema.generate import generate
-import shared.resource_handler as rs
+from engine_schema import resource_handler as rs
 from ._types import update_types_file
 
 DEFAULT_OUTPUT_DIR = './'
@@ -44,7 +44,7 @@ def configure(subparsers):
         'generate', help='Generate the schema and associated configuration')
 
     parser_generate.add_argument('--wcs-path', type=str, required=True,
-                                 help='Path to the Wazuh Common Schema (wcs_flat.yml) YAML file.')
+                                 help='Path to the Wazuh Common Schema directory with YAML files.')
 
     parser_generate.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                                  help=f'[default="{DEFAULT_OUTPUT_DIR}"] Root directory to store generated files')
