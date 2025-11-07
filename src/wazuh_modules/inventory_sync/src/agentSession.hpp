@@ -108,6 +108,7 @@ public:
         auto osplatform = data->osplatform() ? data->osplatform()->string_view() : std::string_view();
         auto ostype = data->ostype() ? data->ostype()->string_view() : std::string_view();
         auto osversion = data->osversion() ? data->osversion()->string_view() : std::string_view();
+        auto globalVersion = data->global_version();
 
         auto agentIdString = std::string(agentId.data(), agentId.size());
         if (agentIdString.length() < 3)
@@ -128,8 +129,25 @@ public:
             }
         }
 
+        // Extract indices
+        std::vector<std::string> indices;
+        if (data->index())
+        {
+            for (const auto* index : *data->index())
+            {
+                if (index)
+                {
+                    indices.emplace_back(index->str());
+                }
+            }
+        }
+
         // Create new session.
-        if (data->size() == 0)
+        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck don't send data messages, so size can
+        // be 0
+        if (data->size() == 0 && data->mode() != Wazuh::SyncSchema::Mode_MetadataDelta &&
+            data->mode() != Wazuh::SyncSchema::Mode_MetadataCheck &&
+            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck)
         {
             responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
             throw AgentSessionException("Invalid size");
@@ -142,6 +160,7 @@ public:
                                                .option = data->option(),
                                                .sessionId = sessionId,
                                                .moduleName = std::string(moduleName.data(), moduleName.size()),
+                                               .indices = std::move(indices),
                                                .agentId = std::move(agentIdString),
                                                .agentName = std::string(agentName.data(), agentName.size()),
                                                .agentVersion = std::string(agentVersion.data(), agentVersion.size()),
@@ -151,7 +170,8 @@ public:
                                                .osplatform = std::string(osplatform.data(), osplatform.size()),
                                                .ostype = std::string(ostype.data(), ostype.size()),
                                                .osversion = std::string(osversion.data(), osversion.size()),
-                                               .groups = std::move(groups)});
+                                               .groups = std::move(groups),
+                                               .globalVersion = globalVersion});
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "New session for module '%s' by agent '%s'. (Session %llu)",

@@ -58,6 +58,12 @@ class AgentInfoImpl
         /// @param maxEps Maximum events per second
         void setSyncParameters(uint32_t timeout, uint32_t retries, long maxEps);
 
+        /// @brief Parse sync protocol response buffer
+        /// @param data Pointer to the response data buffer
+        /// @param length Size of the response data buffer
+        /// @return true if parsing succeeds, false otherwise
+        bool parseResponseBuffer(const uint8_t* data, size_t length);
+
         /// @brief Process a database event and emit notifications
         /// @param result Type of change (INSERTED, MODIFIED, DELETED)
         /// @param data Event data

@@ -1,0 +1,48 @@
+{
+  "description": "Groups delta flow test: start with GroupDelta mode -> end (no data messages)",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 5,
+        "size": 0,
+        "option": 0,
+        "indices": ["wazuh-states-fim-files", "wazuh-states-sca", "wazuh-states-inventory-packages"],
+        "agentid": "001",
+        "agentname": "groups-test-agent",
+        "agentversion": "4.9.0",
+        "architecture": "arm64",
+        "hostname": "test-host-002",
+        "osname": "Debian",
+        "osplatform": "debian",
+        "ostype": "linux",
+        "osversion": "11",
+        "groups": ["webservers", "production", "eu-west"],
+        "global_version": 54321
+      },
+      "description": "Start GroupDelta synchronization - updates agent groups across all indices",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End GroupDelta synchronization - should receive EndAck with Status_Ok",
+      "delay": 0.5,
+      "use_session_from_start": true,
+      "expect_end_response": true
+    }
+  ],
+  "verification": {
+    "check_opensearch": true,
+    "expected_updates": {
+      "indices": ["wazuh-states-fim-files", "wazuh-states-sca", "wazuh-states-inventory-packages"],
+      "agent_id": "001",
+      "fields": {
+        "agent.groups": ["webservers", "production", "eu-west"],
+        "state.document_version": 54321
+      }
+    }
+  }
+}

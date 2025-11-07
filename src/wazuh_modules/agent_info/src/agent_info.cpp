@@ -195,6 +195,21 @@ void agent_info_init_sync_protocol(const char* module_name, const char* sync_db_
     g_mq_functions = mq_funcs;
 }
 
+bool agent_info_parse_response(const uint8_t* data, size_t data_len)
+{
+    if (g_agent_info_impl && data)
+    {
+        return g_agent_info_impl->parseResponseBuffer(data, data_len);
+    }
+
+    if (g_log_callback)
+    {
+        g_log_callback(LOG_ERROR, "Agent-info sync protocol not initialized or invalid data", "agent-info");
+    }
+
+    return false;
+}
+
 #ifdef __cplusplus
 }
 #endif

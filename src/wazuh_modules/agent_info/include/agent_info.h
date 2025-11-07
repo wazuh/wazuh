@@ -1,6 +1,7 @@
 #ifndef _AGENT_INFO_H
 #define _AGENT_INFO_H
 
+#include <stdbool.h>
 #include "agent_sync_protocol_c_interface_types.h"
 #include "logging_helper.h"
 
@@ -39,6 +40,8 @@ EXPORTED void agent_info_set_report_function(report_callback_t report_callback);
 EXPORTED void
 agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs);
 
+EXPORTED bool agent_info_parse_response(const uint8_t* data, size_t data_len);
+
 #ifdef __cplusplus
 }
 #endif
@@ -50,5 +53,6 @@ typedef void (*agent_info_set_report_function_func)(report_callback_t report_cal
 typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
                                                    const char* sync_db_path,
                                                    const MQ_Functions* mq_funcs);
+typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
 
 #endif //_AGENT_INFO_H

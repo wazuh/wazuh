@@ -165,7 +165,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -218,7 +219,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version Conflict", 409, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Version Conflict", 409, "");
                     }
                 }
                 else
@@ -289,7 +291,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError429TooManyRequests)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 429, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 429, "");
                     }
                 }
                 else
@@ -355,7 +358,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError500InternalServerError)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
                 }
             }));
 
@@ -631,7 +635,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 // First call should fail with 413
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -1026,7 +1031,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError429TooManyRequestsWithRetr
                 callCount++;
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Too many requests", 429, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Too many requests", 429, "");
                 }
                 else
                 {
@@ -1081,7 +1087,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkGenericServerErrorThrowsExcepti
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
                 }
             }));
 
@@ -1215,7 +1222,8 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryError429DoesNotThrow)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Too many requests", 429, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Too many requests", 429, "");
                 }
                 else
                 {
@@ -1246,7 +1254,8 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal server error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal server error", 500, "");
                 }
             }));
 
@@ -1278,7 +1287,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkDirectExecution)
                 // First call fails with 413 to trigger splitAndProcessBulk
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -1350,7 +1360,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkOnErrorExecution)
                 // First call fails with 413 to trigger splitAndProcessBulk
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
@@ -1372,7 +1383,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkOnErrorExecution)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
                 }
             }));
 
@@ -1429,7 +1441,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else if (callCount == 2)
@@ -1442,7 +1455,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 429, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 429, "");
                     }
                 }
                 else if (callCount == 3)
@@ -1528,7 +1542,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else if (callCount == 2)
@@ -1541,7 +1556,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenSuccess)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 413, "");
                     }
                 }
                 else
@@ -1612,7 +1628,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenException)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else if (callCount == 2)
@@ -1625,7 +1642,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenException)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 413, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 413, "");
                     }
                 }
                 else
@@ -1681,9 +1699,7 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
             [&capturedBulkData, &processingCompletedPromise](
                 RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
             {
-                std::visit([&capturedBulkData](auto&& request) {
-                    capturedBulkData = request.data;
-                }, requestParams);
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
@@ -1737,4 +1753,138 @@ TEST_F(IndexerConnectorSyncTest, ErrorHandlingForInvalidInputWithVersion)
 
     // Test with empty data - should not throw but log warning
     EXPECT_NO_THROW(connector.bulkIndex("doc2", "index1", "", "789"));
+}
+
+// Tests for executeUpdateByQuery - generic update by query operation
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"wazuh-states-fim-files", "wazuh-states-sca"};
+    bool notifyCalled = false;
+
+    // Setup expectations
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
+                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Build a sample update query (simulating what inventory_sync would build)
+    nlohmann::json updateQuery;
+    updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = "agent-001";
+    updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
+    updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = 12345;
+    updateQuery["query"]["bool"]["minimum_should_match"] = 1;
+    updateQuery["script"]["source"] = "ctx._source.field = params.value";
+    updateQuery["script"]["lang"] = "painless";
+    updateQuery["script"]["params"]["value"] = "test-value";
+
+    // Call the generic function
+    EXPECT_NO_THROW(connector.executeUpdateByQuery(indices, updateQuery));
+
+    // Verify the request was made
+    EXPECT_EQ(callCount, 1);
+    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called";
+
+    // Verify the request contained the correct data
+    auto requestData = nlohmann::json::parse(receivedData[0]);
+    EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["agent.id"], "agent-001");
+    EXPECT_EQ(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"],
+              "state.document_version");
+    EXPECT_EQ(requestData["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"], 12345);
+    EXPECT_EQ(requestData["query"]["bool"]["minimum_should_match"], 1);
+    EXPECT_TRUE(requestData.contains("script"));
+    EXPECT_EQ(requestData["script"]["source"], "ctx._source.field = params.value");
+    EXPECT_EQ(requestData["script"]["params"]["value"], "test-value");
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryError)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"wazuh-states-fim-files"};
+    bool notifyCalled = false;
+
+    // Setup error expectation
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [](auto requestParams, const auto& postParams, auto /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::string url;
+                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError(url, 500, "Internal server error");
+                }
+            }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Build a sample update query
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["field"] = "value";
+    updateQuery["script"]["source"] = "ctx._source.field = params.value";
+    updateQuery["script"]["params"]["value"] = "new-value";
+
+    // Call should throw exception on fatal error
+    EXPECT_THROW(connector.executeUpdateByQuery(indices, updateQuery), IndexerConnectorException);
+
+    EXPECT_FALSE(notifyCalled) << "Notify callback should not have been called on error";
+}
+
+// Test with version conflict retry
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"wazuh-states-sca"};
+    bool notifyCalled = false;
+    int attempts = 0;
+
+    // First call fails with version conflict, second succeeds
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&attempts](auto requestParams, const auto& postParams, auto /*configParams*/)
+            {
+                attempts++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::string url;
+                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError(url, 409, "Version conflict");
+                }
+            }))
+        .WillOnce(Invoke(
+            [this, &attempts](auto requestParams, const auto& postParams, auto configParams)
+            {
+                attempts++;
+                this->simulateSuccessfulPost(requestParams, postParams, configParams);
+            }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Build a sample update query
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["agent.id"] = "agent-003";
+    updateQuery["script"]["source"] = "ctx._source.groups = params.groups";
+    updateQuery["script"]["params"]["groups"] = std::vector<std::string> {"default"};
+
+    // Call should succeed after retry
+    EXPECT_NO_THROW(connector.executeUpdateByQuery(indices, updateQuery));
+
+    EXPECT_EQ(attempts, 2) << "Should have retried once";
+    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called after successful retry";
 }
