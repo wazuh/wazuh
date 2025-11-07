@@ -44,7 +44,7 @@ def configure(subparsers):
         'generate', help='Generate the schema and associated configuration')
 
     parser_generate.add_argument('--wcs-path', type=str, required=True,
-                                 help='Path to the Wazuh Common Schema directory with YAML files.')
+                                 help='Path to the Wazuh Common Schema YAML file or directory containing YAML files. If a directory is provided, all .yml and .yaml files will be merged.')
 
     parser_generate.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                                  help=f'[default="{DEFAULT_OUTPUT_DIR}"] Root directory to store generated files')
