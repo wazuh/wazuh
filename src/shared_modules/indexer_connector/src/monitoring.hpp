@@ -137,50 +137,50 @@ class TMonitoring final
             {
                 if (!errorType.empty() && !errorReason.empty())
                 {
-                    logWarn(MONITOR_NAME,
-                            "Health check failed for '%s' - type: '%s', reason: '%s' - Check indexer credentials",
-                            serverAddress.c_str(),
-                            errorType.c_str(),
-                            errorReason.c_str());
+                    logDebug2(MONITOR_NAME,
+                              "Health check failed for '%s' - type: '%s', reason: '%s' - Check indexer credentials",
+                              serverAddress.c_str(),
+                              errorType.c_str(),
+                              errorReason.c_str());
                 }
                 else
                 {
-                    logWarn(MONITOR_NAME,
-                            "Health check failed for '%s' - Unauthorized - Check indexer credentials",
-                            serverAddress.c_str());
+                    logDebug2(MONITOR_NAME,
+                              "Health check failed for '%s' - Unauthorized - Check indexer credentials",
+                              serverAddress.c_str());
                 }
             }
             else if (statusCode == 403)
             {
                 if (!errorType.empty() && !errorReason.empty())
                 {
-                    logWarn(MONITOR_NAME,
-                            "Health check failed for '%s' - type: '%s', reason: '%s' - Check user permissions",
-                            serverAddress.c_str(),
-                            errorType.c_str(),
-                            errorReason.c_str());
+                    logDebug2(MONITOR_NAME,
+                              "Health check failed for '%s' - type: '%s', reason: '%s' - Check user permissions",
+                              serverAddress.c_str(),
+                              errorType.c_str(),
+                              errorReason.c_str());
                 }
                 else
                 {
-                    logWarn(MONITOR_NAME,
-                            "Health check failed for '%s' - Forbidden - Check user permissions",
-                            serverAddress.c_str());
+                    logDebug2(MONITOR_NAME,
+                              "Health check failed for '%s' - Forbidden - Check user permissions",
+                              serverAddress.c_str());
                 }
             }
             else if (statusCode >= 500)
             {
-                logWarn(MONITOR_NAME,
-                        "Health check failed for '%s' - Server error (%ld)",
-                        serverAddress.c_str(),
-                        statusCode);
+                logDebug2(MONITOR_NAME,
+                          "Health check failed for '%s' - Server error (%ld)",
+                          serverAddress.c_str(),
+                          statusCode);
             }
             else
             {
-                logWarn(MONITOR_NAME,
-                        "Health check failed for '%s' - status: %ld, error: %s",
-                        serverAddress.c_str(),
-                        statusCode,
-                        error.c_str());
+                logDebug2(MONITOR_NAME,
+                          "Health check failed for '%s' - status: %ld, error: %s",
+                          serverAddress.c_str(),
+                          statusCode,
+                          error.c_str());
             }
         };
         // LCOV_EXCL_STOP

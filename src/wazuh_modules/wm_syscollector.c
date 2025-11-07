@@ -91,7 +91,7 @@ static void wm_sys_send_message(const void* data, const char queue_id) {
     if (!is_shutdown_process_started()) {
         const int eps = 1000000/syscollector_max_eps;
         if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
-            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s'", DEFAULTQUEUE);
+            mtdebug1(WM_SYS_LOGTAG, "Unable to send message to '%s'", DEFAULTQUEUE);
 
             // Since this method is beign called by multiple threads it's necessary this particular portion of code
             // to be mutually exclusive. When one thread is successfully reconnected, the other ones will make use of it.

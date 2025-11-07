@@ -587,7 +587,7 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 #endif
 
     if (SendMSG(queue, message, locmsg, loc) < 0) {
-        merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
+        mdebug1("Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }
 
@@ -606,7 +606,7 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
 #endif
 
     if (SendMSGPredicated(queue, message, locmsg, loc, fn_prd) < 0) {
-        merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
+        mdebug1("Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }
 

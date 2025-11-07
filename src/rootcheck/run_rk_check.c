@@ -42,7 +42,7 @@ int notify_rk(int rk_type, const char *msg)
 #ifdef OSSECHIDS
     /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
     if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-        mterror(ARGV0, QUEUE_SEND);
+        mtdebug1(ARGV0, QUEUE_SEND);
 
         if ((rootcheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
