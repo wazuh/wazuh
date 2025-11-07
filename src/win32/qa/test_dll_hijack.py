@@ -34,7 +34,7 @@ def generate_csv_logs(exe_path):
             print(f"Running '{command}'")
             subprocess.Popen(command)
             # Giving the command time to execute
-            time.sleep(5)
+            time.sleep(15)
 
         commands_wait = [f"{PROCMON_PATH} /waitforidle",
                          f"{exe_path}",
