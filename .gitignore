@@ -25,7 +25,6 @@ src/wazuh_modules/sca/build
 src/wazuh_modules/sca/coverage_report
 
 # Compiled programs
-src/agent_control
 src/clear_stats
 src/isbigendian
 src/list_agents
