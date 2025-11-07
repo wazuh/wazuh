@@ -61,7 +61,6 @@ table Start {
     agentname: string;
     agentid: string;
     groups: [string];
-    checksum_metadata: string;
     global_version: ulong;
 }
 

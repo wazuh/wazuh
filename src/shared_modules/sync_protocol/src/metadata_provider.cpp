@@ -137,9 +137,6 @@ namespace
                 std::strncpy(m_shm->base_metadata.os_version, metadata->os_version, sizeof(m_shm->base_metadata.os_version) - 1);
                 m_shm->base_metadata.os_version[sizeof(m_shm->base_metadata.os_version) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.checksum_metadata, metadata->checksum_metadata, sizeof(m_shm->base_metadata.checksum_metadata) - 1);
-                m_shm->base_metadata.checksum_metadata[sizeof(m_shm->base_metadata.checksum_metadata) - 1] = '\0';
-
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
 
@@ -202,9 +199,6 @@ namespace
 
                 std::strncpy(out_metadata->os_version, m_shm->base_metadata.os_version, sizeof(out_metadata->os_version) - 1);
                 out_metadata->os_version[sizeof(out_metadata->os_version) - 1] = '\0';
-
-                std::strncpy(out_metadata->checksum_metadata, m_shm->base_metadata.checksum_metadata, sizeof(out_metadata->checksum_metadata) - 1);
-                out_metadata->checksum_metadata[sizeof(out_metadata->checksum_metadata) - 1] = '\0';
 
                 // Copy groups
                 if (m_shm->groups_count > 0)

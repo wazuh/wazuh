@@ -349,7 +349,9 @@ public:
                     // CRITICAL: Flush any pending bulk operations BEFORE metadata/groups updates
                     // to ensure we don't insert documents with old data after the update
                     if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta ||
-                        res.context->mode == Wazuh::SyncSchema::Mode_GroupDelta)
+                        res.context->mode == Wazuh::SyncSchema::Mode_MetadataCheck ||
+                        res.context->mode == Wazuh::SyncSchema::Mode_GroupDelta ||
+                        res.context->mode == Wazuh::SyncSchema::Mode_GroupCheck)
                     {
                         m_indexerConnector->flush();
                     }
@@ -370,8 +372,6 @@ public:
                                 // Send ACK to agent.
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
-                                // Delete data from database.
-                                m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
                                 // Delete Session.
                                 if (m_agentSessions.erase(ctx->sessionId) == 0)
                                 {
@@ -410,8 +410,6 @@ public:
                                 // Send ACK to agent.
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
-                                // Delete data from database.
-                                m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
                                 // Delete Session.
                                 if (m_agentSessions.erase(ctx->sessionId) == 0)
                                 {
@@ -427,6 +425,84 @@ public:
 
                         // Execute the update using generic infrastructure method
                         m_indexerConnector->executeUpdateByQuery(res.context->indices, groupsQuery);
+                    }
+                    else if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataCheck)
+                    {
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Disaster recovery - checking metadata for agent %s...",
+                                  res.context->agentId.c_str());
+
+                        // Register notify callback BEFORE starting async operation to avoid race condition
+                        m_indexerConnector->registerNotify(
+                            [this, ctx = res.context]()
+                            {
+                                // Send ACK to agent.
+                                m_responseDispatcher->sendEndAck(
+                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // Delete Session.
+                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                {
+                                    logDebug2(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                              ctx->sessionId);
+                                }
+                            });
+
+                        // Build the metadata check query - compares fields and only updates mismatches
+                        auto metadataCheckQuery =
+                            InventorySyncQueryBuilder::buildMetadataCheckQuery(res.context->agentId,
+                                                                               res.context->agentName,
+                                                                               res.context->agentVersion,
+                                                                               res.context->architecture,
+                                                                               res.context->hostname,
+                                                                               res.context->osname,
+                                                                               res.context->osplatform,
+                                                                               res.context->ostype,
+                                                                               res.context->osversion);
+
+                        logInfo(LOGGER_DEFAULT_TAG,
+                                "Disaster recovery: Checking and recovering metadata inconsistencies for agent %s "
+                                "across %zu indices",
+                                res.context->agentId.c_str(),
+                                res.context->indices.size());
+
+                        // Execute the disaster recovery update
+                        m_indexerConnector->executeUpdateByQuery(res.context->indices, metadataCheckQuery);
+                    }
+                    else if (res.context->mode == Wazuh::SyncSchema::Mode_GroupCheck)
+                    {
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Disaster recovery - checking groups for agent %s...",
+                                  res.context->agentId.c_str());
+
+                        // Register notify callback BEFORE starting async operation to avoid race condition
+                        m_indexerConnector->registerNotify(
+                            [this, ctx = res.context]()
+                            {
+                                // Send ACK to agent.
+                                m_responseDispatcher->sendEndAck(
+                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // Delete Session.
+                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                {
+                                    logDebug2(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                              ctx->sessionId);
+                                }
+                            });
+
+                        // Build the groups check query - compares groups and only updates mismatches
+                        auto groupsCheckQuery =
+                            InventorySyncQueryBuilder::buildGroupsCheckQuery(res.context->agentId, res.context->groups);
+
+                        logInfo(LOGGER_DEFAULT_TAG,
+                                "Disaster recovery: Checking and recovering groups inconsistencies for agent %s across "
+                                "%zu indices",
+                                res.context->agentId.c_str(),
+                                res.context->indices.size());
+
+                        // Execute the disaster recovery update
+                        m_indexerConnector->executeUpdateByQuery(res.context->indices, groupsCheckQuery);
                     }
                     else
                     {
@@ -612,11 +688,13 @@ public:
                     }
 
                     std::erase_if(m_agentSessions,
-                                  [](const auto& pair)
+                                  [this](const auto& pair)
                                   {
                                       if (!pair.second.isAlive(std::chrono::seconds(DEFAULT_TIME * 2)))
                                       {
                                           logDebug2(LOGGER_DEFAULT_TAG, "Session %llu has timed out", pair.first);
+                                          // Delete data from database.
+                                          m_dataStore->deleteByPrefix(std::to_string(pair.first));
                                           return true;
                                       }
                                       return false;

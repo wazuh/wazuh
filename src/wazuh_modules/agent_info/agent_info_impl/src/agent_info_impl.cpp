@@ -89,8 +89,7 @@ const char* AGENT_METADATA_SQL_STATEMENT =
     "host_os_name      TEXT,"
     "host_os_type      TEXT,"
     "host_os_platform  TEXT,"
-    "host_os_version   TEXT,"
-    "checksum          TEXT NOT NULL);";
+    "host_os_version   TEXT);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -400,9 +399,6 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["host_os_version"] = osInfo["os_version"];
     }
 
-    // Calculate checksum
-    agentMetadata["checksum"] = calculateMetadataChecksum(agentMetadata);
-
     // Read agent groups from merged.mg (only for agents)
     std::vector<std::string> groups;
 
@@ -472,7 +468,6 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_type, sizeof(metadata.os_type), agentMetadata, "host_os_type");
     copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
-    copyField(metadata.checksum_metadata, sizeof(metadata.checksum_metadata), agentMetadata, "checksum");
 
     // Copy groups
     if (!groups.empty())
@@ -747,38 +742,6 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
         std::string errorMsg = "Error processing event for table " + table + ": " + e.what();
         m_logFunction(LOG_ERROR, errorMsg);
     }
-}
-
-std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metadata) const
-{
-    // Build a deterministic string from metadata fields (excluding checksum itself)
-    std::string checksumInput;
-
-    // Add fields in a specific order for deterministic checksum
-    std::vector<std::string> fields = {"agent_id",
-                                       "agent_name",
-                                       "agent_version",
-                                       "host_architecture",
-                                       "host_hostname",
-                                       "host_os_name",
-                                       "host_os_type",
-                                       "host_os_platform",
-                                       "host_os_version"
-                                      };
-
-    for (const auto& field : fields)
-    {
-        if (metadata.contains(field))
-        {
-            checksumInput += metadata[field].is_string() ? metadata[field].get<std::string>() : metadata[field].dump();
-            checksumInput += ":";
-        }
-    }
-
-    // Use SHA-1 hash (consistent with other modules)
-    Utils::HashData hash(Utils::HashType::Sha1);
-    hash.update(checksumInput.c_str(), checksumInput.size());
-    return Utils::asciiToHex(hash.hash());
 }
 
 nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::string& table) const

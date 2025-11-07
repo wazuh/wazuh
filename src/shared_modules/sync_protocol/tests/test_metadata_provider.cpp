@@ -42,7 +42,6 @@ protected:
         std::strncpy(metadata.os_name, "Ubuntu", sizeof(metadata.os_name) - 1);
         std::strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
         std::strncpy(metadata.os_version, "22.04", sizeof(metadata.os_version) - 1);
-        std::strncpy(metadata.checksum_metadata, "abc123", sizeof(metadata.checksum_metadata) - 1);
         metadata.groups = nullptr;
         metadata.groups_count = 0;
         return metadata;
@@ -79,7 +78,6 @@ TEST_F(MetadataProviderTest, GetMetadataAfterUpdate)
     EXPECT_STREQ(retrieved.os_name, "Ubuntu");
     EXPECT_STREQ(retrieved.os_type, "linux");
     EXPECT_STREQ(retrieved.os_version, "22.04");
-    EXPECT_STREQ(retrieved.checksum_metadata, "abc123");
     EXPECT_EQ(retrieved.groups_count, 0);
     EXPECT_EQ(retrieved.groups, nullptr);
 }

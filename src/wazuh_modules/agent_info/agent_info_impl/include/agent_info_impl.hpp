@@ -76,11 +76,6 @@ class AgentInfoImpl
         /// @param table Table name
         void processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table);
 
-        /// @brief Calculate checksum for metadata
-        /// @param metadata Metadata JSON object
-        /// @return Checksum string
-        std::string calculateMetadataChecksum(const nlohmann::json& metadata) const;
-
         /// @brief Convert data to ECS format
         /// @param data Original data
         /// @param table Table name

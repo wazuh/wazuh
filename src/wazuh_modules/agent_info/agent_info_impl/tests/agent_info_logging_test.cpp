@@ -205,7 +205,6 @@ TEST_F(AgentInfoLoggingTest, ProcessEventDebugUsesLogFunction)
     nlohmann::json testData;
     testData["agent_id"] = "001";
     testData["agent_name"] = "test";
-    testData["checksum"] = "abc";
 
     m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
 
@@ -242,7 +241,6 @@ TEST_F(AgentInfoLoggingTest, ProcessEventErrorUsesLogFunction)
 
     nlohmann::json testData;
     testData["agent_id"] = "001";
-    testData["checksum"] = "abc";
 
     m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
 
