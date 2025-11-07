@@ -7,7 +7,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
 #ifdef WIN32
 
 #include <cJSON.h>
@@ -1154,8 +1153,9 @@ void fim_read_values(HKEY key_handle,
         txn_ctx_regval->data = new.registry_entry.value;
         txn_ctx_regval->config = configuration;
 
+        w_mutex_lock(&syscheck.fim_registry_scan_mutex);
         int result_transaction = fim_db_transaction_sync_row(regval_txn_handler, &new);
-
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
         if (result_transaction < 0) {
             mdebug2("dbsync transaction failed due to %d", result_transaction);
         }
@@ -1306,8 +1306,9 @@ void fim_open_key(HKEY root_key_handle,
     txn_ctx_reg->key = new.registry_entry.key;
     txn_ctx_reg->config = configuration;
 
+    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
     result_transaction = fim_db_transaction_sync_row(regkey_txn_handler, &new);
-
+    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
     if(result_transaction < 0){
         merror("Dbsync registry transaction failed due to %d", result_transaction);
     }
@@ -1324,7 +1325,6 @@ void fim_open_key(HKEY root_key_handle,
 }
 
 void fim_registry_scan() {
-    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
     HKEY root_key_handle = NULL;
     const char *sub_key = NULL;
     int i = 0;
@@ -1366,7 +1366,6 @@ void fim_registry_scan() {
     regval_txn_handler = NULL;
 
     mdebug1(FIM_WINREGISTRY_ENDED);
-    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
 }
 
 #endif

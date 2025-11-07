@@ -656,6 +656,9 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     syscheck.registry = one_entry_config;
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
     unsigned int value_type = REG_DWORD;
@@ -714,6 +717,9 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 
 static void test_fim_registry_scan_regular_scan(void **state) {
     syscheck.registry = default_config;
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
