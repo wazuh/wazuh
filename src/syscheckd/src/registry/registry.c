@@ -1324,6 +1324,7 @@ void fim_open_key(HKEY root_key_handle,
 }
 
 void fim_registry_scan() {
+    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
     HKEY root_key_handle = NULL;
     const char *sub_key = NULL;
     int i = 0;
@@ -1365,6 +1366,7 @@ void fim_registry_scan() {
     regval_txn_handler = NULL;
 
     mdebug1(FIM_WINREGISTRY_ENDED);
+    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
 }
 
 #endif

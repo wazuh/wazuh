@@ -95,8 +95,6 @@ if(${TARGET} STREQUAL "winagent")
   file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
                                  ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
   list(REMOVE_ITEM sysfiles {SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/main.obj)
-  # Exclude C++ recovery module files
-  list(FILTER syscheck_event_files EXCLUDE REGEX ".*\\.cpp\\.obj$")
 
   add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
