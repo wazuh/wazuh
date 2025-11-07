@@ -212,37 +212,52 @@ void SCA::init()
 {
     if (!m_sca)
     {
-        m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
-
-        m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
-
-        auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
+        try
         {
-            if (g_push_stateful_func)
+            m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
+
+            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
+
+            auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
             {
-                return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str(), version);
-            }
+                if (g_push_stateful_func)
+                {
+                    return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str(), version);
+                }
 
-            LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
-            return -1;
-        };
+                LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
+                return -1;
+            };
 
-        auto sendStatelessMessage = [](const std::string & message) -> int
+            auto sendStatelessMessage = [](const std::string & message) -> int
+            {
+                if (g_push_stateless_func)
+                {
+                    return g_push_stateless_func(message.c_str());
+                }
+
+                LoggingHelper::getInstance().log(LOG_WARNING, "No stateless message handler set");
+                return -1;
+            };
+
+            m_sca->SetPushStatelessMessageFunction(sendStatelessMessage);
+            m_sca->SetPushStatefulMessageFunction(persistStatefulMessage);
+
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
+        }
+        catch (const std::exception& ex)
         {
-            if (g_push_stateless_func)
-            {
-                return g_push_stateless_func(message.c_str());
-            }
-
-            LoggingHelper::getInstance().log(LOG_WARNING, "No stateless message handler set");
-            return -1;
-        };
-
-        m_sca->SetPushStatelessMessageFunction(sendStatelessMessage);
-        m_sca->SetPushStatefulMessageFunction(persistStatefulMessage);
+            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to initialize SCA module: " + std::string(ex.what()));
+            // Clean up partial initialization
+            m_sca.reset();
+            // Re-throw so outer layer can handle
+            throw;
+        }
     }
-
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA module already initialized.");
+    }
 }
 
 void SCA::setup(const struct wm_sca_t* sca_config)

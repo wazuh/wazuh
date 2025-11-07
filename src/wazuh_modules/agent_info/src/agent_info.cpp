@@ -87,51 +87,69 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 
     if (!g_agent_info_impl)
     {
-        if (g_log_callback)
+        try
         {
-            g_log_callback(LOG_DEBUG, "agent_info_start: Creating AgentInfoImpl instance", "agent-info");
+            if (g_log_callback)
+            {
+                g_log_callback(LOG_DEBUG, "agent_info_start: Creating AgentInfoImpl instance", "agent-info");
+            }
+
+            // Initialize DBSync logging before creating DBSync instances
+            DBSync::initialize(
+                [](const std::string & msg)
+            {
+                if (g_log_callback)
+                {
+                    g_log_callback(LOG_DEBUG, msg.c_str(), "agent-info");
+                }
+            });
+
+            g_agent_info_impl =
+                std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_log_function_wrapper);
+
+            // Set agent mode
+            g_agent_info_impl->setIsAgent(agent_info_config->is_agent);
+
+            // Set sync parameters from configuration
+            g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_response_timeout,
+                                                 agent_info_config->sync.sync_retries,
+                                                 agent_info_config->sync.sync_max_eps);
+
+            // Initialize sync protocol immediately after creating instance
+            if (g_module_name && g_sync_db_path && g_mq_functions)
+            {
+                if (g_log_callback)
+                {
+                    g_log_callback(LOG_DEBUG, "agent_info_start: Initializing sync protocol", "agent-info");
+                }
+
+                g_agent_info_impl->initSyncProtocol(
+                    std::string(g_module_name), std::string(g_sync_db_path), *g_mq_functions);
+            }
+            else
+            {
+                if (g_log_callback)
+                {
+                    g_log_callback(LOG_WARNING,
+                                   "agent_info_start: Sync protocol parameters not set, skipping initialization",
+                                   "agent-info");
+                }
+            }
         }
-
-        // Initialize DBSync logging before creating DBSync instances
-        DBSync::initialize(
-            [](const std::string & msg)
+        catch (const std::exception& ex)
         {
             if (g_log_callback)
             {
-                g_log_callback(LOG_DEBUG, msg.c_str(), "agent-info");
-            }
-        });
-
-        g_agent_info_impl =
-            std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_log_function_wrapper);
-
-        // Set agent mode
-        g_agent_info_impl->setIsAgent(agent_info_config->is_agent);
-
-        // Set sync parameters from configuration
-        g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_response_timeout,
-                                             agent_info_config->sync.sync_retries,
-                                             agent_info_config->sync.sync_max_eps);
-
-        // Initialize sync protocol immediately after creating instance
-        if (g_module_name && g_sync_db_path && g_mq_functions)
-        {
-            if (g_log_callback)
-            {
-                g_log_callback(LOG_DEBUG, "agent_info_start: Initializing sync protocol", "agent-info");
+                std::string error_msg = "agent_info_start: Failed to initialize agent_info module: ";
+                error_msg += ex.what();
+                g_log_callback(LOG_ERROR, error_msg.c_str(), "agent-info");
             }
 
-            g_agent_info_impl->initSyncProtocol(
-                std::string(g_module_name), std::string(g_sync_db_path), *g_mq_functions);
-        }
-        else
-        {
-            if (g_log_callback)
-            {
-                g_log_callback(LOG_WARNING,
-                               "agent_info_start: Sync protocol parameters not set, skipping initialization",
-                               "agent-info");
-            }
+            // Clean up partial initialization
+            g_agent_info_impl.reset();
+
+            // Module fails gracefully without crashing wazuh-modulesd
+            return;
         }
     }
     else
@@ -143,7 +161,22 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
         }
     }
 
-    g_agent_info_impl->start(agent_info_config->interval);
+    try
+    {
+        g_agent_info_impl->start(agent_info_config->interval);
+    }
+    catch (const std::exception& ex)
+    {
+        if (g_log_callback)
+        {
+            std::string error_msg = "agent_info_start: Failed to start agent_info module: ";
+            error_msg += ex.what();
+            g_log_callback(LOG_ERROR, error_msg.c_str(), "agent-info");
+        }
+
+        // Clean up on start failure
+        g_agent_info_impl.reset();
+    }
 }
 
 void agent_info_stop()

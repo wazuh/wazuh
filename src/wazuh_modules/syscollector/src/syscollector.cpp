@@ -103,6 +103,8 @@ void syscollector_init(const unsigned int inverval,
     catch (const std::exception& ex)
     {
         callbackErrorLogWrapper(ex.what());
+        // DO NOT re-throw - this is called from C code which cannot catch C++ exceptions
+        // The module will be in a failed state and subsequent calls will be no-ops
     }
 }
 
@@ -120,7 +122,20 @@ void syscollector_init_sync(const char* moduleName, const char* syncDbPath, cons
 {
     if (moduleName && syncDbPath && mqFuncs)
     {
-        Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), *mqFuncs);
+        try
+        {
+            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), *mqFuncs);
+        }
+        catch (const std::exception& ex)
+        {
+            // Log error but don't crash - module will continue without sync protocol
+            auto callbackErrorLogWrapper = [](const std::string & data)
+            {
+                // Use syscollector's logging - this will reach the C logging system
+                fprintf(stderr, "Syscollector sync protocol initialization failed: %s\n", data.c_str());
+            };
+            callbackErrorLogWrapper(ex.what());
+        }
     }
 }
 

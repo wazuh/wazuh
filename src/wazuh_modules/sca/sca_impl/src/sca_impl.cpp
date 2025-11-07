@@ -237,7 +237,18 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
     {
         LoggingHelper::getInstance().log(level, msg);
     };
-    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+
+    try
+    {
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to initialize SCA sync protocol: " + std::string(ex.what()));
+        // Re-throw to allow caller to handle
+        throw;
+    }
 }
 
 bool SecurityConfigurationAssessment::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)

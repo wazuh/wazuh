@@ -200,9 +200,17 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
         m_logFunction(level, msg);
     };
 
-    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
-
-    m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with database: " + syncDbPath);
+    try
+    {
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with database: " + syncDbPath);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logFunction(LOG_ERROR, "Failed to initialize sync protocol for agent_info: " + std::string(ex.what()));
+        // Re-throw to allow caller to handle
+        throw;
+    }
 }
 
 void AgentInfoImpl::setSyncParameters(uint32_t timeout, uint32_t retries, long maxEps)
