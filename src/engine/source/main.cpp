@@ -38,6 +38,7 @@
 #include <streamlog/logger.hpp>
 #include <udgramsrv/udsrv.hpp>
 #include <wiconnector/windexerconnector.hpp>
+#include <wiconnector/connectorFactory.hpp>
 #include <ctistore/cm.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
@@ -229,7 +230,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<api::policy::IPolicy> policyManager;
-    std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
+    std::shared_ptr<wiconnector::IWIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<cm::sync::CMSync> cmsync;
@@ -377,8 +378,15 @@ int main(int argc, char* argv[])
 
             try {
                 const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
-                LOG_INFO("Indexer Connector initialized.");
+                indexerConnector = wiconnector::ConnectorFactory::createConnector(jsonCnf);
+
+                // Determine connector type for logging
+                const auto config = nlohmann::json::parse(jsonCnf);
+                std::string connectorType = "OpenSearch";
+                if (config.contains("type")) {
+                    connectorType = config.at("type").get<std::string>();
+                }
+                LOG_INFO("Indexer Connector initialized (type: {}).", connectorType);
             } catch (const std::exception& e) {
                 // ALLOW the engine to start even if the indexer connector fails.
                 LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());

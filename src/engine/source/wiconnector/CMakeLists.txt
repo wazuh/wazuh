@@ -12,6 +12,7 @@ add_library(wIndexerConnector::iwIndexerConnector ALIAS wIndexerConnector_iwInde
 # Implementation
 add_library(wIndexerConnector_wIndexerConnector STATIC
     ${SRC_DIR}/windexerconnector.cpp
+    ${SRC_DIR}/wquickwitconnector.cpp
 )
 target_include_directories(wIndexerConnector_wIndexerConnector
     PUBLIC
