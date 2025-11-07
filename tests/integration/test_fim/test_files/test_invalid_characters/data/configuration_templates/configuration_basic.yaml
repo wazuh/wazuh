@@ -11,8 +11,8 @@
               - FIM_MODE
         - synchronization:
             elements:
-              - interval:
-                  value: 5
+              - enabled:
+                  value: "no"
     - section: sca
       elements:
         - enabled:
