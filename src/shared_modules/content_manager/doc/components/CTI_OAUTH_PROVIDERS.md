@@ -47,6 +47,68 @@ std::string accessToken = credentialsProvider->getAccessToken();
 uint64_t expiresIn = credentialsProvider->getExpiresIn();
 ```
 
+### CTIProductsProvider
+
+The [CTIProductsProvider](../../src/components/ctiProductsProvider.hpp) fetches subscription information from CTI Console to determine which products the instance is subscribed to.
+
+#### Features
+
+- **Fetch subscription data** from Console's `/api/v1/instances/me` endpoint using Bearer token
+- **Parse organization and plan** information
+- **Extract product metadata** including stable identifiers and resource URLs
+- **Filter catalog products** that require token exchange
+- **Cache subscription data** to minimize API calls
+- **Thread-safe access** to subscription information
+
+#### Configuration
+
+```cpp
+nlohmann::json config = {
+    {"console", {
+        {"url", "https://console.wazuh.com"},
+        {"instancesEndpoint", "/api/v1/instances/me"},  // Optional, default shown
+        {"timeout", 5000}                                // Optional, milliseconds
+    }}
+};
+
+auto productsProvider = std::make_shared<CTIProductsProvider>(
+    httpRequest,
+    config
+);
+```
+
+#### Usage
+
+```cpp
+// Set access token from credentials provider
+productsProvider->setAccessToken(accessToken);
+
+// Fetch subscription information
+auto subscription = productsProvider->fetchSubscription();
+
+// Access organization info
+std::cout << "Organization: " << subscription.organization.name << "\n";
+
+// Iterate through plans and products
+for (const auto& plan : subscription.plans) {
+    std::cout << "Plan: " << plan.name << "\n";
+    for (const auto& product : plan.products) {
+        if (product.type == "catalog:consumer") {
+            // This product has a resource URL for token exchange
+            std::cout << "  Product: " << product.identifier << "\n";
+            std::cout << "  Resource: " << product.resource << "\n";
+        }
+    }
+}
+
+// Or get only catalog products directly
+auto catalogProducts = productsProvider->getCatalogProducts();
+for (const auto& product : catalogProducts) {
+    // Use product.resource for token exchange
+    std::string signedUrl = signedUrlProvider->getSignedUrl(product.resource, accessToken);
+}
+```
+
 ### CTISignedUrlProvider
 
 The [CTISignedUrlProvider](../../src/components/ctiSignedUrlProvider.hpp) handles OAuth 2.0 Token Exchange to convert access tokens into HMAC-signed URLs.
@@ -80,17 +142,14 @@ auto signedUrlProvider = std::make_shared<CTISignedUrlProvider>(
 #### Usage
 
 ```cpp
-// Exchange access token for signed URL
-std::string originalUrl = "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0";
-std::string accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-
-std::string signedUrl = signedUrlProvider->getSignedUrl(originalUrl, accessToken);
-// Returns: "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0?verify=hmac_signature"
+// Exchange access token for signed URL (using resource from product)
+std::string signedUrl = signedUrlProvider->getSignedUrl(product.resource, accessToken);
+// Returns: "https://cti.wazuh.com/api/v1/catalog/...?verify=hmac_signature"
 ```
 
-## OAuth 2.0 Flow
+## Complete OAuth 2.0 Flow
 
-The complete OAuth flow for CTI content download works as follows:
+The complete OAuth flow for CTI content download now includes the new subscription step:
 
 ```
 ┌─────────────────┐
@@ -109,7 +168,7 @@ The complete OAuth flow for CTI content download works as follows:
 │ Wazuh Indexer   │
 └────────┬────────┘
          │
-         │ 3. Return access_token + expires_in
+         │ 3. Return access_token + refresh_token + expires_in
          v
 ┌─────────────────────────┐
 │ CTICredentialsProvider  │◄─── Background refresh thread
@@ -118,25 +177,71 @@ The complete OAuth flow for CTI content download works as follows:
          │ 4. Provide access_token
          v
 ┌──────────────────────┐
+│ CTIProductsProvider  │
+└──────────┬───────────┘
+         │
+         │ 5. GET /api/v1/instances/me
+         │    Authorization: Bearer <access_token>
+         v
+┌──────────────┐
+│ CTI Console  │
+└──────┬───────┘
+         │
+         │ 6. Return subscription data:
+         │    - Organization info
+         │    - Plans and products
+         │    - Resource URLs for each product
+         v
+┌──────────────────────┐
+│ CTIProductsProvider  │
+└──────────┬───────────┘
+         │
+         │ 7. Extract product resources
+         v
+┌──────────────────────┐
 │ CTISignedUrlProvider │
 └────────┬─────────────┘
          │
-         │ 5. POST /api/v1/instances/token/exchange
+         │ 8. POST /api/v1/instances/token/exchange
          │    {
          │      "subject_token": "access_token",
-         │      "resource": "original_url"
+         │      "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+         │      "resource": "<product.resource>"
          │    }
          v
 ┌─────────────────┐
 │ CTI Console     │
 └────────┬────────┘
          │
-         │ 6. Return signed URL + expires_in
+         │ 9. Return signed URL + expires_in
          v
 ┌──────────────────────┐
 │ CTISignedUrlProvider │◄─── Cache (5 min)
 └────────┬─────────────┘
          │
+         │ 10. Return signed URL
+         v
+┌─────────────────┐
+│ CtiDownloader   │
+└────────┬────────┘
+         │
+         │ 11. Download CTI content using signed URL
+         v
+┌─────────────────┐
+│ CTI API         │
+└─────────────────┘
+```
+
+### Flow Summary
+
+1. **CTICredentialsProvider** fetches OAuth credentials (access_token + refresh_token) from Wazuh Indexer
+2. Background thread automatically refreshes tokens before expiration
+3. **CTIProductsProvider** uses access_token to fetch subscription information from Console
+4. Console returns organization details and list of subscribed products with their resource URLs
+5. For each catalog product, **CTISignedUrlProvider** exchanges the access_token for a signed URL
+6. Signed URL includes HMAC signature and has 5-minute expiration
+7. **CtiDownloader** uses signed URL to download CTI content
+8. Cached signed URLs are reused for performance
          │ 7. Provide signed URL
          v
 ┌─────────────────┐
