@@ -16,29 +16,39 @@ namespace cm::store
 {
 using NameType = std::tuple<std::string, ResourceType>;
 
+// Entry structure to hold name, type, and hash
+struct EntryData
+{
+    std::string name;
+    ResourceType type;
+    std::string hash;
+};
+
 // Hash function for NameType to be used in unordered_map
 struct NameTypeHash
 {
     std::size_t operator()(const NameType& nt) const noexcept
     {
-        std::size_t h1 = std::hash<std::string>{}(std::get<0>(nt));
-        std::size_t h2 = std::hash<uint8_t>{}(static_cast<uint8_t>(std::get<1>(nt)));
+        std::size_t h1 = std::hash<std::string> {}(std::get<0>(nt));
+        std::size_t h2 = std::hash<uint8_t> {}(static_cast<uint8_t>(std::get<1>(nt)));
         return h1 ^ (h2 << 1); // Combine hashes
     }
 };
 
 /**
- * @brief Bidirectional cache for UUID to name-type mappings.
+ * @brief Bidirectional cache for UUID to name-type-hash mappings.
  *
  * This class maintains two internal hash maps to provide O(1) lookup times
- * for both UUID-to-name-type and name-type-to-UUID queries.
+ * for both UUID-to-entry-data and name-type-to-UUID queries.
+ * Each entry now includes a hash string as metadata.
  */
 class CacheNS
 {
 private:
-    std::unordered_map<std::string, NameType> m_uuidToNameTypeMap;               ///< Map from UUID to (Name, Type)
+    std::unordered_map<std::string, EntryData> m_uuidToEntryMap; ///< Map from UUID to EntryData (Name, Type, Hash)
     std::unordered_map<NameType, std::string, NameTypeHash> m_nameTypeToUUIDMap; ///< Map from (Name, Type) to UUID
-    mutable std::shared_mutex m_mutex;     // TODO: Remove this mutex, the ns should handle this                                      ///< Mutex for thread-safe access
+    mutable std::shared_mutex m_mutex; // TODO: Remove this mutex, the ns should handle this ///< Mutex for thread-safe
+                                       // access
 
 public:
     CacheNS() = default;
@@ -63,15 +73,15 @@ public:
      */
     void deserialize(const json::Json& j);
 
-
     /**
-     * @brief Adds a new entry to the cache with the specified UUID, name, and type.
+     * @brief Adds a new entry to the cache with the specified UUID, name, type, and hash.
      * @param uuid The unique identifier string
      * @param name The resource name
      * @param type The resource type
+     * @param hash The hash string (metadata associated with the resource)
      * @throw std::runtime_error if the UUID or name-type pair already exists in the cache
      */
-    void addEntry(const std::string& uuid, const std::string& name, ResourceType type);
+    void addEntry(const std::string& uuid, const std::string& name, ResourceType type, const std::string& hash);
 
     /**
      * @brief Removes an entry from the cache using its UUID.
@@ -87,12 +97,35 @@ public:
     void removeEntryByNameType(const std::string& name, ResourceType type);
 
     /**
+     * @brief Retrieves the entry data associated with the given UUID.
+     *
+     * @param uuid The UUID to look up
+     * @return std::optional<EntryData> The entry data if found, std::nullopt otherwise
+     */
+    std::optional<EntryData> getEntryByUUID(const std::string& uuid) const;
+
+    /**
+     * @brief Retrieve entry data associated with the given NameType
+     *
+     */
+    std::optional<EntryData> getEntryByNameType(const std::string& name, ResourceType type) const;
+
+    /**
      * @brief Retrieves the name-type pair associated with the given UUID.
      *
      * @param uuid The UUID to look up
      * @return std::optional<NameType> The name-type pair if found, std::nullopt otherwise
      */
     std::optional<NameType> getNameTypeByUUID(const std::string& uuid) const;
+
+    /**
+     * @brief Retrieves the hash associated with the given UUID.
+     *
+     * @param uuid The UUID to look up
+     * @return std::optional<std::string> The hash if found, std::nullopt otherwise
+     */
+    std::optional<std::string> getHashByUUID(const std::string& uuid) const;
+
     /**
      * @brief Retrieves the UUID associated with the given name and type.
      * @param name The name to look up

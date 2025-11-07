@@ -8,6 +8,7 @@
 #include <system_error>
 
 #include <base/json.hpp>
+#include <yml/yml.hpp>
 
 namespace fileutils
 {
@@ -126,6 +127,24 @@ json::Json readJsonFile(const std::filesystem::path& filePath) {
     }
 
     return json::Json(content.c_str());
+}
+
+json::Json readYMLFileAsJson(const std::filesystem::path& filePath) {
+
+
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file for reading: " + filePath.string());
+    }
+
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (file.fail()) {
+        throw std::runtime_error("Failed to read content from file: " + filePath.string());
+    }
+
+    return json::Json {yml::Converter::loadYMLfromString(content)};
 }
 
 }

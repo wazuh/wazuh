@@ -202,7 +202,6 @@ std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort)
         throw std::runtime_error("Error parsing yml string: " + std::string(e.what()));
     }
 
-    // Crear un Emitter y configurarlo para ser "pretty"
     YAML::Emitter out;
     // Pretty YML
     out.SetIndent(2);
@@ -211,7 +210,6 @@ std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort)
 
     if (sort)
     {
-        // Ordenar las claves recursivamente
         YAML::Node sortedNode = sortKeysRecursively(node);
         out << sortedNode;
     }
