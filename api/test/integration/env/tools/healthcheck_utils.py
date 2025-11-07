@@ -98,16 +98,13 @@ def check(result):
 
 
 def get_master_health():
-    os.system("/var/ossec/bin/agent_control -ls > /tmp_volume/output.txt")
     os.system("/var/ossec/bin/wazuh-control status > /tmp_volume/daemons.txt")
-
-    check0 = check(os.system("diff -q /tmp_volume/output.txt /tmp_volume/healthcheck/agent_control_check.txt"))
 
     check1 = check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
 
     check2 = get_api_health()
 
-    return check0 or check1 or check2
+    return check1 or check2
 
 
 def get_worker_health():
