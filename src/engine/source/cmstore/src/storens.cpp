@@ -111,7 +111,7 @@ std::string CMStoreNS::createKVDB(const std::string& name, json::Json&& data)
     }
 
     // Update cache
-    m_cache.addEntry(uuid, name, ResourceType::KVDB);
+    //m_cache.addEntry(uuid, name, ResourceType::KVDB);
     flushCacheToDisk();
 
     return uuid;
