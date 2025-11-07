@@ -47,9 +47,6 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 void OS_RemoveAgentTimestamp(const char *id);
 void FormatID(char *id);
 
-/* Print available agents */
-int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output);
-
 /* Clear a line */
 char *chomp(char *str);
 
@@ -75,7 +72,6 @@ extern char shost[];
 /* Print agents */
 #define PRINT_AVAILABLE     "\nAvailable agents: \n"
 #define PRINT_AGENT         "   ID: %s, Name: %s, IP: %s\n"
-#define PRINT_AGENT_STATUS  "   ID: %s, Name: %s, IP: %s, %s\n"
 
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
 

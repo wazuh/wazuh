@@ -39,16 +39,6 @@ void os_set_restart_syscheck(void);
  */
 char *os_read_agent_name(void);
 
-/* Read the agent IP for the current agent
- * Returns NULL on error
- */
-char *os_read_agent_ip(void);
-
-/* Read the agent ID for the current agent
- * Returns NULL on error
- */
-char *os_read_agent_id(void);
-
 /* Read the agent profile name for the current agent
  * Returns NULL on error
  */
