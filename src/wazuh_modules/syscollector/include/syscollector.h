@@ -88,6 +88,9 @@ EXPORTED bool syscollector_parse_response(const unsigned char* data, size_t leng
 EXPORTED bool syscollector_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps);
 EXPORTED void syscollector_delete_database();
 
+// Query function
+EXPORTED size_t syscollector_query(const char* query, char** output);
+
 #ifdef __cplusplus
 }
 #endif
