@@ -15,6 +15,7 @@
 #include "IURLRequest.hpp"
 #include "componentsHelper.hpp"
 #include "ctiCredentialsProvider.hpp"
+#include "ctiProductsProvider.hpp"
 #include "ctiSignedUrlProvider.hpp"
 #include "sharedDefs.hpp"
 #include "updaterContext.hpp"
@@ -110,15 +111,22 @@ protected:
     /**
      * @brief Get the effective URL for downloading content.
      *
-     * If OAuth providers are configured, this method:
-     * 1. Obtains an access token from the credentials provider
-     * 2. Exchanges the token for a signed URL via the signed URL provider
-     * 3. Returns the signed URL
+     * This method implements the complete OAuth 2.0 flow with subscription-based product discovery:
      *
-     * If no providers are configured, returns the original URL unchanged.
-     * This maintains backward compatibility with non-authenticated downloads.
+     * **With Products Provider**:
+     * 1. Get access token from credentials provider
+     * 2. Fetch subscription from Console (/api/v1/instances/me)
+     * 3. Extract product.resource for the given originalUrl identifier
+     * 4. Exchange token for signed URL using product.resource
      *
-     * @param originalUrl The original CTI resource URL
+     * **Without Products Provider**:
+     * 1. Get access token from credentials provider
+     * 2. Exchange token for signed URL using originalUrl directly
+     *
+     * **Without OAuth Providers**:
+     * - Returns originalUrl unchanged
+     *
+     * @param originalUrl The CTI resource URL or product identifier
      * @return std::string The effective URL to use (signed URL or original URL)
      * @throws std::runtime_error If OAuth authentication fails
      */
@@ -133,19 +141,72 @@ protected:
 
         try
         {
-            logDebug1(WM_CONTENTUPDATER, "CtiDownloader: Obtaining signed URL for resource: %s", originalUrl.c_str());
-
             // Step 1: Get access token from credentials provider
             // This automatically handles token refresh if needed
             auto accessToken = m_credentialsProvider->getAccessToken();
-
             logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Access token obtained (length: %zu)", accessToken.length());
 
-            // Step 2: Set the access token in the signed URL provider
+            std::string resourceUrl = originalUrl;
+
+            // Step 2: If products provider is configured, fetch subscription and extract resource URL
+            if (m_productsProvider)
+            {
+                logDebug1(WM_CONTENTUPDATER, "CtiDownloader: Fetching subscription to discover product resources");
+
+                // Set access token for products provider
+                m_productsProvider->setAccessToken(accessToken);
+
+                // Get catalog products from subscription
+                auto catalogProducts = m_productsProvider->getCatalogProducts();
+
+                logInfo(WM_CONTENTUPDATER,
+                        "CtiDownloader: Found %zu catalog products in subscription",
+                        catalogProducts.size());
+
+                // Try to find a matching product by checking if originalUrl contains the product identifier
+                // This allows flexibility in how URLs are constructed
+                bool foundProduct = false;
+                for (const auto& product : catalogProducts)
+                {
+                    // Check if the originalUrl contains the product identifier
+                    // This handles cases like:
+                    // - "/contexts/vulnerabilities/..." contains "vulnerabilities"
+                    // - "vulnerabilities-pro" identifier
+                    if (originalUrl.find(product.identifier) != std::string::npos ||
+                        product.identifier.find(originalUrl) != std::string::npos)
+                    {
+                        resourceUrl = product.resource;
+                        foundProduct = true;
+                        logInfo(WM_CONTENTUPDATER,
+                                "CtiDownloader: Matched product '%s' for URL '%s'",
+                                product.identifier.c_str(),
+                                originalUrl.c_str());
+                        logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Using resource URL: %s", resourceUrl.c_str());
+                        break;
+                    }
+                }
+
+                if (!foundProduct)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "CtiDownloader: No product found matching URL '%s', using original URL",
+                            originalUrl.c_str());
+                    // Fall back to original URL if no matching product found
+                    resourceUrl = originalUrl;
+                }
+            }
+            else
+            {
+                logDebug1(WM_CONTENTUPDATER,
+                          "CtiDownloader: No products provider configured, using original URL as resource");
+            }
+
+            // Step 3: Set the access token in the signed URL provider
             m_signedUrlProvider->setAccessToken(accessToken);
 
-            // Step 3: Exchange token for signed URL
-            auto signedUrl = m_signedUrlProvider->exchangeForSignedUrl(originalUrl);
+            // Step 4: Exchange token for signed URL using the resource URL
+            logDebug1(WM_CONTENTUPDATER, "CtiDownloader: Exchanging token for signed URL");
+            auto signedUrl = m_signedUrlProvider->exchangeForSignedUrl(resourceUrl);
 
             logInfo(WM_CONTENTUPDATER, "CtiDownloader: Signed URL obtained successfully");
             logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Signed URL: %s", signedUrl.c_str());
@@ -353,6 +414,7 @@ protected:
     std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< Updater context.
     const unsigned int m_tooManyRequestsRetryTime; ///< Time between retries when receiving a "too many requests" error.
     std::shared_ptr<CTICredentialsProvider> m_credentialsProvider; ///< OAuth credentials provider (optional).
+    std::shared_ptr<CTIProductsProvider> m_productsProvider;       ///< Products/subscription provider (optional).
     std::shared_ptr<CTISignedUrlProvider> m_signedUrlProvider;     ///< Signed URL provider (optional).
 
 public:
@@ -367,17 +429,20 @@ public:
      * @param componentName Component name used to update the stage status.
      * @param tooManyRequestsRetryTime Time between retries when a "too many requests" error is received.
      * @param credentialsProvider Optional OAuth credentials provider for authenticated requests.
+     * @param productsProvider Optional products/subscription provider for product discovery.
      * @param signedUrlProvider Optional signed URL provider for token exchange.
      */
     explicit CtiDownloader(IURLRequest& urlRequest,
                            std::string componentName,
                            unsigned int tooManyRequestsRetryTime = TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME,
                            std::shared_ptr<CTICredentialsProvider> credentialsProvider = nullptr,
+                           std::shared_ptr<CTIProductsProvider> productsProvider = nullptr,
                            std::shared_ptr<CTISignedUrlProvider> signedUrlProvider = nullptr)
         : m_urlRequest(urlRequest)
         , m_componentName(std::move(componentName))
         , m_tooManyRequestsRetryTime(tooManyRequestsRetryTime)
         , m_credentialsProvider(std::move(credentialsProvider))
+        , m_productsProvider(std::move(productsProvider))
         , m_signedUrlProvider(std::move(signedUrlProvider))
     {
     }

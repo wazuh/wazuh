@@ -76,7 +76,7 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_URLTransformation)
 
     // Create downloader WITH OAuth providers
     auto downloader =
-        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, m_signedUrlProvider);
+        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, nullptr, m_signedUrlProvider);
 
     const std::string originalUrl = "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0";
     const std::string signedUrl = originalUrl + "?verify=hmac_signature_12345";
@@ -196,7 +196,7 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_AuthenticationFailure)
     createOAuthProviders();
 
     auto downloader =
-        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, m_signedUrlProvider);
+        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, nullptr, m_signedUrlProvider);
 
     // Setup mock to fail credentials request (with retries - up to 3 attempts)
     EXPECT_CALL(*m_mockUrlRequest, get(_, _, _))
@@ -229,7 +229,7 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_SignedUrlCaching)
     createOAuthProviders();
 
     auto downloader =
-        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, m_signedUrlProvider);
+        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, nullptr, m_signedUrlProvider);
 
     const std::string originalUrl = "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0";
     const std::string signedUrl = originalUrl + "?verify=hmac_signature_cached";
@@ -309,7 +309,7 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_SnapshotDownloader)
     createOAuthProviders();
 
     auto downloader =
-        std::make_shared<CtiSnapshotDownloader>(*m_mockUrlRequest, m_credentialsProvider, m_signedUrlProvider);
+        std::make_shared<CtiSnapshotDownloader>(*m_mockUrlRequest, m_credentialsProvider, nullptr, m_signedUrlProvider);
 
     const std::string originalUrl = "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0";
     const std::string snapshotUrl = "https://cti.wazuh.com/snapshots/latest.tar.gz";
