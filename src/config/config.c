@@ -176,7 +176,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #endif
         } else if (strcmp(node[i]->element, osindexer) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE) && (Read_Indexer(xml, chld_node) < 0)) {
+            if ((modules & CWMODULE) && (Read_Indexer(OSSECCONF) < 0)) {
                 goto fail;
             }
 #else
