@@ -19,8 +19,6 @@ public:
 
     Type getType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }
 
-    bool isArray(const DotPath& name) const override { return false; }
-
     bool hasField(const DotPath& name) const override { return false; }
 
     json::Json::Type getJsonType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }

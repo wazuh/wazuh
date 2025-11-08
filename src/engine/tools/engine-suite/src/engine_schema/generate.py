@@ -39,13 +39,8 @@ def _partition_node(schema: dict, path: str, allowed: Set[str]) -> Tuple[dict | 
     """
     allowed_here = _is_allowed(path, allowed)
 
-    # Detect children (object or object array)
+    # Detect children (object)
     has_obj_children = isinstance(schema, dict) and 'properties' in schema and isinstance(schema['properties'], dict)
-    has_array_obj_children = (
-        isinstance(schema, dict) and
-        'items' in schema and isinstance(schema['items'], dict) and
-        'properties' in schema['items'] and isinstance(schema['items']['properties'], dict)
-    )
 
     # If the path is allowed, the entire subtree goes to rules and nothing to decoders.
     if allowed_here:
@@ -69,21 +64,6 @@ def _partition_node(schema: dict, path: str, allowed: Set[str]) -> Tuple[dict | 
         else:
             # If there are no children left and the node was not allowed, we do not contribute anything to decoders.
             d_copy = None
-
-        return r_copy, d_copy
-
-    if has_array_obj_children:
-        r_children, d_children = _partition_schema(schema['items']['properties'], allowed, path)
-
-        r_copy = None
-        if r_children:
-            r_copy = deepcopy(schema)
-            r_copy['items']['properties'] = r_children
-
-        d_copy = None
-        if d_children:
-            d_copy = deepcopy(schema)
-            d_copy['items']['properties'] = d_children
 
         return r_copy, d_copy
 

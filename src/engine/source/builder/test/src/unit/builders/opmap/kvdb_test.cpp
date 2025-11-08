@@ -451,7 +451,6 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                jTypeRefExpected("ref", json::Json::Type::String)(mocks);
-                               EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
                                return None {};
                            })),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
@@ -459,7 +458,6 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE(
                            [](const BuildersMocks& mocks)
                            {
-                               EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
                                jTypeRefExpected("ref", json::Json::Type::Number)(mocks);
                                return None {};
                            })),
@@ -470,7 +468,6 @@ INSTANTIATE_TEST_SUITE_P(
                            {
                                EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
                                EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
-                               EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(false));
                                return None {};
                            })),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
@@ -504,8 +501,6 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                jTypeRefExpected("targetField", json::Json::Type::String)(mocks);
-                               EXPECT_CALL(*mocks.validator, isArray(DotPath("targetField")))
-                                   .WillOnce(testing::Return(true));
                                EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
                                return None {};
                            })),
@@ -550,7 +545,6 @@ INSTANTIATE_TEST_SUITE_P(
                 {
                     EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
                     EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField"))).WillOnce(testing::Return(true));
-                    EXPECT_CALL(*mocks.validator, isArray(DotPath("targetField"))).WillOnce(testing::Return(false));
                     return None {};
                 })),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
@@ -559,8 +553,6 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                jTypeRefExpected("targetField", json::Json::Type::Number)(mocks);
-                               EXPECT_CALL(*mocks.validator, isArray(DotPath("targetField")))
-                                   .WillOnce(testing::Return(true));
                                return None {};
                            })),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},

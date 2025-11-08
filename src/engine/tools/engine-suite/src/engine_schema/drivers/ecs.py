@@ -33,7 +33,7 @@ def _flat_entry_to_field(entry_name: str, entry_value: dict) -> Field:
         for field in indexer_details['multi_fields']:
             field['type'] = str(_ecs_to_indexer_type(field['type']))
 
-    return Field('ecs', entry_name, description, indexer_type, "array" in entry_value['normalize'], indexer_details)
+    return Field('ecs', entry_name, description, indexer_type, indexer_details)
 
 
 def build_field_tree(flat_definition: dict) -> FieldTree:
@@ -50,6 +50,5 @@ def to_engine_schema(flat_definition: dict) -> dict:
         field = _flat_entry_to_field(name_path, entry)
         engine_schema[field.name] = dict()
         engine_schema[field.name]['type'] = str(field.indexer_type)
-        engine_schema[field.name]['array'] = field.array
 
     return engine_schema

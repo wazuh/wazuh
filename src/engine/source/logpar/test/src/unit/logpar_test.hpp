@@ -51,9 +51,6 @@ protected:
                            || param == LONG_FIELD_OVERRIDE || param == "array";
                 }));
 
-        ON_CALL(*schema, isArray(::testing::_))
-            .WillByDefault(::testing::Invoke([](const auto& param) { return param == "array"; }));
-
         ON_CALL(*schema, getType(::testing::_))
             .WillByDefault(::testing::Invoke(
                 [](const auto& param)

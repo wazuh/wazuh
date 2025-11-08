@@ -67,7 +67,7 @@ class ResourceHandler:
     def _write_file(self, path: PurePath, content: dict, format: Format):
         content_str = ''
         if Format.JSON == format:
-            content_str = json.dumps(content)
+            content_str = json.dumps(content, indent=2, ensure_ascii=False)
             path = path.with_suffix('.json')
         elif Format.YML == format:
             content_str = yaml.dump(content, Dumper=Dumper, sort_keys=False)
