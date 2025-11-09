@@ -55,7 +55,7 @@ protected:
             .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
         };
         syncHandle = asp_create("syscheck", ":memory:", &mq_funcs,
-                                [](modules_log_level_t, const char*){});
+                                [](modules_log_level_t, const char*){}, 1, 30, 3, 100);
     }
 
     void TearDown() override
@@ -147,8 +147,6 @@ TEST_F(RecoveryTest, PersistAndResyncSuccess)
     // Call the function with successful sync mock
     fim_recovery_persist_table_and_resync(
         const_cast<char*>("file_entry"),
-        30,  // sync_response_timeout
-        100, // sync_max_eps
         syncHandle,
         mockSynchronizeModuleSuccess,
         mockLoggingFunction
@@ -173,8 +171,6 @@ TEST_F(RecoveryTest, PersistAndResyncFailure)
     // Call the function with failed sync mock
     fim_recovery_persist_table_and_resync(
         const_cast<char*>("file_entry"),
-        30,  // sync_response_timeout
-        100, // sync_max_eps
         syncHandle,
         mockSynchronizeModuleFailure,
         mockLoggingFunction

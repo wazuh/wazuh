@@ -36,7 +36,7 @@ void log_formatted(fim_recovery_log_callback_t log_callback, modules_log_level_t
 
 extern "C"
 {
-void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback, fim_recovery_log_callback_t log_callback){
+void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback, fim_recovery_log_callback_t log_callback){
     std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(table_name);
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -103,10 +103,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         // Use real implementation in production
         // LCOV_EXCL_START
         success = wrapper->impl->synchronizeModule(
-            Mode::FULL,
-            std::chrono::seconds(sync_response_timeout),
-            FIM_SYNC_RETRIES,
-            sync_max_eps
+            Mode::FULL
         );
         // LCOV_EXCL_STOP
     }
@@ -123,7 +120,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
 
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
 // LCOV_EXCL_START
-bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback){
+bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback){
     log_formatted(log_callback, LOG_INFO, "Attempting to get checksum for ", table_name, " table");
 
     std::string final_checksum = DB::instance().calculateTableChecksum(table_name);
@@ -146,10 +143,7 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
 #endif // WIN32
     needs_full_sync = wrapper->impl->requiresFullSync(
         index,
-        final_checksum,
-        std::chrono::seconds(sync_response_timeout),
-        FIM_SYNC_RETRIES,
-        sync_max_eps
+        final_checksum
     );
 
     if (needs_full_sync) {

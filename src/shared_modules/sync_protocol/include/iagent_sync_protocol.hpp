@@ -46,25 +46,16 @@ class IAgentSyncProtocol
 
         /// @brief Synchronize a module with the server
         /// @param mode Sync mode
-        /// @param timeout The timeout for each response wait.
-        /// @param retries The maximum number of re-send attempts.
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @param option Synchronization option.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) = 0;
+        virtual bool synchronizeModule(Mode mode, Option option = Option::SYNC) = 0;
 
         /// @brief Checks if a module index requires full synchronization
         /// @param index The index/table to check
         /// @param checksum The calculated checksum for the index
-        /// @param timeout The timeout for each response wait.
-        /// @param retries The maximum number of re-send attempts.
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return true if full sync is required (checksum mismatch); false if integrity is valid.
         virtual bool requiresFullSync(const std::string& index,
-                                      const std::string& checksum,
-                                      std::chrono::seconds timeout,
-                                      unsigned int retries,
-                                      size_t maxEps) = 0;
+                                      const std::string& checksum) = 0;
 
         /// @brief Clears the in-memory data queue.
         ///
@@ -77,12 +68,9 @@ class IAgentSyncProtocol
         /// The sequence is: Start → StartAck → End → EndAck (no Data messages).
         /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
         /// @param indices Vector of index names that will be updated by the manager
-        /// @param timeout Timeout duration for waiting for server responses
-        /// @param retries Number of retry attempts for each message
-        /// @param maxEps Maximum events per second (0 = unlimited)
         /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
         /// @return true if synchronization completed successfully, false otherwise
-        virtual bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, uint64_t globalVersion = 0) = 0;
+        virtual bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion = 0) = 0;
 
         /// @brief Notifies the manager about data cleaning for specified indices.
         ///
@@ -90,12 +78,9 @@ class IAgentSyncProtocol
         /// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
         /// Upon receiving Ok/PartialOk, it clears the local database and returns true.
         /// @param indices Vector of index names to clean
-        /// @param timeout Timeout duration for waiting for server responses
-        /// @param retries Number of retry attempts for each message
-        /// @param maxEps Maximum events per second (0 = unlimited)
         /// @param option Synchronization option.
         /// @return true if notification completed successfully and database was cleared, false otherwise
-        virtual bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) = 0;
+        virtual bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) = 0;
 
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.

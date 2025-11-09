@@ -124,7 +124,7 @@ void fim_initialize() {
         .send_binary = fim_send_binary_msg
     };
 
-    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction, syscheck.sync_end_delay_ms);
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction, syscheck.sync_end_delay, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }

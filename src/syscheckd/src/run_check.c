@@ -117,7 +117,7 @@ STATIC void handle_fim_disabled(void) {
         bool ret = false;
         while (!ret && !fim_shutdown_process_on())
         {
-            ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+            ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
             if (!ret) {
                 for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
                     sleep(1);
@@ -643,10 +643,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         minfo("Running FIM synchronization.");
 
         bool sync_result = asp_sync_module(syscheck.sync_handle, 
-                                           MODE_DELTA, 
-                                           syscheck.sync_response_timeout, 
-                                           FIM_SYNC_RETRIES, 
-                                           syscheck.sync_max_eps); 
+                                           MODE_DELTA); 
         if (sync_result) {
             minfo("Synchronization succeeded");
 
@@ -654,14 +651,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
                     minfo("Starting integrity validation process for %s", table_names[i]);
                     bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
-                                                                                       syscheck.sync_response_timeout,
-                                                                                       syscheck.sync_max_eps,
                                                                                        syscheck.sync_handle,
                                                                                        fim_recovery_log_wrapper);
                     if (full_sync_required) {
                         fim_recovery_persist_table_and_resync(table_names[i],
-                                                              syscheck.sync_response_timeout,
-                                                              syscheck.sync_max_eps,
                                                               syscheck.sync_handle,
                                                               NULL,
                                                               fim_recovery_log_wrapper);

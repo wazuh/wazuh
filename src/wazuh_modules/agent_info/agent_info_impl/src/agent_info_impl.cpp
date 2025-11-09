@@ -272,7 +272,8 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, std::chrono::seconds(m_syncEndDelay), std::chrono::seconds(m_syncResponseTimeout), m_syncRetries,
+                                                               m_syncMaxEps, nullptr);
         m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with database: " + syncDbPath);
     }
     catch (const std::exception& ex)
@@ -283,14 +284,15 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
     }
 }
 
-void AgentInfoImpl::setSyncParameters(uint32_t timeout, uint32_t retries, long maxEps)
+void AgentInfoImpl::setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps)
 {
+    m_syncEndDelay = syncEndDelay;
     m_syncResponseTimeout = timeout;
     m_syncRetries = retries;
     m_syncMaxEps = maxEps;
 
     m_logFunction(LOG_DEBUG,
-                  "Sync parameters set: timeout=" + std::to_string(timeout) + "s, retries=" +
+                  "Sync parameters set: syncEndDelay =" + std::to_string(syncEndDelay) + "s, timeout=" + std::to_string(timeout) + "s, retries=" +
                   std::to_string(retries) + ", maxEps=" + std::to_string(maxEps));
 }
 
@@ -1120,9 +1122,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
                                    TABLE_DELTA_MODE_MAP.at(table),
                                    indicesToSync,
-                                   std::chrono::seconds(m_syncResponseTimeout),
-                                   m_syncRetries,
-                                   m_syncMaxEps,
                                    newVersion);
 
             if (!syncSuccess)
@@ -1472,10 +1471,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         // Perform integrity check - no globalVersion needed for CHECK modes
         bool success = m_spSyncProtocol->synchronizeMetadataOrGroups(
                            TABLE_CHECK_MODE_MAP.at(table),
-                           indicesToCheck,
-                           std::chrono::seconds(m_syncResponseTimeout),
-                           m_syncRetries,
-                           m_syncMaxEps);
+                           indicesToCheck);
 
         // Update the last sync time regardless of the synchronization result
         // This ensures we always wait for integrity_interval before trying again

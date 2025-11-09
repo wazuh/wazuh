@@ -410,10 +410,10 @@ typedef struct _config {
     OSMatch **nodiff_regex;                            /* regex of files/dirs to never output diff */
 
     uint32_t sync_interval;                            /* Synchronization interval */
+    uint32_t sync_end_delay;                           /* End delay in seconds for synchronization messages. */
     uint32_t sync_response_timeout;                    /* Minimum interval for the synchronization process */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     uint32_t integrity_interval;                       /* Integrity check interval */
-    long sync_end_delay_ms;                            /* End delay in milliseconds for synchronization messages. */
     int max_eps;                                       /* Maximum events per second. */
     unsigned int notify_first_scan;                    /* Notify the first scan */
 

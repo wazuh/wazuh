@@ -81,9 +81,9 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
 {
     const char *XML_DB_SYNC_ENABLED = "enabled";
     const char *XML_DB_SYNC_INTERVAL = "interval";
+    const char *XML_DB_SYNC_END_DELAY = "sync_end_delay";
     const char *XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
-    const char *XML_DB_SYNC_END_DELAY_MS = "sync_end_delay_ms";
 
     for (int i = 0; node[i]; ++i) {
         if (strcmp(node[i]->element, XML_DB_SYNC_ENABLED) == 0) {
@@ -102,6 +102,14 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
             } else {
                 sca->sync.sync_interval = t;
             }
+        } else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY) == 0) {
+            long sync_end_delay = w_parse_time(node[i]->content);
+
+            if (sync_end_delay < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                sca->sync.sync_end_delay = (uint32_t) sync_end_delay;
+            }
         } else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0) {
             long response_timeout = w_parse_time(node[i]->content);
 
@@ -118,15 +126,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 sca->sync.sync_max_eps = value;
-            }
-        } else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY_MS) == 0) {
-            char * end;
-            const long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 0 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                sca->sync.sync_end_delay_ms = value;
             }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
@@ -155,9 +154,9 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         // Database synchronization config values
         sca->sync.enable_synchronization = 1;
         sca->sync.sync_interval = 300;
+        sca->sync.sync_end_delay = 1;
         sca->sync.sync_response_timeout = 60;
         sca->sync.sync_max_eps = 10;
-        sca->sync.sync_end_delay_ms = 1000;
     }
 
     sca = module->data;

@@ -79,11 +79,8 @@ class EXPORTED SCA final
         /// parameters.
         ///
         /// @param mode Synchronization mode (FULL or DELTA)
-        /// @param timeout Maximum time to wait for synchronization completion
-        /// @param retries Number of retry attempts on failure
-        /// @param maxEps Maximum events per second during synchronization
         /// @return true if synchronization succeeds, false otherwise
-        bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+        bool syncModule(Mode mode);
 
         /// @brief Persists a difference entry for synchronization.
         ///
@@ -110,11 +107,8 @@ class EXPORTED SCA final
 
         /// @brief Notifies that data associated with specified indices needs to be cleaned.
         /// @param indices Vector of indices whose data needs to be cleaned.
-        /// @param timeout Timeout value in seconds for the operation.
-        /// @param retries Number of retry attempts on failure.
-        /// @param maxEps Maximum events per second during the operation.
         /// @return true if the operation succeeds, false otherwise.
-        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+        bool notifyDataClean(const std::vector<std::string>& indices);
 
         /// @brief Deletes the database.
         void deleteDatabase();

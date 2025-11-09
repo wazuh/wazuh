@@ -21,11 +21,14 @@
 #include <set>
 #include <unistd.h>
 
-AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue,
-                                     unsigned int syncEndDelayMs)
+AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+                                     unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue)
     : m_moduleName(moduleName),
       m_logger(std::move(logger)),
-      m_syncEndDelayMs(syncEndDelayMs)
+      m_syncEndDelay(syncEndDelay),
+      m_timeout(timeout),
+      m_retries(retries),
+      m_maxEps(maxEps)
 {
     if (!m_logger)
     {
@@ -105,7 +108,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
     // LCOV_EXCL_STOP
 }
 
-bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option)
+bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
     // Validate synchronization mode
     if (mode != Mode::FULL && mode != Mode::DELTA)
@@ -166,11 +169,11 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 
     bool success = false;
 
-    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, timeout, retries, maxEps, option))
+    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, option))
     {
-        if (sendDataMessages(m_syncState.session, dataToSync, maxEps))
+        if (sendDataMessages(m_syncState.session, dataToSync))
         {
-            if (sendEndAndWaitAck(m_syncState.session, timeout, retries, dataToSync, maxEps))
+            if (sendEndAndWaitAck(m_syncState.session, dataToSync))
             {
                 success = true;
             }
@@ -218,10 +221,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 }
 
 bool AgentSyncProtocol::requiresFullSync(const std::string& index,
-                                         const std::string& checksum,
-                                         std::chrono::seconds timeout,
-                                         unsigned int retries,
-                                         size_t maxEps)
+                                         const std::string& checksum)
 {
     if (!m_transport->checkStatus())
     {
@@ -233,7 +233,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     // Step 1: Send Start message with mode ModuleCheck
     std::vector<std::string> indices = {index};
 
-    if (!sendStartAndWaitAck(Mode::CHECK, 1, indices, timeout, retries, maxEps))
+    if (!sendStartAndWaitAck(Mode::CHECK, 1, indices))
     {
         m_logger(LOG_ERROR, "Failed to send Start message for integrity check");
         clearSyncState();
@@ -241,7 +241,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     }
 
     // Step 2: Send ChecksumModule message
-    if (!sendChecksumMessage(m_syncState.session, index, checksum, maxEps))
+    if (!sendChecksumMessage(m_syncState.session, index, checksum))
     {
         m_logger(LOG_ERROR, "Failed to send ChecksumModule message");
         clearSyncState();
@@ -253,7 +253,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     // Step 3: Send End message and wait for EndAck
     std::vector<PersistedData> emptyData; // No data to send for integrity check
 
-    if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps))
+    if (sendEndAndWaitAck(m_syncState.session, emptyData))
     {
         m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index);
         clearSyncState();
@@ -284,9 +284,6 @@ void AgentSyncProtocol::clearInMemoryData()
 
 bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
                                                     const std::vector<std::string>& indices,
-                                                    std::chrono::seconds timeout,
-                                                    unsigned int retries,
-                                                    size_t maxEps,
                                                     uint64_t globalVersion)
 {
     // Validate synchronization mode - only allow metadata and group modes
@@ -309,12 +306,12 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     bool success = false;
 
     // Step 1: Send Start message and wait for StartAck
-    if (sendStartAndWaitAck(mode, 0, indices, timeout, retries, maxEps, Option::SYNC, globalVersion))
+    if (sendStartAndWaitAck(mode, 0, indices, Option::SYNC, globalVersion))
     {
         // Step 2: Send End message and wait for EndAck (no Data messages)
         std::vector<PersistedData> emptyData;
 
-        if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps))
+        if (sendEndAndWaitAck(m_syncState.session, emptyData))
         {
             success = true;
         }
@@ -339,9 +336,6 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
-                                        std::chrono::seconds timeout,
-                                        unsigned int retries,
-                                        size_t maxEps,
                                         Option option)
 {
     if (indices.empty())
@@ -373,13 +367,13 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     bool success = false;
 
     // Step 1: Send Start message with the indices and size
-    if (sendStartAndWaitAck(Mode::DELTA, dataToSync.size(), indices, timeout, retries, maxEps, option))
+    if (sendStartAndWaitAck(Mode::DELTA, dataToSync.size(), indices, option))
     {
         // Step 2: Send DataClean message for each index
-        if (sendDataCleanMessages(m_syncState.session, dataToSync, maxEps))
+        if (sendDataCleanMessages(m_syncState.session, dataToSync))
         {
             // Step 3: Send End message and wait for EndAck
-            if (sendEndAndWaitAck(m_syncState.session, timeout, retries, dataToSync, maxEps))
+            if (sendEndAndWaitAck(m_syncState.session, dataToSync))
             {
                 success = true;
             }
@@ -416,9 +410,6 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
 bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,
                                             const std::vector<std::string>& uniqueIndices,
-                                            const std::chrono::seconds timeout,
-                                            unsigned int retries,
-                                            size_t maxEps,
                                             Option option,
                                             std::optional<uint64_t> globalVersion)
 {
@@ -524,15 +515,15 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             m_syncState.phase = SyncPhase::WaitingStartAck;
         }
 
-        for (unsigned int attempt = 0; attempt <= retries; ++attempt)
+        for (unsigned int attempt = 0; attempt <= m_retries; ++attempt)
         {
-            if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+            if (!sendFlatBufferMessageAsString(messageVector))
             {
                 m_logger(LOG_ERROR, "Failed to send Start message.");
                 continue;
             }
 
-            if (receiveStartAck(timeout))
+            if (receiveStartAck(m_timeout))
             {
                 std::lock_guard<std::mutex> lock(m_syncState.mtx);
 
@@ -588,8 +579,7 @@ bool AgentSyncProtocol::receiveStartAck(std::chrono::seconds timeout)
 }
 
 bool AgentSyncProtocol::sendDataMessages(uint64_t session,
-                                         const std::vector<PersistedData>& data,
-                                         size_t maxEps)
+                                         const std::vector<PersistedData>& data)
 {
     try
     {
@@ -630,7 +620,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
             const size_t buffer_size = builder.GetSize();
             std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
 
-            if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+            if (!sendFlatBufferMessageAsString(messageVector))
             {
                 return false;
             }
@@ -648,8 +638,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
 
 bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
                                             const std::string& index,
-                                            const std::string& checksum,
-                                            size_t maxEps)
+                                            const std::string& checksum)
 {
     try
     {
@@ -670,7 +659,7 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
         const size_t buffer_size = builder.GetSize();
         std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
 
-        if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+        if (!sendFlatBufferMessageAsString(messageVector))
         {
             return false;
         }
@@ -686,8 +675,7 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
 }
 
 bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
-                                              const std::vector<PersistedData>& data,
-                                              size_t maxEps)
+                                              const std::vector<PersistedData>& data)
 {
     try
     {
@@ -709,7 +697,7 @@ bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
             const size_t buffer_size = builder.GetSize();
             std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
 
-            if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+            if (!sendFlatBufferMessageAsString(messageVector))
             {
                 return false;
             }
@@ -726,10 +714,7 @@ bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
 }
 
 bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
-                                          const std::chrono::seconds timeout,
-                                          unsigned int retries,
-                                          const std::vector<PersistedData>& dataToSync,
-                                          size_t maxEps)
+                                          const std::vector<PersistedData>& dataToSync)
 {
     try
     {
@@ -753,18 +738,18 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         bool sendEnd = true;
 
         // Configurable delay to wait for last messages to arrive before sending End
-        std::this_thread::sleep_for(std::chrono::milliseconds(m_syncEndDelayMs));
-        m_logger(LOG_DEBUG, "Delayed " + std::to_string(m_syncEndDelayMs) + " milliseconds before sending End message.");
+        std::this_thread::sleep_for(m_syncEndDelay);
+        m_logger(LOG_DEBUG, "Delayed " + std::to_string(m_syncEndDelay.count()) + " seconds before sending End message.");
 
-        for (unsigned int attempt = 0; attempt <= retries; ++attempt)
+        for (unsigned int attempt = 0; attempt <= m_retries; ++attempt)
         {
-            if (sendEnd && !sendFlatBufferMessageAsString(messageVector, maxEps))
+            if (sendEnd && !sendFlatBufferMessageAsString(messageVector))
             {
                 m_logger(LOG_ERROR, "Failed to send End message.");
                 continue;
             }
 
-            if (!receiveEndAck(timeout))
+            if (!receiveEndAck(m_timeout))
             {
                 m_logger(LOG_DEBUG, "Timeout waiting for EndAck or ReqRet. Retrying...");
                 continue;
@@ -810,7 +795,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                     return false;
                 }
 
-                if (!sendDataMessages(session, rangeData, maxEps))
+                if (!sendDataMessages(session, rangeData))
                 {
                     m_logger(LOG_ERROR, "Failed to resend data for ReqRet.");
                     return false;
@@ -850,9 +835,9 @@ bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
     });
 }
 
-bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, size_t maxEps)
+bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData)
 {
-    return m_transport->sendMessage(fbData, maxEps);
+    return m_transport->sendMessage(fbData, m_maxEps);
 }
 
 bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)

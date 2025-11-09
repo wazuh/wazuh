@@ -50,7 +50,7 @@ protected:
     const uint64_t session = 1234;
     const unsigned int retries = 1;
     const unsigned int maxEps = 100;
-    const unsigned int delay = 100;
+    const unsigned int syncEndDelay = 1;
     const uint8_t min_timeout = 1;
     const uint8_t max_timeout = 3;
 
@@ -77,6 +77,10 @@ TEST_F(AgentSyncProtocolRouterTest, InitializesWithRouterTransport)
             ":memory:",
             dummyMqFuncs,
             testLogger,
+            std::chrono::seconds(syncEndDelay),
+            std::chrono::seconds(min_timeout),
+            retries,
+            maxEps,
             mockQueue
         );
     });
@@ -96,6 +100,10 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceSuccess)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -123,6 +131,10 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceInMemorySuccess)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -149,6 +161,10 @@ TEST_F(AgentSyncProtocolRouterTest, SynchronizeModuleWithEmptyDataReturnsSuccess
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -157,10 +173,7 @@ TEST_F(AgentSyncProtocolRouterTest, SynchronizeModuleWithEmptyDataReturnsSuccess
         .WillOnce(Return(std::vector<PersistedData>{}));
 
     bool result = protocol->synchronizeModule(
-        Mode::DELTA,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
+        Mode::DELTA
     );
 
     EXPECT_TRUE(result);
@@ -178,6 +191,10 @@ TEST_F(AgentSyncProtocolRouterTest, FullModeUsesInMemoryData)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -191,10 +208,7 @@ TEST_F(AgentSyncProtocolRouterTest, FullModeUsesInMemoryData)
     // Note: This will timeout because Router needs to be running
     // In a real integration test, the Router infrastructure would be available
     bool result = protocol->synchronizeModule(
-        Mode::FULL,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
+        Mode::FULL
     );
 
     // Expected to timeout since Router is not running in unit test
@@ -213,6 +227,10 @@ TEST_F(AgentSyncProtocolRouterTest, DeltaModeUsesDatabaseQueue)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -221,10 +239,7 @@ TEST_F(AgentSyncProtocolRouterTest, DeltaModeUsesDatabaseQueue)
         .WillOnce(Return(std::vector<PersistedData>{}));
 
     bool result = protocol->synchronizeModule(
-        Mode::DELTA,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
+        Mode::DELTA
     );
 
     EXPECT_TRUE(result);
@@ -242,6 +257,10 @@ TEST_F(AgentSyncProtocolRouterTest, InvalidModeReturnsFailure)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -252,10 +271,7 @@ TEST_F(AgentSyncProtocolRouterTest, InvalidModeReturnsFailure)
     Mode invalidMode = static_cast<Mode>(999);
 
     bool result = protocol->synchronizeModule(
-        invalidMode,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
+        invalidMode
     );
 
     EXPECT_FALSE(result);
@@ -273,6 +289,10 @@ TEST_F(AgentSyncProtocolRouterTest, ParseResponseBufferWithNullReturnsFailure)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -292,6 +312,10 @@ TEST_F(AgentSyncProtocolRouterTest, ParseResponseBufferWhenNotSyncingReturnsTrue
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -328,6 +352,10 @@ TEST_F(AgentSyncProtocolRouterTest, FetchAndMarkForSyncExceptionHandled)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -336,10 +364,7 @@ TEST_F(AgentSyncProtocolRouterTest, FetchAndMarkForSyncExceptionHandled)
         .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     bool result = protocol->synchronizeModule(
-        Mode::DELTA,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
+        Mode::DELTA
     );
 
     EXPECT_FALSE(result);
@@ -357,6 +382,10 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceExceptionHandled)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -382,6 +411,10 @@ TEST_F(AgentSyncProtocolRouterTest, ClearInMemoryDataSuccess)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 
@@ -397,10 +430,7 @@ TEST_F(AgentSyncProtocolRouterTest, ClearInMemoryDataSuccess)
         .Times(0);
 
     bool result = protocol->synchronizeModule(
-        Mode::FULL,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
+        Mode::FULL
     );
 
     // Should return true for empty data
@@ -419,6 +449,10 @@ TEST_F(AgentSyncProtocolRouterTest, DeleteDatabaseCallsQueue)
         ":memory:",
         dummyMqFuncs,
         testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
         mockQueue
     );
 

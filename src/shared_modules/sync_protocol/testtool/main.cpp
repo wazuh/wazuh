@@ -11,6 +11,10 @@
 
 static AgentSyncProtocol* g_proto = nullptr;
 static uint64_t g_session = 1;
+const unsigned int retries = 1;
+const unsigned int maxEps = 0;
+const uint8_t syncEndDelay = 1;
+const uint8_t timeout = 2;
 
 static int mq_start_stub(const char*, short, short) { return 1; }
 
@@ -58,13 +62,13 @@ int main() {
     };
 
     MQ_Functions mq{&mq_start_stub, &mq_send_binary_stub};
-    AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, testLogger, nullptr};
+    AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries, maxEps, nullptr};
     g_proto = &proto;
 
     proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}", 1);
     proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}", 2);
 
-    bool ok = proto.synchronizeModule(Mode::FULL, std::chrono::seconds{2}, 1, 0);
+    bool ok = proto.synchronizeModule(Mode::FULL);
     std::cout << (ok ? "OK" : "FAIL") << std::endl;
     return ok ? 0 : 1;
 }

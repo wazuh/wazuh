@@ -1208,10 +1208,10 @@ out_free:
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
      const char *xml_enabled = "enabled";
      const char *xml_sync_interval = "interval";
+     const char *xml_sync_end_delay = "sync_end_delay";
      const char *xml_response_timeout = "response_timeout";
      const char *xml_max_eps = "max_eps";
      const char *xml_integrity_interval = "integrity_interval";
-     const char *xml_sync_end_delay_ms = "sync_end_delay_ms";
 
      for (int i = 0; node[i]; i++) {
          if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1229,6 +1229,14 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                  mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
              } else {
                  syscheck->sync_interval = t;
+             }
+         } else if (strcmp(node[i]->element, xml_sync_end_delay) == 0) {
+             long sync_end_delay = w_parse_time(node[i]->content);
+
+             if (sync_end_delay < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_end_delay = (uint32_t) sync_end_delay;
              }
          } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
              long response_timeout = w_parse_time(node[i]->content);
@@ -1254,14 +1262,6 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                  mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
              } else {
                  syscheck->integrity_interval = t;
-         } else if (strcmp(node[i]->element, xml_sync_end_delay_ms) == 0) {
-             char * end;
-             long value = strtol(node[i]->content, &end, 10);
-
-             if (value < 0 || *end) {
-                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-             } else {
-                 syscheck->sync_end_delay_ms = value;
              }
          } else {
              mwarn(XML_INVELEM, node[i]->element);

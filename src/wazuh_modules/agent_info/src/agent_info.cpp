@@ -138,7 +138,8 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
             g_agent_info_impl->setIsAgent(agent_info_config->is_agent);
 
             // Set sync parameters from configuration
-            g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_response_timeout,
+            g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_end_delay,
+                                                 agent_info_config->sync.sync_response_timeout,
                                                  agent_info_config->sync.sync_retries,
                                                  agent_info_config->sync.sync_max_eps);
 
