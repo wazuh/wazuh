@@ -53,6 +53,7 @@ static const char* rpm_platforms[] = {
     "suse",
     "rocky",
     "almalinux",
+    "msvsphere",
 };
 
 int wm_agent_upgrade_validate_id(int agent_id) {

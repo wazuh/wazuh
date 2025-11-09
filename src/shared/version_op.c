@@ -689,6 +689,9 @@ os_info *get_unix_version()
             }
             regfree(&regexCompiled);
             fclose(version_release);
+        // MSVSphere
+        } else if (info->os_platform && strcmp(info->os_platform, "msvsphere") == 0) {
+            info->os_name = strdup("MSVSphere");
         } else {
             char *uname_path = NULL;
 
