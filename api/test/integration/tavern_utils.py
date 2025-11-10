@@ -105,32 +105,6 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
                 assert nested_key[0] in main_keys
 
 
-def test_select_distinct_nested_sca_checks(response, select_key):
-    """Check that all items in response have no other keys than those specified in 'select_key'.
-
-    This function is specifically used for the SCA checks endpoint, when distinct=True and select contains a nested
-    field.
-
-    This function does not take into account min select fields.
-
-    Absence of 'select_key' in response does not raise any error. However, extra keys in response (not specified
-    in 'select_key') will raise assertion error.
-
-    Parameters
-    ----------
-    response : Request response
-    select_key : str
-        Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
-    """
-    main_keys = set(select_key.split(','))
-
-    for item in response.json()['data']['affected_items']:
-        # Check that there are no keys in the item that are not specified in 'select_keys'
-        set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1 == set1.intersection(main_keys), \
-            f'Select keys are {main_keys}, but an item contains the keys: {set(item.keys())}'
-
-
 def test_select_key_affected_items_with_agent_id(response, select_key):
     """
     :param response: Request response
@@ -545,25 +519,6 @@ def validate_update_check_response(response, current_version, update_check):
             for key, value_type in keys_to_check:
                 assert isinstance(available_update_data[key], value_type)
 
-
-def test_agent_ports(response, agents_list):
-    """Check that syscollector ports results belongs to certain agents.
-
-    Parameters
-    ----------
-    response : Request response.
-    agents_list : list
-        List of expected agents that should have port information.
-    """
-
-    data = response.json()['data']
-
-    expected_agents_with_ports =  set(agents_list.split(","))
-    current_agents_with_ports = { port_info["agent_id"] for port_info in data.get('affected_items', []) }
-
-    assert expected_agents_with_ports == current_agents_with_ports, \
-        f'Current agents listing ports ({current_agents_with_ports})  \
-            is different than expected ({expected_agents_with_ports}).'
 
 def validate_kvdb(response, **kw):
     """Validate a KVDB API response.
