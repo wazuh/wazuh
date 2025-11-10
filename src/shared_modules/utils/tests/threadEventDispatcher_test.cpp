@@ -173,11 +173,11 @@ TEST_F(ThreadEventDispatcherTest, CaptureWarningMsg)
                 // Format the message.
                 char buffer[4096];
                 vsnprintf(buffer, sizeof(buffer), message, args);
-                std::string formatedMsg(buffer);
+                std::string formattedMsg(buffer);
                 // Compare expected message.
-                if (formatedMsg.find("ThreadEventDispatcher dispatch end.") == std::string::npos)
+                if (formattedMsg.find("ThreadEventDispatcher dispatch end.") == std::string::npos)
                 {
-                    EXPECT_EQ("Dispatch handler error, Test exception", formatedMsg);
+                    EXPECT_EQ("Dispatch handler error, Test exception", formattedMsg);
                 }
                 warningCaptured = true;
                 // Avoid multiple captures.
