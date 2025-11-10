@@ -281,6 +281,33 @@ int64_t DB::getLastSyncTime(const std::string& tableName)
     return lastSyncTime;
 }
 
+int DB::maxVersion(const std::string& tableName)
+{
+    auto maxVer {0};
+    auto callback {[&maxVer](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            if (jsonResult.contains("max_version") && !jsonResult.at("max_version").is_null())
+            {
+                maxVer = jsonResult.at("max_version");
+            }
+        }
+    }};
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"MAX(version) AS max_version"})
+                      .rowFilter("")
+                      .orderByOpt("")
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    return maxVer;
+}
+
 #ifdef __cplusplus
 extern "C"
 {

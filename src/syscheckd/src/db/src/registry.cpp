@@ -66,6 +66,27 @@ int fim_db_get_count_registry_data()
     return count;
 }
 
+int fim_db_get_max_version_registry()
+{
+    auto maxVersionKey {0};
+    auto maxVersionValue {0};
+
+    try
+    {
+        maxVersionKey = DB::instance().maxVersion(FIMDB_REGISTRY_KEY_TABLENAME);
+        maxVersionValue = DB::instance().maxVersion(FIMDB_REGISTRY_VALUE_TABLENAME);
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
+
+    return maxVersionKey > maxVersionValue ? maxVersionKey : maxVersionValue;
+}
+
 #ifdef __cplusplus
 }
 #endif

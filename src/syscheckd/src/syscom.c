@@ -26,6 +26,49 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
+/* FIM Agent Info Commands Implementation */
+
+int fim_execute_pause(void) {
+    mdebug1("FIM agent info: pause command received");
+    // TODO: Implement actual pause logic
+    // This will pause the FIM module coordination
+    return 0;
+}
+
+int fim_execute_flush(void) {
+    mdebug1("FIM agent info: flush command received");
+    // TODO: Implement actual flush logic
+    // This will flush pending FIM data
+    return 0;
+}
+
+int fim_execute_get_version(void) {
+    mdebug1("FIM agent info: get_version command received");
+
+    int max_version_file = fim_db_get_max_version_file();
+    int max_version = max_version_file;
+
+#ifdef WIN32
+    int max_version_registry = fim_db_get_max_version_registry();
+    max_version = (max_version_registry > max_version) ? max_version_registry : max_version;
+#endif
+
+    return max_version;
+}
+
+int fim_execute_set_version(int version) {
+    mdebug1("FIM agent info: set_version command received, version=%d", version);
+    // TODO: Implement actual version setting logic
+    // This will set the FIM coordination version
+    return 0;
+}
+
+int fim_execute_resume(void) {
+    mdebug1("FIM agent info: resume command received");
+    // TODO: Implement actual resume logic
+    // This will resume the FIM module coordination
+    return 0;
+}
 
 size_t syscom_getconfig(const char * section, char ** output) {
     assert(section != NULL);
@@ -109,51 +152,140 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
     mdebug1("Processing FIM JSON command: %s", command);
 
     cJSON *response_json = cJSON_CreateObject();
+    if (!response_json) {
+        cJSON_Delete(json_obj);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Failed to create response\"}",
+                 MQ_ERR_INTERNAL);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    int result = 0;
     cJSON *status_item = NULL;
     cJSON *message_item = NULL;
     cJSON *data_item = NULL;
 
     if (strcmp(command, "pause") == 0) {
-        status_item = cJSON_CreateNumber(MQ_SUCCESS);
-        message_item = cJSON_CreateString("FIM module paused successfully");
-        data_item = cJSON_CreateObject();
-        cJSON_AddStringToObject(data_item, "module", "fim");
-        cJSON_AddStringToObject(data_item, "action", "pause");
-    } else if (strcmp(command, "flush") == 0) {
-        status_item = cJSON_CreateNumber(MQ_SUCCESS);
-        message_item = cJSON_CreateString("FIM module flushed successfully");
-        data_item = cJSON_CreateObject();
-        cJSON_AddStringToObject(data_item, "module", "fim");
-        cJSON_AddStringToObject(data_item, "action", "flush");
-    } else if (strcmp(command, "get_version") == 0) {
-        status_item = cJSON_CreateNumber(MQ_SUCCESS);
-        message_item = cJSON_CreateString("FIM version retrieved");
-        data_item = cJSON_CreateObject();
-        cJSON_AddNumberToObject(data_item, "version", 5);
-    } else if (strcmp(command, "set_version") == 0) {
-        status_item = cJSON_CreateNumber(MQ_SUCCESS);
-        message_item = cJSON_CreateString("FIM version set successfully");
-        data_item = cJSON_CreateObject();
+        // Call pause function
+        result = fim_execute_pause();
 
-        // Extract version from parameters if present
+        if (result == 0) {
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM module paused successfully");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "action", "pause");
+            }
+        } else {
+            status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
+            message_item = cJSON_CreateString("Failed to pause FIM module");
+            data_item = cJSON_CreateObject();
+        }
+    } else if (strcmp(command, "flush") == 0) {
+        // Call flush function
+        result = fim_execute_flush();
+
+        if (result == 0) {
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM module flushed successfully");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "action", "flush");
+            }
+        } else {
+            status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
+            message_item = cJSON_CreateString("Failed to flush FIM module");
+            data_item = cJSON_CreateObject();
+        }
+    } else if (strcmp(command, "get_version") == 0) {
+        // Call get_version function
+        result = fim_execute_get_version();
+
+        if (result >= 0) {
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM version retrieved");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddNumberToObject(data_item, "version", result);
+            }
+        } else {
+            status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
+            message_item = cJSON_CreateString("Failed to get FIM version");
+            data_item = cJSON_CreateObject();
+        }
+    } else if (strcmp(command, "set_version") == 0) {
+        // Extract version from parameters
+        int version = -1;
         if (param_item && cJSON_IsObject(param_item)) {
             cJSON *version_item = cJSON_GetObjectItem(param_item, "version");
             if (version_item && cJSON_IsNumber(version_item)) {
-                int version = (int)cJSON_GetNumberValue(version_item);
-                cJSON_AddNumberToObject(data_item, "version", version);
+                version = (int)cJSON_GetNumberValue(version_item);
+            }
+        }
+
+        if (version < 0) {
+            status_item = cJSON_CreateNumber(MQ_ERR_INVALID_PARAMS);
+            message_item = cJSON_CreateString("Invalid or missing version parameter");
+            data_item = cJSON_CreateObject();
+        } else {
+            // Call set_version function
+            result = fim_execute_set_version(version);
+
+            if (result == 0) {
+                status_item = cJSON_CreateNumber(MQ_SUCCESS);
+                message_item = cJSON_CreateString("FIM version set successfully");
+                data_item = cJSON_CreateObject();
+                if (data_item) {
+                    cJSON_AddNumberToObject(data_item, "version", version);
+                }
+            } else {
+                status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
+                message_item = cJSON_CreateString("Failed to set FIM version");
+                data_item = cJSON_CreateObject();
             }
         }
     } else if (strcmp(command, "resume") == 0) {
-        status_item = cJSON_CreateNumber(MQ_SUCCESS);
-        message_item = cJSON_CreateString("FIM module resumed successfully");
-        data_item = cJSON_CreateObject();
-        cJSON_AddStringToObject(data_item, "module", "fim");
-        cJSON_AddStringToObject(data_item, "action", "resume");
+        // Call resume function
+        result = fim_execute_resume();
+
+        if (result == 0) {
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM module resumed successfully");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "action", "resume");
+            }
+        } else {
+            status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
+            message_item = cJSON_CreateString("Failed to resume FIM module");
+            data_item = cJSON_CreateObject();
+        }
     } else {
         status_item = cJSON_CreateNumber(MQ_ERR_UNKNOWN_COMMAND);
         message_item = cJSON_CreateString("Unknown FIM command");
         data_item = cJSON_CreateObject();
-        cJSON_AddStringToObject(data_item, "command", command);
+        if (data_item) {
+            cJSON_AddStringToObject(data_item, "command", command);
+        }
+    }
+
+    // Ensure all items were created
+    if (!status_item || !message_item || !data_item) {
+        if (status_item) cJSON_Delete(status_item);
+        if (message_item) cJSON_Delete(message_item);
+        if (data_item) cJSON_Delete(data_item);
+        cJSON_Delete(response_json);
+        cJSON_Delete(json_obj);
+
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Failed to create response items\"}",
+                 MQ_ERR_INTERNAL);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
     }
 
     cJSON_AddItemToObject(response_json, "error", status_item);
@@ -161,6 +293,17 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
     cJSON_AddItemToObject(response_json, "data", data_item);
 
     char *json_string = cJSON_PrintUnformatted(response_json);
+    if (!json_string) {
+        cJSON_Delete(response_json);
+        cJSON_Delete(json_obj);
+
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Failed to serialize response\"}",
+                 MQ_ERR_INTERNAL);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
     os_strdup(json_string, *output);
 
     os_free(json_string);
@@ -204,10 +347,26 @@ size_t syscom_handle_json_query(char * json_command, char ** output) {
 
     const char *command = cJSON_GetStringValue(command_item);
     mdebug1("Processing JSON FIM command: %s", command);
-    size_t result = syscom_handle_agent_info_query(json_command, output);
 
-    cJSON_Delete(json_obj);
-    return result;
+    // Check if command is one of the coordination commands
+    if (strcmp(command, "pause") == 0 ||
+        strcmp(command, "flush") == 0 ||
+        strcmp(command, "get_version") == 0 ||
+        strcmp(command, "set_version") == 0 ||
+        strcmp(command, "resume") == 0) {
+        // Handle coordination commands
+        size_t result = syscom_handle_agent_info_query(json_command, output);
+        cJSON_Delete(json_obj);
+        return result;
+    } else {
+        // Unknown command
+        cJSON_Delete(json_obj);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Unknown command: %s\"}",
+                 MQ_ERR_UNKNOWN_COMMAND, command);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
 }
 
 size_t syscom_dispatch(char * command, size_t command_len, char ** output){
