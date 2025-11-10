@@ -95,7 +95,8 @@ protected:
             "console": {
                 "url": "http://localhost:8080",
                 "instancesEndpoint": "/api/v1/instances/me",
-                "timeout": 5000
+                "timeout": 5000,
+                "productType": "catalog:consumer"
             }
         })"_json;
     }
@@ -232,6 +233,50 @@ protected:
                     "avatar": ""
                 },
                 "plans": []
+            }
+        })";
+    }
+
+    /**
+     * @brief Helper: Create subscription with specific product types (e.g., catalog:consumer:decoders)
+     */
+    std::string createSpecificProductTypeResponse()
+    {
+        return R"({
+            "data": {
+                "organization": {
+                    "name": "ACME S.L.",
+                    "avatar": "https://acme.sl/avatar.png"
+                },
+                "plans": [
+                    {
+                        "name": "Pro Plan Deluxe",
+                        "description": "...",
+                        "products": [
+                            {
+                                "identifier": "vulnerabilities-pro",
+                                "type": "catalog:consumer:decoders",
+                                "name": "Vulnerabilities Pro",
+                                "description": "...",
+                                "resource": "https://cti.wazuh.com/api/v1/catalog/plans/pro/contexts/vulnerabilities/consumer/realtime"
+                            },
+                            {
+                                "identifier": "malware-sigs",
+                                "type": "catalog:consumer:rules",
+                                "name": "Malware Signatures",
+                                "description": "...",
+                                "resource": "https://cti.wazuh.com/api/v1/catalog/plans/pro/contexts/malware/consumer/realtime"
+                            },
+                            {
+                                "identifier": "support-service",
+                                "type": "cloud:assistance",
+                                "name": "Support",
+                                "description": "...",
+                                "email": "support@wazuh.com"
+                            }
+                        ]
+                    }
+                ]
             }
         })";
     }

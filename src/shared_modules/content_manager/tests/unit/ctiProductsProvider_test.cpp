@@ -109,6 +109,54 @@ TEST_F(CTIProductsProviderTest, GetCatalogProductsFiltersCorrectly)
 }
 
 /**
+ * @brief Test getCatalogProducts with specific product type filter
+ */
+TEST_F(CTIProductsProviderTest, GetCatalogProductsWithSpecificTypeFilter)
+{
+    // Configure provider to filter only "catalog:consumer:decoders" products
+    nlohmann::json configWithSpecificType = R"({
+        "console": {
+            "url": "http://localhost:8080",
+            "instancesEndpoint": "/api/v1/instances/me",
+            "timeout": 5000,
+            "productType": "catalog:consumer:decoders"
+        }
+    })"_json;
+
+    EXPECT_CALL(*m_mockUrlRequest, get(_, _, _))
+        .WillOnce(Invoke(
+            [this](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(createSpecificProductTypeResponse());
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(createSpecificProductTypeResponse());
+                }
+            }));
+
+    CTIProductsProvider provider(*m_mockUrlRequest, configWithSpecificType);
+    provider.setAccessToken("test_access_token");
+
+    auto catalogProducts = provider.getCatalogProducts();
+
+    // Should only return products with type "catalog:consumer:decoders" (1 out of 3)
+    ASSERT_EQ(catalogProducts.size(), 1);
+    EXPECT_EQ(catalogProducts[0].identifier, "vulnerabilities-pro");
+    EXPECT_EQ(catalogProducts[0].type, "catalog:consumer:decoders");
+    EXPECT_FALSE(catalogProducts[0].resource.empty());
+
+    // Verify that other product types are filtered out
+    auto subscription = provider.fetchSubscription();
+    ASSERT_EQ(subscription.plans.size(), 1);
+    ASSERT_EQ(subscription.plans[0].products.size(), 3); // All 3 products in subscription
+}
+
+/**
  * @brief Test caching mechanism
  */
 TEST_F(CTIProductsProviderTest, CachingMechanism)
