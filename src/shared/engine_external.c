@@ -374,12 +374,23 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
                 return NULL;
             }
 
+            if (indexer_config_json)
+            {
+                cJSON_free(indexer_config_json);
+            }
+
             // Convert JSON to string
             indexer_config_json = cJSON_PrintUnformatted(config_json);
             cJSON_Delete(config_json);
+            // Clear for possible new block
+            OS_ClearNode(indexer_children);
+        }
 
-            XML_NODE nodes_to_clear[] = {root_nodes, ossec_children, indexer_children};
-            cleanup_xml_resources(&xml, nodes_to_clear, 3);
+        if (indexer_config_json)
+        {
+            // indexer_children already freed
+            XML_NODE nodes_to_clear[] = {root_nodes, ossec_children};
+            cleanup_xml_resources(&xml, nodes_to_clear, 2);
             return indexer_config_json;
         }
 
