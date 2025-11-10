@@ -98,6 +98,13 @@ EXPORTED int fim_db_get_count_file_inode();
 EXPORTED int fim_db_get_count_file_entry();
 
 /**
+ * @brief Get the maximum version from file_entry table.
+ *
+ * @return Maximum version value, 0 if no entries exist.
+ */
+EXPORTED int fim_db_get_max_version_file();
+
+/**
  * @brief Makes any necessary queries to get the entry updated in the DB.
  *
  * @param data The information linked to the path to be created or updated.
@@ -193,6 +200,13 @@ EXPORTED int fim_db_get_count_registry_data();
  * @return Number of entries in registry data table.
  */
 EXPORTED int fim_db_get_count_registry_key();
+
+/**
+ * @brief Get the maximum version from registry tables.
+ *
+ * @return Maximum version value from registry_key and registry_data tables, 0 if no entries exist.
+ */
+EXPORTED int fim_db_get_max_version_registry();
 
 #endif /* WIN32 */
 
