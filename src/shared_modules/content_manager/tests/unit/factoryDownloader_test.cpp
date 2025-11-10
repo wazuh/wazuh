@@ -116,7 +116,8 @@ TEST_F(FactoryDownloaderTest, CreateOAuthProvidersComplete)
                 "url": "https://console.wazuh.com",
                 "instancesEndpoint": "/api/v1/instances/me",
                 "tokenExchangeEndpoint": "/api/v1/instances/token/exchange",
-                "timeout": 5000
+                "timeout": 5000,
+                "productType": "catalog:consumer:decoders"
             },
             "enableProductsProvider": true
         }
@@ -173,7 +174,8 @@ TEST_F(FactoryDownloaderTest, CreateOAuthProvidersDisabled)
                 "url": "https://indexer.wazuh.com"
             },
             "console": {
-                "url": "https://console.wazuh.com"
+                "url": "https://console.wazuh.com",
+                "productType": "catalog:consumer:decoders"
             },
             "enableProductsProvider": false
         }

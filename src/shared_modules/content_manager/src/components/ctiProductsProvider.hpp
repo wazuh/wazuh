@@ -85,19 +85,28 @@ struct CTISubscription
  * - Uses Bearer token (access_token from CTICredentialsProvider)
  * - Sent in Authorization header
  *
+ * Product Type Filtering:
+ * - Configure "productType" in console config to filter specific product types
+ * - Default: "catalog:consumer" (for backward compatibility)
+ * - For engine module: "catalog:consumer:decoders"
+ * - getCatalogProducts() returns only products matching the configured type
+ *
  * Example usage:
  * @code
+ *   nlohmann::json config = {
+ *       {"console", {
+ *           {"url", "https://console.wazuh.com"},
+ *           {"productType", "catalog:consumer:decoders"}  // Filter specific type
+ *       }}
+ *   };
  *   auto provider = std::make_shared<CTIProductsProvider>(urlRequest, config);
  *   provider->setAccessToken(accessToken);
  *
- *   auto subscription = provider->fetchSubscription();
- *   for (const auto& plan : subscription.plans) {
- *       for (const auto& product : plan.products) {
- *           if (product.type == "catalog:consumer") {
- *               // Use product.resource for token exchange
- *               std::string signedUrl = signedUrlProvider->getSignedUrl(product.resource, accessToken);
- *           }
- *       }
+ *   // Get only products matching the configured type
+ *   auto catalogProducts = provider->getCatalogProducts();
+ *   for (const auto& product : catalogProducts) {
+ *       // All products here will have type "catalog:consumer:decoders"
+ *       std::string signedUrl = signedUrlProvider->getSignedUrl(product.resource, accessToken);
  *   }
  * @endcode
  */
@@ -108,6 +117,7 @@ private:
     std::string m_consoleUrl;
     std::string m_instancesEndpoint;
     uint32_t m_timeout;
+    std::string m_productType; ///< Product type to filter (e.g., "catalog:consumer:decoders")
 
     // Access token for Authorization header
     std::string m_accessToken;
@@ -239,7 +249,8 @@ public:
      *   "console": {
      *     "url": "https://console.wazuh.com",
      *     "instancesEndpoint": "/api/v1/instances/me",  // optional, default shown
-     *     "timeout": 5000  // optional, milliseconds
+     *     "timeout": 5000,  // optional, milliseconds
+     *     "productType": "catalog:consumer:decoders"  // optional, product type filter
      *   }
      * }
      * @endcode
@@ -264,11 +275,13 @@ public:
         m_consoleUrl = consoleConfig.at("url").get<std::string>();
         m_instancesEndpoint = consoleConfig.value("instancesEndpoint", "/api/v1/instances/me");
         m_timeout = consoleConfig.value("timeout", 5000);
+        m_productType = consoleConfig.value("productType", "catalog:consumer");
 
         logInfo(WM_CONTENTUPDATER,
-                "CTIProductsProvider initialized (URL: %s, endpoint: %s)",
+                "CTIProductsProvider initialized (URL: %s, endpoint: %s, productType: %s)",
                 m_consoleUrl.c_str(),
-                m_instancesEndpoint.c_str());
+                m_instancesEndpoint.c_str(),
+                m_productType.c_str());
     }
 
     /**
@@ -323,7 +336,7 @@ public:
      *         "products": [
      *           {
      *             "identifier": "vulnerabilities-pro",
-     *             "type": "catalog:consumer",
+     *             "type": "catalog:consumer:decoders",
      *             "name": "Vulnerabilities Pro",
      *             "description": "...",
      *             "resource": "https://cti.wazuh.com/api/v1/..."
@@ -466,13 +479,13 @@ public:
     }
 
     /**
-     * @brief Get all catalog products with resource URLs
+     * @brief Get catalog products matching the configured product type
      *
-     * Convenience method to extract only catalog products that have
-     * resource URLs for token exchange.
+     * Convenience method to extract only catalog products that match
+     * the configured product type and have resource URLs for token exchange.
      *
      * @param useCache If true, use cached subscription data
-     * @return Vector of catalog products
+     * @return Vector of catalog products matching the configured product type
      */
     std::vector<CTIProduct> getCatalogProducts(bool useCache = true)
     {
@@ -484,15 +497,18 @@ public:
         {
             for (const auto& product : plan.products)
             {
-                // Filter catalog products with resource URLs
-                if (product.type.find("catalog:") == 0 && !product.resource.empty())
+                // Filter products by exact type match and require non-empty resource URL
+                if (product.type == m_productType && !product.resource.empty())
                 {
                     catalogProducts.push_back(product);
                 }
             }
         }
 
-        logDebug2(WM_CONTENTUPDATER, "CTIProductsProvider: Found %zu catalog products", catalogProducts.size());
+        logDebug2(WM_CONTENTUPDATER,
+                  "CTIProductsProvider: Found %zu products matching type '%s'",
+                  catalogProducts.size(),
+                  m_productType.c_str());
 
         return catalogProducts;
     }
