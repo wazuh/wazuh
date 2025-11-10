@@ -18,7 +18,7 @@ namespace pathns
 constexpr std::string_view JSON_ID_PATH = "/id";           ///< Universal path for UUID field in JSON/YML objects
 constexpr std::string_view YML_PAIR_FMT = "id: {}\n";      ///< YML pair format for UUID field
 // Files and extensions
-constexpr std::string_view CACHE_NS_FILE = "cache_ns.json"; 
+constexpr std::string_view CACHE_NS_FILE = "cache_ns.json";
 constexpr std::string_view ASSET_EXTENSION = ".yml";
 constexpr std::string_view POLICY_FILE = "policy.json";
 // Directories
