@@ -85,6 +85,33 @@ constexpr std::string_view resourceTypeToString(ResourceType type)
 }
 
 /**
+ * @brief Get ResourceType from an asset Name
+ *
+ * Only DECODER, OUTPUT, RULE and FILTER are considered assets.
+ * @param name Asset name
+ * @return ResourceType Resource type of the asset, or UNDEFINED if it could not be determined
+ */
+inline ResourceType getResourceTypeFromAssetName(const base::Name& name)
+{
+    if (name.parts().size() < 2)
+    {
+        return ResourceType::UNDEFINED;
+    }
+
+    const auto& typePart = name.parts()[0];
+
+    auto rType = resourceTypeFromString(typePart);
+    switch (rType)
+    {
+        case ResourceType::DECODER:
+        case ResourceType::OUTPUT:
+        case ResourceType::RULE:
+        case ResourceType::FILTER: return rType;
+        default: return ResourceType::UNDEFINED;
+    }
+}
+
+/**
  * @brief TransaccionLock class to manage transaction locks in the content manager store.
  *
  * This object should be used to ensure that transactions are properly locked and unlocked
