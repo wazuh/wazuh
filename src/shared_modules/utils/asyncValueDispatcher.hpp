@@ -12,14 +12,15 @@
 #ifndef ASYNC_VALUE_DISPATCHER_HPP
 #define ASYNC_VALUE_DISPATCHER_HPP
 
-#include "commonDefs.h"
-#include "functionTraits.hpp"
-#include "threadSafeQueue.h"
 #include <atomic>
-#include <iostream>
 #include <thread>
 #include <type_traits>
 #include <vector>
+
+#include "commonDefs.h"
+#include "functionTraits.hpp"
+#include "loggerHelper.h"
+#include "threadSafeQueue.h"
 
 namespace Utils
 {
@@ -114,7 +115,7 @@ namespace Utils
                 }
                 catch (const std::exception& ex)
                 {
-                    std::cerr << "Dispatch handler error, " << ex.what() << std::endl;
+                    logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
                 }
             }
         }

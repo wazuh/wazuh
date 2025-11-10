@@ -42,7 +42,7 @@ TEST_F(AsyncValueDispatcherTest, Ctor)
     std::atomic<size_t> counter {0};
     std::promise<void> promise;
 
-    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string &&)>> dispatcher(
+    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string&&)>> dispatcher(
         [&counter, &promise](std::string&&)
         {
             counter++;
@@ -206,7 +206,7 @@ TEST_F(AsyncValueDispatcherTest, DifferentDataTypes)
     std::atomic<size_t> counter {0};
     std::promise<void> promise;
 
-    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string &&)>> dispatcher(
+    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string&&)>> dispatcher(
         [&counter, &promise](std::string&&)
         {
             counter++;
@@ -251,4 +251,59 @@ TEST_F(AsyncValueDispatcherTest, LargeBulkProcessing)
 
     promise.get_future().wait();
     EXPECT_EQ(LARGE_COUNT, counter);
+}
+
+TEST_F(AsyncValueDispatcherTest, CaptureWarningMsg)
+{
+    std::promise<void> promise;
+    std::atomic<bool> warningCaptured {false};
+    // Custom function that will capture and compare the warning log message.
+    Log::assignLogFunction(
+        [&promise, &warningCaptured](const int logLevel,
+                                     const char* tag,
+                                     const char* file,
+                                     const int line,
+                                     const char* func,
+                                     const char* message,
+                                     va_list args)
+        {
+            // Receives the exception message from the dispatch method.
+            if (logLevel == Log::LOGLEVEL_DEBUG)
+            {
+                // Format the message.
+                char buffer[4096];
+                vsnprintf(buffer, sizeof(buffer), message, args);
+                std::string formattedMsg(buffer);
+                // Compare expected message.
+                EXPECT_EQ("Dispatch handler error, Test exception", formattedMsg);
+                warningCaptured = true;
+                // Avoid multiple captures.
+                try
+                {
+                    promise.set_value();
+                }
+                catch (...)
+                {
+                }
+            }
+        });
+
+    std::string testMsg {"Test message"};
+    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string)>> dispatcher(
+        [testMsg](const std::string& data)
+        {
+            EXPECT_EQ(testMsg, data);
+            throw std::runtime_error("Test exception");
+        });
+
+    dispatcher.push(testMsg);
+    // Wait for the warning log to be captured.
+    auto status = promise.get_future().wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready);
+
+    EXPECT_EQ(warningCaptured.load(), true);
+
+    // Teardown
+    dispatcher.cancel();
+    Log::deassignLogFunction();
 }

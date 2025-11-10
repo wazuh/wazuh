@@ -16,7 +16,8 @@
 #include <atomic>
 #include <future>
 #include <functional>
-#include <iostream>
+
+#include "loggerHelper.h"
 #include "threadSafeQueue.h"
 #include "promiseFactory.h"
 #include "commonDefs.h"
@@ -158,7 +159,7 @@ namespace Utils
                 }
                 catch (const std::exception& ex)
                 {
-                    std::cerr << "Dispatch handler error, " << ex.what() << std::endl;
+                    logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
                 }
             }
             void joinThreads()
