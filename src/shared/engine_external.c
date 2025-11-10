@@ -229,6 +229,11 @@ static int parse_indexer_subnodes(const OS_XML* xml, XML_NODE nodes, cJSON* outp
             // Handle simple string values
             else if (current_node->content)
             {
+                // Display warning message for empty string values
+                if (strlen(current_node->content) == 0)
+                {
+                    mwarn("Configuration field '%s' has an empty value in module 'indexer'. Check configuration", node_keypath);
+                }
                 cJSON* existing_item = cJSON_GetObjectItem(output_json, current_node->element);
 
                 if (existing_item && cJSON_IsArray(existing_item))
