@@ -22,12 +22,18 @@ int Read_Indexer(const char* config_file)
 {
     if(indexer_config) {
         cJSON_Delete(indexer_config);
+        indexer_config = NULL;
     }
 
     char errBuf[1024] = {0};
     char *indexer_config_str = get_indexer_cnf(config_file, errBuf, sizeof(errBuf));
 
+    if (!indexer_config_str) {
+        return OS_INVALID;
+    }
+
     indexer_config = cJSON_Parse(indexer_config_str);
+    cJSON_free(indexer_config_str);
 
     return NULL != indexer_config ? OS_SUCCESS : OS_INVALID;
 }

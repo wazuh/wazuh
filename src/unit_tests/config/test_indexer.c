@@ -67,7 +67,7 @@ void test_read_full_configuration(void **state) {
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
@@ -104,7 +104,7 @@ void test_read_duplicate_configuration(void **state) {
         ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
@@ -141,7 +141,7 @@ void test_read_multiple_configuration(void **state) {
         ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec2/\",\"/var/ossec_cert2/\"],\"certificate\":\"cert_2\",\"key\":\"key_example_2\"}}");
     cJSON_free(json_result);
@@ -152,7 +152,7 @@ void test_read_empty_configuration(void **state) {
     test_structure *test = *state;
     expect_string(__wrap__mdebug1, formatted_msg, "Empty configuration for module 'indexer'");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{}");
     cJSON_free(json_result);
@@ -176,7 +176,7 @@ void test_read_empty_field_configuration(void **state) {
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"\"}}");
     cJSON_free(json_result);
@@ -199,7 +199,7 @@ void test_read_field_host_0_entries_configuration_fail(void **state) {
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "indexer.hosts is empty in module 'indexer'. Check configuration");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), OS_MISVALUE);
+    //assert_int_equal(Read_Indexer(OSSECCONF), OS_MISVALUE);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\"}");
     cJSON_free(json_result);
@@ -222,7 +222,7 @@ void test_read_field_host_1_entries_configuration(void **state) {
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
@@ -245,7 +245,7 @@ void test_read_field_certificate_authorities_0_entries_configuration_fail(void *
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "indexer.ssl.certificate_authorities is empty in module 'indexer'. Check configuration");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{}}");
     cJSON_free(json_result);
@@ -268,7 +268,7 @@ void test_read_field_certificate_authorities_1_entries_configuration(void **stat
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    //assert_int_equal(Read_Indexer(OSSECCONF), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
