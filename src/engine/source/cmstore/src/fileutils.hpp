@@ -16,6 +16,66 @@ namespace fileutils
 constexpr std::string_view INVALID_FILENAME_CHARS = R"(\ / : * ? " < > | )";
 
 /**
+ * @brief Set file permissions to 0640 (owner: rw-, group: r--, others: ---)
+ * @param filePath Path to the file
+ * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
+ */
+std::optional<std::string> setFilePermissions(const std::filesystem::path& filePath)
+{
+    try
+    {
+        // Set permissions to 0640 (owner: rw-, group: r--, others: ---)
+        std::error_code ec;
+        std::filesystem::permissions(filePath,
+                                     std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
+                                         | std::filesystem::perms::group_read,
+                                     std::filesystem::perm_options::replace,
+                                     ec);
+
+        if (ec)
+        {
+            return "Failed to set file permissions: " + ec.message();
+        }
+
+        return std::nullopt;
+    }
+    catch (const std::exception& e)
+    {
+        return "Exception occurred: " + std::string(e.what());
+    }
+}
+
+/**
+ * @brief Set directory permissions to 0750 (owner: rwx, group: r-x, others: ---)
+ * @param dirPath Path to the directory
+ * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
+ */
+std::optional<std::string> setDirectoryPermissions(const std::filesystem::path& dirPath)
+{
+    try
+    {
+        // Set permissions to 0750 (owner: rwx, group: r-x, others: ---)
+        std::error_code ec;
+        std::filesystem::permissions(dirPath,
+                                     std::filesystem::perms::owner_all | std::filesystem::perms::group_read
+                                         | std::filesystem::perms::group_exec,
+                                     std::filesystem::perm_options::replace,
+                                     ec);
+
+        if (ec)
+        {
+            return "Failed to set directory permissions: " + ec.message();
+        }
+
+        return std::nullopt;
+    }
+    catch (const std::exception& e)
+    {
+        return "Exception occurred: " + std::string(e.what());
+    }
+}
+
+/**
  * @brief Create or update a file with the given content.
  *
  * If file not exists, it will be created. If file exists, its content will be updated.
@@ -40,14 +100,10 @@ inline std::optional<std::string> upsertFile(const std::filesystem::path& filePa
                 return "Failed to create parent directories: " + ec.message();
             }
             // Set permissions to 0750 (owner: rwx, group: r-x, others: ---)
-            std::filesystem::permissions(parentPath,
-                                         std::filesystem::perms::owner_all | std::filesystem::perms::group_read
-                                             | std::filesystem::perms::group_exec,
-                                         std::filesystem::perm_options::replace,
-                                         ec);
-            if (ec)
+            auto dirPermErr = setDirectoryPermissions(parentPath);
+            if (dirPermErr)
             {
-                return "Failed to set directory permissions: " + ec.message();
+                return dirPermErr;
             }
         }
 
@@ -67,16 +123,10 @@ inline std::optional<std::string> upsertFile(const std::filesystem::path& filePa
         }
 
         // Set permissions to 0640 (owner: rw-, group: r--, others: ---)
-        std::error_code ec;
-        std::filesystem::permissions(filePath,
-                                     std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
-                                         | std::filesystem::perms::group_read,
-                                     std::filesystem::perm_options::replace,
-                                     ec);
-
-        if (ec)
+        auto filePermErr = setFilePermissions(filePath);
+        if (filePermErr)
         {
-            return "Failed to set file permissions: " + ec.message();
+            return filePermErr;
         }
 
         return std::nullopt;
