@@ -9,7 +9,14 @@ namespace yml
 
 rapidjson::Document Converter::loadYMLfromFile(const std::string& filepath)
 {
-    YAML::Node root = YAML::LoadFile(filepath);
+    auto allDocs = YAML::LoadAllFromFile(filepath);
+    if (allDocs.size() != 1)
+    {
+        throw std::runtime_error("YAML file contains multiple documents, expected a single document.");
+    }
+
+    YAML::Node& root = allDocs[0];
+
     rapidjson::Document doc;
 
     rapidjson::Value val = yamlToJson(root, doc.GetAllocator());
@@ -82,7 +89,12 @@ YAML::Node Converter::parseScalar(const rapidjson::Value& node)
 
 rapidjson::Document Converter::loadYMLfromString(const std::string& yamlStr)
 {
-    YAML::Node root = YAML::Load(yamlStr);
+    auto rootAll = YAML::LoadAll(yamlStr);
+    if (rootAll.size() != 1)
+    {
+        throw std::runtime_error("YAML string contains multiple documents, expected a single document.");
+    }
+    YAML::Node& root = rootAll[0];
     rapidjson::Document doc;
 
     rapidjson::Value val = yamlToJson(root, doc.GetAllocator());

@@ -29,10 +29,26 @@ inline std::optional<std::string> upsertFile(const std::filesystem::path& filePa
 {
     try
     {
-        // Check if parent directory exists
-        if (!filePath.parent_path().empty() && !std::filesystem::exists(filePath.parent_path()))
+        // Check if parent directory exists, if not create with 0640 permissions
+        const auto parentPath = filePath.parent_path();
+        if (!std::filesystem::exists(parentPath))
         {
-            return "Parent directory does not exist: " + filePath.parent_path().string();
+            std::error_code ec;
+            std::filesystem::create_directories(parentPath, ec);
+            if (ec)
+            {
+                return "Failed to create parent directories: " + ec.message();
+            }
+            // Set permissions to 0750 (owner: rwx, group: r-x, others: ---)
+            std::filesystem::permissions(parentPath,
+                                         std::filesystem::perms::owner_all | std::filesystem::perms::group_read
+                                             | std::filesystem::perms::group_exec,
+                                         std::filesystem::perm_options::replace,
+                                         ec);
+            if (ec)
+            {
+                return "Failed to set directory permissions: " + ec.message();
+            }
         }
 
         // Create/update file
@@ -63,6 +79,29 @@ inline std::optional<std::string> upsertFile(const std::filesystem::path& filePa
             return "Failed to set file permissions: " + ec.message();
         }
 
+        return std::nullopt;
+    }
+    catch (const std::exception& e)
+    {
+        return "Exception occurred: " + std::string(e.what());
+    }
+}
+
+/**
+ * @brief Delete a file at the given path.
+ * @param filePath Path to the file
+ * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
+ */
+inline std::optional<std::string> deleteFile(const std::filesystem::path& filePath)
+{
+    try
+    {
+        std::error_code ec;
+        std::filesystem::remove(filePath, ec);
+        if (ec)
+        {
+            return "Failed to delete file: " + ec.message();
+        }
         return std::nullopt;
     }
     catch (const std::exception& e)
@@ -113,40 +152,84 @@ inline bool isValidFileName(std::string_view name)
     return true;
 }
 
-json::Json readJsonFile(const std::filesystem::path& filePath) {
+/**
+ * @brief Read a JSON file and return a json::Json document.
+ *
+ * @param filePath Path to the JSON file
+ * @return json::Json Parsed JSON document
+ * @throw std::runtime_error if file cannot be opened, read or parsed
+ */
+json::Json readJsonFile(const std::filesystem::path& filePath)
+{
     std::ifstream file(filePath);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         throw std::runtime_error("Failed to open file for reading: " + filePath.string());
     }
 
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     file.close();
 
-    if (file.fail()) {
+    if (file.fail())
+    {
         throw std::runtime_error("Failed to read content from file: " + filePath.string());
     }
 
     return json::Json(content.c_str());
 }
 
-json::Json readYMLFileAsJson(const std::filesystem::path& filePath) {
-
+/**
+ * @brief Read a YAML file and return a json::Json document.
+ *
+ * @param filePath Path to the YAML file
+ * @return json::Json Parsed JSON document
+ * @throw std::runtime_error if file cannot be opened, read or parsed
+ */
+json::Json readYMLFileAsJson(const std::filesystem::path& filePath)
+{
 
     std::ifstream file(filePath);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         throw std::runtime_error("Failed to open file for reading: " + filePath.string());
     }
 
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     file.close();
 
-    if (file.fail()) {
+    if (file.fail())
+    {
         throw std::runtime_error("Failed to read content from file: " + filePath.string());
     }
 
     return json::Json {yml::Converter::loadYMLfromString(content)};
 }
 
+/**
+ * @brief Read a file and return its content as a string.
+ *
+ * @param filePath Path to the file
+ * @return std::string File content
+ * @throw std::runtime_error if file cannot be opened or read
+ */
+std::string readFileAsString(const std::filesystem::path& filePath)
+{
+    std::ifstream file(filePath);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Failed to open file for reading: " + filePath.string());
+    }
+
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (file.fail())
+    {
+        throw std::runtime_error("Failed to read content from file: " + filePath.string());
+    }
+
+    return content;
 }
+} // namespace fileutils
 
 #endif //_CMSTORE_FILEUTILS_HPP
