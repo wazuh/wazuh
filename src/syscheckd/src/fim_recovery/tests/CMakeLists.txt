@@ -35,7 +35,7 @@ link_directories(${SRC_FOLDER}/external/zlib/)
 
 # Source files being tested
 file(GLOB RECOVERY_SRC
-    "${CMAKE_SOURCE_DIR}/src/recovery/src/recovery.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/recovery.cpp")
 
 file(GLOB DB_SRC
     "${SRC_FOLDER}/syscheckd/src/db/src/db.cpp"

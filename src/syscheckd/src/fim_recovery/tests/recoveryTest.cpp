@@ -12,18 +12,6 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-// Mock implementation for _minfo used in recovery.cpp - must be declared before including headers
-extern "C" {
-    void _minfo(__attribute__((unused)) const char* file,
-                __attribute__((unused)) int line,
-                __attribute__((unused)) const char* func,
-                __attribute__((unused)) const char* msg,
-                ...)
-    {
-        // No-op implementation for unit tests
-    }
-}
-
 #include "recovery.h"
 #include "db.hpp"
 #include "agent_sync_protocol_c_interface.h"
@@ -31,10 +19,6 @@ extern "C" {
 #include <chrono>
 #include <thread>
 #include "timeHelper.h"
-
-extern "C" {
-    #include "debug_op.h"
-}
 
 // Mock logging for tests
 class MockLoggingCall

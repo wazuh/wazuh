@@ -2,10 +2,6 @@
 #include <string>
 #include <hashHelper.h>
 
-extern "C" {
-    #include "debug_op.h" // Use the same C-style logging as the rest of FIM's code.
-}
-
 #include "recovery.h"
 #include "agent_sync_protocol_c_wrapper.hpp"
 #include "db.hpp"
@@ -79,8 +75,6 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
             item["version"]
         );
     }
-    minfo("Persisted %zu recovery items in memory", recoveryItems.size());
-    minfo("Starting recovery synchronization...");
 
     // The test_callback parameter allows unit tests to inject custom synchronizeModule behavior.
     // This is necessary because AgentSyncProtocolWrapper's implementation cannot be easily mocked
@@ -101,12 +95,6 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         // LCOV_EXCL_STOP
     }
 
-    if (success) {
-        minfo("Recovery completed successfully, in-memory data cleared");
-    } else {
-        minfo("Recovery synchronization failed, will retry later");
-    }
-
     // Update the last sync time regardless of the synchronization result since we always want to wait for integrity_interval to try again.
     DB::instance().updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
 }
@@ -114,9 +102,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
 // LCOV_EXCL_START
 bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle){
-    minfo("Attempting to get checksum for %s table", table_name);
     std::string final_checksum = DB::instance().calculateTableChecksum(table_name);
-    minfo("Success! Final file table checksum is: %s", final_checksum.c_str());
 
     bool needs_full_sync;
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
@@ -140,13 +126,7 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
         sync_max_eps
     );
 
-    if (needs_full_sync) {
-        minfo("Checksum mismatch detected for index %s, full sync required", table_name);
-        return true;
-    } else {
-        minfo("Checksum valid for index %s, delta sync sufficient", table_name);
-        return false;
-    }
+    return needs_full_sync;
 }
 // LCOV_EXCL_STOP
 
