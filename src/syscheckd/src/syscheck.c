@@ -12,7 +12,6 @@
  * Copyright (C) 2003 Daniel B. Cid <daniel@underlinux.com.br>
  */
 
-#include "debug_op.h"
 #include "shared.h"
 #include "syscheck.h"
 #include "../rootcheck/rootcheck.h"
