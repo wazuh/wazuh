@@ -58,8 +58,24 @@ int fim_execute_get_version(void) {
 
 int fim_execute_set_version(int version) {
     mdebug1("FIM agent info: set_version command received, version=%d", version);
-    // TODO: Implement actual version setting logic
-    // This will set the FIM coordination version
+
+    int result_file = fim_db_set_version_file(version);
+
+    if (result_file != 0) {
+        merror("Failed to set version for file_entry table");
+        return -1;
+    }
+
+#ifdef WIN32
+    int result_registry = fim_db_set_version_registry(version);
+
+    if (result_registry != 0) {
+        merror("Failed to set version for registry tables");
+        return -1;
+    }
+#endif
+
+    mdebug1("FIM version set successfully to %d", version);
     return 0;
 }
 
