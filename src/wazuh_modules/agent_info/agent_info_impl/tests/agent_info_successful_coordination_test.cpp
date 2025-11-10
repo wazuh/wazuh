@@ -126,7 +126,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationWithNoModulesAvailable)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1000, 1, 1, 1000); // 1 second timeout, 1 retry
+    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
 
     // Initialize sync protocol
     MQ_Functions mqFuncs = createMockMQFunctions();
@@ -232,7 +232,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CompleteSuccessfulCoordinationFlow)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1000, 1, 1, 1000); // 1 second timeout, 1 retry
+    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
 
     // Initialize sync protocol
     MQ_Functions mqFuncs = createMockMQFunctions();
@@ -339,7 +339,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulFlushOperation)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1000, 1, 1, 1000); // 1 second timeout, 1 retry
+    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
 
     MQ_Functions mqFuncs = createMockMQFunctions();
 
@@ -431,7 +431,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulResumeOperation)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1000, 1, 1, 1000); // 1 second timeout, 1 retry
+    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
 
     MQ_Functions mqFuncs = createMockMQFunctions();
 
@@ -514,7 +514,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationCompletionMessage)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1000, 1, 1, 1000); // 1 second timeout, 1 retry
+    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
 
     MQ_Functions mqFuncs = createMockMQFunctions();
 

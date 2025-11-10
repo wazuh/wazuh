@@ -114,6 +114,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->queue_size                      = 16384;
 #endif
     syscheck->sync_interval                   = 300;
+    syscheck->sync_end_delay                  = 1;
     syscheck->sync_response_timeout           = 60;
     syscheck->sync_max_eps                    = 10;
     syscheck->integrity_interval              = 24 * 60 * 60;  // 24 hours

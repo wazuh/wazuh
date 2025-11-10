@@ -281,6 +281,15 @@ void * wm_sca_main(wm_sca_t * data) {
             sca_set_push_functions_ptr(wm_sca_send_stateless, wm_sca_persist_stateful);
         }
 
+        // Set synchronization parameters from config BEFORE setting sync protocol parameters
+        sca_enable_synchronization = data->sync.enable_synchronization;
+        if (sca_enable_synchronization) {
+            sca_sync_interval = data->sync.sync_interval;
+            sca_sync_end_delay = data->sync.sync_end_delay;
+            sca_sync_response_timeout = data->sync.sync_response_timeout;
+            sca_sync_max_eps = data->sync.sync_max_eps;
+        }
+
         // Set the sync protocol parameters
         if (sca_set_sync_parameters_ptr) {
             MQ_Functions mq_funcs = {
@@ -330,6 +339,7 @@ static int wm_sca_start(wm_sca_t *sca) {
 
     minfo("SCA message queue initialized successfully.");
 
+    // TODO: Check if this is needed here or in the main function
     // Set synchronization parameters
     sca_enable_synchronization = sca->sync.enable_synchronization;
     if (sca_enable_synchronization) {
