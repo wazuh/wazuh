@@ -22,12 +22,7 @@ class ICMStoreNSReader
 public:
     virtual ~ICMStoreNSReader() = default;
 
-    /**
-     * @brief Get the policy of the namespace
-     * @return dataType::Policy The policy of the namespace
-     * @throw std::runtime_error if the policy does not exist or failed to be retrieved
-     */
-    virtual dataType::Policy getPolicy() const = 0;
+    /***********************************  General Methods ************************************/
 
     /**
      * @brief Get the Namespace ID of this CMStoreNSReader
@@ -35,111 +30,12 @@ public:
      */
     virtual const NamespaceId& getNamespaceId() const = 0;
 
-    /****************************** Integration access methods ******************************/
-
-    /**
-     * @brief Get Integration by its name
-     *
-     * @param name Name of the integration
-     * @return dataType::Integration The integration object
-     * @throw std::runtime_error if the integration does not exist or failed to be retrieved
-     */
-    virtual dataType::Integration getIntegrationByName(const std::string& name) const = 0;
-
-    /**
-     * @brief Get Integration by its UUID
-     * @param uuid UUID of the integration
-     * @return dataType::Integration The integration object
-     * @throw std::runtime_error if the integration does not exist or failed to be retrieved
-     */
-    virtual dataType::Integration getIntegrationByUUID(const std::string& uuid) const = 0;
-
-    /**
-     * @brief Check if an integration exists by its name
-     * @param name Name of the integration to check
-     * @return bool 'true' if the integration exists, false otherwise
-     */
-    virtual bool integrationExistsByName(const std::string& name) const = 0;
-
-    /**
-     * @brief Check if an integration exists by its UUID
-     * @param uuid UUID of the integration to check
-     * @return bool 'true' if the integration exists, false otherwise
-     */
-    virtual bool integrationExistsByUUID(const std::string& uuid) const = 0;
-
-    /******************************    KVDB access methods   ******************************/
-
-    /**
-     * @brief Get KVDB by its name
-     * @param name Name of the KVDB
-     * @return json::Json The KVDB dump in JSON format
-     * @throw std::runtime_error if the KVDB does not exist or failed to be retrieved
-     */
-    virtual json::Json getKVDBByName(const std::string& name) const = 0;
-
-    /**
-     * @brief Get KVDB by its UUID
-     * @param uuid UUID of the KVDB
-     * @return json::Json The KVDB dump in JSON format
-     * @throw std::runtime_error if the KVDB does not exist or failed to be retrieved
-     */
-    virtual json::Json getKVDBByUUID(const std::string& uuid) const = 0;
-
-    /**
-     * @brief Check if a KVDB exists by its name
-     * @param name Name of the KVDB to check
-     * @return bool 'true' if the KVDB exists, false otherwise
-     */
-    virtual bool kvdbExistsByName(const std::string& name) const = 0;
-
-    /**
-     * @brief Check if a KVDB exists by its UUID
-     * @param uuid UUID of the KVDB to check
-     * @return bool 'true' if the KVDB exists, false otherwise
-     */
-    virtual bool kvdbExistsByUUID(const std::string& uuid) const = 0;
-
-    /******************************    Asset access methods   ******************************/
-
-    /**
-     * @brief Get Asset by its name (decoder, rule, filter, output.)
-     * @param name Name of the asset
-     * @return json::Json The asset in JSON format
-     * @throw std::runtime_error if the asset does not exist or failed to be retrieved
-     */
-    virtual json::Json getAssetByName(const base::Name& name) const = 0;
-
-    /**
-     * @brief Get Asset by its UUID (decoder, rule, filter, output.)
-     * @param uuid UUID of the asset
-     * @return json::Json The asset in JSON format
-     * @throw std::runtime_error if the asset does not exist or failed to be retrieved
-     */
-    virtual json::Json getAssetByUUID(const std::string& uuid) const = 0;
-
-    /**
-     * @brief Check if an asset exists by its name
-     * @param name Name of the asset to check
-     * @return bool 'true' if the asset exists, false otherwise
-     */
-    virtual bool assetExistsByName(const base::Name& name) const = 0;
-
-    /**
-     * @brief Check if an asset exists by its UUID
-     * @param uuid UUID of the asset to check
-     * @return bool 'true' if the asset exists, false otherwise
-     */
-    virtual bool assetExistsByUUID(const std::string& uuid) const = 0;
-
     /**
      * @brief Get all resources of a specific type in the namespace
      * @param type ResourceType to filter
      * @return std::vector<std::tuple<std::string, std::string>> Vector of tuples with (UUID, Name)
      */
     virtual std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const = 0;
-
-    // Name/UUID resolution
 
     /**
      * @brief Resolve resource name and type from its UUID
@@ -158,6 +54,84 @@ public:
      */
     virtual std::string resolveUUIDFromName(const std::string& name, ResourceType type) const = 0;
 
+    /**
+     * @brief Check if an asset exists by its name
+     * @param name Name of the asset to check
+     * @return bool 'true' if the asset exists, false otherwise
+     */
+    virtual bool assetExistsByName(const base::Name& name) const = 0;
+
+    /**
+     * @brief Check if an asset exists by its UUID
+     * @param uuid UUID of the asset to check
+     * @return bool 'true' if the asset exists, false otherwise
+     */
+    virtual bool assetExistsByUUID(const std::string& uuid) const = 0;
+
+    /**************************************** Policy ****************************************/
+
+    /**
+     * @brief Get the policy of the namespace
+     * @return dataType::Policy The policy of the namespace
+     * @throw std::runtime_error if the policy does not exist or failed to be retrieved
+     */
+    virtual dataType::Policy getPolicy() const = 0;
+
+    /************************************* INTEGRATIONS *************************************/
+
+    /**
+     * @brief Get Integration by its name
+     *
+     * @param name Name of the integration
+     * @return dataType::Integration The integration object
+     * @throw std::runtime_error if the integration does not exist or failed to be retrieved
+     */
+    virtual dataType::Integration getIntegrationByName(const std::string& name) const = 0;
+
+    /**
+     * @brief Get Integration by its UUID
+     * @param uuid UUID of the integration
+     * @return dataType::Integration The integration object
+     * @throw std::runtime_error if the integration does not exist or failed to be retrieved
+     */
+    virtual dataType::Integration getIntegrationByUUID(const std::string& uuid) const = 0;
+
+    /**************************************** KVDB ******************************************/
+
+    /**
+     * @brief Get KVDB by its name
+     * @param name Name of the KVDB
+     * @return json::Json The KVDB dump in JSON format
+     * @throw std::runtime_error if the KVDB does not exist or failed to be retrieved
+     */
+    virtual dataType::KVDB getKVDBByName(const std::string& name) const = 0;
+
+    /**
+     * @brief Get KVDB by its UUID
+     * @param uuid UUID of the KVDB
+     * @return json::Json The KVDB dump in JSON format
+     * @throw std::runtime_error if the KVDB does not exist or failed to be retrieved
+     */
+    virtual dataType::KVDB getKVDBByUUID(const std::string& uuid) const = 0;
+
+    /**************************************** ASSETS ****************************************/
+
+    /**
+     * @brief Get Asset by its name (decoder, rule, filter, output.)
+     * @param name Name of the asset
+     * @return json::Json The asset in JSON format
+     * @throw std::runtime_error if the asset does not exist or failed to be retrieved
+     */
+    virtual json::Json getAssetByName(const base::Name& name) const = 0;
+
+    /**
+     * @brief Get Asset by its UUID (decoder, rule, filter, output.)
+     * @param uuid UUID of the asset
+     * @return json::Json The asset in JSON format
+     * @throw std::runtime_error if the asset does not exist or failed to be retrieved
+     */
+    virtual json::Json getAssetByUUID(const std::string& uuid) const = 0;
+
     // Get lock for read transaction
     // virtual TransaccionLock getSharedLock() const = 0;
     // virtual TransaccionLock tryGetSharedLock() const = 0;
@@ -173,7 +147,59 @@ class ICMstoreNS : public ICMStoreNSReader
 public:
     virtual ~ICMstoreNS() = default;
 
-    /****************************** Policy CRUD operations ******************************/
+    /*********************************** General Resource ************************************/
+
+    /**
+     * @brief Create a resource in the namespace
+     *
+     * @param name Name of the resource to create
+     * @param type Type of the resource to create
+     * @param ymlContent YAML content of the resource
+     * @return std::string UUID of the created resource
+     * @throw std::runtime_error if a resource with the same name and type already exists or any error occurs
+     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     */
+    virtual std::string createResource(const std::string& name, ResourceType type, const std::string& ymlContent) = 0;
+
+    /**
+     * @brief Update a resource in the namespace by its name and type
+     *
+     * @param name Name of the resource to update
+     * @param type Type of the resource to update
+     * @param ymlContent New YAML content of the resource
+     * @throw std::runtime_error if the resource does not exist or any error occurs
+     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     */
+    virtual void updateResourceByName(const std::string& name, ResourceType type, const std::string& ymlContent) = 0;
+
+    /**
+     * @brief Update a resource in the namespace by its UUID
+     *
+     * @param uuid UUID of the resource to update
+     * @param ymlContent New YAML content of the resource
+     * @throw std::runtime_error if the resource does not exist or any error occurs
+     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     */
+    virtual void updateResourceByUUID(const std::string& uuid, const std::string& ymlContent) = 0;
+
+    /**
+     * @brief Delete a resource in the namespace by its name and type
+     *
+     * @param name Name of the resource to delete
+     * @param type Type of the resource to delete
+     * @throw std::runtime_error if the resource does not exist or any error occurs
+     */
+    virtual void deleteResourceByName(const std::string& name, ResourceType type) = 0;
+
+    /**
+     * @brief Delete a resource in the namespace by its UUID
+     *
+     * @param uuid UUID of the resource to delete
+     * @throw std::runtime_error if the resource does not exist or any error occurs
+     */
+    virtual void deleteResourceByUUID(const std::string& uuid) = 0;
+
+    /**************************************** Policy ****************************************/
 
     /**
      * @brief Upsert the policy of the namespace
@@ -185,101 +211,6 @@ public:
      * @brief Delete the policy of the namespace, the namespace will have no policy after this operation
      */
     virtual void deletePolicy() = 0;
-
-    // Integration CRUD operations
-
-    /**
-     * @brief Add a new integration to the namespace
-     * @param integration The integration to add
-     * @return std::string UUID of the created integration
-     * @throw std::runtime_error if an integration with the same name already exists
-     */
-    virtual std::string createIntegration(const dataType::Integration& integration) = 0;
-
-    /**
-     * @brief Update an existing integration in the namespace
-     * @param integration The integration to update
-     * @throw std::runtime_error if the integration does not exist, or if updating the integration would cause a name
-     * conflict
-     */
-    virtual void updateIntegration(const dataType::Integration& integration) = 0;
-
-    /**
-     * @brief Delete an integration by its name
-     * @param name Name of the integration to delete
-     * @throw std::runtime_error if the integration does not exist
-     */
-    virtual void deleteIntegrationByName(const std::string& name) = 0;
-
-    /**
-     * @brief Delete an integration by its UUID
-     * @param uuid UUID of the integration to delete
-     * @throw std::runtime_error if the integration does not exist
-     */
-    virtual void deleteIntegrationByUUID(const std::string& uuid) = 0;
-
-    // KVDB CRUD operations
-
-    /**
-     * @brief Add a new KVDB to the namespace
-     * @param name Name of the KVDB to add
-     * @param data Data of the KVDB to add
-     * @return std::string UUID of the created KVDB
-     * @throw std::runtime_error if a KVDB with the same name already exists
-     */
-    virtual std::string createKVDB(const std::string& name, json::Json&& data) = 0;
-
-    /**
-     * @brief Update an existing KVDB in the namespace
-     * @param kvdb The KVDB to update
-     * @throw std::runtime_error if the KVDB does not exist, or if updating the KVDB would cause a name conflict
-     */
-    virtual void updateKVDB(const dataType::KVDB& kvdb) = 0;
-
-    /**
-     * @brief Delete a KVDB by its name
-     * @param name Name of the KVDB to delete
-     * @throw std::runtime_error if the KVDB does not exist
-     */
-    virtual void deleteKVDBByName(const std::string& name) = 0;
-
-    /**
-     * @brief Delete a KVDB by its UUID
-     * @param uuid UUID of the KVDB to delete
-     * @throw std::runtime_error if the KVDB does not exist
-     */
-    virtual void deleteKVDBByUUID(const std::string& uuid) = 0;
-
-    // Asset CRUD operations
-
-    /**
-     * @brief Add a new asset to the namespace (decoder, rule, filter, output.)
-     * @param asset The asset to add
-     * @return std::string UUID of the created asset
-     * @throw std::runtime_error if an asset with the same name already exists
-     */
-    virtual std::string createAsset(const json::Json& asset) = 0;
-
-    /**
-     * @brief Update an existing asset in the namespace (decoder, rule, filter, output.)
-     * @param asset The asset to update
-     * @throw std::runtime_error if the asset does not exist, or if updating the asset would cause a name conflict
-     */
-    virtual void updateAsset(const json::Json& asset) = 0;
-
-    /**
-     * @brief Delete an asset by its name (decoder, rule, filter, output.)
-     * @param name Name of the asset to delete
-     * @throw std::runtime_error if the asset does not exist
-     */
-    virtual void deleteAssetByName(const base::Name& name) = 0;
-
-    /**
-     * @brief Delete an asset by its UUID (decoder, rule, filter, output.)
-     * @param uuid UUID of the asset to delete
-     * @throw std::runtime_error if the asset does not exist
-     */
-    virtual void deleteAssetByUUID(const std::string& uuid) = 0;
 };
 
 /**

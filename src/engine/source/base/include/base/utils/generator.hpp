@@ -51,6 +51,57 @@ inline std::string generateUUIDv4()
 
     return uuid;
 }
+
+/**
+ * @brief Validates if a given string is a valid UUID version 4.
+ *
+ * @param uuid The UUID string to validate
+ * @return true if the string is a valid UUID v4, false otherwise
+ */
+inline bool isValidUUIDv4(const std::string& uuid)
+{
+    if (uuid.length() != UUID_V4_LENGTH)
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i < UUID_V4_LENGTH; ++i)
+    {
+        char c = uuid[i];
+        switch (i)
+        {
+            case 8:
+            case 13:
+            case 18:
+            case 23:
+                if (c != '-')
+                {
+                    return false;
+                }
+                break;
+            case 14:
+                if (c != '4') // UUID version 4
+                {
+                    return false;
+                }
+                break;
+            case 19:
+                if (c != '8' && c != '9' && c != 'a' && c != 'b') // UUID variant
+                {
+                    return false;
+                }
+                break;
+            default:
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+                {
+                    return false;
+                }
+                break;
+        }
+    }
+
+    return true;
+}
 } // namespace base::utils::generators
 
 #endif // _BASE_GENERATORS_HPP

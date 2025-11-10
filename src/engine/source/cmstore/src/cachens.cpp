@@ -174,6 +174,20 @@ std::optional<std::string> CacheNS::getHashByUUID(const std::string& uuid) const
     return std::nullopt;
 }
 
+void CacheNS::updateHashByUUID(const std::string& uuid, const std::string& newHash)
+{
+    std::unique_lock lock(m_mutex);
+    auto it = m_uuidToEntryMap.find(uuid);
+    if (it != m_uuidToEntryMap.end())
+    {
+        it->second.hash = newHash;
+    }
+    else
+    {
+        throw std::runtime_error("UUID does not exist in cache: " + uuid);
+    }
+}
+
 std::optional<std::string> CacheNS::getUUIDByNameType(const std::string& name, ResourceType type) const
 {
     std::shared_lock lock(m_mutex);
@@ -197,6 +211,21 @@ bool CacheNS::existsNameType(const std::string& name, ResourceType type) const
     std::shared_lock lock(m_mutex);
     NameType nameType = std::make_tuple(name, type);
     return m_nameTypeToUUIDMap.find(nameType) != m_nameTypeToUUIDMap.end();
+}
+
+std::vector<std::tuple<std::string, std::string>> CacheNS::getCollection(ResourceType type) const
+{
+    std::shared_lock lock(m_mutex);
+    std::vector<std::tuple<std::string, std::string>> collection;
+    collection.reserve(m_uuidToEntryMap.size());
+    for (const auto& [uuid, entryData] : m_uuidToEntryMap)
+    {
+        if (entryData.type == type)
+        {
+            collection.emplace_back(uuid, entryData.name);
+        }
+    }
+    return collection;
 }
 
 } // namespace cm::store
