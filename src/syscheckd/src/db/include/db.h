@@ -105,6 +105,14 @@ EXPORTED int fim_db_get_count_file_entry();
 EXPORTED int fim_db_get_max_version_file();
 
 /**
+ * @brief Set the version for all entries in file_entry table.
+ *
+ * @param version The version value to set.
+ * @return 0 on success, -1 on error.
+ */
+EXPORTED int fim_db_set_version_file(int version);
+
+/**
  * @brief Makes any necessary queries to get the entry updated in the DB.
  *
  * @param data The information linked to the path to be created or updated.
@@ -207,6 +215,14 @@ EXPORTED int fim_db_get_count_registry_key();
  * @return Maximum version value from registry_key and registry_data tables, 0 if no entries exist.
  */
 EXPORTED int fim_db_get_max_version_registry();
+
+/**
+ * @brief Set the version for all entries in registry tables.
+ *
+ * @param version The version value to set.
+ * @return 0 on success, -1 on error.
+ */
+EXPORTED int fim_db_set_version_registry(int version);
 
 #endif /* WIN32 */
 

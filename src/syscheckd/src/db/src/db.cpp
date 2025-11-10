@@ -308,6 +308,67 @@ int DB::maxVersion(const std::string& tableName)
     return maxVer;
 }
 
+int DB::updateVersion(const std::string& tableName, int version)
+{
+    // Use dbsync to update all rows by setting version field
+    // We'll select all primary keys and update each row
+
+    int retval {0};
+    std::vector<nlohmann::json> rows;
+    auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            rows.push_back(jsonResult);
+        }
+    }};
+
+    try
+    {
+        // Select all rows (only primary keys and version column)
+        auto selectQuery {SelectQuery::builder()
+                          .table(tableName)
+                          .columnList({"*"})  // Get all columns to properly identify rows
+                          .rowFilter("")
+                          .orderByOpt("")
+                          .distinctOpt(false)
+                          .build()};
+
+        FIMDB::instance().executeQuery(selectQuery.query(), callback);
+    }
+    catch (const std::exception& ex)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, std::string("Error selecting rows for version update: ") + ex.what());
+        return -1;
+    }
+
+    // Update version for each row
+    for (auto& row : rows)
+    {
+        row["version"] = version;
+
+        // Use syncRow to update the entry
+        auto updateCallback {[](ReturnTypeCallback, const nlohmann::json&) {}};
+
+        auto syncQuery {SyncRowQuery::builder()
+                        .table(tableName)
+                        .data(row)
+                        .build()};
+
+        try
+        {
+            FIMDB::instance().updateItem(syncQuery.query(), updateCallback);
+        }
+        catch (const std::exception& ex)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, std::string("Error updating version: ") + ex.what());
+            retval = -1;
+        }
+    }
+
+    return retval;
+}
+
 #ifdef __cplusplus
 extern "C"
 {
