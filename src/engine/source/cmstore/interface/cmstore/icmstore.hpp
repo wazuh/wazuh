@@ -12,6 +12,28 @@
 namespace cm::store
 {
 
+namespace 
+{
+
+/**
+ * @brief Available Categories and their Indexes
+ *
+ * This map defines the available categories and their corresponding indexes
+ * in the CMStore system. Any integration or asset should belong to one of these categories.
+ */
+const std::unordered_map<std::string, std::string> AVIABLE_CATEGORIES_AND_INDEXES = {
+    {"UNDEFINED_1", "wazuh-events-v5-access-management"},
+    {"Applications", "wazuh-events-v5-applications"},
+    {"Cloud Services", "wazuh-events-v5-cloud-services"},
+    {"Network Activity", "wazuh-events-v5-network-activity"},
+    {"Security", "wazuh-events-v5-security"},
+    {"System Activity", "wazuh-events-v5-system-activity"},
+    {"UNDEFINED_2", "wazuh-events-v5-other"}
+};
+
+
+}
+
 /**
  * @brief Interface for CMStore Namespace Reader
  *
@@ -29,6 +51,25 @@ public:
      * @return const NamespaceId& The namespace ID
      */
     virtual const NamespaceId& getNamespaceId() const = 0;
+
+    /**
+     * @brief Get all available categories and their indexes in the namespace
+     * @return const std::vector<std::tuple<std::string, std::string>>& Vector of tuples with (Category, Index)
+     */
+    static const std::unordered_map<std::string, std::string>& getAviableCategoriesAndIndexes()
+    {
+        return AVIABLE_CATEGORIES_AND_INDEXES;
+    }
+
+    /**
+     * @brief Check if a category exists
+     * @param category Category name to check (key sensitive)
+     * @return true if the category exists, false otherwise
+     */
+    static bool categoryExists(const std::string& category)
+    {
+        return AVIABLE_CATEGORIES_AND_INDEXES.find(category) != AVIABLE_CATEGORIES_AND_INDEXES.end();
+    }
 
     /**
      * @brief Get all resources of a specific type in the namespace
@@ -131,6 +172,66 @@ public:
      * @throw std::runtime_error if the asset does not exist or failed to be retrieved
      */
     virtual json::Json getAssetByUUID(const std::string& uuid) const = 0;
+
+    /*********************************** Resources ***************************************/
+
+    /**
+     * @brief Get resource by its name
+     *
+     * @tparam T Type of the resource to get (dataType::Integration, dataType::KVDB, json::Json)
+     * @param name Name of the resource
+     * @return auto The resource object
+     * @throw std::runtime_error if the resource does not exist or failed to be retrieved
+     */
+    template<typename T>
+    auto getResourceByName(const std::string& name) const
+    {
+        if constexpr (std::is_same_v<T, dataType::Integration>)
+        {
+            return getIntegrationByName(name);
+        }
+        else if constexpr (std::is_same_v<T, dataType::KVDB>)
+        {
+            return getKVDBByName(name);
+        }
+        else if constexpr (std::is_same_v<T, json::Json>)
+        {
+            return getAssetByName(base::Name(name));
+        }
+        else
+        {
+            static_assert(std::is_same_v<T, void>, "Unsupported type for getResourceByName");
+        }
+    }
+
+    /**
+     * @brief Get resource by its UUID
+     *
+     * @tparam T Type of the resource to get (dataType::Integration, dataType::KVDB, json::Json)
+     * @param uuid UUID of the resource
+     * @return auto The resource object
+     * @throw std::runtime_error if the resource does not exist or failed to be retrieved
+     */
+    template<typename T>
+    auto getResourceByUUID(const std::string& uuid) const
+    {
+        if constexpr (std::is_same_v<T, dataType::Integration>)
+        {
+            return getIntegrationByUUID(uuid);
+        }
+        else if constexpr (std::is_same_v<T, dataType::KVDB>)
+        {
+            return getKVDBByUUID(uuid);
+        }
+        else if constexpr (std::is_same_v<T, json::Json>)
+        {
+            return getAssetByUUID(uuid);
+        }
+        else
+        {
+            static_assert(std::is_same_v<T, void>, "Unsupported type for getResourceByUUID");
+        }
+    }
 
     // Get lock for read transaction
     // virtual TransaccionLock getSharedLock() const = 0;
