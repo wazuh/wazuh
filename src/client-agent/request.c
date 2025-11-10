@@ -154,11 +154,11 @@ int req_push(char * buffer, size_t length) {
             if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
                 switch (errno) {
                 case ECONNREFUSED:
-                    merror("At req_push(): Target '%s' refused connection. The component might be disabled", target);
+                    mdebug1("At req_push(): Target '%s' refused connection. The component might be disabled", target);
                     break;
 
                 default:
-                    merror("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
+                    mdebug1("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
                 }
 
                 // Example: #!-req 16 err Permission denied

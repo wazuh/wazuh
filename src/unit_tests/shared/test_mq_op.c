@@ -371,7 +371,7 @@ void test_reconnect_mq_complex_true(void ** state){
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 
     snprintf(expected_str, OS_SIZE_128, UNABLE_TO_RECONNECT, path, error_message, error_message_id);
-    expect_string(__wrap__merror, formatted_msg, expected_str);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_str);
 
     snprintf(messages[0], OS_SIZE_128, SUCCESSFULLY_RECONNECTED_SOCKET, path);
     expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
@@ -410,7 +410,7 @@ void test_SendMSGAction_socket_error(void ** state){
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
 
-    expect_string(__wrap__merror, formatted_msg, "socketerr (not available).");
+    expect_string(__wrap__mdebug1, formatted_msg, "socketerr (not available).");
 
     int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
 

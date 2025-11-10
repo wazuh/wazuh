@@ -103,7 +103,7 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
         if ((*fn_ptr)()) {
             return OS_INVALID;
         }
-        merror(UNABLE_TO_RECONNECT, path, strerror(errno), errno);
+        mdebug1(UNABLE_TO_RECONNECT, path, strerror(errno), errno);
         sleep(5);
     }
 
@@ -236,7 +236,7 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
     if ((__mq_rcode = OS_SendUnix(queue, tmpstr, 0)) < 0) {
         /* Error on the socket */
         if (__mq_rcode == OS_SOCKTERR) {
-            merror("socketerr (not available).");
+            mdebug1("socketerr (not available).");
             close(queue);
             return (-1);
         }

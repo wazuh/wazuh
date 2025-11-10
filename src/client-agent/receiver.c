@@ -101,7 +101,7 @@ int receive_msg()
 #ifndef WIN32
                 if (agt->execdq >= 0) {
                     if (OS_SendUnix(agt->execdq, tmp_msg, 0) < 0) {
-                        merror("Error communicating with execd");
+                        mdebug1("Error communicating with execd");
                     }
                 }
 #else

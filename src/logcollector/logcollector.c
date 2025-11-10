@@ -1930,9 +1930,9 @@ void * w_output_thread(void * args){
             if (result != 0) {
                 if (result != 1) {
 #ifdef CLIENT
-                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    mdebug1("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    mdebug1("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.
@@ -1944,7 +1944,7 @@ void * w_output_thread(void * args){
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
                     if (result != 1) {
-                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+                        mdebug1("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
                     }
                     result = 1;
                 }
@@ -1962,7 +1962,7 @@ void * w_output_thread(void * args){
                 result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
                                       message->queue_mq, message->log_target);
                 if (result < 0) {
-                    merror(QUEUE_SEND);
+                    mdebug1(QUEUE_SEND);
 
                     sleep(sleep_time);
 
