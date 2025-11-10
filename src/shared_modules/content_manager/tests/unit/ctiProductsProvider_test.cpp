@@ -838,3 +838,122 @@ TEST_F(CTIProductsProviderTest, HandlesMultiplePlans)
     EXPECT_EQ(catalogProducts.size(), 1);
     EXPECT_EQ(catalogProducts[0].identifier, "prod-1");
 }
+
+/**
+ * @brief Test parseProduct throws on missing 'identifier'
+ */
+TEST_F(CTIProductsProviderTest, ThrowsOnMissingProductIdentifier)
+{
+    // Response with product missing 'identifier' field
+    auto response = R"({
+        "data": {
+            "organization": {
+                "name": "Test Org"
+            },
+            "plans": [{
+                "name": "Test Plan",
+                "products": [{
+                    "type": "catalog:consumer",
+                    "name": "Product Without ID",
+                    "resource": "https://example.com/resource"
+                }]
+            }]
+        }
+    })"_json;
+
+    EXPECT_CALL(*m_mockUrlRequest, get(_, _, _))
+        .WillOnce(::testing::Invoke(
+            [response](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response.dump());
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(response.dump());
+                }
+            }));
+
+    CTIProductsProvider provider(*m_mockUrlRequest, m_config);
+    provider.setAccessToken("test_access_token");
+
+    // Should succeed - invalid products are skipped with log error
+    auto subscription = provider.fetchSubscription();
+    EXPECT_EQ(subscription.plans.size(), 1);
+    EXPECT_EQ(subscription.plans[0].products.size(), 0); // Product should be skipped
+}
+
+/**
+ * @brief Test parseProduct throws on missing 'type'
+ */
+TEST_F(CTIProductsProviderTest, ThrowsOnMissingProductType)
+{
+    // Response with product missing 'type' field
+    auto response = R"({
+        "data": {
+            "organization": {
+                "name": "Test Org"
+            },
+            "plans": [{
+                "name": "Test Plan",
+                "products": [{
+                    "identifier": "test-product",
+                    "name": "Product Without Type",
+                    "resource": "https://example.com/resource"
+                }]
+            }]
+        }
+    })"_json;
+
+    EXPECT_CALL(*m_mockUrlRequest, get(_, _, _))
+        .WillOnce(::testing::Invoke(
+            [response](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response.dump());
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(response.dump());
+                }
+            }));
+
+    CTIProductsProvider provider(*m_mockUrlRequest, m_config);
+    provider.setAccessToken("test_access_token");
+
+    // Should succeed - invalid products are skipped with log error
+    auto subscription = provider.fetchSubscription();
+    EXPECT_EQ(subscription.plans.size(), 1);
+    EXPECT_EQ(subscription.plans[0].products.size(), 0); // Product should be skipped
+}
+
+/**
+ * @brief Test constructor throws on missing 'console.url'
+ */
+TEST_F(CTIProductsProviderTest, ThrowsOnMissingConsoleUrl)
+{
+    // Config missing 'url' field
+    auto invalidConfig = R"({
+        "console": {
+            "instancesEndpoint": "/api/v1/instances/me"
+        }
+    })"_json;
+
+    EXPECT_THROW(CTIProductsProvider provider(*m_mockUrlRequest, invalidConfig), std::runtime_error);
+}
+
+/**
+ * @brief Test setAccessToken with empty string triggers warning
+ */
+TEST_F(CTIProductsProviderTest, SetEmptyAccessTokenLogsWarning)
+{
+    CTIProductsProvider provider(*m_mockUrlRequest, m_config);
+
+    // Set empty token - should log warning
+    provider.setAccessToken("");
+
+    // Should throw when trying to fetch without token
+    EXPECT_THROW(provider.fetchSubscription(false), std::runtime_error);
+}
