@@ -612,6 +612,42 @@ size_t syscom_dispatch(char* command, size_t command_len, char** output);
  */
 size_t syscom_getconfig(const char* section, char** output);
 
+/**
+ * @brief Pauses FIM scanning
+ *
+ * @return 0 on success, -1 on error
+ */
+int fim_execute_pause(void);
+
+/**
+ * @brief Flushes FIM synchronization pending data
+ *
+ * @return 0 on success, -1 on error
+ */
+int fim_execute_flush(void);
+
+/**
+ * @brief Gets the FIM maximum data version
+ *
+ * @return Version number, -1 on error
+ */
+int fim_execute_get_version(void);
+
+/**
+ * @brief Sets the FIM maximum data version
+ *
+ * @param version The version to set
+ * @return 0 on success, -1 on error
+ */
+int fim_execute_set_version(int version);
+
+/**
+ * @brief Resumes FIM scanning
+ *
+ * @return 0 on success, -1 on error
+ */
+int fim_execute_resume(void);
+
 #ifdef WIN_WHODATA
 /**
  * @brief Updates the SACL of an specific file
