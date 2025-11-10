@@ -1357,6 +1357,22 @@ INDEXER_TEMPLATES_SERVER_STATES := \
 INDEXER_TEMPLATES_SERVER_STREAMS := \
 	alerts.json
 
+# WCS flat files
+WCS_FLAT_DIR := external/wcs-flat-files
+WCS_FLAT_STATELESS_PATH := ecs/stateless
+
+# TODO: can I avoid the list and just bring everything in that dir?
+WCS_FLAT_YAML_FILES := \
+	access-management-ecs-flat.yml \
+	applications-ecs-flat.yml \
+	network-activity-ecs-flat.yml \
+	other-ecs-flat.yml \
+	security-ecs-flat.yml \
+	system-activity-ecs-flat.yml
+
+# Create WCS flat file paths
+WCS_FLAT_FILES := $(WCS_FLAT_YAML_FILES:%=$(WCS_FLAT_DIR)/%)
+
 # Select templates based on TARGET
 ifeq (${TARGET}, agent)
 INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE)
@@ -1369,7 +1385,7 @@ endif
 INDEXER_TEMPLATE_FILES := $(INDEXER_TEMPLATES_STATES:%=$(INDEXER_PLUGINS_DIR)/%) $(INDEXER_TEMPLATES_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%)
 
 .PHONY: deps
-deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES)
+deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES)
 
 external/$(CPYTHON).tar.gz:
 # Python interpreter
@@ -1463,6 +1479,27 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
+		echo "curl -f -s -o $@ $$url"; \
+		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+			success=1; \
+			break; \
+		fi; \
+	done; \
+	if [ $$success -eq 0 ]; then \
+		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		exit 1; \
+	fi
+
+# WCS flat files directory
+$(WCS_FLAT_DIR):
+	mkdir -p $(WCS_FLAT_DIR)
+
+# Rule for WCS flat YAML files
+$(WCS_FLAT_DIR)/%-ecs-flat.yml: | $(WCS_FLAT_DIR)
+	@success=0; \
+	subdir=$(patsubst %-ecs-flat.yml,%,$(@F)); \
+	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$$subdir/docs/ecs_flat.yml"; \
 		echo "curl -f -s -o $@ $$url"; \
 		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
 			success=1; \
@@ -2449,7 +2486,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??* $(INDEXER_PLUGINS_DIR)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??* $(INDEXER_PLUGINS_DIR) $(WCS_FLAT_DIR)
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
