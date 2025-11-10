@@ -377,7 +377,7 @@ Feature: Catalog API Management
     Then I should receive a failed response indicating "Could not find builder for stage 'parse|event.original'"
 
 
-  Scenario: Try to validate the resource that map invalid value
+  Scenario: Validate the resource that maps a literal value to an array field
     Given I have a clear catalog
     When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
@@ -385,7 +385,7 @@ Feature: Catalog API Management
         map:
           - event.category: test
       """
-    Then I should receive a failed response indicating "Failed to build operation 'event.category: map("test")': Operation expects a non-array, but field 'event.category' is"
+    Then I should receive a success response
 
 
   Scenario: Try to validate the resource that has invalid check-map

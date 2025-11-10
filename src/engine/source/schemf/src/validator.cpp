@@ -108,7 +108,7 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     }
 
     // When validating json types, if the schema type has a validator, use it.
-    return ValidationResult(token.isArray() ? asArray(entry.validator) : entry.validator);
+    return ValidationResult(asArray(entry.validator));
 }
 
 base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& name, const STypeToken& token) const
@@ -128,7 +128,7 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     {
         if (compatible->second)
         {
-            return ValidationResult(token.isArray() ? asArray(entry.validator) : entry.validator);
+            return ValidationResult(asArray(entry.validator));
         }
 
         return ValidationResult();
@@ -146,9 +146,9 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     const auto& entry = m_compatibles.at(m_schema.getType(name));
 
     // When validating json values, if the schema type has a validator, validate the value
+    auto validator = asArray(entry.validator);
     if (entry.validator)
     {
-        auto validator = token.isArray() ? asArray(entry.validator) : entry.validator;
         auto res = validator(token.value());
 
         if (base::isError(res))
@@ -173,21 +173,11 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     }
 
     // If no token, runtime validation only
+    auto sType = m_schema.getType(name);
+    const auto& entry = m_compatibles.at(sType);
     if (!token)
     {
-        auto sType = m_schema.getType(name);
-        const auto& entry = m_compatibles.at(sType);
-        auto validator = m_schema.isArray(name) ? asArray(entry.validator) : entry.validator;
-        return ValidationResult(validator);
-    }
-
-    // If array missmatch, return error
-    if (m_schema.isArray(name) != token->isArray())
-    {
-        return base::Error {fmt::format("Operation expects {}, but field '{}' is{}",
-                                        token->isArray() ? "an array" : "a non-array",
-                                        name,
-                                        m_schema.isArray(name) ? "" : " not")};
+        return ValidationResult(asArray(entry.validator));
     }
 
     // Call the appropriate validation function based on the token type
@@ -205,9 +195,6 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     }
 
     // Base token do not perform build validation aside from array missmatch, return success with runtime validator
-    auto sType = m_schema.getType(name);
-    const auto& entry = m_compatibles.at(sType);
-    auto validator = m_schema.isArray(name) ? asArray(entry.validator) : entry.validator;
-    return ValidationResult(validator);
+    return ValidationResult(asArray(entry.validator));
 }
 } // namespace schemf

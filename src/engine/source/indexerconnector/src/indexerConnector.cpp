@@ -31,7 +31,7 @@ constexpr auto PASSWORD_KEY {"password"};
 // This change reduces the bulk size from 1000 to 500 to mitigate delays caused by frequent
 // dynamic mapping updates when indexing documents with new custom fields. Once the issue
 // is resolved, the bulk size should be restored to its original value.
-constexpr auto ELEMENTS_PER_BULK {500};
+constexpr auto ELEMENTS_PER_BULK {250};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
 constexpr auto MERGED_CA_PATH {"/var/lib/wazuh-server/tmp/root-ca-merged.pem"};

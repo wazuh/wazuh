@@ -21,7 +21,6 @@ Field::Field(const Parameters& parameters)
 
     m_type = parameters.type;
     m_properties = parameters.properties;
-    m_isArray = parameters.isArray;
 }
 
 const std::map<std::string, Field>& Field::properties() const

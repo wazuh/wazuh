@@ -184,8 +184,7 @@ class Field:
     """
 
     def __init__(
-            self, module: str, name: str, description: str, indexer_type: IndexerType, array: bool = False,
-            indexer_details: dict = None):
+            self, module: str, name: str, description: str, indexer_type: IndexerType, indexer_details: dict = None):
         # Metadata
         self.module = module
         self.name = name
@@ -193,7 +192,6 @@ class Field:
 
         # Type info
         self.indexer_type = indexer_type
-        self.array = array
         self.json_type = indexer_to_json_type(indexer_type)
         self.indexer_details = indexer_details
 
@@ -225,24 +223,13 @@ class Field:
         """
 
         obj = dict()
-        obj['description'] = f'Module: {self.module}\nIndexerType: {self.indexer_type}\nArray: {self.array}\n\n{self.description}'
+        obj['description'] = f'Module: {self.module}\nIndexerType: {self.indexer_type}\n\n{self.description}'
 
         # Prepare the type schema description
-        _type = dict()
-        _type['type'] = [str(self.json_type)]
+        obj['type'] = [str(self.json_type)]
         if self.json_type is not JsonType.STRING:
-            _type['type'].append(str(JsonType.STRING))
-            _type['pattern'] = HELPER_REF_STR_PATTERN
-
-        # Add the type info
-        if not self.array:
-            # If it is not array, add it to the current property
-            obj = {**obj, **_type}
-        else:
-            # Add array and pattern to current property, and add the _type to the items
-            obj['type'] = [str(JsonType.STRING), str(JsonType.ARRAY)]
+            obj['type'].append(str(JsonType.STRING))
             obj['pattern'] = HELPER_REF_STR_PATTERN
-            obj['items'] = _type
 
         return obj
 
@@ -327,10 +314,6 @@ class FieldTree:
                     properties[full_name]['additionalProperties'] = False
                     properties[full_name]['properties'] = dict()
                     next_properties = properties[full_name]['properties']
-                elif str(JsonType.ARRAY) in field_jschema['type'] and str(JsonType.OBJECT) in field_jschema['items']['type']:
-                    properties[full_name]['items']['additionalProperties'] = False
-                    properties[full_name]['items']['properties'] = dict()
-                    next_properties = properties[full_name]['items']['properties']
                 else:
                     raise Exception(
                         f'{full_name} field node has children but is not object')

@@ -20,7 +20,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
         }
 
         // Validation
-        auto result = buildCtx->validator().validate(targetField.dotPath(), schemf::isArrayToken());
+        auto result = buildCtx->validator().validate(targetField.dotPath(), schemf::elementValidationToken());
         if (base::isError(result))
         {
             throw std::runtime_error(base::getError(result).message);
@@ -33,7 +33,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
             targetFieldtype = typeToJType(buildCtx->validator().getType(targetField.dotPath()));
         }
 
-        auto arrayValidator = base::getResponse<schemf::ValidationResult>(result).getValidator();
+        auto valueValidator = base::getResponse<schemf::ValidationResult>(result).getValidator();
 
         // Transform the vector of arguments into a vector of map ops
         using AppendOp = std::function<base::OptError(std::vector<json::Json>&, json::Json::Type&, const base::Event&)>;
@@ -188,7 +188,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
         return [successTrace,
                 runState = buildCtx->runState(),
                 targetField = targetField.jsonPath(),
-                arrayValidator,
+                valueValidator,
                 failureTrace,
                 failureNotArray,
                 referencesNotFound,
@@ -230,10 +230,9 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 jArray.appendJson(item);
             }
 
-            // Validate the array
-            if (arrayValidator != nullptr)
+            if (valueValidator != nullptr)
             {
-                auto res = arrayValidator(jArray);
+                auto res = valueValidator(jArray);
                 if (base::isError(res))
                 {
                     RETURN_FAILURE(runState, event, failureTrace + base::getError(res).message);
