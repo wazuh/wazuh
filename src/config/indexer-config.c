@@ -32,11 +32,17 @@ int Read_Indexer(const char* config_file)
         return OS_INVALID;
     }
 
+    bool is_empty = false;
+    if (strcmp(indexer_config_str, "{}") == 0) {
+        mdebug1("Empty configuration for module 'indexer'");
+        is_empty = true;
+    }
+
     indexer_config = cJSON_Parse(indexer_config_str);
     cJSON_free(indexer_config_str);
 
-    return NULL != indexer_config ? OS_SUCCESS : OS_INVALID;
+    return (NULL != indexer_config && !is_empty) ? OS_SUCCESS : OS_INVALID;
 }
 
-#endif
-#endif
+#endif // WIN32
+#endif // CLIENT
