@@ -80,9 +80,9 @@ class IAgentSyncProtocol
         /// @param timeout Timeout duration for waiting for server responses
         /// @param retries Number of retry attempts for each message
         /// @param maxEps Maximum events per second (0 = unlimited)
-        /// @param globalVersion Global version to include in the Start message
+        /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
         /// @return true if synchronization completed successfully, false otherwise
-        virtual bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, uint64_t globalVersion) = 0;
+        virtual bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, uint64_t globalVersion = 0) = 0;
 
         /// @brief Notifies the manager about data cleaning for specified indices.
         ///

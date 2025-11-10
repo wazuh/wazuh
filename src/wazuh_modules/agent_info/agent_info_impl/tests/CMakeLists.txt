@@ -73,3 +73,8 @@ add_test(NAME AgentInfoCoordinationTest COMMAND agent_info_coordination_test)
 add_executable(agent_info_successful_coordination_test agent_info_successful_coordination_test.cpp)
 target_link_libraries(agent_info_successful_coordination_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoSuccessfulCoordinationTest COMMAND agent_info_successful_coordination_test)
+
+# Agent Info Integrity Check Tests (periodic integrity checks, CHECK modes)
+add_executable(agent_info_integrity_test agent_info_integrity_test.cpp)
+target_link_libraries(agent_info_integrity_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoIntegrityTest COMMAND agent_info_integrity_test)

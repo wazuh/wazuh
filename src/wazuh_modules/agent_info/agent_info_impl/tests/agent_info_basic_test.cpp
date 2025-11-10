@@ -88,7 +88,7 @@ TEST_F(AgentInfoImplTest, ConstructorInitializesSuccessfully)
 TEST_F(AgentInfoImplTest, StartMethodLogsCorrectly)
 {
     m_logOutput.clear();
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -116,7 +116,7 @@ TEST_F(AgentInfoImplTest, DestructorCallsStop)
 TEST_F(AgentInfoImplTest, StartAndStopSequence)
 {
     m_logOutput.clear();
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -129,11 +129,11 @@ TEST_F(AgentInfoImplTest, StartAndStopSequence)
 
 TEST_F(AgentInfoImplTest, MultipleStartCallsSucceed)
 {
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -206,6 +206,18 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
     EXPECT_CALL(*m_mockDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
 
+    // Mock selectRows to invoke callback with default values
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json data;
+        data["should_sync_metadata"] = 0;
+        data["should_sync_groups"] = 0;
+        data["last_metadata_integrity"] = 0;
+        data["last_groups_integrity"] = 0;
+        callback(SELECTED, data);
+    }));
+
     // Use atomic flag to ensure thread synchronization
     std::atomic<bool> startedFirstIteration{false};
 
@@ -225,7 +237,7 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
 
     // Start with a shouldContinue that keeps running until stopped
     int iterations = 0;
-    m_agentInfo->start(1, [&iterations, &startedFirstIteration]()
+    m_agentInfo->start(1, 86400, [&iterations, &startedFirstIteration]()
     {
         iterations++;
 

@@ -156,7 +156,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationWithNoModulesAvailable)
 
     m_logOutput.clear();
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -264,7 +264,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CompleteSuccessfulCoordinationFlow)
     commandLog.clear();
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -366,7 +366,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulFlushOperation)
     m_agentInfo->setIsAgent(true);
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -458,7 +458,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulResumeOperation)
     m_agentInfo->setIsAgent(true);
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -542,7 +542,7 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationCompletionMessage)
 
     m_logOutput.clear();
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });

@@ -118,7 +118,7 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -170,7 +170,7 @@ TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
                   );
 
     // Start will trigger updateChanges which will fail
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
