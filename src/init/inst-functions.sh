@@ -1011,6 +1011,17 @@ InstallCommon()
 }
 
 
+generateSchemaFiles()
+{
+    echo "Generating schema files..."
+    python3 engine/tools/engine-schema/engine_schema.py generate --allowed-fields-path engine/ruleset/schemas/allowed-fields.json --output-dir engine/ruleset/schemas/ --wcs-path external/wcs-flat-files/
+    if [ $? != 0 ]; then
+        echo "Error: Failed to generate schema files."
+        exit 1
+    fi
+    echo "Schema files generated successfully."
+}
+
 installEngineStore()
 {
     DEST_FULL_PATH=${INSTALLDIR}/engine
@@ -1076,6 +1087,8 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-analysisd
+
+    generateSchemaFiles
 
     installEngineStore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
