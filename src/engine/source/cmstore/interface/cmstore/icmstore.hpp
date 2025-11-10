@@ -12,7 +12,7 @@
 namespace cm::store
 {
 
-namespace 
+namespace
 {
 
 /**
@@ -28,11 +28,9 @@ const std::unordered_map<std::string, std::string> AVIABLE_CATEGORIES_AND_INDEXE
     {"Network Activity", "wazuh-events-v5-network-activity"},
     {"Security", "wazuh-events-v5-security"},
     {"System Activity", "wazuh-events-v5-system-activity"},
-    {"UNDEFINED_2", "wazuh-events-v5-other"}
-};
+    {"UNDEFINED_2", "wazuh-events-v5-other"}};
 
-
-}
+} // namespace
 
 /**
  * @brief Interface for CMStore Namespace Reader
@@ -345,9 +343,10 @@ public:
     /**
      * @brief Create a new namespace
      * @param nsId NamespaceId of the namespace to create
+     * @return std::shared_ptr<ICMstoreNS> Shared pointer to the created namespace
      * @throw std::runtime_error if the namespace already exists
      */
-    virtual void createNamespace(const NamespaceId& nsId) = 0;
+    virtual std::shared_ptr<ICMstoreNS> createNamespace(const NamespaceId& nsId) = 0;
 
     /**
      * @brief Clone an existing namespace into a new namespace
