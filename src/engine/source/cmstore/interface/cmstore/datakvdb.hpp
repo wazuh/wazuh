@@ -39,6 +39,7 @@ namespace jsonkvdb
 constexpr std::string_view PATH_KEY_ID = "/id";
 constexpr std::string_view PATH_KEY_NAME = "/title";
 constexpr std::string_view PATH_KEY_CONTENT = "/content";
+constexpr std::string_view PATH_KEY_ENABLED = "/enabled";
 } // namespace jsonkvdb
 
 class KVDB
@@ -47,21 +48,25 @@ private:
     std::string m_uuid;
     std::string m_name;
     json::Json m_data;
+    bool m_enabled;
 
     std::string m_hash;
 
     void updateHash()
     {
         // Create a hash based on the KVDB content
-        std::string toHash = m_data.str();
+        std::string toHash = m_data.str() + (m_enabled ? "1" : "0");
         m_hash = base::utils::hash::sha256(toHash);
     }
 
 public:
-    KVDB(std::string uuid, std::string name, json::Json&& data)
+    KVDB() = delete;
+
+    KVDB(std::string uuid, std::string name, json::Json&& data, bool enabled)
         : m_uuid(std::move(uuid))
         , m_name(std::move(name))
         , m_data(std::move(data))
+        , m_enabled(enabled)
     {
         if (m_uuid.empty())
         {
@@ -95,7 +100,13 @@ public:
             throw std::runtime_error("KVDB JSON must have a valid content object");
         }
 
-        return {std::move(uuidOpt.value()), std::move(nameOpt.value()), std::move(contentOpt.value())};
+        auto enabledOpt = kvdbJson.getBool(jsonkvdb::PATH_KEY_ENABLED);
+        if (!enabledOpt.has_value())
+        {
+            throw std::runtime_error("KVDB JSON must have a valid enabled field");
+        }
+
+        return {std::move(uuidOpt.value()), std::move(nameOpt.value()), std::move(contentOpt.value()), *enabledOpt};
     }
 
     json::Json toJson() const
@@ -113,6 +124,7 @@ public:
     const std::string& getUUID() const { return m_uuid; }
     const std::string& getName() const { return m_name; }
     const std::string& getHash() const { return m_hash; }
+    bool isEnabled() const { return m_enabled; }
 
     ~KVDB() = default;
 };

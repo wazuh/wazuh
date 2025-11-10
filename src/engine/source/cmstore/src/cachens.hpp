@@ -127,6 +127,14 @@ public:
     std::optional<std::string> getHashByUUID(const std::string& uuid) const;
 
     /**
+     * @brief Updates the hash associated with the given UUID.
+     * @param uuid The UUID of the entry to update
+     * @param newHash The new hash string to set
+     * @throw std::runtime_error if the UUID does not exist in the cache
+     */
+    void updateHashByUUID(const std::string& uuid, const std::string& newHash);
+
+    /**
      * @brief Retrieves the UUID associated with the given name and type.
      * @param name The name to look up
      * @param type The type to look up
@@ -147,6 +155,14 @@ public:
      * @return true if the name-type pair exists, false otherwise
      */
     bool existsNameType(const std::string& name, ResourceType type) const;
+
+    /**
+     * @brief Get all entries of a specific resource type.
+     *
+     * @param type ResourceType to filter
+     * @return std::vector<std::tuple<std::string, std::string>> Vector of tuples with (UUID, Name)
+     */
+    std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const;
 };
 
 } // namespace cm::store

@@ -14,15 +14,20 @@ namespace cm::store
 
 namespace pathns
 {
+constexpr std::string_view JSON_ID_PATH = "/id";           ///< Universal path for UUID field in JSON/YML objects
+constexpr std::string_view YML_PAIR_FMT = R"(id: "{}"\n)"; ///< YML pair format for UUID field
+// Files and extensions
 constexpr std::string_view CACHE_NS_FILE = "cache_ns.json";
-// KVDB
+constexpr std::string_view ASSET_EXTENSION = ".yml";
+constexpr std::string_view POLICY_FILE = "policy.json";
+// Directories
 constexpr std::string_view KVDBS_DIR = "kvdbs";
-
-
-constexpr std::string_view POLICIES_DIR = "policies";
+constexpr std::string_view DECODERS_DIR = "decoders";
+constexpr std::string_view OUTPUTS_DIR = "outputs";
+constexpr std::string_view RULES_DIR = "rules";
+constexpr std::string_view FILTERS_DIR = "filters";
 constexpr std::string_view INTEGRATIONS_DIR = "integrations";
 
-constexpr std::string_view ASSETS_DIR = "assets";
 } // namespace pathns
 
 /**
@@ -35,8 +40,8 @@ private:
     NamespaceId m_namespaceId;           ///< Namespace ID associated to this CMStoreNS
     std::filesystem::path m_storagePath; ///< Path to the storage directory for this namespace
     std::filesystem::path m_cachePath;   ///< Path to the cache file for this namespace
-    CacheNS m_cache;                  ///< Cache for UUID to name-type mappings
-    mutable std::shared_mutex m_mutex;        ///< Mutex for file and cache access
+    CacheNS m_cache;                     ///< Cache for UUID to name-type mappings
+    mutable std::shared_mutex m_mutex;   ///< Mutex for file and cache access
 
     /**
      * @brief Flush the current cache to disk
@@ -44,7 +49,50 @@ private:
      */
     void flushCacheToDisk();
 
-    // TODO: Load and rebuild cache from disk on construction
+    /**
+     * @brief Load the cache from disk into memory
+     *
+     * If fail to load, the cache will by rebuilt from the storage directory
+     * If fail to rebuild, an exception will be thrown
+     * @throw std::runtime_error if loading or rebuilding the cache fails
+     */
+    void loadCacheFromDisk();
+
+    /**
+     * @brief Rebuild the cache by scanning the storage directory
+     * @throw std::runtime_error if rebuilding the cache fails
+     */
+    void rebuildCacheFromStorage();
+
+    /**
+     * @brief Upsert the UUID field in the given YML/Json content and compute content hash
+     *
+     * If the UUID field already exists, it will be checked for validity and returned.
+     * If it does not exist, a new UUID will be generated, inserted into the content, and returned.
+     * Additionally, computes a hash of the normalized JSON content (compact format),
+     * ignoring formatting differences and comments.
+     * @param ymlContent YML content as a string (will be modified if UUID is added)
+     * @return std::pair<std::string, std::string> UUID and computed hash of the content
+     * @throw std::runtime_error if the existing UUID is invalid or content parsing fails
+     */
+    std::pair<std::string, std::string> upsertUUIDAndComputeHash(std::string& ymlContent);
+
+    /**
+     * @brief Compute the hash for a resource based on its YML content, ignoring the formatting
+     * @param ymlContent YML content of the resource
+     * @return std::string Computed hash string
+     */
+    std::string computeHashForResource(const std::string& ymlContent) const;
+
+    /**
+     * @brief Get the path for a resource based on its name and type
+     * @param name Name of the resource
+     * @param type Type of the resource
+     * @return std::filesystem::path Path to the resource
+     * @throw std::runtime_error if the resource type or name is invalid
+     */
+    std::filesystem::path getResourcePaths(const std::string& name, ResourceType type) const;
+
 public:
     /**
      * @brief Construct a new CMStoreNS
@@ -68,48 +116,79 @@ public:
             throw std::runtime_error("Storage path is not a directory: " + m_storagePath.string());
         }
 
-        // TODO: Load cache from disk
+        // Load or rebuild cache
+        try
+        {
+            loadCacheFromDisk();
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("Failed to initialize CMStoreNS for namespace '{}': {}", m_namespaceId.toStr(), e.what()));
+        }
     }
 
     ~CMStoreNS() override = default; // TODO Dump cache to disk on destruction
 
+    /***********************************  General Methods ************************************/
+
     /** @copydoc ICMStoreNSReader::getNamespaceId */
     const NamespaceId& getNamespaceId() const override;
 
+    /** @copydoc ICMStoreNSReader::getCollection */
     std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const override;
+    /** @copydoc ICMStoreNSReader::resolveNameFromUUID */
     std::tuple<std::string, ResourceType> resolveNameFromUUID(const std::string& uuid) const override;
+    /** @copydoc ICMStoreNSReader::resolveUUIDFromName */
     std::string resolveUUIDFromName(const std::string& name, ResourceType type) const override;
 
+    /** @copydoc ICMStoreNSReader::assetExistsByName */
+    bool assetExistsByName(const base::Name& name) const override;
+    /** @copydoc ICMStoreNSReader::assetExistsByUUID */
+    bool assetExistsByUUID(const std::string& uuid) const override;
+
+    /*********************************** General Resource ************************************/
+
+    /** @copydoc ICMStoreNS::createResource */
+    std::string createResource(const std::string& name, ResourceType type, const std::string& ymlContent) override;
+    /** @copydoc ICMStoreNS::updateResourceByName */
+    void updateResourceByName(const std::string& name, ResourceType type, const std::string& ymlContent) override;
+    /** @copydoc ICMStoreNS::updateResourceByUUID */
+    void updateResourceByUUID(const std::string& uuid, const std::string& ymlContent) override;
+    /** @copydoc ICMStoreNS::deleteResourceByName */
+    void deleteResourceByName(const std::string& name, ResourceType type) override;
+    /** @copydoc ICMStoreNS::deleteResourceByUUID */
+    void deleteResourceByUUID(const std::string& uuid) override;
+
+    /**************************************** Policy ****************************************/
+
+    /** @copydoc ICMStoreNSReader::getPolicy */
     dataType::Policy getPolicy() const override;
+    /** @copydoc ICMStoreNS::upsertPolicy */
     void upsertPolicy(const dataType::Policy& policy) override;
+    /** @copydoc ICMStoreNS::deletePolicy */
     void deletePolicy() override;
 
+    /************************************* INTEGRATIONS *************************************/
+
+    /** @copydoc ICMStoreNSReader::getIntegrationByName */
     dataType::Integration getIntegrationByName(const std::string& name) const override;
+    /** @copydoc ICMStoreNSReader::getIntegrationByUUID */
     dataType::Integration getIntegrationByUUID(const std::string& uuid) const override;
-    bool integrationExistsByName(const std::string& name) const override;
-    bool integrationExistsByUUID(const std::string& uuid) const override;
-    std::string createIntegration(const dataType::Integration& integration) override;
-    void updateIntegration(const dataType::Integration& integration) override;
-    void deleteIntegrationByName(const std::string& name) override;
-    void deleteIntegrationByUUID(const std::string& uuid) override;
 
-    json::Json getKVDBByName(const std::string& name) const override;
-    json::Json getKVDBByUUID(const std::string& uuid) const override;
-    bool kvdbExistsByName(const std::string& name) const override;
-    bool kvdbExistsByUUID(const std::string& uuid) const override;
-    std::string createKVDB(const std::string& name, json::Json&& data) override;
-    void updateKVDB(const dataType::KVDB& kvdb) override;
-    void deleteKVDBByName(const std::string& name) override;
-    void deleteKVDBByUUID(const std::string& uuid) override;
+    /**************************************** KVDB ******************************************/
 
+    /** @copydoc ICMStoreNSReader::getKVDBByName */
+    dataType::KVDB getKVDBByName(const std::string& name) const override;
+    /** @copydoc ICMStoreNSReader::getKVDBByUUID */
+    dataType::KVDB getKVDBByUUID(const std::string& uuid) const override;
+
+    /**************************************** ASSETS ****************************************/
+
+    /** @copydoc ICMStoreNSReader::getAssetByName */
     json::Json getAssetByName(const base::Name& name) const override;
+    /** @copydoc ICMStoreNSReader::getAssetByUUID */
     json::Json getAssetByUUID(const std::string& uuid) const override;
-    bool assetExistsByName(const base::Name& name) const override;
-    bool assetExistsByUUID(const std::string& uuid) const override;
-    std::string createAsset(const json::Json& asset) override;
-    void updateAsset(const json::Json& asset) override;
-    void deleteAssetByName(const base::Name& name) override;
-    void deleteAssetByUUID(const std::string& uuid) override;
 };
 } // namespace cm::store
 

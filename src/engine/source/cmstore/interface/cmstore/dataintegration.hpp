@@ -74,15 +74,18 @@ private:
         {
             toHash += uuid;
         }
-        
+
         m_hash = base::utils::hash::sha256(toHash);
     }
 
 public:
     ~Integration() = default;
-    Integration() = default;
+    Integration() = delete;
 
-    Integration(std::string uuid, std::string name, bool enabled, std::string category,
+    Integration(std::string uuid,
+                std::string name,
+                bool enabled,
+                std::string category,
                 std::optional<base::Name> defaultParent,
                 std::vector<std::string> kvdbsByUUID,
                 std::vector<std::string> decodersByUUID)
@@ -225,7 +228,6 @@ public:
     const std::string& getName() const { return m_name; }
     const std::string& getUUID() const { return m_uuid; }
     bool isEnabled() const { return m_enabled; }
-
 };
 
 } // namespace cm::store::dataType

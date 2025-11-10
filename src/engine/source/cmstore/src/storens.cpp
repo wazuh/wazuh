@@ -1,10 +1,14 @@
 #include <base/logging.hpp>
 
+#include <cmstore/types.hpp>
+
 #include "fileutils.hpp"
 #include "storens.hpp"
 
 namespace cm::store
 {
+
+/************************************** Helpers  ****************************************/
 
 void CMStoreNS::flushCacheToDisk()
 {
@@ -18,237 +22,471 @@ void CMStoreNS::flushCacheToDisk()
     LOG_TRACE("Cache flushed to disk successfully at {}", m_cachePath.string());
 }
 
+void CMStoreNS::loadCacheFromDisk()
+{
+    try
+    {
+        json::Json cacheJson = fileutils::readJsonFile(m_cachePath);
+        m_cache.deserialize(cacheJson);
+        LOG_TRACE("Cache loaded from disk successfully");
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to load cache from disk: {}. Rebuilding cache from storage.", e.what());
+        rebuildCacheFromStorage();
+        flushCacheToDisk();
+    }
+}
+
+void CMStoreNS::rebuildCacheFromStorage()
+{
+    LOG_TRACE("Rebuilding cache from storage...");
+    m_cache.reset();
+
+    // Iterate over all resource type directories
+    for (const auto& dirEntry : std::filesystem::directory_iterator(m_storagePath))
+    {
+        if (!dirEntry.is_directory())
+        {
+            continue;
+        }
+
+        // Check resource type from directory name
+        ResourceType rType;
+        const auto dirName = dirEntry.path().filename().string();
+        if (dirName == pathns::DECODERS_DIR)
+        {
+            rType = ResourceType::DECODER;
+        }
+        else if (dirName == pathns::OUTPUTS_DIR)
+        {
+            rType = ResourceType::OUTPUT;
+        }
+        else if (dirName == pathns::RULES_DIR)
+        {
+            rType = ResourceType::RULE;
+        }
+        else if (dirName == pathns::FILTERS_DIR)
+        {
+            rType = ResourceType::FILTER;
+        }
+        else if (dirName == pathns::INTEGRATIONS_DIR)
+        {
+            rType = ResourceType::INTEGRATION;
+        }
+        else if (dirName == pathns::KVDBS_DIR)
+        {
+            rType = ResourceType::KVDB;
+        }
+        else
+        {
+            LOG_WARNING("Unknown resource type directory '{}' found in storage, skipping.", dirName);
+            continue;
+        }
+
+        // Iterate over all files in the resource type directory
+        for (const auto& fileEntry : std::filesystem::directory_iterator(dirEntry.path()))
+        {
+            if (!fileEntry.is_regular_file())
+            {
+                continue;
+            }
+
+            try
+            {
+                // Read file content
+                auto fileContent = fileutils::readFileAsString(fileEntry.path());
+
+                // Extract UUID and hash
+                auto [uuid, hash] = upsertUUIDAndComputeHash(fileContent);
+
+                // Extract resource name from file name
+                std::string fileName = fileEntry.path().filename().string();
+                if (fileName.size() <= pathns::ASSET_EXTENSION.size()
+                    || fileName.substr(fileName.size() - pathns::ASSET_EXTENSION.size()) != pathns::ASSET_EXTENSION)
+                {
+                    throw std::runtime_error("Invalid file extension");
+                }
+                std::string resourceName = fileName.substr(0, fileName.size() - pathns::ASSET_EXTENSION.size());
+
+                // If resource type is DECODER, OUTPUT, RULE or FILTER, revert only the first and last '_' to '/'
+                // TODO: Find a better way to handle this case, this is a workaround for legacy naming
+                if (rType == ResourceType::DECODER || rType == ResourceType::OUTPUT || rType == ResourceType::RULE
+                    || rType == ResourceType::FILTER)
+                {
+                    // Revert only the first and last '_' to '/'
+                    size_t firstUnderscore = resourceName.find('_');
+                    size_t lastUnderscore = resourceName.rfind('_');
+                    if (firstUnderscore != std::string::npos)
+                    {
+                        resourceName[firstUnderscore] = '/';
+                    }
+                    if (lastUnderscore != std::string::npos && lastUnderscore != firstUnderscore)
+                    {
+                        resourceName[lastUnderscore] = '/';
+                    }
+                }
+
+                // Add entry to cache
+                m_cache.addEntry(uuid, resourceName, rType, hash);
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("Failed to process resource file '{}': {}", fileEntry.path().string(), e.what());
+            }
+        }
+    }
+
+    LOG_TRACE("Cache rebuilt from storage successfully");
+
+    // Flush the rebuilt cache to disk
+    flushCacheToDisk();
+}
+
+std::pair<std::string, std::string> CMStoreNS::upsertUUIDAndComputeHash(std::string& ymlContent)
+{
+    json::Json jsonContent;
+    bool isJson = false;
+
+    // Try to parse as JSON first, fallback to YAML
+    try
+    {
+        jsonContent = json::Json(ymlContent.c_str());
+        if (!jsonContent.isObject())
+        {
+            throw std::runtime_error("Content is not a valid JSON object");
+        }
+        isJson = true;
+    }
+    catch (const std::exception&)
+    {
+        // Try parsing as YAML
+        try
+        {
+            jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
+            if (!jsonContent.isObject())
+            {
+                throw std::runtime_error("YAML content is not a valid JSON object");
+            }
+            isJson = false;
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error("Content is neither valid JSON nor valid YAML: " + std::string(e.what()));
+        }
+    }
+
+    // Check if UUID field exists and validate it
+    if (auto opt = jsonContent.getString(pathns::JSON_ID_PATH); opt.has_value())
+    {
+        const std::string& uuid = opt.value();
+        if (!base::utils::generators::isValidUUIDv4(uuid))
+        {
+            throw std::runtime_error("Existing UUIDv4 is not valid: " + uuid);
+        }
+        return {uuid, base::utils::hash::md5(jsonContent.str())};
+    }
+
+    // Generate new UUID and add it to content
+    std::string uuid = base::utils::generators::generateUUIDv4();
+
+    if (isJson)
+    {
+        // Handle JSON format
+        jsonContent.setString(pathns::JSON_ID_PATH, uuid);
+        ymlContent = jsonContent.prettyStr();
+    }
+    else
+    {
+        // Handle YAML format - append UUID at the end
+        if (!ymlContent.empty() && ymlContent.back() != '\n')
+        {
+            ymlContent += '\n';
+        }
+        ymlContent += fmt::format(pathns::YML_PAIR_FMT, uuid);
+
+        // Extra validation if added correctly
+        try
+        {
+            yml::Converter::loadYMLfromString(ymlContent);
+        }
+        catch (const std::exception& e)
+        {
+            // This never should happen, just in case log the error
+            throw std::runtime_error(fmt::format("Failed to validate YML after inserting UUID: {}", e.what()));
+        }
+    }
+
+    return {uuid, base::utils::hash::md5(jsonContent.str())};
+}
+
+std::filesystem::path CMStoreNS::getResourcePaths(const std::string& name, ResourceType type) const
+{
+    std::filesystem::path rPath = m_storagePath;
+
+    auto fileName = name;
+    if (type == ResourceType::DECODER || type == ResourceType::OUTPUT || type == ResourceType::RULE
+        || type == ResourceType::FILTER)
+    {
+        // Replace '/' with '_' to avoid directory traversal on assets names
+        std::replace(fileName.begin(), fileName.end(), '/', '_');
+    }
+
+    // Validate name
+    if (!fileutils::isValidFileName(fileName))
+    {
+        throw std::runtime_error(
+            fmt::format("Invalid resource name: '{}' for resource '{}'", name, resourceTypeToString(type)));
+    }
+
+    // Generate the paths based on resource type
+    rPath /= [&]() -> std::filesystem::path
+    {
+        switch (type)
+        {
+            case ResourceType::DECODER: return pathns::DECODERS_DIR;
+            case ResourceType::OUTPUT: return pathns::OUTPUTS_DIR;
+            case ResourceType::RULE: return pathns::RULES_DIR;
+            case ResourceType::FILTER: return pathns::FILTERS_DIR;
+            case ResourceType::INTEGRATION: return pathns::INTEGRATIONS_DIR;
+            case ResourceType::KVDB: return pathns::KVDBS_DIR;
+            default: throw std::runtime_error("Unsupported resource type for path retrieval");
+        }
+    }() / fileName.append(pathns::ASSET_EXTENSION);
+
+    return rPath;
+}
+
+/***********************************  General Methods ************************************/
 const NamespaceId& CMStoreNS::getNamespaceId() const
 {
     return m_namespaceId;
 }
-std::vector<std::tuple<std::string, std::string>> CMStoreNS::getCollection(ResourceType) const
+
+std::vector<std::tuple<std::string, std::string>> CMStoreNS::getCollection(ResourceType rType) const
 {
-    return {};
-}
-std::tuple<std::string, ResourceType> CMStoreNS::resolveNameFromUUID(const std::string&) const
-{
-    return {"", ResourceType {}};
-}
-std::string CMStoreNS::resolveUUIDFromName(const std::string&, ResourceType) const
-{
-    return "";
+    std::shared_lock lock(m_mutex);
+    return m_cache.getCollection(rType);
 }
 
-dataType::Policy CMStoreNS::getPolicy() const
+std::tuple<std::string, ResourceType> CMStoreNS::resolveNameFromUUID(const std::string& uuid) const
 {
-    return {};
-}
-void CMStoreNS::upsertPolicy(const dataType::Policy&) {}
-void CMStoreNS::deletePolicy() {}
+    // Search in cache the name-type pair for the given UUID
+    std::shared_lock lock(m_mutex);
+    auto opt = m_cache.getNameTypeByUUID(uuid);
 
-/**************************************** INTEGRATIONS ****************************************/
-
-std::string CMStoreNS::createIntegration(const dataType::Integration& integration)
-{
-
-    return "";
-
-}
-
-dataType::Integration CMStoreNS::getIntegrationByName(const std::string&) const
-{
-    return {};
-}
-dataType::Integration CMStoreNS::getIntegrationByUUID(const std::string&) const
-{
-    return {};
-}
-bool CMStoreNS::integrationExistsByName(const std::string&) const
-{
-    return false;
-}
-bool CMStoreNS::integrationExistsByUUID(const std::string&) const
-{
-    return false;
-}
-
-void CMStoreNS::updateIntegration(const dataType::Integration&) {}
-void CMStoreNS::deleteIntegrationByName(const std::string&) {}
-void CMStoreNS::deleteIntegrationByUUID(const std::string&) {}
-
-/**************************************** KVDB ****************************************/
-
-std::string CMStoreNS::createKVDB(const std::string& name, json::Json&& data)
-{
-
-    // Validate name
-    if (!fileutils::isValidFileName(name))
+    if (!opt.has_value())
     {
-        throw std::runtime_error(fmt::format("Invalid KVDB name: '{}'", name));
+        throw std::runtime_error(fmt::format("Resource with UUID '{}' does not exist", uuid));
     }
 
-    std::unique_lock lock(m_mutex);
+    return opt.value();
+}
 
-    // Check if name already exists
-    if (m_cache.existsNameType(name, ResourceType::KVDB))
+std::string CMStoreNS::resolveUUIDFromName(const std::string& name, ResourceType type) const
+{
+    // Search in cache the UUID for the given name-type pair
+    std::shared_lock lock(m_mutex);
+    auto opt = m_cache.getUUIDByNameType(name, type);
+
+    if (!opt.has_value())
     {
-        throw std::runtime_error(fmt::format("KVDB with name '{}' already exists", name));
+        throw std::runtime_error(
+            fmt::format("Resource with name '{}' and type '{}' does not exist", name, resourceTypeToString(type)));
     }
 
-    // Generate UUID and create KVDB object
-    std::string uuid = base::utils::generators::generateUUIDv4();
-    // Check if UUID already exists (extremely unlikely)
-    while (m_cache.existsUUID(uuid))
+    return opt.value();
+}
+
+bool CMStoreNS::assetExistsByName(const base::Name& name) const
+{
+    // Search asset as decoder, roule, filter, output or integration
+    const auto rType = getResourceTypeFromAssetName(name);
+    if (rType == ResourceType::UNDEFINED)
     {
-        LOG_DEBUG("Generated UUID '{}' already exists, generating a new one", uuid);
-        uuid = base::utils::generators::generateUUIDv4();
+        throw std::runtime_error("Asset type could not be determined from name: " + name.fullName());
     }
 
-    dataType::KVDB kvdb {uuid, std::string {name}, std::move(data)};
+    // Check if asset exists
+    std::shared_lock lock(m_mutex);
+    const auto nameStr = name.fullName();
+    return m_cache.existsNameType(nameStr, rType);
+}
 
-    // Store KVDB to disk
-    const auto filePath = m_storagePath / pathns::KVDBS_DIR / name;
-    auto error = fileutils::upsertFile(filePath, kvdb.toJson().str());
+bool CMStoreNS::assetExistsByUUID(const std::string& uuid) const
+{
+    std::shared_lock lock(m_mutex);
+    auto opt = m_cache.getNameTypeByUUID(uuid);
+    if (!opt.has_value())
+    {
+        return false;
+    }
+
+    const auto& [name, rType] = opt.value();
+    const auto assetType = getResourceTypeFromAssetName(base::Name(name));
+    return assetType != ResourceType::UNDEFINED && assetType == rType;
+}
+
+/*********************************** General Resource ************************************/
+
+std::string CMStoreNS::createResource(const std::string& name, ResourceType type, const std::string& ymlContent)
+{
+    // Fast check if name already exists
+    {
+        std::shared_lock lock(m_mutex);
+        if (m_cache.existsNameType(name, type))
+        {
+            throw std::runtime_error(
+                fmt::format("Resource with name '{}' and type '{}' already exists", name, resourceTypeToString(type)));
+        }
+    }
+
+    // Generate the file path, will throw if name/type invalid
+    auto resourcePath = getResourcePaths(name, type);
+
+    // Get the UUID from content, adding it if missing
+    // Will throw if YML/Resource is invalid
+    std::string modifiableYml = ymlContent;
+    auto [uuid, hash] = upsertUUIDAndComputeHash(modifiableYml);
+
+    std::unique_lock lock(m_mutex); // Acquire write cache and file lock
+
+    // Check if UUID already exists, its possible that the resource is being created with an existing UUID
+    if (m_cache.existsUUID(uuid))
+    {
+        throw std::runtime_error(fmt::format("Resource with UUID '{}' already exists", uuid));
+    }
+
+    // Check again the name now with write lock
+    if (m_cache.existsNameType(name, type))
+    {
+        throw std::runtime_error(
+            fmt::format("Resource with name '{}' and type '{}' already exists", name, resourceTypeToString(type)));
+    }
+
+    // Store resource to disk
+    auto error = fileutils::upsertFile(resourcePath, modifiableYml);
     if (error.has_value())
     {
-        throw std::runtime_error(fmt::format("Failed to create KVDB file '{}': {}", filePath.string(), error.value()));
+        throw std::runtime_error(fmt::format("Failed to create resource file '{}' of type '{}': {}",
+                                             resourcePath.string(),
+                                             resourceTypeToString(type),
+                                             error.value()));
     }
 
     // Update cache
-    //m_cache.addEntry(uuid, name, ResourceType::KVDB);
+    m_cache.addEntry(uuid, name, type, hash);
     flushCacheToDisk();
 
     return uuid;
 }
 
-json::Json CMStoreNS::getKVDBByName(const std::string& name) const
+void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type, const std::string& ymlContent)
 {
-    std::shared_lock lock(m_mutex);
+    // Generate the file path, will throw if name/type invalid
+    auto resourcePath = getResourcePaths(name, type);
 
-    // Check if name exists
-    if (!m_cache.existsNameType(name, ResourceType::KVDB))
+    // Get the UUID from content (Throws if missing/invalid)
+    json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
+    auto optUUID = jsonContent.getString(pathns::JSON_ID_PATH);
+    if (!optUUID.has_value())
     {
-        throw std::runtime_error(fmt::format("KVDB with name '{}' does not exist", name));
+        throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
 
-    // load KVDB from disk
-    const auto filePath = m_storagePath / pathns::KVDBS_DIR / name;
-    return fileutils::readJsonFile(filePath);
-}
+    std::unique_lock lock(m_mutex); // Acquire write cache and file lock
 
-json::Json CMStoreNS::getKVDBByUUID(const std::string& uuid) const
-{
-    std::shared_lock lock(m_mutex);
-    // Resolve name from UUID
-    auto optNameType = m_cache.getNameTypeByUUID(uuid);
-    if (!optNameType.has_value())
+    // Resolve existing UUID from name
+    auto existingUUID = resolveUUIDFromName(name, type);
+    auto& uuid = optUUID.value();
+
+    // Check if the UUID in content matches the existing one
+    if (uuid != existingUUID)
     {
-        throw std::runtime_error(fmt::format("KVDB with UUID '{}' does not exist", uuid));
-    }
-    const auto& [name, type] = optNameType.value();
-    if (type != ResourceType::KVDB)
-    {
-        throw std::runtime_error(fmt::format("Resource with UUID '{}' is a '{}' not a KVDB", uuid, resourceTypeToString(type)));
+        throw std::runtime_error(
+            fmt::format("UUID '{}' in content does not match existing resource UUID '{}' for name '{}' and type '{}'",
+                        uuid,
+                        existingUUID,
+                        name,
+                        resourceTypeToString(type)));
     }
 
-    // load KVDB from disk
-    const auto filePath = m_storagePath / pathns::KVDBS_DIR / name;
-    return fileutils::readJsonFile(filePath);
-}
+    // Compute new hash for the updated content
+    auto hash = base::utils::hash::md5(jsonContent.str());
 
-bool CMStoreNS::kvdbExistsByName(const std::string& name) const
-{
-    std::shared_lock lock(m_mutex);
-    return m_cache.existsNameType(name, ResourceType::KVDB);
-}
-
-bool CMStoreNS::kvdbExistsByUUID(const std::string& uuid) const
-{
-    std::shared_lock lock(m_mutex);
-    auto optNameType = m_cache.getNameTypeByUUID(uuid);
-    if (!optNameType.has_value())
-    {
-        return false;
-    }
-    const auto& [name, type] = optNameType.value();
-    return type == ResourceType::KVDB;
-}
-
-void CMStoreNS::updateKVDB(const dataType::KVDB& kvdb)
-{
-    std::unique_lock lock(m_mutex); // Read for m_cache but write for file
-
-    // Check if UUID exists
-    auto optNameType = m_cache.getNameTypeByUUID(kvdb.getUUID());
-    if (!optNameType.has_value())
-    {
-        throw std::runtime_error(fmt::format("KVDB with UUID '{}' does not exist", kvdb.getUUID()));
-    }
-    const auto& [existingName, type] = optNameType.value();
-    if (type != ResourceType::KVDB)
-    {
-        throw std::runtime_error(fmt::format("Resource with UUID '{}' is a '{}' not a KVDB", kvdb.getUUID(), resourceTypeToString(type)));
-    }
-
-    // If name is different, is an error (name is immutable)
-    if (existingName != kvdb.getName())
-    {
-        throw std::runtime_error(fmt::format(
-            "Cannot change name of KVDB with UUID {} from '{}' to '{}'", kvdb.getUUID(), existingName, kvdb.getName()));
-    }
-
-    // Update KVDB on disk
-    const auto filePath = m_storagePath / pathns::KVDBS_DIR / kvdb.getName();
-    auto error = fileutils::upsertFile(filePath, kvdb.toJson().str());
+    // Store updated resource to disk
+    auto error = fileutils::upsertFile(resourcePath, ymlContent);
     if (error.has_value())
     {
-        throw std::runtime_error("Failed to update KVDB file: " + error.value());
-    }
-}
-
-void CMStoreNS::deleteKVDBByName(const std::string& name)
-{
-    std::unique_lock lock(m_mutex);
-    // Check if name exists
-    if (!m_cache.existsNameType(name, ResourceType::KVDB))
-    {
-        throw std::runtime_error(fmt::format("KVDB with name '{}' does not exist", name));
+        throw std::runtime_error(fmt::format("Failed to update resource file '{}' of type '{}': {}",
+                                             resourcePath.string(),
+                                             resourceTypeToString(type),
+                                             error.value()));
     }
 
-    // Delete KVDB file from disk
-    const auto filePath = m_storagePath / pathns::KVDBS_DIR / name;
-    std::error_code ec;
-    std::filesystem::remove(filePath, ec);
-    if (ec)
-    {
-        throw std::runtime_error(fmt::format("Failed to delete KVDB file '{}': {}", filePath.string(), ec.message()));
-    }
-
-    // Update cache
-    m_cache.removeEntryByNameType(name, ResourceType::KVDB);
+    // Update cache with new hash
+    m_cache.updateHashByUUID(uuid, hash);
     flushCacheToDisk();
 }
 
-void CMStoreNS::deleteKVDBByUUID(const std::string& uuid)
+void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string& ymlContent)
 {
-
-    std::unique_lock lock(m_mutex);
-    // Resolve name from UUID
-    auto optNameType = m_cache.getNameTypeByUUID(uuid);
-    if (!optNameType.has_value())
+    // Get the UUID from content (Throws if missing/invalid)
+    json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
+    auto optUUID = jsonContent.getString(pathns::JSON_ID_PATH);
+    if (!optUUID.has_value())
     {
-        throw std::runtime_error(fmt::format("KVDB with UUID '{}' does not exist", uuid));
+        throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
-    const auto& [name, type] = optNameType.value();
-    if (type != ResourceType::KVDB)
+
+    // Check if the UUID in content matches the provided one
+    if (uuid != optUUID.value())
     {
         throw std::runtime_error(
-            fmt::format("Resource with UUID '{}' is a '{}' not a KVDB", uuid, resourceTypeToString(type)));
+            fmt::format("UUID '{}' in content does not match provided UUID '{}'", optUUID.value(), uuid));
     }
 
-    // Delete KVDB file from disk
-    const auto filePath = m_storagePath / pathns::KVDBS_DIR / name;
-    std::error_code ec;
-    std::filesystem::remove(filePath, ec);
-    if (ec)
+    std::unique_lock lock(m_mutex); // Acquire write cache and file lock
+    // Resolve name-type from UUID
+    auto [name, type] = resolveNameFromUUID(uuid);
+    // Generate the file path
+    auto resourcePath = getResourcePaths(name, type);
+    // Compute new hash for the updated content
+    auto hash = base::utils::hash::md5(jsonContent.str());
+
+    // Store updated resource to disk
+    auto error = fileutils::upsertFile(resourcePath, ymlContent);
+    if (error.has_value())
     {
-        throw std::runtime_error(fmt::format("Failed to delete KVDB file '{}': {}", filePath.string(), ec.message()));
+        throw std::runtime_error(fmt::format("Failed to update resource file '{}' of type '{}': {}",
+                                             resourcePath.string(),
+                                             resourceTypeToString(type),
+                                             error.value()));
+    }
+
+    // Update cache with new hash
+    m_cache.updateHashByUUID(uuid, hash);
+    flushCacheToDisk();
+}
+
+void CMStoreNS::deleteResourceByName(const std::string& name, ResourceType type)
+{
+    std::unique_lock lock(m_mutex); // Acquire write cache and file lock
+
+    // Resolve UUID from name
+    auto uuid = resolveUUIDFromName(name, type);
+
+    // Generate the file path
+    auto resourcePath = getResourcePaths(name, type);
+
+    // Delete resource file from disk
+    auto error = fileutils::deleteFile(resourcePath);
+    if (error.has_value())
+    {
+        throw std::runtime_error(fmt::format("Failed to delete resource file '{}' of type '{}': {}",
+                                             resourcePath.string(),
+                                             resourceTypeToString(type),
+                                             error.value()));
     }
 
     // Update cache
@@ -256,29 +494,194 @@ void CMStoreNS::deleteKVDBByUUID(const std::string& uuid)
     flushCacheToDisk();
 }
 
+void CMStoreNS::deleteResourceByUUID(const std::string& uuid)
+{
+    std::unique_lock lock(m_mutex); // Acquire write cache and file lock
+
+    // Resolve name-type from UUID
+    auto [name, type] = resolveNameFromUUID(uuid);
+
+    // Generate the file path
+    auto resourcePath = getResourcePaths(name, type);
+
+    // Delete resource file from disk
+    auto error = fileutils::deleteFile(resourcePath);
+    if (error.has_value())
+    {
+        throw std::runtime_error(fmt::format("Failed to delete resource file '{}' of type '{}': {}",
+                                             resourcePath.string(),
+                                             resourceTypeToString(type),
+                                             error.value()));
+    }
+
+    // Update cache
+    m_cache.removeEntryByUUID(uuid);
+    flushCacheToDisk();
+}
+
+/**************************************** Policy ****************************************/
+
+dataType::Policy CMStoreNS::getPolicy() const
+{
+    // Load policy from disk
+    std::shared_lock lock(m_mutex);
+    auto policyPath = m_storagePath / pathns::POLICY_FILE;
+    auto json = fileutils::readJsonFile(policyPath);
+    return dataType::Policy::fromJson(json);
+}
+
+void CMStoreNS::upsertPolicy(const dataType::Policy& policy)
+{
+
+    std::unique_lock lock(m_mutex);
+    // Store policy to disk
+    auto policyPath = m_storagePath / pathns::POLICY_FILE;
+    auto err = fileutils::upsertFile(policyPath, policy.toJson().str());
+    if (err.has_value())
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to upsert policy file '{}': {}", policyPath.string(), err.value()));
+    }
+}
+
+void CMStoreNS::deletePolicy()
+{
+    std::unique_lock lock(m_mutex);
+    // Delete policy from disk
+    auto policyPath = m_storagePath / pathns::POLICY_FILE;
+    auto err = fileutils::deleteFile(policyPath);
+    if (err.has_value())
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to delete policy file '{}': {}", policyPath.string(), err.value()));
+    }
+}
+
+/************************************* INTEGRATIONS *************************************/
+
+dataType::Integration CMStoreNS::getIntegrationByName(const std::string& name) const
+{
+    // Search in cache for name
+    std::shared_lock lock(m_mutex);
+
+    auto optUUID = m_cache.getUUIDByNameType(name, ResourceType::INTEGRATION);
+    if (!optUUID.has_value())
+    {
+        throw std::runtime_error(fmt::format("Integration with name '{}' does not exist", name));
+    }
+
+    // Load integration from disk
+    const auto path = getResourcePaths(name, ResourceType::INTEGRATION);
+    auto json = fileutils::readYMLFileAsJson(path);
+
+    return dataType::Integration::fromJson(json);
+}
+
+dataType::Integration CMStoreNS::getIntegrationByUUID(const std::string& uuid) const
+{
+    // Search in cache for UUID
+    std::shared_lock lock(m_mutex);
+    auto EntryOpt = m_cache.getNameTypeByUUID(uuid);
+    if (!EntryOpt.has_value())
+    {
+        throw std::runtime_error(fmt::format("Integration with UUID '{}' does not exist", uuid));
+    }
+    const auto& [name, type] = EntryOpt.value();
+    if (type != ResourceType::INTEGRATION)
+    {
+        throw std::runtime_error(
+            fmt::format("Resource with UUID '{}' is a '{}' not an Integration", uuid, resourceTypeToString(type)));
+    }
+
+    // Load integration from disk
+    const auto path = getResourcePaths(name, ResourceType::INTEGRATION);
+    auto json = fileutils::readYMLFileAsJson(path);
+    return dataType::Integration::fromJson(json);
+}
+
+/**************************************** KVDB ******************************************/
+
+dataType::KVDB CMStoreNS::getKVDBByName(const std::string& name) const
+{
+    std::shared_lock lock(m_mutex);
+    // Check if name exists
+    auto optUUID = m_cache.getUUIDByNameType(name, ResourceType::KVDB);
+    if (!optUUID.has_value())
+    {
+        throw std::runtime_error(fmt::format("KVDB with name '{}' does not exist", name));
+    }
+    const auto& uuid = optUUID.value();
+
+    // Load KVDB from disk
+    auto resourcePath = getResourcePaths(name, ResourceType::KVDB);
+    auto json = fileutils::readYMLFileAsJson(resourcePath);
+    return dataType::KVDB::fromJson(json);
+}
+
+dataType::KVDB CMStoreNS::getKVDBByUUID(const std::string& uuid) const
+{
+    std::shared_lock lock(m_mutex);
+    // Check if UUID exists
+    auto optNameType = m_cache.getNameTypeByUUID(uuid);
+    if (!optNameType.has_value())
+    {
+        throw std::runtime_error(fmt::format("KVDB with UUID '{}' does not exist", uuid));
+    }
+    const auto& [name, type] = optNameType.value();
+
+    // Verify type
+    if (type != ResourceType::KVDB)
+    {
+        throw std::runtime_error(
+            fmt::format("Resource with UUID '{}' is a '{}' not a KVDB", uuid, resourceTypeToString(type)));
+    }
+
+    // Load KVDB from disk
+    auto resourcePath = getResourcePaths(name, ResourceType::KVDB);
+    auto json = fileutils::readYMLFileAsJson(resourcePath);
+    return dataType::KVDB::fromJson(json);
+}
+
 /**************************************** ASSETS ****************************************/
 
-json::Json CMStoreNS::getAssetByName(const base::Name&) const
+json::Json CMStoreNS::getAssetByName(const base::Name& name) const
 {
-    return {};
+    // Search asset as decoder, roule, filter, output or integration
+    const auto rType = getResourceTypeFromAssetName(name);
+    if (rType == ResourceType::UNDEFINED)
+    {
+        throw std::runtime_error("Asset type could not be determined from name: " + name.fullName());
+    }
+
+    // Check if asset exists
+    std::shared_lock lock(m_mutex);
+    const auto nameStr = name.fullName();
+    if (!m_cache.existsNameType(nameStr, rType))
+    {
+        throw std::runtime_error(
+            fmt::format("Asset with name '{}' and type '{}' does not exist", nameStr, resourceTypeToString(rType)));
+    }
+
+    // Load asset from disk
+    auto resourcePath = getResourcePaths(nameStr, rType);
+
+    return fileutils::readYMLFileAsJson(resourcePath);
 }
-json::Json CMStoreNS::getAssetByUUID(const std::string&) const
+
+json::Json CMStoreNS::getAssetByUUID(const std::string& uuid) const
 {
-    return {};
+    std::shared_lock lock(m_mutex);
+    // Check if UUID exists
+    auto optNameType = m_cache.getNameTypeByUUID(uuid);
+    if (!optNameType.has_value())
+    {
+        throw std::runtime_error(fmt::format("Asset with UUID '{}' does not exist", uuid));
+    }
+    const auto& [name, type] = optNameType.value();
+
+    // Load asset from disk
+    auto resourcePath = getResourcePaths(name, type);
+    return fileutils::readYMLFileAsJson(resourcePath);
 }
-bool CMStoreNS::assetExistsByName(const base::Name&) const
-{
-    return false;
-}
-bool CMStoreNS::assetExistsByUUID(const std::string&) const
-{
-    return false;
-}
-std::string CMStoreNS::createAsset(const json::Json&)
-{
-    return "";
-}
-void CMStoreNS::updateAsset(const json::Json&) {}
-void CMStoreNS::deleteAssetByName(const base::Name&) {}
-void CMStoreNS::deleteAssetByUUID(const std::string&) {}
+
 } // namespace cm::store
