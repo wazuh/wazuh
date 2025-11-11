@@ -225,6 +225,9 @@
                     <Component Id="FIMDB_DLL" DiskId="1" Guid="15806BCA-876E-41D7-A82E-623EEEC63C3A">
                         <File Id="FIMDB_DLL" Name="libfimdb.dll" Source="..\syscheckd\build\bin\libfimdb.dll" />
                     </Component>
+                    <Component Id="FIM_RECOVERY_DLL" DiskId="1" Guid="A1B2C3D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D">
+                        <File Id="FIM_RECOVERY_DLL" Name="libfim_recovery.dll" Source="..\syscheckd\build\bin\libfim_recovery.dll" />
+                    </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
@@ -607,6 +610,7 @@
             <ComponentRef Id="SCA_DLL" />
             <ComponentRef Id="AGENT_INFO_DLL" />
             <ComponentRef Id="FIMDB_DLL" />
+            <ComponentRef Id="FIM_RECOVERY_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="LIBWAZUHSHARED_DLL" />
             <ComponentRef Id="DBSYNC_DLL" />

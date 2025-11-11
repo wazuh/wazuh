@@ -27,8 +27,6 @@ target_link_libraries(fim_recovery wazuhext agent_sync_protocol dbsync fimdb)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(fim_recovery PROPERTIES
-    PREFIX ""
-    SUFFIX ".dll"
     LINK_FLAGS "-Wl,--add-stdcall-alias -Wl,--output-def,libfim_recovery.def"
     POSITION_INDEPENDENT_CODE 0
   )
