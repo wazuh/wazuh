@@ -90,4 +90,8 @@ void __wrap__imp__dbsync_initialize();
 
 void __wrap_fim_db_close_and_delete_database();
 
+int __wrap_fim_db_get_max_version_file();
+
+int __wrap_fim_db_set_version_file();
+
 #endif
