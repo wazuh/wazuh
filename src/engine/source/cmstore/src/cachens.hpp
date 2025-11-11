@@ -41,15 +41,13 @@ struct NameTypeHash
  * This class maintains two internal hash maps to provide O(1) lookup times
  * for both UUID-to-entry-data and name-type-to-UUID queries.
  * Each entry now includes a hash string as metadata.
+ * @warning This class is not thread-safe. External synchronization is required for concurrent access.
  */
 class CacheNS
 {
 private:
     std::unordered_map<std::string, EntryData> m_uuidToEntryMap; ///< Map from UUID to EntryData (Name, Type, Hash)
     std::unordered_map<NameType, std::string, NameTypeHash> m_nameTypeToUUIDMap; ///< Map from (Name, Type) to UUID
-    mutable std::shared_mutex m_mutex; // TODO: Remove this mutex, the ns should handle this ///< Mutex for thread-safe
-                                       // access
-
 public:
     CacheNS() = default;
     ~CacheNS() = default;

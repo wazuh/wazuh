@@ -15,6 +15,13 @@
 namespace cm::store
 {
 
+const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
+    NamespaceId("output"),
+    NamespaceId("system"),
+    NamespaceId("default"),
+    NamespaceId("cti"),
+};
+
 CMStore::~CMStore() = default;
 
 CMStore::CMStore(std::string_view path)
@@ -131,6 +138,11 @@ std::shared_ptr<ICMstoreNS> CMStore::createNamespace(const NamespaceId& nsId)
     // Create empty cache file
     auto cacheFilePath = nsPath / pathns::CACHE_NS_FILE;
     auto cacheFileErr = fileutils::upsertFile(cacheFilePath, "[]");
+    if (cacheFileErr.has_value())
+    {
+        throw std::runtime_error("Failed to create cache file for namespace: " + cacheFilePath.string() + ": "
+                                 + cacheFileErr.value());
+    }
     auto nsInstance = std::make_shared<CMStoreNS>(nsId, nsPath);
     m_namespaces[nsId] = nsInstance;
 

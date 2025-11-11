@@ -205,10 +205,10 @@ std::pair<std::string, std::string> CMStoreNS::upsertUUIDAndComputeHash(std::str
         }
         ymlContent += fmt::format(pathns::YML_PAIR_FMT, uuid);
 
-        // Extra validation if added correctly
+        // Re-parse to ensure correctness and add UUID field
         try
         {
-            yml::Converter::loadYMLfromString(ymlContent);
+            jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
         }
         catch (const std::exception& e)
         {
