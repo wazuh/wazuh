@@ -12,18 +12,11 @@
 namespace cm::store
 {
 
-const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
-    NamespaceId("output"),
-    NamespaceId("system"),
-    NamespaceId("default"),
-    NamespaceId("cti"),
-};
-
 /**
- * @brief Concrete implementation of ICMstore interface, representing the CMStore
+ * @brief Concrete implementation of ICMStore interface, representing the CMStore
  * @warning Only one instance of CMStore should exist to avoid race conditions on namespaces
  */
-class CMStore : public ICMstore
+class CMStore : public ICMStore
 {
 
     std::filesystem::path m_baseStoragePath; ///< Base path for all namespaces
@@ -45,22 +38,19 @@ public:
     CMStore(std::string_view path);
     ~CMStore();
 
-    /** @copydoc ICMstore::getNSReader */
+    /** @copydoc ICMStore::getNSReader */
     std::shared_ptr<ICMStoreNSReader> getNSReader(const NamespaceId& nsId) const override;
 
-    /** @copydoc ICMstore::getNS */
+    /** @copydoc ICMStore::getNS */
     std::shared_ptr<ICMstoreNS> getNS(const NamespaceId& nsId) override;
 
-    /** @copydoc ICMstore::createNamespace */
+    /** @copydoc ICMStore::createNamespace */
     std::shared_ptr<ICMstoreNS> createNamespace(const NamespaceId& nsId) override;
 
-    /** @copydoc ICMstore::cloneNamespace */
-    void cloneNamespace(const NamespaceId& sourceNsId, const NamespaceId& targetNsId) override {};
-
-    /** @copydoc ICMstore::deleteNamespace */
+    /** @copydoc ICMStore::deleteNamespace */
     void deleteNamespace(const NamespaceId& nsId) override;
 
-    /** @copydoc ICMstore::getNamespaces */
+    /** @copydoc ICMStore::getNamespaces */
     std::vector<NamespaceId> getNamespaces() const override;
 };
 

@@ -13,7 +13,6 @@ using NameType = std::tuple<std::string, ResourceType>;
 
 json::Json CacheNS::serialize() const
 {
-    std::shared_lock lock(m_mutex);
     json::Json j {};
     j.setArray();
     for (const auto& [uuid, entryData] : m_uuidToEntryMap)
@@ -30,7 +29,6 @@ json::Json CacheNS::serialize() const
 
 void CacheNS::deserialize(const json::Json& j)
 {
-    std::unique_lock lock(m_mutex);
     m_uuidToEntryMap.clear();
     m_nameTypeToUUIDMap.clear();
 
@@ -75,14 +73,12 @@ void CacheNS::deserialize(const json::Json& j)
 
 void CacheNS::reset()
 {
-    std::unique_lock lock(m_mutex);
     m_uuidToEntryMap.clear();
     m_nameTypeToUUIDMap.clear();
 }
 
 void CacheNS::addEntry(const std::string& uuid, const std::string& name, ResourceType type, const std::string& hash)
 {
-    std::unique_lock lock(m_mutex);
     NameType nameType = std::make_tuple(name, type);
     if (m_uuidToEntryMap.find(uuid) != m_uuidToEntryMap.end())
     {
@@ -101,7 +97,6 @@ void CacheNS::addEntry(const std::string& uuid, const std::string& name, Resourc
 
 void CacheNS::removeEntryByUUID(const std::string& uuid)
 {
-    std::unique_lock lock(m_mutex);
     auto it = m_uuidToEntryMap.find(uuid);
     if (it != m_uuidToEntryMap.end())
     {
@@ -113,7 +108,6 @@ void CacheNS::removeEntryByUUID(const std::string& uuid)
 
 void CacheNS::removeEntryByNameType(const std::string& name, ResourceType type)
 {
-    std::unique_lock lock(m_mutex);
     NameType nameType = std::make_tuple(name, type);
     auto it = m_nameTypeToUUIDMap.find(nameType);
     if (it != m_nameTypeToUUIDMap.end())
@@ -126,7 +120,6 @@ void CacheNS::removeEntryByNameType(const std::string& name, ResourceType type)
 
 std::optional<EntryData> CacheNS::getEntryByUUID(const std::string& uuid) const
 {
-    std::shared_lock lock(m_mutex);
     auto it = m_uuidToEntryMap.find(uuid);
     if (it != m_uuidToEntryMap.end())
     {
@@ -137,7 +130,6 @@ std::optional<EntryData> CacheNS::getEntryByUUID(const std::string& uuid) const
 
 std::optional<EntryData> CacheNS::getEntryByNameType(const std::string& name, ResourceType type) const
 {
-    std::shared_lock lock(m_mutex);
     NameType nameType = std::make_tuple(name, type);
     auto it = m_nameTypeToUUIDMap.find(nameType);
     if (it != m_nameTypeToUUIDMap.end())
@@ -154,7 +146,6 @@ std::optional<EntryData> CacheNS::getEntryByNameType(const std::string& name, Re
 
 std::optional<NameType> CacheNS::getNameTypeByUUID(const std::string& uuid) const
 {
-    std::shared_lock lock(m_mutex);
     auto it = m_uuidToEntryMap.find(uuid);
     if (it != m_uuidToEntryMap.end())
     {
@@ -165,7 +156,6 @@ std::optional<NameType> CacheNS::getNameTypeByUUID(const std::string& uuid) cons
 
 std::optional<std::string> CacheNS::getHashByUUID(const std::string& uuid) const
 {
-    std::shared_lock lock(m_mutex);
     auto it = m_uuidToEntryMap.find(uuid);
     if (it != m_uuidToEntryMap.end())
     {
@@ -176,7 +166,6 @@ std::optional<std::string> CacheNS::getHashByUUID(const std::string& uuid) const
 
 void CacheNS::updateHashByUUID(const std::string& uuid, const std::string& newHash)
 {
-    std::unique_lock lock(m_mutex);
     auto it = m_uuidToEntryMap.find(uuid);
     if (it != m_uuidToEntryMap.end())
     {
@@ -190,7 +179,6 @@ void CacheNS::updateHashByUUID(const std::string& uuid, const std::string& newHa
 
 std::optional<std::string> CacheNS::getUUIDByNameType(const std::string& name, ResourceType type) const
 {
-    std::shared_lock lock(m_mutex);
     NameType nameType = std::make_tuple(name, type);
     auto it = m_nameTypeToUUIDMap.find(nameType);
     if (it != m_nameTypeToUUIDMap.end())
@@ -202,20 +190,17 @@ std::optional<std::string> CacheNS::getUUIDByNameType(const std::string& name, R
 
 bool CacheNS::existsUUID(const std::string& uuid) const
 {
-    std::shared_lock lock(m_mutex);
     return m_uuidToEntryMap.find(uuid) != m_uuidToEntryMap.end();
 }
 
 bool CacheNS::existsNameType(const std::string& name, ResourceType type) const
 {
-    std::shared_lock lock(m_mutex);
     NameType nameType = std::make_tuple(name, type);
     return m_nameTypeToUUIDMap.find(nameType) != m_nameTypeToUUIDMap.end();
 }
 
 std::vector<std::tuple<std::string, std::string>> CacheNS::getCollection(ResourceType type) const
 {
-    std::shared_lock lock(m_mutex);
     std::vector<std::tuple<std::string, std::string>> collection;
     collection.reserve(m_uuidToEntryMap.size());
     for (const auto& [uuid, entryData] : m_uuidToEntryMap)

@@ -21,7 +21,7 @@ namespace
  * This map defines the available categories and their corresponding indexes
  * in the CMStore system. Any integration or asset should belong to one of these categories.
  */
-const std::unordered_map<std::string, std::string> AVIABLE_CATEGORIES_AND_INDEXES = {
+inline const std::unordered_map<std::string_view, std::string_view> AVAILABLE_CATEGORIES_AND_INDEXES = {
     {"UNDEFINED_1", "wazuh-events-v5-access-management"},
     {"Applications", "wazuh-events-v5-applications"},
     {"Cloud Services", "wazuh-events-v5-cloud-services"},
@@ -52,11 +52,11 @@ public:
 
     /**
      * @brief Get all available categories and their indexes in the namespace
-     * @return const std::vector<std::tuple<std::string, std::string>>& Vector of tuples with (Category, Index)
+     * @return const std::vector<std::tuple<std::string_view, std::string_view>>& Vector of tuples with (Category, Index)
      */
-    static const std::unordered_map<std::string, std::string>& getAviableCategoriesAndIndexes()
+    static const std::unordered_map<std::string_view, std::string_view>& getAviableCategoriesAndIndexes()
     {
-        return AVIABLE_CATEGORIES_AND_INDEXES;
+        return AVAILABLE_CATEGORIES_AND_INDEXES;
     }
 
     /**
@@ -64,9 +64,9 @@ public:
      * @param category Category name to check (key sensitive)
      * @return true if the category exists, false otherwise
      */
-    static bool categoryExists(const std::string& category)
+    static bool categoryExists(std::string_view category)
     {
-        return AVIABLE_CATEGORIES_AND_INDEXES.find(category) != AVIABLE_CATEGORIES_AND_INDEXES.end();
+        return AVAILABLE_CATEGORIES_AND_INDEXES.find(category) != AVAILABLE_CATEGORIES_AND_INDEXES.end();
     }
 
     /**
@@ -317,10 +317,10 @@ public:
  *
  * This interface provides access to namespaces and their resources
  */
-class ICMstore
+class ICMStore
 {
 public:
-    virtual ~ICMstore() = default;
+    virtual ~ICMStore() = default;
 
     // Get namespace reader
 
@@ -347,14 +347,6 @@ public:
      * @throw std::runtime_error if the namespace already exists
      */
     virtual std::shared_ptr<ICMstoreNS> createNamespace(const NamespaceId& nsId) = 0;
-
-    /**
-     * @brief Clone an existing namespace into a new namespace
-     * @param sourceNsId NamespaceId of the source namespace
-     * @param targetNsId NamespaceId of the target namespace
-     * @throw std::runtime_error if the source namespace does not exist or the target namespace already exists
-     */
-    virtual void cloneNamespace(const NamespaceId& sourceNsId, const NamespaceId& targetNsId) = 0;
 
     /**
      * @brief Delete an existing namespace
