@@ -78,6 +78,7 @@ struct CTISubscription
  * - Fetching subscription info from Console REST API (GET /api/v1/instances/me)
  * - Parsing organization and plan details
  * - Extracting product metadata including resource URLs for token exchange
+ * - Filtering products by configured product type
  * - Caching subscription data to minimize API calls
  * - Thread-safe access to subscription information
  *
@@ -93,6 +94,7 @@ struct CTISubscription
  *
  * Example usage:
  * @code
+ *   // Configure for engine module decoders
  *   nlohmann::json config = {
  *       {"console", {
  *           {"url", "https://console.wazuh.com"},
@@ -102,11 +104,13 @@ struct CTISubscription
  *   auto provider = std::make_shared<CTIProductsProvider>(urlRequest, config);
  *   provider->setAccessToken(accessToken);
  *
- *   // Get only products matching the configured type
+ *   // Get only products matching "catalog:consumer:decoders"
  *   auto catalogProducts = provider->getCatalogProducts();
  *   for (const auto& product : catalogProducts) {
  *       // All products here will have type "catalog:consumer:decoders"
+ *       // and include a valid resource URL for content download
  *       std::string signedUrl = signedUrlProvider->getSignedUrl(product.resource, accessToken);
+ *       // ... download content using signedUrl
  *   }
  * @endcode
  */
@@ -247,10 +251,10 @@ public:
      * @code
      * {
      *   "console": {
-     *     "url": "https://console.wazuh.com",
+     *     "url": "https://console.wazuh.com",           // required
      *     "instancesEndpoint": "/api/v1/instances/me",  // optional, default shown
-     *     "timeout": 5000,  // optional, milliseconds
-     *     "productType": "catalog:consumer:decoders"  // optional, product type filter
+     *     "timeout": 5000,                              // optional, milliseconds, default 5000
+     *     "productType": "catalog:consumer:decoders"    // optional, product type filter
      *   }
      * }
      * @endcode
@@ -349,7 +353,7 @@ public:
      * @endcode
      *
      * @param useCache If true, return cached data if available
-     * @return CTISubscription struct with organization and plans
+     * @return CTISubscription struct with organization and plans (unfiltered)
      * @throws std::runtime_error if fetch fails or response is invalid
      */
     CTISubscription fetchSubscription(bool useCache = true)
@@ -486,6 +490,7 @@ public:
      *
      * @param useCache If true, use cached subscription data
      * @return Vector of catalog products matching the configured product type
+     *         Empty vector if no matching products found
      */
     std::vector<CTIProduct> getCatalogProducts(bool useCache = true)
     {
