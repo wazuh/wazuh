@@ -82,6 +82,14 @@ public:
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery);
 
     /**
+     * @brief Execute a GET query against the indexer.
+     *
+     * @param index Index name.
+     * @param query Query JSON object containing the search parameters.
+     */
+    void executeGetQuery(const std::string& index, const nlohmann::json& query);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.
