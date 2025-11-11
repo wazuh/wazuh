@@ -19,12 +19,14 @@
 /**
  * @brief Helper function for formatted logging
  */
+// LCOV_EXCL_START
 template<typename... Args>
 void log_formatted(fim_recovery_log_callback_t log_callback, modules_log_level_t level, Args&&... args) {
     std::ostringstream oss;
     (oss << ... << args);
     log_callback(level, oss.str().c_str());
 }
+// LCOV_EXCL_STOP
 
 /**
  * @brief Calculate the checksum-of-checksums for a table
