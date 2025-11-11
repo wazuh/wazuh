@@ -37,9 +37,49 @@ int fim_execute_pause(void) {
 
 int fim_execute_flush(void) {
     mdebug1("FIM agent info: flush command received");
-    // TODO: Implement actual flush logic
-    // This will flush pending FIM data
+
+    if (!syscheck.enable_synchronization) {
+        mdebug1("FIM synchronization is disabled, flush command skipped");
+        return 0;
+    }
+
+    // Check if there's already a flush in progress (thread-safe read)
+    if (atomic_int_get(&fim_flush_in_progress)) {
+        mdebug1("Flush already in progress, request ignored");
+        return 0;
+    }
+
+    // Reset previous result and activate flush (thread-safe write)
+    atomic_int_set(&fim_flush_result, 0);
+    atomic_int_set(&fim_flush_in_progress, 1);
+
+    minfo("FIM flush requested (async), fim_flush_in_progress=1");
     return 0;
+}
+
+int fim_execute_is_flush_completed(void) {
+    mdebug2("FIM agent info: is_flush_completed command received");
+
+    if (!syscheck.enable_synchronization) {
+        mdebug1("FIM synchronization is disabled");
+        return 0;  // Return completed successfully (sync disabled)
+    }
+
+    // Read atomic variables (thread-safe read operations)
+    int in_progress = atomic_int_get(&fim_flush_in_progress);
+    int result = atomic_int_get(&fim_flush_result);
+
+    mdebug2("Flush status check: fim_flush_in_progress=%d, fim_flush_result=%d",
+            in_progress, result);
+
+    if (in_progress) {
+        mdebug2("Flush still in progress");
+        return 1;  // In progress
+    } else {
+        mdebug1("Flush completed with result=%d", result);
+        // Return the result directly: 0 = success, -1 = error
+        return result;  // 0 = success, -1 = error
+    }
 }
 
 int fim_execute_get_version(void) {
@@ -205,7 +245,7 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
 
         if (result == 0) {
             status_item = cJSON_CreateNumber(MQ_SUCCESS);
-            message_item = cJSON_CreateString("FIM module flushed successfully");
+            message_item = cJSON_CreateString("FIM module flush requested");
             data_item = cJSON_CreateObject();
             if (data_item) {
                 cJSON_AddStringToObject(data_item, "module", "fim");
@@ -213,7 +253,46 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
             }
         } else {
             status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
-            message_item = cJSON_CreateString("Failed to flush FIM module");
+            message_item = cJSON_CreateString("Failed to request FIM module flush");
+            data_item = cJSON_CreateObject();
+        }
+    } else if (strcmp(command, "is_flush_completed") == 0) {
+        // Call is_flush_completed function
+        result = fim_execute_is_flush_completed();
+
+        if (result == 1) {
+            // Flush in progress
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM flush in progress");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "status", "in_progress");
+            }
+        } else if (result == 0) {
+            // Flush completed successfully
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM flush completed successfully");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "status", "completed");
+                cJSON_AddStringToObject(data_item, "result", "success");
+            }
+        } else if (result == -1) {
+            // Flush completed with error
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM flush completed with error");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "status", "completed");
+                cJSON_AddStringToObject(data_item, "result", "error");
+            }
+        } else {
+            // Unexpected result
+            status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
+            message_item = cJSON_CreateString("Unexpected result from is_flush_completed");
             data_item = cJSON_CreateObject();
         }
     } else if (strcmp(command, "get_version") == 0) {
@@ -367,6 +446,7 @@ size_t syscom_handle_json_query(char * json_command, char ** output) {
     // Check if command is one of the coordination commands
     if (strcmp(command, "pause") == 0 ||
         strcmp(command, "flush") == 0 ||
+        strcmp(command, "is_flush_completed") == 0 ||
         strcmp(command, "get_version") == 0 ||
         strcmp(command, "set_version") == 0 ||
         strcmp(command, "resume") == 0) {
@@ -376,10 +456,10 @@ size_t syscom_handle_json_query(char * json_command, char ** output) {
         return result;
     } else {
         // Unknown command
-        cJSON_Delete(json_obj);
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Unknown command: %s\"}",
                  MQ_ERR_UNKNOWN_COMMAND, command);
+        cJSON_Delete(json_obj);
         os_strdup(error_msg, *output);
         return strlen(*output);
     }
