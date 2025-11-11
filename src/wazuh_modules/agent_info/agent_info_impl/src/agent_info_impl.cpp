@@ -1027,7 +1027,89 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                     return false;
                 }
 
-                m_logFunction(LOG_DEBUG, "Successfully flushed " + module);
+                m_logFunction(LOG_DEBUG, "Successfully requested flush for " + module);
+
+                // FIM-specific: Poll for flush completion (flush is async for FIM)
+                if (module == FIM_NAME)
+                {
+                    constexpr int MAX_FLUSH_POLL_ATTEMPTS = 30;  // 30 seconds max wait
+                    constexpr int FLUSH_POLL_DELAY_MS = 10000;   // 10 seconds between polls
+                    bool flushCompleted = false;
+                    bool flushSucceeded = false;
+
+                    m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + module + " for flush completion (async flush)");
+
+                    for (int attempt = 1; attempt <= MAX_FLUSH_POLL_ATTEMPTS; ++attempt)
+                    {
+                        std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
+                        ModuleResponse pollResponse = queryModuleWithRetry(module, isFlushCompletedMessage);
+
+                        if (!pollResponse.success)
+                        {
+                            m_logFunction(LOG_WARNING, "Failed to poll flush status for " + module + " (attempt " +
+                                          std::to_string(attempt) + "/" + std::to_string(MAX_FLUSH_POLL_ATTEMPTS) + ")");
+                            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+                            continue;
+                        }
+
+                        // Parse response to check flush status
+                        try
+                        {
+                            nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
+
+                            if (pollJson.contains("data") && pollJson["data"].contains("status"))
+                            {
+                                std::string status = pollJson["data"]["status"].get<std::string>();
+
+                                if (status == "in_progress")
+                                {
+                                    m_logFunction(LOG_DEBUG, module + " flush still in progress (attempt " +
+                                                  std::to_string(attempt) + "/" + std::to_string(MAX_FLUSH_POLL_ATTEMPTS) + ")");
+                                    std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+                                    continue;
+                                }
+                                else if (status == "completed")
+                                {
+                                    flushCompleted = true;
+                                    std::string result = pollJson["data"]["result"].get<std::string>();
+                                    flushSucceeded = (result == "success");
+
+                                    m_logFunction(LOG_DEBUG, module + " flush completed with result: " + result);
+                                    break;
+                                }
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            m_logFunction(LOG_WARNING, "Failed to parse flush poll response from " + module + ": " +
+                                          std::string(e.what()) + " - Response: " + pollResponse.response);
+                        }
+
+                        std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+                    }
+
+                    if (!flushCompleted)
+                    {
+                        m_logFunction(LOG_ERROR, module + " flush did not complete within timeout (" +
+                                      std::to_string(MAX_FLUSH_POLL_ATTEMPTS) + " seconds), aborting coordination");
+                        resumePausedModules();
+                        return false;
+                    }
+
+                    if (!flushSucceeded)
+                    {
+                        m_logFunction(LOG_ERROR, module + " flush completed with error, aborting coordination");
+                        resumePausedModules();
+                        return false;
+                    }
+
+                    m_logFunction(LOG_DEBUG, module + " flush completed successfully");
+                }
+                else
+                {
+                    // Other modules: flush is synchronous, already completed
+                    m_logFunction(LOG_DEBUG, "Successfully flushed " + module);
+                }
             }
 
             // Step 3: Get version from each module

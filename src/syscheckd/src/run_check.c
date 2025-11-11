@@ -48,6 +48,10 @@ void audit_set_db_consistency(void);
 // Global flag to stop sync module
 volatile int fim_sync_module_running = 0;
 
+// Flush on-demand synchronization variables (thread-safe with atomic operations)
+atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 = flush active
+atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
+
 // Prototypes
 #ifdef WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
@@ -620,8 +624,15 @@ DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
-    // Initial wait until FIM is started
+    bool sync_result;
+
+    // Initial wait until FIM is started (can be interrupted by flush request)
     for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
+        // Check for flush request even during initial wait
+        if (atomic_int_get(&fim_flush_in_progress)) {
+            mdebug1("Flush request received during initial wait, starting sync early");
+            break;
+        }
         sleep(1);
     }
 
@@ -634,6 +645,27 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
 
     while (fim_sync_module_running) {
+        bool flush_request_detected = false;
+
+        if (atomic_int_get(&fim_flush_in_progress)) {
+            flush_request_detected = true;
+        } else {
+            // Wait for sync_interval or until flush is requested
+            for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
+                // Check for flush request every second (atomic ensures thread-safe visibility)
+                if (atomic_int_get(&fim_flush_in_progress)) {
+                    flush_request_detected = true;
+                    break;
+                }
+                sleep(1);
+            }
+        }
+
+        // Check if we should stop
+        if (!fim_sync_module_running) {
+            break;
+        }
+
         w_mutex_lock(&syscheck.fim_scan_mutex);
         w_mutex_lock(&syscheck.fim_realtime_mutex);
         #ifdef WIN32
@@ -675,8 +707,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
 
-        for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-            sleep(1);
+        // If there's a flush request active, mark it as completed
+        if (flush_request_detected) {
+            int result = sync_result ? 0 : -1;
+            atomic_int_set(&fim_flush_result, result);
+            atomic_int_set(&fim_flush_in_progress, 0);
         }
     }
 
