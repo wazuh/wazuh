@@ -233,32 +233,12 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  sca_read:
-    description: Allow read agent's sca information.
-    policies:
-      sca:
-        actions:
-          - sca:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscheck_read:
-    description: Allow read syscheck information
+  syscheck_run:
+    description: Allow run syscheck
     policies:
       syscheck:
         actions:
-          - syscheck:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscollector_read:
-    description: Allow read agents information
-    policies:
-      syscollector:
-        actions:
-          - syscollector:read
+          - syscheck:run
         resources:
           - agent:id:*
         effect: allow
