@@ -25,8 +25,8 @@ int Read_Indexer(const char* config_file)
         indexer_config = NULL;
     }
 
-    char errBuf[1024] = {0};
-    char *indexer_config_str = get_indexer_cnf(config_file, errBuf, sizeof(errBuf));
+    char error_buffer[OS_SIZE_1024] = {0};
+    char *indexer_config_str = get_indexer_cnf(config_file, error_buffer, sizeof(error_buffer));
 
     if (!indexer_config_str) {
         return OS_INVALID;
