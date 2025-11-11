@@ -78,7 +78,7 @@ public:
     MOCK_METHOD(void, deleteAssetByUUID, (const std::string&), (override));
 };
 
-class MockICMstore : public ICMstore
+class MockICMstore : public ICMStore
 {
 public:
     MOCK_METHOD(std::shared_ptr<ICMStoreNSReader>, getNSReader, (const NamespaceId& nsId), (const, override));

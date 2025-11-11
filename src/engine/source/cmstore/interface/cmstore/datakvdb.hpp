@@ -115,6 +115,7 @@ public:
 
         kvdbJson.setString(m_uuid, jsonkvdb::PATH_KEY_ID);
         kvdbJson.setString(m_name, jsonkvdb::PATH_KEY_NAME);
+        kvdbJson.setBool(m_enabled, jsonkvdb::PATH_KEY_ENABLED);
         kvdbJson.set(jsonkvdb::PATH_KEY_CONTENT, m_data);
 
         return kvdbJson;
