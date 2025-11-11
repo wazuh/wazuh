@@ -444,7 +444,10 @@ typedef struct _config {
 #else
     pthread_mutex_t fim_symlink_mutex;
     unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
-#endif
+#endif // WIN32
+    pthread_mutex_t fim_sync_control_mutex;            /* Controls pause/resume coordination with fim_run_integrity */
+    bool fim_pause_requested;                          /* Flag to indicate scans should be paused */
+    bool fim_pausing_is_allowed;                       /* Flag to indicate fim_run_integrity acknowledged pause */
     rtfim *realtime;
     fdb_t *database;
 

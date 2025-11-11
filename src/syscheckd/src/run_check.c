@@ -624,15 +624,23 @@ DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
-    bool sync_result;
 
-    // Initial wait until FIM is started (can be interrupted by flush request)
+    // Initial wait until FIM is started
     for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-        // Check for flush request even during initial wait
-        if (atomic_int_get(&fim_flush_in_progress)) {
-            mdebug1("Flush request received during initial wait, starting sync early");
+        // Check for pause request during initial wait
+        w_mutex_lock(&syscheck.fim_sync_control_mutex);
+        bool pause_requested = syscheck.fim_pause_requested;
+        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+        if (pause_requested) {
+            // Acknowledge pause immediately
+            w_mutex_lock(&syscheck.fim_sync_control_mutex);
+            syscheck.fim_pausing_is_allowed = true;
+            w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+            mdebug2("Pause request detected during initial wait");
             break;
         }
+
         sleep(1);
     }
 
@@ -650,13 +658,27 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         if (atomic_int_get(&fim_flush_in_progress)) {
             flush_request_detected = true;
         } else {
-            // Wait for sync_interval or until flush is requested
+            // Wait for sync_interval, checking for pause and flush requests
             for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-                // Check for flush request every second (atomic ensures thread-safe visibility)
+                // Check for pause request
+                w_mutex_lock(&syscheck.fim_sync_control_mutex);
+                bool pause_requested = syscheck.fim_pause_requested;
+                w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+                if (pause_requested) {
+                    // Acknowledge pause immediately
+                    w_mutex_lock(&syscheck.fim_sync_control_mutex);
+                    syscheck.fim_pausing_is_allowed = true;
+                    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+                }
+
+                // Check for flush request
                 if (atomic_int_get(&fim_flush_in_progress)) {
                     flush_request_detected = true;
+                    mdebug1("Flush request detected during sync wait, breaking early");
                     break;
                 }
+
                 sleep(1);
             }
         }
@@ -666,52 +688,82 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             break;
         }
 
-        w_mutex_lock(&syscheck.fim_scan_mutex);
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        #ifdef WIN32
-        w_mutex_lock(&syscheck.fim_registry_scan_mutex);
-        #endif
+        // Check for pause request
+        w_mutex_lock(&syscheck.fim_sync_control_mutex);
+        bool pause_requested = syscheck.fim_pause_requested;
+        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
 
-        minfo("Running FIM synchronization.");
+        // Handle pause: if paused and no flush, skip this iteration
+        if (pause_requested && !flush_request_detected) {
+            // Acknowledge pause
+            w_mutex_lock(&syscheck.fim_sync_control_mutex);
+            syscheck.fim_pausing_is_allowed = true;
+            w_mutex_unlock(&syscheck.fim_sync_control_mutex);
 
-        bool sync_result = asp_sync_module(syscheck.sync_handle,
-                                           MODE_DELTA);
-        if (sync_result) {
-            minfo("Synchronization succeeded");
+            mdebug2("FIM is paused, skipping sync iteration");
+            continue;
+        }
 
-            for (int i = 0; i < table_count; i++) {
-                if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
-                    minfo("Starting integrity validation process for %s", table_names[i]);
-                    bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
-                                                                                       syscheck.sync_handle,
-                                                                                       fim_recovery_log_wrapper);
-                    if (full_sync_required) {
-                        fim_recovery_persist_table_and_resync(table_names[i],
-                                                              syscheck.sync_handle,
-                                                              NULL,
-                                                              fim_recovery_log_wrapper);
-                    }
-                    // Update the last sync time regardless of whether full sync was required
-                    // This ensures the integrity check doesn't run again until integrity_interval has elapsed
-                    fim_db_update_last_sync_time(table_names[i]);
-                }
+        // If paused and flush requested, acknowledge pause and sync without mutexes
+        if (pause_requested && flush_request_detected) {
+            w_mutex_lock(&syscheck.fim_sync_control_mutex);
+            syscheck.fim_pausing_is_allowed = true;
+            w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+            minfo("FIM is paused but flush requested, running synchronization without scan mutexes.");
+
+            bool sync_result = asp_sync_module(syscheck.sync_handle,
+                                               MODE_DELTA);
+
+            minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+
+            // If there's a flush request active, mark it as completed
+            if (flush_request_detected) {
+                int result = sync_result ? 0 : -1;
+                atomic_int_set(&fim_flush_result, result);
+                atomic_int_set(&fim_flush_in_progress, 0);
             }
         } else {
-            minfo("Synchronization failed");
-        }
-        #ifdef WIN32
-        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-        #endif
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        w_mutex_unlock(&syscheck.fim_scan_mutex);
+            w_mutex_lock(&syscheck.fim_scan_mutex);
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            #ifdef WIN32
+            w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+            #endif
 
-        minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+            minfo("Running FIM synchronization.");
 
-        // If there's a flush request active, mark it as completed
-        if (flush_request_detected) {
-            int result = sync_result ? 0 : -1;
-            atomic_int_set(&fim_flush_result, result);
-            atomic_int_set(&fim_flush_in_progress, 0);
+            bool sync_result = asp_sync_module(syscheck.sync_handle,
+                                               MODE_DELTA);
+            if (sync_result) {
+                minfo("Synchronization succeeded");
+
+                for (int i = 0; i < table_count; i++) {
+                    if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
+                        minfo("Starting integrity validation process for %s", table_names[i]);
+                        bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
+                                                                                           syscheck.sync_handle,
+                                                                                           fim_recovery_log_wrapper);
+                        if (full_sync_required) {
+                            fim_recovery_persist_table_and_resync(table_names[i],
+                                                                  syscheck.sync_handle,
+                                                                  NULL,
+                                                                  fim_recovery_log_wrapper);
+                        }
+                        // Update the last sync time regardless of whether full sync was required
+                        // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+                        fim_db_update_last_sync_time(table_names[i]);
+                    }
+                }
+            } else {
+                minfo("Synchronization failed");
+            }
+            #ifdef WIN32
+            w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+            #endif
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+            minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         }
     }
 

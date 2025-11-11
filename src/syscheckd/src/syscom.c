@@ -30,8 +30,56 @@ extern void mock_assert(const int result, const char* const expression,
 
 int fim_execute_pause(void) {
     mdebug1("FIM agent info: pause command received");
-    // TODO: Implement actual pause logic
-    // This will pause the FIM module coordination
+
+    w_mutex_lock(&syscheck.fim_sync_control_mutex);
+
+    // Check if already paused
+    if (syscheck.fim_pause_requested) {
+        mdebug1("FIM scans are already paused or pause is in progress");
+        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+        return 0;
+    }
+
+    // Request pause
+    syscheck.fim_pause_requested = true;
+    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+    mdebug1("FIM pause requested, waiting for fim_run_integrity to acknowledge");
+
+    // Wait for fim_run_integrity to acknowledge the pause (max 30 seconds)
+    int timeout_seconds = 30;
+    for (int i = 0; i < timeout_seconds; i++) {
+        w_mutex_lock(&syscheck.fim_sync_control_mutex);
+        bool pausing_is_allowed = syscheck.fim_pausing_is_allowed;
+        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+        if (pausing_is_allowed) {
+            break;
+        }
+        sleep(1);
+    }
+
+    w_mutex_lock(&syscheck.fim_sync_control_mutex);
+    bool pausing_is_allowed = syscheck.fim_pausing_is_allowed;
+    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+    if (!pausing_is_allowed) {
+        merror("FIM pause timeout: fim_run_integrity did not acknowledge pause within %d seconds", timeout_seconds);
+        w_mutex_lock(&syscheck.fim_sync_control_mutex);
+        syscheck.fim_pause_requested = false;
+        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+        return -1;
+    }
+
+    // Now that fim_run_integrity acknowledged pause, acquire all scan mutexes
+    // This prevents new scans from starting while paused
+    w_mutex_lock(&syscheck.fim_scan_mutex);
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+#ifdef WIN32
+    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+#endif
+
+    minfo("FIM scans successfully paused");
     return 0;
 }
 
@@ -121,8 +169,32 @@ int fim_execute_set_version(int version) {
 
 int fim_execute_resume(void) {
     mdebug1("FIM agent info: resume command received");
-    // TODO: Implement actual resume logic
-    // This will resume the FIM module coordination
+
+    w_mutex_lock(&syscheck.fim_sync_control_mutex);
+
+    // Check if actually paused
+    if (!syscheck.fim_pause_requested) {
+        mdebug1("FIM scans are not paused, resume command ignored");
+        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+        return 0;
+    }
+
+    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+    // Release all scan mutexes
+#ifdef WIN32
+    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+#endif
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+    // Clear pause flags
+    w_mutex_lock(&syscheck.fim_sync_control_mutex);
+    syscheck.fim_pausing_is_allowed = false;
+    syscheck.fim_pause_requested = false;
+    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+
+    minfo("FIM scans successfully resumed");
     return 0;
 }
 

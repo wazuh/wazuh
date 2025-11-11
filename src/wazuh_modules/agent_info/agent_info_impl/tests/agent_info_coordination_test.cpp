@@ -716,12 +716,31 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
     }));
 
     // Create a query function that simulates successful module communication
-    auto queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+    auto queryModuleFunc = [](const std::string& /* module_name */, const std::string & query, char** response) -> int
     {
         if (response)
         {
-            // Return success response for all commands
-            *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+            try
+            {
+                nlohmann::json cmd = nlohmann::json::parse(query);
+                std::string command = cmd["command"];
+
+                if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else
+                {
+                    // Return success response for all other commands
+                    *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+                }
+            }
+            catch (...)
+            {
+                // If JSON parsing fails, return generic success
+                *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+            }
         }
 
         return 0;
