@@ -365,6 +365,10 @@ public:
                         // Lock the agent to reject new sessions during metadata/groups updates
                         lockAgent(res.context->agentId, "Metadata/groups update in progress");
 
+                        // Flush any pending bulk operations FIRST to complete inventory sessions
+                        // This processes accumulated bulk data and invokes callbacks, allowing sessions to complete
+                        m_indexerConnector->flush();
+
                         // Wait for all OTHER active sessions of this agent to complete (max 60s)
                         // Note: We exclude the current session from the count since we're processing it
                         size_t remainingSessions = waitForAgentSessions(
@@ -393,8 +397,6 @@ public:
                         }
 
                         // All sessions completed - safe to proceed with metadata/groups update
-                        // Flush any pending bulk operations BEFORE metadata/groups updates
-                        m_indexerConnector->flush();
                     }
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
