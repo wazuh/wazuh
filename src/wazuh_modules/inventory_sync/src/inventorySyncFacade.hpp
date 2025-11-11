@@ -364,6 +364,7 @@ public:
                     {
                         // Lock the agent to reject new sessions during metadata/groups updates
                         lockAgent(res.context->agentId, "Metadata/groups update in progress");
+                        res.context->ownsAgentLock = true;
 
                         // Flush any pending bulk operations FIRST to complete inventory sessions
                         // This processes accumulated bulk data and invokes callbacks, allowing sessions to complete
@@ -377,6 +378,7 @@ public:
                         if (remainingSessions > 0)
                         {
                             // Timeout: cannot proceed with metadata/groups update safely - agent will retry later
+                            res.context->ownsAgentLock = false;
                             unlockAgent(res.context->agentId);
 
                             logDebug1(LOGGER_DEFAULT_TAG,
@@ -413,6 +415,7 @@ public:
                             [this, ctx = res.context]()
                             {
                                 // Unlock agent to allow new sessions after metadata update completes
+                                ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
                                 // Send ACK to agent.
@@ -454,6 +457,7 @@ public:
                             [this, ctx = res.context]()
                             {
                                 // Unlock agent to allow new sessions after groups update completes
+                                ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
                                 // Send ACK to agent.
@@ -486,6 +490,7 @@ public:
                             [this, ctx = res.context]()
                             {
                                 // Unlock agent to allow new sessions after metadata check completes
+                                ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
                                 // Send ACK to agent.
@@ -532,6 +537,7 @@ public:
                             [this, ctx = res.context]()
                             {
                                 // Unlock agent to allow new sessions after groups check completes
+                                ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
                                 // Send ACK to agent.
@@ -692,9 +698,10 @@ public:
                 {
                     logError(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: %s", e.what());
 
-                    // Unlock agent if it was locked
-                    if (isAgentLocked(res.context->agentId))
+                    // Unlock agent if this session owns the lock
+                    if (res.context->ownsAgentLock)
                     {
+                        res.context->ownsAgentLock = false;
                         unlockAgent(res.context->agentId);
                     }
 
@@ -717,9 +724,10 @@ public:
                 {
                     logError(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: %s", e.what());
 
-                    // Unlock agent if it was locked
-                    if (isAgentLocked(res.context->agentId))
+                    // Unlock agent if this session owns the lock
+                    if (res.context->ownsAgentLock)
                     {
+                        res.context->ownsAgentLock = false;
                         unlockAgent(res.context->agentId);
                     }
 
@@ -763,9 +771,9 @@ public:
                                       {
                                           logDebug2(LOGGER_DEFAULT_TAG, "Session %llu has timed out", pair.first);
 
-                                          // Unlock agent if this was a metadata/groups update session
+                                          // Unlock agent if this session owns the lock
                                           const auto& context = pair.second.getContext();
-                                          if (isAgentLocked(context->agentId))
+                                          if (context->ownsAgentLock)
                                           {
                                               unlockAgent(context->agentId);
                                               logDebug1(LOGGER_DEFAULT_TAG,
