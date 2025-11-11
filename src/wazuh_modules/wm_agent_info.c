@@ -364,9 +364,9 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
             char* end;
             long value = strtol(nodes[i]->content, &end, 10);
 
-            if (value < 3600 || value > 7 * DAY_SEC || *end)
+            if (value < 60 || value > 7 * DAY_SEC || *end)
             {
-                mwarn("Invalid integrity_interval time at module '%s'. Value must be between 3600 (1 hour) and %d (7 days).",
+                mwarn("Invalid integrity_interval time at module '%s'. Value must be between 60 (1 minute) and %d (7 days).",
                       WM_AGENT_INFO_CONTEXT.name,
                       7 * DAY_SEC);
             }
