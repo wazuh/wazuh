@@ -109,7 +109,8 @@ union MessageType {
     StartAck,
     End,
     EndAck,
-    ReqRet
+    ReqRet,
+    DataContext
 }
 
 table Message {

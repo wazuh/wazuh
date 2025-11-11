@@ -9,58 +9,26 @@ The inventory synchronization protocol is defined in flatbuffer schema files tha
 ### Core Message Structure
 
 ```flatbuffers
-// Main message wrapper
 table Message {
     content: MessageType;
 }
 
 union MessageType {
-    Data,
+    DataValue,
+    DataClean,
+    ChecksumModule,
     Start,
     StartAck,
     End,
     EndAck,
-    ReqRet
+    ReqRet,
+    DataContext
 }
 
-table Data {
-    seq: ulong;
-    session: ulong;
-    operation: Operation;
-    id: string;
-    index: string;
-    data: [byte];
-}
-
-table Start {
-    mode: Mode;
-    size: ulong;
-}
-
-table StartAck {
-    status: Status;
-    session: ulong;
-}
-
-table End {
-    session: ulong;
-}
-
-table EndAck {
-    status: Status;
-    session: ulong;
-}
-
-table Pair {
-    begin: ulong;
-    end: ulong;
-}
-
-table ReqRet {
-    seq: [Pair];
-    session: ulong;
-}
+root_type Message;
 ```
+
+All synchronization messages are wrapped in the `Message` table with the specific message type in the `content` union field.
 
 ### Start Message
 
@@ -68,32 +36,83 @@ Initiates a synchronization session with mode and agent information:
 
 ```flatbuffers
 table Start {
+    module: string;
     mode: Mode;
     size: ulong;
+    index: [string];
+    option: Option;
+    architecture: string;
+    hostname: string;
+    osname: string;
+    osplatform: string;
+    ostype: string;
+    osversion: string;
+    agentversion: string;
+    agentname: string;
+    agentid: string;
+    groups: [string];
+    global_version: ulong;
 }
 
 enum Mode: byte {
-    Full,
-    Delta
+    ModuleFull,
+    ModuleDelta,
+    ModuleCheck,
+    MetadataDelta,
+    MetadataCheck,
+    GroupDelta,
+    GroupCheck
+}
+
+enum Option: byte {
+    Sync,
+    VDFirst,
+    VDSync,
+    VDClean
 }
 ```
 
 **Fields:**
 
-- `mode`: Synchronization type (Full replaces all data, Delta applies changes)
-- `size`: The size of the inventory data being synchronized
+- `module`: Module name (syscollector, fim, sca)
+- `mode`: Synchronization type (see modes below)
+- `size`: Number of messages to be sent in this session
+- `index`: Target index names for the synchronization
+- `option`: Synchronization option (used by Vulnerability Scanner integration)
+- `architecture`, `hostname`, `osname`, `osplatform`, `ostype`, `osversion`: Agent OS information
+- `agentversion`, `agentname`, `agentid`: Agent identification information
+- `groups`: Agent group memberships
+- `global_version`: Version counter for agent context updates
 
-### Data Message
+**Synchronization Modes:**
 
-Contains inventory payload for indexing:
+**Module Synchronization** (syscollector, FIM, SCA):
+- `ModuleFull`: Complete inventory replacement - triggers delete-by-query before indexing
+- `ModuleDelta`: Incremental updates - only processes changes
+- `ModuleCheck`: Integrity verification using checksums
+
+**Agent Context Synchronization** (agent-info module):
+- `MetadataDelta`: Updates agent metadata (name, version, IP, OS) on existing documents
+- `MetadataCheck`: Disaster recovery - scans all indices and fixes metadata inconsistencies
+- `GroupDelta`: Updates agent group membership on existing documents
+- `GroupCheck`: Disaster recovery - scans all indices and fixes group inconsistencies
+
+### Data Messages
+
+The protocol supports multiple data message types:
+
+#### DataValue
+
+Standard inventory data message with versioning:
 
 ```flatbuffers
-table Data {
+table DataValue {
     seq: ulong;
     session: ulong;
     operation: Operation;
     id: string;
     index: string;
+    version: ulong;
     data: [byte];
 }
 
@@ -110,7 +129,72 @@ enum Operation : byte {
 - `operation`: Type of operation (Upsert for insert/update, Delete for removal)
 - `id`: Unique document identifier within the index
 - `index`: Target Elasticsearch/OpenSearch index name
+- `version`: Module-specific version number for integrity checks
 - `data`: JSON document payload as byte array
+
+**Usage:** Used by syscollector, FIM, and SCA modules for inventory synchronization.
+
+#### DataContext
+
+Lightweight message for vulnerability scanning context:
+
+```flatbuffers
+table DataContext {
+    seq: ulong;
+    session: ulong;
+    id: string;
+    data: [byte];
+}
+```
+
+**Fields:**
+
+- `seq`: Sequence number
+- `session`: Session identifier
+- `id`: Document identifier
+- `data`: Context payload
+
+**Usage:** Reserved for future Vulnerability Scanner integration.
+
+#### DataClean
+
+Delete-by-query message for bulk data removal:
+
+```flatbuffers
+table DataClean {
+    seq: ulong;
+    session: ulong;
+    index: string;
+}
+```
+
+**Fields:**
+
+- `seq`: Sequence number
+- `session`: Session identifier
+- `index`: Target index to clean
+
+**Usage:** Used to remove outdated data.
+
+#### ChecksumModule
+
+Checksum verification for integrity checks:
+
+```flatbuffers
+table ChecksumModule {
+    session: ulong;
+    index: string;
+    checksum: string;
+}
+```
+
+**Fields:**
+
+- `session`: Session identifier
+- `index`: Target index name
+- `checksum`: Calculated checksum for integrity verification
+
+**Usage:** Used in ModuleCheck mode to determine if full sync is needed.
 
 ### End Message
 
@@ -126,12 +210,20 @@ table End {
 
 - `session`: Session identifier to complete
 
-### Response Messages
+Sent by the agent after all data messages have been transmitted. This triggers the manager to process and index all session data.
 
-The module sends acknowledgment responses back to agents:
+---
+
+## Response Messages
+
+The manager sends acknowledgment responses back to agents:
+
+### StartAck Message
+
+Acknowledgment for session creation:
 
 ```flatbuffers
-table EndAck {
+table StartAck {
     status: Status;
     session: ulong;
 }
@@ -144,71 +236,114 @@ enum Status: byte {
 }
 ```
 
-## Message Validation
+**Fields:**
 
-The Inventory Sync module performs comprehensive validation of all flatbuffer messages, that follows this schema:
+- `status`: Result of session creation
+  - `Ok`: Session created successfully
+  - `Error`: Session creation failed
+  - `PartialOk`, `Offline`: Reserved for future use
+- `session`: Unique session identifier assigned by the manager
+
+Sent by the manager in response to a Start message. The agent uses this session ID for all subsequent data messages.
+
+---
+
+### EndAck Message
+
+Acknowledgment for completed synchronization:
 
 ```flatbuffers
-table AgentInfo {
-    id: string;
-    name: string;
-    ip: string;
-    version: string;
-    module: string;
-    data: [ubyte];
+table EndAck {
+    status: Status;
+    session: ulong;
 }
-
-root_type AgentInfo;
 ```
 
-### Buffer Verification
+**Fields:**
+
+- `status`: Final synchronization result
+  - `Ok`: All data successfully indexed
+  - `PartialOk`: Some data indexed, some failed
+  - `Error`: Synchronization failed
+  - `Offline`: Indexer unavailable
+- `session`: Session identifier
+
+Sent by the manager after processing all session data and completing indexing operations.
+
+---
+
+### ReqRet Message
+
+Request for message retransmission:
+
+```flatbuffers
+table ReqRet {
+    seq: [Pair];
+    session: ulong;
+}
+
+table Pair {
+    begin: ulong;
+    end: ulong;
+}
+```
+
+**Fields:**
+
+- `seq`: Array of sequence number ranges to retransmit (each Pair represents a range from `begin` to `end`)
+- `session`: Session identifier
+
+Sent by the manager when sequence gaps are detected in received data messages. The agent retransmits the requested messages to ensure data completeness.
+
+---
+
+## Message Validation
+
+The Inventory Sync module validates all incoming FlatBuffer messages:
+
+### Message Verification
 
 ```cpp
-auto message = Wazuh::Sync::GetAgentInfo(dataRaw.data());
-
-if (message->id() == nullptr || message->module_() == nullptr)
+// Verify the flatbuffer structure
+flatbuffers::Verifier verifier(buffer.data(), buffer.size());
+if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
 {
     throw InventorySyncException("Invalid message buffer");
 }
 
-auto agentId = message->id()->string_view();
-auto moduleName = message->module_()->string_view();
+// Parse the message
+auto syncMessage = Wazuh::SyncSchema::GetMessage(buffer.data());
 
-auto agentName = message->name() ? message->name()->string_view() : std::string_view();
-auto agentIp = message->ip() ? message->ip()->string_view() : std::string_view();
-auto agentVersion = message->version() ? message->version()->string_view() : std::string_view();
-
-flatbuffers::Verifier verifier(message->data()->data(), message->data()->size());
-```
-
-### Content Type Validation
-
-```cpp
-if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+// Validate content type
+switch (syncMessage->content_type())
 {
-    auto syncMessage = Wazuh::SyncSchema::GetMessage(message->data()->data());
-    if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Data)
-    {
-        // Process data message
-    }
-    else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
-    {
-        // Process start message
-    }
-    else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
-    {
-        // Process end message
-    }
-    else
-    {
-        throw InventorySyncException("Unknown message contentype");
-    }
-}
-else
-{
-    throw InventorySyncException("Invalid message buffer");
+    case Wazuh::SyncSchema::MessageType_Start:
+        // Validate Start message fields
+        if (syncMessage->content_as_Start()->module() == nullptr)
+        {
+            throw InventorySyncException("Missing module name");
+        }
+        break;
+
+    case Wazuh::SyncSchema::MessageType_DataValue:
+        // Validate DataValue message fields
+        auto dataValue = syncMessage->content_as_DataValue();
+        if (dataValue->id() == nullptr || dataValue->index() == nullptr)
+        {
+            throw InventorySyncException("Missing required fields");
+        }
+        break;
+
+    // ... other message types
 }
 ```
+
+**Validation checks:**
+- FlatBuffer structure integrity
+- Required fields presence
+- Session ID validity
+- Sequence number ordering
+- Operation type validity
 
 ## Performance Characteristics
 
@@ -228,41 +363,78 @@ FlatBuffers provide several performance advantages for inventory synchronization
 
 ## Usage Examples
 
-### Creating Start Message
+### Creating StartAck Response
 
 ```cpp
 auto fbBuilder = std::make_shared<flatbuffers::FlatBufferBuilder>();
-auto startAckOffset =
-    Wazuh::SyncSchema::CreateStartAckDirect(*fbBuilder, status, ctx->sessionId, ctx->moduleName.c_str());
+auto startAckOffset = Wazuh::SyncSchema::CreateStartAck(
+    *fbBuilder,
+    Wazuh::SyncSchema::Status_Ok,
+    sessionId);
 auto messageOffset = Wazuh::SyncSchema::CreateMessage(
-    *fbBuilder, Wazuh::SyncSchema::MessageType_StartAck, startAckOffset.Union());
+    *fbBuilder,
+    Wazuh::SyncSchema::MessageType_StartAck,
+    startAckOffset.Union());
 fbBuilder->Finish(messageOffset);
 ```
 
-### Processing Data Message
+### Processing DataValue Message
 
 ```cpp
 auto message = Wazuh::SyncSchema::GetMessage(buffer.data());
-if (message->content_type() == Wazuh::SyncSchema::MessageType_Data) {
-    const auto seq = message->seq();
-    const auto session = message->session();
+if (message->content_type() == Wazuh::SyncSchema::MessageType_DataValue)
+{
+    auto dataValue = static_cast<const Wazuh::SyncSchema::DataValue*>(message->content());
+    const auto seq = dataValue->seq();
+    const auto session = dataValue->session();
+    const auto version = dataValue->version();
+    const auto operation = dataValue->operation();
+
+    // Access JSON payload
+    auto data = dataValue->data();
+    std::string_view jsonPayload(reinterpret_cast<const char*>(data->data()), data->size());
 
     // Process inventory data
 }
 ```
 
-### Creating Response Message
+### Creating EndAck Response
 
 ```cpp
 flatbuffers::FlatBufferBuilder builder;
 
-auto response = Wazuh::SyncSchema::CreateEndAck(builder,
+auto endAck = Wazuh::SyncSchema::CreateEndAck(
+    builder,
     Wazuh::SyncSchema::Status_Ok,
-    session_id);
+    sessionId);
 
-auto message = Wazuh::SyncSchema::CreateMessage(builder,
+auto message = Wazuh::SyncSchema::CreateMessage(
+    builder,
     Wazuh::SyncSchema::MessageType_EndAck,
-    response.Union());
+    endAck.Union());
+
+builder.Finish(message);
+```
+
+### Creating ReqRet (Retransmission Request)
+
+```cpp
+flatbuffers::FlatBufferBuilder builder;
+
+// Create pairs of sequence ranges to retransmit
+std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> pairs;
+pairs.push_back(Wazuh::SyncSchema::CreatePair(builder, 10, 15));  // Request seq 10-15
+pairs.push_back(Wazuh::SyncSchema::CreatePair(builder, 20, 25));  // Request seq 20-25
+
+auto reqRet = Wazuh::SyncSchema::CreateReqRet(
+    builder,
+    builder.CreateVector(pairs),
+    sessionId);
+
+auto message = Wazuh::SyncSchema::CreateMessage(
+    builder,
+    Wazuh::SyncSchema::MessageType_ReqRet,
+    reqRet.Union());
 
 builder.Finish(message);
 ```
