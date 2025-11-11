@@ -150,7 +150,8 @@ TEST_F(RecoveryTest, PersistAndResyncSuccess)
         30,  // sync_response_timeout
         100, // sync_max_eps
         syncHandle,
-        mockSynchronizeModuleSuccess
+        mockSynchronizeModuleSuccess,
+        mockLoggingFunction
     );
 
     // Verify last sync time was updated (should be > 0)
@@ -175,7 +176,8 @@ TEST_F(RecoveryTest, PersistAndResyncFailure)
         30,  // sync_response_timeout
         100, // sync_max_eps
         syncHandle,
-        mockSynchronizeModuleFailure
+        mockSynchronizeModuleFailure,
+        mockLoggingFunction
     );
 
     // Verify last sync time was still updated (even on failure)

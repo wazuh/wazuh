@@ -593,6 +593,28 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 }
 #endif
 
+// Logging callback wrapper for FIM recovery functions
+static void fim_recovery_log_wrapper(modules_log_level_t level, const char* log) {
+    switch (level) {
+        case LOG_DEBUG:
+        case LOG_DEBUG_VERBOSE:
+            mdebug1("%s", log);
+            break;
+        case LOG_INFO:
+            minfo("%s", log);
+            break;
+        case LOG_WARNING:
+            mwarn("%s", log);
+            break;
+        case LOG_ERROR:
+            merror("%s", log);
+            break;
+        case LOG_ERROR_EXIT:
+            merror_exit("%s", log);
+            break;
+    }
+}
+
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
@@ -634,13 +656,15 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
                                                                                        syscheck.sync_response_timeout,
                                                                                        syscheck.sync_max_eps,
-                                                                                       syscheck.sync_handle);
+                                                                                       syscheck.sync_handle,
+                                                                                       fim_recovery_log_wrapper);
                     if (full_sync_required) {
                         fim_recovery_persist_table_and_resync(table_names[i],
                                                               syscheck.sync_response_timeout,
                                                               syscheck.sync_max_eps,
                                                               syscheck.sync_handle,
-                                                              NULL);
+                                                              NULL,
+                                                              fim_recovery_log_wrapper);
                     }
                 }
             }

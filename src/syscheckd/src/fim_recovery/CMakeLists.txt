@@ -4,6 +4,7 @@ project(fim_recovery)
 
 enable_testing()
 
+include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)

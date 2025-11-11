@@ -23,7 +23,8 @@ void __wrap_fim_recovery_persist_table_and_resync(char* table_name,
                                                    uint32_t sync_response_timeout,
                                                    long sync_max_eps,
                                                    AgentSyncProtocolHandle* handle,
-                                                   void* test_callback);
+                                                   void* test_callback,
+                                                   void* log_callback);
 
 /**
  * @brief Wrapper for fim_recovery_check_if_full_sync_required
@@ -31,7 +32,8 @@ void __wrap_fim_recovery_persist_table_and_resync(char* table_name,
 bool __wrap_fim_recovery_check_if_full_sync_required(char* table_name,
                                                       uint32_t sync_response_timeout,
                                                       long sync_max_eps,
-                                                      AgentSyncProtocolHandle* handle);
+                                                      AgentSyncProtocolHandle* handle,
+                                                      void* log_callback);
 
 /**
  * @brief Wrapper for fim_recovery_integrity_interval_has_elapsed

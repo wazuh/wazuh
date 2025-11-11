@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <hashHelper.h>
+#include <sstream>
 
 #include "recovery.h"
 #include "agent_sync_protocol_c_wrapper.hpp"
@@ -23,7 +24,7 @@
 
 extern "C"
 {
-void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback){
+void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback, fim_recovery_log_callback_t log_callback){
     std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(table_name);
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -76,6 +77,11 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         );
     }
 
+    std::ostringstream msg;
+    msg << "Persisted " << recoveryItems.size() << " recovery items in memory";
+    log_callback(LOG_INFO, msg.str().c_str());
+    log_callback(LOG_INFO, "Starting recovery synchronization...");
+
     // The test_callback parameter allows unit tests to inject custom synchronizeModule behavior.
     // This is necessary because AgentSyncProtocolWrapper's implementation cannot be easily mocked
     // without significant refactoring of the wrapper architecture.
@@ -95,14 +101,29 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         // LCOV_EXCL_STOP
     }
 
+    if (success) {
+        log_callback(LOG_INFO, "Recovery completed successfully, in-memory data cleared");
+    } else {
+        log_callback(LOG_INFO, "Recovery synchronization failed, will retry later");
+    }
+
     // Update the last sync time regardless of the synchronization result since we always want to wait for integrity_interval to try again.
     DB::instance().updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
 }
 
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
 // LCOV_EXCL_START
-bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle){
+bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback){
+    std::ostringstream msg;
+    msg << "Attempting to get checksum for " << table_name << " table";
+    log_callback(LOG_INFO, msg.str().c_str());
+
     std::string final_checksum = DB::instance().calculateTableChecksum(table_name);
+
+    msg.str("");
+    msg.clear();
+    msg << "Success! Final file table checksum is: " << final_checksum;
+    log_callback(LOG_INFO, msg.str().c_str());
 
     bool needs_full_sync;
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
@@ -125,6 +146,15 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
         FIM_SYNC_RETRIES,
         sync_max_eps
     );
+
+    msg.str("");
+    msg.clear();
+    if (needs_full_sync) {
+        msg << "Checksum mismatch detected for index " << table_name << ", full sync required";
+    } else {
+        msg << "Checksum valid for index " << table_name << ", delta sync sufficient";
+    }
+    log_callback(LOG_INFO, msg.str().c_str());
 
     return needs_full_sync;
 }

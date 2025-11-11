@@ -38,6 +38,7 @@ extern "C"
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "logging_helper.h"
 
 #ifdef __cplusplus
 // Callback type for testing synchronizeModule: allows mocking sync behavior
@@ -46,6 +47,9 @@ typedef bool (*SynchronizeModuleCallback)(void);
 typedef bool (*SynchronizeModuleCallback)(void);
 #endif
 
+// Logging callback type
+typedef void (*fim_recovery_log_callback_t)(modules_log_level_t level, const char* log);
+
 /**
  * @brief Persists a table's contents in memory and triggers a full resync
  * @param table_name The table to resync
@@ -53,8 +57,9 @@ typedef bool (*SynchronizeModuleCallback)(void);
  * @param sync_max_eps Max eps for the sync process
  * @param handle Sync Protocol handle
  * @param test_callback Optional callback for testing synchronizeModule (pass NULL for production use)
+ * @param log_callback Logging callback function (required, must not be NULL)
  */
-EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback);
+EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback, fim_recovery_log_callback_t log_callback);
 
 /**
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
@@ -62,9 +67,10 @@ EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, uint32_t s
  * @param sync_response_timeout Timeout for the checksum validation process
  * @param sync_max_eps Max eps for the checksum validation process
  * @param handle Sync Protocol handle
+ * @param log_callback Logging callback function (required, must not be NULL)
  * @returns true if a full sync is required, false if a delta sync is sufficient
  */
-EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle);
+EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback);
 
 /**
  * @brief Checks if integrity_interval has elapsed for a table
