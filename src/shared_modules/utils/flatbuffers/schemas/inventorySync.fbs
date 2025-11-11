@@ -42,6 +42,7 @@ table DataValue {
 table DataContext {
     seq: ulong;
     session: ulong;
+    id: string;
     data: [byte];
 }
 
