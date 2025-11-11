@@ -23,13 +23,16 @@ enum class Type
     DOUBLE,
     KEYWORD,
     TEXT,
+    MATCH_ONLY_TEXT,
     WILDCARD,
+    CONSTANT_KEYWORD,
     DATE,
     DATE_NANOS,
     IP,
     BINARY,
     OBJECT,
     NESTED,
+    FLAT_OBJECT,
     GEO_POINT
 };
 
@@ -38,7 +41,8 @@ inline constexpr bool hasProperties(Type type)
     switch (type)
     {
         case Type::OBJECT:
-        case Type::NESTED: return true;
+        case Type::NESTED:
+        case Type::FLAT_OBJECT: return true;
         default: return false;
     }
 }
@@ -58,13 +62,16 @@ inline constexpr auto typeToStr(Type type)
         case Type::DOUBLE: return "double";
         case Type::KEYWORD: return "keyword";
         case Type::TEXT: return "text";
+        case Type::MATCH_ONLY_TEXT: return "match_only_text";
         case Type::WILDCARD: return "wildcard";
+        case Type::CONSTANT_KEYWORD: return "constant_keyword";
         case Type::DATE: return "date";
         case Type::DATE_NANOS: return "date_nanos";
         case Type::IP: return "ip";
         case Type::BINARY: return "binary";
         case Type::OBJECT: return "object";
         case Type::NESTED: return "nested";
+        case Type::FLAT_OBJECT: return "flat_object";
         case Type::GEO_POINT: return "geo_point";
         default: return "error";
     }
@@ -94,8 +101,12 @@ inline constexpr auto strToType(std::string_view strType)
         return Type::KEYWORD;
     if (typeToStr(Type::TEXT) == strType)
         return Type::TEXT;
+    if (typeToStr(Type::MATCH_ONLY_TEXT) == strType)
+        return Type::MATCH_ONLY_TEXT;
     if (typeToStr(Type::WILDCARD) == strType)
         return Type::WILDCARD;
+    if (typeToStr(Type::CONSTANT_KEYWORD) == strType)
+        return Type::CONSTANT_KEYWORD;
     if (typeToStr(Type::DATE) == strType)
         return Type::DATE;
     if (typeToStr(Type::DATE_NANOS) == strType)
@@ -108,6 +119,8 @@ inline constexpr auto strToType(std::string_view strType)
         return Type::OBJECT;
     if (typeToStr(Type::NESTED) == strType)
         return Type::NESTED;
+    if (typeToStr(Type::FLAT_OBJECT) == strType)
+        return Type::FLAT_OBJECT;
     if (typeToStr(Type::GEO_POINT) == strType)
         return Type::GEO_POINT;
     return Type::ERROR;
@@ -128,13 +141,16 @@ inline constexpr auto typeToJType(Type type)
         case Type::DOUBLE: return json::Json::Type::Number;
         case Type::KEYWORD: return json::Json::Type::String;
         case Type::TEXT: return json::Json::Type::String;
+        case Type::MATCH_ONLY_TEXT: return json::Json::Type::String;
         case Type::WILDCARD: return json::Json::Type::String;
+        case Type::CONSTANT_KEYWORD: return json::Json::Type::String;
         case Type::DATE: return json::Json::Type::String;
         case Type::DATE_NANOS: return json::Json::Type::String;
         case Type::IP: return json::Json::Type::String;
         case Type::BINARY: return json::Json::Type::String;
         case Type::OBJECT: return json::Json::Type::Object;
         case Type::NESTED: return json::Json::Type::Object;
+        case Type::FLAT_OBJECT: return json::Json::Type::Object;
         case Type::GEO_POINT: return json::Json::Type::Array;
         default: return json::Json::Type::Null;
     }
