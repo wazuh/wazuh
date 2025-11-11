@@ -1,10 +1,8 @@
 import json
-import requests
 from importlib.metadata import files
 from enum import Enum, auto
 from pathlib import Path, PurePath
-from typing import Tuple, List
-import socket
+from typing import Tuple
 
 import yaml
 try:
@@ -129,16 +127,6 @@ class ResourceHandler:
 
     def delete_file(self, path: str):
         Path(path).unlink()
-
-    def download_file(self, url: str, format: Format = Format.YML) -> dict:
-        file = requests.get(url)
-        if not file.ok:
-            raise Exception(f"Error downloading {url}: {file.status_code}")
-
-        readed = self._read(file.text, format)
-        if not readed:
-            raise Exception(f'Failed to read {file.name}')
-        return readed
 
     def _load_file(self, path: Path, format: Format = Format.YML) -> dict:
         content = path.read_text()

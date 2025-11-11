@@ -142,7 +142,6 @@ pip3 install -e tools/engine-suite[dev]
 **For developing we recommend to install it under a virtual environment.**
 
 Once installed the following scripts are available in the path:
-- [engine-schema](src/engine_schema/README.md)
 - [engine-decoder](src/engine_decoder/README.md)
 - [engine-catalog](src/engine_catalog/README.md)
 - [engine-integration](src/engine_integration/README.md)
