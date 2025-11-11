@@ -379,12 +379,12 @@ public:
                             // Timeout: cannot proceed with metadata/groups update safely - agent will retry later
                             unlockAgent(res.context->agentId);
 
-                            logWarn(LOGGER_DEFAULT_TAG,
-                                    "Metadata/groups update failed for agent %s: %zu session(s) still active after "
-                                    "timeout. "
-                                    "Agent will retry later.",
-                                    res.context->agentId.c_str(),
-                                    remainingSessions);
+                            logDebug1(LOGGER_DEFAULT_TAG,
+                                      "Metadata/groups update failed for agent %s: %zu session(s) still active after "
+                                      "timeout. "
+                                      "Agent will retry later.",
+                                      res.context->agentId.c_str(),
+                                      remainingSessions);
 
                             // Notify agent of failure and cleanup session
                             m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
@@ -756,31 +756,30 @@ public:
                         break;
                     }
 
-                    std::erase_if(
-                        m_agentSessions,
-                        [this](const auto& pair)
-                        {
-                            if (!pair.second.isAlive(std::chrono::seconds(DEFAULT_TIME * 2)))
-                            {
-                                logDebug2(LOGGER_DEFAULT_TAG, "Session %llu has timed out", pair.first);
+                    std::erase_if(m_agentSessions,
+                                  [this](const auto& pair)
+                                  {
+                                      if (!pair.second.isAlive(std::chrono::seconds(DEFAULT_TIME * 2)))
+                                      {
+                                          logDebug2(LOGGER_DEFAULT_TAG, "Session %llu has timed out", pair.first);
 
-                                // Unlock agent if this was a metadata/groups update session
-                                const auto& context = pair.second.getContext();
-                                if (isAgentLocked(context->agentId))
-                                {
-                                    unlockAgent(context->agentId);
-                                    logWarn(LOGGER_DEFAULT_TAG,
-                                            "Disaster recovery session %llu for agent %s timed out - agent unlocked",
-                                            pair.first,
-                                            context->agentId.c_str());
-                                }
+                                          // Unlock agent if this was a metadata/groups update session
+                                          const auto& context = pair.second.getContext();
+                                          if (isAgentLocked(context->agentId))
+                                          {
+                                              unlockAgent(context->agentId);
+                                              logDebug1(LOGGER_DEFAULT_TAG,
+                                                        "Session %llu for agent %s timed out - agent unlocked",
+                                                        pair.first,
+                                                        context->agentId.c_str());
+                                          }
 
-                                // Delete data from database.
-                                m_dataStore->deleteByPrefix(std::to_string(pair.first));
-                                return true;
-                            }
-                            return false;
-                        });
+                                          // Delete data from database.
+                                          m_dataStore->deleteByPrefix(std::to_string(pair.first));
+                                          return true;
+                                      }
+                                      return false;
+                                  });
                 }
             });
 
@@ -944,10 +943,10 @@ public:
             auto elapsed = std::chrono::steady_clock::now() - startTime;
             if (elapsed >= timeout)
             {
-                logWarn(LOGGER_DEFAULT_TAG,
-                        "Timeout waiting for agent %s sessions to complete. %zu session(s) still active",
-                        agentId.empty() ? "ALL" : agentId.c_str(),
-                        currentCount);
+                logDebug1(LOGGER_DEFAULT_TAG,
+                          "Timeout waiting for agent %s sessions to complete. %zu session(s) still active",
+                          agentId.empty() ? "ALL" : agentId.c_str(),
+                          currentCount);
                 return currentCount; // Timeout - return number of remaining sessions
             }
 

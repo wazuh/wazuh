@@ -1328,7 +1328,7 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
 
 bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int integrityInterval)
 {
-    std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+    std::unique_lock<std::mutex> lock(m_syncFlagsMutex);
 
     // Get current time in seconds since epoch
     auto now = std::chrono::system_clock::now();
@@ -1350,10 +1350,14 @@ bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int in
         return false;
     }
 
-    // If never checked before (lastCheck == 0), don't run integrity check
-    // This avoids running integrity check on first startup when there's no data yet
+    // If never checked before (lastCheck == 0), initialize timestamp and don't run check yet
+    // This enables integrity checks to run after the configured interval
     if (lastCheck == 0)
     {
+        // Release lock before calling updateLastIntegrityTime to avoid deadlock
+        lock.unlock();
+        updateLastIntegrityTime(table);
+        m_logFunction(LOG_INFO, "Initialized integrity check timestamp for " + table);
         return false;
     }
 
@@ -1429,21 +1433,6 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
         {
             m_logFunction(LOG_DEBUG, "Successfully coordinated " + table);
             resetSyncFlag(table);
-
-            // Initialize integrity check timestamp after first successful delta sync
-            // This enables integrity checks to start running after the configured interval
-            bool shouldInitialize = false;
-            {
-                std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
-                shouldInitialize = (table == AGENT_METADATA_TABLE && m_lastMetadataIntegrity == 0) ||
-                                   (table == AGENT_GROUPS_TABLE && m_lastGroupsIntegrity == 0);
-            }
-
-            if (shouldInitialize)
-            {
-                updateLastIntegrityTime(table);
-                m_logFunction(LOG_DEBUG, "Initialized integrity check timestamp for " + table);
-            }
         }
         else
         {
