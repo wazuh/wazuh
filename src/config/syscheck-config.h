@@ -443,7 +443,7 @@ typedef struct _config {
 #else
     pthread_mutex_t fim_symlink_mutex;
     unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
-#endif // WIN32
+#endif
     rtfim *realtime;
     fdb_t *database;
 

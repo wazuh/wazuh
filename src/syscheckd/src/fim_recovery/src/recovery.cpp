@@ -17,6 +17,16 @@
 #include "timeHelper.h"
 
 /**
+ * @brief Helper function for formatted logging
+ */
+template<typename... Args>
+void log_formatted(fim_recovery_log_callback_t log_callback, modules_log_level_t level, Args&&... args) {
+    std::ostringstream oss;
+    (oss << ... << args);
+    log_callback(level, oss.str().c_str());
+}
+
+/**
  * @brief Calculate the checksum-of-checksums for a table
  * @param table_name The table to calculate checksum for
  * @return The SHA1 checksum-of-checksums as a hex string
@@ -77,9 +87,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         );
     }
 
-    std::ostringstream msg;
-    msg << "Persisted " << recoveryItems.size() << " recovery items in memory";
-    log_callback(LOG_INFO, msg.str().c_str());
+    log_formatted(log_callback, LOG_INFO, "Persisted ", recoveryItems.size(), " recovery items in memory");
     log_callback(LOG_INFO, "Starting recovery synchronization...");
 
     // The test_callback parameter allows unit tests to inject custom synchronizeModule behavior.
@@ -114,16 +122,11 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
 // LCOV_EXCL_START
 bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback){
-    std::ostringstream msg;
-    msg << "Attempting to get checksum for " << table_name << " table";
-    log_callback(LOG_INFO, msg.str().c_str());
+    log_formatted(log_callback, LOG_INFO, "Attempting to get checksum for ", table_name, " table");
 
     std::string final_checksum = DB::instance().calculateTableChecksum(table_name);
 
-    msg.str("");
-    msg.clear();
-    msg << "Success! Final file table checksum is: " << final_checksum;
-    log_callback(LOG_INFO, msg.str().c_str());
+    log_formatted(log_callback, LOG_INFO, "Success! Final file table checksum is: ", final_checksum);
 
     bool needs_full_sync;
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
@@ -147,14 +150,11 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
         sync_max_eps
     );
 
-    msg.str("");
-    msg.clear();
     if (needs_full_sync) {
-        msg << "Checksum mismatch detected for index " << table_name << ", full sync required";
+        log_formatted(log_callback, LOG_INFO, "Checksum mismatch detected for index ", table_name, ", full sync required");
     } else {
-        msg << "Checksum valid for index " << table_name << ", delta sync sufficient";
+        log_formatted(log_callback, LOG_INFO, "Checksum valid for index ", table_name, ", delta sync sufficient");
     }
-    log_callback(LOG_INFO, msg.str().c_str());
 
     return needs_full_sync;
 }

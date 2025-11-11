@@ -23,6 +23,8 @@ else()
   add_library(fim_recovery SHARED ${FIM_RECOVERY_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+target_link_libraries(fim_recovery wazuhext agent_sync_protocol dbsync fimdb)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(fim_recovery PROPERTIES
     PREFIX ""
@@ -31,8 +33,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     POSITION_INDEPENDENT_CODE 0
   )
   # Link against fimdb using the import library (.dll.a) directly
-  target_link_libraries(fim_recovery wazuhext agent_sync_protocol dbsync fimdb)
-
   find_program(DLLTOOL i686-w64-mingw32-dlltool)
   if(NOT DLLTOOL)
     message(FATAL_ERROR "DLL tool for delayed load libraries not found.")
@@ -42,14 +42,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     COMMAND "${DLLTOOL}" -D "libfim_recovery.dll" --def "libfim_recovery.def" --output-delaylib "libfim_recovery.lib"
     COMMAND cp "libfim_recovery.lib" "${CMAKE_BINARY_DIR}/bin/libfim_recovery.lib"
     COMMENT "Creating delayed load library for fim_recovery.")
-elseif(UNIX AND NOT APPLE)
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN -Wl,--allow-shlib-undefined")
-  target_link_libraries(fim_recovery wazuhext agent_sync_protocol dbsync)
-elseif(APPLE)
-  set_target_properties(fim_recovery PROPERTIES
-    LINK_FLAGS "-Wl,-undefined,dynamic_lookup"
-  )
-  target_link_libraries(fim_recovery wazuhext agent_sync_protocol dbsync)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
