@@ -1,9 +1,9 @@
 #ifndef _CTI_STORE_CONTENT_MANAGER_CONFIG_HPP
 #define _CTI_STORE_CONTENT_MANAGER_CONFIG_HPP
 
+#include <functional>
 #include <string>
 #include <tuple>
-#include <functional>
 
 #include <base/json.hpp>
 
@@ -20,7 +20,6 @@ using FileProcessingResult = std::tuple<int, std::string, bool>;
  * @brief Callback for processing files
  */
 using FileProcessingCallback = std::function<FileProcessingResult(const std::string& message)>;
-
 
 /**
  * @brief Configuration structure for Content Manager
@@ -45,6 +44,24 @@ struct ContentManagerConfig
     std::string databasePath {"offset_database"};
     std::string assetStorePath {"assets_database"};
     int offset {0};
+
+    // OAuth Configuration
+    struct OAuthConfig
+    {
+        struct IndexerConfig
+        {
+            std::string url {};
+            std::string credentialsEndpoint {"/_plugins/content-manager/subscription"};
+        } indexer;
+
+        struct ConsoleConfig
+        {
+            std::string url {};
+            std::string productType {"catalog:consumer:decoders"};
+        } console;
+
+        bool enableProductsProvider {true};
+    } oauth;
 
     /**
      * @brief Convert configuration to JSON format for ContentRegister
