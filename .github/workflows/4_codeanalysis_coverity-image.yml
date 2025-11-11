@@ -22,7 +22,7 @@ jobs:
       PROJECT: wazuh/wazuh
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download Coverity tarball
         run: |

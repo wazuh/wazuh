@@ -1,0 +1,90 @@
+version: 2
+updates:
+  - package-ecosystem: devcontainers
+    directory: src/engine/tools/devContainer/.devcontainer
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directories:
+      - api/test/integration/env/base
+      - api/test/integration/env/base/*
+      - api/tools/env/*
+      - packages/debs/amd64/*
+      - packages/debs/arm64/*
+      - packages/debs/armhf/agent
+      - packages/debs/i386/agent
+      - packages/debs/ppc64le/agent
+      - packages/rpms/amd64/*
+      - packages/rpms/arm64/*
+      - packages/rpms/armhf/agent
+      - packages/rpms/i386/agent
+      - packages/rpms/ppc64le/agent
+      - packages/windows
+      - packages/wpk/common
+      - packages/wpk/test/*
+      - src/engine/.rtr
+      - src/engine/internal_packages/*
+      - src/engine/tools/devContainer/.devcontainer
+      - src/engine/tools/devContainer/e2e/*
+      - src/engine/tools/docker
+      - src/shared_modules/http-request/.rtr
+      - src/wazuh_modules/vulnerability_scanner/testtool/versionMatcher
+      - tools/testing/coverity
+      - tools/testing/unit-tests
+    schedule:
+      interval: weekly
+    groups: # 1 PR per week and group
+      docker:
+        patterns: ["*"]
+  - package-ecosystem: docker-compose
+    directories:
+      - api/test/integration/env
+      - api/tools/env
+      - src/engine/tools/devContainer/e2e
+      - src/shared_modules/indexer_connector/testtool
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups: # 1 PR per week
+      github-actions:
+        patterns: ["*"]
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: "wazuh/wazuh-http-request"
+        versions: [ "1.0.0" ] # stay on "1.0.0" branch
+  - package-ecosystem: pip
+    directories:
+      - .github/actions/check_files
+      - api
+      - extensions/elasticsearch/7.x/qa
+      - framework
+      - src/data_provider/qa
+      - src/engine/test/acceptance_test
+      - src/engine/test/engine-test-utils
+      - src/engine/test/health_test/engine-health-test
+      - src/engine/test/helper_tests/engine-helper-test
+      - src/engine/test/integration_tests/engine-it
+      - src/engine/tools/api-communication
+      - src/engine/tools/engine-bench
+      - src/engine/tools/engine-suite
+      - src/engine/tools/evtx2xml
+      - src/shared_modules/indexer_connector/qa
+      - src/shared_modules/keystore/qa
+      - src/wazuh_modules/inventory_sync/qa
+      - src/wazuh_modules/vulnerability_scanner/qa
+      - src/win32/qa
+    schedule:
+      interval: weekly
+    groups: # 1 PR per week and group
+      pip-major:
+        update-types: ["major"]
+      pip-minor:
+        update-types: ["minor"]
+      pip-patch:
+        update-types: ["patch"]

@@ -36,7 +36,7 @@ runs:
   using: "composite"
   steps:
   - name: Setup Python
-    uses: actions/setup-python@v5
+    uses: actions/setup-python@v6
     with:
       python-version: '3.12'
 
@@ -68,7 +68,7 @@ runs:
 
   - name: Upload current stats
     if: success()
-    uses: actions/upload-artifact@v4
+    uses: actions/upload-artifact@v5
     with:
       name: current_stats_${{ env.UUID }}
       path: ${{ inputs.current_status }}
@@ -88,7 +88,7 @@ runs:
 
   - name: Upload validation results
     if: always()
-    uses: actions/upload-artifact@v4
+    uses: actions/upload-artifact@v5
     with:
       name: validation_results_${{ env.UUID }}
       path: ${{ inputs.report_file }}

@@ -29,10 +29,10 @@ jobs:
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
       TEST_REPORT_PATH: /home/runner/work/test_report.txt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -53,4 +53,3 @@ jobs:
         run: |
           git clone -b ${{ inputs.qa_branch }} --single-branch https://github.com/wazuh/qa-integration-framework.git
           python qa-integration-framework/src/wazuh_testing/scripts/pytest_results_parser.py -f ${TEST_REPORT_PATH}
-

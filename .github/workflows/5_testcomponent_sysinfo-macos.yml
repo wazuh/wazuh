@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-13
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       # Build wazuh agent for macOS.
       - name: Build wazuh agent for macOS
         run: |

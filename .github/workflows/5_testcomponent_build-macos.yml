@@ -11,7 +11,7 @@ jobs:
     runs-on: macos-13
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: Build wazuh agent for macOS 13
         run: |
           make deps -C src TARGET=agent -j4
@@ -20,7 +20,7 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: Build wazuh agent for macOS 14
         run: |
           make deps -C src TARGET=agent -j3

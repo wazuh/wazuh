@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Detect modified files
         id: filter
@@ -67,7 +67,7 @@ jobs:
         run: echo "${{ toJson(steps.filter.outputs) }}"
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64

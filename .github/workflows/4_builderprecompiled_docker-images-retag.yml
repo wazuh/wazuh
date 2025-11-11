@@ -44,7 +44,7 @@ jobs:
           skip_after_successful_duplicate: 'false'
 
       - name: Checkout repository previous commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
             fetch-depth: 2
       - run: git checkout HEAD^
@@ -65,7 +65,7 @@ jobs:
           echo "OLD_VERSION=$VERSION" >> $GITHUB_ENV;
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Get new version from VERSION.json
         run: |

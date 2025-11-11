@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout wazuh/wazuh repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: wazuh/wazuh
           ref: ${{ inputs.source_reference }}

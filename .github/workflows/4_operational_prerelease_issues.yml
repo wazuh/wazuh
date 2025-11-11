@@ -41,7 +41,7 @@ jobs:
       stage: ${{ steps.parse-version.outputs.stage }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Parse VERSION.json
         id: parse-version
@@ -74,7 +74,7 @@ jobs:
       issue_url: ${{ steps.create-ut-issue.outputs.issue_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Create Unit Tests Issue
         id: create-ut-issue
@@ -97,7 +97,7 @@ jobs:
       issue_url: ${{ steps.create-cov-issue.outputs.issue_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Create Coverity Issue
         id: create-cov-issue
@@ -120,7 +120,7 @@ jobs:
       issue_url: ${{ steps.create-it-issue.outputs.issue_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Create Integration Tests Issue
         id: create-it-issue
@@ -143,7 +143,7 @@ jobs:
       issue_url: ${{ steps.create-wpk-issue.outputs.issue_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Create WPK Tests Issue
         id: create-wpk-issue

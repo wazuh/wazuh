@@ -36,7 +36,7 @@ jobs:
           skip_after_successful_duplicate: 'false'
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -179,7 +179,7 @@ jobs:
 
       - name: Download Wazuh manager package (deb amd64)
         if: github.event_name == 'pull_request' && steps.wait-for-check-completion.outputs.check-completed == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ steps.get-run-info.outputs.artifact-name }}
           path: ./packages/
@@ -344,7 +344,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: inventory-sync-test-results
           path: |
@@ -355,7 +355,7 @@ jobs:
 
       - name: Upload Wazuh logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wazuh-logs
           path: |

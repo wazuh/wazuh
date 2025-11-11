@@ -10,7 +10,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -41,7 +41,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ matrix.ref }}
           fetch-depth: 0
@@ -50,8 +50,8 @@ jobs:
         run:
           make -C src external/cpython.tar.gz && tar -xzf src/external/cpython.tar.gz -C src/external --one-top-level
 
-      - name: Scan prebuilt embedded Python 
-        uses: anchore/scan-action@v6
+      - name: Scan prebuilt embedded Python
+        uses: anchore/scan-action@v7
         id: scan
         with:
           path: "src/external/cpython"

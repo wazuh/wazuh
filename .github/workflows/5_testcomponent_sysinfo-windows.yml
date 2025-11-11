@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Install mingw
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
       - name: "Install a compatible CMake"
@@ -36,25 +36,25 @@ jobs:
           cp src/win32/libwinpthread-1.dll src/shared_libraries/
       # Upload build artifacts for the shared libraries.
       - name: Upload Artifact shared_libraries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: shared_libraries
           path: src/shared_libraries
       # Upload build artifacts for the data provider.
       - name: Upload Artifact data_provider
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: data_provider
           path: src/data_provider/build/bin
       # Upload build artifacts for dbsync.
       - name: Upload Artifact dbsync
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dbsync
           path: src/shared_modules/dbsync/build/bin
       # Upload build artifacts for syscollector.
       - name: Upload Artifact syscollector
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: syscollector
           path: src/wazuh_modules/syscollector/build/bin
@@ -63,29 +63,29 @@ jobs:
     runs-on: windows-2025
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact data_provider
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: data_provider
           path: C:\data_provider\
       - name: Download Artifact dbsync
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: dbsync
           path: C:\dbsync\
       - name: Download Artifact syscollector
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: syscollector
           path: C:\syscollector\
       - name: Download Artifact shared_libraries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: shared_libraries
           path: C:\shared_libraries\

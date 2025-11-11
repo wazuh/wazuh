@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Docker build
         run: |
@@ -27,7 +27,7 @@ jobs:
           docker run -v /tmp:/tmp binutils-deb /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload .deb artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: binutils-deb
           path: /tmp/*.deb
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Docker build
         run: |
@@ -46,7 +46,7 @@ jobs:
           docker run -v /tmp:/tmp binutils-rpm /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload .rpm artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: binutils-rpm
           path: /tmp/*.rpm
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Docker build
         run: |
@@ -65,7 +65,7 @@ jobs:
           docker run -v /tmp:/tmp binutils-deb-arm64 /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload .deb artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: binutils-deb-arm64
           path: /tmp/*.deb
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Docker build
         run: |
@@ -84,7 +84,7 @@ jobs:
           docker run -v /tmp:/tmp binutils-rpm-arm64 /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload .rpm artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: binutils-rpm-arm64
           path: /tmp/*.rpm

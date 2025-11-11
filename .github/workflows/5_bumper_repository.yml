@@ -70,7 +70,7 @@ jobs:
           export GPG_TTY=$(tty)
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Using workflow-specific GITHUB_TOKEN because currently CI_WAZUHCI_BUMPER_TOKEN
           # doesn't have all the necessary permissions

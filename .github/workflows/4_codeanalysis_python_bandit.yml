@@ -12,7 +12,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ matrix.ref }}
           fetch-depth: 0
@@ -62,4 +62,3 @@ jobs:
           ref: refs/heads/${{ matrix.ref }}
           sha: ${{ matrix.sha }}
           wait-for-processing: true
-
