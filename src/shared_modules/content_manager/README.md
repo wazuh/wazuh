@@ -27,13 +27,53 @@ The input configuration of the Content Manager is described below:
 The Content Manager supports optional OAuth 2.0 authentication for accessing protected CTI APIs. This feature enables:
 
 - **Secure credential management** through Wazuh Indexer integration
+- **Subscription-based product discovery** with type filtering
 - **Token exchange** for HMAC-signed URLs with 5-minute lifetime
 - **Automatic token refresh** before expiration
 - **Backward compatibility** - OAuth is completely optional
 
-OAuth authentication is implemented through two provider classes:
+OAuth authentication is implemented through three provider classes:
 - **CTICredentialsProvider**: Fetches OAuth credentials from Wazuh Indexer
+- **CTIProductsProvider**: Fetches subscription info and filters products by type
 - **CTISignedUrlProvider**: Exchanges access tokens for signed URLs
+
+### Product Type Filtering
+
+The `CTIProductsProvider` supports filtering products by type, allowing different modules to download only their relevant content:
+
+| Product Type | Description | Module Usage |
+|--------------|-------------|--------------|
+| `catalog:consumer:decoders` | Decoder definitions | Engine (log parsing) |
+| `catalog:consumer:rules` | Detection rules | Indexer |
+| `catalog:consumer` | All consumer products (default) | Any module |
+
+**Example OAuth Configuration with Product Type Filtering:**
+
+```json
+{
+    "topicName": "CTI Decoders Download",
+    "interval": 120,
+    "configData": {
+        "contentSource": "cti-offset",
+        "compressionType": "raw",
+        "url": "https://cti.wazuh.com/api/v1/catalog",
+        "outputFolder": "/tmp/cti_decoders",
+        "oauth": {
+            "indexer": {
+                "url": "http://localhost:9200",
+                "credentialsEndpoint": "/_wazuh/cti/credentials"
+            },
+            "console": {
+                "url": "https://console.wazuh.com",
+                "instancesEndpoint": "/api/v1/instances/me",
+                "tokenExchangeEndpoint": "/api/v1/instances/token/exchange"
+            },
+            "enableProductsProvider": true,
+            "productType": "catalog:consumer:decoders"
+        }
+    }
+}
+```
 
 For detailed information about OAuth configuration and usage, see the [CTI OAuth Providers documentation](./doc/components/CTI_OAUTH_PROVIDERS.md).
 

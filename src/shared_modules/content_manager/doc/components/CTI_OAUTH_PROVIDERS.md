@@ -49,13 +49,14 @@ uint64_t expiresIn = credentialsProvider->getExpiresIn();
 
 ### CTIProductsProvider
 
-The [CTIProductsProvider](../../src/components/ctiProductsProvider.hpp) fetches subscription information from CTI Console to determine which products the instance is subscribed to.
+The [CTIProductsProvider](../../src/components/ctiProductsProvider.hpp) fetches subscription information from CTI Console to determine which products the instance is subscribed to, with support for filtering products by type.
 
 #### Features
 
 - **Fetch subscription data** from Console's `/api/v1/instances/me` endpoint using Bearer token
 - **Parse organization and plan** information
 - **Extract product metadata** including stable identifiers and resource URLs
+- **Filter products by type** (e.g., "catalog:consumer:decoders" for Engine module)
 - **Filter catalog products** that require token exchange
 - **Cache subscription data** to minimize API calls
 - **Thread-safe access** to subscription information
@@ -66,8 +67,9 @@ The [CTIProductsProvider](../../src/components/ctiProductsProvider.hpp) fetches 
 nlohmann::json config = {
     {"console", {
         {"url", "https://console.wazuh.com"},
-        {"instancesEndpoint", "/api/v1/instances/me"},  // Optional, default shown
-        {"timeout", 5000}                                // Optional, milliseconds
+        {"instancesEndpoint", "/api/v1/instances/me"},     // Optional, default shown
+        {"timeout", 5000},                                  // Optional, milliseconds
+        {"productType", "catalog:consumer:decoders"}        // Optional, filter by product type
     }}
 };
 
@@ -76,6 +78,17 @@ auto productsProvider = std::make_shared<CTIProductsProvider>(
     config
 );
 ```
+
+#### Product Type Filtering
+
+The `productType` configuration field allows filtering products by their type. This is particularly useful for modules that need specific types of content.
+
+**Example**: For the Engine module downloading decoders, configure:
+```cpp
+{"productType", "catalog:consumer:decoders"}
+```
+
+This ensures `getCatalogProducts()` returns only decoder products, excluding rules, integrations, and other content types.
 
 #### Usage
 
@@ -101,10 +114,11 @@ for (const auto& plan : subscription.plans) {
     }
 }
 
-// Or get only catalog products directly
+// Or get only catalog products filtered by configured type
 auto catalogProducts = productsProvider->getCatalogProducts();
 for (const auto& product : catalogProducts) {
-    // Use product.resource for token exchange
+    // All products here match the configured productType
+    // e.g., if productType="catalog:consumer:decoders", only decoder products are returned
     std::string signedUrl = signedUrlProvider->getSignedUrl(product.resource, accessToken);
 }
 ```
@@ -147,6 +161,59 @@ std::string signedUrl = signedUrlProvider->getSignedUrl(product.resource, access
 // Returns: "https://cti.wazuh.com/api/v1/catalog/...?verify=hmac_signature"
 ```
 
+## Subscription Response Example
+
+The Console API returns subscription data with product type information:
+
+```json
+{
+  "data": {
+    "organization": {
+      "identifier": "org-123",
+      "name": "ACME S.L.",
+      "avatar": "https://acme.sl/avatar.png"
+    },
+    "plans": [
+      {
+        "identifier": "plan-pro",
+        "name": "Pro Plan Deluxe",
+        "description": "Professional tier subscription",
+        "products": [
+          {
+            "identifier": "vulnerabilities-pro",
+            "type": "catalog:consumer:decoders",
+            "name": "Vulnerabilities Pro",
+            "description": "Real-time vulnerability intelligence decoders",
+            "resource": "https://cti.wazuh.com/api/v1/catalog/.../decoders"
+          },
+          {
+            "identifier": "malware-signatures",
+            "type": "catalog:consumer:rules",
+            "name": "Malware Signatures",
+            "description": "Malware detection rules",
+            "resource": "https://cti.wazuh.com/api/v1/catalog/.../rules"
+          },
+          {
+            "identifier": "integration-connectors",
+            "type": "catalog:consumer:integrations",
+            "name": "Integration Connectors",
+            "description": "Third-party API connectors",
+            "resource": "https://cti.wazuh.com/api/v1/catalog/.../integrations"
+          },
+          {
+            "identifier": "support-assistance",
+            "type": "cloud:assistance",
+            "name": "Support Assistance",
+            "email": "support@wazuh.com",
+            "phone": "+1-555-0100"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 ## Complete OAuth 2.0 Flow
 
 The complete OAuth flow for CTI content download now includes the new subscription step:
@@ -178,14 +245,14 @@ The complete OAuth flow for CTI content download now includes the new subscripti
          v
 ┌──────────────────────┐
 │ CTIProductsProvider  │
-└──────────┬───────────┘
+└────────┬─────────────┘
          │
          │ 5. GET /api/v1/instances/me
          │    Authorization: Bearer <access_token>
          v
 ┌──────────────┐
 │ CTI Console  │
-└──────┬───────┘
+└────────┬─────┘
          │
          │ 6. Return subscription data:
          │    - Organization info
@@ -194,7 +261,7 @@ The complete OAuth flow for CTI content download now includes the new subscripti
          v
 ┌──────────────────────┐
 │ CTIProductsProvider  │
-└──────────┬───────────┘
+└────────┬─────────────┘
          │
          │ 7. Extract product resources
          v
@@ -242,18 +309,6 @@ The complete OAuth flow for CTI content download now includes the new subscripti
 6. Signed URL includes HMAC signature and has 5-minute expiration
 7. **CtiDownloader** uses signed URL to download CTI content
 8. Cached signed URLs are reused for performance
-         │ 7. Provide signed URL
-         v
-┌─────────────────┐
-│ CtiDownloader   │
-└────────┬────────┘
-         │
-         │ 8. HTTP request with signed URL
-         v
-┌─────────────────┐
-│ CTI API         │
-└─────────────────┘
-```
 
 ## Security Considerations
 
