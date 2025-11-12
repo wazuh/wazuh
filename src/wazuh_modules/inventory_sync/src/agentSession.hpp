@@ -279,6 +279,15 @@ public:
     {
         return m_gapSet->lastUpdate() + timeout >= std::chrono::steady_clock::now();
     }
+
+    /**
+     * @brief Get the session context
+     * @return Shared pointer to the session context
+     */
+    std::shared_ptr<Context> getContext() const
+    {
+        return m_context;
+    }
 };
 
 using AgentSession = AgentSessionImpl<Utils::RocksDBWrapper, IndexerQueue, ResponseDispatcher>;

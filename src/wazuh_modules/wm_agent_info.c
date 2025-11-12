@@ -52,6 +52,7 @@
 
 // XML configuration constants
 static const char* XML_INTERVAL = "interval";
+static const char* XML_INTEGRITY_INTERVAL = "integrity_interval";
 static const char* XML_SYNC = "synchronization";
 
 // Type definitions
@@ -311,7 +312,8 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     }
 
     // Set default configuration values
-    agent_info->interval = 60;
+    agent_info->interval = 60;  // Delta updates every 60 seconds
+    agent_info->integrity_interval = 86400;  // Integrity check every 24 hours (86400 seconds)
 
     // Database synchronization config values
     agent_info->sync.enable_synchronization = 1;
@@ -355,6 +357,22 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
             else
             {
                 agent_info->interval = value;
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_INTEGRITY_INTERVAL))
+        {
+            char* end;
+            long value = strtol(nodes[i]->content, &end, 10);
+
+            if (value < 60 || value > 7 * DAY_SEC || *end)
+            {
+                mwarn("Invalid integrity_interval time at module '%s'. Value must be between 60 (1 minute) and %d (7 days).",
+                      WM_AGENT_INFO_CONTEXT.name,
+                      7 * DAY_SEC);
+            }
+            else
+            {
+                agent_info->integrity_interval = value;
             }
         }
         else if (!strcmp(nodes[i]->element, XML_SYNC))
@@ -536,6 +554,7 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
     if (agent_info)
     {
         cJSON_AddNumberToObject(wm_agent_info, "interval", agent_info->interval);
+        cJSON_AddNumberToObject(wm_agent_info, "integrity_interval", agent_info->integrity_interval);
 
         // Database synchronization values
         cJSON* synchronization = cJSON_CreateObject();

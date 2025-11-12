@@ -38,11 +38,18 @@ static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
     {INSERTED, "created"},
 };
 
-// Map tables to their synchronization modes
-static const std::map<std::string, Mode> TABLE_MODE_MAP
+// Map tables to their delta synchronization modes
+static const std::map<std::string, Mode> TABLE_DELTA_MODE_MAP
 {
     {AGENT_METADATA_TABLE, Mode::METADATA_DELTA},
     {AGENT_GROUPS_TABLE, Mode::GROUP_DELTA},
+};
+
+// Map tables to their integrity check modes
+static const std::map<std::string, Mode> TABLE_CHECK_MODE_MAP
+{
+    {AGENT_METADATA_TABLE, Mode::METADATA_CHECK},
+    {AGENT_GROUPS_TABLE, Mode::GROUP_CHECK},
 };
 
 // Map modules to their corresponding indices that should be updated when agent metadata or groups change
@@ -89,8 +96,7 @@ const char* AGENT_METADATA_SQL_STATEMENT =
     "host_os_name      TEXT,"
     "host_os_type      TEXT,"
     "host_os_platform  TEXT,"
-    "host_os_version   TEXT,"
-    "checksum          TEXT NOT NULL);";
+    "host_os_version   TEXT);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -101,9 +107,11 @@ const char* AGENT_GROUPS_SQL_STATEMENT =
 
 const char* DB_METADATA_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS db_metadata ("
-    "id                    INTEGER PRIMARY KEY CHECK (id = 1),"
-    "should_sync_metadata  INTEGER NOT NULL DEFAULT 0,"
-    "should_sync_groups    INTEGER NOT NULL DEFAULT 0);";
+    "id                         INTEGER PRIMARY KEY CHECK (id = 1),"
+    "should_sync_metadata       INTEGER NOT NULL DEFAULT 0,"
+    "should_sync_groups         INTEGER NOT NULL DEFAULT 0,"
+    "last_metadata_integrity    INTEGER NOT NULL DEFAULT 0,"
+    "last_groups_integrity      INTEGER NOT NULL DEFAULT 0);";
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
@@ -148,9 +156,10 @@ void AgentInfoImpl::setIsAgent(bool value)
     m_isAgent = value;
 }
 
-void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
+void AgentInfoImpl::start(int interval, int integrityInterval, std::function<bool()> shouldContinue)
 {
-    m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) + " seconds.");
+    m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) +
+                  " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
     // Load sync flags from database at startup
     loadSyncFlags();
@@ -180,52 +189,27 @@ void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
 
         // After populateAgentMetadata(), check if synchronization is needed
 
-        // Perform coordination for metadata if needed
+        // Perform delta synchronization for metadata if needed
         if (m_shouldSyncMetadata)
         {
-            try
-            {
-                m_logFunction(LOG_DEBUG, "Synchronization needed for " + std::string(AGENT_METADATA_TABLE));
-                bool success = coordinateModules(AGENT_METADATA_TABLE);
-
-                if (success)
-                {
-                    m_logFunction(LOG_DEBUG, "Successfully coordinated " + std::string(AGENT_METADATA_TABLE));
-                    resetSyncFlag(AGENT_METADATA_TABLE);
-                }
-                else
-                {
-                    m_logFunction(LOG_WARNING, "Failed to coordinate " + std::string(AGENT_METADATA_TABLE) + ", will retry in next cycle");
-                }
-            }
-            catch (const std::exception& e)
-            {
-                m_logFunction(LOG_ERROR, std::string("Exception during metadata coordination: ") + e.what());
-            }
+            performDeltaSync(AGENT_METADATA_TABLE);
         }
 
-        // Perform coordination for groups if needed
+        // Perform delta synchronization for groups if needed
         if (m_shouldSyncGroups)
         {
-            try
-            {
-                m_logFunction(LOG_DEBUG, "Synchronization needed for " + std::string(AGENT_GROUPS_TABLE));
-                bool success = coordinateModules(AGENT_GROUPS_TABLE);
+            performDeltaSync(AGENT_GROUPS_TABLE);
+        }
 
-                if (success)
-                {
-                    m_logFunction(LOG_DEBUG, "Successfully coordinated " + std::string(AGENT_GROUPS_TABLE));
-                    resetSyncFlag(AGENT_GROUPS_TABLE);
-                }
-                else
-                {
-                    m_logFunction(LOG_WARNING, "Failed to coordinate " + std::string(AGENT_GROUPS_TABLE) + ", will retry in next cycle");
-                }
-            }
-            catch (const std::exception& e)
-            {
-                m_logFunction(LOG_ERROR, std::string("Exception during groups coordination: ") + e.what());
-            }
+        // Check if integrity check should be performed (only if no delta sync is in progress)
+        if (!m_shouldSyncMetadata && shouldPerformIntegrityCheck(AGENT_METADATA_TABLE, integrityInterval))
+        {
+            performIntegritySync(AGENT_METADATA_TABLE);
+        }
+
+        if (!m_shouldSyncGroups && shouldPerformIntegrityCheck(AGENT_GROUPS_TABLE, integrityInterval))
+        {
+            performIntegritySync(AGENT_GROUPS_TABLE);
         }
 
         lock.lock();
@@ -400,9 +384,6 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["host_os_version"] = osInfo["os_version"];
     }
 
-    // Calculate checksum
-    agentMetadata["checksum"] = calculateMetadataChecksum(agentMetadata);
-
     // Read agent groups from merged.mg (only for agents)
     std::vector<std::string> groups;
 
@@ -472,7 +453,6 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_type, sizeof(metadata.os_type), agentMetadata, "host_os_type");
     copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
-    copyField(metadata.checksum_metadata, sizeof(metadata.checksum_metadata), agentMetadata, "checksum");
 
     // Copy groups
     if (!groups.empty())
@@ -747,38 +727,6 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
         std::string errorMsg = "Error processing event for table " + table + ": " + e.what();
         m_logFunction(LOG_ERROR, errorMsg);
     }
-}
-
-std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metadata) const
-{
-    // Build a deterministic string from metadata fields (excluding checksum itself)
-    std::string checksumInput;
-
-    // Add fields in a specific order for deterministic checksum
-    std::vector<std::string> fields = {"agent_id",
-                                       "agent_name",
-                                       "agent_version",
-                                       "host_architecture",
-                                       "host_hostname",
-                                       "host_os_name",
-                                       "host_os_type",
-                                       "host_os_platform",
-                                       "host_os_version"
-                                      };
-
-    for (const auto& field : fields)
-    {
-        if (metadata.contains(field))
-        {
-            checksumInput += metadata[field].is_string() ? metadata[field].get<std::string>() : metadata[field].dump();
-            checksumInput += ":";
-        }
-    }
-
-    // Use SHA-1 hash (consistent with other modules)
-    Utils::HashData hash(Utils::HashType::Sha1);
-    hash.update(checksumInput.c_str(), checksumInput.size());
-    return Utils::asciiToHex(hash.hash());
 }
 
 nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::string& table) const
@@ -1170,7 +1118,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         if (m_spSyncProtocol)
         {
             bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
-                                   TABLE_MODE_MAP.at(table),
+                                   TABLE_DELTA_MODE_MAP.at(table),
                                    indicesToSync,
                                    std::chrono::seconds(m_syncResponseTimeout),
                                    m_syncRetries,
@@ -1245,6 +1193,8 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
         rowData["id"] = 1;
         rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
         rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+        rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
+        rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
 
         nlohmann::json input;
         input["table"] = "db_metadata";
@@ -1284,6 +1234,16 @@ void AgentInfoImpl::loadSyncFlags()
             if (data.contains("should_sync_groups") && data["should_sync_groups"].is_number())
             {
                 m_shouldSyncGroups = (data["should_sync_groups"].get<int>() != 0);
+            }
+
+            if (data.contains("last_metadata_integrity") && data["last_metadata_integrity"].is_number())
+            {
+                m_lastMetadataIntegrity = data["last_metadata_integrity"].get<int64_t>();
+            }
+
+            if (data.contains("last_groups_integrity") && data["last_groups_integrity"].is_number())
+            {
+                m_lastGroupsIntegrity = data["last_groups_integrity"].get<int64_t>();
             }
         };
 
@@ -1344,6 +1304,8 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
         rowData["id"] = 1;
         rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
         rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+        rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
+        rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
 
         m_logFunction(LOG_INFO, "Resetting sync flag for " + table + " to false in database. m_shouldSyncMetadata=" +
                       std::to_string(m_shouldSyncMetadata) + ", m_shouldSyncGroups=" +
@@ -1361,5 +1323,178 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
     catch (const std::exception& e)
     {
         m_logFunction(LOG_ERROR, "Failed to reset sync flag for " + table + ": " + std::string(e.what()));
+    }
+}
+
+bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int integrityInterval)
+{
+    std::unique_lock<std::mutex> lock(m_syncFlagsMutex);
+
+    // Get current time in seconds since epoch
+    auto now = std::chrono::system_clock::now();
+    auto nowSeconds = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+
+    int64_t lastCheck = 0;
+
+    if (table == AGENT_METADATA_TABLE)
+    {
+        lastCheck = m_lastMetadataIntegrity;
+    }
+    else if (table == AGENT_GROUPS_TABLE)
+    {
+        lastCheck = m_lastGroupsIntegrity;
+    }
+    else
+    {
+        m_logFunction(LOG_WARNING, "Unknown table for integrity check: " + table);
+        return false;
+    }
+
+    // If never checked before (lastCheck == 0), initialize timestamp and don't run check yet
+    // This enables integrity checks to run after the configured interval
+    if (lastCheck == 0)
+    {
+        // Release lock before calling updateLastIntegrityTime to avoid deadlock
+        lock.unlock();
+        updateLastIntegrityTime(table);
+        m_logFunction(LOG_INFO, "Initialized integrity check timestamp for " + table);
+        return false;
+    }
+
+    // Check if enough time has elapsed since last integrity check
+    return (nowSeconds - lastCheck) >= integrityInterval;
+}
+
+void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
+{
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+        return;
+    }
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Get current time in seconds since epoch
+        auto now = std::chrono::system_clock::now();
+        auto nowSeconds = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+
+        // Update in-memory timestamp
+        if (table == AGENT_METADATA_TABLE)
+        {
+            m_lastMetadataIntegrity = nowSeconds;
+        }
+        else if (table == AGENT_GROUPS_TABLE)
+        {
+            m_lastGroupsIntegrity = nowSeconds;
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Unknown table for integrity time update: " + table);
+            return;
+        }
+
+        // Update in database
+        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
+        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+        rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
+        rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
+
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+
+        m_logFunction(LOG_INFO, "Updated last integrity check time for " + table);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to update last integrity time for " + table + ": " + std::string(e.what()));
+    }
+}
+
+bool AgentInfoImpl::performDeltaSync(const std::string& table)
+{
+    try
+    {
+        m_logFunction(LOG_DEBUG, "Synchronization needed for " + table);
+        bool success = coordinateModules(table);
+
+        if (success)
+        {
+            m_logFunction(LOG_DEBUG, "Successfully coordinated " + table);
+            resetSyncFlag(table);
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Failed to coordinate " + table + ", will retry in next cycle");
+        }
+
+        return success;
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, std::string("Exception during ") + table + " coordination: " + e.what());
+        return false;
+    }
+}
+
+bool AgentInfoImpl::performIntegritySync(const std::string& table)
+{
+    try
+    {
+        m_logFunction(LOG_INFO, "Starting integrity check for " + table);
+
+        if (!m_spSyncProtocol)
+        {
+            m_logFunction(LOG_WARNING, "Sync protocol not available, skipping integrity check");
+            return false;
+        }
+
+        // Build indices list for all modules
+        // We check all indices regardless of module availability since integrity check is lightweight
+        std::vector<std::string> indicesToCheck;
+
+        for (const auto& [module, indices] : MODULE_INDICES_MAP)
+        {
+            indicesToCheck.insert(indicesToCheck.end(), indices.begin(), indices.end());
+        }
+
+        // Perform integrity check - no globalVersion needed for CHECK modes
+        bool success = m_spSyncProtocol->synchronizeMetadataOrGroups(
+                           TABLE_CHECK_MODE_MAP.at(table),
+                           indicesToCheck,
+                           std::chrono::seconds(m_syncResponseTimeout),
+                           m_syncRetries,
+                           m_syncMaxEps);
+
+        // Update the last sync time regardless of the synchronization result
+        // This ensures we always wait for integrity_interval before trying again
+        updateLastIntegrityTime(table);
+
+        if (success)
+        {
+            m_logFunction(LOG_INFO, "Successfully completed integrity check for " + table);
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Failed integrity check for " + table);
+        }
+
+        return success;
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, std::string("Exception during integrity check for ") + table + ": " + e.what());
+        return false;
     }
 }

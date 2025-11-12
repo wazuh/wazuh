@@ -42,6 +42,8 @@ table DataValue {
 table DataContext {
     seq: ulong;
     session: ulong;
+    id: string;
+    index: string;
     data: [byte];
 }
 
@@ -61,7 +63,6 @@ table Start {
     agentname: string;
     agentid: string;
     groups: [string];
-    checksum_metadata: string;
     global_version: ulong;
 }
 
@@ -109,7 +110,8 @@ union MessageType {
     StartAck,
     End,
     EndAck,
-    ReqRet
+    ReqRet,
+    DataContext
 }
 
 table Message {

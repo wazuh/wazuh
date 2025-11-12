@@ -190,7 +190,7 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 
     try
     {
-        g_agent_info_impl->start(agent_info_config->interval);
+        g_agent_info_impl->start(agent_info_config->interval, agent_info_config->integrity_interval);
     }
     catch (const std::exception& ex)
     {

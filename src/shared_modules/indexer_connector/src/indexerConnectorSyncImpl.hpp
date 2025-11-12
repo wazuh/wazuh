@@ -499,6 +499,58 @@ public:
         const auto onSuccess = [this](const std::string& response)
         {
             logDebug2(IC_NAME, "Update by query response: %s", response.c_str());
+
+            // Parse response to extract update statistics and check for failures
+            try
+            {
+                auto responseJson = nlohmann::json::parse(response);
+
+                // Check for failures first
+                if (responseJson.contains("failures") && !responseJson["failures"].empty())
+                {
+                    auto failures = responseJson["failures"];
+                    logError(IC_NAME, "Update by query completed with %zu failures", failures.size());
+
+                    // Log first few failures for debugging
+                    size_t logCount = std::min<size_t>(failures.size(), 3);
+                    for (size_t i = 0; i < logCount; ++i)
+                    {
+                        logError(IC_NAME, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
+                    }
+                }
+
+                if (responseJson.contains("updated") && responseJson.contains("total"))
+                {
+                    auto updated = responseJson["updated"].get<int>();
+                    auto total = responseJson["total"].get<int>();
+                    auto noops = responseJson.contains("noops") ? responseJson["noops"].get<int>() : 0;
+                    auto failures = responseJson.contains("failures") ? responseJson["failures"].size() : 0;
+
+                    if (updated > 0)
+                    {
+                        logInfo(IC_NAME,
+                                "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
+                                "failures)",
+                                updated,
+                                total,
+                                noops,
+                                failures);
+                    }
+                    else
+                    {
+                        logDebug2(IC_NAME,
+                                  "Update by query completed: no documents needed updating (all %d documents already "
+                                  "up-to-date, %zu failures)",
+                                  total,
+                                  failures);
+                    }
+                }
+            }
+            catch (const std::exception& e)
+            {
+                logDebug2(IC_NAME, "Could not parse update by query response: %s", e.what());
+            }
+
             // Notify registered callbacks on success
             for (const auto& notify : m_notify)
             {
@@ -510,7 +562,6 @@ public:
         const auto onError =
             [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
         {
-            logError(IC_NAME, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
                 logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");

@@ -110,7 +110,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
     testData["host_os_type"] = "Linux";
     testData["host_os_platform"] = "ubuntu";
     testData["host_os_version"] = "22.04";
-    testData["checksum"] = "abc123";
 
     // Process the event
     m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
@@ -122,7 +121,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "created");
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "001");
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["name"], "test-agent");
-    EXPECT_FALSE(m_reportedEvents[0]["data"].contains("checksum")); // Checksum should be removed
 
     // Note: Persist callback verification removed as per PR feedback
     // New implementation uses synchronizeMetadataOrGroups without persist callbacks
@@ -143,12 +141,10 @@ TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
     testData["new"]["agent_id"] = "001";
     testData["new"]["agent_name"] = "updated-agent";
     testData["new"]["agent_version"] = "4.5.0";
-    testData["new"]["checksum"] = "def456";
 
     testData["old"]["agent_id"] = "001";
     testData["old"]["agent_name"] = "old-agent";
     testData["old"]["agent_version"] = "4.4.0";
-    testData["old"]["checksum"] = "abc123";
 
     // Process the event
     m_agentInfo->processEvent(MODIFIED, testData, "agent_metadata");
@@ -236,7 +232,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessEventWithExceptionInCallback)
     nlohmann::json testData;
     testData["agent_id"] = "001";
     testData["agent_name"] = "test";
-    testData["checksum"] = "abc";
 
     // Process event - exception should be caught and logged
     EXPECT_NO_THROW(m_agentInfo->processEvent(INSERTED, testData, "agent_metadata"));

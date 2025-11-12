@@ -36,6 +36,7 @@ struct Context final
     std::vector<std::string> groups;
     uint64_t globalVersion;
     bool transactionDispatched = false;
+    bool ownsAgentLock = false;
 };
 
 #endif // _INVENTORY_SYNC_CONTEXT_HPP

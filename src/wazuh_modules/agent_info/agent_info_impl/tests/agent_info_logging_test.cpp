@@ -118,7 +118,7 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -170,7 +170,7 @@ TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
                   );
 
     // Start will trigger updateChanges which will fail
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -205,7 +205,6 @@ TEST_F(AgentInfoLoggingTest, ProcessEventDebugUsesLogFunction)
     nlohmann::json testData;
     testData["agent_id"] = "001";
     testData["agent_name"] = "test";
-    testData["checksum"] = "abc";
 
     m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
 
@@ -242,7 +241,6 @@ TEST_F(AgentInfoLoggingTest, ProcessEventErrorUsesLogFunction)
 
     nlohmann::json testData;
     testData["agent_id"] = "001";
-    testData["checksum"] = "abc";
 
     m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
 

@@ -470,7 +470,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto agentversion = builder.CreateString(metadata.agent_version);
         auto agentname = builder.CreateString(metadata.agent_name);
         auto agentid = builder.CreateString(metadata.agent_id);
-        auto checksum_metadata = builder.CreateString(metadata.checksum_metadata);
 
         // Create groups vector from metadata
         std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
@@ -514,7 +513,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_agentname(agentname);
         startBuilder.add_agentid(agentid);
         startBuilder.add_groups(groups);
-        startBuilder.add_checksum_metadata(checksum_metadata);
 
         // Only add global_version if provided
         if (globalVersion.has_value())

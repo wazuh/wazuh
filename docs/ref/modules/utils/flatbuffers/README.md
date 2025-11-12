@@ -1,21 +1,55 @@
 # Flatbuffers
 
-Various modules, such as the Vulnerability Detector, use FlatBuffers. FlatBuffers is a library that enables high-performance data serialization and deserialization without the need of unpacking or parsing, providing direct access to the required information.
+FlatBuffers is a high-performance serialization library used throughout Wazuh for efficient data exchange between components. It enables zero-copy deserialization and provides direct access to data without unpacking or parsing overhead.
 
-Although the synchronization events received by Remoted are in JSON format, they require to augmentate the event data with additional **agent context** within this module. As a result, deserializing and re-serializing the data becomes unavoidable. Given this requirement, the augmented synchronization events are converted to FlatBuffers.
+## Usage in Wazuh
 
-Another key use of FlatBuffers in the Vulnerability Detector module is for processing vulnerability feeds, specifically those following the CVE5 schema. In this case, FlatBuffers are used to avoid the deserialization overhead during scanning.
+### Inventory Sync Module
 
-Due to the nature of FlatBuffers, the deserialization cost is significantly lower compared to JSON, regardless of the JSON library used. This makes FlatBuffers particularly well-suited for scanning operations, where deserialization performance is a critical factor.
+The Inventory Sync module uses FlatBuffers as its primary communication protocol for synchronizing inventory data between agents and the manager. The protocol supports multiple synchronization modes:
 
-## Flatbuffer schemas
+**Module Synchronization** (agent-side inventory modules):
+- `ModuleFull`: Complete inventory replacement for a module (syscollector, FIM, SCA)
+- `ModuleDelta`: Incremental updates for inventory changes
+- `ModuleCheck`: Integrity verification using checksums
 
-### Common AgentInfo table
-- Common agent information for FIM Delta, Inventory Delta and Synchronization events.
+**Agent Context Synchronization** (agent-info module):
+- `MetadataDelta`: Agent metadata updates (name, version, IP, OS details)
+- `MetadataCheck`: Disaster recovery for metadata across all indices
+- `GroupDelta`: Agent group membership updates
+- `GroupCheck`: Disaster recovery for groups across all indices
 
-| Table         | Field          | Type       | Description |
-|---------------|----------------|------------|-------------|
-| **AgentInfo** | agent_id       | string     | Unique identifier of the agent, e.g., "001". |
-|               | agent_ip       | string     | IP address of the agent. |
-|               | agent_name     | string     | Name assigned to the agent. |
-|               | agent_version  | string     | Version of the agent software, e.g., "v4.10.2". |
+All synchronization messages (Start, Data, End, Acknowledgments) are encoded as FlatBuffers, providing:
+
+- **Zero-copy access**: Direct field access without intermediate object creation
+- **Compact binary format**: Significantly smaller than JSON for large inventory datasets
+- **Schema evolution**: Backward and forward compatibility for protocol updates
+- **Type safety**: Compile-time validation of message structures
+
+See [Inventory Sync FlatBuffers documentation](../inventory-sync/flatbuffers.md) for detailed schema information.
+
+### Vulnerability Scanner Module
+
+The Vulnerability Scanner uses FlatBuffers for processing vulnerability feeds, particularly CVE5 schema data. This avoids deserialization overhead during scanning operations where performance is critical.
+
+### Agent Info Module
+
+The Agent Info module uses FlatBuffers to communicate metadata and group information updates to the Inventory Sync module, ensuring efficient propagation of agent context changes.
+
+## Performance Characteristics
+
+FlatBuffers provides significant performance advantages over traditional serialization formats:
+
+- **Memory efficiency**: No intermediate allocations during deserialization
+- **Processing speed**: Direct field access without parsing overhead
+- **Scalability**: Handles high-volume message throughput efficiently
+- **Low latency**: Minimal CPU overhead for serialization/deserialization
+
+## Schema Files
+
+FlatBuffer schemas are defined in `.fbs` files located in `src/shared_modules/utils/flatbuffers/schemas/`:
+
+- `inventorySync.fbs`: Inventory synchronization protocol messages
+- Additional schemas for other modules as needed
+
+These schemas are compiled into C++ headers during the build process.

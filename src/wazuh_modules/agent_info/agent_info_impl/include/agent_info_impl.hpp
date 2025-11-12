@@ -44,7 +44,7 @@ class AgentInfoImpl
                       std::shared_ptr<IFileSystemWrapper> fileSystem = nullptr);
         ~AgentInfoImpl();
 
-        void start(int interval, std::function<bool()> shouldContinue = nullptr);
+        void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
         void stop();
 
         /// @brief Set whether this instance is running on an agent or manager
@@ -75,11 +75,6 @@ class AgentInfoImpl
         /// @param data Event data
         /// @param table Table name
         void processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table);
-
-        /// @brief Calculate checksum for metadata
-        /// @param metadata Metadata JSON object
-        /// @return Checksum string
-        std::string calculateMetadataChecksum(const nlohmann::json& metadata) const;
 
         /// @brief Convert data to ECS format
         /// @param data Original data
@@ -132,6 +127,26 @@ class AgentInfoImpl
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
         void resetSyncFlag(const std::string& table);
 
+        /// @brief Check if integrity check should be performed for a table
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        /// @param integrityInterval Integrity check interval in seconds
+        /// @return true if integrity check should be performed
+        bool shouldPerformIntegrityCheck(const std::string& table, int integrityInterval);
+
+        /// @brief Update last integrity check time for a table
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        void updateLastIntegrityTime(const std::string& table);
+
+        /// @brief Perform delta synchronization for a table
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        /// @return true if successful
+        bool performDeltaSync(const std::string& table);
+
+        /// @brief Perform integrity check synchronization for a table
+        /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
+        /// @return true if successful
+        bool performIntegritySync(const std::string& table);
+
         /// @brief Pointer to IDBSync
         std::shared_ptr<IDBSync> m_dBSync;
 
@@ -182,6 +197,12 @@ class AgentInfoImpl
 
         /// @brief Flag indicating if groups need to be synchronized
         bool m_shouldSyncGroups = false;
+
+        /// @brief Last metadata integrity check timestamp (Unix epoch seconds)
+        int64_t m_lastMetadataIntegrity = 0;
+
+        /// @brief Last groups integrity check timestamp (Unix epoch seconds)
+        int64_t m_lastGroupsIntegrity = 0;
 
         /// @brief Mutex for synchronizing access to sync flags
         std::mutex m_syncFlagsMutex;

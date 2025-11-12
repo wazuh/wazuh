@@ -13,7 +13,6 @@
  * @brief Test fixture for AgentInfoImpl helper functions
  *
  * This test fixture focuses on testing the utility and helper functions:
- * - calculateMetadataChecksum() for generating consistent checksums
  * - ecsData() for converting database format to ECS (Elastic Common Schema)
  * - Data format conversion and validation
  * - Edge cases with partial or missing data
@@ -66,42 +65,6 @@ class AgentInfoHelperFunctionsTest : public ::testing::Test
         std::string m_logOutput;
 };
 
-TEST_F(AgentInfoHelperFunctionsTest, CalculateMetadataChecksumIsDeterministic)
-{
-    nlohmann::json metadata1;
-    metadata1["agent_id"] = "001";
-    metadata1["agent_name"] = "test";
-    metadata1["host_os_name"] = "Ubuntu";
-
-    nlohmann::json metadata2;
-    metadata2["agent_id"] = "001";
-    metadata2["agent_name"] = "test";
-    metadata2["host_os_name"] = "Ubuntu";
-
-    // Same metadata should produce same checksum
-    std::string checksum1 = m_agentInfo->calculateMetadataChecksum(metadata1);
-    std::string checksum2 = m_agentInfo->calculateMetadataChecksum(metadata2);
-
-    EXPECT_EQ(checksum1, checksum2);
-    EXPECT_FALSE(checksum1.empty());
-}
-
-TEST_F(AgentInfoHelperFunctionsTest, CalculateMetadataChecksumDifferentForDifferentData)
-{
-    nlohmann::json metadata1;
-    metadata1["agent_id"] = "001";
-    metadata1["agent_name"] = "agent1";
-
-    nlohmann::json metadata2;
-    metadata2["agent_id"] = "002";
-    metadata2["agent_name"] = "agent2";
-
-    std::string checksum1 = m_agentInfo->calculateMetadataChecksum(metadata1);
-    std::string checksum2 = m_agentInfo->calculateMetadataChecksum(metadata2);
-
-    EXPECT_NE(checksum1, checksum2);
-}
-
 TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)
 {
     nlohmann::json data;
@@ -114,7 +77,6 @@ TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)
     data["host_os_type"] = "Linux";
     data["host_os_platform"] = "ubuntu";
     data["host_os_version"] = "22.04";
-    data["checksum"] = "abc123";
 
     nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_metadata");
 
@@ -127,7 +89,6 @@ TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)
     EXPECT_EQ(ecsFormatted["host"]["os"]["type"], "Linux");
     EXPECT_EQ(ecsFormatted["host"]["os"]["platform"], "ubuntu");
     EXPECT_EQ(ecsFormatted["host"]["os"]["version"], "22.04");
-    EXPECT_EQ(ecsFormatted["checksum"], "abc123");
 }
 
 TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsGroupsCorrectly)

@@ -100,7 +100,15 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
         // For any other files, just return without calling callback (simulating empty file)
     }));
 
-    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    nlohmann::json osData =
+    {
+        {"os_name", "TestOS"},
+        {"architecture", "test64"},
+        {"os_type", "linux"},
+        {"os_platform", "ubuntu"},
+        {"os_version", "22.04"},
+        {"hostname", "test-agent-host"}
+    };
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
 
     // Create agent info with real DBSync (using in-memory database)
@@ -119,7 +127,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     // Set to agent mode for this test
     m_agentInfo->setIsAgent(true);
 
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -148,7 +156,15 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
 {
     // For manager mode, no client.keys or merged.mg reading needed
     // Only need sysinfo with hostname
-    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}, {"hostname", "test-manager-hostname"}};
+    nlohmann::json osData =
+    {
+        {"os_name", "TestOS"},
+        {"architecture", "test64"},
+        {"hostname", "test-manager-hostname"},
+        {"os_type", "linux"},
+        {"os_platform", "ubuntu"},
+        {"os_version", "22.04"}
+    };
     EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
 
     // Create agent info with real DBSync (using in-memory database)
@@ -164,7 +180,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
     // Set to manager mode (false)
     m_agentInfo->setIsAgent(false);
 
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });

@@ -176,7 +176,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagSuccess)
     m_logOutput.clear();
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -329,7 +329,7 @@ TEST_F(AgentInfoCoordinationTest, QueryModuleWithNonNullResponse)
     m_agentInfo->setIsAgent(true);
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -420,7 +420,7 @@ TEST_F(AgentInfoCoordinationTest, QueryModuleSuccessfulOnFirstAttempt)
     m_logOutput.clear();
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -505,7 +505,7 @@ TEST_F(AgentInfoCoordinationTest, ModuleUnavailableScenario)
     m_logOutput.clear();
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -600,7 +600,7 @@ TEST_F(AgentInfoCoordinationTest, SuccessfulPauseOperation)
     m_logOutput.clear();
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -682,7 +682,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinateModulesGeneralException)
     m_logOutput.clear();
 
     // Run for only one iteration to avoid timeout
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -744,7 +744,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
     m_logOutput.clear();
 
     // Start will trigger coordination which should find no sync protocol
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -826,7 +826,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)
     m_logOutput.clear();
 
     // Start with limited iterations to prevent infinite loops
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -909,7 +909,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionFailure)
     m_logOutput.clear();
 
     // Start with limited iterations to prevent infinite loops
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -969,7 +969,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithNoModulesAvailable)
     m_logOutput.clear();
 
     // Start with limited iterations to prevent infinite loops
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -1031,7 +1031,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithStdException)
     m_logOutput.clear();
 
     // Start with limited iterations to prevent infinite loops
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -1094,7 +1094,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithUnknownException)
     m_logOutput.clear();
 
     // Start will trigger coordination which will throw exception
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -1173,7 +1173,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagMetadataTable)
     m_logOutput.clear();
 
     // Run for only one iteration to trigger coordination and resetSyncFlag
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -1214,7 +1214,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagGroupsTable)
     m_logOutput.clear();
 
     // Run for only one iteration
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -1249,7 +1249,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagUnknownTable)
     m_logOutput.clear();
 
     // Run for only one iteration
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
@@ -1287,7 +1287,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagException)
     m_logOutput.clear();
 
     // Run for only one iteration
-    m_agentInfo->start(1, []()
+    m_agentInfo->start(1, 86400, []()
     {
         return false;
     });
