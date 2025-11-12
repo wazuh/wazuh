@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <cmstore/datakvdb.hpp>
 #include <cmstore/icmstore.hpp>
 #include <cmstore/mockcmstore.hpp>
 
@@ -62,7 +63,7 @@ TEST(KVDB_Manager_Unit, CacheHitDoesNotFetchAgain)
 
     EXPECT_CALL(seed, getKVDBByName("db"))
         .Times(::testing::Exactly(1))
-        .WillOnce(::testing::Return(json::Json {R"({"k":"v1"})"}));
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB {"id-1", "db", json::Json {R"({"k":"v1"})"}, true}));
 
     auto h1 = mgr.getKVDBHandler(seed, "db");
     ASSERT_NE(h1, nullptr);
@@ -91,7 +92,7 @@ TEST(KVDB_Manager_Unit, CacheHitReusesExistingMap)
 
     EXPECT_CALL(r1, getKVDBByName("db"))
         .Times(::testing::Exactly(1))
-        .WillOnce(::testing::Return(json::Json {R"({"k":"v1"})"}));
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB {"id-1", "db", json::Json {R"({"k":"v1"})"}, true}));
     EXPECT_CALL(r2, getKVDBByName("db")).Times(0); // cache hit → no fetch
 
     auto hA = mgr.getKVDBHandler(r1, "db");
@@ -118,7 +119,7 @@ TEST(KVDB_Manager_Unit, RebuildsAfterAllHandlersExpire)
 
     EXPECT_CALL(r1, getKVDBByName("db"))
         .Times(::testing::Exactly(1))
-        .WillOnce(::testing::Return(json::Json {R"({"k":"v1"})"}));
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB {"id-1", "db", json::Json {R"({"k":"v1"})"}, true}));
 
     auto h1 = mgr.getKVDBHandler(r1, "db");
     ASSERT_NE(h1, nullptr);
@@ -126,7 +127,7 @@ TEST(KVDB_Manager_Unit, RebuildsAfterAllHandlersExpire)
 
     EXPECT_CALL(r2, getKVDBByName("db"))
         .Times(::testing::Exactly(1))
-        .WillOnce(::testing::Return(json::Json {R"({"k":"v2"})"}));
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB {"id-2", "db", json::Json {R"({"k":"v2"})"}, true}));
 
     auto h2 = mgr.getKVDBHandler(r2, "db");
     ASSERT_NE(h2, nullptr);
@@ -146,10 +147,12 @@ TEST(KVDB_Manager_Unit, DifferentDbNamesUseDifferentCachedMaps)
 
     EXPECT_CALL(r, getKVDBByName("countries"))
         .Times(::testing::Exactly(1))
-        .WillOnce(::testing::Return(json::Json {R"({"k":"v"})"}));
+        .WillOnce(::testing::Return(
+            cm::store::dataType::KVDB {"id-countries", "countries", json::Json {R"({"k":"v"})"}, true}));
     EXPECT_CALL(r, getKVDBByName("cities"))
         .Times(::testing::Exactly(1))
-        .WillOnce(::testing::Return(json::Json {R"({"k":"v"})"}));
+        .WillOnce(
+            ::testing::Return(cm::store::dataType::KVDB {"id-cities", "cities", json::Json {R"({"k":"v"})"}, true}));
 
     auto hA = mgr.getKVDBHandler(r, "countries");
     auto hB = mgr.getKVDBHandler(r, "cities");
@@ -175,7 +178,9 @@ TEST(KVDB_Manager_Unit, ParallelWarm_NoRefetch_SamePointer)
     ON_CALL(ns, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
     // Provide a single payload; only the warm-up should fetch
     ON_CALL(ns, getKVDBByName("db"))
-        .WillByDefault(::testing::Invoke([&](const std::string&) { return json::Json {R"({"k":"v"})"}; }));
+        .WillByDefault(
+            ::testing::Invoke([&](const std::string&)
+                              { return cm::store::dataType::KVDB {"id-1", "db", json::Json {R"({"k":"v"})"}, true}; }));
 
     // Warm the cache so concurrent calls hit the same cached map
     auto warm = mgr.getKVDBHandler(ns, "db");
@@ -211,7 +216,7 @@ TEST(KVDB_Manager_Unit, ParallelColdRace_EventualConvergence)
             [&](const std::string&)
             {
                 fetches.fetch_add(1, std::memory_order_relaxed);
-                return json::Json {R"({"k":"v"})"};
+                return cm::store::dataType::KVDB {"id-n", "db", json::Json {R"({"k":"v"})"}, true};
             }));
 
     // Launch threads without pre-warming (true cold race)
@@ -266,7 +271,7 @@ TEST(KVDB_Manager_Unit, ParallelSameNsSameDb_SharedCachedMap)
             [&](const std::string&)
             {
                 fetches.fetch_add(1, std::memory_order_relaxed);
-                return json::Json {R"({"k":"v"})"};
+                return cm::store::dataType::KVDB {"id-1", "db", json::Json {R"({"k":"v"})"}, true};
             }));
 
     // Warm the cache once and capture the “winner” buffer
@@ -301,9 +306,13 @@ TEST(KVDB_Manager_Unit, ParallelTwoNamespaces_Isolated)
     ON_CALL(rA, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsA));
     ON_CALL(rB, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsB));
     ON_CALL(rA, getKVDBByName("db"))
-        .WillByDefault(::testing::Invoke([&](const std::string&) { return json::Json {R"({"k":"a"})"}; }));
+        .WillByDefault(
+            ::testing::Invoke([&](const std::string&)
+                              { return cm::store::dataType::KVDB {"id-a", "db", json::Json {R"({"k":"a"})"}, true}; }));
     ON_CALL(rB, getKVDBByName("db"))
-        .WillByDefault(::testing::Invoke([&](const std::string&) { return json::Json {R"({"k":"b"})"}; }));
+        .WillByDefault(
+            ::testing::Invoke([&](const std::string&)
+                              { return cm::store::dataType::KVDB {"id-b", "db", json::Json {R"({"k":"b"})"}, true}; }));
 
     // Seed both caches and record their buffer pointers
     auto hA0 = mgr.getKVDBHandler(rA, "db");
@@ -340,9 +349,13 @@ TEST(KVDB_Manager_Unit, ParallelSameNs_DifferentDb_Isolated)
     // One namespace, two logical DBs → two independent cached maps
     ON_CALL(r, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
     ON_CALL(r, getKVDBByName("countries"))
-        .WillByDefault(::testing::Invoke([&](const std::string&) { return json::Json {R"({"k":"v"})"}; }));
+        .WillByDefault(::testing::Invoke(
+            [&](const std::string&)
+            { return cm::store::dataType::KVDB {"id-c", "countries", json::Json {R"({"k":"v"})"}, true}; }));
     ON_CALL(r, getKVDBByName("cities"))
-        .WillByDefault(::testing::Invoke([&](const std::string&) { return json::Json {R"({"k":"v"})"}; }));
+        .WillByDefault(::testing::Invoke(
+            [&](const std::string&)
+            { return cm::store::dataType::KVDB {"id-t", "cities", json::Json {R"({"k":"v"})"}, true}; }));
 
     // Seed both DBs and capture distinct buffer pointers
     auto hC = mgr.getKVDBHandler(r, "countries");
