@@ -11,6 +11,7 @@
 #include <base/json.hpp>
 #include <cmstore/icmstore.hpp>
 #include <cmstore/mockcmstore.hpp>
+#include <cmstore/datakvdb.hpp>
 
 #include <kvdb/kvdbManager.hpp>
 
@@ -61,7 +62,10 @@ TEST(KVDB_Component, BuildOnceThenCache_NoRefetch_SamePointer)
     ON_CALL(seed, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
     ON_CALL(again, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
 
-    EXPECT_CALL(seed, getKVDBByName("kv")).Times(1).WillOnce(::testing::Return(json::Json {R"({"k":"v1"})"}));
+    EXPECT_CALL(seed, getKVDBByName("kv"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(json::Json {
+            R"({"id":"00000000-0000-0000-0000-000000000001","title":"kv","content":{"k":"v1"},"enabled":true})"})));
 
     // First build
     auto h1 = mgr.getKVDBHandler(seed, "kv");
@@ -91,7 +95,10 @@ TEST(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
     ON_CALL(r1, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
     ON_CALL(r2, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
 
-    EXPECT_CALL(r1, getKVDBByName("kv")).Times(1).WillOnce(::testing::Return(json::Json {R"({"k":"v1"})"}));
+    EXPECT_CALL(r1, getKVDBByName("kv"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(json::Json {
+            R"({"id":"00000000-0000-0000-0000-000000000001","title":"kv","content":{"k":"v1"},"enabled":true})"})));
 
     // Build and drop
     auto h1 = mgr.getKVDBHandler(r1, "kv");
@@ -99,7 +106,10 @@ TEST(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
     h1.reset(); // all handlers gone → cache can expire
 
     // Next call must refetch with new payload
-    EXPECT_CALL(r2, getKVDBByName("kv")).Times(1).WillOnce(::testing::Return(json::Json {R"({"k":"v2"})"}));
+    EXPECT_CALL(r2, getKVDBByName("kv"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(json::Json {
+            R"({"id":"00000000-0000-0000-0000-000000000001","title":"kv","content":{"k":"v2"},"enabled":true})"})));
 
     auto h2 = mgr.getKVDBHandler(r2, "kv");
     ASSERT_NE(h2, nullptr);
@@ -118,9 +128,18 @@ TEST(KVDB_Component, CrossNamespaceAndDb_IsolatedCaches)
     ON_CALL(a2, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsA));
     ON_CALL(b1, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsB));
 
-    EXPECT_CALL(a1, getKVDBByName("db1")).Times(1).WillOnce(::testing::Return(json::Json {R"({"k":"A1"})"}));
-    EXPECT_CALL(a2, getKVDBByName("db2")).Times(1).WillOnce(::testing::Return(json::Json {R"({"k":"A2"})"}));
-    EXPECT_CALL(b1, getKVDBByName("db1")).Times(1).WillOnce(::testing::Return(json::Json {R"({"k":"B1"})"}));
+    EXPECT_CALL(a1, getKVDBByName("db1"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(json::Json {
+            R"({"id":"00000000-0000-0000-0000-0000000000A1","title":"db1","content":{"k":"A1"},"enabled":true})"})));
+    EXPECT_CALL(a2, getKVDBByName("db2"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(json::Json {
+            R"({"id":"00000000-0000-0000-0000-0000000000A2","title":"db2","content":{"k":"A2"},"enabled":true})"})));
+    EXPECT_CALL(b1, getKVDBByName("db1"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(json::Json {
+            R"({"id":"00000000-0000-0000-0000-0000000000B1","title":"db1","content":{"k":"B1"},"enabled":true})"})));
 
     auto hA1 = mgr.getKVDBHandler(a1, "db1");
     auto hA2 = mgr.getKVDBHandler(a2, "db2");
@@ -158,7 +177,8 @@ TEST(KVDB_Component, ConcurrentColdRace_EventualConvergence)
             [&](const std::string&)
             {
                 fetches.fetch_add(1, std::memory_order_relaxed);
-                return json::Json {R"({"k":"v"})"};
+                return cm::store::dataType::KVDB::fromJson(json::Json {
+                    R"({"id":"00000000-0000-0000-0000-0000000000FF","title":"kv","content":{"k":"v"},"enabled":true})"});
             }));
 
     // Parallel cold start (no pre-warm)
@@ -204,8 +224,14 @@ TEST(KVDB_Component, InvalidPayload_Throws)
     ON_CALL(badStr, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
     ON_CALL(badArr, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
 
-    EXPECT_CALL(badStr, getKVDBByName("kv")).Times(1).WillOnce(::testing::Return(json::Json {"\"not-an-object\""}));
-    EXPECT_CALL(badArr, getKVDBByName("kv")).Times(1).WillOnce(::testing::Return(json::Json {"[1,2,3]"}));
+    EXPECT_CALL(badStr, getKVDBByName("kv"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB {
+            "00000000-0000-0000-0000-00000000BAD1", "kv", json::Json {"\"not-an-object\""}, true }));
+    EXPECT_CALL(badArr, getKVDBByName("kv"))
+        .Times(1)
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB {
+            "00000000-0000-0000-0000-00000000BAD2", "kv", json::Json {"[1,2,3]"}, true }));
 
     // Manager expects a JSON object to enumerate top-level keys.
     EXPECT_THROW({ (void)mgr.getKVDBHandler(badStr, "kv"); }, std::runtime_error);
@@ -222,15 +248,20 @@ TEST(KVDB_Component, NestedValues_AccessAndEquality)
     ON_CALL(ns, getNamespaceId()).WillByDefault(::testing::ReturnRef(nsId));
     EXPECT_CALL(ns, getKVDBByName("kv"))
         .Times(1)
-        .WillOnce(::testing::Return(json::Json {
+        .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(json::Json {
             R"({
-                "obj": {"a":1, "b":[2,3]},
-                "arr": [10, 20, 30],
-                "num": 42,
-                "boo": true,
-                "str": "text",
-                "nil": null
-            })"}));
+                "id":"00000000-0000-0000-0000-0000000000CC",
+                "title":"kv",
+                "enabled":true,
+                "content":{
+                    "obj":{"a":1,"b":[2,3]},
+                    "arr":[10,20,30],
+                    "num":42,
+                    "boo":true,
+                    "str":"text",
+                    "nil":null
+                }
+            })"})));
 
     auto h = mgr.getKVDBHandler(ns, "kv");
     ASSERT_NE(h, nullptr);
