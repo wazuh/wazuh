@@ -11,20 +11,23 @@
 
 #include "fileutils.hpp"
 #include "storens.hpp"
+#include "storecti.hpp"
 
 namespace cm::store
 {
+
+const auto CTI_NAMESPACE_ID = NamespaceId("cti");
 
 const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
     NamespaceId("output"),
     NamespaceId("system"),
     NamespaceId("default"),
-    NamespaceId("cti"),
+    CTI_NAMESPACE_ID,
 };
 
 CMStore::~CMStore() = default;
 
-CMStore::CMStore(std::string_view path)
+CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMReader>& ctiReader)
     : m_baseStoragePath(path)
     , m_namespaces()
     , m_mutex()
@@ -65,6 +68,9 @@ CMStore::CMStore(std::string_view path)
 
     // Load existing namespaces from disk
     loadAllNamespacesFromDisk();
+
+    // Load CTI Store, read-only namespace
+    m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID);
 }
 
 void CMStore::loadAllNamespacesFromDisk()
@@ -158,6 +164,12 @@ void CMStore::deleteNamespace(const NamespaceId& nsId)
     if (it == m_namespaces.end())
     {
         throw std::runtime_error("Namespace does not exist: " + nsId.toStr());
+    }
+
+    // Check if read-only namespace (forbidden)
+    if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), nsId) != FORBIDDEN_NAMESPACES.end())
+    {
+        throw std::runtime_error("Cannot delete read-only namespace: " + nsId.toStr());
     }
 
     // Remove namespace directory from disk
