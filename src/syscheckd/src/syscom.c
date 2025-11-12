@@ -44,34 +44,31 @@ int fim_execute_pause(void) {
     syscheck.fim_pause_requested = true;
     w_mutex_unlock(&syscheck.fim_sync_control_mutex);
 
-    mdebug1("FIM pause requested, waiting for fim_run_integrity to acknowledge");
+    mdebug1("FIM pause requested (async), fim_pause_requested=1");
+    return 0;
+}
 
-    // Wait for fim_run_integrity to acknowledge the pause (max 30 seconds)
-    int timeout_seconds = 30;
-    for (int i = 0; i < timeout_seconds; i++) {
-        w_mutex_lock(&syscheck.fim_sync_control_mutex);
-        bool pausing_is_allowed = syscheck.fim_pausing_is_allowed;
-        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
-
-        if (pausing_is_allowed) {
-            break;
-        }
-        sleep(1);
-    }
+int fim_execute_is_pause_completed(void) {
+    mdebug2("FIM agent info: is_pause_completed command received");
 
     w_mutex_lock(&syscheck.fim_sync_control_mutex);
+    bool pause_requested = syscheck.fim_pause_requested;
     bool pausing_is_allowed = syscheck.fim_pausing_is_allowed;
     w_mutex_unlock(&syscheck.fim_sync_control_mutex);
 
-    if (!pausing_is_allowed) {
-        merror("FIM pause timeout: fim_run_integrity did not acknowledge pause within %d seconds", timeout_seconds);
-        w_mutex_lock(&syscheck.fim_sync_control_mutex);
-        syscheck.fim_pause_requested = false;
-        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
-        return -1;
+    // If no pause was requested, return completed successfully (not in pause)
+    if (!pause_requested) {
+        mdebug2("No pause request active");
+        return 0;  // Completed (not paused)
     }
 
-    // Now that fim_run_integrity acknowledged pause, acquire all scan mutexes
+    // Check if fim_run_integrity has acknowledged the pause
+    if (!pausing_is_allowed) {
+        mdebug2("Pause still in progress, waiting for fim_run_integrity to acknowledge");
+        return 1;  // In progress
+    }
+
+    // Pause acknowledged, now acquire all scan mutexes
     // This prevents new scans from starting while paused
     w_mutex_lock(&syscheck.fim_scan_mutex);
     w_mutex_lock(&syscheck.fim_realtime_mutex);
@@ -79,8 +76,8 @@ int fim_execute_pause(void) {
     w_mutex_lock(&syscheck.fim_registry_scan_mutex);
 #endif
 
-    minfo("FIM scans successfully paused");
-    return 0;
+    mdebug1("FIM scans successfully paused");
+    return 0;  // Completed
 }
 
 int fim_execute_flush(void) {
@@ -101,7 +98,7 @@ int fim_execute_flush(void) {
     atomic_int_set(&fim_flush_result, 0);
     atomic_int_set(&fim_flush_in_progress, 1);
 
-    minfo("FIM flush requested (async), fim_flush_in_progress=1");
+    mdebug1("FIM flush requested (async), fim_flush_in_progress=1");
     return 0;
 }
 
@@ -194,7 +191,7 @@ int fim_execute_resume(void) {
     syscheck.fim_pause_requested = false;
     w_mutex_unlock(&syscheck.fim_sync_control_mutex);
 
-    minfo("FIM scans successfully resumed");
+    mdebug1("FIM scans successfully resumed");
     return 0;
 }
 
@@ -367,6 +364,35 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
             message_item = cJSON_CreateString("Unexpected result from is_flush_completed");
             data_item = cJSON_CreateObject();
         }
+    } else if (strcmp(command, "is_pause_completed") == 0) {
+        // Call is_pause_completed function
+        result = fim_execute_is_pause_completed();
+
+        if (result == 1) {
+            // Pause in progress
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM pause in progress");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "status", "in_progress");
+            }
+        } else if (result == 0) {
+            // Pause completed successfully
+            status_item = cJSON_CreateNumber(MQ_SUCCESS);
+            message_item = cJSON_CreateString("FIM pause completed successfully");
+            data_item = cJSON_CreateObject();
+            if (data_item) {
+                cJSON_AddStringToObject(data_item, "module", "fim");
+                cJSON_AddStringToObject(data_item, "status", "completed");
+                cJSON_AddStringToObject(data_item, "result", "success");
+            }
+        } else {
+            // Unexpected result
+            status_item = cJSON_CreateNumber(MQ_ERR_INTERNAL);
+            message_item = cJSON_CreateString("Unexpected result from is_pause_completed");
+            data_item = cJSON_CreateObject();
+        }
     } else if (strcmp(command, "get_version") == 0) {
         // Call get_version function
         result = fim_execute_get_version();
@@ -519,6 +545,7 @@ size_t syscom_handle_json_query(char * json_command, char ** output) {
     if (strcmp(command, "pause") == 0 ||
         strcmp(command, "flush") == 0 ||
         strcmp(command, "is_flush_completed") == 0 ||
+        strcmp(command, "is_pause_completed") == 0 ||
         strcmp(command, "get_version") == 0 ||
         strcmp(command, "set_version") == 0 ||
         strcmp(command, "resume") == 0) {
