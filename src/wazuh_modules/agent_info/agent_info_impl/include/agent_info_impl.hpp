@@ -207,6 +207,9 @@ class AgentInfoImpl
         /// @brief Last groups integrity check timestamp (Unix epoch seconds)
         int64_t m_lastGroupsIntegrity = 0;
 
+        /// @brief Flag indicating if this is the first run (database just created)
+        bool m_isFirstRun = true;
+
         /// @brief Mutex for synchronizing access to sync flags
         std::mutex m_syncFlagsMutex;
 };
