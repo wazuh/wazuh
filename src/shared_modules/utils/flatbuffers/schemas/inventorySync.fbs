@@ -43,6 +43,7 @@ table DataContext {
     seq: ulong;
     session: ulong;
     id: string;
+    index: string;
     data: [byte];
 }
 
