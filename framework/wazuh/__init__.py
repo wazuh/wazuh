@@ -30,7 +30,7 @@ try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
         raise WazuhInternalError(999, msg)
-except Exception as e:
+except Exception:
     raise WazuhInternalError(999, msg)
 
 
@@ -76,7 +76,7 @@ class Wazuh:
                 'wazuh_cti_auth': {
                     'status': self.cti_auth_token_status.short_desc,
                     'description': self.cti_auth_token_status.long_desc
-                    } 
+                    }
                 }
 
     def _initialize(self):
