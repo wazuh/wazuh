@@ -19,7 +19,7 @@ sudo dpkg -i wazuh-manager_*.deb
 **Red Hat-based platforms:**
 
 ```bash
-sudo rpm -i wazuh-manager-*.rpm
+sudo rpm -ivh wazuh-manager-*.rpm
 ```
 
 ### Configuration
@@ -93,7 +93,7 @@ Verify the server is running:
 sudo systemctl status wazuh-manager
 ```
 
-## Cluster configuration
+### Cluster configuration
 
 The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/ossec/etc/ossec.conf`:
 
@@ -112,7 +112,7 @@ The Wazuh server cluster allows you to scale horizontally by distributing the lo
 </cluster>
 ```
 
-### Multi-node deployment
+#### Multi-node deployment
 
 For a multi-node cluster deployment, you need to configure one master node and one or more worker nodes. Follow these steps on each node:
 
@@ -168,14 +168,29 @@ sudo /var/ossec/bin/cluster_control -l
 
 ### Configuration parameters
 
-- **`name`**: Name of the cluster. All nodes must use the same cluster name.
-- **`node_name`**: Unique name for each node in the cluster.
-- **`node_type`**: Node role, either `master` or `worker`. Only one master node is allowed per cluster.
-- **`key`**: Pre-shared key for cluster authentication. All nodes must use the same key.
-- **`port`**: Port for cluster communication. Default: `1516`.
-- **`bind_addr`**: IP address to bind the cluster listener. Use `0.0.0.0` to listen on all interfaces.
-- **`nodes`**: List of master node IP addresses for worker nodes to connect to.
-- **`hidden`**: Whether the node is hidden from the cluster. Default: `no`.
+**`name`**\
+Name of the cluster. All nodes must use the same cluster name.
+
+**`node_name`**\
+Unique name for each node in the cluster.
+
+**`node_type`**\
+Node role, either `master` or `worker`. Only one master node is allowed per cluster.
+
+**`key`**\
+Pre-shared key for cluster authentication. All nodes must use the same key.
+
+**`port`**\
+Port for cluster communication. Default: `1516`.
+
+**`bind_addr`**\
+IP address to bind the cluster listener. Use `0.0.0.0` to listen on all interfaces.
+
+**`nodes`**\
+List of master node IP addresses for worker nodes to connect to.
+
+**`hidden`**\
+Whether the node is hidden from the cluster. Default: `no`.
 
 ## Agent
 
