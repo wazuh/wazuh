@@ -20,7 +20,7 @@ constexpr std::string_view INVALID_FILENAME_CHARS = R"(\ / : * ? " < > | )";
  * @param filePath Path to the file
  * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
  */
-std::optional<std::string> setFilePermissions(const std::filesystem::path& filePath)
+inline std::optional<std::string> setFilePermissions(const std::filesystem::path& filePath)
 {
     try
     {
@@ -50,7 +50,7 @@ std::optional<std::string> setFilePermissions(const std::filesystem::path& fileP
  * @param dirPath Path to the directory
  * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
  */
-std::optional<std::string> setDirectoryPermissions(const std::filesystem::path& dirPath)
+inline std::optional<std::string> setDirectoryPermissions(const std::filesystem::path& dirPath)
 {
     try
     {
@@ -209,7 +209,7 @@ inline bool isValidFileName(std::string_view name)
  * @return json::Json Parsed JSON document
  * @throw std::runtime_error if file cannot be opened, read or parsed
  */
-json::Json readJsonFile(const std::filesystem::path& filePath)
+inline json::Json readJsonFile(const std::filesystem::path& filePath)
 {
     std::ifstream file(filePath);
     if (!file.is_open())
@@ -235,7 +235,7 @@ json::Json readJsonFile(const std::filesystem::path& filePath)
  * @return json::Json Parsed JSON document
  * @throw std::runtime_error if file cannot be opened, read or parsed
  */
-json::Json readYMLFileAsJson(const std::filesystem::path& filePath)
+inline json::Json readYMLFileAsJson(const std::filesystem::path& filePath)
 {
 
     std::ifstream file(filePath);
@@ -262,7 +262,7 @@ json::Json readYMLFileAsJson(const std::filesystem::path& filePath)
  * @return std::string File content
  * @throw std::runtime_error if file cannot be opened or read
  */
-std::string readFileAsString(const std::filesystem::path& filePath)
+inline std::string readFileAsString(const std::filesystem::path& filePath)
 {
     std::ifstream file(filePath);
     if (!file.is_open())

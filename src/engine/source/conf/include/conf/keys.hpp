@@ -13,7 +13,7 @@ constexpr std::string_view STORE_PATH = "analysisd.store_path";
 
 constexpr std::string_view KVDB_PATH = "analysisd.kvdb_path";
 
-constexpr std::string_view CMSYNC_OUTPUT_PATH = "analysisd.cmsync_output_path";
+constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
 
 constexpr std::string_view CTI_PATH = "analysisd.cti_path";
 constexpr std::string_view CTI_FORCE_IF_EMPTY = "analysisd.cti_force_if_empty";
