@@ -25,7 +25,6 @@
 #include <builder/builder.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
-#include <cmsync/cmsync.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -232,7 +231,6 @@ int main(int argc, char* argv[])
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
-    std::shared_ptr<cm::sync::CMSync> cmsync;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
 
@@ -532,18 +530,6 @@ int main(int argc, char* argv[])
                             { archiver->deactivate(); });
         }
 
-        // TODO: This modules should be initialized before the API server to be able to
-        // provide their API endpoints, this need a improvement on wazuh-control start
-        // Content Manager
-        {
-            cmsync = std::make_shared<cm::sync::CMSync>(catalog,
-                                                        kvdbManager,
-                                                        policyManager,
-                                                        orchestrator,
-                                                        confManager.get<std::string>(conf::key::CMSYNC_OUTPUT_PATH));
-            LOG_INFO("Content Manager Sync initialized.");
-
-        }
 
         // CTI Store (initialized after CMSync to pass deploy callback)
         if (confManager.get<bool>(conf::key::CTI_ENABLED)) {
@@ -551,9 +537,9 @@ int main(int argc, char* argv[])
             cti::store::ContentManagerConfig ctiCfg;
             ctiCfg.basePath = baseCtiPath;
 
-            auto deployCallback = [cmsync](const std::shared_ptr<cti::store::ICMReader>& cmstore)
+            auto deployCallback = [](const std::shared_ptr<cti::store::ICMReader>& cmstore)
             {
-                cmsync->deploy(cmstore);
+                LOG_INFO("CTI Store deploy callback triggered. TODO: IMPLMENT");
             };
 
             ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, deployCallback);
@@ -564,8 +550,9 @@ int main(int argc, char* argv[])
             {
                 try
                 {
-                    LOG_WARNING("No environments found, deploying CTI content at startup. This may take a while...");
-                    cmsync->deploy(ctiStoreManager);
+                    LOG_WARNING("TODO: IMPLEMENT: No environments found, deploying CTI content at startup. This may take a while...");
+                    //cmsync->deploy(ctiStoreManager);
+
                 }
                 catch (const std::exception& e)
                 {
