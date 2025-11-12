@@ -118,6 +118,15 @@ class EXPORTED SCA final
         /// @return JSON-formatted response string
         std::string query(const std::string& jsonQuery);
 
+        /// @brief Get the maximum version from the sca_check table
+        /// @return Maximum version number, or -1 on error, 0 if table is empty
+        int getMaxVersion();
+
+        /// @brief Set the version for all rows in the sca_check table
+        /// @param version Version number to set
+        /// @return 0 on success, -1 on error
+        int setVersion(int version);
+
     private:
         /// @brief Private constructor for singleton pattern.
         SCA();

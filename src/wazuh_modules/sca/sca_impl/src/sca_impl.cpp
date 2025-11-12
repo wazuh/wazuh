@@ -10,8 +10,8 @@
 #include <iostream>
 #include <thread>
 
-#include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
+#include "logging_helper.hpp"
 
 // Static member definitions
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -48,10 +48,10 @@ constexpr auto CHECK_SQL_STATEMENT
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     std::string dbPath,
-    std::shared_ptr<IDBSync> dbSync,
-    std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
+                                                                 std::shared_ptr<IDBSync> dbSync,
+                                                                 std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_dBSync(dbSync ? std::move(dbSync)
-               : std::make_shared<DBSync>(
+          : std::make_shared<DBSync>(
                    HostType::AGENT,
                    DbEngineType::SQLITE3,
                    dbPath,
@@ -300,6 +300,105 @@ void SecurityConfigurationAssessment::deleteDatabase()
     if (m_dBSync)
     {
         m_dBSync->closeAndDeleteDatabase();
+    }
+}
+
+int SecurityConfigurationAssessment::getMaxVersion()
+{
+    int maxVersion = 0;
+
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get max version");
+        return -1;
+    }
+
+    try
+    {
+        auto selectQuery =
+            SelectQuery::builder().table("sca_check").columnList({"MAX(version) AS max_version"}).build();
+
+        const auto callback = [&maxVersion](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("max_version"))
+            {
+                if (resultData["max_version"].is_number())
+                {
+                    maxVersion = resultData["max_version"].get<int>();
+                }
+                else if (resultData["max_version"].is_null())
+                {
+                    // No rows in table, version is 0
+                    maxVersion = 0;
+                }
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), callback);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA get_version returned: " + std::to_string(maxVersion));
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error getting max version: " + std::string(err.what()));
+        return -1;
+    }
+
+    return maxVersion;
+}
+
+int SecurityConfigurationAssessment::setVersion(int version)
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot set version");
+        return -1;
+    }
+
+    try
+    {
+        // First, get all check IDs from the table
+        std::vector<std::string> checkIds;
+
+        auto selectQuery = SelectQuery::builder().table("sca_check").columnList({"id"}).build();
+
+        const auto selectCallback = [&checkIds](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("id"))
+            {
+                checkIds.push_back(resultData["id"].get<std::string>());
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), selectCallback);
+
+        // Now update each row with the new version
+        for (const auto& checkId : checkIds)
+        {
+            nlohmann::json updateData;
+            updateData["table"] = "sca_check";
+            updateData["data"] = nlohmann::json::object();
+            updateData["data"]["id"] = checkId;
+            updateData["data"]["version"] = version;
+
+            auto updateQuery = SyncRowQuery::builder().table("sca_check").data(updateData["data"]).build();
+
+            const auto updateCallback = [](ReturnTypeCallback, const nlohmann::json&)
+            {
+                // No action needed for update callback
+            };
+
+            m_dBSync->syncRow(updateQuery.query(), updateCallback);
+        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "SCA set_version to " + std::to_string(version) + " for " +
+                                         std::to_string(checkIds.size()) + " checks");
+        return 0;
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error setting version: " + std::string(err.what()));
+        return -1;
     }
 }
 

@@ -1,8 +1,8 @@
 #include <sca.hpp>
 #include <sca_impl.hpp>
 
-#include <iostream>
 #include <cJSON.h>
+#include <iostream>
 #include <json.hpp>
 
 #ifdef __cplusplus
@@ -10,14 +10,14 @@ extern "C"
 {
 #endif
 
-#include "../../wm_sca.h"
 #include "../../module_query_errors.h"
+#include "../../wm_sca.h"
 #include "../wazuh_modules/wmodules_def.h"
 
 #include "logging_helper.hpp"
 
-#include <unistd.h>
 #include <chrono>
+#include <unistd.h>
 
 static push_stateless_func g_push_stateless_func = NULL;
 static push_stateful_func g_push_stateful_func = NULL;
@@ -381,6 +381,26 @@ void SCA::deleteDatabase()
     }
 }
 
+int SCA::getMaxVersion()
+{
+    if (m_sca)
+    {
+        return m_sca->getMaxVersion();
+    }
+
+    return -1;
+}
+
+int SCA::setVersion(int version)
+{
+    if (m_sca)
+    {
+        return m_sca->setVersion(version);
+    }
+
+    return -1;
+}
+
 // LCOV_EXCL_START
 
 // Excluded from code coverage as it is not the real implementation of the query method.
@@ -429,23 +449,62 @@ std::string SCA::query(const std::string& jsonQuery)
         }
         else if (command == "get_version")
         {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA version retrieved";
-            response["data"]["version"] = 4;
+            const int maxVersion = getMaxVersion();
+
+            if (maxVersion >= 0)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "SCA get_version successfully";
+                response["data"]["action"] = "get_version";
+                response["data"]["module"] = "sca";
+                response["data"]["version"] = maxVersion;
+            }
+            else
+            {
+                response["error"] = 3;
+                response["message"] = "SCA fails getting version";
+                response["data"]["action"] = "get_version";
+                response["data"]["module"] = "sca";
+            }
         }
         else if (command == "set_version")
         {
             // Extract version from parameters
-            int version = 0;
+            int version = -1;
 
             if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
             {
                 version = parameters["version"].get<int>();
             }
 
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA version set successfully";
-            response["data"]["version"] = version;
+            if (version < 0)
+            {
+                response["error"] = MQ_ERR_INVALID_PARAMS;
+                response["message"] = "Invalid version parameter";
+                response["data"]["action"] = "set_version";
+                response["data"]["module"] = "sca";
+            }
+            else
+            {
+                int result = setVersion(version);
+
+                if (result == 0)
+                {
+                    response["error"] = MQ_SUCCESS;
+                    response["message"] = "SCA version set successfully";
+                    response["data"]["action"] = "set_version";
+                    response["data"]["module"] = "sca";
+                    response["data"]["version"] = version;
+                }
+                else
+                {
+                    response["error"] = 2;
+                    response["message"] = "SCA fails setting version";
+                    response["data"]["action"] = "set_version";
+                    response["data"]["module"] = "sca";
+                    response["data"]["version"] = version;
+                }
+            }
         }
         else if (command == "resume")
         {

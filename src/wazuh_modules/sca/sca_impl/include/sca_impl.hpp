@@ -113,6 +113,15 @@ class SecurityConfigurationAssessment
         /// @brief Delete the database
         void deleteDatabase();
 
+        /// @brief Get the maximum version from the sca_check table
+        /// @return Maximum version number, or -1 on error, 0 if table is empty
+        int getMaxVersion();
+
+        /// @brief Set the version for all rows in the sca_check table
+        /// @param version Version number to set
+        /// @return 0 on success, -1 on error
+        int setVersion(int version);
+
     protected:
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
