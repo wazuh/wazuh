@@ -730,6 +730,11 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
                     // Return completed status for flush polling
                     *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
                 }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
                 else
                 {
                     // Return success response for all other commands
@@ -798,6 +803,16 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)
                 else if (command == "get_version")
                 {
                     *response = strdup(R"({"error": 0, "data": {"version": 5}})");
+                }
+                else if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
                 }
                 else
                 {
@@ -881,6 +896,16 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionFailure)
                 else if (command == "get_version")
                 {
                     *response = strdup(R"({"error": 0, "data": {"version": 3}})");
+                }
+                else if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
                 }
                 else
                 {
