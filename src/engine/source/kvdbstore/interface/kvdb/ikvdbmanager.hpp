@@ -40,7 +40,7 @@ public:
      * @return Shared handler on success; nullptr if not found.
      */
     virtual std::shared_ptr<IKVDBHandler> getKVDBHandler(const cm::store::ICMStoreNSReader& nsReader,
-                                                         const std::string& dbName) noexcept = 0;
+                                                         const std::string& dbName) = 0;
 };
 
 } // namespace kvdbStore

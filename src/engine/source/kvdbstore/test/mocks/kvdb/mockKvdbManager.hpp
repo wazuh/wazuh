@@ -1,5 +1,5 @@
-#ifndef _KVDB_MOCK_KVDB_MANAGER_HPP
-#define _KVDB_MOCK_KVDB_MANAGER_HPP
+#ifndef _MOCKS_KVDBSTORE_KVDB_MANAGER_HPP
+#define _MOCKS_KVDBSTORE_KVDB_MANAGER_HPP
 
 #include <memory>
 #include <string>
@@ -20,9 +20,9 @@ public:
     MOCK_METHOD(std::shared_ptr<IKVDBHandler>,
                 getKVDBHandler,
                 (const cm::store::ICMStoreNSReader& nsReader, const std::string& dbName),
-                (noexcept, override));
+                (override));
 };
 
 } // namespace kvdbStore::mocks
 
-#endif // _KVDB_MOCK_KVDB_MANAGER_HPP
+#endif // _MOCKS_KVDBSTORE_KVDB_MANAGER_HPP

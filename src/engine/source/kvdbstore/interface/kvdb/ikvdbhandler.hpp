@@ -3,7 +3,8 @@
 
 #include <optional>
 #include <string>
-#include <string_view>
+
+#include <base/json.hpp>
 
 namespace kvdbStore
 {
@@ -12,7 +13,7 @@ namespace kvdbStore
  *
  * A handler is bound to exactly one logical database (namespace, dbName).
  * Keys are plain strings (field names in the original JSON), and values are
- * exposed as JSON-serialized string views into stable storage owned by the map.
+ * exposed as json::Json object.
  */
 class IKVDBHandler
 {
@@ -20,17 +21,16 @@ public:
     virtual ~IKVDBHandler() = default;
 
     /**
-     * @brief Lookup @p key and return a view of its JSON-serialized value.
+     * @brief Lookup @p key and return a const reference to the stored JSON value.
      *
-     * If present, the view refers to the exact serialized JSON stored in the KV map
+     * If present, the reference aliases the exact JSON node stored in the KV map
      * (object, array, number, boolean, string or null).
      *
      * @param key Entry name inside the KVDB.
-     * @return std::nullopt if the key does not exist; otherwise a std::string_view
-     *         pointing to stable storage owned by the KV map. The view becomes invalid
-     *         if the underlying map is destroyed or replaced.
+     * @return const reference to the JSON value.
+     * @throws std::out_of_range if the key is not found, or the underlying map is not available.
      */
-    virtual std::optional<std::string_view> get(const std::string& key) const noexcept = 0;
+    virtual const json::Json& get(const std::string& key) const = 0;
 
     /**
      * @brief Check whether @p key exists in this KVDB.
