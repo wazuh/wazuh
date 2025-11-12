@@ -90,6 +90,17 @@ public:
     void executeGetQuery(const std::string& index, const nlohmann::json& query);
 
     /**
+     * @brief Execute a GET context query against multiple indexer indices.
+     *
+     * This method executes the same query across multiple indices sequentially,
+     * useful for gathering context information from different inventory indices.
+     *
+     * @param indices List of index names to query.
+     * @param query Query JSON object containing the search parameters.
+     */
+    void executeGetContext(const std::vector<std::string>& indices, const nlohmann::json& query);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.

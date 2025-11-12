@@ -707,24 +707,6 @@ public:
 
     void executeGetQuery(const std::string& index, const nlohmann::json& query)
     {
-        // Hardcoded index and query
-        const std::string hardcodedIndex = "wazuh-states-vulnerabilities-*";
-        nlohmann::json hardcodedQuery = {
-            {"size", 1000},
-            {"query", {
-                {"bool", {
-                    {"must", {
-                        {{"term", {{"agent.id", "004"}}}},
-                        {{"term", {{"package.name", "firefox"}}}},
-                        {{"term", {{"package.version", "140.4.0esr-2"}}}}
-                    }}
-                }}
-            }},
-            {"sort", {
-                {{"vulnerability.id", {{"order", "asc"}}}}
-            }}
-        };
-
         bool needToRetry = false;
 
         const auto onSuccess = [this](const std::string& response)
@@ -773,14 +755,14 @@ public:
             std::string url;
             url += serverUrl;
             url += "/";
-            url += hardcodedIndex;
+            url += index;
             url += "/_search";
 
             logInfo(IC_NAME, "Executing GET query on: %s", url.c_str());
-            logInfo(IC_NAME, "Query body: %s", hardcodedQuery.dump().c_str());
+            logInfo(IC_NAME, "Query body: %s", query.dump().c_str());
 
             m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                                   .data = hardcodedQuery.dump(),
+                                                   .data = query.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
@@ -790,6 +772,80 @@ public:
                 std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
             }
         } while (needToRetry);
+    }
+
+    void executeGetContext(const std::vector<std::string>& indices, const nlohmann::json& query)
+    {
+        bool needToRetry = false;
+
+        const auto onSuccess = [this](const std::string& response)
+        {
+            logInfo(IC_NAME, "GET context query response: %s", response.c_str());
+            // Notify registered callbacks on success
+            for (const auto& notify : m_notify)
+            {
+                notify();
+            }
+            m_notify.clear();
+        };
+
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            logError(IC_NAME, "GET context query failed: %s, status code: %ld.", error.c_str(), statusCode);
+            if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                logInfo(IC_NAME, "Document version conflict, retrying in 1 second.");
+                needToRetry = true;
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                needToRetry = true;
+                logInfo(IC_NAME, "Too many requests, retrying in 1 second.");
+            }
+            else
+            {
+                logError(IC_NAME, "GET context query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                m_notify.clear();
+                throw IndexerConnectorException(error);
+            }
+        };
+
+        // Execute query for each index
+        for (const auto& index : indices)
+        {
+            do
+            {
+                if (m_stopping.load())
+                {
+                    logInfo(IC_NAME, "Stopping requested, aborting GET context query");
+                    m_notify.clear();
+                    return;
+                }
+
+                needToRetry = false;
+                auto serverUrl = m_selector->getNext();
+                std::string url;
+                url += serverUrl;
+                url += "/";
+                url += index;
+                url += "/_search";
+
+                logInfo(IC_NAME, "Executing GET context query on: %s", url.c_str());
+                logInfo(IC_NAME, "Query body: %s", query.dump().c_str());
+
+                m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                       .data = query.dump(),
+                                                       .secureCommunication = m_secureCommunication},
+                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    {});
+                logInfo(IC_NAME, "GET context query executed successfully on index: %s", index.c_str());
+                
+                if (needToRetry && RetryDelay > 0)
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                }
+            } while (needToRetry);
+        }
     }
 
     void flush()

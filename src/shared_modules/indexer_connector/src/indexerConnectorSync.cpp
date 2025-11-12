@@ -43,8 +43,13 @@ public:
     void executeGetQuery(const std::string& index, const nlohmann::json& query)
     {
         m_impl.executeGetQuery(index, query);
-    
     }
+
+    void executeGetContext(const std::vector<std::string>& indices, const nlohmann::json& query)
+    {
+        m_impl.executeGetContext(indices, query);
+    }
+    
     void bulkDelete(std::string_view id, std::string_view index)
     {
         m_impl.bulkDelete(id, index);
@@ -109,6 +114,10 @@ void IndexerConnectorSync::executeGetQuery(const std::string& index, const nlohm
     m_impl->executeGetQuery(index, query);
 }
 
+void IndexerConnectorSync::executeGetContext(const std::vector<std::string>& indices, const nlohmann::json& query)
+{
+    m_impl->executeGetContext(indices, query);
+}
 
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)
 {

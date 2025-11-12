@@ -232,6 +232,68 @@ namespace InventorySyncQueryBuilder
 
         return updateQuery;
     }
+    
+    /// @brief Build GET query for CVE/vulnerability data by package
+    /// @param agentId Agent ID to match
+    /// @param packageName Package name to match
+    /// @param packageVersion Package version to match
+    /// @param size Maximum number of results to return
+    /// @return JSON search query body with bool query and sort
+    inline nlohmann::json buildCveGetQuery(const std::string& agentId,
+                                           const std::string& packageName,
+                                           const std::string& packageVersion,
+                                           int size = 1000)
+    {
+        nlohmann::json query;
+
+        query["size"] = size;
+        query["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        query["query"]["bool"]["must"][1]["term"]["package.name"] = packageName;
+        query["query"]["bool"]["must"][2]["term"]["package.version"] = packageVersion;
+        query["sort"][0]["vulnerability.id"]["order"] = "asc";
+
+        return query;
+    }
+
+    /// @brief Build GET query for CVE/vulnerability data by OS
+    /// @param agentId Agent ID to match
+    /// @param osName OS name to match
+    /// @param osVersion OS version to match
+    /// @param osKernel OS kernel version to match
+    /// @param size Maximum number of results to return
+    /// @return JSON search query body with bool query and sort
+    inline nlohmann::json buildCveByOsGetQuery(const std::string& agentId,
+                                               const std::string& osName,
+                                               const std::string& osVersion,
+                                               const std::string& osKernel,
+                                               int size = 1000)
+    {
+        nlohmann::json query;
+
+        query["size"] = size;
+        query["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        query["query"]["bool"]["must"][1]["term"]["host.os.name"] = osName;
+        query["query"]["bool"]["must"][2]["term"]["host.os.version"] = osVersion;
+        query["query"]["bool"]["must"][3]["term"]["host.os.kernel"] = osKernel;
+        query["sort"][0]["vulnerability.id"]["order"] = "asc";
+
+        return query;
+    }
+
+    /// @brief Build GET query for system inventory context data
+    /// @param agentId Agent ID to match
+    /// @param size Maximum number of results to return
+    /// @return JSON search query body with term query and source filtering
+    inline nlohmann::json buildContextGetQuery(const std::string& agentId, int size = 1000)
+    {
+        nlohmann::json query;
+
+        query["_source"]["excludes"] = nlohmann::json::array({"wazuh*"});
+        query["query"]["term"]["agent.id"] = agentId;
+        query["size"] = size;
+
+        return query;
+    }
 } // namespace InventorySyncQueryBuilder
 
 #endif // _INVENTORY_SYNC_QUERY_BUILDER_HPP
