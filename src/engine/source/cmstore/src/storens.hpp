@@ -9,6 +9,7 @@
 #include <cmstore/icmstore.hpp>
 
 #include "cachens.hpp"
+
 namespace cm::store
 {
 

@@ -13,6 +13,7 @@ add_library(cmstore::icmstore ALIAS cmstore_icmstore)
 add_library(cmstore_cmstore STATIC
     ${SRC_DIR}/cmstore.cpp
     ${SRC_DIR}/storens.cpp
+    ${SRC_DIR}/storecti.cpp
     ${SRC_DIR}/cachens.cpp
 )
 target_include_directories(cmstore_cmstore
@@ -23,6 +24,7 @@ target_link_libraries(cmstore_cmstore
     PUBLIC
     base
     cmstore::icmstore
+    ctistore::ictistore
     PRIVATE
     yml
 )

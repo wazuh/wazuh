@@ -305,7 +305,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/ctistore)
-add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 
 
@@ -336,7 +335,6 @@ target_link_libraries(wazuh-engine
     queue
     archiver::archive
     ctistore::ctistore
-    cmsync::cmsync
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
