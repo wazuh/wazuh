@@ -924,7 +924,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             }
 
             // For other errors, log and retry
-            m_logFunction(LOG_WARNING, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_COORDINATION_RETRIES) +
+            m_logFunction(LOG_DEBUG, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_COORDINATION_RETRIES) +
                           " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) + "): " + responseStr);
 
             if (attempt < MAX_COORDINATION_RETRIES)
@@ -978,8 +978,89 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
             if (response.success)
             {
+                // FIM-specific: Poll for pause completion (pause is async for FIM)
+                if (module == FIM_NAME)
+                {
+                    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30;  // 30 seconds max wait
+                    constexpr int PAUSE_POLL_DELAY_MS = 1000;   // 1 second between polls
+                    bool pauseCompleted = false;
+                    bool pauseSucceeded = false;
+
+                    m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + module + " for pause completion (async pause)");
+
+                    for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
+                    {
+                        std::string isPauseCompletedMessage = createJsonCommand("is_pause_completed");
+                        ModuleResponse pollResponse = queryModuleWithRetry(module, isPauseCompletedMessage);
+
+                        if (!pollResponse.success)
+                        {
+                            m_logFunction(LOG_WARNING, "Failed to poll pause status for " + module + " (attempt " +
+                                          std::to_string(attempt) + "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+                            std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+                            continue;
+                        }
+
+                        // Parse response to check pause status
+                        try
+                        {
+                            nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
+
+                            if (pollJson.contains("data") && pollJson["data"].contains("status"))
+                            {
+                                std::string status = pollJson["data"]["status"].get<std::string>();
+
+                                if (status == "in_progress")
+                                {
+                                    m_logFunction(LOG_DEBUG, module + " pause still in progress (attempt " +
+                                                  std::to_string(attempt) + "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+                                    std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+                                    continue;
+                                }
+                                else if (status == "completed")
+                                {
+                                    pauseCompleted = true;
+                                    std::string result = pollJson["data"]["result"].get<std::string>();
+                                    pauseSucceeded = (result == "success");
+
+                                    m_logFunction(LOG_DEBUG, module + " pause completed with result: " + result);
+                                    break;
+                                }
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            m_logFunction(LOG_WARNING, "Failed to parse pause poll response from " + module + ": " +
+                                          std::string(e.what()) + " - Response: " + pollResponse.response);
+                        }
+
+                        std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+                    }
+
+                    if (!pauseCompleted)
+                    {
+                        m_logFunction(LOG_ERROR, module + " pause did not complete within timeout (" +
+                                      std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + " seconds), aborting coordination");
+                        resumePausedModules();
+                        return false;
+                    }
+
+                    if (!pauseSucceeded)
+                    {
+                        m_logFunction(LOG_ERROR, module + " pause completed with error, aborting coordination");
+                        resumePausedModules();
+                        return false;
+                    }
+
+                    m_logFunction(LOG_DEBUG, module + " pause completed successfully");
+                }
+                else
+                {
+                    // Other modules: pause is synchronous, already completed
+                    m_logFunction(LOG_DEBUG, "Successfully paused " + module);
+                }
+
                 pausedModules.insert(module);
-                m_logFunction(LOG_DEBUG, "Successfully paused " + module);
             }
             else
             {
@@ -1032,22 +1113,23 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                 // FIM-specific: Poll for flush completion (flush is async for FIM)
                 if (module == FIM_NAME)
                 {
-                    constexpr int MAX_FLUSH_POLL_ATTEMPTS = 30;  // 30 seconds max wait
                     constexpr int FLUSH_POLL_DELAY_MS = 10000;   // 10 seconds between polls
-                    bool flushCompleted = false;
-                    bool flushSucceeded = false;
+                    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6;  // Log progress every 60 seconds (6 * 10s)
+                    int attempt = 0;
 
                     m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + module + " for flush completion (async flush)");
 
-                    for (int attempt = 1; attempt <= MAX_FLUSH_POLL_ATTEMPTS; ++attempt)
+                    // Poll until flush completes or module is stopped
+                    while (!m_stopped)
                     {
+                        attempt++;
                         std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
                         ModuleResponse pollResponse = queryModuleWithRetry(module, isFlushCompletedMessage);
 
                         if (!pollResponse.success)
                         {
                             m_logFunction(LOG_WARNING, "Failed to poll flush status for " + module + " (attempt " +
-                                          std::to_string(attempt) + "/" + std::to_string(MAX_FLUSH_POLL_ATTEMPTS) + ")");
+                                          std::to_string(attempt) + "), will retry...");
                             std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
                             continue;
                         }
@@ -1063,18 +1145,34 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
                                 if (status == "in_progress")
                                 {
-                                    m_logFunction(LOG_DEBUG, module + " flush still in progress (attempt " +
-                                                  std::to_string(attempt) + "/" + std::to_string(MAX_FLUSH_POLL_ATTEMPTS) + ")");
-                                    std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
-                                    continue;
+                                    // Log progress periodically to show we're still waiting
+                                    if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
+                                    {
+                                        m_logFunction(LOG_INFO, module + " flush still in progress (waiting " +
+                                                      std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds so far)");
+                                    }
+                                    else
+                                    {
+                                        m_logFunction(LOG_DEBUG, module + " flush still in progress (attempt " +
+                                                      std::to_string(attempt) + ")");
+                                    }
                                 }
                                 else if (status == "completed")
                                 {
-                                    flushCompleted = true;
                                     std::string result = pollJson["data"]["result"].get<std::string>();
-                                    flushSucceeded = (result == "success");
+                                    bool flushSucceeded = (result == "success");
 
-                                    m_logFunction(LOG_DEBUG, module + " flush completed with result: " + result);
+                                    m_logFunction(LOG_INFO, module + " flush completed with result: " + result +
+                                                  " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds)");
+
+                                    if (!flushSucceeded)
+                                    {
+                                        m_logFunction(LOG_ERROR, module + " flush completed with error, aborting coordination");
+                                        resumePausedModules();
+                                        return false;
+                                    }
+
+                                    m_logFunction(LOG_DEBUG, module + " flush completed successfully");
                                     break;
                                 }
                             }
@@ -1088,22 +1186,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                         std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
                     }
 
-                    if (!flushCompleted)
+                    // Check if we exited due to module stopping
+                    if (m_stopped)
                     {
-                        m_logFunction(LOG_ERROR, module + " flush did not complete within timeout (" +
-                                      std::to_string(MAX_FLUSH_POLL_ATTEMPTS) + " seconds), aborting coordination");
+                        m_logFunction(LOG_INFO, "Module stopping, aborting flush polling for " + module);
                         resumePausedModules();
                         return false;
                     }
-
-                    if (!flushSucceeded)
-                    {
-                        m_logFunction(LOG_ERROR, module + " flush completed with error, aborting coordination");
-                        resumePausedModules();
-                        return false;
-                    }
-
-                    m_logFunction(LOG_DEBUG, module + " flush completed successfully");
                 }
                 else
                 {
@@ -1181,7 +1270,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
                     return false;
                 }
 
-                m_logFunction(LOG_INFO, "Successfully set version " + std::to_string(newVersion) + " on " + module);
+                m_logFunction(LOG_DEBUG, "Successfully set version " + std::to_string(newVersion) + " on " + module);
             }
         }
 
@@ -1388,7 +1477,7 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
         rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
         rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
 
-        m_logFunction(LOG_INFO, "Resetting sync flag for " + table + " to false in database. m_shouldSyncMetadata=" +
+        m_logFunction(LOG_DEBUG, "Resetting sync flag for " + table + " to false in database. m_shouldSyncMetadata=" +
                       std::to_string(m_shouldSyncMetadata) + ", m_shouldSyncGroups=" +
                       std::to_string(m_shouldSyncGroups));
 
