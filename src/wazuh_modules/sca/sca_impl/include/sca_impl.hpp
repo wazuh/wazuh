@@ -122,6 +122,12 @@ class SecurityConfigurationAssessment
         /// @return 0 on success, -1 on error
         int setVersion(int version);
 
+        /// @brief Pause SCA scanning operations for coordination
+        void pause();
+
+        /// @brief Resume SCA scanning operations after coordination
+        void resume();
+
     protected:
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
@@ -156,6 +162,9 @@ class SecurityConfigurationAssessment
 
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};
+
+        /// @brief Flag indicating if scanning is paused for coordination
+        std::atomic<bool> m_paused {false};
 
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;

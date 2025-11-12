@@ -98,6 +98,14 @@ void SecurityConfigurationAssessment::Run()
             return;
         }
 
+        // Check if paused for coordination - skip scanning but stay in loop
+        if (m_paused)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning paused, skipping scan iteration");
+            firstScan = false;  // Clear first scan flag even when paused
+            continue;
+        }
+
         if (firstScan && m_scanOnStart)
         {
             LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
@@ -400,6 +408,20 @@ int SecurityConfigurationAssessment::setVersion(int version)
         LoggingHelper::getInstance().log(LOG_ERROR, "Error setting version: " + std::string(err.what()));
         return -1;
     }
+}
+
+void SecurityConfigurationAssessment::pause()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning paused for coordination");
+    m_paused = true;
+}
+
+void SecurityConfigurationAssessment::resume()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning resumed after coordination");
+    m_paused = false;
+    // Wake up the Run() loop if it's waiting
+    m_cv.notify_one();
 }
 
 // LCOV_EXCL_STOP

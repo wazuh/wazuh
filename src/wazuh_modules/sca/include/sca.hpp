@@ -127,6 +127,12 @@ class EXPORTED SCA final
         /// @return 0 on success, -1 on error
         int setVersion(int version);
 
+        /// @brief Pause SCA scanning operations for coordination
+        void pause();
+
+        /// @brief Resume SCA scanning operations after coordination
+        void resume();
+
     private:
         /// @brief Private constructor for singleton pattern.
         SCA();

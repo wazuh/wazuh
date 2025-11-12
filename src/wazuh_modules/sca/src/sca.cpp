@@ -401,6 +401,22 @@ int SCA::setVersion(int version)
     return -1;
 }
 
+void SCA::pause()
+{
+    if (m_sca)
+    {
+        m_sca->pause();
+    }
+}
+
+void SCA::resume()
+{
+    if (m_sca)
+    {
+        m_sca->resume();
+    }
+}
+
 // LCOV_EXCL_START
 
 // Excluded from code coverage as it is not the real implementation of the query method.
@@ -435,6 +451,7 @@ std::string SCA::query(const std::string& jsonQuery)
         // Handle coordination commands with JSON responses
         if (command == "pause")
         {
+            pause();
             response["error"] = MQ_SUCCESS;
             response["message"] = "SCA module paused successfully";
             response["data"]["module"] = "sca";
@@ -442,6 +459,8 @@ std::string SCA::query(const std::string& jsonQuery)
         }
         else if (command == "flush")
         {
+            // Flush is a no-op for SCA since it doesn't buffer events like FIM does
+            // SCA sends events immediately through the push functions
             response["error"] = MQ_SUCCESS;
             response["message"] = "SCA module flushed successfully";
             response["data"]["module"] = "sca";
@@ -508,6 +527,7 @@ std::string SCA::query(const std::string& jsonQuery)
         }
         else if (command == "resume")
         {
+            resume();
             response["error"] = MQ_SUCCESS;
             response["message"] = "SCA module resumed successfully";
             response["data"]["module"] = "sca";
