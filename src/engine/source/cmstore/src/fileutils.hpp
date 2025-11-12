@@ -1,224 +1,285 @@
-#include <cerrno>
-#include <cstring>
+#ifndef _CMSTORE_FILEUTILS_HPP
+#define _CMSTORE_FILEUTILS_HPP
+
 #include <filesystem>
 #include <fstream>
-#include <shared_mutex>
-#include <stdexcept>
+#include <optional>
+#include <string>
+#include <system_error>
 
-#include <base/logging.hpp>
+#include <base/json.hpp>
+#include <yml/yml.hpp>
 
-#include <cmstore/cmstore.hpp>
-
-#include "fileutils.hpp"
-#include "storens.hpp"
-#include "storecti.hpp"
-
-namespace cm::store
+namespace fileutils
 {
 
-const auto CTI_NAMESPACE_ID = NamespaceId("cti");
+constexpr std::string_view INVALID_FILENAME_CHARS = R"(\ / : * ? " < > | )";
 
-const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
-    NamespaceId("output"),
-    NamespaceId("system"),
-    NamespaceId("default"),
-    CTI_NAMESPACE_ID,
-};
-
-CMStore::~CMStore() = default;
-
-CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMReader>& ctiReader)
-    : m_baseStoragePath(path)
-    , m_namespaces()
-    , m_mutex()
+/**
+ * @brief Set file permissions to 0640 (owner: rw-, group: r--, others: ---)
+ * @param filePath Path to the file
+ * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
+ */
+inline std::optional<std::string> setFilePermissions(const std::filesystem::path& filePath)
 {
-    // Validate the base path
-    if (!m_baseStoragePath.is_absolute() || m_baseStoragePath.empty())
+    try
     {
-        throw std::runtime_error("Base path must be an absolute path");
-    }
-    if (!std::filesystem::exists(m_baseStoragePath) || !std::filesystem::is_directory(m_baseStoragePath))
-    {
-        throw std::runtime_error("Base path must exist and be a directory: " + m_baseStoragePath.string());
-    }
-    // Check if the base path is writable, avoiding check mode_t
-    {
-        // File test
-        auto testPath = m_baseStoragePath / ".wazuh_test_write_permission";
-        std::ofstream testFile(testPath);
-        if (!testFile)
-        {
-            throw std::runtime_error("Cannot write to base path: " + m_baseStoragePath.string() + ": "
-                                     + std::strerror(errno));
-        }
-        testFile.close();
-        std::filesystem::remove(testPath);
-
-        // Dir test
-        auto testDirPath = m_baseStoragePath / ".wazuh_test_dir_permission";
+        // Set permissions to 0640 (owner: rw-, group: r--, others: ---)
         std::error_code ec;
-        std::filesystem::create_directory(testDirPath, ec);
+        std::filesystem::permissions(filePath,
+                                     std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
+                                         | std::filesystem::perms::group_read,
+                                     std::filesystem::perm_options::replace,
+                                     ec);
+
         if (ec)
         {
-            throw std::runtime_error("Cannot create directory in base path: " + m_baseStoragePath.string() + ": "
-                                     + ec.message());
+            return "Failed to set file permissions: " + ec.message();
         }
-        std::filesystem::remove(testDirPath, ec);
+
+        return std::nullopt;
     }
-
-    // Load existing namespaces from disk
-    loadAllNamespacesFromDisk();
-
-    // Load CTI Store, read-only namespace
-    m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID);
+    catch (const std::exception& e)
+    {
+        return "Exception occurred: " + std::string(e.what());
+    }
 }
 
-void CMStore::loadAllNamespacesFromDisk()
+/**
+ * @brief Set directory permissions to 0750 (owner: rwx, group: r-x, others: ---)
+ * @param dirPath Path to the directory
+ * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
+ */
+inline std::optional<std::string> setDirectoryPermissions(const std::filesystem::path& dirPath)
 {
-    std::unique_lock lock(m_mutex);
-
-    m_namespaces.clear();
-
-    for (const auto& dirEntry : std::filesystem::directory_iterator(m_baseStoragePath))
+    try
     {
-        if (!dirEntry.is_directory())
+        // Set permissions to 0750 (owner: rwx, group: r-x, others: ---)
+        std::error_code ec;
+        std::filesystem::permissions(dirPath,
+                                     std::filesystem::perms::owner_all | std::filesystem::perms::group_read
+                                         | std::filesystem::perms::group_exec,
+                                     std::filesystem::perm_options::replace,
+                                     ec);
+
+        if (ec)
         {
-            continue;
+            return "Failed to set directory permissions: " + ec.message();
         }
 
-        // Ignore forbidden namespaces
-        NamespaceId nsIdCandidate(dirEntry.path().filename().string());
-        if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), nsIdCandidate)
-            != FORBIDDEN_NAMESPACES.end())
+        return std::nullopt;
+    }
+    catch (const std::exception& e)
+    {
+        return "Exception occurred: " + std::string(e.what());
+    }
+}
+
+/**
+ * @brief Create or update a file with the given content.
+ *
+ * If file not exists, it will be created. If file exists, its content will be updated.
+ * The permissions will be set to 0640.
+ * The function not creates parent directories, they must exist.
+ * @param filePath Path to the file
+ * @param content Content to write in the file
+ * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
+ */
+inline std::optional<std::string> upsertFile(const std::filesystem::path& filePath, const std::string& content)
+{
+    try
+    {
+        // Check if parent directory exists, if not create with 0640 permissions
+        const auto parentPath = filePath.parent_path();
+        if (!std::filesystem::exists(parentPath))
         {
-            continue;
+            std::error_code ec;
+            std::filesystem::create_directories(parentPath, ec);
+            if (ec)
+            {
+                return "Failed to create parent directories: " + ec.message();
+            }
+            // Set permissions to 0750 (owner: rwx, group: r-x, others: ---)
+            auto dirPermErr = setDirectoryPermissions(parentPath);
+            if (dirPermErr)
+            {
+                return dirPermErr;
+            }
         }
 
-        // Get namespace ID from directory name
-        NamespaceId nsId(dirEntry.path().filename().string());
+        // Create/update file
+        std::ofstream file(filePath, std::ios::out | std::ios::trunc);
+        if (!file.is_open())
+        {
+            return "Failed to open file for writing: " + filePath.string();
+        }
 
-        // Load namespace
-        auto nsInstance = std::make_shared<CMStoreNS>(nsId, dirEntry.path());
-        m_namespaces[nsId] = nsInstance;
+        file << content;
+        file.close();
+
+        if (file.fail())
+        {
+            return "Failed to write content to file: " + filePath.string();
+        }
+
+        // Set permissions to 0640 (owner: rw-, group: r--, others: ---)
+        auto filePermErr = setFilePermissions(filePath);
+        if (filePermErr)
+        {
+            return filePermErr;
+        }
+
+        return std::nullopt;
+    }
+    catch (const std::exception& e)
+    {
+        return "Exception occurred: " + std::string(e.what());
     }
 }
 
-std::shared_ptr<ICMstoreNS> CMStore::createNamespace(const NamespaceId& nsId)
+/**
+ * @brief Delete a file at the given path.
+ * @param filePath Path to the file
+ * @return std::optional<std::string> Return error message if operation fails, std::nullopt otherwise
+ */
+inline std::optional<std::string> deleteFile(const std::filesystem::path& filePath)
 {
-    std::unique_lock lock(m_mutex);
-
-    // Check if namespace already exists
-    if (m_namespaces.find(nsId) != m_namespaces.end())
+    try
     {
-        throw std::runtime_error("Namespace already exists: " + nsId.toStr());
+        std::error_code ec;
+        std::filesystem::remove(filePath, ec);
+        if (ec)
+        {
+            return "Failed to delete file: " + ec.message();
+        }
+        return std::nullopt;
     }
-
-    // Check if namespace is forbidden
-    if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), nsId) != FORBIDDEN_NAMESPACES.end())
+    catch (const std::exception& e)
     {
-        throw std::runtime_error("Namespace name is forbidden: " + nsId.toStr());
+        return "Exception occurred: " + std::string(e.what());
     }
-
-    // Create namespace directory
-    auto nsPath = m_baseStoragePath / nsId.toStr();
-    if (std::filesystem::exists(nsPath))
-    {
-        throw std::runtime_error("Namespace directory already exists on disk: " + nsPath.string());
-    }
-
-    std::error_code ec;
-    std::filesystem::create_directory(nsPath, ec);
-    if (ec)
-    {
-        throw std::runtime_error("Failed to create namespace directory: " + nsPath.string() + ": " + ec.message());
-    }
-
-    // Set directory permissions to 0750
-    auto dirPermErr = fileutils::setDirectoryPermissions(nsPath);
-    if (dirPermErr)
-    {
-        throw std::runtime_error("Failed to set permissions on namespace directory: " + nsPath.string() + ": "
-                                 + dirPermErr.value());
-    }
-
-    // Create empty cache file
-    auto cacheFilePath = nsPath / pathns::CACHE_NS_FILE;
-    auto cacheFileErr = fileutils::upsertFile(cacheFilePath, "[]");
-    if (cacheFileErr.has_value())
-    {
-        throw std::runtime_error("Failed to create cache file for namespace: " + cacheFilePath.string() + ": "
-                                 + cacheFileErr.value());
-    }
-    auto nsInstance = std::make_shared<CMStoreNS>(nsId, nsPath);
-    m_namespaces[nsId] = nsInstance;
-
-    return nsInstance;
 }
 
-void CMStore::deleteNamespace(const NamespaceId& nsId)
+/**
+ * @brief Validate a filename to prevent path traversal and invalid characters.
+ * @param name Filename to validate
+ * @return true if the filename is valid, false otherwise
+ */
+inline bool isValidFileName(std::string_view name)
 {
-    std::unique_lock lock(m_mutex);
-
-    // Check if namespace exists
-    auto it = m_namespaces.find(nsId);
-    if (it == m_namespaces.end())
+    if (name.empty())
     {
-        throw std::runtime_error("Namespace does not exist: " + nsId.toStr());
+        return false;
     }
 
-    // Check if read-only namespace (forbidden)
-    if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), nsId) != FORBIDDEN_NAMESPACES.end())
+    // Check for invalid characters
+    if (name.find_first_of(INVALID_FILENAME_CHARS) != std::string_view::npos)
     {
-        throw std::runtime_error("Cannot delete read-only namespace: " + nsId.toStr());
+        return false;
     }
 
-    // Remove namespace directory from disk
-    auto nsPath = m_baseStoragePath / nsId.toStr();
-    std::error_code ec;
-    std::filesystem::remove_all(nsPath, ec);
-    if (ec)
+    // Check for relative paths
+    if (name == "." || name == ".." || name.find('/') != std::string::npos || name.find('\\') != std::string::npos)
     {
-        throw std::runtime_error("Failed to delete namespace directory: " + nsPath.string() + ": " + ec.message());
+        return false;
     }
 
-    // Remove from in-memory map
-    m_namespaces.erase(it);
+    // Check for control characters (0-31) and DEL (127)
+    for (char c : name)
+    {
+        if (static_cast<unsigned char>(c) < 32 || c == 127)
+        {
+            return false;
+        }
+    }
+
+    // Check maximum filename length (TODO: Maybe we should test the full path length instead)
+    if (name.length() > 255)
+    {
+        return false;
+    }
+
+    return true;
 }
 
-std::vector<NamespaceId> CMStore::getNamespaces() const
+/**
+ * @brief Read a JSON file and return a json::Json document.
+ *
+ * @param filePath Path to the JSON file
+ * @return json::Json Parsed JSON document
+ * @throw std::runtime_error if file cannot be opened, read or parsed
+ */
+inline json::Json readJsonFile(const std::filesystem::path& filePath)
 {
-    std::shared_lock lock(m_mutex);
-
-    std::vector<NamespaceId> nsIds;
-    for (const auto& [nsId, nsPtr] : m_namespaces)
+    std::ifstream file(filePath);
+    if (!file.is_open())
     {
-        nsIds.push_back(nsId);
+        throw std::runtime_error("Failed to open file for reading: " + filePath.string());
     }
-    return nsIds;
+
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (file.fail())
+    {
+        throw std::runtime_error("Failed to read content from file: " + filePath.string());
+    }
+
+    return json::Json(content.c_str());
 }
 
-std::shared_ptr<ICMstoreNS> CMStore::getNS(const NamespaceId& nsId)
+/**
+ * @brief Read a YAML file and return a json::Json document.
+ *
+ * @param filePath Path to the YAML file
+ * @return json::Json Parsed JSON document
+ * @throw std::runtime_error if file cannot be opened, read or parsed
+ */
+inline json::Json readYMLFileAsJson(const std::filesystem::path& filePath)
 {
-    std::shared_lock lock(m_mutex);
 
-    auto it = m_namespaces.find(nsId);
-    if (it == m_namespaces.end())
+    std::ifstream file(filePath);
+    if (!file.is_open())
     {
-        throw std::runtime_error("Namespace does not exist: " + nsId.toStr());
+        throw std::runtime_error("Failed to open file for reading: " + filePath.string());
     }
-    return it->second;
+
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (file.fail())
+    {
+        throw std::runtime_error("Failed to read content from file: " + filePath.string());
+    }
+
+    return json::Json {yml::Converter::loadYMLfromString(content)};
 }
 
-std::shared_ptr<ICMStoreNSReader> CMStore::getNSReader(const NamespaceId& nsId) const
+/**
+ * @brief Read a file and return its content as a string.
+ *
+ * @param filePath Path to the file
+ * @return std::string File content
+ * @throw std::runtime_error if file cannot be opened or read
+ */
+inline std::string readFileAsString(const std::filesystem::path& filePath)
 {
-    std::shared_lock lock(m_mutex);
-
-    auto it = m_namespaces.find(nsId);
-    if (it == m_namespaces.end())
+    std::ifstream file(filePath);
+    if (!file.is_open())
     {
-        throw std::runtime_error("Namespace does not exist: " + nsId.toStr());
+        throw std::runtime_error("Failed to open file for reading: " + filePath.string());
     }
-    return it->second;
-}
 
-} // namespace cm::store
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (file.fail())
+    {
+        throw std::runtime_error("Failed to read content from file: " + filePath.string());
+    }
+
+    return content;
+}
+} // namespace fileutils
+
+#endif //_CMSTORE_FILEUTILS_HPP
