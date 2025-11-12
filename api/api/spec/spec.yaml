@@ -3985,7 +3985,7 @@ components:
               enum:
                 - decoder
             integration_id:
-              type: string   
+              type: string
             status:
               type: string
               enum:
