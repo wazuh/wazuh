@@ -33,7 +33,7 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const cm::store::ICMSt
         }
     }
 
-    const json::Json j = nsReader.getKVDBByName(dbName);
+    const json::Json j = nsReader.getResourceByName<cm::store::dataType::KVDB>(dbName).getData();
     auto keysOpt = j.getFields("");
     if (!keysOpt.has_value())
     {
