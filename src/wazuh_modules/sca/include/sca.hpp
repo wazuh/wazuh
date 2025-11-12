@@ -130,6 +130,10 @@ class EXPORTED SCA final
         /// @brief Pause SCA scanning operations for coordination
         void pause();
 
+        /// @brief Flush pending sync protocol messages
+        /// @return 0 on success, -1 on error
+        int flush();
+
         /// @brief Resume SCA scanning operations after coordination
         void resume();
 

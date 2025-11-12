@@ -125,6 +125,10 @@ class SecurityConfigurationAssessment
         /// @brief Pause SCA scanning operations for coordination
         void pause();
 
+        /// @brief Flush pending sync protocol messages
+        /// @return 0 on success, -1 on error
+        int flush();
+
         /// @brief Resume SCA scanning operations after coordination
         void resume();
 
@@ -165,6 +169,9 @@ class SecurityConfigurationAssessment
 
         /// @brief Flag indicating if scanning is paused for coordination
         std::atomic<bool> m_paused {false};
+
+        /// @brief Flag indicating if a flush is requested for sync protocol
+        std::atomic<bool> m_flushRequested {false};
 
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;

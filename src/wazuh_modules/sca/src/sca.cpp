@@ -409,6 +409,15 @@ void SCA::pause()
     }
 }
 
+int SCA::flush()
+{
+    if (m_sca)
+    {
+        return m_sca->flush();
+    }
+    return -1;
+}
+
 void SCA::resume()
 {
     if (m_sca)
@@ -459,12 +468,22 @@ std::string SCA::query(const std::string& jsonQuery)
         }
         else if (command == "flush")
         {
-            // Flush is a no-op for SCA since it doesn't buffer events like FIM does
-            // SCA sends events immediately through the push functions
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA module flushed successfully";
-            response["data"]["module"] = "sca";
-            response["data"]["action"] = "flush";
+            // Flush triggers immediate sync protocol synchronization
+            int result = flush();
+            if (result == 0)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "SCA module flushed successfully";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "flush";
+            }
+            else
+            {
+                response["error"] = 1;
+                response["message"] = "SCA module flush failed";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "flush";
+            }
         }
         else if (command == "get_version")
         {

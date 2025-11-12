@@ -416,6 +416,34 @@ void SecurityConfigurationAssessment::pause()
     m_paused = true;
 }
 
+int SecurityConfigurationAssessment::flush()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA flush requested - syncing pending messages");
+
+    if (!m_spSyncProtocol)
+    {
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA sync protocol not initialized, flush skipped");
+        return 0;  // Not an error - just nothing to flush
+    }
+
+    // Trigger immediate synchronization to flush pending messages
+    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA,
+                                                       std::chrono::seconds(30),  // timeout
+                                                       3,   // retries
+                                                       10); // max_eps
+
+    if (result)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush completed successfully");
+        return 0;
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA flush failed");
+        return -1;
+    }
+}
+
 void SecurityConfigurationAssessment::resume()
 {
     LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning resumed after coordination");
