@@ -3,6 +3,7 @@
   "byte",
   "date",
   "double",
+  "flat_object",
   "float",
   "geo_point",
   "integer",
@@ -11,5 +12,6 @@
   "long",
   "nested",
   "object",
-  "scaled_float"
+  "scaled_float",
+  "text"
 ]

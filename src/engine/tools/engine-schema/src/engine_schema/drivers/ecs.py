@@ -2,7 +2,7 @@ from engine_schema.field import Field, FieldTree, IndexerType
 
 
 def _flat_entry_to_field(entry_name: str, entry_value: dict) -> Field:
-    indexer_type = IndexerType.from_str(entry_value['type'])
+    indexer_type = IndexerType.TEXT if entry_value['type'] == 'match_only_text' else IndexerType.from_str(entry_value['type'])
     description = entry_value["description"]
 
     # Indexer details
