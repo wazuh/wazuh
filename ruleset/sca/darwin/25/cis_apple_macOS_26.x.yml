@@ -30,25 +30,7 @@ checks:
   # 1 Install Updates, Patches and Additional Security Software
   ##########################################################################
 
-  # 1.1 Ensure Apple-provided Software Updates Are Installed. (Automated)
-   - id: 18500
-     title: "Ensure Apple-provided Software Updates Are Installed."
-     description: "Software vendors release security patches and software updates for their products when security vulnerabilities are discovered. There is no simple way to complete this action without a network connection to an Apple software repository. Please ensure appropriate access for this control. This check is only for what Apple provides through software update."
-     rationale: "It is important that these updates be applied in a timely manner to prevent unauthorized persons from exploiting the identified vulnerabilities."
-     impact: "Installation of updates can be disruptive to the users especially if a restart is required. Major updates need to be applied after creating an organizational patch policy. It is also advised to run updates and forced restarts during system downtime and not while in active use. Internal Only - General."
-     remediation: "Graphical Method: Perform the following to install all available software updates: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select Update All Terminal Method: Run the following command to verify what packages need to be installed: % /usr/bin/sudo /usr/sbin/softwareupdate -l The output will include the following: Software Update found the following new or updated software: Note: If the software update server cannot be reached, that will need further investigation. This could be due to a network issue and must be resolved within your organization. Run the following command to install all the packages that need to be updated: To install all updates run the command: % /usr/bin/sudo /usr/sbin/softwareupdate -i -a Or run the following command to install individual packages: % /usr/bin/sudo /usr/sbin/softwareupdate -i '<package name>' Note: If one of the software updates listed includes Action: restart, then you must attach the -R flag to force a system restart. If the system update is complete but no restart occurs, then the system is in an unknown state that requires a future restart. It is advised to run updates and forced restarts during system downtime and not while in active use. Internal Only - General example: % /usr/bin/sudo /usr/sbin/softwareupdate -l Software Update Tool Finding available software Software Update found the following new or updated software: * Label: ProVideoFormats-2.2.7 Title: Pro Video Formats, Version: 2.2.7, Size: 9693KiB, Recommended: YES, * Label: Command Line Tools for Xcode-15.0 Title: Command Line Tools for Xcode, Version: 15.0, Size: 721962KiB, Recommended: YES, % /usr/bin/sudo /usr/sbin/softwareupdate -i 'ProVideoFormats-2.2.7' Software Update Tool Finding available software Attempting to quit apps: ( \"com.apple.Compressor\" ) Waiting for user to quit any relevant apps Successfully quit all apps Downloaded Pro Video Formats Installing Pro Video Formats Done with Pro Video Formats Done. In the above example, if a restart was required, the command to remediate would be /usr/bin/sudo /usr/sbin/softwareupdate -i 'ProVideoFormats-2.2.7' -R."
-     references:
-       - 'https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-40r4.pdf'
-     compliance:
-       - cis: ["1.1"]
-       - cis_csc_v8: ["7.3", "7.4"]
-       - cis_csc_v7: ["3.4", "3.5"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
+  # 1.1 Ensure Apple-provided Software Updates Are Installed. (Automated) - Not Implemented
 
   # 1.2 Ensure Download New Updates When Available Is Enabled. (Automated)
    - id: 18501
@@ -65,8 +47,9 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:^1$'
 
   # 1.3 Ensure Install of macOS Updates Is Enabled. (Automated)
    - id: 18502
@@ -83,8 +66,9 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:^1$'
 
   # 1.4 Ensure Install Application Updates from the App Store Is Enabled. (Automated)
    - id: 18503
@@ -101,8 +85,9 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> r:^1$"
 
   # 1.5 Ensure Install Security Responses and System Files Is Enabled. (Automated)
    - id: 18504
@@ -112,10 +97,10 @@ checks:
      impact: "Unpatched software may be exploited."
      remediation: "Graphical Method: Perform the following steps to enable system data files and security updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install Security Responses and System files to enabled 6. Select Done Internal Only - General Terminal Method: Run the following commands to enable automatic checking of system data files and security updates: % /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true % /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is ConfigDataInstall 3. The key must be set to <true/> 4. The key to also include is CriticalUpdateInstall 5. The key must be set to <true/>."
      references:
-       - 'https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-in-'
+       - 'https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-in-monterey/'
        - 'https://support.apple.com/en-us/HT202491'
-       - 'https://support.apple.com/guide/security/protecting-against-malware-'
-       - 'https://support.apple.com/guide/deployment/rapid-security-responses-'
+       - 'https://support.apple.com/guide/security/protecting-against-malware-sec469d47bd8/web'
+       - 'https://support.apple.com/guide/deployment/rapid-security-responses-dep93ff7ea78/1/web/1.0'
      compliance:
        - cis: ["1.5"]
        - cis_csc_v8: ["7.3", "7.4", "7.7"]
@@ -125,8 +110,9 @@ checks:
        - pci_dss_v3.2.1: ["6.2"]
        - pci_dss_v4.0: ["11.3.1", "11.3.2", "11.3.2.1"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" -> r:^1$'
 
   # 1.6 Ensure Software Update Deferment Is Less Than or Equal to 30 Days. (Automated)
    - id: 18505
@@ -136,7 +122,7 @@ checks:
      impact: "Some organizations may need more than 30 days to evaluate the impact of software updates. Internal Only - General."
      remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is enforcedSoftwareUpdateDelay 3. The key must be set to <integer><1-30></integer> Note: The key enforcedSoftwareUpdateDelay is for all updates through software updates. If your organization needs to delay major OS upgrades on a separate timescale than minor OS updates (or App Store updates), see the."
      references:
-       - 'https://support.apple.com/guide/deployment/about-software-updates-'
+       - 'https://support.apple.com/guide/deployment/about-software-updates-depc4c80847a/web'
      compliance:
        - cis: ["1.6"]
        - cis_csc_v8: ["7.3", "7.4"]
@@ -145,161 +131,21 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> n:^(\d+)$ compare <= 30'
 
-  # 2.1.1.1 Audit iCloud Passwords & Keychain. (Manual)
-   - id: 18506
-     title: "Audit iCloud Passwords & Keychain."
-     description: "The iCloud Passwords & Keychain is Apple's synchronization service that works with Apple Accounts to synchronize password, passkey, and credit card information across macOS, iOS, iPadOS. The capability allows users to use synced password, passkey, and credit card information in either macOS, iOS, or iPadOS for use in Safari and other applications. The password, passkey, and credit card information stored on macOS in the keychain is stored in Apple's cloud, including on Enterprise-managed computer. When using personal Apple Accounts and credentials may include both enterprise-related and personal data, depending on user behavior and account usage patterns."
-     rationale: "Ensure that iCloud Passwords and Keychain usage aligns with organizational requirements, taking into account whether personal or managed Apple Accounts are being utilized."
-     impact: "When iCloud Passwords & Keychain is turned off, password, passkey, and credit card information are no longer synchronized across devices signed in with the same Apple Account. Passwords, passkeys, and credit card information can still be stored locally and accessed through the Passwords and Keychain apps, even when iCloud Passwords & Keychain is turned off. Internal Only - General."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowCloudKeychainSync 3. The key should be set <true/>, to allow iCloud Passwords & Keychain syncing, or <false/>, to disable it, based on your organization's requirements Internal Only - General."
-     compliance:
-       - cis: ["2.1.1.1"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
+  ##########################################################################
+  # 2 System Settings
+  ##########################################################################
 
-  # 2.1.1.2 Audit iCloud Drive. (Manual)
-   - id: 18507
-     title: "Audit iCloud Drive."
-     description: "iCloud Drive is Apple's storage solution for applications on both macOS and iOS to use the same files that are resident in Apple's cloud storage. The iCloud Drive folder is available much like Dropbox, Microsoft OneDrive, or Google Drive. One of the concerns in public cloud storage is that proprietary data may be inappropriately stored in an end user's personal repository. Organizations that need specific controls on information should ensure that this service is turned off or the user knows what information must be stored on services that are approved for storage of controlled information."
-     rationale: "Organizations should review third party storage solutions pertaining to existing data confidentiality and integrity requirements."
-     impact: "Users will not be able to use continuity on macOS to resume the use of newly composed but unsaved files. Internal Only - General."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowCloudDocumentSync 3. The key should be set <true/>, to allow iCloud Drive, or <false/>, to disable it, based on your organization's requirements."
-     references:
-       - 'https://developer.apple.com/documentation/devicemanagement/restrictions'
-     compliance:
-       - cis: ["2.1.1.2"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.1.1.3 Ensure iCloud Drive Document and Desktop Sync Is Disabled. (Automated)
-   - id: 18508
-     title: "Ensure iCloud Drive Document and Desktop Sync Is Disabled."
-     description: "With macOS 10.12, Apple introduced the capability to have a user's Desktop and Documents folders automatically synchronize to the user's iCloud Drive, provided they have enough room purchased through Apple on their iCloud Drive. This capability mirrors what Microsoft is doing with the use of OneDrive and Office 365. There are concerns with using this capability. The storage space that Apple provides for free is used by users with iCloud mail, all of a user's Photo Library created with the ever larger Multi-Pixel iPhone cameras, and all iOS Backups. Adding a synchronization capability for users who have files going back a decade or more, storage may be tight using the free 5GB provided without purchasing much larger storage capacity from Apple. Users with multiple computers running 10.12 and above with unique content on each will have issues as well. Enterprise users may not be allowed to store Enterprise information in a third-party public cloud. In previous implementations, such as iCloud Drive or DropBox, the user selected what files were synchronized even if there were no other controls. The new feature synchronizes all files in a folder widely used to put working files. The automatic synchronization of all files in a user's Desktop and Documents folders should be disabled. https://derflounder.wordpress.com/2016/09/23/icloud-desktop-and-documents-in-macos-sierra-the-good-the-bad-and-the-ugly/."
-     rationale: "Automated Document synchronization should be planned and controlled to approved storage."
-     impact: "Users will not be able to use iCloud for the automatic sync of the Desktop and Documents folders. Internal Only - General."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowCloudDesktopAndDocuments 3. The key must be set to <false/>."
-     references:
-       - 'https://developer.apple.com/documentation/devicemanagement/restrictions'
-     compliance:
-       - cis: ["2.1.1.3"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.1.1.4 Audit Security Keys Used With Apple Accounts. (Manual)
-   - id: 18509
-     title: "Audit Security Keys Used With Apple Accounts."
-     description: "Apple has introduced the capability of using security keys to protect Apple Accounts using two-factor authentication in macOS 13.2, in iOS 16.3, and in iPadOS 16.3. This feature along with the purchase of two hardware tokens (a backup device is required) protects against the compromise of Apple Accounts. This feature requires all devices using an enrolled Apple Account to meet the minimum OS standard."
-     rationale: "Users of Apple devices are supported across their devices by using the same Apple Account to support shared data in both iCloud and across devices. Compromising an Apple Account has become a very attractive target for attackers to gain unauthorized access to iCloud storage and user devices. Two-factor authentication reduces the risk."
-     impact: "Legacy devices and test machines will be challenging to ensure that they are all running recent Operating Systems that can utilize Security Keys. It is best practice not to use Apple Accounts with access to current user data on legacy and test machines. Technical staff that use legacy devices are encouraged to create additional Apple Accounts that do not need two-factor protection and can be used for testing on legacy devices when required."
-     remediation: "Graphical Method: Perform the following steps to set Security Keys is set to your organization's requirements: 1. Open System Settings 2. Select Apple Account 3. Select Password & Security 4. Select Add.. to add a security key, or Remove All Security Keys ro remove security keys, to meet your organization's requirements."
-     references:
-       - 'https://support.apple.com/en-us/102637'
-       - 'https://9to5mac.com/2023/02/03/ios-16-3-hardware-security-keys-explained-'
-       - 'https://hcsonline.com/images/PDFs/Security_Key_Apple_ID.pdf'
-     compliance:
-       - cis: ["2.1.1.4"]
-       - cis_csc_v8: ["5.2"]
-       - cis_csc_v7: ["4.4"]
-       - cmmc_v2.0: ["IA.L2-3.5.7"]
-       - iso_27001-2013: ["A.9.4.3"]
-       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-       - soc_2: ["CC6.1"]
-     condition:
-     rules:
-
-  # 2.1.1.5 Audit Freeform Sync to iCloud. (Manual)
-   - id: 18510
-     title: "Audit Freeform Sync to iCloud."
-     description: "Starting with macOS 13.1 Apple has made FreeForm, a collaboration tool, available for macOS, iOS and iPadOS. This application allows for extensive whiteboard creation and sharing using iCloud. Organizations may want to audit the use of Freeform iCloud sharing of internally created boards."
-     rationale: "Internally created whiteboards may not be authorized to share to external contacts through iCloud."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowCloudFreeform 3. The key must be set to <<true/false>/> Internal Only - General."
-     references:
-       - 'https://www.apple.com/newsroom/2022/12/apple-launches-freeform-a-powerful-'
-       - 'https://support.apple.com/guide/freeform/share-a-board-frfma5307056b/mac'
-       - 'https://support.apple.com/guide/icloud/set-up-freeform-mmd1b86048ac/icloud'
-     compliance:
-       - cis: ["2.1.1.5"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.1.1.6 Audit Find My Mac. (Manual)
-   - id: 18511
-     title: "Audit Find My Mac."
-     description: "Find My is Apple's consumer solution for device tracking of your devices. This allows a user to track the location of devices associated with their Apple Account. This is a great solution for consumer or user device management and tracking, but it is not meant to be an enterprise management solution to device tracking and information management on enterprise managed devices. There are multiple enterprise MDM solutions for managing organizational devices."
-     rationale: "An enterprise solution should be used for tracking and information management of all devices, including Apple devices. Apple's Find My solution only handles Apple devices. If no enterprise solution is available, Find My provides capabilities for a user to manage and track Apple devices. It is not designed as an enterprise solution, and should not be used as one. It is better to allow the user to track devices that use their Apple Account than to have no tracking at all."
-     impact: "There should be no impact on the user while using the device. If someone other than the user has access to tracking information, this can impact the user and needs to be researched. Users should audit to ensure that only authorized people have access to your location. Using multiple solutions for device tracking can unnecessary complexity. One of the advantages of Find My... is that personal tracking is under the context of the user that is signed into their Apple Account on devices and that is secured against unauthorized access. Blocking this solution in favor of enterprise tools could result in personal information loss including the collection, and possible misuse, of personal location information. Organizations should make a risk assessment on device/user tracking for internal use only. Internal Only - General."
-     remediation: "Graphical Method: Perform the following steps to set Security Keys is set to your organization's requirements: 1. Open System Settings 2. Select Apple Account 3. Select iCloud 4. Select Show More Apps.. 5. Set Find My Mac is set to your organization's requirements Internal Only - General Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowFindMyDevice 3. The key must be set to <<true/>or<false/>> depending on your organization's requirements Note: Find My Device should only be disabled if your organization is using an enterprise solution for tracking devices. Note: This key does not fully disable Find My Device. It removes the Device tab in the Find My... app. The key allowFindMyFriends can also be used to disable the Friends tab in the app as well. The DisableFMMiCloudSetting key in the com.apple.icloud.managed PaylodType can disable the Find My setting, but does not disable it if it is already enabled."
-     references:
-       - 'https://www.icloud.com/find/'
-       - 'https://support.apple.com/lt-lt/guide/deployment/depdc4ba8d82/web'
-       - 'https://www.apple.com/legal/privacy/data/en/find-my'
-       - 'https://support.apple.com/lt-lt/guide/apple-business-'
-     compliance:
-       - cis: ["2.1.1.6"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.1.2 Audit App Store Password Settings. (Manual)
-   - id: 18512
-     title: "Audit App Store Password Settings."
-     description: "With Mac OS X 10.11, Apple added settings for password storage for the App Store in macOS. These settings parallel the settings in iOS. As with iOS, the choices are a requirement to provide a password after every purchase or to have a 15-minute grace period, and whether or not to require a password for free purchases. The response to this setting is stored in a cookie and processed by iCloud. There is plenty of risk information on the wisdom of this setting for parents with children buying games on iPhones and iPads. The most relevant information here is the likelihood that users who are not authorized to download software may have physical access to an unlocked computer where someone who is authorized recently made a purchase. If that is a concern, a password should be required at all times for App Store access in the Password Settings controls."
-     rationale: ""
-     remediation: "Graphical Method: Perform the following steps to set App Store Passwords to your organization's requirements: 1. Open System Settings 2. Select Apple Account 3. Select Media & Purchases 4. Set Free Downloads to your organization's requirements 5. Set Purchases and In-App Purchases to your organization's requirements Internal Only - General."
-     compliance:
-       - cis: ["2.1.2"]
-       - cis_csc_v8: ["4.1", "4.8"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.1.1.1 Audit iCloud Passwords & Keychain. (Manual) - Not Implemented
+  # 2.1.1.2 Audit iCloud Drive. (Manual) - Not Implemented
+  # 2.1.1.3 Ensure iCloud Drive Document and Desktop Sync Is Disabled. (Automated) - Not Implemented
+  # 2.1.1.4 Audit Security Keys Used With Apple Accounts. (Manual) - Not Implemented
+  # 2.1.1.5 Audit Freeform Sync to iCloud. (Manual) - Not Implemented
+  # 2.1.1.6 Audit Find My Mac. (Manual) - Not Implemented
+  # 2.1.2 Audit App Store Password Settings. (Manual) - Not Implemented
 
   # 2.2.1 Ensure Firewall Is Enabled. (Automated)
    - id: 18513
@@ -309,8 +155,8 @@ checks:
      impact: "The firewall may block legitimate traffic. Applications that are unsigned will require special handling."
      remediation: "Graphical Method: Perform the following steps to turn the firewall on: 1. Open System Settings 2. Select Network 3. Select Firewall 4. Set Firewall to enabled Terminal Method: Run the following command to enable the firewall: % /usr/bin/sudo /usr/libexec/ApplicationFirewall/socketfilterfw -- setglobalstate on Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.security.firewall 2. The key to include is EnableFirewall 3. The key must be set to <true/>."
      references:
-       - 'https://support.apple.com/guide/security/firewall-security-in-macos-'
-       - 'https://support.apple.com/guide/mac-help/block-connections-to-your-mac-with-a-'
+       - 'https://support.apple.com/guide/security/firewall-security-in-macos-seca0e83763f/web'
+       - 'https://support.apple.com/guide/mac-help/block-connections-to-your-mac-with-a-firewall-mh34041/mac'
      compliance:
        - cis: ["2.2.1"]
        - cis_csc_v8: ["4.1", "4.5", "13.1"]
@@ -322,8 +168,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.5.3", "10.6.1", "11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "10.7", "10.7.1", "10.7.2", "10.7.3", "11.5", "2.1.1", "2.2.1"]
        - soc_2: ["CC6.6", "CC7.1", "CC7.2", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate -> r:^Firewall\s*\t*is\s*\t*enabled'
+      - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
+      - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableFirewall -> r:^1$|^2$|^true$"       
 
   # 2.2.2 Ensure Firewall Stealth Mode Is Enabled. (Automated)
    - id: 18514
