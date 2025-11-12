@@ -93,20 +93,10 @@ def _merge_yaml_dicts(dict1: dict, dict2: dict) -> dict:
     return result
 
 
-def _merge_yaml_files_in_directory(directory_path: str, resource_handler: rs.ResourceHandler) -> str:
+def _yaml_dict_to_file(yml_files: dict, resource_handler: rs.ResourceHandler) -> str:
     """
-    Merges all .yml files in a directory into a single temporary file.
+    Saves a YAML dictionary to a temporary file and returns the file path.
     """
-    dir_path = Path(directory_path)
-
-    if not dir_path.exists() or not dir_path.is_dir():
-        raise ValueError(f"Directory does not exist or is not a directory: {directory_path}")
-
-    yml_files = list(dir_path.glob("*.yml")) + list(dir_path.glob("*.yaml"))
-    if not yml_files:
-        raise ValueError(f"No .yml or .yaml files found in directory: {directory_path}")
-    print(f"Found {len(yml_files)} YAML files to merge: {[f.name for f in yml_files]}")
-
     merged_data = {}
     for yml_file in sorted(yml_files):
         print(f"Loading {yml_file.name}...")
@@ -131,6 +121,21 @@ def _merge_yaml_files_in_directory(directory_path: str, resource_handler: rs.Res
             os.unlink(temp_path)
         raise e
 
+def _merge_yaml_files_in_directory(directory_path: str, resource_handler: rs.ResourceHandler) -> str:
+    """
+    Merges all .yml files in a directory into a single temporary file.
+    """
+    dir_path = Path(directory_path)
+
+    if not dir_path.exists() or not dir_path.is_dir():
+        raise ValueError(f"Directory does not exist or is not a directory: {directory_path}")
+
+    yml_files = list(dir_path.glob("*.yml")) + list(dir_path.glob("*.yaml"))
+    if not yml_files:
+        raise ValueError(f"No .yml or .yaml files found in directory: {directory_path}")
+    print(f"Found {len(yml_files)} YAML files to merge: {[f.name for f in yml_files]}")
+
+    return _yaml_dict_to_file(yml_files, resource_handler)
 
 def _merge_yaml_files_from_list(file_paths_str: str, resource_handler: rs.ResourceHandler) -> str:
     """
@@ -156,28 +161,7 @@ def _merge_yaml_files_from_list(file_paths_str: str, resource_handler: rs.Resour
 
     print(f"Found {len(yml_files)} YAML files to merge: {[f.name for f in yml_files]}")
 
-    merged_data = {}
-    for yml_file in yml_files:
-        print(f"Loading {yml_file.name}...")
-        try:
-            file_data = resource_handler.load_file(str(yml_file), rs.Format.YML)
-            merged_data = _merge_yaml_dicts(merged_data, file_data)
-        except Exception as e:
-            print(f"Error loading {yml_file.name}: {e}")
-            raise
-
-    temp_fd, temp_path = tempfile.mkstemp(suffix='.yml', prefix='merged_wcs_')
-
-    try:
-        resource_handler.save_file(os.path.dirname(temp_path), os.path.basename(temp_path), merged_data, rs.Format.YML)
-        os.close(temp_fd)
-        print(f"Successfully merged {len(yml_files)} files into temporary file: {temp_path}")
-        return temp_path
-    except Exception as e:
-        os.close(temp_fd)
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-        raise e
+    return _yaml_dict_to_file(yml_files, resource_handler)
 
 
 def _build_fields_schema(base_template: dict, properties: dict, file_id: str, name: str) -> dict:
