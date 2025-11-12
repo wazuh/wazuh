@@ -439,7 +439,7 @@ typedef struct _config {
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
 #ifdef WIN32
-    pthread_mutex_t fim_registry_db_mutex;             /* Used to prevent modifications to the registry tables during the synchronization process */
+    pthread_mutex_t fim_registry_scan_mutex;           /* Used to prevent registry scans during the synchronization process */
 #else
     pthread_mutex_t fim_symlink_mutex;
     unsigned int queue_size;                           /* Linux Audit message queue size for whodata */

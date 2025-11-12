@@ -112,7 +112,7 @@ void fim_initialize() {
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifdef WIN32
-    w_mutex_init(&syscheck.fim_registry_db_mutex, NULL)
+    w_mutex_init(&syscheck.fim_registry_scan_mutex, NULL)
 #else
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
 #endif

@@ -637,7 +637,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
         w_mutex_lock(&syscheck.fim_realtime_mutex);
         #ifdef WIN32
-        w_mutex_lock(&syscheck.fim_registry_db_mutex);
+        w_mutex_lock(&syscheck.fim_registry_scan_mutex);
         #endif
 
         minfo("Running FIM synchronization.");
@@ -672,7 +672,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             minfo("Synchronization failed");
         }
         #ifdef WIN32
-        w_mutex_unlock(&syscheck.fim_registry_db_mutex);
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
         #endif
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
