@@ -34,27 +34,19 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const cm::store::ICMSt
     }
 
     const json::Json j = nsReader.getResourceByName<cm::store::dataType::KVDB>(dbName).getData();
-    auto keysOpt = j.getFields("");
-    if (!keysOpt.has_value())
+    auto members = j.getObject("");
+    if (!members)
     {
         const auto nsStr = nsId.toStr();
         throw std::runtime_error("KVDB payload must be a JSON object (ns='" + nsStr + "', db='" + dbName + "').");
     }
 
     auto wmap = std::make_shared<KVMap>();
-    wmap->reserve(keysOpt->size());
+    wmap->reserve(members->size());
 
-    for (const auto& key : *keysOpt)
+    for (auto& [k, v] : *members)
     {
-        const std::string ptrPath = json::Json::formatJsonPath(key, true);
-        auto valOpt = j.getJson(ptrPath);
-        if (!valOpt.has_value())
-        {
-            const auto nsStr = nsId.toStr();
-            throw std::runtime_error("KVDB value for key '" + key + "' is not addressable via JSON Pointer '" + ptrPath
-                                     + "' (ns='" + nsStr + "', db='" + dbName + "').");
-        }
-        wmap->try_emplace(key, std::move(*valOpt));
+        wmap->try_emplace(std::move(k), std::move(v));
     }
 
     std::shared_ptr<const KVMap> cmap = std::move(wmap);
