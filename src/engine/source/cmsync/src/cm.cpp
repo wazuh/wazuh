@@ -74,20 +74,26 @@ void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
     // Delete all KVDB.
     cleanAllKVDB();
 
-    // Load KVDB from Content Manager.
-    pushKVDBsFromCM(ctiStore);
+    {
+        // Acquire shared read lock for the entire synchronization process
+        // This prevents the Content Manager from updating the CTI Store while we're reading it
+        auto readGuard = ctiStore->acquireReadGuard();
 
-    // Load the outputs (May be use kvdb?) from local files.
-    wazuhCoreOutput(false);
+        // Load KVDB from Content Manager.
+        pushKVDBsFromCM(ctiStore);
 
-    // Load decoders and integrations from Content Manager.
-    pushAssetsFromCM(ctiStore);
+        // Load the outputs (May be use kvdb?) from local files.
+        wazuhCoreOutput(false);
 
-    // Load the allow-all filter if not exists.
-    loadCoreFilter();
+        // Load decoders and integrations from Content Manager.
+        pushAssetsFromCM(ctiStore);
 
-    // Create the security policy.
-    pushPoliciesFromCM(ctiStore);
+        // Load the allow-all filter if not exists.
+        loadCoreFilter();
+
+        // Create the security policy.
+        pushPoliciesFromCM(ctiStore);
+    }
 
     // Add core outputs to the policy
     pushOutputsToPolicy();
