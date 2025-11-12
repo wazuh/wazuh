@@ -17,24 +17,16 @@
 
 namespace SyncTransportFactory
 {
-
-#if CLIENT
     std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
         const std::string& moduleName,
         const MQ_Functions& mqFuncs,
         LoggerFunc logger,
-        std::function<void(const std::vector<char>&)>)
-    {
-        return std::make_unique<MQueueTransport>(moduleName, mqFuncs, std::move(logger));
-    }
-#else
-    std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
-        const std::string& moduleName,
-        LoggerFunc logger,
         std::function<void(const std::vector<char>&)> responseCallback)
     {
+#if CLIENT
+        return std::make_unique<MQueueTransport>(moduleName, mqFuncs, std::move(logger));
+#else
         return std::make_unique<RouterTransport>(moduleName, std::move(logger), std::move(responseCallback));
-    }
 #endif
-
+    }
 } // namespace SyncTransportFactory

@@ -102,7 +102,14 @@ void RouterTransport::subscribeToResponses()
     const std::string subscriberId = "agent-000";
 
     // Let exceptions propagate to configRouter() - no LOG_ERROR_EXIT here
-    m_subscriber = std::make_unique<RouterSubscriber>(responseTopic, subscriberId, true);
+    if (m_moduleName == "fim")
+    {
+        m_subscriber = std::make_unique<RouterSubscriber>(responseTopic, subscriberId, false);  // fim runs in another process
+    }
+    else
+    {
+        m_subscriber = std::make_unique<RouterSubscriber>(responseTopic, subscriberId, true);
+    }
 
     // Use onConnect callback to ensure subscription is established before marking as ready
     auto onConnect = [this]()
@@ -133,7 +140,16 @@ bool RouterTransport::configRouter()
         if (!m_provider)
         {
             const std::string publishTopic = getPublishTopic();
-            m_provider = std::make_unique<RouterProvider>(publishTopic, true);
+
+            if (m_moduleName == "fim")
+            {
+                m_provider = std::make_unique<RouterProvider>(publishTopic, false);   // fim runs in another process
+            }
+            else
+            {
+                m_provider = std::make_unique<RouterProvider>(publishTopic, true);
+            }
+
             m_provider->start();
             m_logger(LOG_INFO, "RouterProvider started for topic: " + publishTopic);
         }

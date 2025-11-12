@@ -20,20 +20,9 @@
 
 namespace SyncTransportFactory
 {
-
-#if CLIENT
-    // Agent build (MQ)
     std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
         const std::string& moduleName,
         const MQ_Functions& mqFuncs,
         LoggerFunc logger,
-        std::function<void(const std::vector<char>&)> /*responseCallback*/ = nullptr);
-#else
-    // Manager build (Router)
-    std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
-        const std::string& moduleName,
-        LoggerFunc logger,
-        std::function<void(const std::vector<char>&)> responseCallback);
-#endif
-
+        std::function<void(const std::vector<char>&)> responseCallback = nullptr);
 } // namespace SyncTransportFactory

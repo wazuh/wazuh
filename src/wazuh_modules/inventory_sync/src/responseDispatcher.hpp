@@ -112,6 +112,10 @@ public:
         m_responseDispatcher = std::make_unique<ResponseQueue>(
             [responseSocketClient, routerProviders = &m_routerProviders](const ResponseMessage& data)
             {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "ResponseDispatcher: Sending response to agent '%s', module '%s'",
+                          data.agentId.c_str(),
+                          data.moduleName.c_str());
                 // Check if this is Agent 0
                 if (data.agentId == AGENT_ZERO_ID)
                 {

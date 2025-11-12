@@ -53,8 +53,6 @@ typedef void (*fim_recovery_log_callback_t)(modules_log_level_t level, const cha
 /**
  * @brief Persists a table's contents in memory and triggers a full resync
  * @param table_name The table to resync
- * @param sync_response_timeout Timeout for the sync process
- * @param sync_max_eps Max eps for the sync process
  * @param handle Sync Protocol handle
  * @param test_callback Optional callback for testing synchronizeModule (pass NULL for production use)
  * @param log_callback Logging callback function (required, must not be NULL)
@@ -64,8 +62,6 @@ EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
 /**
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
  * @param table_name The table to check
- * @param sync_response_timeout Timeout for the checksum validation process
- * @param sync_max_eps Max eps for the checksum validation process
  * @param handle Sync Protocol handle
  * @param log_callback Logging callback function (required, must not be NULL)
  * @returns true if a full sync is required, false if a delta sync is sufficient

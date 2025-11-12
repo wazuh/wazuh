@@ -42,7 +42,7 @@ static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 // SCA sync protocol variables
 unsigned int sca_enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
-uint32_t sca_sync_end_delay = 1;                 // Database synchronization end delay in seconds (default value)
+uint32_t sca_sync_end_delay = 1;                 // Database synchronization end message delay in seconds (default value)
 uint32_t sca_sync_response_timeout = 30;         // Database synchronization response timeout (default value)
 long sca_sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
 
@@ -338,16 +338,6 @@ static int wm_sca_start(wm_sca_t *sca) {
     atomic_int_set(&g_n_msg_sent, 0);
 
     minfo("SCA message queue initialized successfully.");
-
-    // TODO: Check if this is needed here or in the main function
-    // Set synchronization parameters
-    sca_enable_synchronization = sca->sync.enable_synchronization;
-    if (sca_enable_synchronization) {
-        sca_sync_interval = sca->sync.sync_interval;
-        sca_sync_end_delay = sca->sync.sync_end_delay;
-        sca_sync_response_timeout = sca->sync.sync_response_timeout;
-        sca_sync_max_eps = sca->sync.sync_max_eps;
-    }
 
     if (sca->max_eps) {
         g_max_eps = sca->max_eps;

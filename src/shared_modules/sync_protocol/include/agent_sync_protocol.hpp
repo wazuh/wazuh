@@ -32,7 +32,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        /// @param syncEndDelay Delay in seconds for synchronization messages.
+        /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Default timeout for synchronization operations.
         /// @param retries Default number of retries for synchronization operations.
         /// @param maxEps Default maximum events per second for synchronization operations.
@@ -102,7 +102,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Logger function
         LoggerFunc m_logger;
 
-        /// @brief Delay in seconds for synchronization messages
+        /// @brief Delay for synchronization end message in seconds
         std::chrono::seconds m_syncEndDelay;
 
         /// @brief Stop flag to abort ongoing operations

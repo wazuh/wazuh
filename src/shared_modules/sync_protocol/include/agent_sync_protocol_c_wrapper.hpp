@@ -20,7 +20,8 @@ struct AgentSyncProtocolWrapper
     /// @param timeout Default timeout for synchronization operations.
     /// @param retries Default number of retries for synchronization operations.
     /// @param maxEps Default maximum events per second for synchronization operations.
-    AgentSyncProtocolWrapper(const std::string& module, const std::string& db_path, const MQ_Functions& mq_funcs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
-          : impl(std::make_unique<AgentSyncProtocol>(module, db_path, mq_funcs, std::move(logger), syncEndDelay, timeout, retries, maxEps, nullptr)) {}
+    AgentSyncProtocolWrapper(const std::string& module, const std::string& db_path, const MQ_Functions& mq_funcs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+                             unsigned int retries, size_t maxEps)
+        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, mq_funcs, std::move(logger), syncEndDelay, timeout, retries, maxEps, nullptr)) {}
 };
 

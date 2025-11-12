@@ -79,7 +79,7 @@ class SecurityConfigurationAssessment
         /// @param moduleName Name of the module
         /// @param syncDbPath Path to the sync database
         /// @param mqFuncs Message queue functions
-        /// @param syncEndDelay Delay before ending synchronization
+        /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Timeout for synchronization responses
         /// @param retries Number of retries for synchronization
         /// @param maxEps Maximum events per second
@@ -107,9 +107,6 @@ class SecurityConfigurationAssessment
 
         /// @brief Notify that data associated with specified indices needs to be cleaned.
         /// @param indices Vector of indices whose data needs to be cleaned.
-        /// @param timeout Timeout value in seconds for the operation.
-        /// @param retries Number of retry attempts on failure.
-        /// @param maxEps Maximum events per second during the operation.
         /// @return true if the operation succeeds, false otherwise.
         bool notifyDataClean(const std::vector<std::string>& indices);
 

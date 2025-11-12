@@ -52,7 +52,7 @@ void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_fu
 /// @param module_name Name identifier for the SCA module
 /// @param sync_db_path Path to the synchronization database file
 /// @param mq_funcs Pointer to message queue function structure for communication
-/// @param sync_end_delay Delay in seconds for synchronization messages
+/// @param sync_end_delay Delay for synchronization end message in seconds
 /// @param timeout Default timeout for synchronization operations in seconds
 /// @param retries Default number of retries for synchronization operations
 /// @param maxEps Default maximum events per second for synchronization operations

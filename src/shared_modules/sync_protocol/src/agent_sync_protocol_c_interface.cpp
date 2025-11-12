@@ -14,8 +14,8 @@ extern "C" {
     {
         try
         {
-            // TODO: Find a way to not include mq_funcs check for server
 #if CLIENT
+
             if (!mq_funcs || !db_path || !module || !logger) return nullptr;
 
 #else
@@ -23,7 +23,6 @@ extern "C" {
             if (!db_path || !module || !logger) return nullptr;
 
 #endif
-
             LoggerFunc logger_wrapper =
                 [logger](modules_log_level_t level, const std::string & msg)
             {

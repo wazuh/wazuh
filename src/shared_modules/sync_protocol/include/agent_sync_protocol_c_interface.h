@@ -25,7 +25,7 @@ extern "C" {
 /// @param db_path The full path to the SQLite database file to be used.
 /// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @param logger Callback function used for logging messages.
-/// @param syncEndDelay Delay in seconds for synchronization messages.
+/// @param syncEndDelay Delay for synchronization end message in seconds
 /// @param timeout Default timeout for synchronization operations in seconds.
 /// @param retries Default number of retries for synchronization operations.
 /// @param maxEps Default maximum events per second for synchronization operations.
