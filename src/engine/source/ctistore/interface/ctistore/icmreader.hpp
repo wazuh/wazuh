@@ -3,6 +3,9 @@
 #define _CTI_STORE_ICMREADER
 
 #include <cstdint>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -11,6 +14,62 @@
 
 namespace cti::store
 {
+
+/**
+ * @brief RAII-style read guard for shared (read) access to CTI Store
+ *
+ * Acquires a shared lock on construction and releases it on destruction.
+ * Multiple ReadGuards can exist simultaneously, allowing concurrent reads.
+ */
+class ReadGuard
+{
+public:
+    explicit ReadGuard(std::shared_mutex& mutex)
+        : m_lock(mutex)
+    {
+    }
+
+    // Delete copy operations to prevent lock issues
+    ReadGuard(const ReadGuard&) = delete;
+    ReadGuard& operator=(const ReadGuard&) = delete;
+
+    // Allow move operations
+    ReadGuard(ReadGuard&&) = default;
+    ReadGuard& operator=(ReadGuard&&) = default;
+
+    ~ReadGuard() = default;
+
+private:
+    std::shared_lock<std::shared_mutex> m_lock;
+};
+
+/**
+ * @brief RAII-style write guard for exclusive (write) access to CTI Store
+ *
+ * Acquires an exclusive lock on construction and releases it on destruction.
+ * Only one WriteGuard can exist at a time, blocking all other access.
+ */
+class WriteGuard
+{
+public:
+    explicit WriteGuard(std::shared_mutex& mutex)
+        : m_lock(mutex)
+    {
+    }
+
+    // Delete copy operations to prevent lock issues
+    WriteGuard(const WriteGuard&) = delete;
+    WriteGuard& operator=(const WriteGuard&) = delete;
+
+    // Allow move operations
+    WriteGuard(WriteGuard&&) = default;
+    WriteGuard& operator=(WriteGuard&&) = default;
+
+    ~WriteGuard() = default;
+
+private:
+    std::unique_lock<std::shared_mutex> m_lock;
+};
 
 // Aviable asset types in the CTI Store
 enum class AssetType : std::uint8_t
@@ -26,14 +85,33 @@ enum class AssetType : std::uint8_t
  * This interface provides methods to read locally stored CTI assets, kvdb and policies.
  * It does not provide methods to write or modify the store.
  * Should be a thread safe and not block the caller.
- * Cannot be used meanwhile a sync remote operation is being performed.
- * TODO: Should be posible locked externally to avoid being used while a sync operation is being performed. (?) or
- * may manage snapshots internally (?)
+ * Access to the store is synchronized through ReadGuard and WriteGuard to ensure
+ * consistency during concurrent read/write operations.
  */
 class ICMReader
 {
 public:
     virtual ~ICMReader() = default;
+
+    /**
+     * @brief Acquire a read guard for shared access to the CTI Store
+     *
+     * Allows multiple concurrent readers to access the store simultaneously.
+     * Blocks if there is an active writer (WriteGuard).
+     *
+     * @return ReadGuard RAII guard that releases the lock when destroyed
+     */
+    virtual ReadGuard acquireReadGuard() const = 0;
+
+    /**
+     * @brief Acquire a write guard for exclusive access to the CTI Store
+     *
+     * Acquires an exclusive lock that blocks all other readers and writers.
+     * Only one WriteGuard can exist at a time.
+     *
+     * @return WriteGuard RAII guard that releases the lock when destroyed
+     */
+    virtual WriteGuard acquireWriteGuard() = 0;
 
     /**
      * @brief Get the list of available assets of a given type

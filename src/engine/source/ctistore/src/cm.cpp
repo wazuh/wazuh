@@ -84,6 +84,16 @@ ContentManager::~ContentManager()
 }
 
 // ICMReader interface implementations
+ReadGuard ContentManager::acquireReadGuard() const
+{
+    return ReadGuard(m_mutex);
+}
+
+WriteGuard ContentManager::acquireWriteGuard()
+{
+    return WriteGuard(m_mutex);
+}
+
 std::vector<base::Name> ContentManager::getAssetList(cti::store::AssetType type) const
 {
     if (!m_storage || !m_storage->isOpen())
@@ -452,6 +462,9 @@ FileProcessingResult ContentManager::testProcessMessage(const std::string& messa
 
 FileProcessingResult ContentManager::processDownloadedContent(const std::string& message)
 {
+    // Acquire exclusive write lock to prevent concurrent reads/writes during update
+    auto writeGuard = acquireWriteGuard();
+
     try
     {
         LOG_TRACE("CTI: processing downloaded content message: {}", message);

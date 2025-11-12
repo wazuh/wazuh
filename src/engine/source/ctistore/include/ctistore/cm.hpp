@@ -45,6 +45,12 @@ public:
      * ICMReader interface implementation
      ************************************************************************************/
 
+    /** @copydoc ICMReader::acquireReadGuard */
+    ReadGuard acquireReadGuard() const override;
+
+    /** @copydoc ICMReader::acquireWriteGuard */
+    WriteGuard acquireWriteGuard() override;
+
     /** @copydoc ICMReader::getAssetList */
     std::vector<base::Name> getAssetList(cti::store::AssetType type) const override;
 
