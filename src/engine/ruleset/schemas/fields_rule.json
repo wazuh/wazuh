@@ -326,7 +326,7 @@
                 ]
               },
               "file.elf.exports": {
-                "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of exported element names and types.",
+                "description": "Module: ecs\nIndexerType: flat_object\nArray: True\n\nList of exported element names and types.",
                 "items": {
                   "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
@@ -347,7 +347,7 @@
                 ]
               },
               "file.elf.go_imports": {
-                "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+                "description": "Module: ecs\nIndexerType: flat_object\nArray: False\n\nList of imported Go language element names and types.",
                 "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "object",
@@ -435,7 +435,7 @@
                 ]
               },
               "file.elf.imports": {
-                "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+                "description": "Module: ecs\nIndexerType: flat_object\nArray: True\n\nList of imported element names and types.",
                 "items": {
                   "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
@@ -761,7 +761,7 @@
                 ]
               },
               "file.pe.go_imports": {
-                "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+                "description": "Module: ecs\nIndexerType: flat_object\nArray: False\n\nList of imported Go language element names and types.",
                 "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "object",
@@ -805,7 +805,7 @@
                 ]
               },
               "file.pe.imports": {
-                "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+                "description": "Module: ecs\nIndexerType: flat_object\nArray: True\n\nList of imported element names and types.",
                 "items": {
                   "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
@@ -1309,7 +1309,7 @@
                 ]
               },
               "registry.data.strings": {
-                "description": "Module: ecs\nIndexerType: wildcard\nArray: True\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
                 "items": {
                   "type": [
                     "string"
@@ -1392,13 +1392,13 @@
                 ]
               },
               "url.full": {
-                "description": "Module: ecs\nIndexerType: wildcard\nArray: False\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
                 "type": [
                   "string"
                 ]
               },
               "url.original": {
-                "description": "Module: ecs\nIndexerType: wildcard\nArray: False\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
                 "type": [
                   "string"
                 ]
@@ -1410,7 +1410,7 @@
                 ]
               },
               "url.path": {
-                "description": "Module: ecs\nIndexerType: wildcard\nArray: False\n\nPath of the request, such as \"/search\".",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPath of the request, such as \"/search\".",
                 "type": [
                   "string"
                 ]
@@ -1979,7 +1979,7 @@
       ]
     },
     "threat.indicator.file.elf.exports": {
-      "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of exported element names and types.",
+      "description": "Module: ecs\nIndexerType: flat_object\nArray: True\n\nList of exported element names and types.",
       "items": {
         "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "type": [
@@ -2000,7 +2000,7 @@
       ]
     },
     "threat.indicator.file.elf.go_imports": {
-      "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+      "description": "Module: ecs\nIndexerType: flat_object\nArray: False\n\nList of imported Go language element names and types.",
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "object",
@@ -2088,7 +2088,7 @@
       ]
     },
     "threat.indicator.file.elf.imports": {
-      "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+      "description": "Module: ecs\nIndexerType: flat_object\nArray: True\n\nList of imported element names and types.",
       "items": {
         "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "type": [
@@ -2396,7 +2396,7 @@
       ]
     },
     "threat.indicator.file.pe.go_imports": {
-      "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+      "description": "Module: ecs\nIndexerType: flat_object\nArray: False\n\nList of imported Go language element names and types.",
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "object",
@@ -2440,7 +2440,7 @@
       ]
     },
     "threat.indicator.file.pe.imports": {
-      "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+      "description": "Module: ecs\nIndexerType: flat_object\nArray: True\n\nList of imported element names and types.",
       "items": {
         "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "type": [
@@ -2944,7 +2944,7 @@
       ]
     },
     "threat.indicator.registry.data.strings": {
-      "description": "Module: ecs\nIndexerType: wildcard\nArray: True\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
       "items": {
         "type": [
           "string"
@@ -3027,13 +3027,13 @@
       ]
     },
     "threat.indicator.url.full": {
-      "description": "Module: ecs\nIndexerType: wildcard\nArray: False\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
       "type": [
         "string"
       ]
     },
     "threat.indicator.url.original": {
-      "description": "Module: ecs\nIndexerType: wildcard\nArray: False\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
       "type": [
         "string"
       ]
@@ -3045,7 +3045,7 @@
       ]
     },
     "threat.indicator.url.path": {
-      "description": "Module: ecs\nIndexerType: wildcard\nArray: False\n\nPath of the request, such as \"/search\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPath of the request, such as \"/search\".",
       "type": [
         "string"
       ]
@@ -3548,19 +3548,6 @@
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe severity of the vulnerability can help with metrics and internal prioritization regarding remediation. For example (https://nvd.nist.gov/vuln-metrics/cvss)",
       "type": [
         "string"
-      ]
-    },
-    "wazuh.rules": {
-      "description": "Module: schemas\nIndexerType: keyword\nArray: True\n\nTrace of the rules that matched for the event in order",
-      "items": {
-        "type": [
-          "string"
-        ]
-      },
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-      "type": [
-        "string",
-        "array"
       ]
     }
   },
