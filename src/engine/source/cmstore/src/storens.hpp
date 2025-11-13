@@ -16,9 +16,9 @@ namespace cm::store
 namespace pathns
 {
 constexpr std::string_view JSON_ID_PATH = "/id";           ///< Universal path for UUID field in JSON/YML objects
-constexpr std::string_view YML_PAIR_FMT = R"(id: "{}"\n)"; ///< YML pair format for UUID field
+constexpr std::string_view YML_PAIR_FMT = "id: {}\n";      ///< YML pair format for UUID field
 // Files and extensions
-constexpr std::string_view CACHE_NS_FILE = "cache_ns.json";
+constexpr std::string_view CACHE_NS_FILE = "cache_ns.json"; 
 constexpr std::string_view ASSET_EXTENSION = ".yml";
 constexpr std::string_view POLICY_FILE = "policy.json";
 // Directories
@@ -77,13 +77,6 @@ private:
      * @throw std::runtime_error if the existing UUID is invalid or content parsing fails
      */
     std::pair<std::string, std::string> upsertUUIDAndComputeHash(std::string& ymlContent);
-
-    /**
-     * @brief Compute the hash for a resource based on its YML content, ignoring the formatting
-     * @param ymlContent YML content of the resource
-     * @return std::string Computed hash string
-     */
-    std::string computeHashForResource(const std::string& ymlContent) const;
 
     /**
      * @brief Get the path for a resource based on its name and type
