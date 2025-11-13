@@ -193,7 +193,7 @@ std::pair<std::string, std::string> CMStoreNS::upsertUUIDAndComputeHash(std::str
     if (isJson)
     {
         // Handle JSON format
-        jsonContent.setString(pathns::JSON_ID_PATH, uuid);
+        jsonContent.setString(uuid, pathns::JSON_ID_PATH);
         ymlContent = jsonContent.prettyStr();
     }
     else
