@@ -439,6 +439,31 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             return false;
         }
 
+        // Create groups vector from metadata
+        std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
+
+        if (metadata.groups && metadata.groups_count > 0)
+        {
+            for (size_t i = 0; i < metadata.groups_count; ++i)
+            {
+                groups_vec.push_back(builder.CreateString(metadata.groups[i]));
+            }
+        }
+
+#if CLIENT
+        else
+        {
+            m_logger(LOG_DEBUG, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
+
+            if (has_metadata)
+            {
+                metadata_provider_free_metadata(&metadata);
+            }
+
+            return false;
+        }
+
+#endif
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
 
         // Create flatbuffer strings from metadata
@@ -451,17 +476,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto agentversion = builder.CreateString(metadata.agent_version);
         auto agentname = builder.CreateString(metadata.agent_name);
         auto agentid = builder.CreateString(metadata.agent_id);
-
-        // Create groups vector from metadata
-        std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
-
-        if (metadata.groups && metadata.groups_count > 0)
-        {
-            for (size_t i = 0; i < metadata.groups_count; ++i)
-            {
-                groups_vec.push_back(builder.CreateString(metadata.groups[i]));
-            }
-        }
 
         auto groups = builder.CreateVector(groups_vec);
 
@@ -530,6 +544,13 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 if (m_syncState.syncFailed)
                 {
                     m_logger(LOG_ERROR, "Synchronization failed due to manager error.");
+
+                    // Clean up metadata before returning
+                    if (has_metadata)
+                    {
+                        metadata_provider_free_metadata(&metadata);
+                    }
+
                     return false;
                 }
 

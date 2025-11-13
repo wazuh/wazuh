@@ -710,12 +710,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             syscheck.fim_pausing_is_allowed = true;
             w_mutex_unlock(&syscheck.fim_sync_control_mutex);
 
-            minfo("FIM is paused but flush requested, running synchronization without scan mutexes.");
+            minfo("Running FIM synchronization requested by agent-info.");
 
             bool sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
 
-            minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+            minfo("FIM synchronization requested by agent-info finished.");
 
             // If there's a flush request active, mark it as completed
             if (flush_request_detected) {
