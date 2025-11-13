@@ -151,8 +151,34 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 
     if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, timeout, retries, maxEps, option))
     {
-        if (sendDataMessages(m_syncState.session, dataToSync, maxEps))
+        // Separate DataValue and DataContext items
+        std::vector<PersistedData> dataValueItems;
+        std::vector<PersistedData> dataContextItems;
+
+        for (const auto& item : dataToSync)
         {
+            if (item.is_data_context)
+            {
+                dataContextItems.push_back(item);
+            }
+            else
+            {
+                dataValueItems.push_back(item);
+            }
+        }
+
+        if (sendDataMessages(m_syncState.session, dataValueItems, maxEps))
+        {
+            // Send DataContext messages if any exist
+            if (!dataContextItems.empty())
+            {
+                if (!sendDataContextMessages(m_syncState.session, dataContextItems, maxEps))
+                {
+                    m_logger(LOG_WARNING, "Failed to send DataContext messages");
+                    // Continue anyway since DataContext is optional context data
+                }
+            }
+
             if (sendEndAndWaitAck(m_syncState.session, timeout, retries, dataToSync, maxEps))
             {
                 success = true;
@@ -396,6 +422,76 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
 
     clearSyncState();
     return success;
+}
+
+bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
+                                                const std::vector<PersistedData>& data,
+                                                size_t maxEps)
+{
+    // TODO: DataContext is not yet in the MessageType union in inventorySync.fbs
+    // This is a stub implementation that will be completed once DataContext is added to the schema
+
+    m_logger(LOG_DEBUG, "sendDataContextMessages() called with " + std::to_string(data.size()) + " items");
+
+    try
+    {
+        for (const auto& item : data)
+        {
+            // Check if stop was requested
+            if (shouldStop())
+            {
+                m_logger(LOG_INFO, "Stop requested, aborting DataContext message sending");
+                return false;
+            }
+
+            flatbuffers::FlatBufferBuilder builder;
+            auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+
+            Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
+            dataContextBuilder.add_seq(item.seq);
+            dataContextBuilder.add_session(session);
+            dataContextBuilder.add_data(dataVec);
+            auto dataContextOffset = dataContextBuilder.Finish();
+
+            // Once DataContext is added to MessageType union, uncomment this:
+            auto message = Wazuh::SyncSchema::CreateMessage(builder,
+                                                           Wazuh::SyncSchema::MessageType::DataContext,
+                                                           dataContextOffset.Union());
+            builder.Finish(message);
+
+            const uint8_t* buffer_ptr = builder.GetBufferPointer();
+            const size_t buffer_size = builder.GetSize();
+            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+            if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+            {
+                return false;
+            }
+
+            m_logger(LOG_DEBUG, "DataContext message seq=" + std::to_string(item.seq) + " (not sent - waiting for schema update)");
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when sending DataContext messages: ") + e.what());
+    }
+
+    return false;
+}
+
+void AgentSyncProtocol::enableDataContext()
+{
+    if (m_persistentQueue)
+    {
+        m_persistentQueue->enableDataContext();
+        m_logger(LOG_INFO, "DataContext support enabled for module: " + m_moduleName);
+    }
+    else
+    {
+        m_logger(LOG_WARNING, "Cannot enable DataContext: persistent queue not initialized");
+    }
 }
 
 bool AgentSyncProtocol::ensureQueueAvailable()

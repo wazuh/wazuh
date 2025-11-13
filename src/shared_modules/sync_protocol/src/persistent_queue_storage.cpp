@@ -193,7 +193,8 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
     try
     {
         std::string selectQuery =
-            "SELECT rowid, id, idx, data, operation "
+            "SELECT rowid, id, idx, data, operation, "
+            "COALESCE(is_data_context, 0) as is_data_context "
             "FROM persistent_queue "
             "WHERE sync_status = ? "
             "ORDER BY rowid ASC;";
@@ -209,6 +210,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             data.index = selectStmt.value<std::string>(2);
             data.data = selectStmt.value<std::string>(3);
             data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+            data.is_data_context = selectStmt.value<int>(5) != 0;
 
             idsToUpdate.push_back(rowid);
             result.emplace_back(std::move(data));
@@ -384,5 +386,23 @@ void PersistentQueueStorage::deleteDatabase()
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Error deleting database: ") + ex.what());
         throw;
+    }
+}
+
+void PersistentQueueStorage::addDataContextColumn()
+{
+    try
+    {
+        // Add is_data_context column if it doesn't exist (for VD sync databases)
+        const std::string alterQuery =
+            "ALTER TABLE persistent_queue ADD COLUMN is_data_context INTEGER NOT NULL DEFAULT 0;";
+
+        m_connection.execute(alterQuery);
+        m_logger(LOG_INFO, "PersistentQueueStorage: Added is_data_context column for DataContext support");
+    }
+    catch (const std::exception& ex)
+    {
+        // Column might already exist - log as debug instead of error
+        m_logger(LOG_DEBUG, std::string("PersistentQueueStorage: is_data_context column may already exist: ") + ex.what());
     }
 }

@@ -16,6 +16,7 @@
 #include <mutex>
 #include <memory>
 #include <optional>
+#include <set>
 
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
@@ -173,6 +174,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
         bool                                                                     m_vdHasModifyOrDelete;
+        std::set<std::string>                                                    m_vdTablesWithChanges;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;

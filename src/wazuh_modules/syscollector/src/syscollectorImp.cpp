@@ -193,6 +193,12 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     if (indexIt != INDEX_MAP.end())
     {
         m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
+
+        // Track VD table changes for DataContext determination
+        if (table == OS_TABLE || table == PACKAGES_TABLE || table == HOTFIXES_TABLE)
+        {
+            m_vdTablesWithChanges.insert(table);
+        }
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -1263,9 +1269,14 @@ void Syscollector::scanBrowserExtensions()
 void Syscollector::scanVDTables()
 {
     m_logFunction(LOG_INFO, "Starting VD tables evaluation.");
+
+    // Clear VD table change tracking from previous scan
+    m_vdTablesWithChanges.clear();
+
     TRY_CATCH_TASK(scanOs);
     TRY_CATCH_TASK(scanPackages);
     TRY_CATCH_TASK(scanHotfixes);
+
     m_logFunction(LOG_INFO, "VD tables evaluation finished.");
 }
 
@@ -1577,6 +1588,10 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
         // Initialize VD sync protocol (OS, packages, hotfixes)
         m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(moduleName + "_vd", syncDbPathVD, mqFuncs, logger_func, nullptr);
+
+        // Enable DataContext support for VD sync protocol (adds is_data_context column)
+        m_spSyncProtocolVD->enableDataContext();
+
         m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD);
     }
     catch (const std::exception& ex)

@@ -46,4 +46,9 @@ class IPersistentQueueStorage
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
+
+        /// @brief Adds is_data_context column to support DataContext messages.
+        /// This method alters the database schema to add the is_data_context column
+        /// for VD (Vulnerability Detection) sync databases.
+        virtual void addDataContextColumn() = 0;
 };
