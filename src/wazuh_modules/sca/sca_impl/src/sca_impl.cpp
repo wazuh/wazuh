@@ -368,31 +368,30 @@ int SecurityConfigurationAssessment::setVersion(int version)
 
     try
     {
-        // First, get all check IDs from the table
-        std::vector<std::string> checkIds;
+        // First, get ALL rows with ALL columns (like FIM does in db.cpp:130-137)
+        std::vector<nlohmann::json> rows;
 
-        auto selectQuery = SelectQuery::builder().table("sca_check").columnList({"id"}).build();
+        auto selectQuery = SelectQuery::builder()
+                               .table("sca_check")
+                               .columnList({"*"}) // Get all columns to properly identify and update rows
+                               .build();
 
-        const auto selectCallback = [&checkIds](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        const auto selectCallback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
         {
-            if (returnTypeCallback == SELECTED && resultData.contains("id"))
+            if (returnTypeCallback == SELECTED)
             {
-                checkIds.push_back(resultData["id"].get<std::string>());
+                rows.push_back(resultData);
             }
         };
 
         m_dBSync->selectRows(selectQuery.query(), selectCallback);
 
-        // Now update each row with the new version
-        for (const auto& checkId : checkIds)
+        // Now update each row's version field (like FIM does in db.cpp:148-169)
+        for (auto& row : rows)
         {
-            nlohmann::json updateData;
-            updateData["table"] = "sca_check";
-            updateData["data"] = nlohmann::json::object();
-            updateData["data"]["id"] = checkId;
-            updateData["data"]["version"] = version;
+            row["version"] = version; // Modify just the version field in the complete row
 
-            auto updateQuery = SyncRowQuery::builder().table("sca_check").data(updateData["data"]).build();
+            auto updateQuery = SyncRowQuery::builder().table("sca_check").data(row).build();
 
             const auto updateCallback = [](ReturnTypeCallback, const nlohmann::json&)
             {
@@ -404,7 +403,7 @@ int SecurityConfigurationAssessment::setVersion(int version)
 
         LoggingHelper::getInstance().log(LOG_DEBUG,
                                          "SCA set_version to " + std::to_string(version) + " for " +
-                                         std::to_string(checkIds.size()) + " checks");
+                                             std::to_string(rows.size()) + " checks");
         return 0;
     }
     catch (const std::exception& err)
