@@ -1925,12 +1925,6 @@ components:
       properties:
         data:
           properties:
-            enabled:
-              description: "Whether the cluster is enabled in the Wazuh configuration"
-              type: string
-              enum:
-              - "yes"
-              - "no"
             running:
               description: "Whether the cluster daemon is running"
               type: string
@@ -8775,7 +8769,6 @@ paths:
                   - $ref: '#/components/schemas/ClusterStatus'
               example:
                 data:
-                  enabled: "yes"
                   running: "yes"
                 error: 0
         '400':
