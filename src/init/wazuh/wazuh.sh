@@ -143,14 +143,20 @@ WazuhUpgrade()
 
     # Remove deprecated Wazuh tools
 
+    rm -f $PREINSTALLEDDIR/bin/agent_control
+    rm -f $PREINSTALLEDDIR/bin/clear_stats
     rm -f $PREINSTALLEDDIR/bin/ossec-control
     rm -f $PREINSTALLEDDIR/bin/ossec-regex
     rm -f $PREINSTALLEDDIR/bin/ossec-logtest
     rm -f $PREINSTALLEDDIR/bin/ossec-makelists
+    rm -f $PREINSTALLEDDIR/bin/manage_agents
     rm -f $PREINSTALLEDDIR/bin/util.sh
     rm -f $PREINSTALLEDDIR/bin/rootcheck_control
     rm -f $PREINSTALLEDDIR/bin/syscheck_control
     rm -f $PREINSTALLEDDIR/bin/syscheck_update
+    rm -f $PREINSTALLEDDIR/bin/wazuh-logtest
+    rm -f $PREINSTALLEDDIR/bin/wazuh-logtest-legacy
+    rm -f $PREINSTALLEDDIR/bin/wazuh-regex
 
     # Remove old Wazuh daemons
 
@@ -162,6 +168,12 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/bin/ossec-monitord
     rm -f $PREINSTALLEDDIR/bin/ossec-remoted
     rm -f $PREINSTALLEDDIR/bin/ossec-syscheckd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-agentlessd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-csyslogd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-dbd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-integratord
+    rm -f $PREINSTALLEDDIR/bin/wazuh-maild
+    rm -f $PREINSTALLEDDIR/bin/wazuh-reportd
 
     # Remove existing ruleset version file
 

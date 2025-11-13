@@ -16,7 +16,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/api/configuration/api.yaml,root,wazuh,660,file,-rw-rw----,,
 /var/ossec/api/scripts/wazuh_apid.py,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/bin/agent_control,root,root,750,file,-rwxr-x---,,
 /var/ossec/bin/agent_groups,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/bin/agent_upgrade,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/bin/cluster_control,root,wazuh,750,file,-rwxr-x---,,

@@ -657,7 +657,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/backup/agents
 %dir %attr(750, root, wazuh) %{_localstatedir}/backup/shared
 %dir %attr(750, root, wazuh) %{_localstatedir}/bin
-%attr(750, root, root) %{_localstatedir}/bin/agent_control
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control

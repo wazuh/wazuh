@@ -141,68 +141,6 @@ char *os_read_agent_name()
     return (NULL);
 }
 
-/* Read the agent ip for the current agent
- * Returns NULL on error
- */
-char *os_read_agent_ip()
-{
-    char buf[1024 + 1];
-    FILE *fp;
-
-    mdebug2("Calling os_read_agent_ip().");
-
-    fp = wfopen(AGENT_INFO_FILE, "r");
-    if (!fp) {
-        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
-        return (NULL);
-    }
-
-    buf[1024] = '\0';
-
-    /* Get IP */
-    if (fgets(buf, 1024, fp) && fgets(buf, 1024, fp)) {
-        char *ret = NULL;
-        os_strdup(buf, ret);
-        fclose(fp);
-
-        return (ret);
-    }
-
-    fclose(fp);
-    return (NULL);
-}
-
-/* Read the agent id for the current agent
- * Returns NULL on error
- */
-char *os_read_agent_id()
-{
-    char buf[1024 + 1];
-    FILE *fp;
-
-    mdebug2("Calling os_read_agent_id().");
-
-    fp = wfopen(AGENT_INFO_FILE, "r");
-    if (!fp) {
-        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
-        return (NULL);
-    }
-
-    buf[1024] = '\0';
-
-    /* Get id */
-    if (fgets(buf, 1024, fp) && fgets(buf, 1024, fp) && fgets(buf, 1024, fp)) {
-        char *ret = NULL;
-        os_strdup(buf, ret);
-        fclose(fp);
-
-        return (ret);
-    }
-
-    fclose(fp);
-    return (NULL);
-}
-
 /*  Read the agent profile name for the current agent
  *  Returns NULL on error
  *
