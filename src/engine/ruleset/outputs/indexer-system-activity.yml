@@ -19,4 +19,4 @@ check:
 
 outputs:
   - wazuh-indexer:
-      index: wazuh-events-system-activity
+      index: wazuh-events-v5-system-activity

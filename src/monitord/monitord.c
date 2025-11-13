@@ -162,7 +162,7 @@ void monitor_queue_connect() {
         /* Send startup message */
         if (SendMSG(mond.a_queue, OS_MG_STARTED, ARGV0, LOCALFILE_MQ) < 0) {
             mond.a_queue = -1;  // We keep trying to reconnect next time.
-            merror(QUEUE_SEND);
+            mdebug1(QUEUE_SEND);
         }
     }
 }

@@ -275,3 +275,196 @@ sequenceDiagram
     Thread1->>State: Check endAckReceived
     Thread1->>ASP: Delete sent data
 ```
+
+### Integrity Check Flow (requiresFullSync)
+
+```mermaid
+sequenceDiagram
+    participant Module as Internal Module
+    participant ASP as Agent Sync Protocol
+    participant MQ as Message Queue
+    participant AD as Wazuh agentd
+    participant Manager as Wazuh Manager
+
+    Module->>Module: Calculate checksum for index
+    Module->>ASP: requiresFullSync(index, checksum, timeout, retries, maxEps)
+
+    Note over ASP,Manager: Session Establishment
+    ASP->>MQ: Send Start(mode=CHECK)
+    MQ->>AD: Forward Start
+    AD->>Manager: Forward Start
+    Manager->>AD: Send StartAck(session_id)
+    AD->>ASP: Forward StartAck
+
+    Note over ASP,Manager: Send Checksum Only
+    ASP->>MQ: Send ChecksumModule
+    MQ->>AD: Forward ChecksumModule
+    AD->>Manager: Forward ChecksumModule
+
+    Note over Manager: Compare checksums
+
+    Note over ASP,Manager: Session Completion
+    ASP->>MQ: Send End(session_id)
+    MQ->>AD: Forward End
+    AD->>Manager: Forward End
+    Manager->>Manager: Determine if mismatch
+
+    alt Checksum Mismatch
+        Manager->>AD: Send EndAck(status=Error)
+        AD->>ASP: Forward EndAck
+        ASP-->>Module: Return true (full sync needed)
+        Module->>Module: Schedule full synchronization
+    else Checksum Match
+        Manager->>AD: Send EndAck(status=Ok)
+        AD->>ASP: Forward EndAck
+        ASP-->>Module: Return false (integrity valid)
+        Module->>Module: Continue with delta sync
+    end
+```
+
+### In-Memory Recovery Flow
+
+```mermaid
+sequenceDiagram
+    participant Module as Internal Module
+    participant ASP as Agent Sync Protocol
+    participant Memory as In-Memory Vector
+    participant MQ as Message Queue
+    participant AD as Wazuh agentd
+    participant Manager as Wazuh Manager
+
+    Note over Module: Module recovery initiated
+
+    loop For each recovery item
+        Module->>ASP: persistDifferenceInMemory(id, operation, index, data)
+        ASP->>Memory: Store in memory vector
+        Memory-->>ASP: Success
+    end
+
+    Note over Module: All recovery data in memory
+
+    Module->>ASP: synchronizeModule(FULL, timeout, retries, maxEps)
+
+    Note over ASP,Manager: Session Establishment
+    ASP->>MQ: Send Start(mode=FULL, size=N)
+    MQ->>AD: Forward Start
+    AD->>Manager: Forward Start
+    Manager->>AD: Send StartAck(session_id)
+    AD->>ASP: Forward StartAck
+
+    Note over ASP,Manager: Data Transfer from Memory
+    loop For each in-memory item
+        ASP->>Memory: Get next item
+        Memory-->>ASP: Return data
+        ASP->>ASP: Build Data message
+        ASP->>MQ: Send Data
+        MQ->>AD: Forward Data
+        AD->>Manager: Forward Data
+    end
+
+    Note over ASP,Manager: Session Completion
+    ASP->>MQ: Send End(session_id)
+    MQ->>AD: Forward End
+    AD->>Manager: Forward End
+    Manager->>AD: Send EndAck(success)
+    AD->>ASP: Forward EndAck
+
+    ASP-->>Module: Return true (success)
+    Module->>ASP: clearInMemoryData()
+    ASP->>Memory: Clear all entries
+    Memory-->>ASP: Cleared
+
+    Note over Module: Recovery complete
+```
+
+### Metadata/Groups Synchronization Flow
+
+```mermaid
+sequenceDiagram
+    participant Module as Internal Module
+    participant ASP as Agent Sync Protocol
+    participant MQ as Message Queue
+    participant AD as Wazuh agentd
+    participant Manager as Wazuh Manager
+
+    Module->>ASP: synchronizeMetadataOrGroups(METADATA_DELTA, timeout, retries, maxEps, globalVersion)
+
+    Note over ASP,Manager: Session Establishment
+    ASP->>ASP: Validate mode (METADATA/GROUP)
+    ASP->>MQ: Send Start(mode=METADATA_DELTA)
+    MQ->>AD: Forward Start
+    AD->>Manager: Forward Start
+    Manager->>Manager: Prepare to receive metadata
+    Manager->>AD: Send StartAck(session_id)
+    AD->>ASP: Forward StartAck
+
+    Note over ASP,Manager: No Data Messages Sent
+
+    Note over ASP,Manager: Immediate Session Completion
+    ASP->>MQ: Send End(session_id)
+    MQ->>AD: Forward End
+    AD->>Manager: Forward End
+
+    Note over Manager: Process metadata<br/>based on mode
+
+    Manager->>AD: Send EndAck(success)
+    AD->>ASP: Forward EndAck
+
+    ASP-->>Module: Return true (success)
+
+    Note over Module: Metadata synchronized<br/>without data transfer
+```
+
+### Data Clean Notification Flow
+
+```mermaid
+sequenceDiagram
+    participant Module as Internal Module
+    participant ASP as Agent Sync Protocol
+    participant Queue as Persistent Queue
+    participant MQ as Message Queue
+    participant AD as Wazuh agentd
+    participant Manager as Wazuh Manager
+
+    Note over Module: Module disabled or<br/>specific indices removed
+
+    Module->>ASP: notifyDataClean(indices, timeout, retries, maxEps)
+    ASP->>ASP: Validate indices (non-empty)
+
+    Note over ASP: Create PersistedData<br/>for each index
+
+    Note over ASP,Manager: Session Establishment
+    ASP->>MQ: Send Start(mode=DELTA, size=N, indices)
+    MQ->>AD: Forward Start
+    AD->>Manager: Forward Start
+    Manager->>Manager: Create session
+    Manager->>AD: Send StartAck(session_id)
+    AD->>ASP: Forward StartAck
+    ASP->>ASP: Store session_id
+
+    Note over ASP,Manager: DataClean Messages Transfer
+    loop For each index
+        ASP->>ASP: Build DataClean message
+        ASP->>MQ: Send DataClean[seq, session, index]
+        MQ->>AD: Forward DataClean
+        AD->>Manager: Forward DataClean
+        Manager->>Manager: Mark index for cleanup
+    end
+
+    Note over ASP,Manager: Session Completion
+    ASP->>MQ: Send End(session_id)
+    MQ->>AD: Forward End
+    AD->>Manager: Forward End
+    Manager->>Manager: Clean marked indices
+    Manager->>AD: Send EndAck(success)
+    AD->>ASP: Forward EndAck
+
+    Note over ASP: Success confirmed
+
+    ASP->>Queue: clearItemsByIndex(index) for each
+    Queue-->>ASP: Local data cleared
+
+    ASP-->>Module: Return true (success)
+
+    Note over Module: Data clean notification<br/>completed successfully
+```

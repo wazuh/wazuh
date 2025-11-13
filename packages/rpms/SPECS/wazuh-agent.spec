@@ -676,6 +676,8 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca/db
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/rids
@@ -755,9 +757,11 @@ rm -fr %{buildroot}
 %changelog
 * Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
-* Wed Oct 01 2025 support <info@wazuh.com> - 4.14.1
+* Wed Dec 17 2025 support <info@wazuh.com> - 4.14.2
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-2.html
+* Wed Nov 12 2025 support <info@wazuh.com> - 4.14.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
-* Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
+* Wed Oct 22 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
 * Wed Sep 24 2025 support <info@wazuh.com> - 4.13.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-1.html

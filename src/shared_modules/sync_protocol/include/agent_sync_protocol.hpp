@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 #include <condition_variable>
+
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
     public:
@@ -35,10 +36,47 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         void persistDifference(const std::string& id,
                                Operation operation,
                                const std::string& index,
-                               const std::string& data) override;
+                               const std::string& data,
+                               uint64_t version) override;
+
+        /// @copydoc IAgentSyncProtocol::persistDifferenceInMemory
+        void persistDifferenceInMemory(const std::string& id,
+                                       Operation operation,
+                                       const std::string& index,
+                                       const std::string& data,
+                                       uint64_t version) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+        bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) override;
+
+        /// @copydoc IAgentSyncProtocol::requiresFullSync
+        bool requiresFullSync(const std::string& index,
+                              const std::string& checksum,
+                              std::chrono::seconds timeout,
+                              unsigned int retries,
+                              size_t maxEps) override;
+
+        /// @copydoc IAgentSyncProtocol::clearInMemoryData
+        void clearInMemoryData() override;
+
+        /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
+        bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, uint64_t globalVersion) override;
+
+        /// @copydoc IAgentSyncProtocol::notifyDataClean
+        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) override;
+
+        /// @copydoc IAgentSyncProtocol::deleteDatabase
+        void deleteDatabase() override;
+
+        /// @copydoc IAgentSyncProtocol::stop
+        void stop() override;
+
+        /// @brief Reset the stop flag to allow restarting operations
+        /// This should be called when restarting the module after a stop
+        void reset();
+
+        /// @copydoc IAgentSyncProtocol::shouldStop
+        bool shouldStop() const override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -66,6 +104,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sent message counter for eps control
         std::atomic<size_t> m_msgSent{0};
 
+        /// @brief Stop flag to abort ongoing operations
+        std::atomic<bool> m_stopRequested{false};
+
+        /// @brief In-memory vector to store PersistedData for recovery scenarios
+        std::vector<PersistedData> m_inMemoryData;
+
         /// @brief Ensures that the queue is available
         /// @return True on success, false on failure
         bool ensureQueueAvailable();
@@ -73,15 +117,21 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends a start message to the server
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
+        /// @param uniqueIndices Vector of unique indices to be synchronized
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @param option Synchronization option.
+        /// @param globalVersion Optional global version to include in the Start message
         /// @return True on success, false on failure or timeout
         bool sendStartAndWaitAck(Mode mode,
                                  size_t dataSize,
+                                 const std::vector<std::string>& uniqueIndices,
                                  const std::chrono::seconds timeout,
                                  unsigned int retries,
-                                 size_t maxEps);
+                                 size_t maxEps,
+                                 Option option = Option::SYNC,
+                                 std::optional<uint64_t> globalVersion = std::nullopt);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -96,6 +146,26 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool sendDataMessages(uint64_t session,
                               const std::vector<PersistedData>& data,
                               size_t maxEps);
+
+        /// @brief Sends a checksum module message to the server
+        /// @param session Session id
+        /// @param index Index name
+        /// @param checksum Checksum value
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @return True on success, false on failure
+        bool sendChecksumMessage(uint64_t session,
+                                 const std::string& index,
+                                 const std::string& checksum,
+                                 size_t maxEps);
+
+        /// @brief Sends DataClean messages to the server for each data item
+        /// @param session Session id
+        /// @param data Vector of PersistedData to send as DataClean messages
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @return True on success, false on failure
+        bool sendDataCleanMessages(uint64_t session,
+                                   const std::vector<PersistedData>& data,
+                                   size_t maxEps);
 
         /// @brief Sends an end message to the server
         /// @param session Session id
@@ -149,6 +219,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             const std::vector<PersistedData>& sourceData,
             const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
 
+        /// @brief Converts internal Mode enum to protocol schema Mode.
+        /// @param mode The internal Mode enum value.
+        /// @return The corresponding Wazuh::SyncSchema::Mode value.
+        Wazuh::SyncSchema::Mode toProtocolMode(Mode mode) const;
+
+        /// @brief Converts internal Option enum to protocol schema Option.
+        /// @param option The internal Option enum value.
+        /// @return The corresponding Wazuh::SyncSchema::Option value.
+        Wazuh::SyncSchema::Option toProtocolOption(Option option) const;
+
         /// @brief Synchronization state shared between threads during module sync.
         ///
         /// This structure holds synchronization primitives and state flags used to
@@ -184,6 +264,19 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Unique identifier for the current synchronization session, received from the manager.
             uint64_t session = 0;
 
+            /// @brief Last sync operation result for detailed error reporting.
+            SyncResult lastSyncResult = SyncResult::SUCCESS;
+
+            /// @brief Destructor ensures all waiting threads are woken up before destruction.
+            ///
+            /// This prevents deadlocks when the condition variable is destroyed while threads are still waiting.
+            ~SyncState()
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                syncFailed = true;
+                cv.notify_all();
+            }
+
             /// @brief Resets all internal flags and clears received ranges.
             ///
             /// This should be called before starting a new synchronization cycle.
@@ -196,6 +289,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;
+                lastSyncResult = SyncResult::SUCCESS;
             }
         };
 

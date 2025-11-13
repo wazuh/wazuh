@@ -141,8 +141,10 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/toBool_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/regex_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/ip_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/iana_protocol_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/time_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/hash_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/syslogFacilityAndSeverityName_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/mmdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
@@ -186,7 +188,7 @@ target_link_libraries(builder_utest
     streamlogger::mocks
     wIndexerConnector::mocks
 )
-gtest_discover_tests(builder_utest)
+gtest_discover_tests(builder_utest DISCOVERY_TIMEOUT 60)
 
 if(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
     target_compile_definitions(builder_utest PRIVATE ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)

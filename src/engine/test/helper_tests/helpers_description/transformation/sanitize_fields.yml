@@ -1,0 +1,199 @@
+# Name of the helper function
+name: sanitize_fields
+
+metadata:
+  description: |
+    Normalize JSON object keys, nested object keys, standalone strings, and strings inside arrays using `basicNormalize`.
+
+    ### Behavior:
+    - **Object keys** are sanitized: all keys in the object are normalized.
+    - **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized.
+    - **Arrays**:
+      - Arrays that are **not values of JSON object keys** are processed element-wise.
+      - Elements can be:
+        - **Strings:** normalized individually.
+        - **Objects:** their keys are sanitized.
+        - **Nested arrays:** processed recursively if `recursive` is true.
+      - Arrays containing unsupported primitives (numbers, booleans, null) cause failure.
+    - **Standalone strings** (when `target_field` is a string node) are normalized directly.
+  keywords:
+    - sanitize
+    - rename
+    - normalize
+
+helper_type: transformation
+
+skipped:
+  - success_cases
+  - fewer_arguments
+
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  recursive:
+    type: boolean  # Accept only string
+    source: value # includes only values
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+
+test:
+  # 1) Identity (no change expected)
+  - arguments:
+      recursive: false
+    target_field: {"a":1,"b":2}
+    should_pass: true
+    expected: {"a":1,"b":2}
+    description: Keys already normalized
+
+  # 2) Basic snake-case for keys
+  - arguments:
+      recursive: false
+    target_field: {"Full Name":"Ana","e-mail":"x","Pais":"AR"}
+    should_pass: true
+    expected: {"full_name":"Ana","e_mail":"x","pais":"AR"}
+    description: Keys lowercased and separators mapped to underscores
+
+  # 3) Collision after sanitization -> fail
+  - arguments:
+      recursive: false
+    target_field: {"hello world":1,"hello-world":2}
+    should_pass: false
+    expected: ""
+    description: Both map to 'hello_world' -> collision
+
+  # 4) Leading digit (no digit guard here) -> unchanged
+  - arguments:
+      recursive: false
+    target_field: {"123abc":1,"x":2}
+    should_pass: true
+    expected: {"123abc":1,"x":2}
+    description: basicNormalize does not prefix underscores for leading digits
+
+  # 5) Array of strings is normalized element-wise
+  - arguments:
+      recursive: false
+    target_field: ["Hello world","hello-world","HELLO  world"]
+    should_pass: true
+    expected: ["hello_world","hello_world","hello_world"]
+    description: Strings in arrays normalized
+
+  # 6) Array of objects is normalized object-wise
+  - arguments:
+      recursive: false
+    target_field: [{"Full Name":"Ana"},{"e-mail":"x"}]
+    should_pass: true
+    expected: [{"full_name":"Ana"},{"e_mail":"x"}]
+    description: Object keys inside arrays normalized
+
+  # 7) Mixed array (string + object)
+  - arguments:
+      recursive: false
+    target_field: ["Hello world", {"Full Name":"Ana"}]
+    should_pass: true
+    expected: ["hello_world", {"full_name":"Ana"}]
+    description: Mixed string/object array supported
+
+  # 8) Arrays with unsupported primitives -> fail (policy)
+  - arguments:
+      recursive: false
+    target_field: [1, {"a":1}]
+    should_pass: false
+    expected: ""
+    description: Numbers in arrays not allowed by policy
+  - arguments:
+      recursive: false
+    target_field: [true, {"a":1}]
+    should_pass: false
+    expected: ""
+    description: Booleans in arrays not allowed by policy
+  - arguments:
+      recursive: false
+    target_field: [null, {"a":1}]
+    should_pass: false
+    expected: ""
+    description: Nulls in arrays not allowed by policy
+
+  # 9) Nested arrays and objects
+  - arguments:
+      recursive: false
+    target_field: [["Hello world","hello-world"], [{"Full Name":"Ana"}]]
+    should_pass: true
+    expected: [["hello_world","hello_world"], [{"full_name":"Ana"}]]
+    description: Nested arrays/objects processed recursively
+
+  # 10) Nested objects
+  - arguments:
+      recursive: true
+    target_field: {"a":{"B-C":{"D E":1}}}
+    should_pass: true
+    expected: {"a":{"b_c":{"d_e":1}}}
+    description: Deep object keys normalized
+
+  # 11) Duplicate strings allowed in arrays after normalization
+  - arguments:
+      recursive: false
+    target_field: ["a b","a-b","a_b"]
+    should_pass: true
+    expected: ["a_b","a_b","a_b"]
+    description: Duplicated normalized strings in arrays are allowed
+
+  # 12) Key becomes empty after normalization -> fail
+  - arguments:
+      recursive: false
+    target_field: {"***": 1}
+    should_pass: false
+    expected: ""
+    description: All characters dropped -> empty key is invalid
+
+  # 13) Multiple mixed separators collapse to single underscore
+  - arguments:
+      recursive: false
+    target_field: {"a\\\\b///c::d  e": 1}
+    should_pass: true
+    expected: {"a_b_c_d_e": 1}
+    description: Mixed '\\', '/', ':', spaces collapse to single underscores
+
+  # 14) Trailing separator is trimmed (no trailing underscore)
+  - arguments:
+      recursive: false
+    target_field: {"name:": 1}
+    should_pass: true
+    expected: {"name": 1}
+    description: Trailing ':' produces '_' then it is trimmed at the end
+
+  # 15) Only separators -> becomes empty -> fail
+  - arguments:
+      recursive: false
+    target_field: {":\\ /- .": 1}
+    should_pass: false
+    expected: ""
+    description: All characters are separators; normalized key becomes empty
+
+  # 16) Arrays of strings with backslash and colon
+  - arguments:
+      recursive: false
+    target_field: ["A\\B:C", "X:Y\\Z"]
+    should_pass: true
+    expected: ["a_b_c", "x_y_z"]
+    description: Backslash and colon in strings become underscores
+
+  # 17) Standalone string is normalized
+  - arguments:
+      recursive: false
+    target_field: "HELLO-world\\TEST"
+    should_pass: true
+    expected: "hello_world_test"
+    description: Single string node normalized directly
+
+  # 18) Standalone string becomes empty after normalization -> fail
+  - arguments:
+      recursive: false
+    target_field: "::::"
+    should_pass: false
+    expected: ""
+    description: Only separators -> sanitized string becomes empty

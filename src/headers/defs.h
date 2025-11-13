@@ -167,15 +167,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE       "queue/alerts/execq"
 
-/* Security configuration assessment module queue */
-#define CFGAQUEUE       "queue/alerts/cfgaq"
-
-/* Security configuration assessment remoted queue */
-#define CFGARQUEUE       "queue/alerts/cfgarq"
-
 /* Active Response queue */
 #define ARQUEUE         "queue/alerts/ar"
-
 
 /* Agent groups location */
 #define GROUPS_DIR    "queue/agent-groups"

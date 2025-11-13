@@ -162,9 +162,17 @@ class EXPORTED DBSync : public IDBSync
         {
             return m_dbsyncHandle;
         }
+
+        /**
+         * @brief Closes the database connection and deletes the database file using the stored path.
+         *
+         */
+        void closeAndDeleteDatabase() override;
+
     private:
         DBSYNC_HANDLE m_dbsyncHandle;
         bool m_shouldBeRemoved;
+        std::string m_dbPath;
 };
 
 class EXPORTED DBSyncTxn

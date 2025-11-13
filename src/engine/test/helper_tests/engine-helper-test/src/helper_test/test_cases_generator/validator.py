@@ -88,7 +88,7 @@ class Validator:
         Verifies the skip properties in the parser.
         """
         skips_allowed = ["success_cases", "different_type",
-                         "different_source", "different_target_field_type", "allowed"]
+                         "different_source", "different_target_field_type", "allowed", "fewer_arguments"]
         if not isinstance(self.parser.get_skips(), list):
             sys.exit(
                 f"Helper {self.parser.get_name()}: Only array is supported in the skip property")

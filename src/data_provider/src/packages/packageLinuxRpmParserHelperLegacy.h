@@ -28,8 +28,6 @@ namespace PackageLinuxHelper
         nlohmann::json ret;
         const auto fields { Utils::split(packageInfo, '\t') };
         constexpr auto DEFAULT_VALUE { "(none)" };
-        std::string vendor       { UNKNOWN_VALUE };
-        std::string email        { UNKNOWN_VALUE };
 
         if (RPMFields::RPM_FIELDS_SIZE <= fields.size())
         {
@@ -42,7 +40,7 @@ namespace PackageLinuxHelper
                 std::string groups       { fields.at(RPMFields::RPM_FIELDS_GROUPS) };
                 std::string version      { fields.at(RPMFields::RPM_FIELDS_VERSION) };
                 std::string architecture { fields.at(RPMFields::RPM_FIELDS_ARCHITECTURE) };
-                std::string publisher    { fields.at(RPMFields::RPM_FIELDS_VENDOR) };
+                std::string vendor       { fields.at(RPMFields::RPM_FIELDS_VENDOR) };
                 std::string description  { fields.at(RPMFields::RPM_FIELDS_SUMMARY) };
 
                 std::string release      { fields.at(RPMFields::RPM_FIELDS_RELEASE) };
@@ -58,22 +56,17 @@ namespace PackageLinuxHelper
                     version += "-" + release;
                 }
 
-                if (!publisher.empty() && publisher.compare(DEFAULT_VALUE) != 0)
-                {
-                    Utils::splitMaintainerField(publisher, vendor, email);
-                }
-
                 ret["name"]         = name;
                 ret["size"]         = size.empty() || size.compare(DEFAULT_VALUE) == 0 ? 0 : stoll(size);
                 ret["installed"]    = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : install_time;
                 ret["path"]         = UNKNOWN_VALUE;
                 ret["category"]     = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : groups;
-                ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
+                ret["version_"]     = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
                 ret["priority"]     = UNKNOWN_VALUE;
                 ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : architecture;
                 ret["source"]       = UNKNOWN_VALUE;
                 ret["type"]         = "rpm";
-                ret["vendor"]       = vendor;
+                ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : vendor;
                 ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : description;
                 // The multiarch field won't have a default value
             }

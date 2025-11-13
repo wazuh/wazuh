@@ -12,15 +12,16 @@
 #ifndef _THREAD_EVENT_DISPATCHER_HPP
 #define _THREAD_EVENT_DISPATCHER_HPP
 
+#include <atomic>
+#include <thread>
+
 #include "commonDefs.h"
+#include "loggerHelper.h"
 #include "promiseFactory.h"
 #include "rocksDBQueue.hpp"
 #include "rocksDBQueueCF.hpp"
 #include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.h"
-#include <atomic>
-#include <iostream>
-#include <thread>
 
 template<typename T,
          typename U,
@@ -226,11 +227,11 @@ private:
                 if (m_running)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
-                    std::cerr << "Dispatch handler error, " << ex.what() << "\n";
+                    logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
                 }
                 else
                 {
-                    std::cout << "ThreadEventDispatcher dispatch end.\n";
+                    logDebug1(LOGGER_DEFAULT_TAG, "ThreadEventDispatcher dispatch end.");
                 }
             }
         }

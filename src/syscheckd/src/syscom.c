@@ -13,6 +13,7 @@
 #include "../rootcheck/rootcheck.h"
 #include "../os_net/os_net.h"
 #include "../wazuh_modules/wmodules.h"
+#include "../wazuh_modules/module_query_errors.h"
 #include "db/include/db.h"
 #include "agent_sync_protocol_c_interface.h"
 
@@ -75,9 +76,149 @@ error:
     return strlen(*output);
 }
 
+size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
+    assert(json_command != NULL);
+    assert(output != NULL);
+
+    // Log received query
+    mdebug1("Received query: %s", json_command);
+
+    // Parse JSON command
+    cJSON *json_obj = cJSON_Parse(json_command);
+    if (!json_obj) {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    cJSON *command_item = cJSON_GetObjectItem(json_obj, "command");
+    if (!command_item || !cJSON_IsString(command_item)) {
+        cJSON_Delete(json_obj);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    const char *command = cJSON_GetStringValue(command_item);
+    cJSON *param_item = cJSON_GetObjectItem(json_obj, "parameters");
+
+    mdebug1("Processing FIM JSON command: %s", command);
+
+    cJSON *response_json = cJSON_CreateObject();
+    cJSON *status_item = NULL;
+    cJSON *message_item = NULL;
+    cJSON *data_item = NULL;
+
+    if (strcmp(command, "pause") == 0) {
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
+        message_item = cJSON_CreateString("FIM module paused successfully");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "module", "fim");
+        cJSON_AddStringToObject(data_item, "action", "pause");
+    } else if (strcmp(command, "flush") == 0) {
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
+        message_item = cJSON_CreateString("FIM module flushed successfully");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "module", "fim");
+        cJSON_AddStringToObject(data_item, "action", "flush");
+    } else if (strcmp(command, "get_version") == 0) {
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
+        message_item = cJSON_CreateString("FIM version retrieved");
+        data_item = cJSON_CreateObject();
+        cJSON_AddNumberToObject(data_item, "version", 5);
+    } else if (strcmp(command, "set_version") == 0) {
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
+        message_item = cJSON_CreateString("FIM version set successfully");
+        data_item = cJSON_CreateObject();
+
+        // Extract version from parameters if present
+        if (param_item && cJSON_IsObject(param_item)) {
+            cJSON *version_item = cJSON_GetObjectItem(param_item, "version");
+            if (version_item && cJSON_IsNumber(version_item)) {
+                int version = (int)cJSON_GetNumberValue(version_item);
+                cJSON_AddNumberToObject(data_item, "version", version);
+            }
+        }
+    } else if (strcmp(command, "resume") == 0) {
+        status_item = cJSON_CreateNumber(MQ_SUCCESS);
+        message_item = cJSON_CreateString("FIM module resumed successfully");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "module", "fim");
+        cJSON_AddStringToObject(data_item, "action", "resume");
+    } else {
+        status_item = cJSON_CreateNumber(MQ_ERR_UNKNOWN_COMMAND);
+        message_item = cJSON_CreateString("Unknown FIM command");
+        data_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(data_item, "command", command);
+    }
+
+    cJSON_AddItemToObject(response_json, "error", status_item);
+    cJSON_AddItemToObject(response_json, "message", message_item);
+    cJSON_AddItemToObject(response_json, "data", data_item);
+
+    char *json_string = cJSON_PrintUnformatted(response_json);
+    os_strdup(json_string, *output);
+
+    os_free(json_string);
+    cJSON_Delete(response_json);
+    cJSON_Delete(json_obj);
+
+    return strlen(*output);
+}
+
+size_t syscom_handle_json_query(char * json_command, char ** output) {
+    assert(json_command != NULL);
+    assert(output != NULL);
+
+    if (syscheck.disabled) {
+        mdebug1("FIM module is disabled");
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_DISABLED, MQ_MSG_MODULE_DISABLED);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    cJSON *json_obj = cJSON_Parse(json_command);
+    if (!json_obj) {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    cJSON *command_item = cJSON_GetObjectItem(json_obj, "command");
+    if (!command_item || !cJSON_IsString(command_item)) {
+        cJSON_Delete(json_obj);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    const char *command = cJSON_GetStringValue(command_item);
+    mdebug1("Processing JSON FIM command: %s", command);
+    size_t result = syscom_handle_agent_info_query(json_command, output);
+
+    cJSON_Delete(json_obj);
+    return result;
+}
+
 size_t syscom_dispatch(char * command, size_t command_len, char ** output){
     assert(command != NULL);
     assert(output != NULL);
+
+    // Check if this is a JSON command
+    if (command[0] == '{') {
+        mdebug1("Detected JSON command, routing to JSON handler");
+        return syscom_handle_json_query(command, output);
+    }
 
     if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
                strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0 ||

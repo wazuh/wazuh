@@ -110,12 +110,12 @@ protected:
                         if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                         {
                             std::get<TPostRequestParameters<const std::string&>>(postParams)
-                                .onError("Server not found", 404);
+                                .onError("Server not found", 404, "");
                         }
                         else
                         {
                             std::get<TPostRequestParameters<std::string&&>>(postParams)
-                                .onError("Server not found", 404);
+                                .onError("Server not found", 404, "");
                         }
                     }
                 }));

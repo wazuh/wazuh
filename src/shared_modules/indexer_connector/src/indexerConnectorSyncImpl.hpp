@@ -89,7 +89,8 @@ class IndexerConnectorSyncImpl final
             logDebug2(IC_NAME, "Response: %s", response.c_str());
         };
 
-        const auto onErrorDeleteByQuery = [this](const std::string& error, const long statusCode)
+        const auto onErrorDeleteByQuery =
+            [this](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_VERSION_CONFLICT)
@@ -139,7 +140,9 @@ class IndexerConnectorSyncImpl final
             needToRetry = false;
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode) -> void
+        const auto onError = [this, &needToRetry](const std::string& error,
+                                                  const long statusCode,
+                                                  const std::string& responseBody) -> void
         {
             logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -191,7 +194,7 @@ class IndexerConnectorSyncImpl final
 
                 std::string url;
                 url += m_selector->getNext();
-                url += "/_bulk?refresh=wait_for";
+                url += "/_bulk";
                 logDebug2(IC_NAME, "Sending bulk data to: %s", url.c_str());
                 logDebug2(IC_NAME, "Bulk data: %s", m_bulkData.c_str());
 
@@ -276,14 +279,15 @@ class IndexerConnectorSyncImpl final
     {
         std::string url;
         url += m_selector->getNext();
-        url += "/_bulk?refresh=wait_for";
+        url += "/_bulk";
         bool needToRetry = false;
 
         const auto onSuccess = [](const std::string& response)
         {
             logDebug2(IC_NAME, "Chunk processed successfully: %s", response.c_str());
         };
-        const auto onError = [this, &needToRetry, boundaries](const std::string& error, const long statusCode)
+        const auto onError = [this, &needToRetry, boundaries](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
             logError(IC_NAME, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -476,6 +480,136 @@ public:
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
         it->second["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
     }
+
+    void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
+    {
+        // Join indices with comma
+        std::string indexList;
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            if (i > 0)
+            {
+                indexList.append(",");
+            }
+            indexList.append(indices[i]);
+        }
+
+        bool needToRetry = false;
+
+        const auto onSuccess = [this](const std::string& response)
+        {
+            logDebug2(IC_NAME, "Update by query response: %s", response.c_str());
+
+            // Parse response to extract update statistics and check for failures
+            try
+            {
+                auto responseJson = nlohmann::json::parse(response);
+
+                // Check for failures first
+                if (responseJson.contains("failures") && !responseJson["failures"].empty())
+                {
+                    auto failures = responseJson["failures"];
+                    logError(IC_NAME, "Update by query completed with %zu failures", failures.size());
+
+                    // Log first few failures for debugging
+                    size_t logCount = std::min<size_t>(failures.size(), 3);
+                    for (size_t i = 0; i < logCount; ++i)
+                    {
+                        logError(IC_NAME, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
+                    }
+                }
+
+                if (responseJson.contains("updated") && responseJson.contains("total"))
+                {
+                    auto updated = responseJson["updated"].get<int>();
+                    auto total = responseJson["total"].get<int>();
+                    auto noops = responseJson.contains("noops") ? responseJson["noops"].get<int>() : 0;
+                    auto failures = responseJson.contains("failures") ? responseJson["failures"].size() : 0;
+
+                    if (updated > 0)
+                    {
+                        logInfo(IC_NAME,
+                                "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
+                                "failures)",
+                                updated,
+                                total,
+                                noops,
+                                failures);
+                    }
+                    else
+                    {
+                        logDebug2(IC_NAME,
+                                  "Update by query completed: no documents needed updating (all %d documents already "
+                                  "up-to-date, %zu failures)",
+                                  total,
+                                  failures);
+                    }
+                }
+            }
+            catch (const std::exception& e)
+            {
+                logDebug2(IC_NAME, "Could not parse update by query response: %s", e.what());
+            }
+
+            // Notify registered callbacks on success
+            for (const auto& notify : m_notify)
+            {
+                notify();
+            }
+            m_notify.clear();
+        };
+
+        const auto onError =
+            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
+        {
+            if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
+                needToRetry = true;
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                needToRetry = true;
+                logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+            }
+            else
+            {
+                logError(IC_NAME, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                m_notify.clear();
+                throw IndexerConnectorException(error);
+            }
+        };
+
+        do
+        {
+            if (m_stopping.load())
+            {
+                logDebug2(IC_NAME, "Stopping requested, aborting update by query");
+                m_notify.clear();
+                return;
+            }
+
+            needToRetry = false;
+            auto serverUrl = m_selector->getNext();
+            std::string url;
+            url += serverUrl;
+            url += "/";
+            url += indexList;
+            url += "/_update_by_query";
+
+            m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                   .data = updateQuery.dump(),
+                                                   .secureCommunication = m_secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                {});
+
+            if (needToRetry && RetryDelay > 0)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+            }
+        } while (needToRetry);
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
@@ -493,15 +627,76 @@ public:
     }
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
     {
-        if (constexpr auto FORMATTED_SIZE {FORMATTED_LENGTH};
-            m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() + data.size() > MaxBulkSize)
+        bulkIndex(id, index, data, std::string_view());
+    }
+
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+    {
+        constexpr auto FORMATTED_SIZE {FORMATTED_LENGTH};
+        constexpr auto VERSION_SIZE {32};
+
+        // Validate input parameters
+        if (index.empty())
+        {
+            logError(IC_NAME, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            throw IndexerConnectorException("Index name cannot be empty");
+        }
+
+        if (data.empty())
+        {
+            logWarn(IC_NAME,
+                    "Empty data provided for document %.*s in index %.*s",
+                    static_cast<int>(id.size()),
+                    id.data(),
+                    static_cast<int>(index.size()),
+                    index.data());
+        }
+
+        const auto totalSize =
+            m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
+
+        if (totalSize > MaxBulkSize)
         {
             processBulk();
         }
         m_bulkData.append(R"({"index":{"_index":")");
         m_bulkData.append(index);
-        m_bulkData.append(R"(","_id":")");
-        m_bulkData.append(id);
+        if (!version.empty())
+        {
+            // In case the version is provided, the id must be provided too
+            if (!id.empty())
+            {
+                m_bulkData.append(R"(","_id":")");
+                m_bulkData.append(id);
+            }
+            else
+            {
+                logError(IC_NAME, "Id must be provided if version value is provided");
+                throw IndexerConnectorException("Id must be provided if version value is provided");
+            }
+
+            m_bulkData.append(R"(","version":")");
+            m_bulkData.append(version);
+            m_bulkData.append(R"(","version_type":"external_gte)");
+            logDebug2(IC_NAME,
+                      "Using external version %.*s for document %.*s",
+                      static_cast<int>(version.size()),
+                      version.data(),
+                      static_cast<int>(id.size()),
+                      id.data());
+        }
+        else
+        {
+            if (!id.empty())
+            {
+                m_bulkData.append(R"(","_id":")");
+                m_bulkData.append(id);
+            }
+            logDebug2(IC_NAME,
+                      "No version specified for document %.*s, using default versioning",
+                      static_cast<int>(id.size()),
+                      id.data());
+        }
         m_bulkData.append(R"("}})");
         m_bulkData.append("\n");
         m_bulkData.append(data);

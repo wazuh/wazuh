@@ -42,7 +42,7 @@ LOCK_PID="${LOCK}/pid"
 # to 10 attempts (or 10 seconds) to execute.
 MAX_ITERATION="60"
 
-MAX_KILL_TRIES=300
+MAX_KILL_TRIES=30
 
 
 checkpid()
@@ -451,9 +451,7 @@ wait_pid() {
         then
             return 1
         else
-            # sleep doesn't work in AIX
-            # read doesn't work in FreeBSD
-            sleep 0.1 > /dev/null 2>&1 || read -t 0.1 > /dev/null 2>&1
+            sleep 1
             wp_counter=`expr $wp_counter + 1`
         fi
     done
@@ -464,6 +462,26 @@ wait_pid() {
 stop_service()
 {
     checkpid;
+
+    # First pass: send kill signal to all running daemons
+    for i in ${DAEMONS}; do
+        pstatus ${i};
+        if [ $? = 1 ]; then
+            if [ $USE_JSON != true ]
+            then
+                echo "Killing ${i}...";
+            fi
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
+            kill $pid
+        else
+            if [ $USE_JSON != true ]
+            then
+                echo "${i} not running...";
+            fi
+        fi
+    done
+
+    # Second pass: wait for all processes that are still alive
     first=true
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
@@ -478,32 +496,24 @@ stop_service()
         pstatus ${i};
 
         if [ $? = 1 ]; then
-            if [ $USE_JSON != true ]
-            then
-                echo "Killing ${i}...";
-            fi
-
             pid=`cat ${DIR}/var/run/${i}-*.pid`
-            kill $pid
 
             if wait_pid $pid
             then
                 if [ $USE_JSON = true ]; then
-                    echo -n '{"daemon":"'${i}'","status":"killed"}'
+                    echo -n '{"daemon":"'${i}'","status":"stopped"}'
                 fi
             else
                 if [ $USE_JSON = true ]; then
-                    echo -n '{"daemon":"'${i}'","status":"failed to kill"}'
+                    echo -n '{"daemon":"'${i}'","status":"killed"}'
                 else
                     echo "Process ${i} couldn't be terminated. It will be killed.";
-                    kill -9 $pid
                 fi
+                kill -9 $pid
             fi
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
-            else
-                echo "${i} not running...";
             fi
         fi
         rm -f ${DIR}/var/run/${i}-*.pid

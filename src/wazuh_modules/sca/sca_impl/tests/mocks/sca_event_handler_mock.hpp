@@ -16,7 +16,7 @@ namespace sca_event_handler
         public:
             SCAEventHandlerMock(const std::shared_ptr<MockDBSync>& mockDB,
                                 std::function<int(const std::string&)> pushStatelessMessage = nullptr,
-                                std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> pushStatefulMessage = nullptr)
+                                std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage = nullptr)
                 : SCAEventHandler(mockDB, pushStatelessMessage, pushStatefulMessage)
                 , mockDBSync(mockDB)
             {
@@ -32,7 +32,7 @@ namespace sca_event_handler
                 return SCAEventHandler::ProcessStateless(event);
             }
 
-            std::pair<nlohmann::json, ReturnTypeCallback> ProcessStateful(const nlohmann::json& event)
+            std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> ProcessStateful(const nlohmann::json& event)
             {
                 return SCAEventHandler::ProcessStateful(event);
             }

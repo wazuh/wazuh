@@ -46,10 +46,12 @@ class PersistentQueue : public IPersistentQueue
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (e.g., Upsert, Delete).
+        /// @param version Version of the data.
         void submit(const std::string& id,
                     const std::string& index,
                     const std::string& data,
-                    Operation operation) override;
+                    Operation operation,
+                    uint64_t version) override;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @return A vector of messages now marked as SYNCING.
@@ -60,6 +62,14 @@ class PersistentQueue : public IPersistentQueue
 
         /// @brief Resets items that failed to synchronize.
         void resetSyncingItems() override;
+
+        /// @brief Clears all items belonging to a specific index.
+        /// @param index The index for which all items should be cleared.
+        void clearItemsByIndex(const std::string& index) override;
+
+        /// @brief Deletes the database file.
+        /// This method closes the database connection and removes the database file from disk.
+        void deleteDatabase() override;
 
     private:
         /// @brief Mutex to protect concurrent access to internal maps.

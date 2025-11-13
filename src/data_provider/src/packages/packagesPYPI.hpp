@@ -39,7 +39,7 @@ class PYPI final
         {
             // Map to match fields
             static const std::map<std::string, std::string> PYPI_FIELDS {{"Name: ", "name"},
-                {"Version: ", "version"},
+                {"Version: ", "version_"},
                 {"Summary: ", "description"},
                 {"Home-page: ", "source"},
                 {"Author: ", "vendor"}};
@@ -83,7 +83,7 @@ class PYPI final
             });
 
             // Check if we have a name and version
-            if (packageInfo.contains("name") && packageInfo.contains("version"))
+            if (packageInfo.contains("name") && packageInfo.contains("version_"))
             {
                 callback(packageInfo);
             }
@@ -131,6 +131,17 @@ class PYPI final
             {
                 try
                 {
+#ifdef __APPLE__
+
+                    // Skip symlinked Python versions (Versions/Current is typically a symlink)
+                    // to avoid reporting duplicate packages on macOS
+                    if (expandedPath.find("/Versions/Current/") != std::string::npos)
+                    {
+                        continue;
+                    }
+
+#endif
+
                     // Exist and is a directory
                     if (m_fileSystemWrapper->exists(expandedPath) && m_fileSystemWrapper->is_directory(expandedPath))
                     {

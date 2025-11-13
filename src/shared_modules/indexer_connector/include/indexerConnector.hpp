@@ -59,6 +59,29 @@ public:
     void deleteByQuery(const std::string& index, const std::string& agentId);
 
     /**
+     * @brief Execute an update by query operation on OpenSearch/Elasticsearch.
+     *
+     * This is a generic method that allows callers to execute arbitrary update_by_query
+     * operations. The caller is responsible for constructing the appropriate query JSON
+     * with the query structure and Painless script.
+     *
+     * @param indices List of indices to update (will be joined with commas).
+     * @param updateQuery JSON object containing the complete update_by_query request body,
+     *                    including "query" and "script" sections.
+     *
+     * Example updateQuery structure:
+     * {
+     *   "query": { "term": { "agent.id": "001" } },
+     *   "script": {
+     *     "source": "ctx._source.field = params.value",
+     *     "lang": "painless",
+     *     "params": { "value": "new_value" }
+     *   }
+     * }
+     */
+    void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.
@@ -74,6 +97,16 @@ public:
      * @param data Data.
      */
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Bulk index with version.
+     *
+     * @param id ID.
+     * @param index Index name.
+     * @param data Data.
+     * @param version Document version for external versioning.
+     */
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
 
     /**
      * @brief Flush the bulk data.
@@ -152,6 +185,16 @@ public:
      * @param data Data.
      */
     void index(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Index a document with version.
+     *
+     * @param id ID of the document.
+     * @param index Index name.
+     * @param data Data.
+     * @param version Document version for external versioning.
+     */
+    void index(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
 
     /**
      * @brief Index a document.

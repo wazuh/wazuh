@@ -85,9 +85,10 @@ private:
     {
         auto returnCode {true};
         const auto onError {
-            [&returnCode](const std::string& errorMessage, const long errorCode)
+            [&returnCode](const std::string& errorMessage, const long errorCode, const std::string& responseBody)
             {
                 logWarn(WM_CONTENTUPDATER, "Error '%d' when downloading file: %s.", errorCode, errorMessage.c_str());
+                logWarn(WM_CONTENTUPDATER, "Response body: %s", responseBody.c_str());
                 returnCode = false;
             }};
 

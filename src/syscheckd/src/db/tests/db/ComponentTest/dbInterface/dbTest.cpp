@@ -17,13 +17,13 @@ const auto insertFileStatement = R"({
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083,
         "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
-        "uid":"0", "owner":"fakeUser"
+        "uid":"0", "owner":"fakeUser", "version":1
     }
 )"_json;
 const auto insertRegistryKeyStatement = R"({
         "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_":"root", "architecture":1,
         "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "permissions":"-rw-rw-r--",
-        "uid":"0", "owner":"fakeUser"
+        "uid":"0", "owner":"fakeUser", "version":1
     }
 )"_json;
 
@@ -32,7 +32,7 @@ const auto insertRegistryValueStatement = R"({
         "size":4925, "type":0, "hash_md5":"4b531524aa13c8a54614100b570b3dc7",
         "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a",
-        "architecture":0, "path":"/tmp/pathTestRegistry"
+        "architecture":0, "path":"/tmp/pathTestRegistry", "version":1
     }
 )"_json;
 
@@ -165,6 +165,26 @@ TEST(DBTest, TestValidFimLimit)
 
     auto result {fim_db_init(FIM_DB_MEMORY, mockLoggingFunction, 100, 100000, nullptr)};
     ASSERT_EQ(result, FIMDB_OK);
+
+    delete mockLog;
+}
+
+TEST_F(DBTestFixture, TestFimDBCloseAndDelete)
+{
+    EXPECT_NO_THROW({
+        const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+        fim_db_close_and_delete_database();
+    });
+}
+
+TEST(DBTest, TestFimDBCloseAndDeleteWithoutInit)
+{
+    mockLog = new MockLoggingCall();
+
+    EXPECT_NO_THROW({
+        fim_db_close_and_delete_database();
+    });
 
     delete mockLog;
 }

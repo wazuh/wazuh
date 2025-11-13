@@ -23,6 +23,7 @@
 #include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "../rootcheck/rootcheck.h"
 #include "file/file.h"
+#include "db/include/db.h"
 #include "ebpf/include/ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
 
@@ -76,6 +77,63 @@ bool fim_shutdown_process_on() {
     return ret;
 }
 
+/**
+ * @brief Handles the FIM disabled scenario by cleaning up database and notifying the server
+ *
+ * This function is called when syscheck is disabled. It performs the following operations:
+ * 1. Checks for existing entries in the FIM database (files, registry keys/values)
+ * 2. Prepares data clean notifications for non-empty indices
+ * 3. Sends data clean notifications to the server with retry logic
+ * 4. Resets the database tables after successful notification
+ */
+STATIC void handle_fim_disabled(void) {
+
+    // Prepare indices vector for data clean notification
+    const char* indices[3] = {NULL, NULL, NULL};
+    size_t indices_count = 0;
+
+    int files_count = fim_db_get_count_file_entry();
+    if (files_count > 0) {
+        indices[indices_count++] = FIM_FILES_SYNC_INDEX;
+    }
+
+#ifdef WIN32
+    int registry_keys_count = fim_db_get_count_registry_key();
+    int registry_values_count = fim_db_get_count_registry_data();
+
+    if (registry_keys_count > 0) {
+        indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
+    }
+    if (registry_values_count > 0) {
+        indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
+    }
+#endif
+
+    // Send data clean notification if there are any indices to clean
+    if (indices_count > 0) {
+        minfo( "Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
+
+        bool ret = false;
+        while (!ret && !fim_shutdown_process_on())
+        {
+            ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+            if (!ret) {
+                for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
+                    sleep(1);
+                }
+            }
+            else
+            {
+                mdebug1("Data clean notification sent successfully.");
+                asp_delete_database(syscheck.sync_handle);
+                fim_db_close_and_delete_database();
+            }
+        }
+    } else {
+        minfo( "Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
+    }
+}
+
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (fim_shutdown_process_on()) {
@@ -83,7 +141,7 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     }
 
     if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0) {
-        merror(QUEUE_SEND);
+        mdebug1(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
@@ -116,13 +174,13 @@ void send_syscheck_msg(const cJSON *_msg) {
 }
 
 // Persist a syscheck message
-void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg) {
+void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg, uint64_t version) {
     if (syscheck.enable_synchronization) {
         char* msg = cJSON_PrintUnformatted(_msg);
 
         mdebug2(FIM_PERSIST, msg);
 
-        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg);
+        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
 
         os_free(msg);
     } else {
@@ -250,6 +308,8 @@ void start_daemon()
     }
 
     if (syscheck.disabled) {
+        handle_fim_disabled();
+        minfo("Syscheck is disabled. Exiting.");
         return;
     }
 
@@ -356,8 +416,18 @@ void start_daemon()
         int run_now = 0;
         curr_time = time(0);
 
+        // Check for shutdown before processing
+        if (fim_shutdown_process_on()) {
+            break;
+        }
+
         // Check if syscheck should be restarted
         run_now = os_check_restart_syscheck();
+
+        // Reset sync protocol stop flag if restart was requested
+        if (run_now && syscheck.sync_handle) {
+            asp_reset(syscheck.sync_handle);
+        }
 
         // Check if a day_time or scan_time is set
         if (syscheck.scan_time || syscheck.scan_day) {
@@ -399,7 +469,7 @@ void start_daemon()
         }
 
         // If time elapsed is higher than the syscheck time, run syscheck time
-        if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
+        if (!fim_shutdown_process_on() && (((curr_time - prev_time_sk) > syscheck.time) || run_now)) {
             prev_time_sk = fim_scan();
         }
         sleep(SYSCHECK_WAIT);

@@ -34,6 +34,11 @@ public:
         m_impl.bulkIndex(id, index, data);
     }
 
+    void index(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+    {
+        m_impl.bulkIndex(id, index, data, version);
+    }
+
     void index(std::string_view index, std::string_view data)
     {
         m_impl.bulkIndex(std::string_view(), index, data);
@@ -58,6 +63,11 @@ IndexerConnectorAsync::~IndexerConnectorAsync() = default;
 void IndexerConnectorAsync::index(std::string_view id, std::string_view index, std::string_view data)
 {
     m_impl->index(id, index, data);
+}
+
+void IndexerConnectorAsync::index(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+{
+    m_impl->index(id, index, data, version);
 }
 
 void IndexerConnectorAsync::index(std::string_view index, std::string_view data)

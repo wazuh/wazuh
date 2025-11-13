@@ -61,8 +61,8 @@ int main() {
     AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, testLogger, nullptr};
     g_proto = &proto;
 
-    proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}");
-    proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}");
+    proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}", 1);
+    proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}", 2);
 
     bool ok = proto.synchronizeModule(Mode::FULL, std::chrono::seconds{2}, 1, 0);
     std::cout << (ok ? "OK" : "FAIL") << std::endl;

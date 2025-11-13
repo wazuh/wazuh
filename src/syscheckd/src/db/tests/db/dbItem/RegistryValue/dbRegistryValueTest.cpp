@@ -30,6 +30,7 @@ void RegistryValueTest::SetUp()
     value->type = 0;
     value->path = const_cast<char*>("pathTestRegistry");
     value->architecture = 0;
+    value->version = 1;
     fimEntryTest->registry_entry.value = value;
 }
 

@@ -133,6 +133,67 @@ bool success = asp_parse_response_buffer(syscheck.sync_handle,
                                         response_length);
 ```
 
+#### `asp_notify_data_clean()`
+
+Notifies the manager that specific indices have been cleaned and should be removed.
+
+**Signature:**
+```c
+bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
+                           const char** indices,
+                           size_t indices_count,
+                           unsigned int sync_timeout,
+                           unsigned int retries,
+                           size_t max_eps);
+```
+
+**Parameters:**
+- `handle`: Sync protocol handle
+- `indices`: Array of index names to clean
+- `indices_count`: Number of indices in the array
+- `sync_timeout`: Response timeout in seconds
+- `retries`: Maximum retry attempts
+- `max_eps`: Maximum events per second (0 = unlimited)
+
+**Returns:**
+- `true`: Notification succeeded
+- `false`: Notification failed
+
+**Usage Example:**
+```c
+// Notify data clean for disabled FIM components
+const char* indices_to_clean[] = {
+    FIM_FILES_SYNC_INDEX,
+    FIM_REGISTRY_KEYS_SYNC_INDEX,
+    FIM_REGISTRY_VALUES_SYNC_INDEX
+};
+
+bool notify_success = asp_notify_data_clean(syscheck.sync_handle,
+                                           indices_to_clean,
+                                           3,
+                                           syscheck.sync_response_timeout,
+                                           FIM_SYNC_RETRIES,
+                                           syscheck.sync_max_eps);
+```
+
+#### `asp_delete_database()`
+
+Deletes the sync protocol database associated with the handle.
+
+**Signature:**
+```c
+void asp_delete_database(AgentSyncProtocolHandle* handle);
+```
+
+**Parameters:**
+- `handle`: Sync protocol handle
+
+**Usage Example:**
+```c
+// Delete sync protocol database when FIM is disabled
+asp_delete_database(syscheck.sync_handle);
+```
+
 #### `asp_destroy()`
 
 Destroys and cleans up an Agent Sync Protocol handle.

@@ -10,10 +10,13 @@
  */
 
 #include "router.h"
-#include "flatbuffers/include/agentInfo_generated.h"
+#include "flatbuffers/include/inventorySync_generated.h"
 #include "logging_helper.h"
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <string>
+
 static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION = nullptr;
 
 void logMessage(const modules_log_level_t level, const std::string& msg)
@@ -25,14 +28,12 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 }
 
 #include "external/cpp-httplib/httplib.h"
-#include "flatbuffers/idl.h"
 #include "router.h"
 #include "routerFacade.hpp"
 #include "routerModule.hpp"
 #include "routerModuleGateway.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
-#include "shared_modules/utils/flatbuffers/include/inventorySync_schema.h"
 #include <filesystem>
 #include <malloc.h>
 #include <utility>
@@ -42,21 +43,6 @@ std::shared_mutex PROVIDERS_MUTEX;
 
 std::map<ROUTER_SUBSCRIBER_HANDLE, std::shared_ptr<RouterSubscriber>> SUBSCRIBERS;
 std::shared_mutex SUBSCRIBERS_MUTEX;
-
-flatbuffers::Parser initSchemaParsers()
-{
-    flatbuffers::Parser parser;
-    parser.opts.skip_unexpected_fields_in_json = true;
-    parser.opts.zero_on_float_to_int =
-        true; // Avoids issues with float to int conversion, custom option made for Wazuh.
-
-    if (!parser.Parse(inventorySync_SCHEMA))
-    {
-        throw std::runtime_error("Error parsing schema, " + std::string(parser.error_));
-    }
-
-    return parser;
-}
 
 /**
  * @brief Struct to hold the server instance and its thread.
@@ -284,49 +270,93 @@ extern "C"
         return retVal;
     }
 
-    int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema)
+    int router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
+                                  const char* message,
+                                  unsigned int message_size,
+                                  const char* authenticated_agent_id)
     {
-        int retVal = -1;
         try
         {
-            if (!message)
+            if (!message || message_size == 0)
             {
-                throw std::runtime_error("Error sending message to provider. Message is empty");
+                throw std::runtime_error("Message is empty");
             }
-            else
+
+            if (!authenticated_agent_id || strlen(authenticated_agent_id) == 0)
             {
-                if (schema == nullptr)
-                {
-                    throw std::runtime_error("Error sending message to provider. Schema is empty");
-                }
-
-                flatbuffers::Parser parser;
-                parser.opts.skip_unexpected_fields_in_json = true;
-                parser.opts.zero_on_float_to_int =
-                    true; // Avoids issues with float to int conversion, custom option made for Wazuh.
-
-                if (!parser.Parse(schema))
-                {
-                    throw std::runtime_error("Error parsing schema, " + std::string(parser.error_));
-                }
-
-                if (!parser.Parse(message))
-                {
-                    throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
-                }
-
-                std::vector<char> data(parser.builder_.GetBufferPointer(),
-                                       parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
-                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS.at(handle)->send(data);
-                retVal = 0;
+                throw std::runtime_error("Authenticated agent ID is empty");
             }
+
+            // Verify flatbuffer structure
+            flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(message), message_size);
+            if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+            {
+                throw std::runtime_error("Invalid flatbuffer message structure");
+            }
+
+            auto syncMessage = Wazuh::SyncSchema::GetMessage(message);
+
+            // Anti-spoofing validation: only validate Start messages (which contain agent ID)
+            if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
+            {
+                const auto startMsg = syncMessage->content_as_Start();
+                if (!startMsg)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR, "Invalid Start message");
+                    return -1;
+                }
+
+                // Start message MUST have an agent ID
+                if (!startMsg->agentid() || startMsg->agentid()->size() == 0)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Agent ID validation failed: Start message missing agent ID");
+                    return -1;
+                }
+
+                std::string claimedAgentId(startMsg->agentid()->str());
+
+                // Validate that both IDs contain only digits
+                auto isNumeric = [](const std::string& str)
+                {
+                    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+                };
+
+                std::string authId(authenticated_agent_id);
+                if (!isNumeric(authId) || !isNumeric(claimedAgentId))
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Agent ID validation failed: non-numeric ID. Authenticated: '" + authId +
+                                   "', Claimed: '" + claimedAgentId + "'");
+                    return -1;
+                }
+
+                // Compare agent IDs as integers to handle leading zeros
+                int authIdInt = std::atoi(authenticated_agent_id);
+                int claimIdInt = std::atoi(claimedAgentId.c_str());
+
+                if (authIdInt != claimIdInt)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Agent ID spoofing detected! Authenticated agent '" + authId + "' claimed to be '" +
+                                   claimedAgentId + "'. Connection rejected.");
+                    return -1;
+                }
+
+                logMessage(modules_log_level_t::LOG_DEBUG, "Agent ID validation passed for agent '" + authId + "'");
+            }
+
+            // Validation passed, send the message
+            std::vector<char> data(message, message + message_size);
+            std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+            PROVIDERS.at(handle)->send(data);
+            return 0;
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error in router_provider_send_sync: ") + e.what());
+            return -1;
         }
-        return retVal;
     }
 
     void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle)
@@ -337,56 +367,6 @@ extern "C"
         {
             PROVIDERS.erase(it);
         }
-    }
-
-    int router_provider_send_fb_agent_ctx(ROUTER_PROVIDER_HANDLE handle,
-                                          const char* message,
-                                          const size_t message_size,
-                                          const agent_ctx* agent_ctx)
-    {
-        int retVal = -1;
-        try
-        {
-            if (!message)
-            {
-                throw std::runtime_error("Error sending message to provider. Message is empty");
-            }
-
-            if (!agent_ctx)
-            {
-                throw std::runtime_error("Error sending message to provider. Agent context is empty");
-            }
-
-            logMessage(modules_log_level_t::LOG_DEBUG,
-                       "Sending message to provider: " + std::string(message, message_size));
-            // Build agent info message
-            flatbuffers::FlatBufferBuilder builder;
-            std::vector<uint8_t> messageVector(message, message + message_size);
-            auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
-                                                                agent_ctx->id,
-                                                                agent_ctx->name,
-                                                                agent_ctx->ip,
-                                                                agent_ctx->version,
-                                                                agent_ctx->module,
-                                                                &messageVector);
-            builder.Finish(agentInfo);
-
-            if (builder.GetSize() == 0)
-            {
-                throw std::runtime_error("Error building message to provider. Message is empty");
-            }
-
-            std::vector<char> data(builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize());
-
-            std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-            PROVIDERS.at(handle)->send(data);
-            retVal = 0;
-        }
-        catch (const std::exception& e)
-        {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
-        }
-        return retVal;
     }
 
     void router_register_api_endpoint(const char* module,

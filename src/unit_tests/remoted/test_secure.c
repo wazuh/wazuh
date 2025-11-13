@@ -156,15 +156,6 @@ int __wrap_close(int __fd)
     return mock();
 }
 
-int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg,
-                                        void* agent_ctx, int schema_type) {
-    check_expected_ptr(handle);
-    check_expected_ptr(msg);
-    check_expected_ptr(agent_ctx);
-    check_expected(schema_type);
-    return mock_type(int);
-}
-
 /*****************WRAPS********************/
 int __wrap_w_mutex_lock(pthread_mutex_t* mutex)
 {
@@ -1298,9 +1289,6 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     os_free(key->id);
@@ -1395,9 +1383,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -1987,9 +1972,6 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     os_free(key->id);
@@ -2063,9 +2045,6 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     os_free(key->id);
@@ -2130,19 +2109,14 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_success(void** state
 
     expect_function_call(__wrap_key_unlock);
 
-    /* enqueue */
-    expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
-    expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
-    expect_any(__wrap_batch_queue_enqueue_ex, data);
-    will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
     // Mock router provider send for upgrade ACK
     expect_string(__wrap_router_provider_send, message, "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\",\"agents\":[1]}}");
     expect_value(__wrap_router_provider_send, message_size, strlen("{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\",\"agents\":[1]}}") + 1);
     will_return(__wrap_router_provider_send, 0);
+
+    // Since message was successfully forwarded to router, it should NOT be enqueued to analysisd
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2211,17 +2185,15 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_no_handle(void** sta
 
     expect_function_call(__wrap_key_unlock);
 
-    /* enqueue */
+    // Expect debug message when router handle is not available
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'upgrade_notifications' not available.");
+
+    /* enqueue - since router forwarding failed, message goes to analysisd */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
-    // Expect debug message when router handle is not available
-    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'upgrade_notifications' not available.");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2287,17 +2259,17 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_invalid_json(void** 
 
     expect_function_call(__wrap_key_unlock);
 
-    /* enqueue */
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+
+    // Expect error message for invalid JSON
+    expect_string(__wrap__mwarn, formatted_msg, "Failed to parse router message JSON: 'nvalid json'");  // Updated expected message
+
+    /* enqueue - since router forwarding failed (invalid JSON), message goes to analysisd */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
-    // Expect error message for invalid JSON
-    expect_string(__wrap__mwarn, formatted_msg, "Failed to parse router message JSON: 'nvalid json'");  // Updated expected message
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2366,15 +2338,16 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_json_without_paramet
 
     expect_function_call(__wrap_key_unlock);
 
-    /* enqueue */
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not get parameters from upgrade message: '{\"command\":\"upgrade_update_status\",\"not-parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}'");
+
+    /* enqueue - since router forwarding failed (no parameters), message goes to analysisd */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-    expect_string(__wrap__mwarn, formatted_msg, "Could not get parameters from upgrade message: '{\"command\":\"upgrade_update_status\",\"not-parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}'");
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     // Clean up router handle
@@ -2442,20 +2415,21 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed(void** s
 
     expect_function_call(__wrap_key_unlock);
 
-    /* enqueue */
-    expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
-    expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "042");
-    expect_any(__wrap_batch_queue_enqueue_ex, data);
-    will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '042' (rc=-1)");
-
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-    expect_string(__wrap__mwarn, formatted_msg, "Unable to forward upgrade-ack message '{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}' for agent 042");
 
     // Mock router provider send for upgrade ACK - simulate failure
     expect_string(__wrap_router_provider_send, message, "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\",\"agents\":[42]}}");
     expect_value(__wrap_router_provider_send, message_size, strlen("{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\",\"agents\":[42]}}") + 1);
     will_return(__wrap_router_provider_send, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to forward upgrade-ack message '{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}' for agent 042");
+
+    /* enqueue - since router forwarding failed (send returned -1), message goes to analysisd */
+    expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
+    expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "042");
+    expect_any(__wrap_batch_queue_enqueue_ex, data);
+    will_return(__wrap_batch_queue_enqueue_ex, -1);
+    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '042' (rc=-1)");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2525,18 +2499,15 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    /* enqueue */
+    // Set router_forwarding_disabled to 1 to test disabled forwarding
+    router_forwarding_disabled = 1;
+
+    /* enqueue - since router forwarding is disabled, message goes to analysisd */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
-
-    // Set router_forwarding_disabled to 1 to test disabled forwarding
-    router_forwarding_disabled = 1;
-
-    // Expect the debug message when router forwarding is disabled
-    expect_string(__wrap__mdebug2, formatted_msg, "Router forwarding is disabled, not forwarding message from agent '001'.");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 

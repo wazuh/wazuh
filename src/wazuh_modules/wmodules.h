@@ -40,6 +40,9 @@
 #define GITHUB_WM_NAME "github"
 #define OFFICE365_WM_NAME "office365"
 #define MS_GRAPH_WM_NAME "ms-graph"
+#define AGENT_INFO_WM_NAME   "agent-info"
+#define SYSCOLLECTOR_WM_NAME "syscollector"
+#define FIM_NAME "fim"                      // FIM module name. It is not a wm:module, but we define the name for query it.
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -75,6 +78,7 @@ typedef enum crypto_type {
 #include "wm_task_general.h"
 #include "agent_upgrade/wm_agent_upgrade.h"
 #include "task_manager/wm_task_manager.h"
+#include "wm_agent_info.h"
 #include "wm_github.h"
 #include "wm_office365.h"
 #include "wm_router.h"
@@ -221,5 +225,22 @@ wmodule * wm_find_module(const char * name);
  * @return Size of the output
  */
 size_t wm_module_query(char * query, char ** output);
+
+/**
+ * @brief Query module with JSON format (efficient version with module_name parameter)
+ * @param module_name Name of the module to query
+ * @param json_command JSON command string
+ * @param output Output response
+ * @return size_t Size of the response
+ */
+size_t wm_module_query_json_ex(const char* module_name, const char* json_command, char** output);
+
+/**
+ * @brief Query FIM module directly via syscom socket
+ * @param command Command query
+ * @param response Output response
+ * @return size_t Size of the response
+ */
+size_t wm_fim_query_json(const char* command, char** response);
 
 #endif // W_MODULES

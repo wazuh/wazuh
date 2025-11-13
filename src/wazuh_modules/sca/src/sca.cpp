@@ -11,23 +11,13 @@ extern "C"
 #endif
 
 #include "../../wm_sca.h"
+#include "../../module_query_errors.h"
 #include "../wazuh_modules/wmodules_def.h"
 
 #include "logging_helper.hpp"
 
 #include <unistd.h>
 #include <chrono>
-
-/* SCA db directory */
-#ifndef WAZUH_UNIT_TESTING
-#define SCA_DB_DISK_PATH "queue/sca/db/sca.db"
-#else
-#ifndef WIN32
-#define SCA_DB_DISK_PATH    "./sca.db"
-#else
-#define SCA_DB_DISK_PATH    ".\\sca.db"
-#endif // WIN32
-#endif // WAZUH_UNIT_TESTING
 
 static push_stateless_func g_push_stateless_func = NULL;
 static push_stateful_func g_push_stateful_func = NULL;
@@ -79,6 +69,18 @@ void sca_start(const struct wm_sca_t* sca_config)
         SCA::instance().init();
         SCA::instance().setup(sca_config);
         SCA::instance().run();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, ex.what());
+    }
+}
+
+void sca_init()
+{
+    try
+    {
+        SCA::instance().init();
     }
     catch (const std::exception& ex)
     {
@@ -211,37 +213,52 @@ void SCA::init()
 {
     if (!m_sca)
     {
-        m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
-
-        m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
-
-        auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message) -> int
+        try
         {
-            if (g_push_stateful_func)
+            m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
+
+            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
+
+            auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
             {
-                return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str());
-            }
+                if (g_push_stateful_func)
+                {
+                    return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str(), version);
+                }
 
-            LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
-            return -1;
-        };
+                LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
+                return -1;
+            };
 
-        auto sendStatelessMessage = [](const std::string & message) -> int
+            auto sendStatelessMessage = [](const std::string & message) -> int
+            {
+                if (g_push_stateless_func)
+                {
+                    return g_push_stateless_func(message.c_str());
+                }
+
+                LoggingHelper::getInstance().log(LOG_WARNING, "No stateless message handler set");
+                return -1;
+            };
+
+            m_sca->SetPushStatelessMessageFunction(sendStatelessMessage);
+            m_sca->SetPushStatefulMessageFunction(persistStatefulMessage);
+
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
+        }
+        catch (const std::exception& ex)
         {
-            if (g_push_stateless_func)
-            {
-                return g_push_stateless_func(message.c_str());
-            }
-
-            LoggingHelper::getInstance().log(LOG_WARNING, "No stateless message handler set");
-            return -1;
-        };
-
-        m_sca->SetPushStatelessMessageFunction(sendStatelessMessage);
-        m_sca->SetPushStatefulMessageFunction(persistStatefulMessage);
+            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to initialize SCA module: " + std::string(ex.what()));
+            // Clean up partial initialization
+            m_sca.reset();
+            // Re-throw so outer layer can handle
+            throw;
+        }
     }
-
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA module already initialized.");
+    }
 }
 
 void SCA::setup(const struct wm_sca_t* sca_config)
@@ -302,7 +319,6 @@ void SCA::destroy()
     }
 
     m_sca->Stop();
-    m_sca.reset();
 }
 
 // LCOV_EXCL_START
@@ -317,11 +333,11 @@ bool SCA::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retri
     return false;
 }
 
-void SCA::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void SCA::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_sca)
     {
-        m_sca->persistDifference(id, operation, index, data);
+        m_sca->persistDifference(id, operation, index, data, version);
     }
 }
 
@@ -334,6 +350,119 @@ bool SCA::parseResponseBuffer(const uint8_t* data, size_t length)
 
     return false;
 }
+
+bool SCA::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_sca)
+    {
+        return m_sca->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void SCA::deleteDatabase()
+{
+    if (m_sca)
+    {
+        m_sca->deleteDatabase();
+    }
+}
+
+// LCOV_EXCL_START
+
+// Excluded from code coverage as it is not the real implementation of the query method.
+// This is just a placeholder to comply with the module interface requirements.
+// The real implementation should be done in the future iterations.
+std::string SCA::query(const std::string& jsonQuery)
+{
+    // Log the received query
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
+
+    try
+    {
+        // Parse JSON command
+        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
+
+        if (!query_json.contains("command") || !query_json["command"].is_string())
+        {
+            nlohmann::json response;
+            response["error"] = MQ_ERR_INVALID_PARAMS;
+            response["message"] = MQ_MSG_INVALID_PARAMS;
+            return response.dump();
+        }
+
+        std::string command = query_json["command"];
+        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
+
+        // Log the command being executed
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Executing command: " + command);
+
+        nlohmann::json response;
+
+        // Handle coordination commands with JSON responses
+        if (command == "pause")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA module paused successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "pause";
+        }
+        else if (command == "flush")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA module flushed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "flush";
+        }
+        else if (command == "get_version")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA version retrieved";
+            response["data"]["version"] = 4;
+        }
+        else if (command == "set_version")
+        {
+            // Extract version from parameters
+            int version = 0;
+
+            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
+            {
+                version = parameters["version"].get<int>();
+            }
+
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA version set successfully";
+            response["data"]["version"] = version;
+        }
+        else if (command == "resume")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "SCA module resumed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "resume";
+        }
+        else
+        {
+            response["error"] = MQ_ERR_UNKNOWN_COMMAND;
+            response["message"] = "Unknown SCA command: " + command;
+            response["data"]["command"] = command;
+        }
+
+        return response.dump();
+    }
+    catch (const std::exception& ex)
+    {
+        nlohmann::json response;
+        response["error"] = MQ_ERR_INTERNAL;
+        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
+
+        LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
+        return response.dump();
+    }
+}
+
+// LCOV_EXCL_STOP
 
 /// @brief C-style wrapper for SCA module synchronization.
 ///
@@ -360,14 +489,15 @@ bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, un
 /// @param operation Type of operation performed (CREATE, MODIFY, DELETE)
 /// @param index Index or key associated with the change
 /// @param data Serialized data content of the change
-void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data)
+/// @param version Version of the data
+void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)
 {
     if (id && index && data)
     {
         Operation cppOperation = (operation == OPERATION_CREATE) ? Operation::CREATE :
                                  (operation == OPERATION_MODIFY) ? Operation::MODIFY :
                                  (operation == OPERATION_DELETE) ? Operation::DELETE_ : Operation::NO_OP;
-        SCA::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data));
+        SCA::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data), version);
     }
 }
 
@@ -389,7 +519,72 @@ bool sca_parse_response(const unsigned char* data, size_t length)
     return false;
 }
 
+/// @brief C-style wrapper for notifying data clean in SCA module.
+/// @param indices Array of index strings to notify as clean
+/// @param indices_count Number of indices in the array
+/// @param timeout Timeout value in seconds for the notification operation
+/// @param retries Number of retry attempts on failure
+/// @param max_eps Maximum events per second during the notification
+/// @return true if the operation succeeds, false otherwise
+bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps)
+{
+    if (indices && indices_count > 0)
+    {
+        std::vector<std::string> indicesVec;
+        indicesVec.reserve(indices_count);
+
+        for (size_t i = 0; i < indices_count; ++i)
+        {
+            if (indices[i])
+            {
+                indicesVec.emplace_back(indices[i]);
+            }
+        }
+
+        if (!indicesVec.empty())
+        {
+            return SCA::instance().notifyDataClean(indicesVec, std::chrono::seconds(timeout), retries, max_eps);
+        }
+    }
+
+    return false;
+}
+
+/// @brief C-style wrapper for deleting the SCA database.
+void sca_delete_database()
+{
+    SCA::instance().deleteDatabase();
+}
+
 // LCOV_EXCL_STOP
+
+/// @brief Query handler for SCA module.
+///
+/// Handles query commands sent to the SCA module from other modules.
+///
+/// @param json_query Json query command string
+/// @param output Pointer to output string (caller must free with os_free)
+/// @return Length of the output string
+size_t sca_query(const char* json_query, char** output)
+{
+    if (!json_query || !output)
+    {
+        return 0;
+    }
+
+    try
+    {
+        std::string result = SCA::instance().query(std::string(json_query));
+        *output = strdup(result.c_str());
+        return strlen(*output);
+    }
+    catch (const std::exception& ex)
+    {
+        std::string error = "{\"error\":" + std::to_string(MQ_ERR_EXCEPTION) + ",\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
+        *output = strdup(error.c_str());
+        return strlen(*output);
+    }
+}
 
 #ifdef __cplusplus
 }

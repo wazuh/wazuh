@@ -72,7 +72,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,156152,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,12417720,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,484376,0.1
-/var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1088920,0.1
+/var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1206456,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2555328,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,203976,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,526048,0.1
@@ -80,7 +80,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904720,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2530376,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,554376,0.1
-/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,495720,0.1
+/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,582464,0.1
+/var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,387336,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,187064,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,12008,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
@@ -97,7 +98,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,22976,0.1
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,22952,0.1
 /var/ossec/active-response/bin/ip-customblock,root,wazuh,750,file,-rwxr-x---,22984,0.1
-/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,691,0.1
+/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,1890,0.1
 /var/ossec/active-response/bin/pf,root,wazuh,750,file,-rwxr-x---,22992,0.1
 /var/ossec/active-response/bin/npf,root,wazuh,750,file,-rwxr-x---,22960,0.1
 /var/ossec/active-response/bin/disable-account,root,wazuh,750,file,-rwxr-x---,22968,0.1

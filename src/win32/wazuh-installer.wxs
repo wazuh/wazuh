@@ -219,6 +219,9 @@
                     <Component Id="SCA_DLL" DiskId="1" Guid="2A4C3BF3-959F-440C-9B2B-3EF856C8D551">
                         <File Id="SCA_DLL" Name="sca.dll" Source="..\wazuh_modules\sca\build\bin\sca.dll" />
                     </Component>
+                    <Component Id="AGENT_INFO_DLL" DiskId="1" Guid="BF43CE03-6615-415C-8E07-4DBEB0CBBFEC">
+                        <File Id="AGENT_INFO_DLL" Name="agent_info.dll" Source="..\wazuh_modules\agent_info\build\bin\agent_info.dll" />
+                    </Component>
                     <Component Id="FIMDB_DLL" DiskId="1" Guid="15806BCA-876E-41D7-A82E-623EEEC63C3A">
                         <File Id="FIMDB_DLL" Name="libfimdb.dll" Source="..\syscheckd\build\bin\libfimdb.dll" />
                     </Component>
@@ -399,11 +402,11 @@
                             </Component>
                             <Component Id="SCA_WIN2022" DiskId="1" Guid="795CC5E6-C27A-47B5-945A-8026470F1B0D">
                                 <File Id="SCA_WIN2022" Name="cis_win2022.yml" Source="..\..\ruleset\sca\windows\cis_win2022.yml" />
-                                <Condition>BUILDVERSION &gt; 20000 AND MsiNTProductType &gt; 1</Condition>
+                                <Condition>BUILDVERSION = "20348" AND MsiNTProductType &gt; 1</Condition>
                             </Component>
                             <Component Id="SCA_WIN2025" DiskId="1" Guid="0C466900-EB75-46E1-97F3-14DB39E77412">
                                 <File Id="SCA_WIN2025" Name="cis_win2025.yml" Source="..\..\ruleset\sca\windows\cis_win2025.yml" />
-                                <Condition>BUILDVERSION &gt; 20000 AND MsiNTProductType &gt; 1</Condition>
+                                <Condition>BUILDVERSION = "26100" AND MsiNTProductType &gt; 1</Condition>
                             </Component>
                         </Directory>
                     </Directory>
@@ -422,6 +425,9 @@
                         <Directory Id="LOGCOLLECTOR" Name="logcollector" />
                         <Directory Id="SCA" Name="sca">
                             <Directory Id="SCA_DB" Name="db" />
+                        </Directory>
+                        <Directory Id="AGENT_INFO" Name="agent_info">
+                            <Directory Id="AGENT_INFO_DB" Name="db" />
                         </Directory>
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
@@ -508,6 +514,15 @@
                 <RemoveFolder Id="purgue_sca_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
+        <DirectoryRef Id="AGENT_INFO_DB">
+            <Component Id="CMP_AGENT_INFO_DB" Guid="a3c4f5e6-78d9-4b2a-9c1e-2f3d4e5a6b7c" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder>
+                    <Permission User="Everyone" GenericAll="yes" />
+                </CreateFolder>
+                <RemoveFile Id="purgue_agent_info_db" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_agent_info_db_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
         <DirectoryRef Id="LOGCOLLECTOR">
             <Component Id="CMP_LOGCOLLECTOR" Guid="88bdd977-56aa-4d15-9c6a-45eb86fdd12f" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
@@ -590,6 +605,7 @@
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="SCA_DLL" />
+            <ComponentRef Id="AGENT_INFO_DLL" />
             <ComponentRef Id="FIMDB_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="LIBWAZUHSHARED_DLL" />
@@ -622,6 +638,7 @@
             <ComponentRef Id="CMP_SYSCOLLECTOR" />
             <ComponentRef Id="CMP_SYSCOLLECTOR_DB" />
             <ComponentRef Id="CMP_SCA_DB" />
+            <ComponentRef Id="CMP_AGENT_INFO_DB" />
             <ComponentRef Id="CMP_LOGCOLLECTOR" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />

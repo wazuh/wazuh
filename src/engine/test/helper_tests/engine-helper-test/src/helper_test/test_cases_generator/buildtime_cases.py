@@ -46,7 +46,7 @@ class BuildtimeCases:
                     parameters, argument.get())
             else:
                 self.test_data.create_asset_for_buildtime(parameters)
-            self.test_data.push_test_data_for_buildtime(description)
+            self.test_data.push_test_data_for_buildtime(description, "fewer_arguments")
 
     def more_or_less_arguments_according_to_variadic(self):
         all_arguments = []

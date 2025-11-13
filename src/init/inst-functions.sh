@@ -850,6 +850,22 @@ InstallCommon()
         fi
     fi
 
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f wazuh_modules/agent_info/build/lib/libagent_info.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/agent_info/build/lib/libagent_info.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_info.dylib ${INSTALLDIR}/lib/libagent_info.dylib
+        fi
+    elif [ -f wazuh_modules/agent_info/build/lib/libagent_info.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh_modules/agent_info/build/lib/libagent_info.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_info.so
+        fi
+    fi
+
 
     if [ -f libstdc++.so.6 ]
     then
@@ -885,6 +901,8 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca/db
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
@@ -1089,6 +1107,16 @@ InstallLocal()
     if [ "X${update_only}" = "Xyes" ]; then
       ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
     fi
+
+    ### Install router library
+    if [ -f build/shared_modules/router/librouter.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/router/librouter.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so
+        fi
+    fi
 }
 
 TransferShared()
@@ -1122,14 +1150,6 @@ InstallServer()
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libjemalloc.so.2
-        fi
-    fi
-    if [ -f build/shared_modules/router/librouter.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/router/librouter.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so
         fi
     fi
     if [ -f build/shared_modules/content_manager/libcontent_manager.so ]

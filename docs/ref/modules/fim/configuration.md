@@ -16,7 +16,7 @@ The **FIM** module's persistence functionality can be configured through the `<s
     <synchronization>
         <enabled>yes</enabled>                    <!-- Enable/disable persistence -->
         <interval>300</interval>                  <!-- Sync interval in seconds -->
-        <response_timeout>30</response_timeout>   <!-- Response timeout in seconds -->
+        <response_timeout>60</response_timeout>   <!-- Response timeout in seconds -->
         <max_eps>10</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
     </synchronization>
 </syscheck>
@@ -28,7 +28,7 @@ The **FIM** module's persistence functionality can be configured through the `<s
 |-----------|------|---------|--------|-------------|
 | `enabled` | Boolean | `yes` | `yes`/`no` | Enable or disable FIM synchronization persistence |
 | `interval` | Integer | `300` | `1` - `∞` | How often to trigger synchronization with the manager (seconds) |
-| `response_timeout` | Integer | `30` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
+| `response_timeout` | Integer | `60` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
 | `max_eps` | Integer | `10` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
 
 ### General Syscheck Parameters
@@ -84,7 +84,7 @@ Defines how long to wait for manager acknowledgments during synchronization:
 
 ```xml
 <synchronization>
-    <response_timeout>30</response_timeout>
+    <response_timeout>60</response_timeout>
 </synchronization>
 ```
 
@@ -208,7 +208,7 @@ unsigned int notify_first_scan;  /* Notify the first scan */
     <synchronization>
         <enabled>yes</enabled>
         <interval>300</interval>
-        <response_timeout>30</response_timeout>
+        <response_timeout>60</response_timeout>
         <max_eps>10</max_eps>                  <!-- Sync-specific rate limit -->
     </synchronization>
 </syscheck>
@@ -226,7 +226,7 @@ For environments with high file change rates:
     <synchronization>
         <enabled>yes</enabled>
         <interval>60</interval>                <!-- More frequent sync -->
-        <response_timeout>15</response_timeout><!-- Shorter timeout -->
+        <response_timeout>60</response_timeout>
         <max_eps>500</max_eps>                 <!-- High sync rate limit -->
     </synchronization>
 </syscheck>

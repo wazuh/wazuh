@@ -356,6 +356,7 @@ namespace sca
                (pattern.size() >= 3 && pattern.compare(0, 3, "!n:") == 0);
     }
 
+    // LCOV_EXCL_START
     RegexEngineType StringToRegexEngineType(const std::string& regexType)
     {
         if (regexType == "pcre2")
@@ -378,5 +379,5 @@ namespace sca
                 return "invalid";
         }
     }
-
+    // LCOV_EXCL_STOP
 } // namespace sca

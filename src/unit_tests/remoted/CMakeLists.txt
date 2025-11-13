@@ -60,7 +60,6 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
                             -Wl,--wrap,fclose -Wl,--wrap,fcntl -Wl,--wrap,fflush -Wl,--wrap,fgetc \
-                            -Wl,--wrap,router_provider_send_fb_json \
                             -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,key_lock_read \
                             -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close \
@@ -102,7 +101,7 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--
                             -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,get_node_name")
 
 list(APPEND remoted_names "test_syslogtcp")
 list(APPEND remoted_flags "-W")

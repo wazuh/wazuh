@@ -1,4 +1,4 @@
-name: 5_testunit_inventorysync
+name: 5.X - Inventory Sync - Unit tests
 
 on:
   workflow_dispatch:

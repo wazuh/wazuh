@@ -320,7 +320,9 @@ public:
                     // Dispatch to error logger.
                 };
 
-                const auto onError = [this, &bulkData, bulkSize](const std::string& error, const long statusCode)
+                const auto onError = [this, &bulkData, bulkSize](const std::string& error,
+                                                                 const long statusCode,
+                                                                 const std::string& responseBody)
                 {
                     logError(IC_NAME, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)
@@ -387,6 +389,7 @@ public:
                 std::string url;
                 url = m_selector->getNext();
                 url += "/_bulk";
+                logDebug2(IC_NAME, "Bulk data: %s", bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = bulkData,
@@ -403,24 +406,69 @@ public:
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
     {
+        bulkIndex(id, index, data, std::string_view());
+    }
+
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+    {
         constexpr auto FORMATTED_SIZE {FORMATTED_LENGTH};
         constexpr auto ID_SIZE {64};
+        constexpr auto VERSION_SIZE {32};
+
+        // Validate input parameters
+        if (index.empty())
+        {
+            logError(IC_NAME, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            throw IndexerConnectorException("Index name cannot be empty");
+        }
+
+        if (data.empty())
+        {
+            logWarn(IC_NAME, "Empty data provided for document %.*s in index %.*s",
+                   static_cast<int>(id.size()), id.data(),
+                   static_cast<int>(index.size()), index.data());
+        }
 
         std::string bulkData;
-        bulkData.reserve(data.size() + index.size() + ID_SIZE + FORMATTED_SIZE);
+        bulkData.reserve(data.size() + index.size() + ID_SIZE + FORMATTED_SIZE + VERSION_SIZE);
 
         bulkData.append(R"({"index":{"_index":")");
         bulkData.append(index);
-        if (!id.empty())
+        if (!version.empty())
         {
-            bulkData.append(R"(","_id":")");
-            bulkData.append(id);
+            // In case the version is provided, the id must be provided too
+            if (!id.empty())
+            {
+                bulkData.append(R"(","_id":")");
+                bulkData.append(id);
+            }
+            else
+            {
+                logError(IC_NAME, "Id must be provided if version value is provided");
+                throw IndexerConnectorException("Id must be provided if version value is provided");
+            }
+
+            bulkData.append(R"(","version":")");
+            bulkData.append(version);
+            bulkData.append(R"(","version_type":"external_gte)");
+            logDebug2(IC_NAME, "Using external version %.*s for document %.*s",
+                     static_cast<int>(version.size()), version.data(),
+                     static_cast<int>(id.size()), id.data());
+        }
+        else
+        {
+            if (!id.empty())
+            {
+                bulkData.append(R"(","_id":")");
+                bulkData.append(id);
+            }
+            logDebug2(IC_NAME, "No version specified for document %.*s, using default versioning",
+                     static_cast<int>(id.size()), id.data());
         }
         bulkData.append(R"("}})");
         bulkData.append("\n");
         bulkData.append(data);
         bulkData.append("\n");
-
         m_dispatcher->push(bulkData);
     }
 

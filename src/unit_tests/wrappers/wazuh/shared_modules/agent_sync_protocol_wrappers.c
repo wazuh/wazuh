@@ -25,12 +25,14 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* id,
                              int operation,
                              const char* index,
-                             const char* data) {
+                             const char* data,
+                             uint64_t version) {
     check_expected_ptr(handle);
     check_expected_ptr(id);
     check_expected(operation);
     check_expected_ptr(index);
     check_expected_ptr(data);
+    check_expected(version);
 }
 
 bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
@@ -46,8 +48,72 @@ bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
     return mock_type(bool);
 }
 
-bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data) {
+void __wrap_asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
+                                       const char* id,
+                                       int operation,
+                                       const char* index,
+                                       const char* data) {
+    check_expected_ptr(handle);
+    check_expected_ptr(id);
+    check_expected(operation);
+    check_expected_ptr(index);
+    check_expected_ptr(data);
+}
+
+bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                   const char* index,
+                                   const char* checksum,
+                                   unsigned int sync_timeout,
+                                   unsigned int sync_retries,
+                                   size_t max_eps) {
+    check_expected_ptr(handle);
+    check_expected_ptr(index);
+    check_expected_ptr(checksum);
+    check_expected(sync_timeout);
+    check_expected(sync_retries);
+    check_expected(max_eps);
+    return mock_type(bool);
+}
+
+bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length) {
     check_expected_ptr(handle);
     check_expected_ptr(data);
+    check_expected(length);
     return mock_type(bool);
+}
+
+void __wrap_asp_clear_in_memory_data(AgentSyncProtocolHandle* handle) {
+    check_expected_ptr(handle);
+}
+
+bool __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                        int mode,
+                                        unsigned int sync_timeout,
+                                        unsigned int sync_retries,
+                                        size_t max_eps) {
+    check_expected_ptr(handle);
+    check_expected(mode);
+    check_expected(sync_timeout);
+    check_expected(sync_retries);
+    check_expected(max_eps);
+    return mock_type(bool);
+}
+
+bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
+                                  const char** indices,
+                                  size_t indices_count,
+                                  unsigned int sync_timeout,
+                                  unsigned int sync_retries,
+                                  size_t max_eps) {
+    check_expected_ptr(handle);
+    check_expected_ptr(indices);
+    check_expected(indices_count);
+    check_expected(sync_timeout);
+    check_expected(sync_retries);
+    check_expected(max_eps);
+    return mock_type(bool);
+}
+
+void __wrap_asp_delete_database(AgentSyncProtocolHandle* handle) {
+    check_expected_ptr(handle);
 }

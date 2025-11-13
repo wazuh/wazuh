@@ -38,8 +38,10 @@ Responsibilities:
 Defines metadata for each synchronization session.
 Responsibilities:
 
-* Stores synchronization mode (Full or Delta).
+* Stores synchronization mode (ModuleFull, ModuleDelta, ModuleCheck, MetadataDelta, MetadataCheck, GroupDelta, GroupCheck).
 * Maintains session ID, agent ID, and module name.
+* Tracks agent context information (OS details, version, groups).
+* Manages agent lock ownership flag for metadata/groups operations.
 * Provides metadata to IndexerConnector and ResponseDispatcher.
 
 ---
@@ -61,23 +63,60 @@ The Inventory Sync protocol operates in **three phases**:
 
 1. **Start Phase**
 
-   * Agent initiates synchronization with a `START` message.
+   * Agent initiates synchronization with a `START` message containing mode and agent context.
    * A unique session ID is generated.
    * Context is created, and RocksDB storage prepared.
+   * For metadata/groups modes: agent is locked to prevent concurrent inventory sessions.
 
 2. **Data Phase**
 
-   * Agent transmits inventory data in chunks.
+   * Agent transmits inventory data in chunks (for module modes).
    * Data is written into RocksDB with session-prefixed keys.
    * FlatBuffer validation ensures message integrity.
    * Both insert (upsert) and delete operations are supported.
+   * For metadata/groups check modes: data phase is skipped (disaster recovery).
 
 3. **End Phase**
 
    * Agent sends an `END` message.
    * Session data is processed by the IndexerConnector.
    * Bulk indexing/deletion operations are issued to the Indexer.
+   * For disaster recovery modes: update-by-query operations scan all indices.
    * An acknowledgment is sent back, and session data is cleaned up.
+   * Agent is unlocked if it was locked for metadata/groups operations.
+
+---
+
+## Agent Context Synchronization
+
+### Metadata and Groups Updates
+
+The module handles two types of agent context updates:
+
+**Delta Operations** (MetadataDelta, GroupDelta):
+* Triggered when agent metadata or group membership changes
+* Updates `agent.*` fields on all existing documents for that agent
+* Uses update-by-query to efficiently update documents across multiple indices
+* Requires agent locking to prevent race conditions with concurrent inventory syncs
+
+**Disaster Recovery** (MetadataCheck, GroupCheck):
+* Periodic integrity checks to detect and fix inconsistencies
+* Scans all documents for an agent across all indices
+* Corrects any documents with outdated or incorrect agent context
+* Ensures metadata/groups consistency after crashes, errors, or data corruption
+
+### Agent Locking Mechanism
+
+To prevent race conditions between inventory updates and metadata/groups updates:
+
+1. **Lock Acquisition**: Metadata/groups sessions lock the agent before processing
+2. **Session Waiting**: Module waits up to 60 seconds for active inventory sessions to complete
+3. **Bulk Flush**: Pending bulk operations are flushed to allow sessions to finish quickly
+4. **Safe Processing**: Once all sessions complete, metadata/groups update proceeds
+5. **Lock Release**: Agent is unlocked after operation completes or on error/timeout
+6. **Lock Tracking**: Context tracks which session owns the lock via `ownsAgentLock` flag
+
+This ensures that inventory documents receive correct agent context without conflicts.
 
 ---
 

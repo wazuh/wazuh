@@ -194,11 +194,23 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "hex_to_number", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opBuilderHelperHexToNumber});
     registry->template add<builders::OpBuilderEntry>(
+        "iana_protocol_name_to_number",
+        {schemf::STypeToken::create(schemf::Type::KEYWORD), builders::opBuilderHelperIanaProtocolNameToNumber});
+    registry->template add<builders::OpBuilderEntry>(
+        "iana_protocol_number_to_name",
+        {schemf::STypeToken::create(schemf::Type::KEYWORD), builders::opBuilderHelperIanaProtocolNumberToName});
+    registry->template add<builders::OpBuilderEntry>(
         "ip_version",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperIPVersionFromIPStr});
     registry->template add<builders::OpBuilderEntry>(
         "network_community_id",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperNetworkCommunityId});
+    registry->template add<builders::OpBuilderEntry>(
+        "syslog_extract_facility",
+        {schemf::JTypeToken::create(json::Json::Type::Object), builders::opBuilderHelperSyslogExtractFacility});
+    registry->template add<builders::OpBuilderEntry>(
+        "syslog_extract_severity",
+        {schemf::JTypeToken::create(json::Json::Type::Object), builders::opBuilderHelperSyslogExtractSeverity});
     registry->template add<builders::OpBuilderEntry>(
         "join", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringFromArray});
     registry->template add<builders::OpBuilderEntry>(
@@ -267,7 +279,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     // Register the to_bool helper (boolean result)
     registry->template add<builders::OpBuilderEntry>(
         "to_bool", {schemf::STypeToken::create(schemf::Type::BOOLEAN), builders::opBuilderHelperToBool});
-        // Transform helpers: Definition functions
+    // Transform helpers: Definition functions
     registry->template add<builders::OpBuilderEntry>(
         "get_key_in", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
     registry->template add<builders::OpBuilderEntry>(
@@ -284,6 +296,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     // Global event helpers
     registry->template add<builders::OpBuilderEntry>(
         "erase_custom_fields", {schemf::runtimeValidation(), builders::opBuilderHelperEraseCustomFields});
+    registry->template add<builders::OpBuilderEntry>(
+        "sanitize_fields", {schemf::runtimeValidation(), builders::opBuilderHelperSanitizeFields});
     // HLP Parser helpers
     registry->template add<builders::OpBuilderEntry>(
         "parse_bool", {schemf::STypeToken::create(schemf::Type::BOOLEAN), builders::optransform::boolParseBuilder});
@@ -378,7 +392,8 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
     registry->template add<builders::StageBuilder>(syntax::asset::PARSE_KEY,
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
-    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY, builders::getFileOutputBuilder(deps.logManager));
+    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY,
+                                                   builders::getFileOutputBuilder(deps.logManager));
     registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
                                                    builders::getIndexerOutputBuilder(deps.iConnector));
 }

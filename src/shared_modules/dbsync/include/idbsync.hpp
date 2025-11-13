@@ -57,4 +57,7 @@ class IDBSync
         /// @brief Get current dbsync handle in the instance.
         /// @return DBSYNC_HANDLE to be used in all internal calls.
         virtual DBSYNC_HANDLE handle() = 0;
+
+        /// @brief Closes the database connection and deletes the database file using the stored path.
+        virtual void closeAndDeleteDatabase() = 0;
 };

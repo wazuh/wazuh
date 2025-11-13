@@ -100,6 +100,20 @@ namespace Utils
         return ret;
     }
 
+    static bool replaceLast(std::string& data, const std::string& toSearch, const std::string& toReplace)
+    {
+        auto pos {data.rfind(toSearch)};  // find last occurrence
+        bool ret {false};
+
+        if (pos != std::string::npos)
+        {
+            data.replace(pos, toSearch.size(), toReplace);
+            ret = true;
+        }
+
+        return ret;
+    }
+
     static std::string leftTrim(const std::string& str, const std::string& args = " ")
     {
         const auto pos {str.find_first_not_of(args)};
@@ -533,30 +547,6 @@ namespace Utils
 
         return tokens;
     }
-    /**
-     * @brief Split a maintainer field into name and email.
-     *
-     * @param input Input string containing the maintainer field.
-     * @param name Output parameter for the name.
-     * @param email Output parameter for the email.
-     */
-    static void splitMaintainerField(const std::string& input, std::string& name, std::string& email)
-    {
-        const auto start = input.find('<');
-        const auto end = input.find('>');
-
-        if (start != std::string::npos && end != std::string::npos && start < end)
-        {
-            name  = Utils::trim(input.substr(0, start));
-            email = input.substr(start + 1, end - start - 1);
-        }
-        else
-        {
-            name = input;
-            email.clear();
-        }
-    }
-
 #if __cplusplus >= 201703L
 
     static bool startsWith(std::string_view str, std::string_view start)

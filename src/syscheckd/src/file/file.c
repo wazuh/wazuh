@@ -210,19 +210,37 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    // Add state modified_at field for stateful event only
+    // Add state modified_at and document_version fields for stateful event only
     cJSON* state = cJSON_CreateObject();
-    if (state != NULL) {
-        char modified_at_time[32];
-        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
-        cJSON_AddStringToObject(state, "modified_at", modified_at_time);
-        cJSON_AddItemToObject(stateful_event, "state", state);
+    cJSON_AddItemToObject(stateful_event, "state", state);
+
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+
+    cJSON *version_aux = NULL;
+    // For MODIFIED events, version is in the "new" object
+    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
+    if (new_data != NULL) {
+        version_aux = cJSON_GetObjectItem(new_data, "version");
+    } else {
+        // For INSERTED/DELETED events, version is at the top level
+        version_aux = cJSON_GetObjectItem(result_json, "version");
+    }
+
+    uint64_t document_version = 0;
+    if (version_aux != NULL) {
+        document_version = (uint64_t)version_aux->valueint;
+        cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
+    } else {
+        mdebug1("Couldn't find version for '%s", path);
+        goto end; // LCOV_EXCL_LINE
     }
 
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
-    persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event);
+    persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
 
 end:
     os_free(diff);

@@ -123,6 +123,43 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
 MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Maps an IANA IP protocol name to its numeric code (0..255) and returns it as a string.
+ * Accepts a JSON string by reference (e.g., "tcp", "udp", "ipv6-icmp", "gre").
+ * The lookup is strict to IANA protocol keywords (not application-layer names).
+ * Normalization: case-insensitive, spaces/underscores -> '-', y alias comunes
+ * (icmpv6->ipv6-icmp, udp-lite->udplite, ip-in-ip->ipip).
+ *
+ * @param opArgs   Exactly one argument: a reference to the source JSON string.
+ * @param buildCtx Build context used for optional schema pre-checks and tracing.
+ * @return MapOp producing a JSON string with the decimal code on success.
+ *
+ * Fails at runtime if the reference is missing, not a string, the name is unknown,
+ * or the numeric-to-string conversion fails.
+ *
+ * @throws std::runtime_error if the parameter is not a reference, or if more than one
+ * parameter is provided.
+ */
+MapOp opBuilderHelperIanaProtocolNameToNumber(const std::vector<OpArg>& opArgs,
+                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Maps an IANA IP protocol numeric code (0..255) to its canonical name.
+ * Accepts a JSON number by reference (integer only).
+ *
+ * @param opArgs   Exactly one argument: a reference to the source JSON number.
+ * @param buildCtx Build context used for optional schema pre-checks and tracing.
+ * @return MapOp producing a JSON string with the canonical IANA keyword on success.
+ *
+ * Fails at runtime if the reference is missing, not a number, not an integer in [0,255],
+ * or if the code is unassigned/experimental/reserved/unknown.
+ *
+ * @throws std::runtime_error if the parameter is not a reference, or if more than one
+ * parameter is provided.
+ */
+MapOp opBuilderHelperIanaProtocolNumberToName(const std::vector<OpArg>& opArgs,
+                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Transforms a string by replacing, if exists, every ocurrence of a substring by a
  * new one.
  *
@@ -265,6 +302,17 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Function that sanitizes object keys, array elements, or simple strings
+ *
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return A HelperBuilder object that erases custom fields from an event.
+ */
+TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
 //*************************************************
 //*           Regex tranform                      *
 //*************************************************
@@ -348,6 +396,36 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
  */
 MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+//*************************************************
+//*              Syslog transform                  *
+//*************************************************
+
+/**
+ * @brief Helper that resolves a syslog priority into the corresponding facility code and name.
+ *
+ * The helper expects a single argument (literal or reference) that represents the syslog priority value. The resulting
+ * JSON object contains the computed `code` and `name` fields so it can be stored under `log.syslog.facility`.
+ *
+ * @param opArgs Vector of operation arguments for the helper.
+ * @param buildCtx Shared pointer to the build context used during helper execution.
+ * @return MapOp lifter that populates both `log.syslog.facility.code` and `log.syslog.facility.name`.
+ */
+MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Helper that resolves a syslog priority into the corresponding severity code and name.
+ *
+ * The helper expects a single argument (literal or reference) that represents the syslog priority value. The resulting
+ * JSON object contains the computed `code` and `name` fields so it can be stored under `log.syslog.severity`.
+ *
+ * @param opArgs Vector of operation arguments for the helper.
+ * @param buildCtx Shared pointer to the build context used during helper execution.
+ * @return MapOp lifter that populates both `log.syslog.severity.code` and `log.syslog.severity.name`.
+ */
+MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 //*************************************************
 //*              Time tranform                    *

@@ -11,8 +11,10 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -63,7 +65,7 @@ class SecurityConfigurationAssessment
 
         /// @brief Set the function to be called for stateful messages
         /// @param pushMessage Function to push stateful messages
-        void SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)>& pushMessage);
+        void SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>& pushMessage);
 
         /// @brief Set the global wm_exec function pointer (static)
         /// @param wmExecFunc Function pointer to wm_exec
@@ -92,13 +94,25 @@ class SecurityConfigurationAssessment
         /// @param operation Operation type
         /// @param index Index of the record
         /// @param data Data to be persisted
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+        /// @param version Version of the data
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
 
         /// @brief Parse a sync response buffer
         /// @param data Pointer to the data buffer
         /// @param length Length of the data buffer
         /// @return true if parsing was successful, false otherwise
         bool parseResponseBuffer(const uint8_t* data, size_t length);
+
+        /// @brief Notify that data associated with specified indices needs to be cleaned.
+        /// @param indices Vector of indices whose data needs to be cleaned.
+        /// @param timeout Timeout value in seconds for the operation.
+        /// @param retries Number of retry attempts on failure.
+        /// @param maxEps Maximum events per second during the operation.
+        /// @return true if the operation succeeds, false otherwise.
+        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+
+        /// @brief Delete the database
+        void deleteDatabase();
 
     protected:
         /// @brief List of policies
@@ -118,7 +132,7 @@ class SecurityConfigurationAssessment
         std::function<int(const std::string&)> m_pushStatelessMessage;
 
         /// @brief Function for pushing stateful event messages
-        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> m_pushStatefulMessage;
+        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_pushStatefulMessage;
 
         /// @brief Pointer to a file system wrapper
         std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
@@ -134,6 +148,12 @@ class SecurityConfigurationAssessment
 
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};
+
+        /// @brief Condition variable for sleep interruption
+        std::condition_variable m_cv;
+
+        /// @brief Mutex for condition variable
+        std::mutex m_mutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;

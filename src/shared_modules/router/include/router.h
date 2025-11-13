@@ -119,30 +119,23 @@ extern "C"
     EXPORTED int router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size);
 
     /**
-     * @brief Send a message to the router provider using flatbuffers.
+     * @brief Send inventory sync message with anti-spoofing validation.
+     *
+     * Validates that the agent ID in the flatbuffer message matches the authenticated agent ID.
+     * If validation passes, forwards the message to inventory sync. If validation fails, logs
+     * a security event and returns an error.
      *
      * @param handle Handle to the router provider.
-     * @param message Message to send.
-     * @param schema Schema of the message.
-     * @return true if the message was sent successfully.
-     * @return false if the message was not sent successfully.
+     * @param message Inventory sync flatbuffer message to send.
+     * @param message_size Size of the flatbuffer message.
+     * @param authenticated_agent_id Agent ID from the authenticated session (from keystore).
+     * @return 0 if the message was validated and sent successfully.
+     * @return -1 if validation failed or the message was not sent successfully.
      */
-    EXPORTED int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
-
-    /**
-     * @brief Send a message to the router provider using flatbuffers and agent context.
-     *
-     * @param handle Handle to the router provider.
-     * @param message Message to send.
-     * @param message_size Size of the message.
-     * @param agent_ctx Agent context.
-     * @return true if the message was sent successfully.
-     * @return false if the message was not sent successfully.
-     */
-    EXPORTED int router_provider_send_fb_agent_ctx(ROUTER_PROVIDER_HANDLE handle,
-                                                   const char* message,
-                                                   const size_t message_size,
-                                                   const struct agent_ctx* agent_ctx);
+    EXPORTED int router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
+                                           const char* message,
+                                           unsigned int message_size,
+                                           const char* authenticated_agent_id);
 
     /**
      * @brief Destroy a router provider.
@@ -193,8 +186,7 @@ extern "C"
      * @param callback Callback function to be called when message is received.
      * @return 0 on success, -1 on error.
      */
-    EXPORTED int router_subscriber_subscribe(ROUTER_SUBSCRIBER_HANDLE handle,
-                                             router_subscriber_callback_t callback);
+    EXPORTED int router_subscriber_subscribe(ROUTER_SUBSCRIBER_HANDLE handle, router_subscriber_callback_t callback);
 
     /**
      * @brief Unsubscribe from messages.
@@ -225,12 +217,11 @@ typedef ROUTER_PROVIDER_HANDLE (*router_provider_create_func)(const char* name, 
 typedef bool (*router_provider_send_func)(ROUTER_PROVIDER_HANDLE handle,
                                           const char* message,
                                           unsigned int message_size);
-typedef bool (*router_provider_send_fb_func)(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
 
-typedef bool (*router_provider_send_fb_agent_ctx_func)(ROUTER_PROVIDER_HANDLE handle,
-                                                       const char* message,
-                                                       const size_t message_size,
-                                                       const struct agent_ctx* agent_ctx);
+typedef int (*router_provider_send_sync_func)(ROUTER_PROVIDER_HANDLE handle,
+                                              const char* message,
+                                              unsigned int message_size,
+                                              const char* authenticated_agent_id);
 
 typedef void (*router_provider_destroy_func)(ROUTER_PROVIDER_HANDLE handle);
 
@@ -245,7 +236,9 @@ typedef void (*router_start_api_func)(const char* socket_path);
 
 typedef void (*router_stop_api_func)(const char* socket_path);
 
-typedef ROUTER_SUBSCRIBER_HANDLE (*router_subscriber_create_func)(const char* topic_name, const char* subscriber_id, bool isLocal);
+typedef ROUTER_SUBSCRIBER_HANDLE (*router_subscriber_create_func)(const char* topic_name,
+                                                                  const char* subscriber_id,
+                                                                  bool isLocal);
 
 typedef int (*router_subscriber_subscribe_func)(ROUTER_SUBSCRIBER_HANDLE handle, router_subscriber_callback_t callback);
 

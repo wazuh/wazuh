@@ -1,7 +1,9 @@
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
+#include <charconv>
 #include <chrono>
 #include <iterator>
 #include <numeric>
@@ -19,6 +21,7 @@
 #include <base/error.hpp>
 #include <base/utils/communityId.hpp>
 #include <base/utils/ipUtils.hpp>
+#include <base/utils/sanitizers.hpp>
 #include <base/utils/stringUtils.hpp>
 
 #include "base/error.hpp"
@@ -36,6 +39,14 @@ constexpr auto TRACE_TARGET_NOT_FOUND = "[{}] -> Failure: Target field '{}' refe
 constexpr auto TRACE_TARGET_TYPE_NOT_STRING = "[{}] -> Failure: Target field '{}' type is not string";
 constexpr auto TRACE_REFERENCE_NOT_FOUND = "[{}] -> Failure: Parameter '{}' reference not found";
 constexpr auto TRACE_REFERENCE_TYPE_IS_NOT = "[{}] -> Failure: Parameter '{}' type is not ";
+
+constexpr std::array<std::string_view, 24> SYSLOG_FACILITY_NAMES = {
+    "kernel", "user",   "mail",     "daemon", "auth",   "syslog",   "lpr",      "news",
+    "uucp",   "cron",   "authpriv", "ftp",    "ntp",    "logaudit", "logalert", "solaris-cron",
+    "local0", "local1", "local2",   "local3", "local4", "local5",   "local6",   "local7"};
+
+constexpr std::array<std::string_view, 8> SYSLOG_SEVERITY_NAMES = {
+    "emergency", "alert", "critical", "error", "warning", "notice", "informational", "debug"};
 
 /**
  * @brief NumberOperators supported by the string helpers.
@@ -1229,6 +1240,144 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
     };
 }
 
+// field: +iana_protocol_name_to_number/$<protocol_name_reference>
+MapOp opBuilderHelperIanaProtocolNameToNumber(const std::vector<OpArg>& opArgs,
+                                              const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Exactly one argument: must be a reference to a JSON string.
+    builder::builders::utils::assertSize(opArgs, 1);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto ref = *std::static_pointer_cast<Reference>(opArgs[0]);
+
+    if (buildCtx->validator().hasField(ref.dotPath()))
+    {
+        const auto jType = buildCtx->validator().getJsonType(ref.dotPath());
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 ref.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
+    }
+    const std::string name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureMissingOrNotString {
+        fmt::format("{} -> Reference '{}' is missing or not a string", name, ref.dotPath())};
+
+    const auto sourcePath = ref.jsonPath();
+
+    return [sourcePath, name, successTrace, failureMissingOrNotString, runState = buildCtx->runState()](
+               base::ConstEvent event) -> MapResult
+    {
+        // returns nullopt if missing or not a string
+        const auto s = event->getString(sourcePath);
+        if (!s.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureMissingOrNotString);
+        }
+
+        // Strict IANA lookup
+        if (auto code = ::utils::ip::ianaProtocolNameToNumber(*s))
+        {
+            json::Json out;
+            out.setString(std::to_string(static_cast<unsigned>(*code)));
+            RETURN_SUCCESS(runState, out, successTrace);
+        }
+
+        const std::string failureUnknown = fmt::format("[{}] -> Failure: Unknown IANA protocol name '{}'", name, *s);
+        RETURN_FAILURE(runState, json::Json {}, failureUnknown);
+    };
+}
+
+// field: +iana_protocol_number_to_name/$<protocol_number_reference>
+MapOp opBuilderHelperIanaProtocolNumberToName(const std::vector<OpArg>& opArgs,
+                                              const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 1);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto ref = *std::static_pointer_cast<Reference>(opArgs[0]);
+
+    if (buildCtx->validator().hasField(ref.dotPath()))
+    {
+        const auto jType = buildCtx->validator().getJsonType(ref.dotPath());
+        if (jType != json::Json::Type::Number && jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected 'number|string' reference but got reference '{}' of type '{}'",
+                            ref.dotPath(),
+                            json::Json::typeToStr(jType)));
+        }
+    }
+
+    const std::string name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureMissingOrNotNumOrStr {
+        fmt::format("{} -> Reference '{}' is missing or not a number/string", name, ref.dotPath())};
+    const std::string failureNotIntegerOrRange {
+        fmt::format("{} -> Protocol number must be an integer in [0,255]", name)};
+
+    const auto sourcePath = ref.jsonPath();
+
+    return [sourcePath,
+            name,
+            successTrace,
+            failureMissingOrNotNumOrStr,
+            failureNotIntegerOrRange,
+            runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        if (const auto intOpt = event->getIntAsInt64(sourcePath))
+        {
+            const auto v = *intOpt;
+            if (v < 0 || v > 255)
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureNotIntegerOrRange);
+            }
+
+            const auto code = static_cast<uint8_t>(v);
+            if (auto nameOpt = ::utils::ip::ianaProtocolNumberToName(code))
+            {
+                json::Json out;
+                out.setString(std::string {nameOpt->data(), nameOpt->size()});
+                RETURN_SUCCESS(runState, out, successTrace);
+            }
+
+            const std::string failureUnknown = fmt::format(
+                "[{}] -> Failure: Unknown/unassigned IANA protocol number '{}'", name, static_cast<int>(code));
+            RETURN_FAILURE(runState, json::Json {}, failureUnknown);
+        }
+
+        if (const auto sOpt = event->getString(sourcePath))
+        {
+            const std::string& s = *sOpt;
+            int64_t parsed = 0;
+            const char* first = s.data();
+            const char* last = s.data() + s.size();
+            std::from_chars_result res = std::from_chars(first, last, parsed, 10);
+            const bool ok = (res.ec == std::errc {} && res.ptr == last);
+            if (!ok || parsed < 0 || parsed > 255)
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureNotIntegerOrRange);
+            }
+
+            const auto code = static_cast<uint8_t>(parsed);
+            if (auto nameOpt = ::utils::ip::ianaProtocolNumberToName(code))
+            {
+                json::Json out;
+                out.setString(std::string {nameOpt->data(), nameOpt->size()});
+                RETURN_SUCCESS(runState, out, successTrace);
+            }
+
+            const std::string failureUnknown = fmt::format(
+                "[{}] -> Failure: Unknown/unassigned IANA protocol number '{}'", name, static_cast<int>(code));
+            RETURN_FAILURE(runState, json::Json {}, failureUnknown);
+        }
+
+        RETURN_FAILURE(runState, json::Json {}, failureMissingOrNotNumOrStr);
+    };
+}
+
 // field: +array_obj_to_mapkv/$<array_reference>
 MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -1995,6 +2144,51 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
     };
 }
 
+// event: +sanitize_fields
+TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 0, 1);
+
+    // default operation
+    auto op = false;
+    if (opArgs.size() > 0)
+    {
+        builder::builders::utils::assertValue(opArgs, 0);
+
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isBool())
+        {
+            throw std::runtime_error(fmt::format("Expected 'bool' parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+
+        op = std::static_pointer_cast<Value>(opArgs[0])->value().getBool().value();
+    }
+
+    const auto name = buildCtx->context().opName;
+
+    // Tracing
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+
+    // Return Op
+    return [runState = buildCtx->runState(), targetField = targetField.jsonPath(), successTrace, name, op](
+               base::Event event) -> TransformResult
+    {
+        try
+        {
+            event->renameIfKey(&sanitizer::basicNormalize, op, targetField);
+            RETURN_SUCCESS(runState, event, successTrace);
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(
+                runState, event, fmt::format("{} -> An error has occurred during sanitization: '{}'", name, e.what()));
+        }
+    };
+}
+
 // field: +split/$field/[,| | ...]
 TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
@@ -2609,6 +2803,123 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
 
         json::Json result;
         result.setString(std::get<std::string>(cid));
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
+// field: +syslog_extract_facility/$<log.syslog.priority>
+MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 1);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto priorityRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    const auto& validator = buildCtx->validator();
+
+    if (validator.hasField(priorityRef.dotPath()))
+    {
+        const auto type = validator.getJsonType(priorityRef.dotPath());
+        if (type != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected 'number' reference but got reference '{}' of type '{}'",
+                                                 priorityRef.dotPath(),
+                                                 json::Json::typeToStr(type)));
+        }
+    }
+
+    const auto name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, name, priorityRef.dotPath());
+    const std::string failureOutOfRange =
+        fmt::format("[{}] -> Failure: 'priority' out of range (expected 0-191)", name);
+
+    // 5) Lambda runtime (solo una lectura del campo priority)
+    return [successTrace,
+            failureNotFound,
+            failureOutOfRange,
+            priorityPath = priorityRef.jsonPath(),
+            runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        const auto syslogObj = event->getIntAsInt64(priorityPath);
+        if (!syslogObj.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureNotFound);
+        }
+        const int64_t priority = syslogObj.value();
+        if (priority < 0 || priority > 191)
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureOutOfRange);
+        }
+
+        const int facilityCode = static_cast<int>(priority / 8);
+
+        const std::string facilityName =
+            (facilityCode >= 0 && facilityCode < static_cast<int>(SYSLOG_FACILITY_NAMES.size()))
+                ? std::string {SYSLOG_FACILITY_NAMES[facilityCode]}
+                : fmt::format("unknown({})", facilityCode);
+
+        json::Json result;
+        result.setInt64(facilityCode, "/code");
+        result.setString(facilityName, "/name");
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
+// field: +syslog_extract_severity/$<log.syslog.priority>
+MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 1);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto priorityRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    const auto& validator = buildCtx->validator();
+
+    if (validator.hasField(priorityRef.dotPath()))
+    {
+        const auto type = validator.getJsonType(priorityRef.dotPath());
+        if (type != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected 'number' reference but got reference '{}' of type '{}'",
+                                                 priorityRef.dotPath(),
+                                                 json::Json::typeToStr(type)));
+        }
+    }
+
+    const auto name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, name, priorityRef.dotPath());
+    const std::string failureOutOfRange =
+        fmt::format("[{}] -> Failure: 'priority' out of range (expected 0-191)", name);
+
+    // 5) Lambda runtime (solo una lectura del campo priority)
+    return [successTrace,
+            failureNotFound,
+            failureOutOfRange,
+            priorityPath = priorityRef.jsonPath(),
+            runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        const auto syslogObj = event->getIntAsInt64(priorityPath);
+        if (!syslogObj.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureNotFound);
+        }
+        const int64_t priority = syslogObj.value();
+        if (priority < 0 || priority > 191)
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureOutOfRange);
+        }
+
+        const int severityCode = static_cast<int>(priority % 8);
+        const std::string severityName =
+            (severityCode >= 0 && severityCode < static_cast<int>(SYSLOG_SEVERITY_NAMES.size()))
+                ? std::string {SYSLOG_SEVERITY_NAMES[severityCode]}
+                : fmt::format("unknown({})", severityCode);
+
+        json::Json result;
+        result.setInt64(severityCode, "/code");
+        result.setString(severityName, "/name");
         RETURN_SUCCESS(runState, result, successTrace);
     };
 }

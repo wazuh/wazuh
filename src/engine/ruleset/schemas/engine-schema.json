@@ -1717,8 +1717,8 @@
       "type": "double"
     },
     "gen_ai.response.finish_reasons": {
-      "array": false,
-      "type": "nested"
+      "array": true,
+      "type": "keyword"
     },
     "gen_ai.response.id": {
       "array": false,

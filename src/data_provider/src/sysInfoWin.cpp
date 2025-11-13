@@ -437,7 +437,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
 
                     packageJson["name"]         = std::move(name);
                     packageJson["description"]  = UNKNOWN_VALUE;
-                    packageJson["version"]      = version.empty() ? UNKNOWN_VALUE : std::move(version);
+                    packageJson["version_"]     = version.empty() ? UNKNOWN_VALUE : std::move(version);
                     packageJson["category"]     = UNKNOWN_VALUE;
                     packageJson["priority"]     = UNKNOWN_VALUE;
                     packageJson["size"]         = 0;
@@ -648,6 +648,8 @@ nlohmann::json SysInfo::getOsInfo() const
         std::make_shared<SysOsInfoProviderWindows>()
     };
     SysOsInfo::setOsInfo(spOsInfoProvider, ret);
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "windows";
     return ret;
 }
 
@@ -888,7 +890,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     auto fillList {[&callback, &set](nlohmann::json & data)
     {
         const std::string key {data.at("name").get_ref<const std::string&>() +
-                               data.at("version").get_ref<const std::string&>()};
+                               data.at("version_").get_ref<const std::string&>()};
         const auto result {set.insert(key)};
 
         if (result.second)
@@ -912,7 +914,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {"NPM", getNodeDirectories()}
     };
 
-    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
+    ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
@@ -1237,13 +1239,13 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
             extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
             extensionItem["browser_profile_name"]      = (ext.contains("profile") && !ext["profile"].get<std::string>().empty()) ? ext["profile"] : UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = ext.value("profile_path",        UNKNOWN_VALUE);
+            extensionItem["browser_profile_path"]      = (ext.contains("profile_path") && !ext["profile_path"].get<std::string>().empty()) ? ext["profile_path"] : UNKNOWN_VALUE;
             extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
             extensionItem["package_type"]              = UNKNOWN_VALUE;
@@ -1271,7 +1273,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
@@ -1305,13 +1307,13 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = UNKNOWN_VALUE;
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = UNKNOWN_VALUE;
             extensionItem["package_vendor"]            = UNKNOWN_VALUE;
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
             extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
             extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = (ext.contains("registry_path") && !ext["registry_path"].get<std::string>().empty()) ? ext["registry_path"] : UNKNOWN_VALUE;
             extensionItem["package_reference"]         = ext.value("registry_path",      UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = UNKNOWN_VALUE;
             extensionItem["package_type"]              = UNKNOWN_VALUE;

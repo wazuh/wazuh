@@ -40,11 +40,29 @@ void asp_destroy(AgentSyncProtocolHandle* handle);
 /// @param operation Type of operation (create, modify, delete).
 /// @param index Target index or destination for the diff.
 /// @param data JSON string representing the data to persist.
+/// @param version Version of the data (64-bit unsigned integer).
 void asp_persist_diff(AgentSyncProtocolHandle* handle,
                       const char* id,
                       Operation_t operation,
                       const char* index,
-                      const char* data);
+                      const char* data,
+                      uint64_t version);
+
+/// @brief Persists a difference to in-memory vector instead of database.
+///
+/// This method is used for recovery scenarios where data should be kept in memory.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param id Unique identifier for the data item.
+/// @param operation Type of operation (create, modify, delete).
+/// @param index Logical index for the data item.
+/// @param data Serialized content of the message.
+/// @param version Version of the data (64-bit unsigned integer).
+void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
+                                const char* id,
+                                Operation_t operation,
+                                const char* index,
+                                const char* data,
+                                uint64_t version);
 
 // @brief Triggers synchronization of a module.
 ///
@@ -60,12 +78,98 @@ bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      unsigned int sync_retries,
                      size_t max_eps);
 
+/// @brief Checks if a module index requires full synchronization.
+///
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param index The index/table to check.
+/// @param checksum The calculated checksum for the index.
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @return true if full sync is required (checksum mismatch); false if integrity is valid.
+bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                            const char* index,
+                            const char* checksum,
+                            unsigned int sync_timeout,
+                            unsigned int sync_retries,
+                            size_t max_eps);
+
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.
 /// @param data Pointer to the FlatBuffer-encoded message.
 /// @param length Size of the FlatBuffer message in bytes.
 /// @return true if parsed successfully, false on error.
 bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
+
+/// @brief Clears the in-memory data queue.
+/// @param handle Protocol handle.
+void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
+
+/// @brief Synchronizes metadata or groups with the server without sending data.
+///
+/// This function handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
+/// The sequence is: Start → StartAck → End → EndAck (no Data messages).
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param mode Synchronization mode (must be MODE_METADATA_DELTA, MODE_METADATA_CHECK, MODE_GROUP_DELTA, or MODE_GROUP_CHECK)
+/// @param indices Array of index name strings that will be updated by the manager.
+/// @param indices_count Number of indices in the array.
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @param global_version Global version to include in the Start message
+/// @return true if synchronization completed successfully, false otherwise
+bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                 Mode_t mode,
+                                 const char** indices,
+                                 size_t indices_count,
+                                 unsigned int sync_timeout,
+                                 unsigned int sync_retries,
+                                 size_t max_eps,
+                                 uint64_t global_version);
+
+/// @brief Notifies the manager about data cleaning for specified indices.
+///
+/// This function sends DataClean messages for each index in the provided array.
+/// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
+/// Upon receiving Ok/PartialOk, it clears the local database and returns true.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param indices Array of index name strings to clean.
+/// @param indices_count Number of indices in the array.
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @return true if notification completed successfully and database was cleared, false otherwise
+bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
+                           const char** indices,
+                           size_t indices_count,
+                           unsigned int sync_timeout,
+                           unsigned int sync_retries,
+                           size_t max_eps);
+
+/// @brief Deletes the database file.
+///
+/// This function closes the database connection and removes the database file from disk.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+void asp_delete_database(AgentSyncProtocolHandle* handle);
+
+/// @brief Signals the sync protocol to stop all operations.
+///
+/// This function should be called when a module is shutting down to abort any ongoing
+/// or pending synchronization operations.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+void asp_stop(AgentSyncProtocolHandle* handle);
+
+/// @brief Resets the stop flag to allow restarting operations.
+///
+/// This function should be called when a module is restarted after being stopped.
+/// It clears the stop flag, allowing synchronization operations to proceed again.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+void asp_reset(AgentSyncProtocolHandle* handle);
+
+/// @brief Checks if stop has been requested.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @return true if stop was requested, false otherwise.
+bool asp_should_stop(const AgentSyncProtocolHandle* handle);
 
 #ifdef __cplusplus
 }

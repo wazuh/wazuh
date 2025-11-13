@@ -71,11 +71,11 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Connection failed", 503);
+                            .onError("Connection failed", 503, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503, "");
                     }
                 }
                 else if (url.find("localhost:9200") != std::string::npos)
@@ -177,11 +177,11 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Connection failed", 503);
+                            .onError("Connection failed", 503, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503, "");
                     }
                 }
                 else
@@ -232,11 +232,11 @@ TEST_F(MonitoringTest, TestHTTPError)
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Service Unavailable", 503);
+                        .onError("Service Unavailable", 503, "");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Service Unavailable", 503);
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Service Unavailable", 503, "");
                 }
             }));
 
@@ -341,11 +341,11 @@ TEST_F(MonitoringTest, TestDifferentHTTPStatusCodes)
                     // 404 Not Found
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Not Found", 404);
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Not Found", 404, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Not Found", 404);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Not Found", 404, "");
                     }
                 }
                 else if (url.find("localhost:9800") != std::string::npos)
@@ -353,13 +353,13 @@ TEST_F(MonitoringTest, TestDifferentHTTPStatusCodes)
                     // 500 Internal Server Error
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Internal Server Error", 500);
+                            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                .onError("Internal Server Error", 500, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onError("Internal Server Error", 500);
+                            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                .onError("Internal Server Error", 500, "");
                     }
                 }
             }));

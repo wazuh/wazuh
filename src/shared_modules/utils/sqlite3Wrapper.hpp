@@ -55,9 +55,21 @@ namespace SQLite3Wrapper
                                      const int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
         {
             sqlite3* pDb {nullptr};
-            if (const auto result {sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)}; SQLITE_OK != result)
+            const auto result {sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)};
+
+            if (SQLITE_OK != result)
             {
-                throw Sqlite3Error {"Unspecified type during initialization of SQLite."};
+                std::string errorMsg = "Failed to open SQLite database at path '" + path + "': ";
+                errorMsg += sqlite3_errstr(result);
+
+                // If pDb is not null, we can get a more detailed error message
+                if (pDb)
+                {
+                    errorMsg += " - " + std::string(sqlite3_errmsg(pDb));
+                    sqlite3_close_v2(pDb);
+                }
+
+                throw std::runtime_error(errorMsg);
             }
 
             return pDb;

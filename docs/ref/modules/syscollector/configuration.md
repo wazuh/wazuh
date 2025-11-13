@@ -33,7 +33,7 @@ Syscollector is configured in the agent's `ossec.conf` file using the `<wodle na
     <synchronization>
         <enabled>yes</enabled>                    <!-- Enable/disable persistence -->
         <interval>300</interval>                  <!-- Sync interval in seconds -->
-        <response_timeout>30</response_timeout>   <!-- Response timeout in seconds -->
+        <response_timeout>60</response_timeout>   <!-- Response timeout in seconds -->
         <max_eps>10</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
     </synchronization>
 </wodle>
@@ -85,7 +85,7 @@ The synchronization feature enables persistent inventory state management throug
 |-----------|------|---------|--------|-------------|
 | `enabled` | Boolean | `yes` | `yes`/`no` | Enable or disable Syscollector synchronization persistence |
 | `interval` | Integer | `300` | `1` - `∞` | How often to trigger synchronization with the manager (seconds) |
-| `response_timeout` | Integer | `30` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
+| `response_timeout` | Integer | `60` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
 | `max_eps` | Integer | `10` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
 
 ---
@@ -135,7 +135,7 @@ Defines how long to wait for manager acknowledgments during synchronization:
 
 ```xml
 <synchronization>
-    <response_timeout>30</response_timeout>
+    <response_timeout>60</response_timeout>
 </synchronization>
 ```
 

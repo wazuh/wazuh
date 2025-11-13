@@ -10,10 +10,17 @@
  */
 
 #include "wmodules.h"
+#include "module_query_errors.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "os_net/os_net.h"
 #include <sys/types.h>
+
+#ifdef WIN32
+// Forward declaration for syscom_dispatch function
+size_t syscom_dispatch(char* command, size_t command_len, char** output);
+#endif
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
@@ -28,6 +35,7 @@ int wm_debug_level;
  * last position should be NULL
  * */
 static const void *default_modules[] = {
+    wm_agent_info_read,
     wm_agent_upgrade_read,
 #ifndef CLIENT
     wm_task_manager_read,
@@ -389,6 +397,169 @@ size_t wm_module_query(char * query, char ** output) {
     return module->context->query(module->data, args, output);
 }
 
+// Query module with JSON format
+// Internal implementation that accepts module_name directly
+static size_t wm_module_query_json_internal(const char* module_name, const char* json_command, char** output) {
+    cJSON *json_obj = NULL;
+    cJSON *command_item = NULL;
+    char error_msg[512];
+
+    if (!module_name || !json_command || !output) {
+        return 0;
+    }
+
+    // Parse JSON command
+    json_obj = cJSON_Parse(json_command);
+    if (!json_obj) {
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    // Validate command field exists
+    command_item = cJSON_GetObjectItem(json_obj, "command");
+    if (!command_item || !cJSON_IsString(command_item)) {
+        cJSON_Delete(json_obj);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    // Find the module
+    wmodule * module = wm_find_module(module_name);
+    if (module == NULL) {
+        cJSON_Delete(json_obj);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_FOUND, MQ_MSG_MODULE_NOT_FOUND);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    if (module->context->query == NULL) {
+        cJSON_Delete(json_obj);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_SUPPORTED, MQ_MSG_MODULE_NOT_SUPPORTED);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
+
+    // For SCA and Syscollector, pass the JSON command directly (it already contains all needed fields)
+    if (strcmp(module_name, SCA_WM_NAME) == 0 || strcmp(module_name, SYSCOLLECTOR_WM_NAME) == 0) {
+        // Pass the original JSON directly - no need to reconstruct
+        // Cast to non-const as required by the query function signature
+        size_t result = module->context->query(module->data, (char*)json_command, output);
+        cJSON_Delete(json_obj);
+        return result;
+    }
+
+    return 0;
+}
+
+// New external interface that accepts module_name as parameter
+size_t wm_module_query_json_ex(const char* module_name, const char* json_command, char** output) {
+    return wm_module_query_json_internal(module_name, json_command, output);
+}
+
+// Query FIM module directly via syscom socket with JSON format
+size_t wm_fim_query_json(const char* command, char** response) {
+    char error_msg[512];
+
+    if (!command || !response) {
+        return 0;
+    }
+
+    // Use the command directly as JSON (it's already in the new format)
+    char *json_string = strdup(command);
+
+#ifndef WIN32
+    int sock;
+    char *response_buffer = NULL;
+    ssize_t recv_length;
+
+    // Connect to syscheck syscom socket
+    mdebug1("WM_FIM_QUERY_JSON: Attempting to connect to socket: %s", SYS_LOCAL_SOCK);
+    if ((sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR)) < 0) {
+        merror("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        switch (errno) {
+            case ECONNREFUSED:
+                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck module refused connection. The component might be disabled\"}",
+                         MQ_ERR_MODULE_NOT_RUNNING);
+                break;
+            case ENOENT:
+                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck socket not found. The component might not be running\"}",
+                         MQ_ERR_MODULE_NOT_RUNNING);
+                break;
+            default:
+                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not connect to syscheck socket\"}",
+                         MQ_ERR_MODULE_NOT_RUNNING);
+        }
+        os_strdup(error_msg, *response);
+        os_free(json_string);
+        return strlen(*response);
+    }
+
+    mdebug1("WM_FIM_QUERY_JSON: Sending JSON command: %s", json_string);
+
+    // Send the JSON query to syscheck
+    if (OS_SendSecureTCP(sock, strlen(json_string), json_string) < 0) {
+        merror("WM_FIM_QUERY_JSON: Failed to send command");
+        close(sock);
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not send query to syscheck\"}",
+                 MQ_ERR_INTERNAL);
+        os_strdup(error_msg, *response);
+        os_free(json_string);
+        return strlen(*response);
+    }
+
+    // Allocate buffer for response
+    os_calloc(OS_MAXSTR, sizeof(char), response_buffer);
+
+    // Receive response from syscheck
+    recv_length = OS_RecvSecureTCP(sock, response_buffer, OS_MAXSTR);
+    switch (recv_length) {
+        case OS_SOCKTERR:
+            close(sock);
+            os_free(response_buffer);
+            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Response from syscheck too large\"}",
+                     MQ_ERR_INTERNAL);
+            os_strdup(error_msg, *response);
+            break;
+        case -1:
+            close(sock);
+            os_free(response_buffer);
+            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Error receiving response from syscheck\"}",
+                     MQ_ERR_INTERNAL);
+            os_strdup(error_msg, *response);
+            break;
+        case 0:
+            close(sock);
+            os_free(response_buffer);
+            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Empty response from syscheck\"}",
+                     MQ_ERR_INTERNAL);
+            os_strdup(error_msg, *response);
+            break;
+        default:
+            close(sock);
+            *response = response_buffer;
+            break;
+    }
+#else
+    // On Windows, use the syscom_dispatch function directly
+    size_t response_len = syscom_dispatch(json_string, strlen(json_string), response);
+
+    if (response_len == 0 || !(*response)) {
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"No response from syscom\"}",
+                 MQ_ERR_INTERNAL);
+        os_strdup(error_msg, *response);
+    }
+#endif
+
+    os_free(json_string);
+    return strlen(*response);
+}
+
 cJSON *getModulesInternalOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
@@ -416,7 +587,7 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 #endif
 
     if (SendMSG(queue, message, locmsg, loc) < 0) {
-        merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
+        mdebug1("Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }
 
@@ -435,7 +606,7 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
 #endif
 
     if (SendMSGPredicated(queue, message, locmsg, loc, fn_prd) < 0) {
-        merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
+        mdebug1("Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }
 

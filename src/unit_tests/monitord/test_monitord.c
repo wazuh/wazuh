@@ -339,7 +339,7 @@ void test_monitor_queue_connect_msg_fail(void **state) {
     expect_string(__wrap_SendMSG, locmsg, ARGV0);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, -1);
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
+    expect_string(__wrap__mdebug1, formatted_msg, QUEUE_SEND);
 
     monitor_queue_connect();
 

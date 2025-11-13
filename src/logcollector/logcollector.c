@@ -1119,10 +1119,6 @@ void close_file(logreader * lf) {
     fgetpos(lf->fp, &lf->position);
     fclose(lf->fp);
     lf->fp = NULL;
-
-#ifdef WIN32
-    lf->h = NULL;
-#endif
 }
 
 #ifdef WIN32
@@ -1934,9 +1930,9 @@ void * w_output_thread(void * args){
             if (result != 0) {
                 if (result != 1) {
 #ifdef CLIENT
-                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    mdebug1("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    mdebug1("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.
@@ -1948,7 +1944,7 @@ void * w_output_thread(void * args){
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
                     if (result != 1) {
-                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+                        mdebug1("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
                     }
                     result = 1;
                 }
@@ -1966,7 +1962,7 @@ void * w_output_thread(void * args){
                 result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
                                       message->queue_mq, message->log_target);
                 if (result < 0) {
-                    merror(QUEUE_SEND);
+                    mdebug1(QUEUE_SEND);
 
                     sleep(sleep_time);
 
@@ -2145,8 +2141,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
 #ifdef WIN32
             if(current->age) {
-                if (current->h && (GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
-                    merror("Unable to get file information by handle.");
+                if (current->fp == NULL || (get_fp_file_information(current->fp, &lpFileInformation) == 0)) {
+                    merror("Unable to get file information.");
                     w_mutex_unlock(&current->mutex);
                     rwlock_unlock(&files_update_rwlock);
                     continue;
@@ -2164,7 +2160,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         mdebug1("Ignoring file '%s' due to modification time",current->file);
                         fclose(current->fp);
                         current->fp = NULL;
-                        current->h = NULL;
                         w_mutex_unlock(&current->mutex);
                         rwlock_unlock(&files_update_rwlock);
                         continue;

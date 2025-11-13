@@ -74,12 +74,16 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [geoip](#geoip)
 - [get_date](#get_date)
 - [hex_to_number](#hex_to_number)
+- [iana_protocol_name_to_number](#iana_protocol_name_to_number)
+- [iana_protocol_number_to_name](#iana_protocol_number_to_name)
 - [int_calculate](#int_calculate)
 - [ip_version](#ip_version)
 - [join](#join)
 - [network_community_id](#network_community_id)
 - [regex_extract](#regex_extract)
 - [sha1](#sha1)
+- [syslog_extract_facility](#syslog_extract_facility)
+- [syslog_extract_severity](#syslog_extract_severity)
 - [system_epoch](#system_epoch)
 - [to_bool](#to_bool)
 - [to_int](#to_int)
@@ -126,6 +130,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [parse_xml](#parse_xml)
 - [rename](#rename)
 - [replace](#replace)
+- [sanitize_fields](#sanitize_fields)
 - [split](#split)
 - [trim](#trim)
 
@@ -9110,6 +9115,1034 @@ normalize:
 
 
 ---
+# iana_protocol_name_to_number
+
+## Signature
+
+```
+
+field: iana_protocol_name_to_number(protocol_name)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| protocol_name | string | reference | Any string |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Resolves an IANA IP protocol keyword to its numeric code, returned as a string (e.g., "6").
+Normalization rules:
+  - Lowercased.
+  - Spaces/underscores converted to '-'.
+  - Aliases recognized:
+      * "icmpv6" → "ipv6-icmp"
+      * "udp-lite" / "udp_lite" → "udplite"
+      * "ip-in-ip" → "ipip"
+The helper rejects generic/unspecific categories and returns failure.
+
+
+## Keywords
+
+- `iana` 
+
+- `protocol` 
+
+## Examples
+
+### Example 1
+
+canonical keyword
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "tcp"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "tcp",
+  "target_field": "6"
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+case-insensitive
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "UDP"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "UDP",
+  "target_field": "17"
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+canonical hyphenated form
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "ipv6-icmp"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "ipv6-icmp",
+  "target_field": "58"
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+underscore alias normalized → "udplite"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "udp_lite"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "udp_lite",
+  "target_field": "136"
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+alias normalized → "ipip"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "ip-in-ip"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "ip-in-ip",
+  "target_field": "94"
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+alias normalized → "ipv6-icmp"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "ICMPv6"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "ICMPv6",
+  "target_field": "58"
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+reject generic/unspecific categories
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "any-host-internal-protocol"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "any-host-internal-protocol"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+application-layer name → not an IANA IP protocol keyword
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": "smtp"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": "smtp"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 9
+
+empty string
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": ""
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 10
+
+non-string input rejected (must be a reference to string)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_name_to_number($protocol_name)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_name": 123
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_name": 123
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# iana_protocol_number_to_name
+
+## Signature
+
+```
+
+field: iana_protocol_number_to_name(protocol_code)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| protocol_code | string, number | reference | Any object |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Resolves an IANA IP protocol numeric code (0..255) to its canonical keyword.
+The helper accepts either a number or a base-10 numeric string (same argument, by reference).
+The helper returns failure for experimental, reserved, unassigned codes and for generic/unspecific categories.
+
+
+## Keywords
+
+- `iana` 
+
+- `protocol` 
+
+## Examples
+
+### Example 1
+
+6 → "tcp"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 6
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 6,
+  "target_field": "tcp"
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+58 → "ipv6-icmp"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 58
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 58,
+  "target_field": "ipv6-icmp"
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+147 → "bit-emu"
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 147
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 147,
+  "target_field": "bit-emu"
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+string numeric accepted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "6"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "6",
+  "target_field": "tcp"
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+string numeric accepted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "58"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "58",
+  "target_field": "ipv6-icmp"
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+string numeric accepted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "147"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "147",
+  "target_field": "bit-emu"
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+rejects non-integer numeric string
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "6.0"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "6.0"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+out of range (negative)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "-1"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "-1"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 9
+
+out of range (>255)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "256"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "256"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 10
+
+non-numeric string rejected
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": "abc"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": "abc"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 11
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 61
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 61
+}
+```
+
+*The operation was performed with errors*
+
+### Example 12
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 63
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 63
+}
+```
+
+*The operation was performed with errors*
+
+### Example 13
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 68
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 68
+}
+```
+
+*The operation was performed with errors*
+
+### Example 14
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 99
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 99
+}
+```
+
+*The operation was performed with errors*
+
+### Example 15
+
+reject generic/unspecific category
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 114
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 114
+}
+```
+
+*The operation was performed with errors*
+
+### Example 16
+
+unassigned protocol code
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 148
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 148
+}
+```
+
+*The operation was performed with errors*
+
+### Example 17
+
+experimental protocol code
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 253
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 253
+}
+```
+
+*The operation was performed with errors*
+
+### Example 18
+
+reserved protocol code
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 255
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 255
+}
+```
+
+*The operation was performed with errors*
+
+### Example 19
+
+out of range (negative)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": -1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": -1
+}
+```
+
+*The operation was performed with errors*
+
+### Example 20
+
+out of range (>255)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": 256
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "protocol_code": 256
+}
+```
+
+*The operation was performed with errors*
+
+### Example 21
+
+null rejected
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: iana_protocol_number_to_name($protocol_code)
+```
+
+#### Input Event
+
+```json
+{
+  "protocol_code": null
+}
+```
+
+#### Outcome Event
+
+```json
+{}
+```
+
+*The operation was performed with errors*
+
+
+
+---
 # int_calculate
 
 ## Signature
@@ -10180,6 +11213,280 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# syslog_extract_facility
+
+## Signature
+
+```
+
+field: syslog_extract_facility(priority)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| priority | number | reference | Integers between `-2^63` and `2^63-1` |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Derives the syslog facility `code` and `name` from a priority value following RFC 5424.
+Valid priorities range from 0 to 191 (facility*8 + severity).
+The helper returns an object so it can be stored under `log.syslog.facility`.
+
+
+## Keywords
+
+- `syslog` 
+
+- `facility name` 
+
+- `facility code` 
+
+## Examples
+
+### Example 1
+
+Facility derived from priority 165 (local4).
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_facility($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 165
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 165,
+  "target_field": {
+    "code": 20,
+    "name": "local4"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Reject priority above 191.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_facility($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Reject negative priority values.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_facility($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# syslog_extract_severity
+
+## Signature
+
+```
+
+field: syslog_extract_severity(priority)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| priority | number | reference | Integers between `-2^63` and `2^63-1` |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Derives the syslog severity `code` and `name` from a priority value following RFC 5424.
+Valid priorities range from 0 to 191 (facility*8 + severity).
+The helper returns an object so it can be stored under `log.syslog.severity`.
+
+
+## Keywords
+
+- `syslog` 
+
+- `severity name` 
+
+- `severity code` 
+
+## Examples
+
+### Example 1
+
+Severity derived from priority 165 (Notice level).
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_severity($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 165
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 165,
+  "target_field": {
+    "code": 5,
+    "name": "notice"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Reject priority above 191.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_severity($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": 255
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Reject negative priority values.
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: syslog_extract_severity($priority)
+```
+
+#### Input Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "priority": -1
+}
+```
+
+*The operation was performed with errors*
 
 
 
@@ -16762,6 +18069,787 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# sanitize_fields
+
+## Signature
+
+```
+
+field: sanitize_fields(recursive)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| recursive | boolean | value | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [object, array, string] | - |
+
+
+## Description
+
+Normalize JSON object keys, nested object keys, standalone strings, and strings inside arrays using `basicNormalize`.
+
+### Behavior:
+- **Object keys** are sanitized: all keys in the object are normalized.
+- **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized.
+- **Arrays**:
+  - Arrays that are **not values of JSON object keys** are processed element-wise.
+  - Elements can be:
+    - **Strings:** normalized individually.
+    - **Objects:** their keys are sanitized.
+    - **Nested arrays:** processed recursively if `recursive` is true.
+  - Arrays containing unsupported primitives (numbers, booleans, null) cause failure.
+- **Standalone strings** (when `target_field` is a string node) are normalized directly.
+
+
+## Keywords
+
+- `sanitize` 
+
+- `rename` 
+
+- `normalize` 
+
+## Examples
+
+### Example 1
+
+Keys already normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": 1,
+    "b": 2
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a": 1,
+    "b": 2
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Keys lowercased and separators mapped to underscores
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "Full Name": "Ana",
+    "e-mail": "x",
+    "Pais": "AR"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "full_name": "Ana",
+    "e_mail": "x",
+    "pais": "AR"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Both map to 'hello_world' -> collision
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "hello world": 1,
+    "hello-world": 2
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+basicNormalize does not prefix underscores for leading digits
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "123abc": 1,
+    "x": 2
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "123abc": 1,
+    "x": 2
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Strings in arrays normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "Hello world",
+    "hello-world",
+    "HELLO  world"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "hello_world",
+    "hello_world",
+    "hello_world"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+Object keys inside arrays normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    {
+      "Full Name": "Ana"
+    },
+    {
+      "e-mail": "x"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    {
+      "full_name": "Ana"
+    },
+    {
+      "e_mail": "x"
+    }
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Mixed string/object array supported
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "Hello world",
+    {
+      "Full Name": "Ana"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "hello_world",
+    {
+      "full_name": "Ana"
+    }
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 8
+
+Numbers in arrays not allowed by policy
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    1,
+    {
+      "a": 1
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 9
+
+Booleans in arrays not allowed by policy
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    true,
+    {
+      "a": 1
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 10
+
+Nulls in arrays not allowed by policy
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    null,
+    {
+      "a": 1
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 11
+
+Nested arrays/objects processed recursively
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    [
+      "Hello world",
+      "hello-world"
+    ],
+    [
+      {
+        "Full Name": "Ana"
+      }
+    ]
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    [
+      "hello_world",
+      "hello_world"
+    ],
+    [
+      {
+        "full_name": "Ana"
+      }
+    ]
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 12
+
+Deep object keys normalized
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(True)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": {
+      "B-C": {
+        "D E": 1
+      }
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a": {
+      "b_c": {
+        "d_e": 1
+      }
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 13
+
+Duplicated normalized strings in arrays are allowed
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "a b",
+    "a-b",
+    "a_b"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "a_b",
+    "a_b",
+    "a_b"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 14
+
+All characters dropped -> empty key is invalid
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "***": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 15
+
+Mixed '\\', '/', ':', spaces collapse to single underscores
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a\\\\b///c::d  e": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a_b_c_d_e": 1
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 16
+
+Trailing ':' produces '_' then it is trimmed at the end
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "name:": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "name": 1
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 17
+
+All characters are separators; normalized key becomes empty
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    ":\\ /- .": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
+
+### Example 18
+
+Backslash and colon in strings become underscores
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "A\\B:C",
+    "X:Y\\Z"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "a_b_c",
+    "x_y_z"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 19
+
+Single string node normalized directly
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "HELLO-world\\TEST"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": "hello_world_test"
+}
+```
+
+*The operation was successful*
+
+### Example 20
+
+Only separators -> sanitized string becomes empty
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: sanitize_fields(False)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "::::"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
+*The operation was performed with errors*
 
 
 

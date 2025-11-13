@@ -1,8 +1,13 @@
 namespace Wazuh.SyncSchema;
 
 enum Mode: byte {
-    Full,
-    Delta
+    ModuleFull,
+    ModuleDelta,
+    ModuleCheck,
+    MetadataDelta,
+    MetadataCheck,
+    GroupDelta,
+    GroupCheck
 }
 
 enum Operation: byte {
@@ -17,18 +22,48 @@ enum Status: byte {
     Offline
 }
 
-table Data {
+enum Option: byte {
+    Sync,
+    VDFirst,
+    VDSync,
+    VDClean
+}
+
+table DataValue {
     seq: ulong;
     session: ulong;
     operation: Operation;
+    id: string;
+    index: string;
+    version: ulong;
+    data: [byte];
+}
+
+table DataContext {
+    seq: ulong;
+    session: ulong;
     id: string;
     index: string;
     data: [byte];
 }
 
 table Start {
+    module: string;
     mode: Mode;
     size: ulong;
+    index: [string];
+    option: Option;
+    architecture: string;
+    hostname: string;
+    osname: string;
+    osplatform: string;
+    ostype: string;
+    osversion: string;
+    agentversion: string;
+    agentname: string;
+    agentid: string;
+    groups: [string];
+    global_version: ulong;
 }
 
 table StartAck {
@@ -55,13 +90,28 @@ table ReqRet {
     session: ulong;
 }
 
+table DataClean {
+    seq: ulong;
+    session: ulong;
+    index: string;
+}
+
+table ChecksumModule {
+    session: ulong;
+    index: string;
+    checksum: string;
+}
+
 union MessageType {
-    Data,
+    DataValue,
+    DataClean,
+    ChecksumModule,
     Start,
     StartAck,
     End,
     EndAck,
-    ReqRet
+    ReqRet,
+    DataContext
 }
 
 table Message {

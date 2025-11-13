@@ -12,6 +12,7 @@
 #include "wmodules_def.h"
 
 #include "wmodules.h"
+#include "module_query_errors.h"
 #include <os_net/os_net.h>
 #include <sys/stat.h>
 #include "os_crypto/sha256/sha256_op.h"
@@ -47,7 +48,7 @@ long sca_sync_max_eps = 10;                      // Database synchronization num
 // Forward declarations
 static bool wm_sca_is_shutting_down(void);
 static int wm_sca_send_stateless(const char* message);
-static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message);
+static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version);
 static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path);
 
 #undef minfo
@@ -76,11 +77,13 @@ static void * wm_sca_sync_module(__attribute__((unused)) void * args);
 #endif
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
-static void wm_sca_stop();  // Stop
+static void wm_sca_stop(wm_sca_t* data);   // Stop
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
 int wm_sca_sync_message(const char *command, size_t command_len); // Send sync message
+
+static size_t wm_sca_query_handler(void *data, char *query, char **output); // Query handler
 
 const wm_context WM_SCA_CONTEXT = {
     .name = SCA_WM_NAME,
@@ -89,10 +92,11 @@ const wm_context WM_SCA_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_sca_dump,
     .sync = (int(*)(const char*, size_t))wm_sca_sync_message,
     .stop = (void(*)(void *))wm_sca_stop,
-    .query = NULL,
+    .query = wm_sca_query_handler,
 };
 
 void *sca_module = NULL;
+sca_init_func sca_init_ptr = NULL;
 sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
@@ -104,6 +108,12 @@ sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
 sca_sync_module_func sca_sync_module_ptr = NULL;
 sca_persist_diff_func sca_persist_diff_ptr = NULL;
 sca_parse_response_func sca_parse_response_ptr = NULL;
+sca_notify_data_clean_func sca_notify_data_clean_ptr = NULL;
+sca_delete_database_func sca_delete_database_ptr = NULL;
+
+// Query function pointer
+typedef size_t (*sca_query_func)(const char* query, char** output);
+sca_query_func sca_query_ptr = NULL;
 
 // YAML to cJSON function pointer
 sca_set_yaml_to_cjson_func_func sca_set_yaml_to_cjson_func_ptr = NULL;
@@ -141,6 +151,85 @@ static int wm_sca_send_binary_msg(int queue, const void* message, size_t message
     return SendBinaryMSG(queue, message, message_len, locmsg, loc);
 }
 
+static void wm_handle_sca_disable_and_notify_data_clean()
+{
+    if (w_is_file(SCA_DB_DISK_PATH))
+    {
+        minfo("SCA is disabled, SCA database file exists. Proceeding with data clean notification.");
+    }
+    else
+    {
+        minfo("SCA is disabled, SCA database file does not exist. Skipping data clean notification.");
+        return;
+    }
+    // Load the SCA module first
+    if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
+    {
+        // Load required function pointers
+        sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
+        sca_set_sync_parameters_ptr = so_get_function_sym(sca_module, "sca_set_sync_parameters");
+        sca_parse_response_ptr = so_get_function_sym(sca_module, "sca_parse_response");
+        sca_notify_data_clean_ptr = so_get_function_sym(sca_module, "sca_notify_data_clean");
+        sca_delete_database_ptr = so_get_function_sym(sca_module, "sca_delete_database");
+
+        // Set the logging function pointer in the SCA module
+        if (sca_set_log_function_ptr)
+        {
+            sca_set_log_function_ptr(sca_log_callback);
+        }
+
+        // Set the sync protocol parameters
+        if (sca_set_sync_parameters_ptr)
+        {
+            MQ_Functions mq_funcs = {.start = wm_sca_startmq, .send_binary = wm_sca_send_binary_msg};
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+        }
+
+        sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
+        // Initialize the SCA module
+        if (sca_init_ptr)
+        {
+            sca_init_ptr();
+        }
+        else
+        {
+            mwarn("Failed to load SCA module for data clean notification.");
+            return;
+        }
+    }
+    else
+    {
+        mwarn("Failed to load SCA module for data clean notification.");
+        return;
+    }
+
+    if (sca_notify_data_clean_ptr && sca_delete_database_ptr)
+    {
+        const char* indices[] = {SCA_SYNC_INDEX};
+        bool ret = false;
+        while (!ret && !g_shutting_down)
+        {
+            ret = sca_notify_data_clean_ptr(indices, 1, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
+            if (!ret)
+            {
+                for (uint32_t i = 0; i < sca_sync_interval && !g_shutting_down; i++)
+                {
+                    sleep(1);
+                }
+            }
+            else
+            {
+                mdebug1("SCA data clean notification sent successfully.");
+                sca_delete_database_ptr();
+            }
+        }
+    }
+    else
+    {
+        mwarn("SCA notify data clean functions not available.");
+    }
+}
+
 // Module main function. It won't return
 #ifdef WIN32
 DWORD WINAPI wm_sca_main(void *arg) {
@@ -152,6 +241,7 @@ void * wm_sca_main(wm_sca_t * data) {
     if (data->enabled) {
         minfo("SCA module enabled.");
     } else {
+        wm_handle_sca_disable_and_notify_data_clean();
         minfo("SCA module disabled. Exiting.");
         pthread_exit(NULL);
     }
@@ -169,6 +259,9 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_sync_module_ptr = so_get_function_sym(sca_module, "sca_sync_module");
         sca_persist_diff_ptr = so_get_function_sym(sca_module, "sca_persist_diff");
         sca_parse_response_ptr = so_get_function_sym(sca_module, "sca_parse_response");
+
+        // Get query function pointer
+        sca_query_ptr = so_get_function_sym(sca_module, "sca_query");
 
         // Set the logging function pointer in the SCA module
         if (sca_set_log_function_ptr) {
@@ -275,7 +368,8 @@ void wm_sca_destroy(wm_sca_t * data) {
 }
 
 // Stop
-void wm_sca_stop() {
+void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
+{
     g_shutting_down = 1;
     sca_sync_module_running = 0;
 
@@ -353,14 +447,14 @@ static int wm_sca_send_stateless(const char* message) {
     return 0;
 }
 
-static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message) {
+static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version) {
     if (!message) {
         return -1;
     }
 
     if (sca_enable_synchronization && sca_persist_diff_ptr) {
         mdebug2("Persisting SCA event: %s", message);
-        sca_persist_diff_ptr(id, operation, index, message);
+        sca_persist_diff_ptr(id, operation, index, message, version);
     } else {
         mdebug2("SCA synchronization is disabled or function not available");
     }
@@ -420,6 +514,25 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #else
     return NULL;
 #endif
+}
+
+static size_t wm_sca_query_handler(void *data, char *query, char **output) {
+    (void)data;  // Unused parameter
+
+    if (!query || !output) {
+        return 0;
+    }
+
+    // Call the C++ query function if available
+    if (sca_query_ptr) {
+        return sca_query_ptr(query, output);
+    } else {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+        os_strdup(error_msg, *output);
+        return strlen(*output);
+    }
 }
 
 static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path)

@@ -70,7 +70,6 @@ namespace PackageLinuxHelper
             std::string source {UNKNOWN_VALUE};
             std::string version {UNKNOWN_VALUE};
             std::string vendor {UNKNOWN_VALUE};
-            std::string email {UNKNOWN_VALUE};
             std::string description {UNKNOWN_VALUE};
             int64_t size { 0 };
 
@@ -127,7 +126,7 @@ namespace PackageLinuxHelper
 
             if (it != info.end())
             {
-                Utils::splitMaintainerField(it->second, vendor, email);
+                vendor = it->second;
             }
 
             it = info.find("Description");
@@ -143,7 +142,7 @@ namespace PackageLinuxHelper
             ret["multiarch"]    = multiarch;
             ret["architecture"] = architecture;
             ret["source"]       = source;
-            ret["version"]      = version;
+            ret["version_"]     = version;
             ret["type"]         = "deb";
             ret["path"]         = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
@@ -161,7 +160,6 @@ namespace PackageLinuxHelper
         std::string name;
         std::string version;
         std::string vendor       { UNKNOWN_VALUE };
-        std::string email        { UNKNOWN_VALUE };
         std::string install_time { UNKNOWN_VALUE };
         std::string description  { UNKNOWN_VALUE };
         int64_t     size         { 0 };
@@ -200,7 +198,7 @@ namespace PackageLinuxHelper
 
             if (publisher.contains("display-name"))
             {
-                Utils::splitMaintainerField(publisher.at("display-name"), vendor, email);
+                vendor = publisher.at("display-name");
             }
         }
 
@@ -247,7 +245,7 @@ namespace PackageLinuxHelper
 
         ret["name"]             = name;
         ret["path"]             = "/snap/" + name;
-        ret["version"]          = version;
+        ret["version_"]         = version;
         ret["vendor"]           = vendor;
         ret["installed"]        = install_time == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(install_time);
         ret["description"]      = description;

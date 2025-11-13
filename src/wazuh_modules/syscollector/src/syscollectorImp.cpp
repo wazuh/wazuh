@@ -21,6 +21,7 @@
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
+#include "../../module_query_errors.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -70,19 +71,19 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
 static const std::map<std::string, std::string> INDEX_MAP
 {
     // LCOV_EXCL_START
-    {OS_TABLE, "wazuh-states-inventory-system"},
-    {HW_TABLE, "wazuh-states-inventory-hardware"},
-    {HOTFIXES_TABLE, "wazuh-states-inventory-hotfixes"},
-    {PACKAGES_TABLE, "wazuh-states-inventory-packages"},
-    {PROCESSES_TABLE, "wazuh-states-inventory-processes"},
-    {PORTS_TABLE, "wazuh-states-inventory-ports"},
-    {NET_IFACE_TABLE, "wazuh-states-inventory-interfaces"},
-    {NET_PROTOCOL_TABLE, "wazuh-states-inventory-protocols"},
-    {NET_ADDRESS_TABLE, "wazuh-states-inventory-networks"},
-    {USERS_TABLE, "wazuh-states-inventory-users"},
-    {GROUPS_TABLE, "wazuh-states-inventory-groups"},
-    {SERVICES_TABLE, "wazuh-states-inventory-services"},
-    {BROWSER_EXTENSIONS_TABLE, "wazuh-states-inventory-browser-extensions"},
+    {OS_TABLE, SYSCOLLECTOR_SYNC_INDEX_SYSTEM},
+    {HW_TABLE, SYSCOLLECTOR_SYNC_INDEX_HARDWARE},
+    {HOTFIXES_TABLE, SYSCOLLECTOR_SYNC_INDEX_HOTFIXES},
+    {PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES},
+    {PROCESSES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PROCESSES},
+    {PORTS_TABLE, SYSCOLLECTOR_SYNC_INDEX_PORTS},
+    {NET_IFACE_TABLE, SYSCOLLECTOR_SYNC_INDEX_INTERFACES},
+    {NET_PROTOCOL_TABLE, SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS},
+    {NET_ADDRESS_TABLE, SYSCOLLECTOR_SYNC_INDEX_NETWORKS},
+    {USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS},
+    {GROUPS_TABLE, SYSCOLLECTOR_SYNC_INDEX_GROUPS},
+    {SERVICES_TABLE, SYSCOLLECTOR_SYNC_INDEX_SERVICES},
+    {BROWSER_EXTENSIONS_TABLE, SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS},
     // LCOV_EXCL_STOP
 };
 
@@ -183,18 +184,16 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 
 void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
-    nlohmann::json newData;
-
     nlohmann::json aux = result == MODIFIED && data.contains("new") ? data["new"] : data;
 
-    newData = ecsData(aux, table);
+    auto [newData, version] = ecsData(aux, table);
 
     const auto statefulToSend{newData.dump()};
     auto indexIt = INDEX_MAP.find(table);
 
     if (indexIt != INDEX_MAP.end())
     {
-        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend);
+        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -211,12 +210,11 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     if (m_notify)
     {
         nlohmann::json stateless;
-        nlohmann::json oldData;
 
         stateless["collector"] = table;
         stateless["module"] = "inventory";
 
-        oldData = (result == MODIFIED) ? ecsData(data["old"], table, false) : nlohmann::json {};
+        auto [oldData, oldVersion] = (result == MODIFIED) ? ecsData(data["old"], table, false) : std::make_pair(nlohmann::json{}, uint64_t(0));
 
         auto changedFields = addPreviousFields(newData, oldData);
 
@@ -273,6 +271,7 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
+    , m_initialized { false }
     , m_notify { false }
     , m_groups { false }
     , m_users { false }
@@ -303,7 +302,7 @@ std::string Syscollector::getCreateStatement() const
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
-                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> persistDiffFunction,
+                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
                         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
@@ -347,11 +346,34 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
-    std::unique_lock<std::mutex> lock{m_mutex};
-    m_stopping = false;
-
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
+    m_initialized   = true;
+
+}
+
+void Syscollector::start()
+{
+    std::unique_lock<std::mutex> lock{m_mutex};
+
+    // Don't start if initialization failed
+    if (!m_initialized)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Cannot start Syscollector - module initialization failed");
+        }
+
+        return;
+    }
+
+    m_stopping = false;
+
+    // Reset sync protocol stop flag to allow restarting operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->reset();
+    }
 
     syncLoop(lock);
 }
@@ -362,11 +384,23 @@ void Syscollector::destroy()
     m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
+
+    // Signal sync protocol to stop any ongoing operations
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
+    }
+
+    // Explicitly release DBSync before static destructors run
+    // This prevents use-after-free when Syscollector singleton destructs
+    // after DBSyncImplementation singleton has already been destroyed
+    m_spDBSync.reset();
 }
 
-nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
+std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
 {
     nlohmann::json ret;
+    uint64_t document_version = 0;
 
     if (table == OS_TABLE)
     {
@@ -425,13 +459,21 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
     {
         setJsonField(ret, data, "/checksum/hash/sha1", "checksum", true);
 
-        // Add state modified_at field for stateful events only
+        // Add state modified_at and version fields for stateful events only
         nlohmann::json state;
         state["modified_at"] = Utils::getCurrentISO8601();
+
+        // Include document_version field in state for synchronization
+        if (data.contains("version"))
+        {
+            document_version = data["version"].get<uint64_t>();
+            state["document_version"] = document_version;
+        }
+
         ret["state"] = state;
     }
 
-    return ret;
+    return {ret, document_version};
 }
 
 nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, bool createFields)
@@ -450,6 +492,7 @@ nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, b
     setJsonField(ret, originalData, "/host/os/major", "os_major", createFields);
     setJsonField(ret, originalData, "/host/os/minor", "os_minor", createFields);
     setJsonField(ret, originalData, "/host/os/name", "os_name", createFields);
+    setJsonField(ret, originalData, "/host/os/type", "os_type", createFields);
     setJsonField(ret, originalData, "/host/os/patch", "os_patch", createFields);
     setJsonField(ret, originalData, "/host/os/platform", "os_platform", createFields);
     setJsonField(ret, originalData, "/host/os/version", "os_version", createFields);
@@ -497,7 +540,7 @@ nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, 
     setJsonField(ret, originalData, "/package/source", "source", createFields);
     setJsonField(ret, originalData, "/package/type", "type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "vendor", createFields);
-    setJsonField(ret, originalData, "/package/version", "version", createFields);
+    setJsonField(ret, originalData, "/package/version", "version_", createFields);
 
     return ret;
 }
@@ -704,7 +747,7 @@ nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& orig
     setJsonField(ret, originalData, "/package/reference", "package_reference", createFields);
     setJsonField(ret, originalData, "/package/type", "package_type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "package_vendor", createFields);
-    setJsonField(ret, originalData, "/package/version", "package_version", createFields);
+    setJsonField(ret, originalData, "/package/version", "package_version_", createFields);
     setJsonField(ret, originalData, "/package/visible", "package_visible", createFields, true);
     setJsonField(ret, originalData, "/user/id", "user_id", createFields);
 
@@ -1273,7 +1316,7 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     else if (table == PACKAGES_TABLE)
     {
         std::string name = data.contains("name") ? data["name"].get<std::string>() : "";
-        std::string version = data.contains("version") ? data["version"].get<std::string>() : "";
+        std::string version = data.contains("version_") ? data["version_"].get<std::string>() : "";
         std::string architecture = data.contains("architecture") ? data["architecture"].get<std::string>() : "";
         std::string type = data.contains("type") ? data["type"].get<std::string>() : "";
         std::string path = data.contains("path") ? data["path"].get<std::string>() : "";
@@ -1335,11 +1378,11 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     {
         std::string browser_name = data.contains("browser_name") ? data["browser_name"].get<std::string>() : "";
         std::string user_id = data.contains("user_id") ? data["user_id"].get<std::string>() : "";
-        std::string browser_profile_name = data.contains("browser_profile_name") ? data["browser_profile_name"].get<std::string>() : "";
+        std::string browser_profile_path = data.contains("browser_profile_path") ? data["browser_profile_path"].get<std::string>() : "";
         std::string package_name = data.contains("package_name") ? data["package_name"].get<std::string>() : "";
-        std::string package_version = data.contains("package_version") ? data["package_version"].get<std::string>() : "";
+        std::string package_version = data.contains("package_version_") ? data["package_version_"].get<std::string>() : "";
 
-        ret = browser_name + ":" + user_id + ":" + browser_profile_name + ":" + package_name + ":" + package_version;
+        ret = browser_name + ":" + user_id + ":" + browser_profile_path + ":" + package_name + ":" + package_version;
     }
 
     return ret;
@@ -1511,7 +1554,18 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     {
         this->m_logFunction(level, msg);
     };
-    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+
+    try
+    {
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logFunction(LOG_ERROR, "Failed to initialize Syscollector sync protocol: " + std::string(ex.what()));
+        // Re-throw to allow caller to handle
+        throw;
+    }
 }
 
 bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
@@ -1524,11 +1578,11 @@ bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned 
     return false;
 }
 
-void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
     if (m_spSyncProtocol)
     {
-        m_spSyncProtocol->persistDifference(id, operation, index, data);
+        m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
 
@@ -1541,3 +1595,130 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 
     return false;
 }
+
+bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void Syscollector::deleteDatabase()
+{
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->deleteDatabase();
+    }
+
+    if (m_spDBSync)
+    {
+        m_spDBSync->closeAndDeleteDatabase();
+    }
+}
+
+// LCOV_EXCL_START
+
+// Excluded from code coverage as it is not the real implementation of the query method.
+// This is just a placeholder to comply with the module interface requirements.
+// The real implementation should be done in the future iterations.
+std::string Syscollector::query(const std::string& jsonQuery)
+{
+    // Log the received query
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Received query: " + jsonQuery);
+    }
+
+    try
+    {
+        // Parse JSON command
+        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
+
+        if (!query_json.contains("command") || !query_json["command"].is_string())
+        {
+            nlohmann::json response;
+            response["error"] = MQ_ERR_INVALID_PARAMS;
+            response["message"] = MQ_MSG_INVALID_PARAMS;
+            return response.dump();
+        }
+
+        std::string command = query_json["command"];
+        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
+
+        // Log the command being executed
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Executing command: " + command);
+        }
+
+        nlohmann::json response;
+
+        // Handle coordination commands with JSON responses
+        if (command == "pause")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector module paused successfully";
+            response["data"]["module"] = "syscollector";
+            response["data"]["action"] = "pause";
+        }
+        else if (command == "flush")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector module flushed successfully";
+            response["data"]["module"] = "syscollector";
+            response["data"]["action"] = "flush";
+        }
+        else if (command == "get_version")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector version retrieved";
+            response["data"]["version"] = 3;
+        }
+        else if (command == "set_version")
+        {
+            // Extract version from parameters
+            int version = 0;
+
+            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
+            {
+                version = parameters["version"].get<int>();
+            }
+
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector version set successfully";
+            response["data"]["version"] = version;
+        }
+        else if (command == "resume")
+        {
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector module resumed successfully";
+            response["data"]["module"] = "syscollector";
+            response["data"]["action"] = "resume";
+        }
+        else
+        {
+            response["error"] = MQ_ERR_UNKNOWN_COMMAND;
+            response["message"] = "Unknown Syscollector command: " + command;
+            response["data"]["command"] = command;
+        }
+
+        return response.dump();
+    }
+    catch (const std::exception& ex)
+    {
+        nlohmann::json response;
+        response["error"] = MQ_ERR_INTERNAL;
+        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Query error: " + std::string(ex.what()));
+        }
+
+        return response.dump();
+    }
+}
+// LCOV_EXCL_STOP

@@ -271,11 +271,12 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLarge)
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Payload Too Large", 413);
+                            .onError("Payload Too Large", 413, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else
@@ -352,11 +353,12 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLargeDouble)
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Payload Too Large", 413);
+                            .onError("Payload Too Large", 413, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else
@@ -433,11 +435,12 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLargeResetAfterSuccess
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Payload Too Large", 413);
+                            .onError("Payload Too Large", 413, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
                     }
                 }
                 else
@@ -527,11 +530,12 @@ TEST_F(IndexerConnectorAsyncTest, HandleError409VersionConflict)
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Version Conflict", 409);
+                            .onError("Version Conflict", 409, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version Conflict", 409);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Version Conflict", 409, "");
                     }
                 }
                 else
@@ -604,11 +608,12 @@ TEST_F(IndexerConnectorAsyncTest, HandleError429TooManyRequests)
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Too Many Requests", 429);
+                            .onError("Too Many Requests", 429, "");
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 429);
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Too Many Requests", 429, "");
                     }
                 }
                 else
@@ -676,11 +681,12 @@ TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Internal Server Error", 500);
+                        .onError("Internal Server Error", 500, "");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500);
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Internal Server Error", 500, "");
                 }
                 errorHandledPromise.set_value();
             }));
@@ -735,11 +741,13 @@ TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
                 // Test with a generic error status code (502 Bad Gateway)
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Bad Gateway", 502);
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Bad Gateway", 502, "");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Bad Gateway", 502);
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Bad Gateway", 502, "");
                 }
                 errorHandledPromise.set_value();
             }));
@@ -1050,11 +1058,13 @@ TEST_F(IndexerConnectorAsyncTest, SplitAndProcessBulkWithAsyncDispatcher)
                 callSequenceData.push_back(data);
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413);
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
             }))
         .WillRepeatedly(Invoke(
@@ -1133,11 +1143,13 @@ TEST_F(IndexerConnectorAsyncTest, ProcessBulkChunkRecursiveSplittingAsync)
                 callCounter++;
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413);
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Payload Too Large", 413, "");
                 }
             }))
         .WillRepeatedly(Invoke(
@@ -1414,4 +1426,134 @@ TEST_F(IndexerConnectorAsyncTest, VerifyAsyncDataWithErrorProcessing)
     EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for data processing";
     EXPECT_GT(callCount, 0);
     EXPECT_GT(receivedData.size(), 0);
+}
+
+// Test version handling in bulk index operations
+TEST_F(IndexerConnectorAsyncTest, BulkIndexWithVersionHandling)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) {
+                    capturedBulkData = request.data;
+                }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test with version
+    connector.bulkIndex("doc1", "index1", R"({"field":"value1"})", "12345");
+    // Test without version
+    connector.bulkIndex("doc2", "index1", R"({"field":"value2"})");
+
+    // Add more data to force bulk processing in async connector (stay within bulk size limit of 5)
+    for (int i = 0; i < 3; ++i)
+    {
+        std::string id = "doc" + std::to_string(i + 3);
+        std::string data = R"({"field":"value)" + std::to_string(i + 3) + R"("})";
+        connector.bulkIndex(id, "index1", data);
+    }
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for version test processing";
+
+    // Verify version is included in the bulk data for doc1
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version":"12345")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version_type":"external_gte")"));
+
+    // Verify doc2 does not have version information
+    std::size_t doc2_pos = capturedBulkData.find("doc2");
+    EXPECT_NE(doc2_pos, std::string::npos);
+    std::size_t doc2_end = capturedBulkData.find('\n', doc2_pos);
+    std::string doc2_metadata = capturedBulkData.substr(doc2_pos, doc2_end - doc2_pos);
+    EXPECT_THAT(doc2_metadata, ::testing::Not(::testing::HasSubstr("version")));
+}
+
+// Test error handling for missing version fields
+TEST_F(IndexerConnectorAsyncTest, ErrorHandlingForInvalidInput)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test with empty index - should throw exception
+    EXPECT_THROW(connector.bulkIndex("doc1", "", R"({"field":"value"})", "123"), IndexerConnectorException);
+
+    // Test with empty data - should not throw but log warning
+    EXPECT_NO_THROW(connector.bulkIndex("doc2", "index1", "", "456"));
+}
+
+// Test version conflict handling
+TEST_F(IndexerConnectorAsyncTest, VersionConflictHandling)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> errorProcessedPromise;
+    std::future<void> errorProcessedFuture = errorProcessedPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2) // Initial request + retry
+        .WillOnce(Invoke([&errorProcessedPromise](RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams) {
+            // Simulate version conflict (409)
+            if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+            {
+                std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Version conflict", 409, "");
+            }
+            else
+            {
+                std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version conflict", 409, "");
+            }
+        }))
+        .WillOnce(Invoke([&errorProcessedPromise](RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams) {
+            // Simulate successful retry
+            if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+            {
+                std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+            }
+            else
+            {
+                std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+            }
+            errorProcessedPromise.set_value();
+        }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Send a document with version that will cause conflict
+    connector.bulkIndex("conflict_doc", "index1", R"({"field":"conflicting_value"})", "999");
+
+    // Add more data to force bulk processing
+    for (int i = 0; i < 10; ++i)
+    {
+        std::string id = "doc" + std::to_string(i);
+        std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
+        connector.bulkIndex(id, "index1", data);
+    }
+
+    // Wait for error processing to complete
+    auto status = errorProcessedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for version conflict handling";
 }

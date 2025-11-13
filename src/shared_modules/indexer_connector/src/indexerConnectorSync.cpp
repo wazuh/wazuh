@@ -35,6 +35,11 @@ public:
         m_impl.deleteByQuery(index, agentId);
     }
 
+    void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
+    {
+        m_impl.executeUpdateByQuery(indices, updateQuery);
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         m_impl.bulkDelete(id, index);
@@ -43,6 +48,16 @@ public:
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
     {
         m_impl.bulkIndex(id, index, data);
+    }
+
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+    {
+        m_impl.bulkIndex(id, index, data, version);
+    }
+
+    void flush()
+    {
+        m_impl.flush();
     }
 
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
@@ -76,6 +91,12 @@ void IndexerConnectorSync::deleteByQuery(const std::string& index, const std::st
     m_impl->deleteByQuery(index, agentId);
 }
 
+void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& indices,
+                                                const nlohmann::json& updateQuery)
+{
+    m_impl->executeUpdateByQuery(indices, updateQuery);
+}
+
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)
 {
     m_impl->bulkDelete(id, index);
@@ -84,6 +105,19 @@ void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view inde
 void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index, std::string_view data)
 {
     m_impl->bulkIndex(id, index, data);
+}
+
+void IndexerConnectorSync::bulkIndex(std::string_view id,
+                                     std::string_view index,
+                                     std::string_view data,
+                                     std::string_view version)
+{
+    m_impl->bulkIndex(id, index, data, version);
+}
+
+void IndexerConnectorSync::flush()
+{
+    m_impl->flush();
 }
 
 [[nodiscard]] std::unique_lock<std::mutex> IndexerConnectorSync::scopeLock()

@@ -10,6 +10,7 @@
 
 #include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
+#include "../../include/sca.h"
 
 /// @brief Map of stateless operations
 static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
@@ -31,12 +32,9 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
     // LCOV_EXCL_STOP
 };
 
-/// @brief Sync protocol index name
-static const std::string SCA_SYNC_INDEX = "wazuh-states-sca";
-
 SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
-                                 std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> pushStatefulMessage)
+                                 std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
     , m_dBSync(std::move(dBSync)) {};
@@ -49,11 +47,11 @@ void SCAEventHandler::ReportPoliciesDelta(
 
     for (const auto& event : events)
     {
-        const auto [processedStatefulEvent, operation] = ProcessStateful(event);
+        const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
 
         if (!processedStatefulEvent.empty())
         {
-            PushStateful(processedStatefulEvent, operation);
+            PushStateful(processedStatefulEvent, operation, version);
         }
 
         const auto processedStatelessEvent = ProcessStateless(event);
@@ -112,11 +110,11 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                 {"policy", policyData}, {"check", rowData}, {"result", result}, {"collector", "check"}
             };
 
-            const auto [stateful, operation] = ProcessStateful(event);
+            const auto [stateful, operation, version] = ProcessStateful(event);
 
             if (!stateful.empty())
             {
-                PushStateful(stateful, operation);
+                PushStateful(stateful, operation, version);
             }
 
             const auto stateless = ProcessStateless(event);
@@ -234,7 +232,8 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
                                     "reason",
                                     "condition",
                                     "compliance",
-                                    "rules"})
+                                    "rules",
+                                    "version"})
                        .rowFilter(filter)
                        .build();
 
@@ -306,7 +305,8 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
                                     "reason",
                                     "condition",
                                     "compliance",
-                                    "rules"})
+                                    "rules",
+                                    "version"})
                        .rowFilter(filter)
                        .build();
 
@@ -323,11 +323,12 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
     return check;
 }
 
-std::pair<nlohmann::json, ReturnTypeCallback> SCAEventHandler::ProcessStateful(const nlohmann::json& event) const
+std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::ProcessStateful(const nlohmann::json& event) const
 {
     nlohmann::json check;
     nlohmann::json policy;
     nlohmann::json jsonEvent;
+    uint64_t document_version = 0;
 
     try
     {
@@ -345,7 +346,7 @@ std::pair<nlohmann::json, ReturnTypeCallback> SCAEventHandler::ProcessStateful(c
         else
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Stateful event does not contain check");
-            return {{}, SELECTED};
+            return {{}, SELECTED, 0};
         }
 
         if (event.contains("policy") && event["policy"].is_object())
@@ -362,7 +363,7 @@ std::pair<nlohmann::json, ReturnTypeCallback> SCAEventHandler::ProcessStateful(c
         else
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Stateful event does not contain policy");
-            return {{}, SELECTED};
+            return {{}, SELECTED, 0};
         }
 
         NormalizeCheck(check);
@@ -377,19 +378,27 @@ std::pair<nlohmann::json, ReturnTypeCallback> SCAEventHandler::ProcessStateful(c
             check.erase("checksum");
         }
 
-        // Add state modified_at field for stateful events only
+        // Add state modified_at and version fields for stateful events only
         nlohmann::json state;
         state["modified_at"] = Utils::getCurrentISO8601();
+
+        // Include document_version field in state for synchronization
+        if (check.contains("version"))
+        {
+            document_version = check["version"].get<uint64_t>();
+            state["document_version"] = document_version;
+            check.erase("version");
+        }
 
         jsonEvent = {{"checksum", checksumObj}, {"check", check}, {"policy", policy}, {"state", state}};
     }
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error processing stateful event: ") + e.what());
-        return {{}, SELECTED};
+        return {{}, SELECTED, 0};
     }
 
-    return {jsonEvent, static_cast<ReturnTypeCallback>(event["result"])};
+    return {jsonEvent, static_cast<ReturnTypeCallback>(event["result"]), document_version};
 }
 
 nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) const
@@ -513,14 +522,14 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
     return Utils::asciiToHex(hash.hash());
 }
 
-void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallback operation) const
+void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallback operation, uint64_t version) const
 {
     if (!m_pushStatefulMessage)
     {
         throw std::runtime_error("PushStatefulMessage function not set, cannot send message.");
     }
 
-    m_pushStatefulMessage(CalculateHashId(event), OPERATION_STATES_MAP.at(operation), SCA_SYNC_INDEX, event.dump());
+    m_pushStatefulMessage(CalculateHashId(event), OPERATION_STATES_MAP.at(operation), SCA_SYNC_INDEX, event.dump(), version);
 
     LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + event.dump());
 }
