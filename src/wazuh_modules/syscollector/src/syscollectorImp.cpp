@@ -194,6 +194,12 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     if (indexIt != INDEX_MAP.end())
     {
         m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
+
+        // Track VD table changes for DataContext determination
+        if (table == OS_TABLE || table == PACKAGES_TABLE || table == HOTFIXES_TABLE)
+        {
+            m_vdTablesWithChanges.insert(table);
+        }
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -277,6 +283,7 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
+    , m_vdHasModifyOrDelete { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -1260,20 +1267,39 @@ void Syscollector::scanBrowserExtensions()
     }
 }
 
-void Syscollector::scan()
+void Syscollector::scanVDTables()
 {
-    m_logFunction(LOG_INFO, "Starting evaluation.");
-    TRY_CATCH_TASK(scanHardware);
+    m_logFunction(LOG_INFO, "Starting VD tables evaluation.");
+
+    // Clear VD table change tracking from previous scan
+    m_vdTablesWithChanges.clear();
+
     TRY_CATCH_TASK(scanOs);
-    TRY_CATCH_TASK(scanNetwork);
     TRY_CATCH_TASK(scanPackages);
     TRY_CATCH_TASK(scanHotfixes);
+
+    m_logFunction(LOG_INFO, "VD tables evaluation finished.");
+}
+
+void Syscollector::scanNonVDTables()
+{
+    m_logFunction(LOG_INFO, "Starting non-VD tables evaluation.");
+    TRY_CATCH_TASK(scanHardware);
+    TRY_CATCH_TASK(scanNetwork);
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
     TRY_CATCH_TASK(scanGroups);
     TRY_CATCH_TASK(scanUsers);
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
+    m_logFunction(LOG_INFO, "Non-VD tables evaluation finished.");
+}
+
+void Syscollector::scan()
+{
+    m_logFunction(LOG_INFO, "Starting evaluation.");
+    scanVDTables();
+    scanNonVDTables();
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -1548,7 +1574,7 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs)
 {
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
@@ -1557,8 +1583,17 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
     try
     {
+        // Initialize non-VD sync protocol (existing tables)
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Initialize VD sync protocol (OS, packages, hotfixes)
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(moduleName + "_vd", syncDbPathVD, mqFuncs, logger_func, nullptr);
+
+        // Enable DataContext support for VD sync protocol (adds is_data_context column)
+        m_spSyncProtocolVD->enableDataContext();
+
+        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD);
     }
     catch (const std::exception& ex)
     {
@@ -1570,30 +1605,80 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
+    bool result = true;
+
+    // Sync non-VD protocol with default Option::SYNC
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps);
+        result = m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps, Option::SYNC) && result;
     }
 
-    return false;
+    // Sync VD protocol with appropriate Option flag
+    if (m_spSyncProtocolVD)
+    {
+        // Determine Option based on operation types seen during scan:
+        // - If only CREATE operations seen (no MODIFY/DELETE) -> VDFIRST (first scan)
+        // - If any MODIFY/DELETE operations seen -> VDSYNC (delta scan)
+        Option vdOption = m_vdHasModifyOrDelete ? Option::VDSYNC : Option::VDFIRST;
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Syncing VD tables with option: " +
+                         std::string(vdOption == Option::VDFIRST ? "VDFIRST" : "VDSYNC"));
+        }
+
+        result = m_spSyncProtocolVD->synchronizeModule(mode, timeout, retries, maxEps, vdOption) && result;
+
+        // Reset the flag after sync for next scan cycle
+        m_vdHasModifyOrDelete = false;
+    }
+
+    return result;
 }
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
-    if (m_spSyncProtocol)
+    // Route to VD sync protocol if it's a VD table (OS, packages, hotfixes)
+    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+    if (isVDTable && m_spSyncProtocolVD)
     {
+        // Track if we see any MODIFY or DELETE operations for VD tables
+        // This helps determine if it's first scan (all CREATE) or delta scan (has MODIFY/DELETE)
+        if (operation == Operation::MODIFY || operation == Operation::DELETE_)
+        {
+            m_vdHasModifyOrDelete = true;
+        }
+
+        // VD tables go only to VD sync protocol
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version);
+    }
+    else if (m_spSyncProtocol)
+    {
+        // Non-VD tables go only to non-VD sync protocol
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    bool result = false;
+
+    // Try to parse with non-VD protocol first
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->parseResponseBuffer(data, length);
+        result = m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    return false;
+    // If that didn't work, try VD protocol
+    if (!result && m_spSyncProtocolVD)
+    {
+        result = m_spSyncProtocolVD->parseResponseBuffer(data, length);
+    }
+
+    return result;
 }
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
@@ -1608,11 +1693,19 @@ bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std:
 
 void Syscollector::deleteDatabase()
 {
+    // Delete non-VD sync database
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->deleteDatabase();
     }
 
+    // Delete VD sync database
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->deleteDatabase();
+    }
+
+    // Delete local inventory database
     if (m_spDBSync)
     {
         m_spDBSync->closeAndDeleteDatabase();

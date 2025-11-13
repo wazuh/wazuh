@@ -72,6 +72,9 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
 
+        /// @copydoc IPersistentQueueStorage::addDataContextColumn
+        void addDataContextColumn() override;
+
     private:
         /// @brief Active SQLite database connection.
         SQLite3Wrapper::Connection m_connection;

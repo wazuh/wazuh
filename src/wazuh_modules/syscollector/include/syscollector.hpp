@@ -16,6 +16,7 @@
 #include <mutex>
 #include <memory>
 #include <optional>
+#include <set>
 
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
@@ -73,7 +74,7 @@ class EXPORTED Syscollector final
         void destroy();
 
         // Sync protocol methods
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs);
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs);
         bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
@@ -136,6 +137,8 @@ class EXPORTED Syscollector final
         void scanServices();
         void scanBrowserExtensions();
         void scan();
+        void scanVDTables();
+        void scanNonVDTables();
         void syncLoop(std::unique_lock<std::mutex>& lock);
 
         void setJsonField(nlohmann::json& target,
@@ -171,11 +174,14 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        bool                                                                     m_vdHasModifyOrDelete;
+        std::set<std::string>                                                    m_vdTablesWithChanges;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
+        std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
 };
 
 

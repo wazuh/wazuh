@@ -69,6 +69,11 @@ struct PersistedData
 
     /// @brief Version of the data.
     uint64_t version;
+
+    /// @brief Flag indicating if this is a DataContext message (vs DataValue).
+    /// Only used in VD (Vulnerability Detection) sync databases.
+    /// 0 = DataValue (default), 1 = DataContext
+    bool is_data_context = false;
 };
 
 /// @brief Interface for persistent message queues.
@@ -111,4 +116,9 @@ class IPersistentQueue
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
+
+        /// @brief Enables DataContext support by adding is_data_context column to the database.
+        /// This method should be called for VD (Vulnerability Detection) sync databases
+        /// to support storing both DataValue and DataContext messages.
+        virtual void enableDataContext() = 0;
 };
