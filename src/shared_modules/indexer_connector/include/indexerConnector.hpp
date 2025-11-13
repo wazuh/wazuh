@@ -86,8 +86,12 @@ public:
      *
      * @param index Index name.
      * @param query Query JSON object containing the search parameters.
+     * @param onResponse Optional callback to process the response (e.g., extract search_after for pagination).
+     *                   Callback receives the response as nlohmann::json.
      */
-    void executeGetQuery(const std::string& index, const nlohmann::json& query);
+    void executeGetQuery(const std::string& index,
+                        const nlohmann::json& query,
+                        std::function<void(const nlohmann::json&)> onResponse = nullptr);
 
     /**
      * @brief Execute a GET context query against multiple indexer indices.
@@ -97,8 +101,12 @@ public:
      *
      * @param indices List of index names to query.
      * @param query Query JSON object containing the search parameters.
+     * @param onResponse Optional callback to process each index response (e.g., extract search_after for pagination).
+     *                   Callback receives the response as nlohmann::json.
      */
-    void executeGetContext(const std::vector<std::string>& indices, const nlohmann::json& query);
+    void executeGetContext(const std::vector<std::string>& indices,
+                          const nlohmann::json& query,
+                          std::function<void(const nlohmann::json&)> onResponse = nullptr);
 
     /**
      * @brief Bulk delete.

@@ -238,11 +238,13 @@ namespace InventorySyncQueryBuilder
     /// @param packageName Package name to match
     /// @param packageVersion Package version to match
     /// @param size Maximum number of results to return
+    /// @param searchAfter Optional search_after value for pagination [_id]
     /// @return JSON search query body with bool query and sort
     inline nlohmann::json buildCveGetQuery(const std::string& agentId,
                                            const std::string& packageName,
                                            const std::string& packageVersion,
-                                           int size = 1000)
+                                           int size = 1000,
+                                           const std::string& searchAfter = "")
     {
         nlohmann::json query;
 
@@ -250,32 +252,13 @@ namespace InventorySyncQueryBuilder
         query["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
         query["query"]["bool"]["must"][1]["term"]["package.name"] = packageName;
         query["query"]["bool"]["must"][2]["term"]["package.version"] = packageVersion;
-        query["sort"][0]["vulnerability.id"]["order"] = "asc";
+        query["sort"][0]["_id"]["order"] = "asc";
 
-        return query;
-    }
-
-    /// @brief Build GET query for CVE/vulnerability data by OS
-    /// @param agentId Agent ID to match
-    /// @param osName OS name to match
-    /// @param osVersion OS version to match
-    /// @param osKernel OS kernel version to match
-    /// @param size Maximum number of results to return
-    /// @return JSON search query body with bool query and sort
-    inline nlohmann::json buildCveByOsGetQuery(const std::string& agentId,
-                                               const std::string& osName,
-                                               const std::string& osVersion,
-                                               const std::string& osKernel,
-                                               int size = 1000)
-    {
-        nlohmann::json query;
-
-        query["size"] = size;
-        query["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
-        query["query"]["bool"]["must"][1]["term"]["host.os.name"] = osName;
-        query["query"]["bool"]["must"][2]["term"]["host.os.version"] = osVersion;
-        query["query"]["bool"]["must"][3]["term"]["host.os.kernel"] = osKernel;
-        query["sort"][0]["vulnerability.id"]["order"] = "asc";
+        // Add search_after for pagination if provided
+        if (!searchAfter.empty())
+        {
+            query["search_after"] = nlohmann::json::array({searchAfter});
+        }
 
         return query;
     }
@@ -283,16 +266,55 @@ namespace InventorySyncQueryBuilder
     /// @brief Build GET query for system inventory context data
     /// @param agentId Agent ID to match
     /// @param size Maximum number of results to return
+    /// @param searchAfter Optional search_after value for pagination [_id]
     /// @return JSON search query body with term query and source filtering
-    inline nlohmann::json buildContextGetQuery(const std::string& agentId, int size = 1000)
+    inline nlohmann::json buildContextGetQuery(const std::string& agentId, int size = 1000, const std::string& searchAfter = "")
     {
         nlohmann::json query;
 
         query["_source"]["excludes"] = nlohmann::json::array({"wazuh*"});
         query["query"]["term"]["agent.id"] = agentId;
         query["size"] = size;
+        query["sort"][0]["_id"]["order"] = "asc";
+
+        // Add search_after for pagination if provided
+        if (!searchAfter.empty())
+        {
+            query["search_after"] = nlohmann::json::array({searchAfter});
+        }
 
         return query;
+    }
+
+    /// @brief Extract search_after value from the last hit in a search response
+    /// @param response JSON response from OpenSearch/Elasticsearch search
+    /// @return The _id value from the last hit's sort, empty string if no hits
+    inline std::string extractSearchAfter(const nlohmann::json& response)
+    {
+        std::string searchAfter;
+
+        try
+        {
+            if (response.contains("hits") && response["hits"].contains("hits") &&
+                response["hits"]["hits"].is_array() && !response["hits"]["hits"].empty())
+            {
+                const auto& hits = response["hits"]["hits"];
+                const auto& lastHit = hits[hits.size() - 1];
+
+                if (lastHit.contains("sort") && lastHit["sort"].is_array() && !lastHit["sort"].empty())
+                {
+                    // Extract _id from sort array (first and only element)
+                    searchAfter = lastHit["sort"][0].get<std::string>();
+                }
+            }
+        }
+        catch (const std::exception&)
+        {
+            // Return empty string if extraction fails
+            searchAfter.clear();
+        }
+
+        return searchAfter;
     }
 } // namespace InventorySyncQueryBuilder
 

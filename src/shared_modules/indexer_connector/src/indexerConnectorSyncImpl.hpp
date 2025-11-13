@@ -705,13 +705,30 @@ public:
     }
 
 
-    void executeGetQuery(const std::string& index, const nlohmann::json& query)
+    void executeGetQuery(const std::string& index,
+                        const nlohmann::json& query,
+                        std::function<void(const nlohmann::json&)> onResponse = nullptr)
     {
         bool needToRetry = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, onResponse](const std::string& response)
         {
             logInfo(IC_NAME, "GET query response: %s", response.c_str());
+            
+            // Parse and pass response to callback if provided
+            if (onResponse)
+            {
+                try
+                {
+                    auto jsonResponse = nlohmann::json::parse(response);
+                    onResponse(jsonResponse);
+                }
+                catch (const std::exception& e)
+                {
+                    logError(IC_NAME, "Failed to parse GET query response: %s", e.what());
+                }
+            }
+            
             // Notify registered callbacks on success
             for (const auto& notify : m_notify)
             {
@@ -774,13 +791,30 @@ public:
         } while (needToRetry);
     }
 
-    void executeGetContext(const std::vector<std::string>& indices, const nlohmann::json& query)
+    void executeGetContext(const std::vector<std::string>& indices,
+                          const nlohmann::json& query,
+                          std::function<void(const nlohmann::json&)> onResponse = nullptr)
     {
         bool needToRetry = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, onResponse](const std::string& response)
         {
             logInfo(IC_NAME, "GET context query response: %s", response.c_str());
+            
+            // Parse and pass response to callback if provided
+            if (onResponse)
+            {
+                try
+                {
+                    auto jsonResponse = nlohmann::json::parse(response);
+                    onResponse(jsonResponse);
+                }
+                catch (const std::exception& e)
+                {
+                    logError(IC_NAME, "Failed to parse GET context response: %s", e.what());
+                }
+            }
+            
             // Notify registered callbacks on success
             for (const auto& notify : m_notify)
             {
