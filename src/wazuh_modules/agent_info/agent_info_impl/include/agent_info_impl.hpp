@@ -115,6 +115,9 @@ class AgentInfoImpl
         /// @param values Values to sync
         void updateChanges(const std::string& table, const nlohmann::json& values);
 
+        /// @brief Update db_metadata table with current in-memory state
+        void updateDbMetadata();
+
         /// @brief Set sync flag in database for a specific table
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
         /// @param value Flag value (true/false)
@@ -209,6 +212,9 @@ class AgentInfoImpl
 
         /// @brief Flag indicating if this is the first run (database just created)
         bool m_isFirstRun = true;
+
+        /// @brief Flag indicating if this is the first groups run (first population with data)
+        bool m_isFirstGroupsRun = true;
 
         /// @brief Mutex for synchronizing access to sync flags
         std::mutex m_syncFlagsMutex;

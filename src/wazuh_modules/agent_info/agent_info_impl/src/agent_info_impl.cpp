@@ -112,7 +112,8 @@ const char* DB_METADATA_SQL_STATEMENT =
     "should_sync_groups         INTEGER NOT NULL DEFAULT 0,"
     "last_metadata_integrity    INTEGER NOT NULL DEFAULT 0,"
     "last_groups_integrity      INTEGER NOT NULL DEFAULT 0,"
-    "is_first_run               INTEGER NOT NULL DEFAULT 1);";
+    "is_first_run               INTEGER NOT NULL DEFAULT 1,"
+    "is_first_groups_run        INTEGER NOT NULL DEFAULT 1);";
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
@@ -193,13 +194,33 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
         // Perform delta synchronization for metadata if needed
         if (m_shouldSyncMetadata)
         {
-            performDeltaSync(AGENT_METADATA_TABLE);
+            // Check if this is the first run - applies to AGENT_METADATA_TABLE
+            if (m_isFirstRun)
+            {
+                m_logFunction(LOG_DEBUG, "First run detected for agent-metadata, skipping synchronization.");
+                resetSyncFlag(AGENT_METADATA_TABLE);
+                return;
+            }
+            else
+            {
+                performDeltaSync(AGENT_METADATA_TABLE);
+            }
         }
 
         // Perform delta synchronization for groups if needed
         if (m_shouldSyncGroups)
         {
-            performDeltaSync(AGENT_GROUPS_TABLE);
+            // Check if this is the first groups run - applies to AGENT_GROUPS_TABLE
+            if (m_isFirstGroupsRun)
+            {
+                m_logFunction(LOG_DEBUG, "First groups run detected for agent-groups, skipping synchronization.");
+                resetSyncFlag(AGENT_GROUPS_TABLE);
+                return;
+            }
+            else
+            {
+                performDeltaSync(AGENT_GROUPS_TABLE);
+            }
         }
 
         // Check if integrity check should be performed (only if no delta sync is in progress)
@@ -1334,6 +1355,54 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     }
 }
 
+void AgentInfoImpl::updateDbMetadata()
+{
+    // Capture a local copy of the shared_ptr to prevent race condition with stop()
+    // If stop() calls m_dBSync.reset() after this point, the object won't be destroyed
+    // until our local copy goes out of scope
+    auto dbSync = m_dBSync;
+
+    if (!dbSync)
+    {
+        return;
+    }
+
+    // Verify that handle is valid before creating DBSyncTxn
+    // A null handle indicates DBSync is not properly initialized
+    auto handle = dbSync->handle();
+
+    if (!handle)
+    {
+        return;
+    }
+
+    try
+    {
+        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn{handle, nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
+        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
+        rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
+        rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
+        rowData["is_first_run"] = m_isFirstRun ? 1 : 0;
+        rowData["is_first_groups_run"] = m_isFirstGroupsRun ? 1 : 0;
+
+        nlohmann::json input;
+        input["table"] = "db_metadata";
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to update db_metadata: " + std::string(e.what()));
+    }
+}
+
 void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 {
     if (!m_dBSync)
@@ -1346,35 +1415,6 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
     {
         std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
 
-        // Check if this is the first run - only applies to AGENT_METADATA_TABLE
-        if (m_isFirstRun && value && table == AGENT_METADATA_TABLE)
-        {
-            // On first run, clear the is_first_run flag and don't set sync flag for metadata
-            m_logFunction(LOG_INFO, "First run detected for " + table + ", skipping synchronization.");
-            m_isFirstRun = false;
-
-            // Update database to clear is_first_run flag
-            auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
-            DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
-
-            nlohmann::json rowData;
-            rowData["id"] = 1;
-            rowData["should_sync_metadata"] = 0;  // Don't sync metadata on first run
-            rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;  // Groups sync normally
-            rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
-            rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
-            rowData["is_first_run"] = 0;           // Clear first run flag
-
-            nlohmann::json input;
-            input["table"] = "db_metadata";
-            input["data"] = nlohmann::json::array({rowData});
-
-            txn.syncTxnRow(input);
-            txn.getDeletedRows(callback);
-
-            return;  // Don't set the sync flag for metadata on first run
-        }
-
         // Update in-memory flag
         if (table == AGENT_METADATA_TABLE)
         {
@@ -1385,25 +1425,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
             m_shouldSyncGroups = value;
         }
 
-        // Use DBSyncTxn for immediate commit
-        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
-        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
-
-        nlohmann::json rowData;
-        rowData["id"] = 1;
-        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
-        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
-        rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
-        rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
-        rowData["is_first_run"] = m_isFirstRun ? 1 : 0;
-
-        nlohmann::json input;
-        input["table"] = "db_metadata";
-        input["data"] = nlohmann::json::array({rowData});
-
-        txn.syncTxnRow(input);
-        txn.getDeletedRows(callback);
-
+        updateDbMetadata();
         m_logFunction(LOG_DEBUG, "Set sync flag for " + table + " to " + std::to_string(value));
     }
     catch (const std::exception& e)
@@ -1455,6 +1477,11 @@ void AgentInfoImpl::loadSyncFlags()
             {
                 m_isFirstRun = (data["is_first_run"].get<int>() != 0);
             }
+
+            if (data.contains("is_first_groups_run") && data["is_first_groups_run"].is_number())
+            {
+                m_isFirstGroupsRun = (data["is_first_groups_run"].get<int>() != 0);
+            }
         };
 
         // Build JSON for selectRows
@@ -1474,6 +1501,7 @@ void AgentInfoImpl::loadSyncFlags()
         {
             m_logFunction(LOG_DEBUG, "First run detected: db_metadata table is empty");
             m_isFirstRun = true;
+            m_isFirstGroupsRun = true;
         }
 
     }
@@ -1484,6 +1512,7 @@ void AgentInfoImpl::loadSyncFlags()
         m_shouldSyncMetadata = false;
         m_shouldSyncGroups = false;
         m_isFirstRun = true;
+        m_isFirstGroupsRun = true;
     }
 }
 
@@ -1502,10 +1531,12 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
         // Determine which flag to reset
         if (table == AGENT_METADATA_TABLE)
         {
+            m_isFirstRun = false;
             m_shouldSyncMetadata = false;
         }
         else if (table == AGENT_GROUPS_TABLE)
         {
+            m_isFirstGroupsRun = false;
             m_shouldSyncGroups = false;
         }
         else
@@ -1514,29 +1545,11 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
             return;
         }
 
-        // Use DBSyncTxn for immediate commit
-        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
-        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
-
-        nlohmann::json rowData;
-        rowData["id"] = 1;
-        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
-        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
-        rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
-        rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
-        rowData["is_first_run"] = m_isFirstRun ? 1 : 0;
-
         m_logFunction(LOG_DEBUG, "Resetting sync flag for " + table + " to false in database. m_shouldSyncMetadata=" +
                       std::to_string(m_shouldSyncMetadata) + ", m_shouldSyncGroups=" +
                       std::to_string(m_shouldSyncGroups));
 
-        nlohmann::json input;
-        input["table"] = "db_metadata";
-        input["data"] = nlohmann::json::array({rowData});
-
-        txn.syncTxnRow(input);
-        txn.getDeletedRows(callback);
-
+        updateDbMetadata();
         m_logFunction(LOG_DEBUG, "Reset sync flag for " + table);
     }
     catch (const std::exception& e)
@@ -1615,25 +1628,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
             return;
         }
 
-        // Update in database
-        auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
-        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
-
-        nlohmann::json rowData;
-        rowData["id"] = 1;
-        rowData["should_sync_metadata"] = m_shouldSyncMetadata ? 1 : 0;
-        rowData["should_sync_groups"] = m_shouldSyncGroups ? 1 : 0;
-        rowData["last_metadata_integrity"] = m_lastMetadataIntegrity;
-        rowData["last_groups_integrity"] = m_lastGroupsIntegrity;
-        rowData["is_first_run"] = m_isFirstRun ? 1 : 0;
-
-        nlohmann::json input;
-        input["table"] = "db_metadata";
-        input["data"] = nlohmann::json::array({rowData});
-
-        txn.syncTxnRow(input);
-        txn.getDeletedRows(callback);
-
+        updateDbMetadata();
         m_logFunction(LOG_INFO, "Updated last integrity check time for " + table);
     }
     catch (const std::exception& e)

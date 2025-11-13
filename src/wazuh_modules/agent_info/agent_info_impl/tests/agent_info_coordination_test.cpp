@@ -712,6 +712,10 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
         nlohmann::json flagData;
         flagData["should_sync_metadata"] = 1;
         flagData["should_sync_groups"] = 0;
+        flagData["last_metadata_integrity"] = 0;
+        flagData["last_groups_integrity"] = 0;
+        flagData["is_first_run"] = 0;  // NOT first run, so coordination will be attempted
+        flagData["is_first_groups_run"] = 0;
         callback(SELECTED, flagData);
     }));
 
@@ -1108,6 +1112,10 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithUnknownException)
             nlohmann::json flagData;
             flagData["should_sync_metadata"] = 1;
             flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;  // NOT first run, so coordination will be attempted
+            flagData["is_first_groups_run"] = 0;
             callback(SELECTED, flagData);
         }
 
