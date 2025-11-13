@@ -91,6 +91,10 @@ EXPORTED void syscollector_delete_database();
 // Query function
 EXPORTED size_t syscollector_query(const char* query, char** output);
 
+// Mutex access functions for external synchronization
+EXPORTED void syscollector_lock_scan_mutex();
+EXPORTED void syscollector_unlock_scan_mutex();
+
 #ifdef __cplusplus
 }
 #endif

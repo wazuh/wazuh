@@ -354,7 +354,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
 void Syscollector::start()
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
+    std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
 
     // Don't start if initialization failed
     if (!m_initialized)
@@ -375,12 +375,12 @@ void Syscollector::start()
         m_spSyncProtocol->reset();
     }
 
-    syncLoop(lock);
+    syncLoop(scan_lock);
 }
 
 void Syscollector::destroy()
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
@@ -1278,7 +1278,7 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
-void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
+void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
     m_logFunction(LOG_INFO, "Module started.");
 
@@ -1287,7 +1287,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         scan();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
     return m_stopping;
 }))
@@ -1570,6 +1570,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
+    m_logFunction(LOG_INFO, "Starting inventory synchronization.");
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps);
@@ -1617,6 +1618,16 @@ void Syscollector::deleteDatabase()
     {
         m_spDBSync->closeAndDeleteDatabase();
     }
+}
+
+void Syscollector::lockScanMutex()
+{
+    m_scan_mutex.lock();
+}
+
+void Syscollector::unlockScanMutex()
+{
+    m_scan_mutex.unlock();
 }
 
 // LCOV_EXCL_START

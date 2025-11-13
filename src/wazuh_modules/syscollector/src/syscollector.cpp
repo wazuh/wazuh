@@ -225,6 +225,16 @@ size_t syscollector_query(const char* json_query, char** output)
     }
 }
 
+void syscollector_lock_scan_mutex()
+{
+    Syscollector::instance().lockScanMutex();
+}
+
+void syscollector_unlock_scan_mutex()
+{
+    Syscollector::instance().unlockScanMutex();
+}
+
 #ifdef __cplusplus
 }
 #endif

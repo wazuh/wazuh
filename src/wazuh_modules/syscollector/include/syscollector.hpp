@@ -80,6 +80,10 @@ class EXPORTED Syscollector final
         bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
         void deleteDatabase();
         std::string query(const std::string& jsonQuery);
+
+        // Mutex access for external synchronization (e.g., from wm_sync_module)
+        void lockScanMutex();
+        void unlockScanMutex();
     private:
         Syscollector();
         ~Syscollector() = default;
@@ -136,7 +140,7 @@ class EXPORTED Syscollector final
         void scanServices();
         void scanBrowserExtensions();
         void scan();
-        void syncLoop(std::unique_lock<std::mutex>& lock);
+        void syncLoop(std::unique_lock<std::mutex>& scan_lock);
 
         void setJsonField(nlohmann::json& target,
                           const nlohmann::json& source,
@@ -173,7 +177,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_browserExtensions;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
-        std::mutex                                                               m_mutex;
+        std::mutex                                                               m_scan_mutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
 };

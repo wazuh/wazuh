@@ -74,6 +74,12 @@ syscollector_delete_database_func syscollector_delete_database_ptr = NULL;
 typedef size_t (*syscollector_query_func)(const char* query, char** output);
 syscollector_query_func syscollector_query_ptr = NULL;
 
+// Mutex access function pointers
+typedef void (*syscollector_lock_scan_mutex_func)();
+typedef void (*syscollector_unlock_scan_mutex_func)();
+syscollector_lock_scan_mutex_func syscollector_lock_scan_mutex_ptr = NULL;
+syscollector_unlock_scan_mutex_func syscollector_unlock_scan_mutex_ptr = NULL;
+
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
 uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
@@ -284,6 +290,10 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         // Get query function pointer
         syscollector_query_ptr = so_get_function_sym(syscollector_module, "syscollector_query");
+
+        // Get mutex access function pointers
+        syscollector_lock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_lock_scan_mutex");
+        syscollector_unlock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_unlock_scan_mutex");
     } else {
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
         pthread_exit(NULL);
@@ -470,10 +480,26 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
     }
 
     while (sync_module_running) {
-        mtinfo(WM_SYS_LOGTAG, "Running inventory synchronization.");
+        mtinfo(WM_SYS_LOGTAG, "Starting inventory synchronization.");
 
         if (syscollector_sync_module_ptr) {
-            syscollector_sync_module_ptr(MODE_DELTA, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+            // Lock the scan mutex to prevent concurrent scan operations during sync
+            if (syscollector_lock_scan_mutex_ptr) {
+                syscollector_lock_scan_mutex_ptr();
+            }
+
+            bool sync_result = syscollector_sync_module_ptr(MODE_DELTA, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+
+            if (sync_result) {
+
+            } else {
+
+            }
+
+            // Unlock the scan mutex after sync completes
+            if (syscollector_unlock_scan_mutex_ptr) {
+                syscollector_unlock_scan_mutex_ptr();
+            }
         } else {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }
