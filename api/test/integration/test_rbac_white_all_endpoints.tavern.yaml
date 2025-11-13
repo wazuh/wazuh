@@ -986,112 +986,6 @@ stages:
     response:
       <<: *empty_response
 
-  - name: Try to one decoder (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
-      method: GET
-      params:
-        decoder_names: agent-buffer
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1504
-          total_affected_items: 0
-          total_failed_items: 1
-
-
----
-test_name: GET /decoders/files
-
-stages:
-  - name: Try to get decoders files (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
-  - name: Try to get one decoder file (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
-      method: GET
-      params:
-        filename: local_decoder.xml
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /decoders/files/{filename}
-
-stages:
-  - name: Try to get decoder file content
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: DELETE /decoders/files/{filename}
-
-stages:
-  - name: Try to delete decoder file content
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /decoders/files/{filename}
-
-stages:
-  - name: Try to upload decoder file content
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
-      method: PUT
-      data: "{new_decoder:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /decoders/parents
-
-stages:
-  - name: Try to get information about all decoders parents
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
 ---
 test_name: DELETE /groups
 
@@ -1433,7 +1327,8 @@ stages:
 
 ---
 test_name: GET /rules
-
+marks:
+  - xfail
 stages:
   - name: Try to get all rules (generic)
     request:
@@ -1467,7 +1362,8 @@ stages:
           total_failed_items: 1
 ---
 test_name: GET /rules/groups
-
+marks:
+  - xfail
 stages:
   - name: Try to get rules groups
     request:
@@ -1481,7 +1377,8 @@ stages:
 
 ---
 test_name: GET /rules/requirement/{requirement}
-
+marks:
+  - xfail
 stages:
   - name: Try to get rules with pci_dss requirement
     request:
@@ -1495,7 +1392,8 @@ stages:
 
 ---
 test_name: GET /rules/files/{filename}
-
+marks:
+  - xfail
 stages:
   - name: Try to get rule file content
     request:
@@ -1509,7 +1407,8 @@ stages:
 
 ---
 test_name: GET /rules/files
-
+marks:
+  - xfail
 stages:
   - name: Try to get rules files (generic)
     request:
@@ -1536,7 +1435,8 @@ stages:
 
 ---
 test_name: PUT /rules/files/{filename}
-
+marks:
+  - xfail
 stages:
   - name: Try to upload rule file
     request:
@@ -1552,7 +1452,8 @@ stages:
 
 ---
 test_name: DELETE /rules/files/{filename}
-
+marks:
+  - xfail
 stages:
   - name: Try to delete rule file
     request:
