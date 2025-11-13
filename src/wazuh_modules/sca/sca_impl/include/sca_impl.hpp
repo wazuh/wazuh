@@ -51,7 +51,9 @@ class SecurityConfigurationAssessment
                    const int commandsTimeout,
                    const bool remoteEnabled,
                    const std::vector<sca::PolicyData>& policies,
-                   const YamlToJsonFunc& yamlToJsonFunc = nullptr);
+                   const YamlToJsonFunc& yamlToJsonFunc = nullptr,
+                   std::chrono::seconds syncResponseTimeout = std::chrono::seconds(30),
+                   size_t syncMaxEps = 10);
 
         /// @copydoc IModule::Stop
         void Stop() ;
@@ -196,4 +198,13 @@ class SecurityConfigurationAssessment
 
         /// @brief Path to the sync protocol
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+
+        /// @brief Synchronization response timeout in seconds
+        std::chrono::seconds m_syncResponseTimeout = std::chrono::seconds(30);
+
+        /// @brief Number of retries for synchronization operations
+        static constexpr unsigned int m_syncRetries = 3;
+
+        /// @brief Maximum events per second for synchronization
+        size_t m_syncMaxEps = 10;
 };

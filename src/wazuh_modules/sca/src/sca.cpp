@@ -288,6 +288,14 @@ void SCA::setup(const struct wm_sca_t* sca_config)
                                            ? std::chrono::seconds(sca_config->scan_config.interval)
                                            : std::chrono::seconds(3600);
 
+        // Extract synchronization parameters (with defaults)
+        const auto syncResponseTimeout = sca_config->sync.enable_synchronization
+                                          ? std::chrono::seconds(sca_config->sync.sync_response_timeout)
+                                          : std::chrono::seconds(30);
+        const size_t syncMaxEps = sca_config->sync.enable_synchronization
+                                  ? static_cast<size_t>(sca_config->sync.sync_max_eps)
+                                  : 10;
+
         // Extract policy paths if available
         std::vector<sca::PolicyData> policies;
 
@@ -311,7 +319,9 @@ void SCA::setup(const struct wm_sca_t* sca_config)
                      commandsTimeout,
                      remoteEnabled,
                      policies,
-                     yaml_file_to_json_cpp);
+                     yaml_file_to_json_cpp,
+                     syncResponseTimeout,
+                     syncMaxEps);
     }
 }
 
