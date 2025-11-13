@@ -19,7 +19,7 @@ def populate_dict(dict, files_list):
 
         # It's required to normalize the name because the installation process changes it
         dict[file.name.lower().replace('-', '_').replace('c++', 'cpp').replace(
-            '_dll', '.dll').replace('wazuh_agent_eventchannel.exe', 'wazuh_agent.exe').replace('libfimdb.dll', 'fimdb.dll').replace('libagent_sync_protocol.dll', 'agent_sync_protocol.dll')] = file_hash
+            '_dll', '.dll').replace('wazuh_agent_eventchannel.exe', 'wazuh_agent.exe').replace('libfimdb.dll', 'fimdb.dll').replace('libagent_sync_protocol.dll', 'agent_sync_protocol.dll').replace('libfim_recovery.dll', 'fim_recovery.dll')] = file_hash
 
 
 def test_win_upgrade():

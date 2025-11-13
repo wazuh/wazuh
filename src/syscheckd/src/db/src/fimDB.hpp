@@ -90,6 +90,14 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, value);)"
 };
 
+constexpr auto CREATE_TABLE_METADATA_DB_STATEMENT
+{
+    R"(CREATE TABLE IF NOT EXISTS table_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_sync_time INTEGER NOT NULL
+    );)"
+};
+
 class FIMDB
 {
     public:

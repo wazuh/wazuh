@@ -115,7 +115,7 @@ void onFileCreated(const std::string& filepath, const FileInfo& info) {
     // Persist the difference
     protocol->persistDifference(
         id,
-        Operation::Create,
+        Operation::CREATE,
         "fim_events",
         data.dump()
     );
@@ -128,7 +128,7 @@ void onFileModified(const std::string& filepath, const FileInfo& info) {
 
     protocol->persistDifference(
         id,
-        Operation::Update,
+        Operation::UPDATE,
         "fim_events",
         data.dump()
     );
@@ -140,7 +140,7 @@ void onFileDeleted(const std::string& filepath) {
 
     protocol->persistDifference(
         id,
-        Operation::Delete,
+        Operation::DELETE,
         "fim_events",
         "{\"path\": \"" + filepath + "\"}"
     );
@@ -178,6 +178,9 @@ void persist_policy_check(const char* policy_id, CheckResult* result) {
 void recoverModuleData() {
     info("Starting module recovery process");
 
+    // Clear in-memory data before sync attempt
+    protocol->clearInMemoryData();
+
     // Read recovery data from backup source
     std::vector<RecoveryItem> recoveryItems = loadRecoveryData();
 
@@ -185,7 +188,7 @@ void recoverModuleData() {
     for (const auto& item : recoveryItems) {
         protocol->persistDifferenceInMemory(
             item.id,
-            Operation::Create,
+            Operation::CREATE,
             item.index,
             item.data
         );
@@ -202,9 +205,7 @@ void recoverModuleData() {
     );
 
     if (success) {
-        // Clear in-memory data after successful sync
-        protocol->clearInMemoryData();
-        info("Recovery completed successfully, in-memory data cleared");
+        info("Recovery completed successfully");
     } else {
         error("Recovery synchronization failed, will retry later");
     }
@@ -387,7 +388,7 @@ public:
 
         m_protocol->persistDifference(
             id,
-            Operation::Update,
+            Operation::UPDATE,
             "inventory_" + category,
             data.dump()
         );
@@ -405,7 +406,7 @@ public:
 
         m_protocol->persistDifference(
             pkg.name + "_" + pkg.version,
-            Operation::Create,
+            Operation::CREATE,
             "inventory_packages",
             data.dump()
         );
@@ -415,7 +416,7 @@ public:
     void onPackageRemoved(const std::string& pkgName) {
         m_protocol->persistDifference(
             pkgName,
-            Operation::Delete,
+            Operation::DELETE,
             "inventory_packages",
             "{\"name\": \"" + pkgName + "\"}"
         );
@@ -581,7 +582,6 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
    - Monitor queue size and implement flow control
    - Use EPS limiting to control memory usage
    - Implement periodic cleanup of old data
-   - Remember to call `clearInMemoryData()` after recovery syncs
 
 5. **Checksum Mismatch Issues**
    - Ensure consistent checksum calculation algorithm

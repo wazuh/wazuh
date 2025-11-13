@@ -18,6 +18,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /Library/Ossec/logs/active-responses.log,wazuh,wazuh,660,file,-rw-rw----,,
 /Library/Ossec/queue/syscollector/norm_config.json,root,wazuh,750,file,-rwxr-x---,,
 /Library/Ossec/lib/libfimdb.dylib,root,wheel,750,file,-rwxr-x---,,
+/Library/Ossec/lib/libfim_recovery.dylib,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/lib/libwazuhshared.dylib,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/lib/libsysinfo.dylib,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/lib/libdbsync.dylib,root,wheel,750,file,-rwxr-x---,,

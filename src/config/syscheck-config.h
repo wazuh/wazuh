@@ -412,6 +412,7 @@ typedef struct _config {
     uint32_t sync_interval;                            /* Synchronization interval */
     uint32_t sync_response_timeout;                    /* Minimum interval for the synchronization process */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
+    uint32_t integrity_interval;                       /* Integrity check interval */
     int max_eps;                                       /* Maximum events per second. */
     unsigned int notify_first_scan;                    /* Notify the first scan */
 
@@ -437,7 +438,9 @@ typedef struct _config {
     pthread_rwlock_t directories_lock;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
-#ifndef WIN32
+#ifdef WIN32
+    pthread_mutex_t fim_registry_scan_mutex;           /* Used to prevent registry scans during the synchronization process */
+#else
     pthread_mutex_t fim_symlink_mutex;
     unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
 #endif

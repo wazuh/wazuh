@@ -10,6 +10,7 @@
 
 
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
+#include "recovery.h"
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -592,6 +593,28 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 }
 #endif
 
+// Logging callback wrapper for FIM recovery functions
+static void fim_recovery_log_wrapper(modules_log_level_t level, const char* log) {
+    switch (level) {
+        case LOG_DEBUG:
+        case LOG_DEBUG_VERBOSE:
+            mdebug1("%s", log);
+            break;
+        case LOG_INFO:
+            minfo("%s", log);
+            break;
+        case LOG_WARNING:
+            mwarn("%s", log);
+            break;
+        case LOG_ERROR:
+            merror("%s", log);
+            break;
+        case LOG_ERROR_EXIT:
+            merror_exit("%s", log);
+            break;
+    }
+}
+
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
@@ -602,10 +625,57 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         sleep(1);
     }
 
+#ifdef WIN32
+    int table_count = 3;
+    char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
+#else
+    int table_count = 1;
+    char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
+#endif
+
     while (fim_sync_module_running) {
+        w_mutex_lock(&syscheck.fim_scan_mutex);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        #ifdef WIN32
+        w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+        #endif
+
         minfo("Running FIM synchronization.");
 
-        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+        bool sync_result = asp_sync_module(syscheck.sync_handle, 
+                                           MODE_DELTA, 
+                                           syscheck.sync_response_timeout, 
+                                           FIM_SYNC_RETRIES, 
+                                           syscheck.sync_max_eps); 
+        if (sync_result) {
+            minfo("Synchronization succeeded");
+
+            for (int i = 0; i < table_count; i++) {
+                if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
+                    minfo("Starting integrity validation process for %s", table_names[i]);
+                    bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
+                                                                                       syscheck.sync_response_timeout,
+                                                                                       syscheck.sync_max_eps,
+                                                                                       syscheck.sync_handle,
+                                                                                       fim_recovery_log_wrapper);
+                    if (full_sync_required) {
+                        fim_recovery_persist_table_and_resync(table_names[i],
+                                                              syscheck.sync_response_timeout,
+                                                              syscheck.sync_max_eps,
+                                                              syscheck.sync_handle,
+                                                              NULL,
+                                                              fim_recovery_log_wrapper);
+                    }
+                }
+            }
+        } else {
+            minfo("Synchronization failed");
+        }
+        #ifdef WIN32
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+        #endif
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
 
         minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
 

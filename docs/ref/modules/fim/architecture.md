@@ -363,3 +363,55 @@ bool ret = asp_parse_response_buffer(syscheck.sync_handle, data, data_len);
 ```
 
 ---
+
+## Recovery Architecture
+
+### Overview
+
+FIM implements an automatic recovery mechanism to detect and resolve database synchronization inconsistencies between agent and manager. The recovery system ensures long-term data consistency by periodically validating synchronization state and triggering full resynchronization when mismatches are detected.
+
+* **`fim_run_integrity()`** - Integrity monitoring thread.
+* Attempts DELTA synchronizations for each table every `syscheck.sync_interval`.
+* Each time `syscheck.integrity_interval` elapses, it performs the integrity validation and full recovery process in case of a checksum mismatch between the agent and the manager's tables.
+* Runs continuously in background thread launched at FIM startup
+
+### Recovery Trigger Flow
+
+Recovery operations are integrated into the periodic synchronization cycle:
+
+```
+Synchronization Cycle (every sync_interval)
+         │
+         ▼
+Run Delta Sync ──► asp_sync_module(MODE_DELTA)
+         │
+         └─►  Failure? ──► Skip Recovery, Wait for Next Cycle
+         │
+         └─►  Success? ──► Continue to Recovery Check
+                                    │
+                                    ▼
+                          For Each Table (file_entry, registry_key, registry_data):
+                                    │
+                                    └─► Check if integrity_interval elapsed
+                                            │
+                                            └─► Yes?
+                                                 │
+                                                 ▼
+                                        Calculate Table Checksum
+                                                 │
+                                                 ▼
+                                        Compare with Manager Checksum
+                                            │
+                                            ├─► Match? ──► Update last_sync_time, Done
+                                            │
+                                            └─► Mismatch? ──► Trigger Recovery
+                                                                 │
+                                                                 ▼
+                                                         Load Entire Table into Memory
+                                                                     │
+                                                                     ▼
+                                                         Persist All Entries (MODE_FULL)
+                                                                     │
+                                                                     ▼
+                                                         Full Sync with Manager
+    ```

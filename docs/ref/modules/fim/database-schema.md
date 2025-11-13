@@ -139,6 +139,35 @@ CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, value);
 
 ---
 
+### Table Metadata
+
+Tracks synchronization state for FIM tables to support recovery operations:
+
+```sql
+CREATE TABLE IF NOT EXISTS table_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_sync_time INTEGER NOT NULL
+);
+```
+
+#### Field Descriptions
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `table_name` | TEXT | Name of the FIM table being tracked (primary key) |
+| `last_sync_time` | INTEGER | Unix timestamp of last synchronization attempt |
+
+#### Purpose
+
+The `table_metadata` table supports FIM recovery functionality by tracking each table's last synchronization attempt. This allows the system to trigger recovery operations with the frequency specified by the `integtrity_interal` option's value.
+
+**Tracked Tables:**
+- `file_entry` - File monitoring state
+- `registry_key` - Registry key monitoring state (Windows only)
+- `registry_data` - Registry value monitoring state (Windows only)
+
+---
+
 ## Sync Protocol Database
 
 The sync protocol maintains its own persistence layer in a separate SQLite database for reliable message delivery.

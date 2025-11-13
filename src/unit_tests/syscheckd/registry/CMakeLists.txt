@@ -28,6 +28,9 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                      -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                      -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                                     -Wl,--wrap,fim_recovery_check_if_full_sync_required \
+                                     -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                                     -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                                      -Wl,--wrap=fim_db_teardown -Wl,--wrap,utf8_LookupAccountSid")
 
 if(${TARGET} STREQUAL "winagent")

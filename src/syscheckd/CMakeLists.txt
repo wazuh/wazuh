@@ -23,10 +23,13 @@ include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
+include_directories(${SRC_FOLDER}/external/flatbuffers/include/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
+include_directories(${CMAKE_SOURCE_DIR}/src/fim_recovery/include/)
 
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
@@ -73,6 +76,7 @@ if(APPLE)
 endif(APPLE)
 
 add_subdirectory("src/db")
+add_subdirectory("src/fim_recovery")
 
 file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/*.c"
@@ -90,7 +94,7 @@ else()
     set_target_properties(wazuh-syscheckd PROPERTIES LINKER_LANGUAGE CXX)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(wazuh-syscheckd PRIVATE fimdb wazuhext pthread wazuh rootcheck agent_sync_protocol dbsync)
+target_link_libraries(wazuh-syscheckd PRIVATE fimdb fim_recovery wazuhext pthread wazuh rootcheck agent_sync_protocol dbsync)
 
 if (UNIX)
     target_link_libraries(wazuh-syscheckd PRIVATE dl)

@@ -55,6 +55,7 @@ public:
         std::string ret {CREATE_FILE_DB_STATEMENT};
         ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
         ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
+        ret += CREATE_TABLE_METADATA_DB_STATEMENT;
 
         return ret;
     }
@@ -78,7 +79,9 @@ public:
 
     static std::string CreateStatement()
     {
-        return CREATE_FILE_DB_STATEMENT;
+        std::string ret {CREATE_FILE_DB_STATEMENT};
+        ret += CREATE_TABLE_METADATA_DB_STATEMENT;
+        return ret;
     }
 
     static void encodeString(__attribute__((unused)) std::string& stringToEncode) {}

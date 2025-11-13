@@ -21,6 +21,7 @@
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBSpecialization.h"
+#include <hashHelper.h>
 #include "stringHelper.h"
 
 void DB::init(const int storage,
@@ -36,6 +37,8 @@ void DB::init(const int storage,
                                                  DbManagement::PERSISTENT)};
 
     FIMDB::instance().init(callbackLogWrapper, dbsyncHandler, fileLimit, valueLimit);
+
+    initializeTableMetadata();
 }
 
 DBSYNC_HANDLE DB::DBSyncHandle()
@@ -81,6 +84,135 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
     FIMDB::instance().executeQuery(selectQuery.query(), callback);
 
     return count;
+}
+
+std::string DB::getConcatenatedChecksums(const std::string& tableName)
+{
+    std::string concatenatedChecksums;
+
+    auto callback {[&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            concatenatedChecksums += jsonResult.at("checksum").get<std::string>();
+        }
+    }};
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"checksum"})
+                      .orderByOpt({"checksum"})
+                      .rowFilter("")
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    return concatenatedChecksums;
+}
+
+std::string DB::calculateTableChecksum(const char* table_name)
+{
+    std::string concatenated_checksums = DB::instance().getConcatenatedChecksums(table_name);
+
+    // Build checksum-of-checksums
+    Utils::HashData hash(Utils::HashType::Sha1);
+    std::string final_checksum;
+
+    try
+    {
+        hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
+        const std::vector<unsigned char> hashResult = hash.hash();
+        final_checksum = Utils::asciiToHex(hashResult);
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
+    }
+
+    // LCOV_EXCL_STOP
+
+
+    return final_checksum;
+}
+
+std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName)
+{
+    std::vector<nlohmann::json> recoveryItems;
+    auto callback {[&recoveryItems](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            recoveryItems.push_back(jsonResult);
+        }
+    }};
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"*"})
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+    return recoveryItems;
+}
+
+void DB::initializeTableMetadata()
+{
+    auto fileEntrySyncQuery = SyncRowQuery::builder()
+                              .table("table_metadata")
+    .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
+    .build();
+    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+    FIMDB::instance().updateItem(fileEntrySyncQuery.query(), emptyCallback);
+
+#ifdef WIN32
+    auto registryKeySyncQuery = SyncRowQuery::builder()
+                                .table("table_metadata")
+    .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
+    .build();
+    FIMDB::instance().updateItem(registryKeySyncQuery.query(), emptyCallback);
+
+    auto registryDataSyncQuery = SyncRowQuery::builder()
+                                 .table("table_metadata")
+    .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
+    .build();
+    FIMDB::instance().updateItem(registryDataSyncQuery.query(), emptyCallback);
+#endif
+}
+
+void DB::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
+{
+    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+    auto syncQuery = SyncRowQuery::builder()
+                     .table("table_metadata")
+    .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
+    .build();
+
+    FIMDB::instance().updateItem(syncQuery.query(), emptyCallback);
+}
+
+int64_t DB::getLastSyncTime(const std::string& tableName)
+{
+    int64_t lastSyncTime = 0;
+
+    auto callback = [&lastSyncTime](ReturnTypeCallback result, const nlohmann::json & data)
+    {
+        if (result == ReturnTypeCallback::SELECTED && data.contains("last_sync_time"))
+        {
+            lastSyncTime = data.at("last_sync_time").get<int64_t>();
+        }
+    };
+
+    auto selectQuery = SelectQuery::builder()
+                       .table("table_metadata")
+                       .columnList({"last_sync_time"})
+                       .rowFilter("WHERE table_name = '" + tableName + "'")
+                       .build();
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    return lastSyncTime;
 }
 
 #ifdef __cplusplus

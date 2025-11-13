@@ -50,7 +50,7 @@ Persists a data to the internal queue for later synchronization.
 
 **Parameters:**
 - `id`: Unique identifier for the data source (typically a hash of primary keys, e.g., file-path)
-- `operation`: Type of operation (`Operation::Create`, `Operation::Update`, `Operation::Delete`)
+- `operation`: Type of operation (`Operation::CREATE`, `Operation::UPDATE`, `Operation::DELETE`)
 - `index`: Target index or destination for the data
 - `data`: JSON string containing the difference data
 
@@ -58,7 +58,7 @@ Persists a data to the internal queue for later synchronization.
 ```cpp
 protocol.persistDifference(
     "abc123def456",
-    Operation::Create,
+    Operation::CREATE,
     "fim_events",
     "{\"path\": \"/etc/passwd\", \"hash\": \"...\", \"timestamp\": 1234567890}"
 );
@@ -77,7 +77,7 @@ Persists a difference to in-memory vector instead of database. This method is us
 
 **Parameters:**
 - `id`: Unique identifier for the data item
-- `operation`: Type of operation (`Operation::Create`, `Operation::Update`, `Operation::Delete`)
+- `operation`: Type of operation (`Operation::CREATE`, `Operation::UPDATE`, `Operation::DELETE`)
 - `index`: Logical index for the data item
 - `data`: Serialized content of the message
 
@@ -444,9 +444,9 @@ C wrapper for `parseResponseBuffer()`.
 
 ```cpp
 enum class Operation {
-    Create,
-    Update,
-    Delete
+    CREATE,
+    UPDATE,
+    DELETE
 };
 ```
 

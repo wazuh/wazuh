@@ -116,6 +116,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->sync_interval                   = 300;
     syscheck->sync_response_timeout           = 60;
     syscheck->sync_max_eps                    = 10;
+    syscheck->integrity_interval              = 24 * 60 * 60;  // 24 hours
     syscheck->max_eps                         = 50;
     syscheck->notify_first_scan               = 0; // Default value, no notification on first scan
     syscheck->max_files_per_second            = 0;
@@ -1209,6 +1210,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
      const char *xml_sync_interval = "interval";
      const char *xml_response_timeout = "response_timeout";
      const char *xml_max_eps = "max_eps";
+     const char *xml_integrity_interval = "integrity_interval";
 
      for (int i = 0; node[i]; i++) {
          if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1243,6 +1245,14 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                  mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
              } else {
                  syscheck->sync_max_eps = value;
+             }
+         } else if (strcmp(node[i]->element, xml_integrity_interval) == 0) {
+             long t = w_parse_time(node[i]->content);
+
+             if (t <= 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->integrity_interval = t;
              }
          } else {
              mwarn(XML_INVELEM, node[i]->element);

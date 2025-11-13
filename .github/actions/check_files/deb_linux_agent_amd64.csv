@@ -12,7 +12,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,505104,0.1
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1202648,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2603392,0.1
-/var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,200104,0.1
+/var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,228352,0.1
+/var/ossec/lib/libfim_recovery.so,root,wazuh,750,file,-rwxr-x---,71208,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,526040,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,44760,0.1
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904720,0.1

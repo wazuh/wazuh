@@ -140,6 +140,46 @@ class EXPORTED DB final
          */
         void closeAndDeleteDatabase();
 
+        /**
+        * @brief Gets the concatenated checksums from all the elements of a table
+        * @return the concatenated checksum
+        */
+        std::string getConcatenatedChecksums(const std::string& tableName);
+
+        /**
+         * @brief Calculate the checksum-of-checksums for a table
+         * @param table_name The table to calculate checksum for
+         * @return The SHA1 checksum-of-checksums as a hex string
+         */
+        std::string calculateTableChecksum(const char* table_name);
+
+        /**
+        * @brief Gets all the elements of a table
+        * @return a vector of elements in json format
+        */
+        std::vector<nlohmann::json> getEveryElement(const std::string& tableName);
+
+        /**
+         * @brief Initialize table_metadata entries for all FIM tables.
+         */
+        void initializeTableMetadata();
+
+        /**
+         * @brief Update the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to update.
+         * @param timestamp The sync timestamp to set (UNIX format).
+         */
+        void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
+
+        /**
+         * @brief Get the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to query.
+         * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
+         */
+        int64_t getLastSyncTime(const std::string& tableName);
+
     private:
         DB() = default;
         ~DB() = default;

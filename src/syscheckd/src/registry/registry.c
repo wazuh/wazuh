@@ -1155,7 +1155,6 @@ void fim_read_values(HKEY key_handle,
         txn_ctx_regval->config = configuration;
 
         int result_transaction = fim_db_transaction_sync_row(regval_txn_handler, &new);
-
         if (result_transaction < 0) {
             mdebug2("dbsync transaction failed due to %d", result_transaction);
         }
@@ -1307,7 +1306,6 @@ void fim_open_key(HKEY root_key_handle,
     txn_ctx_reg->config = configuration;
 
     result_transaction = fim_db_transaction_sync_row(regkey_txn_handler, &new);
-
     if(result_transaction < 0){
         merror("Dbsync registry transaction failed due to %d", result_transaction);
     }
@@ -1335,6 +1333,7 @@ void fim_registry_scan() {
     TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
                                                              registry_value_transaction_callback, &txn_ctx_regval);
 
+    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);
     /* Get sub class and a valid registry entry */
@@ -1357,6 +1356,7 @@ void fim_registry_scan() {
         fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
                      NULL, regkey_txn_handler, regval_txn_handler, &txn_ctx_regval, &txn_ctx_reg);
     }
+    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
     txn_ctx_reg.key = NULL;
     txn_ctx_regval.data = NULL;
     fim_db_transaction_deleted_rows(regval_txn_handler, registry_value_transaction_callback, &txn_ctx_regval);
