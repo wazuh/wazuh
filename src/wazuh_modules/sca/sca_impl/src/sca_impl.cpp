@@ -48,10 +48,10 @@ constexpr auto CHECK_SQL_STATEMENT
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     std::string dbPath,
-                                                                 std::shared_ptr<IDBSync> dbSync,
-                                                                 std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
+    std::shared_ptr<IDBSync> dbSync,
+    std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_dBSync(dbSync ? std::move(dbSync)
-          : std::make_shared<DBSync>(
+               : std::make_shared<DBSync>(
                    HostType::AGENT,
                    DbEngineType::SQLITE3,
                    dbPath,
@@ -372,11 +372,11 @@ int SecurityConfigurationAssessment::setVersion(int version)
         std::vector<nlohmann::json> rows;
 
         auto selectQuery = SelectQuery::builder()
-                               .table("sca_check")
-                               .columnList({"*"}) // Get all columns to properly identify and update rows
-                               .build();
+                           .table("sca_check")
+                           .columnList({"*"}) // Get all columns to properly identify and update rows
+                           .build();
 
-        const auto selectCallback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
+        const auto selectCallback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
         {
             if (returnTypeCallback == SELECTED)
             {
@@ -403,7 +403,7 @@ int SecurityConfigurationAssessment::setVersion(int version)
 
         LoggingHelper::getInstance().log(LOG_DEBUG,
                                          "SCA set_version to " + std::to_string(version) + " for " +
-                                             std::to_string(rows.size()) + " checks");
+                                         std::to_string(rows.size()) + " checks");
         return 0;
     }
     catch (const std::exception& err)
@@ -431,9 +431,9 @@ int SecurityConfigurationAssessment::flush()
 
     // Trigger immediate synchronization to flush pending messages
     bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA,
-                                                       m_syncResponseTimeout,
-                                                       m_syncRetries,
-                                                       m_syncMaxEps);
+                                                      m_syncResponseTimeout,
+                                                      m_syncRetries,
+                                                      m_syncMaxEps);
 
     if (result)
     {

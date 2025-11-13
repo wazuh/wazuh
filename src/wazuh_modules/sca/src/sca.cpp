@@ -290,8 +290,8 @@ void SCA::setup(const struct wm_sca_t* sca_config)
 
         // Extract synchronization parameters (with defaults)
         const auto syncResponseTimeout = sca_config->sync.enable_synchronization
-                                          ? std::chrono::seconds(sca_config->sync.sync_response_timeout)
-                                          : std::chrono::seconds(30);
+                                         ? std::chrono::seconds(sca_config->sync.sync_response_timeout)
+                                         : std::chrono::seconds(30);
         const size_t syncMaxEps = sca_config->sync.enable_synchronization
                                   ? static_cast<size_t>(sca_config->sync.sync_max_eps)
                                   : 10;
@@ -425,6 +425,7 @@ int SCA::flush()
     {
         return m_sca->flush();
     }
+
     return -1;
 }
 
@@ -480,6 +481,7 @@ std::string SCA::query(const std::string& jsonQuery)
         {
             // Flush triggers immediate sync protocol synchronization
             int result = flush();
+
             if (result == 0)
             {
                 response["error"] = MQ_SUCCESS;
