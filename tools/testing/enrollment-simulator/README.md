@@ -56,7 +56,7 @@ The executable `enrollment-simulator` will be created in the `build/` directory.
 |--------|-------------|---------|
 | `--host HOST` | Target Wazuh server hostname or IP | localhost |
 | `--port PORT` | Target port for wazuh-authd | 1515 |
-| `--password PASS` | Correct authentication password | topsecret |
+| `--password PASS` | Correct authentication password (optional) | none |
 | `--threads N` | Number of concurrent threads | 4 |
 | `--total N` | Total number of registrations to perform | 10000 |
 | `--new-ratio RATIO` | Ratio of new agents (0.0-1.0) | 0.5 |
@@ -68,6 +68,10 @@ The executable `enrollment-simulator` will be created in the `build/` directory.
 | `--log-file FILE` | Write output to file (and stdout) | - |
 | `--csv-file FILE` | Export results to CSV file | - |
 | `--help` | Show help message | - |
+
+### Password Behavior
+
+The `--password` option is optional. When omitted, enrollment requests are sent without authentication.
 
 ### Delay Ranges
 
