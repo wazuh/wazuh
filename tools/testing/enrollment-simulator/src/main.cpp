@@ -56,7 +56,7 @@ void print_help(const char* program_name) {
     std::cout << "Options:" << std::endl;
     std::cout << "  --host HOST                 Target host (default: localhost)" << std::endl;
     std::cout << "  --port PORT                 Target port (default: 1515)" << std::endl;
-    std::cout << "  --password PASS             Correct password (default: topsecret)" << std::endl;
+    std::cout << "  --password PASS             Correct password (default: none)" << std::endl;
     std::cout << "  --log-file FILE             Write output to file (and stdout)" << std::endl;
     std::cout << "  --csv-file FILE             Export results to CSV file" << std::endl;
     std::cout << "  --threads N                 Number of threads (default: 4)" << std::endl;
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
     // Default parameters
     std::string host = "localhost";
     int port = 1515;
-    std::string password = "topsecret";
+    std::string password = "";
     std::string log_file = "";
     std::string csv_file = "";
     int threads = 4;
