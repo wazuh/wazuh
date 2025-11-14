@@ -455,8 +455,8 @@ bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
 
             // Once DataContext is added to MessageType union, uncomment this:
             auto message = Wazuh::SyncSchema::CreateMessage(builder,
-                                                           Wazuh::SyncSchema::MessageType::DataContext,
-                                                           dataContextOffset.Union());
+                                                            Wazuh::SyncSchema::MessageType::DataContext,
+                                                            dataContextOffset.Union());
             builder.Finish(message);
 
             const uint8_t* buffer_ptr = builder.GetBufferPointer();

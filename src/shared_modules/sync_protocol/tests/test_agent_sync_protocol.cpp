@@ -3311,7 +3311,7 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseThrowsOnQueueError)
 
     bool errorLogged = false;
     std::string loggedMessage;
-    LoggerFunc testLogger = [&errorLogged, &loggedMessage](modules_log_level_t level, const std::string& message)
+    LoggerFunc testLogger = [&errorLogged, &loggedMessage](modules_log_level_t level, const std::string & message)
     {
         if (level == LOG_ERROR && message.find("Failed to delete database") != std::string::npos)
         {
