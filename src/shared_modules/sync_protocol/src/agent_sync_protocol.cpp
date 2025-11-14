@@ -233,7 +233,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     // Step 1: Send Start message with mode ModuleCheck
     std::vector<std::string> indices = {index};
 
-    if (!sendStartAndWaitAck(Mode::CHECK, 1, indices))
+    if (!sendStartAndWaitAck(Mode::CHECK, 0, indices))
     {
         m_logger(LOG_ERROR, "Failed to send Start message for integrity check");
         clearSyncState();

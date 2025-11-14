@@ -69,6 +69,28 @@ protected:
 
 };
 
+// Test: first time integrity check (last sync time is 0)
+TEST_F(RecoveryTest, IntegrityIntervalFirstTime)
+{
+    const int64_t integrity_interval = 86400; // 24 hours in seconds
+
+    // Verify last sync time is 0 initially
+    int64_t initial_last_sync = DB::instance().getLastSyncTime("file_entry");
+    EXPECT_EQ(initial_last_sync, 0);
+
+    // First call should initialize timestamp and return false
+    bool result = fim_recovery_integrity_interval_has_elapsed(
+        const_cast<char*>("file_entry"),
+        integrity_interval
+    );
+
+    EXPECT_FALSE(result);
+
+    // Verify last sync time was updated to current time
+    int64_t updated_last_sync = DB::instance().getLastSyncTime("file_entry");
+    EXPECT_GT(updated_last_sync, 0);
+}
+
 // Test: integrity_interval has NOT elapsed (last sync recent)
 TEST_F(RecoveryTest, IntegrityIntervalNotElapsed)
 {
@@ -152,9 +174,7 @@ TEST_F(RecoveryTest, PersistAndResyncSuccess)
         mockLoggingFunction
     );
 
-    // Verify last sync time was updated (should be > 0)
-    int64_t lastSyncTime = DB::instance().getLastSyncTime("file_entry");
-    EXPECT_GT(lastSyncTime, 0);
+    // Success - function completed without errors
 }
 
 // Test: Persist and resync with failed synchronization
@@ -176,8 +196,39 @@ TEST_F(RecoveryTest, PersistAndResyncFailure)
         mockLoggingFunction
     );
 
-    // Verify last sync time was still updated (even on failure)
-    int64_t lastSyncTime = DB::instance().getLastSyncTime("file_entry");
-    EXPECT_GT(lastSyncTime, 0);
+    // Function completed - sync failed but that's expected for this test
 }
 
+// Test: Update last sync time using C wrapper function
+TEST_F(RecoveryTest, UpdateLastSyncTime)
+{
+    // Initial state - last sync time should be 0
+    int64_t initialTime = DB::instance().getLastSyncTime("file_entry");
+    EXPECT_EQ(initialTime, 0);
+
+    // Update last sync time using the C wrapper
+    fim_db_update_last_sync_time("file_entry");
+
+    // Verify the timestamp was updated
+    int64_t updatedTime = DB::instance().getLastSyncTime("file_entry");
+    EXPECT_GT(updatedTime, 0);
+}
+
+// Test: Update last sync time multiple times
+TEST_F(RecoveryTest, UpdateLastSyncTimeMultipleTimes)
+{
+    // First update
+    fim_db_update_last_sync_time("file_entry");
+    int64_t firstTime = DB::instance().getLastSyncTime("file_entry");
+    EXPECT_GT(firstTime, 0);
+
+    // Small delay to ensure time difference
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    // Second update
+    fim_db_update_last_sync_time("file_entry");
+    int64_t secondTime = DB::instance().getLastSyncTime("file_entry");
+
+    // Second update should be >= first update
+    EXPECT_GE(secondTime, firstTime);
+}

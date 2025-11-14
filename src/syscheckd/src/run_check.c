@@ -642,8 +642,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         minfo("Running FIM synchronization.");
 
-        bool sync_result = asp_sync_module(syscheck.sync_handle, 
-                                           MODE_DELTA); 
+        bool sync_result = asp_sync_module(syscheck.sync_handle,
+                                           MODE_DELTA);
         if (sync_result) {
             minfo("Synchronization succeeded");
 
@@ -659,6 +659,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                                                               NULL,
                                                               fim_recovery_log_wrapper);
                     }
+                    // Update the last sync time regardless of whether full sync was required
+                    // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+                    fim_db_update_last_sync_time(table_names[i]);
                 }
             }
         } else {
