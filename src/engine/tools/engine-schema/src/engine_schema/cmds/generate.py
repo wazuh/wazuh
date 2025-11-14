@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from engine_schema.generate import generate
-import shared.resource_handler as rs
+from engine_schema import resource_handler as rs
 from ._types import update_types_file
 
 DEFAULT_OUTPUT_DIR = './'
@@ -26,8 +26,6 @@ def run(args, resource_handler: rs.ResourceHandler):
     resource_handler.save_file(
         output_dir, 'fields_rule', rule_fields_schema, rs.Format.JSON)
     resource_handler.save_file(
-        output_dir, 'wazuh-template', jmappings, rs.Format.JSON)
-    resource_handler.save_file(
         output_dir, 'wazuh-logpar-overrides', jlogpar, rs.Format.JSON)
     resource_handler.save_file(
         output_dir, 'engine-schema', jengine, rs.Format.JSON)
@@ -44,7 +42,7 @@ def configure(subparsers):
         'generate', help='Generate the schema and associated configuration')
 
     parser_generate.add_argument('--wcs-path', type=str, required=True,
-                                 help='Path to the Wazuh Common Schema (wcs_flat.yml) YAML file.')
+                                 help='Path to the Wazuh Common Schema YAML file, directory containing YAML files, or comma-separated list of YAML files. If a directory is provided, all .yml and .yaml files will be merged. If comma-separated paths are provided, all specified files will be merged.')
 
     parser_generate.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                                  help=f'[default="{DEFAULT_OUTPUT_DIR}"] Root directory to store generated files')

@@ -1011,6 +1011,18 @@ InstallCommon()
 }
 
 
+generateSchemaFiles()
+{
+    echo "Generating schema files..."
+    ${INSTALLDIR}/framework/python/bin/python3 engine/tools/engine-schema/engine_schema.py generate --allowed-fields-path engine/ruleset/schemas/allowed-fields.json \
+      --output-dir engine/ruleset/schemas/  --wcs-path external/wcs-flat-files/
+    if [ $? != 0 ]; then
+        echo "Error: Failed to generate schema files."
+        exit 1
+    fi
+    echo "Schema files generated successfully."
+}
+
 installEngineStore()
 {
     DEST_FULL_PATH=${INSTALLDIR}/engine
@@ -1077,6 +1089,13 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-analysisd
 
+    ### Install Python
+    ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
+
+    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR}
+
+    generateSchemaFiles
+
     installEngineStore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
 
@@ -1102,11 +1121,6 @@ InstallLocal()
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
-
-    ### Install Python
-    ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
-
-    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR}
 
     ### Backup old API
     if [ "X${update_only}" = "Xyes" ]; then
