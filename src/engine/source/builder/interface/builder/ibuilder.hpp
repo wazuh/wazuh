@@ -5,8 +5,8 @@
 
 #include <base/error.hpp>
 #include <base/expression.hpp>
-#include <base/name.hpp>
 #include <builder/ipolicy.hpp>
+#include <cmstore/types.hpp>
 
 namespace builder
 {
@@ -29,7 +29,8 @@ public:
      * production environment.
      * @return base::RespOrError<std::shared_ptr<IPolicy>> The policy or an error.
      */
-    virtual std::shared_ptr<IPolicy> buildPolicy(const base::Name& name, bool trace, bool sandbox) const = 0;
+    virtual std::shared_ptr<IPolicy>
+    buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace, bool sandbox) const = 0;
 
     /**
      * @brief Build an asset expression from the store.
@@ -38,7 +39,7 @@ public:
      * @param name Name of the asset.
      * @return base::RespOrError<base::Expression> The asset expression or an error.
      */
-    virtual base::Expression buildAsset(const base::Name& name) const = 0;
+    virtual base::Expression buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const = 0;
 };
 
 } // namespace builder

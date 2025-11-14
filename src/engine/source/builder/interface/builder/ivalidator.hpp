@@ -3,6 +3,7 @@
 
 #include <base/error.hpp>
 #include <base/json.hpp>
+#include <cmstore/icmstore.hpp>
 
 namespace builder
 {
@@ -18,7 +19,8 @@ public:
      * @param json Integration Json definition.
      * @return base::OptError An error if the Integration is not valid.
      */
-    virtual base::OptError validateIntegration(const json::Json& json, const std::string& namespaceId) const = 0;
+    virtual base::OptError validateIntegration(const base::Name& name,
+                                               const cm::store::NamespaceId& namespaceId) const = 0;
 
     /**
      * @brief Validate an Asset.
@@ -26,7 +28,7 @@ public:
      * @param json Asset Json definition.
      * @return base::OptError An error if the Asset is not valid.
      */
-    virtual base::OptError validateAsset(const json::Json& json) const = 0;
+    virtual base::OptError validateAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const = 0;
 
     /**
      * @brief Validate a Policy.
@@ -34,7 +36,7 @@ public:
      * @param json Policy Json definition.
      * @return base::OptError An error if the Policy is not valid.
      */
-    virtual base::OptError validatePolicy(const json::Json& json) const = 0;
+    virtual base::OptError validatePolicy(const cm::store::NamespaceId& namespaceId) const = 0;
 };
 
 } // namespace builder

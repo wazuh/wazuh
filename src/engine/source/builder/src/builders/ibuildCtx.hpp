@@ -31,10 +31,12 @@ struct RunState
  */
 struct Context
 {
-    std::string assetName;  // Name of the current asset being built
-    std::string policyName; // Name of the current policy being built
-    std::string stageName;  // Name of the current stage being built
-    std::string opName;     // Name of the current operation being built
+    std::string assetName;           // Name of the current asset being built
+    std::string integrationName;     // Name of the current integration being built
+    std::string integrationCategory; // Name of the current integration category being built
+    std::string policyName;          // Name of the current policy being built
+    std::string stageName;           // Name of the current stage being built
+    std::string opName;              // Name of the current operation being built
 };
 
 /**

@@ -23,10 +23,13 @@ class MockValidator : public IValidator
 public:
     MOCK_METHOD(base::OptError,
                 validateIntegration,
-                (const json::Json& json, const std::string& namespaceId),
+                (const base::Name& name, const cm::store::NamespaceId& namespaceId),
                 (const, override));
-    MOCK_METHOD(base::OptError, validateAsset, (const json::Json& json), (const, override));
-    MOCK_METHOD(base::OptError, validatePolicy, (const json::Json& json), (const, override));
+    MOCK_METHOD(base::OptError,
+                validateAsset,
+                (const base::Name& name, const cm::store::NamespaceId& namespaceId),
+                (const, override));
+    MOCK_METHOD(base::OptError, validatePolicy, (const cm::store::NamespaceId namespaceId), (const, override));
 };
 } // namespace builder::mocks
 

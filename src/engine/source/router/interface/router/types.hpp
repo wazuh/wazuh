@@ -13,6 +13,7 @@
 #include <base/baseTypes.hpp>
 #include <base/error.hpp>
 #include <base/name.hpp>
+#include <cmstore/types.hpp>
 
 namespace router
 {
@@ -47,7 +48,7 @@ class EntryPost
 {
 private:
     std::string m_name;                       ///< Name of the environment
-    base::Name m_policy;                      ///< Policy of the environment
+    cm::store::NamespaceId m_policy;          ///< Policy of the environment
     base::Name m_filter;                      ///< Filter of the environment
     std::size_t m_priority;                   ///< Priority of the environment
     std::optional<std::string> m_description; ///< Description of the environment
@@ -65,7 +66,7 @@ public:
      * @param filter Filter of the environment
      * @param priority Priority of the environment
      */
-    EntryPost(std::string name, base::Name policy, base::Name filter, std::size_t priority)
+    EntryPost(std::string name, cm::store::NamespaceId policy, base::Name filter, std::size_t priority)
         : m_name {std::move(name)}
         , m_policy {std::move(policy)}
         , m_description {}
@@ -85,10 +86,6 @@ public:
         {
             return base::Error {"Name cannot be empty"};
         }
-        if (m_policy.parts().size() == 0)
-        {
-            return base::Error {"Policy name is empty"};
-        }
         if (m_filter.parts().size() == 0)
         {
             return base::Error {"Filter name is empty"};
@@ -106,7 +103,7 @@ public:
 
     // Setters and getters
     const std::string& name() const { return m_name; }
-    const base::Name& policy() const { return m_policy; }
+    const cm::store::NamespaceId& policy() const { return m_policy; }
 
     const std::optional<std::string>& description() const { return m_description; }
     void description(std::string_view description) { m_description = description; }
@@ -167,7 +164,7 @@ class EntryPost
 {
 private:
     std::string m_name;                       ///< Name of the environment
-    base::Name m_policy;                      ///< Policy of the environment
+    cm::store::NamespaceId m_policy;          ///< Policy of the environment
     std::optional<std::string> m_description; ///< Description of the environment
     std::size_t m_lifetime;                   ///< Lifetime of the environment
 
@@ -181,7 +178,7 @@ public:
      * @param policy Policy of the environment
      * @param lifetime Lifetime of the testing environment
      */
-    EntryPost(std::string name, base::Name policy, std::size_t lifetime)
+    EntryPost(std::string name, cm::store::NamespaceId policy, std::size_t lifetime)
         : m_name {std::move(name)}
         , m_policy {std::move(policy)}
         , m_description {}
@@ -200,16 +197,12 @@ public:
         {
             return base::Error {"Name cannot be empty"};
         }
-        if (m_policy.parts().size() == 0)
-        {
-            return base::Error {"Policy name is empty"};
-        }
         return base::OptError {};
     }
 
     // Setters and getters
     const std::string& name() const { return m_name; }
-    const base::Name& policy() const { return m_policy; }
+    const cm::store::NamespaceId& policy() const { return m_policy; }
 
     const std::optional<std::string>& description() const { return m_description; }
     void description(std::string_view description) { m_description = description; }

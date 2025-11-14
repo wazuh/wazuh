@@ -24,22 +24,9 @@ inline int64_t currentTime()
     return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
 }
 
-eRouter::Sync getHashSatus(const ::router::prod::Entry& entry,
-                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eRouter::Sync getHashSatus(const ::router::prod::Entry& entry)
 {
-    auto policyManager = wPolicyManager.lock();
-    if (!policyManager)
-    {
-        return eRouter::Sync::SYNC_UNKNOWN;
-    }
-
-    auto resPolicy = policyManager->getHash(entry.policy());
-    if (base::isError(resPolicy))
-    {
-        return eRouter::Sync::ERROR;
-    }
-
-    return base::getResponse(resPolicy) == entry.hash() ? eRouter::Sync::UPDATED : eRouter::Sync::OUTDATED;
+    return eRouter::Sync::SYNC_UNKNOWN;
 }
 
 /**
@@ -49,13 +36,12 @@ eRouter::Sync getHashSatus(const ::router::prod::Entry& entry,
  * @param wPolicyManager for hash comparison
  * @return eRouter::Entry
  */
-eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry,
-                                    const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry)
 {
     eRouter::Entry eEntry;
     eEntry.set_name(entry.name());
     eEntry.set_filter(entry.filter().fullName());
-    eEntry.set_policy(entry.policy().fullName());
+    eEntry.set_policy(entry.policy().toStr());
     eEntry.set_priority(static_cast<uint32_t>(entry.priority()));
     if (entry.description().has_value())
     {
@@ -66,7 +52,7 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry,
                            : ::router::env::State::DISABLED == entry.status() ? eRouter::State::DISABLED
                                                                               : eRouter::State::STATE_UNKNOWN;
 
-    eEntry.set_policy_sync(getHashSatus(entry, wPolicyManager));
+    eEntry.set_policy_sync(getHashSatus(entry));
     eEntry.set_entry_status(state);
 
     // Calculate the uptime
@@ -108,8 +94,8 @@ adapter::RouteHandler routePost(const std::shared_ptr<::router::IRouterAPI>& rou
             return;
         }
 
-        auto policyName = tryGetProperty<ResponseType, base::Name>(
-            true, [&protoRoute]() { return base::Name(adapter::getRes(protoRoute).policy()); }, "policy", "name");
+        auto policyName = tryGetProperty<ResponseType, cm::store::NamespaceId>(
+            true, [&protoRoute]() { return cm::store::NamespaceId(adapter::getRes(protoRoute).policy()); }, "policy", "name");
         if (adapter::isError(policyName))
         {
             res = adapter::getErrorResp(policyName);
@@ -187,11 +173,9 @@ adapter::RouteHandler routeDelete(const std::shared_ptr<::router::IRouterAPI>& r
     };
 }
 
-adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router,
-                               const std::shared_ptr<api::policy::IPolicy>& policy)
+adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router)
 {
-    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
-            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router)](const auto& req, auto& res)
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -205,13 +189,6 @@ adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& rout
 
         auto [router, protoReq] = adapter::getRes(result);
 
-        auto policy = wPolicyManager.lock();
-        if (!policy)
-        {
-            res = adapter::internalErrorResponse<ResponseType>("Error: Policy Manager is not initialized");
-            return;
-        }
-
         // Execute the command
         const auto& error = router->getEntry(protoReq.name());
         if (base::isError(error))
@@ -221,7 +198,7 @@ adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& rout
         }
 
         ResponseType eResponse;
-        eResponse.mutable_route()->CopyFrom(eRouteEntryFromEntry(base::getResponse(error), wPolicyManager));
+        eResponse.mutable_route()->CopyFrom(eRouteEntryFromEntry(base::getResponse(error)));
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };
@@ -305,11 +282,9 @@ adapter::RouteHandler routePatchPriority(const std::shared_ptr<::router::IRouter
     };
 }
 
-adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router,
-                               const std::shared_ptr<api::policy::IPolicy>& policy)
+adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router)
 {
-    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
-            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router)](const auto& req, auto& res)
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;
@@ -323,20 +298,13 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& rout
 
         auto [router, protoReq] = adapter::getRes(result);
 
-        auto policy = wPolicyManager.lock();
-        if (!policy)
-        {
-            res = adapter::internalErrorResponse<ResponseType>("Error: Policy Manager is not initialized");
-            return;
-        }
-
         // Execute the command
         const auto& entries = router->getEntries();
         ResponseType eResponse;
         auto eTable = eResponse.mutable_table(); // Create the empty table
         for (const auto& entry : entries)
         {
-            eTable->Add(eRouteEntryFromEntry(entry, wPolicyManager));
+            eTable->Add(eRouteEntryFromEntry(entry));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);

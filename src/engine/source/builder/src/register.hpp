@@ -18,7 +18,7 @@
 #include "builders/opmap/opBuilderHelperMap.hpp"
 
 // Transform builders
-#include "builders/opmap/kvdb.hpp"
+//#include "builders/opmap/kvdb.hpp"
 #include "builders/optransform/array.hpp"
 #include "builders/optransform/hlp.hpp"
 #include "builders/optransform/windows.hpp"
@@ -344,29 +344,30 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         {schemf::STypeToken::create(schemf::Type::TEXT), builders::optransform::alphanumericParseBuilder});
 
     // KVDB builders
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get_merge",
-        {schemf::STypeToken::create(schemf::Type::OBJECT),
-         builders::getOpBuilderKVDBGetMerge(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get_merge_recursive",
-        {schemf::STypeToken::create(schemf::Type::OBJECT),
-         builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_match",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_not_match",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get_array",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_decode_bitmask",
-        {schemf::runtimeValidation(),
-         builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager, deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager,
+    //     deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "kvdb_get_merge",
+    //     {schemf::STypeToken::create(schemf::Type::OBJECT),
+    //      builders::getOpBuilderKVDBGetMerge(deps.kvdbManager, deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "kvdb_get_merge_recursive",
+    //     {schemf::STypeToken::create(schemf::Type::OBJECT),
+    //      builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager, deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "kvdb_match",
+    //     {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager, deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "kvdb_not_match",
+    //     {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager, deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "kvdb_get_array",
+    //     {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager, deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "kvdb_decode_bitmask",
+    //     {schemf::runtimeValidation(),
+    //      builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager, deps.kvdbScopeName)});
 
     // Windows builders
     // registry->template add<builders::OpBuilderEntry>(
