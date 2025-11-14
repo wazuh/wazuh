@@ -10,7 +10,6 @@
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
 #include <schemf/ivalidator.hpp>
-#include <store/istore.hpp>
 #include <streamlog/ilogger.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
@@ -40,7 +39,7 @@ class Builder final
 private:
     class Registry;
 
-    std::shared_ptr<cm::store::ICMstore> m_cmStore;                  ///< CMStore interface
+    std::shared_ptr<cm::store::ICMStore> m_cmStore;                  ///< CMStore interface
     std::shared_ptr<schemf::IValidator> m_schema;                    ///< Schema validator
     std::shared_ptr<defs::IDefinitionsBuilder> m_definitionsBuilder; ///< Definitions builder
     std::shared_ptr<IAllowedFields> m_allowedFields; ///< Manages wich fields can be modified by different assets
@@ -60,7 +59,7 @@ public:
      * @param allowedFields Manages wich fields can be modified by different assets
      * @param builderDeps Builders dependencies
      */
-    Builder(const std::shared_ptr<cm::store::ICMstore>& cmStore,
+    Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
             const std::shared_ptr<schemf::IValidator>& schema,
             const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
             const std::shared_ptr<IAllowedFields>& allowedFields,
@@ -80,18 +79,20 @@ public:
     /**
      * @copydoc IBuilder::validateIntegration
      */
-    base::OptError validateIntegration(const base::Name& name,
-                                       const cm::store::NamespaceId& namespaceId) const override;
+    base::OptError softIntegrationValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                           const cm::store::dataType::Integration& integration) const override;
 
     /**
      * @copydoc IBuilder::validateAsset
      */
-    base::OptError validateAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const override;
+    base::OptError validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                 const base::Name& name) const override;
 
     /**
      * @copydoc IBuilder::validatePolicy
      */
-    base::OptError validatePolicy(const cm::store::NamespaceId& namespaceId) const override;
+    base::OptError softPolicyValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                      const cm::store::dataType::Policy& policy) const override;
 };
 
 } // namespace builder

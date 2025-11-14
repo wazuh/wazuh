@@ -10,7 +10,7 @@ namespace builder::policy
 {
 
 Policy::Policy(const cm::store::NamespaceId& namespaceId,
-               const std::shared_ptr<cm::store::ICMstore>& cmStore,
+               const std::shared_ptr<cm::store::ICMStore>& cmStore,
                const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                const std::shared_ptr<builders::RegistryType>& registry,
                const std::shared_ptr<schemf::IValidator>& schema,
@@ -41,11 +41,11 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder);
 
     // Assign the assets
-    for (const auto& [type, assets] : builtAssets)
+    for (const auto& [type, subgraph] : builtAssets)
     {
-        for (const auto& [name, asset] : assets)
+        for (const auto& asset : subgraph.orderedAssets)
         {
-            m_assets.insert(name);
+            m_assets.insert(asset);
         }
     }
 

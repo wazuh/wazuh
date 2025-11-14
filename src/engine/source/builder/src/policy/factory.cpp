@@ -25,11 +25,9 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 {
     BuiltAssets builtAssets;
 
-    // Build assets for decoder type
     for (const auto& integUUID : policy.getIntegrationsUUIDs())
     {
         const auto integration = cmStoreNsReader->getIntegrationByUUID(integUUID);
-        // TODO: We would need to check the asset's JSON file to see if it's enabled.
         if (!integration.isEnabled())
         {
             continue;
@@ -42,62 +40,64 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         {
             const auto decoder = cmStoreNsReader->getAssetByUUID(decUUID);
             Asset asset = (*assetBuilder)(decoder);
-            const auto [name, resource] = cmStoreNsReader->resolveNameFromUUID(decUUID);
-            const auto assetName = base::Name {name};
 
-            //  If it is the RDD, do not assign any default parent.
-            const auto isRootDefault = (assetName == policy.getRootDecoder());
+            const auto isRootDefault = (asset.name() == policy.getRootDecoder());
 
             if (isRootDefault && !asset.parents().empty())
             {
                 throw std::runtime_error(
-                    fmt::format("Root default decoder '{}' must not have parents", assetName.toStr()));
+                    fmt::format("Root default decoder '{}' must not have parents", asset.name().toStr()));
             }
 
-            // Add parents
             if (asset.parents().empty() && !isRootDefault)
             {
                 const auto integrationDefaultParent = integration.getDefaultParent();
+                std::string defaultParentName;
                 if (integrationDefaultParent.has_value())
                 {
-                    asset.parents().emplace_back(integrationDefaultParent.value());
+                    defaultParentName = integrationDefaultParent.value();
                 }
                 else
                 {
-                    asset.parents().emplace_back(policy.getDefaultParent());
+                    defaultParentName = policy.getDefaultParent();
+                }
+
+                if (defaultParentName != asset.name().toStr())
+                {
+                    asset.parents().emplace_back(std::move(defaultParentName));
+                }
+                else
+                {
+                    asset.parents().emplace_back(policy.getRootDecoder().toStr());
                 }
             }
 
-            // Add built asset to the subgraph
-            if (builtAssets.find(resource) == builtAssets.end())
+            auto& decodersData = builtAssets[cm::store::ResourceType::DECODER];
+            if (decodersData.assets.find(asset.name()) == decodersData.assets.end())
             {
-                builtAssets.emplace(resource, std::unordered_map<base::Name, Asset> {});
+                decodersData.orderedAssets.push_back(asset.name());
             }
 
-            builtAssets[resource].emplace(assetName, asset);
+            decodersData.assets.emplace(asset.name(), std::move(asset));
         }
-    }
-
-    // filters
-    {
-        const auto& jsonAsset = cmStoreNsReader->getAssetByName(G_FILTER_NAME);
-        Asset asset = (*assetBuilder)(jsonAsset);
-        builtAssets[cm::store::ResourceType::FILTER].emplace(G_FILTER_NAME, asset);
     }
 
     return builtAssets;
 }
 
 Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
-                                       const std::unordered_map<base::Name, Asset>& assets,
+                                       const SubgraphData& assetsData,
                                        const std::unordered_map<base::Name, Asset>& filters)
 {
     // 1. Add input node of the subgraph
     Graph<base::Name, Asset> subgraph {subgraphName, Asset {}};
 
     // 2. For each asset in the subgraph:
-    for (const auto& [name, asset] : assets)
+    for (const auto& name : assetsData.orderedAssets)
     {
+        const auto it = assetsData.assets.find(name);
+        const auto& asset = it->second;
+
         // 2.1. Add asset node
         subgraph.addNode(name, asset);
 
@@ -166,18 +166,20 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
 
     // 1) Get filters
     const auto itFilters = assets.find(cm::store::ResourceType::FILTER);
-    const auto filters = (itFilters == assets.end()) ? std::unordered_map<base::Name, Asset> {} : itFilters->second;
+    const auto filters = (itFilters == assets.end())
+        ? std::unordered_map<base::Name, Asset>{}
+        : itFilters->second.assets;
 
     // 2) Build subgraphs for each type (except Filter)
-    for (const auto& [rtype, typedAssets] : assets)
+    for (const auto& [rtype, data] : assets)
     {
-        if ((rtype == cm::store::ResourceType::FILTER) || (typedAssets.empty()))
+        if ((rtype == cm::store::ResourceType::FILTER) || data.assets.empty())
         {
             continue;
         }
 
         const auto subgraphName = std::string(resourceTypeToString(rtype)) + GRAPH_INPUT_SUFFIX;
-        auto subgraph = buildSubgraph(subgraphName, typedAssets, filters);
+        auto subgraph = buildSubgraph(subgraphName, data, filters);
         graph.subgraphs.emplace(rtype, std::move(subgraph));
     }
 
