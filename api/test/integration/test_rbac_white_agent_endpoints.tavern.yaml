@@ -246,7 +246,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - timestamp: !anystr
@@ -255,15 +255,10 @@ stages:
                 - id: 2
                   uptime: !anystr
                   metrics: !anything
-            - timestamp: !anystr
-              name: wazuh-analysisd
-              agents:
-                - id: 2
-                  uptime: !anystr
-                  metrics: !anything
-          failed_items: [ ]
-          total_affected_items: 2
-          total_failed_items: 0
+          failed_items:
+            - id: [ wazuh-analysisd ]
+          total_affected_items: 1
+          total_failed_items: 1
 
 ---
 test_name: GET /agents/{agent_id}/stats/{component}

@@ -4,7 +4,7 @@
     name: wazuh-agent9
     os_arch: x86_64
     os_name: Ubuntu
-    os_version: 18.04.2 LTS
+    os_version: 18.04.6 LTS
     os_major: 18
     os_minor: 04
     os_codename: Bionic Beaver
