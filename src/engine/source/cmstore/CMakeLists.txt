@@ -12,6 +12,9 @@ add_library(cmstore::icmstore ALIAS cmstore_icmstore)
 # Implementation
 add_library(cmstore_cmstore STATIC
     ${SRC_DIR}/cmstore.cpp
+    ${SRC_DIR}/storens.cpp
+    ${SRC_DIR}/storecti.cpp
+    ${SRC_DIR}/cachens.cpp
 )
 target_include_directories(cmstore_cmstore
     PUBLIC
@@ -21,6 +24,9 @@ target_link_libraries(cmstore_cmstore
     PUBLIC
     base
     cmstore::icmstore
+    ctistore::ictistore
+    PRIVATE
+    yml
 )
 add_library(cmstore::cmstore ALIAS cmstore_cmstore)
 
@@ -41,6 +47,7 @@ add_library(cmstore::mocks ALIAS cmstore_mocks)
 
 add_executable(cmstore_utest
     ${UNIT_SRC_DIR}/cmstore_test.cpp
+    ${UNIT_SRC_DIR}/cachens_test.cpp
 )
 target_link_libraries(cmstore_utest
     PRIVATE
