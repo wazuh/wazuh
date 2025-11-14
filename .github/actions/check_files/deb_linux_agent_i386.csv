@@ -1,6 +1,6 @@
 full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_error
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3219,0.1
-/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,1221012,0.1
+/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,1097644,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,958152,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,1055440,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,7146,0.1
