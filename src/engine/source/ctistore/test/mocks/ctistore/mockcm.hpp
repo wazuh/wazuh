@@ -34,5 +34,4 @@ public:
 };
 } // namespace cti::store
 
-
 #endif // _MOCKS_CM_IREADER_HPP

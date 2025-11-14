@@ -107,30 +107,37 @@ TEST(ContentManagerConcurrencyTest, MultipleReadGuardsAllowConcurrentAccess)
     auto cm = std::make_shared<cti::store::ContentManager>(cfg);
 
     // Tracks when readers are active
-    std::atomic<int> activeReaders{0};
-    std::atomic<int> maxConcurrentReaders{0};
+    std::atomic<int> activeReaders {0};
+    std::atomic<int> maxConcurrentReaders {0};
 
     const int numReaders = 5;
     std::vector<std::thread> readers;
 
     for (int i = 0; i < numReaders; ++i)
     {
-        readers.emplace_back([&cm, &activeReaders, &maxConcurrentReaders]()
-        {
-            // Acquire read guard
-            auto readGuard = cm->acquireReadGuard();
+        readers.emplace_back(
+            [&cm, &activeReaders, &maxConcurrentReaders]()
+            {
+                // Acquire read guard
+                auto readGuard = cm->acquireReadGuard();
 
-            // Track concurrent readers
-            int current = ++activeReaders;
-            maxConcurrentReaders.store(std::max(maxConcurrentReaders.load(), current), 
-                                       std::memory_order_relaxed);
+                // Track concurrent readers atomically to avoid race conditions
+                int current = ++activeReaders;
 
+                // Update maxConcurrentReaders using compare_exchange to avoid race conditions
+                int expected = maxConcurrentReaders.load(std::memory_order_relaxed);
+                while (current > expected
+                       && !maxConcurrentReaders.compare_exchange_weak(
+                           expected, current, std::memory_order_relaxed, std::memory_order_relaxed))
+                {
+                    // Loop retries if another thread updated the value
+                }
 
-            // Simulate some read work
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                // Simulate some read work
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-            --activeReaders;
-        });
+                --activeReaders;
+            });
     }
 
     // Wait for all readers to complete
@@ -153,9 +160,9 @@ TEST(ContentManagerConcurrencyTest, WriteGuardBlocksReaders)
 
     auto cm = std::make_shared<cti::store::ContentManager>(cfg);
 
-    std::atomic<bool> writerHasLock{false};
-    std::atomic<bool> readerBlocked{true};
-    std::atomic<bool> readerAcquiredLock{false};
+    std::atomic<bool> writerHasLock {false};
+    std::atomic<bool> readerBlocked {true};
+    std::atomic<bool> readerAcquiredLock {false};
 
     // Create a file for writing
     std::filesystem::create_directories(cfg.outputFolder);
@@ -167,19 +174,20 @@ TEST(ContentManagerConcurrencyTest, WriteGuardBlocksReaders)
     std::string message = std::string("{\"paths\":[\"") + filePath + "\"],\"type\":\"raw\",\"offset\":0}";
 
     // Writer thread - acquires write lock
-    std::thread writer([&cm, &writerHasLock, &readerBlocked]()
-    {
-        // Acquire write guard
-        auto writeGuard = cm->acquireWriteGuard();
+    std::thread writer(
+        [&cm, &writerHasLock, &readerBlocked]()
+        {
+            // Acquire write guard
+            auto writeGuard = cm->acquireWriteGuard();
 
-        writerHasLock = true;
+            writerHasLock = true;
 
-        // Hold the write lock for a bit
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            // Hold the write lock for a bit
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        // Check if reader is still blocked
-        EXPECT_TRUE(readerBlocked.load()) << "Reader should still be blocked while writer holds lock";
-    });
+            // Check if reader is still blocked
+            EXPECT_TRUE(readerBlocked.load()) << "Reader should still be blocked while writer holds lock";
+        });
 
     // Wait for writer to acquire lock
     while (!writerHasLock)
@@ -188,14 +196,15 @@ TEST(ContentManagerConcurrencyTest, WriteGuardBlocksReaders)
     }
 
     // Reader thread - tries to acquire read lock while writer holds it
-    std::thread reader([&cm, &readerBlocked, &readerAcquiredLock]()
-    {
-        // Try to acquire read guard - should block until writer releases
-        auto readGuard = cm->acquireReadGuard();
+    std::thread reader(
+        [&cm, &readerBlocked, &readerAcquiredLock]()
+        {
+            // Try to acquire read guard - should block until writer releases
+            auto readGuard = cm->acquireReadGuard();
 
-        readerBlocked = false;
-        readerAcquiredLock = true;
-    });
+            readerBlocked = false;
+            readerAcquiredLock = true;
+        });
 
     // Give reader a chance to try acquiring the lock
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -219,22 +228,23 @@ TEST(ContentManagerConcurrencyTest, ReadGuardBlocksWriter)
 
     auto cm = std::make_shared<cti::store::ContentManager>(cfg);
 
-    std::atomic<bool> readerHasLock{false};
-    std::atomic<bool> writerBlocked{true};
-    std::atomic<bool> writerAcquiredLock{false};
+    std::atomic<bool> readerHasLock {false};
+    std::atomic<bool> writerBlocked {true};
+    std::atomic<bool> writerAcquiredLock {false};
 
     // Reader thread - holds read lock
-    std::thread reader([&cm, &readerHasLock, &writerBlocked]()
-    {
-        auto readGuard = cm->acquireReadGuard();
-        readerHasLock = true;
+    std::thread reader(
+        [&cm, &readerHasLock, &writerBlocked]()
+        {
+            auto readGuard = cm->acquireReadGuard();
+            readerHasLock = true;
 
-        // Hold the read lock for a bit
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            // Hold the read lock for a bit
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        // Check if writer is still blocked
-        EXPECT_TRUE(writerBlocked.load()) << "Writer should still be blocked while reader holds lock";
-    });
+            // Check if writer is still blocked
+            EXPECT_TRUE(writerBlocked.load()) << "Writer should still be blocked while reader holds lock";
+        });
 
     // Wait for reader to acquire lock
     while (!readerHasLock)
@@ -243,14 +253,15 @@ TEST(ContentManagerConcurrencyTest, ReadGuardBlocksWriter)
     }
 
     // Writer thread - tries to acquire write lock while reader holds read lock
-    std::thread writer([&cm, &writerBlocked, &writerAcquiredLock]()
-    {
-        // Try to acquire write guard - should block until reader releases
-        auto writeGuard = cm->acquireWriteGuard();
+    std::thread writer(
+        [&cm, &writerBlocked, &writerAcquiredLock]()
+        {
+            // Try to acquire write guard - should block until reader releases
+            auto writeGuard = cm->acquireWriteGuard();
 
-        writerBlocked = false;
-        writerAcquiredLock = true;
-    });
+            writerBlocked = false;
+            writerAcquiredLock = true;
+        });
 
     // Give writer a chance to try acquiring the lock
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -274,23 +285,24 @@ TEST(ContentManagerConcurrencyTest, WriteGuardBlocksMultipleReaders)
 
     auto cm = std::make_shared<cti::store::ContentManager>(cfg);
 
-    std::atomic<bool> writerHasLock{false};
-    std::atomic<int> readersAcquiredLock{0};
-    std::atomic<bool> writeLockReleased{false};
+    std::atomic<bool> writerHasLock {false};
+    std::atomic<int> readersAcquiredLock {0};
+    std::atomic<bool> writeLockReleased {false};
 
     // Writer thread - holds write lock
-    std::thread writer([&cm, &writerHasLock, &writeLockReleased, &readersAcquiredLock]()
-    {
-        auto writeGuard = cm->acquireWriteGuard();
+    std::thread writer(
+        [&cm, &writerHasLock, &writeLockReleased, &readersAcquiredLock]()
+        {
+            auto writeGuard = cm->acquireWriteGuard();
 
-        writerHasLock = true;
+            writerHasLock = true;
 
-        // Hold the write lock for a bit
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            // Hold the write lock for a bit
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        writeLockReleased = true;
-        EXPECT_EQ(readersAcquiredLock.load(), 0) << "No readers should acquire locks while writer holds lock";
-    });
+            writeLockReleased = true;
+            EXPECT_EQ(readersAcquiredLock.load(), 0) << "No readers should acquire locks while writer holds lock";
+        });
 
     // Wait for writer to acquire lock
     while (!writerHasLock)
@@ -304,14 +316,15 @@ TEST(ContentManagerConcurrencyTest, WriteGuardBlocksMultipleReaders)
 
     for (int i = 0; i < numReaders; ++i)
     {
-        readers.emplace_back([&cm, &readersAcquiredLock]()
-        {
-            auto readGuard = cm->acquireReadGuard();
-            ++readersAcquiredLock;
+        readers.emplace_back(
+            [&cm, &readersAcquiredLock]()
+            {
+                auto readGuard = cm->acquireReadGuard();
+                ++readersAcquiredLock;
 
-            // Hold lock briefly
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        });
+                // Hold lock briefly
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            });
     }
 
     // Give readers a chance to try acquiring locks
