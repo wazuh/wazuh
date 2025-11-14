@@ -4,6 +4,8 @@
 
 # Development Documentation
 
+- [Setup Environment](dev/setup.md)
+
 # Reference Manual
 
 - [Introduction](ref/README.md)
