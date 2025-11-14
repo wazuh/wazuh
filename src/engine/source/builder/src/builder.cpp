@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <store/utils.hpp>
+#include <cmstore/categories.hpp>
 
 #include "allowedFields.hpp"
 #include "builders/ibuildCtx.hpp"
@@ -19,7 +19,7 @@ class Builder::Registry final : public builders::RegistryType
 {
 };
 
-Builder::Builder(const std::shared_ptr<cm::store::ICMstore>& cmStore,
+Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                  const std::shared_ptr<IAllowedFields>& allowedFields,
@@ -81,39 +81,109 @@ base::Expression Builder::buildAsset(const base::Name& name, const cm::store::Na
     return asset.expression();
 }
 
-base::OptError Builder::validateIntegration(const base::Name& name, const cm::store::NamespaceId& namespaceId) const
+base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                                const cm::store::dataType::Integration& integration) const
 {
-    const auto nsReader = m_cmStore->getNSReader(namespaceId);
-    const auto& integration = nsReader->getIntegrationByName(name);
+    if (!integration.isEnabled())
+    {
+        return base::noError();
+    }
+
+    const auto& namespaceId = nsReader->getNamespaceId();
+    const auto& integrationName = integration.getName();
+
+    // Decoders
     for (const auto& uuid : integration.getDecodersByUUID())
     {
+        std::string decoderName;
+        try
+        {
+            decoderName = std::get<0>(nsReader->resolveNameFromUUID(uuid));
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {fmt::format(
+                "Failed to resolve name for decoder with uuid='{}' in namespace '{}' for integration '{}': {}",
+                uuid,
+                namespaceId.toStr(),
+                integrationName,
+                e.what())};
+        }
+
         if (!nsReader->assetExistsByUUID(uuid))
         {
-            return base::Error {fmt::format("Decoder UUID '{}' does not exist in the namespace.", uuid)};
+            return base::Error {
+                fmt::format("Decoder '{}' (uuid='{}') does not exist in namespace '{}' for integration '{}'.",
+                            decoderName,
+                            uuid,
+                            namespaceId.toStr(),
+                            integrationName)};
         }
     }
 
+    // KVDBs
     for (const auto& uuid : integration.getKVDBsByUUID())
     {
-        if (!nsReader->kvdbExistsByUUID(uuid))
+        std::string kvdbName;
+        try
         {
-            return base::Error {fmt::format("KVDB UUID '{}' does not exist in the namespace.", uuid)};
+            kvdbName = std::get<0>(nsReader->resolveNameFromUUID(uuid));
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {
+                fmt::format("Failed to resolve name for KVDB with uuid='{}' in namespace '{}' for integration '{}': {}",
+                            uuid,
+                            namespaceId.toStr(),
+                            integrationName,
+                            e.what())};
+        }
+
+        try
+        {
+            (void)nsReader->getKVDBByUUID(uuid);
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {
+                fmt::format("Error accessing KVDB '{}' (uuid='{}') in namespace '{}' for integration '{}': {}",
+                            kvdbName,
+                            uuid,
+                            namespaceId.toStr(),
+                            integrationName,
+                            e.what())};
         }
     }
 
+    // Category
+    const auto& category = integration.getCategory();
+    if (!cm::store::categories::exists(category))
+    {
+        return base::Error {fmt::format("Category '{}' is not a valid category for integration '{}' in namespace '{}'.",
+                                        category,
+                                        integrationName,
+                                        namespaceId.toStr())};
+    }
+
+    // Default parent
     if (const auto& opt = integration.getDefaultParent(); opt.has_value())
     {
         const base::Name& parentName = *opt;
         if (!nsReader->assetExistsByName(parentName))
         {
-            return base::Error {fmt::format("Default parent '{}' does not exist as asset.", parentName.toStr())};
+            return base::Error {
+                fmt::format("Default parent '{}' does not exist as asset in namespace '{}' for integration '{}'.",
+                            parentName.toStr(),
+                            namespaceId.toStr(),
+                            integrationName)};
         }
     }
 
     return base::noError();
 }
 
-base::OptError Builder::validateAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const
+base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                      const base::Name& name) const
 {
     try
     {
@@ -123,7 +193,6 @@ base::OptError Builder::validateAsset(const base::Name& name, const cm::store::N
         buildCtx->setAllowedFields(m_allowedFields);
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
 
-        const auto nsReader = m_cmStore->getNSReader(namespaceId);
         const auto& jsonAsset = nsReader->getAssetByName(name);
         auto asset = (*assetBuilder)(jsonAsset);
     }
@@ -135,16 +204,45 @@ base::OptError Builder::validateAsset(const base::Name& name, const cm::store::N
     return base::noError();
 }
 
-base::OptError Builder::validatePolicy(const cm::store::NamespaceId& namespaceId) const
+base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                           const cm::store::dataType::Policy& policy) const
 {
-    try
+    const auto& namespaceId = nsReader->getNamespaceId();
+    const auto policyName = namespaceId.toStr();
+
+    // Default parent
+    const auto& defaultParent = policy.getDefaultParent();
+    if (!nsReader->assetExistsByName(defaultParent))
     {
-        auto policy = std::make_shared<policy::Policy>(
-            namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_allowedFields);
+        return base::Error {
+            fmt::format("Default parent '{}' does not exist as asset in policy '{}'.", defaultParent.toStr(), policyName)};
     }
-    catch (const std::exception& e)
+
+    // Root decoder optional
+    const auto& defaultDecoder = policy.getRootDecoder();
+    if (!nsReader->assetExistsByName(defaultDecoder))
     {
-        return base::Error {e.what()};
+        return base::Error {fmt::format(
+            "Root decoder '{}' does not exist as asset in policy '{}'.", defaultDecoder.toStr(), policyName)};
+    }
+
+    // Integrations
+    for (const auto& integUUID : policy.getIntegrationsUUIDs())
+    {
+        std::string integrationName;
+        try
+        {
+            const auto integration = nsReader->getIntegrationByUUID(integUUID);
+            integrationName = integration.getName();
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {
+                fmt::format("Failed to resolve integration with uuid='{}' referenced by policy '{}': {}",
+                            integUUID,
+                            policyName,
+                            e.what())};
+        }
     }
 
     return base::noError();

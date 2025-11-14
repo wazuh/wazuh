@@ -22,14 +22,19 @@ class MockValidator : public IValidator
 {
 public:
     MOCK_METHOD(base::OptError,
-                validateIntegration,
-                (const base::Name& name, const cm::store::NamespaceId& namespaceId),
+                softIntegrationValidate,
+                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                 const cm::store::dataType::Integration& integration),
                 (const, override));
     MOCK_METHOD(base::OptError,
                 validateAsset,
-                (const base::Name& name, const cm::store::NamespaceId& namespaceId),
+                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, , const base::Name& name),
                 (const, override));
-    MOCK_METHOD(base::OptError, validatePolicy, (const cm::store::NamespaceId namespaceId), (const, override));
+    MOCK_METHOD(base::OptError,
+                validatePolicy,
+                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                 const cm::store::dataType::Policy& policy),
+                (const, override));
 };
 } // namespace builder::mocks
 
