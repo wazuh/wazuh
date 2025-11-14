@@ -229,6 +229,11 @@ static int parse_indexer_subnodes(const OS_XML* xml, XML_NODE nodes, cJSON* outp
             // Handle simple string values
             else if (current_node->content)
             {
+                // Display warning message for empty string values
+                if (strlen(current_node->content) == 0)
+                {
+                    mwarn("Configuration field '%s' has an empty value in module 'indexer'. Check configuration", node_keypath);
+                }
                 cJSON* existing_item = cJSON_GetObjectItem(output_json, current_node->element);
 
                 if (existing_item && cJSON_IsArray(existing_item))
@@ -374,12 +379,23 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
                 return NULL;
             }
 
+            if (indexer_config_json)
+            {
+                cJSON_free(indexer_config_json);
+            }
+
             // Convert JSON to string
             indexer_config_json = cJSON_PrintUnformatted(config_json);
             cJSON_Delete(config_json);
+            // Clear for possible new block
+            OS_ClearNode(indexer_children);
+        }
 
-            XML_NODE nodes_to_clear[] = {root_nodes, ossec_children, indexer_children};
-            cleanup_xml_resources(&xml, nodes_to_clear, 3);
+        if (indexer_config_json)
+        {
+            // indexer_children already freed
+            XML_NODE nodes_to_clear[] = {root_nodes, ossec_children};
+            cleanup_xml_resources(&xml, nodes_to_clear, 2);
             return indexer_config_json;
         }
 
