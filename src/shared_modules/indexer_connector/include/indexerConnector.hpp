@@ -86,7 +86,7 @@ public:
      *
      * @param index Index name.
      * @param query Query JSON object containing the search parameters.
-     * @param onResponse Optional callback to process the response (e.g., extract search_after for pagination).
+     * @param onResponse Optional callback to process the response to extract search_after for pagination.
      *                   Callback receives the response as nlohmann::json.
      */
     void executeGetQuery(const std::string& index,
@@ -101,7 +101,7 @@ public:
      *
      * @param indices List of index names to query.
      * @param query Query JSON object containing the search parameters.
-     * @param onResponse Optional callback to process each index response (e.g., extract search_after for pagination).
+     * @param onResponse Optional callback to process each index response to extract search_after for pagination.
      *                   Callback receives the response as nlohmann::json.
      */
     void executeGetContext(const std::vector<std::string>& indices,

@@ -710,148 +710,99 @@ public:
                         std::function<void(const nlohmann::json&)> onResponse = nullptr)
     {
         bool needToRetry = false;
+        bool hasMorePages = true;
+        nlohmann::json currentQuery = query;
+        std::string lastSearchAfter;
 
-        const auto onSuccess = [this, onResponse](const std::string& response)
+        // Pagination loop: keep fetching pages until no more results
+        while (hasMorePages)
         {
-            logInfo(IC_NAME, "GET query response: %s", response.c_str());
-            
-            // Parse and pass response to callback if provided
-            if (onResponse)
+            const auto onSuccess = [this, onResponse, &hasMorePages, &lastSearchAfter](
+                                      const std::string& response)
             {
-                try
-                {
-                    auto jsonResponse = nlohmann::json::parse(response);
-                    onResponse(jsonResponse);
-                }
-                catch (const std::exception& e)
-                {
-                    logError(IC_NAME, "Failed to parse GET query response: %s", e.what());
-                }
-            }
-            
-            // Notify registered callbacks on success
-            for (const auto& notify : m_notify)
-            {
-                notify();
-            }
-            m_notify.clear();
-        };
+                logInfo(IC_NAME, "GET query response: %s", response.c_str());
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
-        {
-            logError(IC_NAME, "GET query failed: %s, status code: %ld.", error.c_str(), statusCode);
-            if (statusCode == HTTP_VERSION_CONFLICT)
-            {
-                logInfo(IC_NAME, "Document version conflict, retrying in 1 second.");
-                needToRetry = true;
-            }
-            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
-            {
-                needToRetry = true;
-                logInfo(IC_NAME, "Too many requests, retrying in 1 second.");
-            }
-            else
+                // Parse and pass response to callback if provided
+                if (onResponse)
+                {
+                    try
+                    {
+                        auto jsonResponse = nlohmann::json::parse(response);
+                        onResponse(jsonResponse);
+
+                        // Check if there are more pages
+                        if (jsonResponse.contains("hits") && jsonResponse["hits"].contains("hits") &&
+                            jsonResponse["hits"]["hits"].is_array() &&
+                            !jsonResponse["hits"]["hits"].empty())
+                        {
+                            // Extract search_after from last hit's sort field
+                            const auto& hits = jsonResponse["hits"]["hits"];
+                            const auto& lastHit = hits[hits.size() - 1];
+
+                            if (lastHit.contains("sort") && lastHit["sort"].is_array() &&
+                                !lastHit["sort"].empty())
+                            {
+                                lastSearchAfter = lastHit["sort"][0].get<std::string>();
+                                hasMorePages = true;
+                            }
+                            else
+                            {
+                                hasMorePages = false;
+                            }
+                        }
+                        else
+                        {
+                            // No more results
+                            hasMorePages = false;
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logError(IC_NAME, "Failed to parse GET query response: %s", e.what());
+                        hasMorePages = false;
+                    }
+                }
+                else
+                {
+                    // No callback, no pagination needed
+                    hasMorePages = false;
+                }
+
+                // Notify registered callbacks on success
+                for (const auto& notify : m_notify)
+                {
+                    notify();
+                }
+                m_notify.clear();
+            };
+
+            const auto onError =
+                [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
             {
                 logError(IC_NAME, "GET query failed: %s, status code: %ld.", error.c_str(), statusCode);
-                m_notify.clear();
-                throw IndexerConnectorException(error);
-            }
-        };
-
-        do
-        {
-            if (m_stopping.load())
-            {
-                logInfo(IC_NAME, "Stopping requested, aborting GET query");
-                m_notify.clear();
-                return;
-            }
-
-            needToRetry = false;
-            auto serverUrl = m_selector->getNext();
-            std::string url;
-            url += serverUrl;
-            url += "/";
-            url += index;
-            url += "/_search";
-
-            logInfo(IC_NAME, "Executing GET query on: %s", url.c_str());
-            logInfo(IC_NAME, "Query body: %s", query.dump().c_str());
-
-            m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                                   .data = query.dump(),
-                                                   .secureCommunication = m_secureCommunication},
-                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
-            logInfo(IC_NAME, "GET query executed successfully.");
-            if (needToRetry && RetryDelay > 0)
-            {
-                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
-            }
-        } while (needToRetry);
-    }
-
-    void executeGetContext(const std::vector<std::string>& indices,
-                          const nlohmann::json& query,
-                          std::function<void(const nlohmann::json&)> onResponse = nullptr)
-    {
-        bool needToRetry = false;
-
-        const auto onSuccess = [this, onResponse](const std::string& response)
-        {
-            logInfo(IC_NAME, "GET context query response: %s", response.c_str());
-            
-            // Parse and pass response to callback if provided
-            if (onResponse)
-            {
-                try
+                if (statusCode == HTTP_VERSION_CONFLICT)
                 {
-                    auto jsonResponse = nlohmann::json::parse(response);
-                    onResponse(jsonResponse);
+                    logInfo(IC_NAME, "Document version conflict, retrying in 1 second.");
+                    needToRetry = true;
                 }
-                catch (const std::exception& e)
+                else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                 {
-                    logError(IC_NAME, "Failed to parse GET context response: %s", e.what());
+                    needToRetry = true;
+                    logInfo(IC_NAME, "Too many requests, retrying in 1 second.");
                 }
-            }
-            
-            // Notify registered callbacks on success
-            for (const auto& notify : m_notify)
-            {
-                notify();
-            }
-            m_notify.clear();
-        };
+                else
+                {
+                    logError(IC_NAME, "GET query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                    m_notify.clear();
+                    throw IndexerConnectorException(error);
+                }
+            };
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
-        {
-            logError(IC_NAME, "GET context query failed: %s, status code: %ld.", error.c_str(), statusCode);
-            if (statusCode == HTTP_VERSION_CONFLICT)
-            {
-                logInfo(IC_NAME, "Document version conflict, retrying in 1 second.");
-                needToRetry = true;
-            }
-            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
-            {
-                needToRetry = true;
-                logInfo(IC_NAME, "Too many requests, retrying in 1 second.");
-            }
-            else
-            {
-                logError(IC_NAME, "GET context query failed: %s, status code: %ld.", error.c_str(), statusCode);
-                m_notify.clear();
-                throw IndexerConnectorException(error);
-            }
-        };
-
-        // Execute query for each index
-        for (const auto& index : indices)
-        {
             do
             {
                 if (m_stopping.load())
                 {
-                    logInfo(IC_NAME, "Stopping requested, aborting GET context query");
+                    logInfo(IC_NAME, "Stopping requested, aborting GET query");
                     m_notify.clear();
                     return;
                 }
@@ -864,21 +815,164 @@ public:
                 url += index;
                 url += "/_search";
 
-                logInfo(IC_NAME, "Executing GET context query on: %s", url.c_str());
-                logInfo(IC_NAME, "Query body: %s", query.dump().c_str());
+                logInfo(IC_NAME, "Executing GET query on: %s", url.c_str());
+                logInfo(IC_NAME, "Query body: %s", currentQuery.dump().c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                                       .data = query.dump(),
+                                                       .data = currentQuery.dump(),
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                     {});
-                logInfo(IC_NAME, "GET context query executed successfully on index: %s", index.c_str());
-                
+                logInfo(IC_NAME, "GET query executed successfully.");
                 if (needToRetry && RetryDelay > 0)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
                 }
             } while (needToRetry);
+
+            // Update query with search_after for next page
+            if (hasMorePages && !lastSearchAfter.empty())
+            {
+                currentQuery["search_after"] = nlohmann::json::array({lastSearchAfter});
+            }
+        }
+    }
+
+    void executeGetContext(const std::vector<std::string>& indices,
+                          const nlohmann::json& query,
+                          std::function<void(const nlohmann::json&)> onResponse = nullptr)
+    {
+        // Execute query for each index
+        for (const auto& index : indices)
+        {
+            bool needToRetry = false;
+            bool hasMorePages = true;
+            nlohmann::json currentQuery = query;
+            std::string lastSearchAfter;
+
+            // Pagination loop: keep fetching pages until no more results
+            while (hasMorePages)
+            {
+                const auto onSuccess = [this, onResponse, &hasMorePages, &lastSearchAfter](
+                                          const std::string& response)
+                {
+                    logInfo(IC_NAME, "GET context query response: %s", response.c_str());
+
+                    // Parse and pass response to callback if provided
+                    if (onResponse)
+                    {
+                        try
+                        {
+                            auto jsonResponse = nlohmann::json::parse(response);
+                            onResponse(jsonResponse);
+
+                            // Check if there are more pages
+                            if (jsonResponse.contains("hits") && jsonResponse["hits"].contains("hits") &&
+                                jsonResponse["hits"]["hits"].is_array() &&
+                                !jsonResponse["hits"]["hits"].empty())
+                            {
+                                // Extract search_after from last hit's sort field
+                                const auto& hits = jsonResponse["hits"]["hits"];
+                                const auto& lastHit = hits[hits.size() - 1];
+
+                                if (lastHit.contains("sort") && lastHit["sort"].is_array() &&
+                                    !lastHit["sort"].empty())
+                                {
+                                    lastSearchAfter = lastHit["sort"][0].get<std::string>();
+                                    hasMorePages = true;
+                                }
+                                else
+                                {
+                                    hasMorePages = false;
+                                }
+                            }
+                            else
+                            {
+                                // No more results
+                                hasMorePages = false;
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            logError(IC_NAME, "Failed to parse GET context response: %s", e.what());
+                            hasMorePages = false;
+                        }
+                    }
+                    else
+                    {
+                        // No callback, no pagination needed
+                        hasMorePages = false;
+                    }
+
+                    // Notify registered callbacks on success
+                    for (const auto& notify : m_notify)
+                    {
+                        notify();
+                    }
+                    m_notify.clear();
+                };
+
+                const auto onError =
+                    [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+                {
+                    logError(IC_NAME, "GET context query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                    if (statusCode == HTTP_VERSION_CONFLICT)
+                    {
+                        logInfo(IC_NAME, "Document version conflict, retrying in 1 second.");
+                        needToRetry = true;
+                    }
+                    else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+                    {
+                        needToRetry = true;
+                        logInfo(IC_NAME, "Too many requests, retrying in 1 second.");
+                    }
+                    else
+                    {
+                        logError(IC_NAME, "GET context query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                        m_notify.clear();
+                        throw IndexerConnectorException(error);
+                    }
+                };
+
+                do
+                {
+                    if (m_stopping.load())
+                    {
+                        logInfo(IC_NAME, "Stopping requested, aborting GET context query");
+                        m_notify.clear();
+                        return;
+                    }
+
+                    needToRetry = false;
+                    auto serverUrl = m_selector->getNext();
+                    std::string url;
+                    url += serverUrl;
+                    url += "/";
+                    url += index;
+                    url += "/_search";
+
+                    logInfo(IC_NAME, "Executing GET context query on: %s", url.c_str());
+                    logInfo(IC_NAME, "Query body: %s", currentQuery.dump().c_str());
+
+                    m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                           .data = currentQuery.dump(),
+                                                           .secureCommunication = m_secureCommunication},
+                                        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                        {});
+                    logInfo(IC_NAME, "GET context query executed successfully on index: %s", index.c_str());
+
+                    if (needToRetry && RetryDelay > 0)
+                    {
+                        std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                    }
+                } while (needToRetry);
+
+                // Update query with search_after for next page
+                if (hasMorePages && !lastSearchAfter.empty())
+                {
+                    currentQuery["search_after"] = nlohmann::json::array({lastSearchAfter});
+                }
+            }
         }
     }
 
