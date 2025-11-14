@@ -1,3 +1,9 @@
+# Ensure the script runs from its own directory
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($scriptDir) {
+    Set-Location -Path $scriptDir
+}
+
 # Check if there is an upgrade in progress
 if (Test-Path ".\upgrade\upgrade_in_progress") {
     write-output "$(Get-Date -format u) - There is an upgrade in progress. Aborting..." >> .\upgrade\upgrade.log
@@ -62,21 +68,46 @@ function get_wazuh_installation_directory {
         $path1 = "HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"
         $key1 = "WazuhInstallDir"
 
-        $path2 = "HKLM:\SOFTWARE\WOW6432Node\ossec"
-        $key2 = "Install_Dir"
+        $path2 = "HKLM:\SOFTWARE\WOW6432Node\Wazuh\Wazuh Agent"
+        $key2 = "WazuhInstallDir"
+
+        $path3 = "HKLM:\SOFTWARE\WOW6432Node\ossec"
+        $key3 = "Install_Dir"
 
         $WazuhInstallDir = $null
+        $registrySource = $null
 
+        # Try new registry path (4.13+)
         try {
             $WazuhInstallDir = (Get-ItemProperty -Path $path1 -ErrorAction SilentlyContinue).$key1
+            if ($null -ne $WazuhInstallDir) {
+                $registrySource = "$path1\$key1"
+            }
         }
         catch {
             $WazuhInstallDir = $null
         }
 
+        # Try legacy custom installation registry path (pre-4.13)
         if ($null -eq $WazuhInstallDir) {
             try {
                 $WazuhInstallDir = (Get-ItemProperty -Path $path2 -ErrorAction SilentlyContinue).$key2
+                if ($null -ne $WazuhInstallDir) {
+                    $registrySource = "$path2\$key2"
+                }
+            }
+            catch {
+                $WazuhInstallDir = $null
+            }
+        }
+
+        # Try older registry path (ossec)
+        if ($null -eq $WazuhInstallDir) {
+            try {
+                $WazuhInstallDir = (Get-ItemProperty -Path $path3 -ErrorAction SilentlyContinue).$key3
+                if ($null -ne $WazuhInstallDir) {
+                    $registrySource = "$path3\$key3"
+                }
             }
             catch {
                 $WazuhInstallDir = $null
@@ -86,6 +117,9 @@ function get_wazuh_installation_directory {
         if ($null -eq $WazuhInstallDir) {
             Write-output "$(Get-Date -format u) - Couldn't find Wazuh in the registry. Upgrade will assume current path is correct" >> .\upgrade\upgrade.log
             $WazuhInstallDir = (Get-Location).Path.TrimEnd('\')
+            $registrySource = "current directory (fallback)"
+        } else {
+            Write-output "$(Get-Date -format u) - Found Wazuh installation directory in registry: $registrySource = $WazuhInstallDir" >> .\upgrade\upgrade.log
         }
 
         return $WazuhInstallDir
@@ -173,6 +207,10 @@ function Get-MSIProductVersion {
 
 # Stop UI and launch the MSI installer
 function install {
+    param (
+        [string]$installDir
+    )
+
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Stop-Service -Name "Wazuh"
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
@@ -185,7 +223,22 @@ function install {
             write-output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
         }
 
-        Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log') -Wait -NoNewWindow
+        # Build msiexec arguments with explicit INSTALLDIR
+        $msiArgs = @(
+            "/i",
+            $msiPath,
+            "INSTALLDIR=`"$installDir`"",
+            "WIXUI_INSTALLDIR=APPLICATIONFOLDER",
+            "REBOOT=ReallySuppress",
+            "/qn",
+            "/l*v",
+            "installer.log"
+        )
+
+        write-output "$(Get-Date -format u) - Installing MSI with INSTALLDIR: $installDir" >> .\upgrade\upgrade.log
+        write-output "$(Get-Date -format u) - MSI command: msiexec.exe $($msiArgs -join ' ')" >> .\upgrade\upgrade.log
+
+        Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow
 
     } catch {
         write-output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
@@ -223,8 +276,8 @@ if ($msi_new_version -ne $null) {
 # Ensure no other instance of msiexec is running by stopping them
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
 
-# Install
-install
+# Install with explicit INSTALLDIR
+install -installDir $wazuhDir
 check-installation
 
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
