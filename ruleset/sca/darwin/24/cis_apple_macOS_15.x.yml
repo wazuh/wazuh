@@ -458,7 +458,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.AssetCache'').objectForKey(''Activated'')" -> r:^0$'
-      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''allowContentCaching'')" -> r:^0$|^true$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''allowContentCaching'')" -> r:^0$|^false$'
 
   # 2.3.3.10 Ensure Media Sharing Is Disabled. (Automated) - Not Implemented
   # 2.3.3.11 Ensure Bluetooth Sharing Is Disabled. (Automated) - Not Implemented
