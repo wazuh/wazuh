@@ -3090,8 +3090,8 @@ checks:
       - soc_2: ["CC6.2", "CC6.3"]
     condition: any
     rules:
-      - "f:/etc/security/faillock.conf -> r:even_deny_root"
-      - "f:/etc/security/faillock.conf -> n:root_unlock_time=(\\d+), compare >= 60"
+      - 'f:/etc/security/faillock.conf -> r:even_deny_root'
+      - 'f:/etc/security/faillock.conf -> n:root_unlock_time=(\d+) compare >= 60'
 
   # 5.3.3.2.1 Ensure password number of changed characters is configured. (Automated)
   - id: 33193
