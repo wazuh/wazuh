@@ -22,7 +22,15 @@ namespace builder::policy::factory
  * @brief This struct contains the built assets of the policy by type.
  *
  */
-using BuiltAssets = std::unordered_map<cm::store::ResourceType, std::unordered_map<base::Name, Asset>>;
+struct SubgraphData
+{
+    // Order in which the assets were read / built
+    std::vector<base::Name> orderedAssets;
+    // Quick access by name (for filters, checks, etc.)
+    std::unordered_map<base::Name, Asset> assets;
+};
+
+using BuiltAssets = std::map<cm::store::ResourceType, SubgraphData>;
 
 /**
  * @brief Build the assets of the policy.
@@ -72,7 +80,7 @@ struct PolicyGraph
  * @throw std::runtime_error If any error occurs.
  */
 Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
-                                       const std::unordered_map<base::Name, Asset>& assets,
+                                       const SubgraphData& assetsData,
                                        const std::unordered_map<base::Name, Asset>& filters);
 
 /**
