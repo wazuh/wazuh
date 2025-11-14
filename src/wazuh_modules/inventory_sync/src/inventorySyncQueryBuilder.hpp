@@ -268,9 +268,8 @@ namespace InventorySyncQueryBuilder
     /// @param size Maximum number of results to return
     /// @param searchAfter Optional search_after value for pagination [_id]
     /// @return JSON search query body with term query and source filtering
-    inline nlohmann::json buildContextGetQuery(const std::string& agentId,
-                                                int size = 1000,
-                                                const std::string& searchAfter = "")
+    inline nlohmann::json
+    buildContextGetQuery(const std::string& agentId, int size = 1000, const std::string& searchAfter = "")
     {
         nlohmann::json query;
 
@@ -297,8 +296,7 @@ namespace InventorySyncQueryBuilder
 
         try
         {
-            if (response.contains("hits") && response["hits"].contains("hits") &&
-                response["hits"]["hits"].is_array() &&
+            if (response.contains("hits") && response["hits"].contains("hits") && response["hits"]["hits"].is_array() &&
                 !response["hits"]["hits"].empty())
             {
                 const auto& hits = response["hits"]["hits"];
