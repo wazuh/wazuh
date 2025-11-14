@@ -28,6 +28,7 @@
 #include <json.hpp>
 #include <memory>
 #include <random>
+#include "vulnerabilityScannerFacade.hpp"
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
@@ -476,6 +477,28 @@ public:
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
                     auto lock = m_indexerConnector->scopeLock();
+
+                    if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
+                        res.context->option == Wazuh::SyncSchema::Option_VDClean ||
+                        res.context->option == Wazuh::SyncSchema::Option_VDSync)
+                    {
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Running vulnerability scanner for agent %s...",
+                                  res.context->agentId.c_str());
+
+                        // Run vulnerability scanner
+                        try
+                        {
+                            VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                        }
+                        catch (const std::exception& e)
+                        {
+                            logError(LOGGER_DEFAULT_TAG,
+                                     "InventorySyncFacade::start: Vulnerability scanner exception for agent %s: %s",
+                                     res.context->agentId.c_str(),
+                                     e.what());
+                        }
+                    }
 
                     if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta)
                     {
