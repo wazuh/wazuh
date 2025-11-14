@@ -10,8 +10,8 @@
 #include <iostream>
 #include <thread>
 
-#include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
+#include "logging_helper.hpp"
 
 // Static member definitions
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -98,6 +98,14 @@ void SecurityConfigurationAssessment::Run()
             return;
         }
 
+        // Check if paused for coordination - skip scanning but stay in loop
+        if (m_paused)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning paused, skipping scan iteration");
+            firstScan = false;  // Clear first scan flag even when paused
+            continue;
+        }
+
         if (firstScan && m_scanOnStart)
         {
             LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
@@ -155,7 +163,9 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
                                             const int commandsTimeout,
                                             const bool remoteEnabled,
                                             const std::vector<sca::PolicyData>& policies,
-                                            const YamlToJsonFunc& yamlToJsonFunc)
+                                            const YamlToJsonFunc& yamlToJsonFunc,
+                                            std::chrono::seconds syncResponseTimeout,
+                                            size_t syncMaxEps)
 {
     m_enabled = enabled;
     m_scanOnStart = scanOnStart;
@@ -164,6 +174,8 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
     m_remoteEnabled = remoteEnabled;
     m_policiesData = policies;
     m_yamlToJsonFunc = yamlToJsonFunc;
+    m_syncResponseTimeout = syncResponseTimeout;
+    m_syncMaxEps = syncMaxEps;
 }
 
 void SecurityConfigurationAssessment::Stop()
@@ -300,6 +312,158 @@ void SecurityConfigurationAssessment::deleteDatabase()
     {
         m_dBSync->closeAndDeleteDatabase();
     }
+}
+
+int SecurityConfigurationAssessment::getMaxVersion()
+{
+    int maxVersion = 0;
+
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get max version");
+        return -1;
+    }
+
+    try
+    {
+        auto selectQuery =
+            SelectQuery::builder().table("sca_check").columnList({"MAX(version) AS max_version"}).build();
+
+        const auto callback = [&maxVersion](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("max_version"))
+            {
+                if (resultData["max_version"].is_number())
+                {
+                    maxVersion = resultData["max_version"].get<int>();
+                }
+                else if (resultData["max_version"].is_null())
+                {
+                    // No rows in table, version is 0
+                    maxVersion = 0;
+                }
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), callback);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA get_version returned: " + std::to_string(maxVersion));
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error getting max version: " + std::string(err.what()));
+        return -1;
+    }
+
+    return maxVersion;
+}
+
+int SecurityConfigurationAssessment::setVersion(int version)
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot set version");
+        return -1;
+    }
+
+    try
+    {
+        // First, get ALL rows with ALL columns (like FIM does in db.cpp:130-137)
+        std::vector<nlohmann::json> rows;
+
+        auto selectQuery = SelectQuery::builder()
+                           .table("sca_check")
+                           .columnList({"*"}) // Get all columns to properly identify and update rows
+                           .build();
+
+        const auto selectCallback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED)
+            {
+                rows.push_back(resultData);
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), selectCallback);
+
+        // Use transaction-based approach to ensure changes are immediately reflected in DB
+        // Create a transaction for syncing the version updates
+        const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&)
+        {
+            // No action needed for transaction callback
+        };
+
+        DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, txnCallback};
+
+        if (txn.handle() != nullptr)
+        {
+            // Update each row's version field (like FIM does in db.cpp:148-169)
+            for (auto& row : rows)
+            {
+                row["version"] = version; // Modify just the version field in the complete row
+
+                nlohmann::json input;
+                input["table"] = "sca_check";
+                input["data"] = nlohmann::json::array({row});
+
+                txn.syncTxnRow(input);
+            }
+
+            // Call getDeletedRows to ensure changes are immediately reflected in the database
+            txn.getDeletedRows(txnCallback);
+        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "SCA set_version to " + std::to_string(version) + " for " +
+                                         std::to_string(rows.size()) + " checks");
+        return 0;
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error setting version: " + std::string(err.what()));
+        return -1;
+    }
+}
+
+void SecurityConfigurationAssessment::pause()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning paused for coordination");
+    m_paused = true;
+}
+
+int SecurityConfigurationAssessment::flush()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA flush requested - syncing pending messages");
+
+    if (!m_spSyncProtocol)
+    {
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA sync protocol not initialized, flush skipped");
+        return 0;  // Not an error - just nothing to flush
+    }
+
+    // Trigger immediate synchronization to flush pending messages
+    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA,
+                                                      m_syncResponseTimeout,
+                                                      m_syncRetries,
+                                                      m_syncMaxEps);
+
+    if (result)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush completed successfully");
+        return 0;
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA flush failed");
+        return -1;
+    }
+}
+
+void SecurityConfigurationAssessment::resume()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning resumed after coordination");
+    m_paused = false;
+    // Wake up the Run() loop if it's waiting
+    m_cv.notify_one();
 }
 
 // LCOV_EXCL_STOP

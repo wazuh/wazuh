@@ -51,7 +51,9 @@ class SecurityConfigurationAssessment
                    const int commandsTimeout,
                    const bool remoteEnabled,
                    const std::vector<sca::PolicyData>& policies,
-                   const YamlToJsonFunc& yamlToJsonFunc = nullptr);
+                   const YamlToJsonFunc& yamlToJsonFunc = nullptr,
+                   std::chrono::seconds syncResponseTimeout = std::chrono::seconds(30),
+                   size_t syncMaxEps = 10);
 
         /// @copydoc IModule::Stop
         void Stop() ;
@@ -114,6 +116,25 @@ class SecurityConfigurationAssessment
         /// @brief Delete the database
         void deleteDatabase();
 
+        /// @brief Get the maximum version from the sca_check table
+        /// @return Maximum version number, or -1 on error, 0 if table is empty
+        int getMaxVersion();
+
+        /// @brief Set the version for all rows in the sca_check table
+        /// @param version Version number to set
+        /// @return 0 on success, -1 on error
+        int setVersion(int version);
+
+        /// @brief Pause SCA scanning operations for coordination
+        void pause();
+
+        /// @brief Flush pending sync protocol messages
+        /// @return 0 on success, -1 on error
+        int flush();
+
+        /// @brief Resume SCA scanning operations after coordination
+        void resume();
+
     protected:
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
@@ -149,6 +170,12 @@ class SecurityConfigurationAssessment
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};
 
+        /// @brief Flag indicating if scanning is paused for coordination
+        std::atomic<bool> m_paused {false};
+
+        /// @brief Flag indicating if a flush is requested for sync protocol
+        std::atomic<bool> m_flushRequested {false};
+
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;
 
@@ -172,4 +199,13 @@ class SecurityConfigurationAssessment
 
         /// @brief Path to the sync protocol
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+
+        /// @brief Synchronization response timeout in seconds
+        std::chrono::seconds m_syncResponseTimeout = std::chrono::seconds(30);
+
+        /// @brief Number of retries for synchronization operations
+        static constexpr unsigned int m_syncRetries = 3;
+
+        /// @brief Maximum events per second for synchronization
+        size_t m_syncMaxEps = 10;
 };
