@@ -67,7 +67,7 @@ eTester::Session toSession(const ::router::test::Entry& entry)
  */
 template<typename RequestType, typename ResponseType>
 auto getNsFilterAssets(const RequestType& eRequest,
-                       const std::weak_ptr<store::IStoreReader>& wStore,
+                       const std::weak_ptr<cm::store::ICMStore>& wStore,
                        const std::shared_ptr<::router::ITesterAPI>& tester)
     -> std::variant<httplib::Response, std::unordered_set<std::string>>
 {
@@ -78,16 +78,18 @@ auto getNsFilterAssets(const RequestType& eRequest,
         return adapter::internalErrorResponse<ResponseType>("Error: Store is not initialized");
     }
 
-    // Get namespaces
-    std::vector<std::string> namespaces {};
-    for (const auto& ns : eRequest.namespaces())
-    {
-        namespaces.push_back(ns);
-    }
-    if (namespaces.empty())
-    {
-        return adapter::userErrorResponse<ResponseType>("Error: Namespaces parameter is required");
-    }
+    // // Get namespaces
+    // std::vector<std::string> namespaces {};
+    // for (const auto& ns : eRequest.namespaces())
+    // {
+    //     namespaces.push_back(ns);
+    // }
+    // if (namespaces.empty())
+    // {
+    //     return adapter::userErrorResponse<ResponseType>("Error: Namespaces parameter is required");
+    // }
+
+    // const auto storeReader = store->getNSReader(cm::store::NamespaceId {eRequest.policy()});
 
     // Get all assets of the running policy
     auto resPolicyAssets = tester->getAssets(eRequest.name());
@@ -101,15 +103,7 @@ auto getNsFilterAssets(const RequestType& eRequest,
     std::unordered_set<std::string> assets {};
     for (const auto& asset : policyAssets)
     {
-        auto assetNamespace = store->getNamespace(asset);
-        if (!assetNamespace)
-        {
-            return adapter::userErrorResponse<ResponseType>(fmt::format("Asset {} not found in store", asset));
-        }
-        if (std::find(namespaces.begin(), namespaces.end(), assetNamespace.value()) != namespaces.end())
-        {
-            assets.insert(asset);
-        }
+        assets.insert(asset);
     }
     return assets;
 }
@@ -345,11 +339,11 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 }
 
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                              const std::shared_ptr<store::IStoreReader>& store,
+                              const std::shared_ptr<cm::store::ICMStore>& store,
                               const base::eventParsers::ProtocolHandler& protocolHandler)
 {
     return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            wStore = std::weak_ptr<store::IStoreReader>(store),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store),
             protocolHandler](const auto& req, auto& res)
     {
         using RequestType = eTester::RunPost_Request;
