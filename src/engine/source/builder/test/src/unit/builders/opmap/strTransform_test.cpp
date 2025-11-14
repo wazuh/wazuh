@@ -51,7 +51,6 @@ auto jTypeArrayRefExpected(json::Json::Type jType, bool isArray)
     {
         EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(isArray));
         if (isArray)
         {
             EXPECT_CALL(*mocks.validator, getJsonType(DotPath("ref"))).WillOnce(testing::Return(jType));

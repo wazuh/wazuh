@@ -13,7 +13,6 @@ class MockSchema : public IValidator
 public:
     MOCK_METHOD(Type, getType, (const DotPath& name), (const, override));
     MOCK_METHOD(bool, hasField, (const DotPath& name), (const, override));
-    MOCK_METHOD(bool, isArray, (const DotPath& name), (const, override));
     MOCK_METHOD(json::Json::Type, getJsonType, (const DotPath& name), (const, override));
     MOCK_METHOD(base::RespOrError<ValidationResult>,
                 validate,

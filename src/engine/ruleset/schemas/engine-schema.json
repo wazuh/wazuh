@@ -1,6961 +1,5564 @@
 {
+  "name": "schema/engine-schema/0",
   "fields": {
     "@timestamp": {
-      "array": false,
       "type": "date"
     },
     "agent.build.original": {
-      "array": false,
       "type": "keyword"
     },
     "agent.ephemeral_id": {
-      "array": false,
       "type": "keyword"
     },
     "agent.groups": {
-      "array": true,
       "type": "keyword"
     },
     "agent.host.architecture": {
-      "array": false,
+      "type": "keyword"
+    },
+    "agent.host.boot.id": {
+      "type": "keyword"
+    },
+    "agent.host.cpu": {
+      "type": "object"
+    },
+    "agent.host.cpu.cores": {
+      "type": "long"
+    },
+    "agent.host.cpu.name": {
+      "type": "keyword"
+    },
+    "agent.host.cpu.speed": {
+      "type": "long"
+    },
+    "agent.host.cpu.usage": {
+      "type": "scaled_float"
+    },
+    "agent.host.disk.read.bytes": {
+      "type": "long"
+    },
+    "agent.host.disk.write.bytes": {
+      "type": "long"
+    },
+    "agent.host.domain": {
+      "type": "keyword"
+    },
+    "agent.host.geo.city_name": {
+      "type": "keyword"
+    },
+    "agent.host.geo.continent_code": {
+      "type": "keyword"
+    },
+    "agent.host.geo.continent_name": {
+      "type": "keyword"
+    },
+    "agent.host.geo.country_iso_code": {
+      "type": "keyword"
+    },
+    "agent.host.geo.country_name": {
+      "type": "keyword"
+    },
+    "agent.host.geo.location": {
+      "type": "geo_point"
+    },
+    "agent.host.geo.name": {
+      "type": "keyword"
+    },
+    "agent.host.geo.postal_code": {
+      "type": "keyword"
+    },
+    "agent.host.geo.region_iso_code": {
+      "type": "keyword"
+    },
+    "agent.host.geo.region_name": {
+      "type": "keyword"
+    },
+    "agent.host.geo.timezone": {
       "type": "keyword"
     },
     "agent.host.hostname": {
-      "array": false,
+      "type": "keyword"
+    },
+    "agent.host.id": {
       "type": "keyword"
     },
     "agent.host.ip": {
-      "array": true,
       "type": "ip"
     },
+    "agent.host.mac": {
+      "type": "keyword"
+    },
+    "agent.host.memory": {
+      "type": "object"
+    },
+    "agent.host.memory.free": {
+      "type": "long"
+    },
+    "agent.host.memory.total": {
+      "type": "long"
+    },
+    "agent.host.memory.used": {
+      "type": "object"
+    },
+    "agent.host.memory.used.percentage": {
+      "type": "long"
+    },
+    "agent.host.name": {
+      "type": "keyword"
+    },
+    "agent.host.network.egress.bytes": {
+      "type": "long"
+    },
+    "agent.host.network.egress.drops": {
+      "type": "long"
+    },
+    "agent.host.network.egress.errors": {
+      "type": "long"
+    },
+    "agent.host.network.egress.packets": {
+      "type": "long"
+    },
+    "agent.host.network.egress.queue": {
+      "type": "long"
+    },
+    "agent.host.network.ingress.bytes": {
+      "type": "long"
+    },
+    "agent.host.network.ingress.drops": {
+      "type": "long"
+    },
+    "agent.host.network.ingress.errors": {
+      "type": "long"
+    },
+    "agent.host.network.ingress.packets": {
+      "type": "long"
+    },
+    "agent.host.network.ingress.queue": {
+      "type": "long"
+    },
+    "agent.host.os.family": {
+      "type": "keyword"
+    },
+    "agent.host.os.full": {
+      "type": "keyword"
+    },
+    "agent.host.os.kernel": {
+      "type": "keyword"
+    },
     "agent.host.os.name": {
-      "array": false,
       "type": "keyword"
     },
     "agent.host.os.platform": {
-      "array": false,
       "type": "keyword"
     },
+    "agent.host.os.type": {
+      "type": "keyword"
+    },
+    "agent.host.os.version": {
+      "type": "keyword"
+    },
+    "agent.host.pid_ns_ino": {
+      "type": "keyword"
+    },
+    "agent.host.risk.calculated_level": {
+      "type": "keyword"
+    },
+    "agent.host.risk.calculated_score": {
+      "type": "float"
+    },
+    "agent.host.risk.calculated_score_norm": {
+      "type": "float"
+    },
+    "agent.host.risk.static_level": {
+      "type": "keyword"
+    },
+    "agent.host.risk.static_score": {
+      "type": "float"
+    },
+    "agent.host.risk.static_score_norm": {
+      "type": "float"
+    },
+    "agent.host.type": {
+      "type": "keyword"
+    },
+    "agent.host.uptime": {
+      "type": "long"
+    },
     "agent.id": {
-      "array": false,
       "type": "keyword"
     },
     "agent.name": {
-      "array": false,
       "type": "keyword"
     },
     "agent.type": {
-      "array": false,
       "type": "keyword"
     },
     "agent.version": {
-      "array": false,
+      "type": "keyword"
+    },
+    "check.compliance": {
+      "type": "keyword"
+    },
+    "check.condition": {
+      "type": "keyword"
+    },
+    "check.description": {
+      "type": "keyword"
+    },
+    "check.id": {
+      "type": "keyword"
+    },
+    "check.name": {
+      "type": "keyword"
+    },
+    "check.rationale": {
+      "type": "keyword"
+    },
+    "check.reason": {
+      "type": "keyword"
+    },
+    "check.references": {
+      "type": "keyword"
+    },
+    "check.remediation": {
+      "type": "keyword"
+    },
+    "check.result": {
+      "type": "keyword"
+    },
+    "check.rules": {
       "type": "keyword"
     },
     "client.address": {
-      "array": false,
       "type": "keyword"
     },
     "client.as.number": {
-      "array": false,
       "type": "long"
     },
     "client.as.organization.name": {
-      "array": false,
       "type": "keyword"
     },
     "client.bytes": {
-      "array": false,
       "type": "long"
     },
     "client.domain": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "client.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "client.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "client.ip": {
-      "array": false,
       "type": "ip"
     },
     "client.mac": {
-      "array": false,
       "type": "keyword"
     },
     "client.nat.ip": {
-      "array": false,
       "type": "ip"
     },
     "client.nat.port": {
-      "array": false,
       "type": "long"
     },
     "client.packets": {
-      "array": false,
       "type": "long"
     },
     "client.port": {
-      "array": false,
       "type": "long"
     },
     "client.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "client.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "client.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.domain": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.email": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.hash": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "client.user.roles": {
-      "array": true,
       "type": "keyword"
     },
     "cloud.account.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.account.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.availability_zone": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.instance.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.instance.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.machine.type": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.account.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.account.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.availability_zone": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.instance.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.instance.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.machine.type": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.project.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.project.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.provider": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.region": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.origin.service.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.project.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.project.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.provider": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.region": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.service.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.account.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.account.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.availability_zone": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.instance.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.instance.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.machine.type": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.project.id": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.project.name": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.provider": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.region": {
-      "array": false,
       "type": "keyword"
     },
     "cloud.target.service.name": {
-      "array": false,
       "type": "keyword"
     },
     "container.cpu.usage": {
-      "array": false,
       "type": "scaled_float"
     },
     "container.disk.read.bytes": {
-      "array": false,
       "type": "long"
     },
     "container.disk.write.bytes": {
-      "array": false,
       "type": "long"
     },
     "container.id": {
-      "array": false,
       "type": "keyword"
     },
     "container.image.hash.all": {
-      "array": true,
       "type": "keyword"
     },
     "container.image.name": {
-      "array": false,
       "type": "keyword"
     },
     "container.image.tag": {
-      "array": true,
       "type": "keyword"
     },
     "container.labels": {
-      "array": false,
       "type": "object"
     },
     "container.memory.usage": {
-      "array": false,
       "type": "scaled_float"
     },
     "container.name": {
-      "array": false,
       "type": "keyword"
     },
     "container.network.egress.bytes": {
-      "array": false,
       "type": "long"
     },
     "container.network.ingress.bytes": {
-      "array": false,
       "type": "long"
     },
     "container.runtime": {
-      "array": false,
       "type": "keyword"
     },
     "container.security_context.privileged": {
-      "array": false,
       "type": "boolean"
     },
     "data_stream.dataset": {
-      "array": false,
       "type": "keyword"
     },
     "data_stream.namespace": {
-      "array": false,
       "type": "keyword"
     },
     "data_stream.type": {
-      "array": false,
       "type": "keyword"
     },
     "destination.address": {
-      "array": false,
       "type": "keyword"
     },
     "destination.as.number": {
-      "array": false,
       "type": "long"
     },
     "destination.as.organization.name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.bytes": {
-      "array": false,
       "type": "long"
     },
     "destination.domain": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "destination.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "destination.ip": {
-      "array": false,
       "type": "ip"
     },
     "destination.mac": {
-      "array": false,
       "type": "keyword"
     },
     "destination.nat.ip": {
-      "array": false,
       "type": "ip"
     },
     "destination.nat.port": {
-      "array": false,
       "type": "long"
     },
     "destination.packets": {
-      "array": false,
       "type": "long"
     },
     "destination.port": {
-      "array": false,
       "type": "long"
     },
     "destination.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "destination.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "destination.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.domain": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.email": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.hash": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "destination.user.roles": {
-      "array": true,
       "type": "keyword"
     },
     "device.id": {
-      "array": false,
       "type": "keyword"
     },
     "device.manufacturer": {
-      "array": false,
       "type": "keyword"
     },
     "device.model.identifier": {
-      "array": false,
       "type": "keyword"
     },
     "device.model.name": {
-      "array": false,
       "type": "keyword"
     },
     "device.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.digest_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.exists": {
-      "array": false,
       "type": "boolean"
     },
     "dll.code_signature.flags": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.signing_id": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.status": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.subject_name": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.team_id": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.thumbprint_sha256": {
-      "array": false,
       "type": "keyword"
     },
     "dll.code_signature.timestamp": {
-      "array": false,
       "type": "date"
     },
     "dll.code_signature.trusted": {
-      "array": false,
       "type": "boolean"
     },
     "dll.code_signature.valid": {
-      "array": false,
       "type": "boolean"
     },
     "dll.hash.cdhash": {
-      "array": false,
       "type": "keyword"
     },
     "dll.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "dll.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "dll.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "dll.hash.sha384": {
-      "array": false,
       "type": "keyword"
     },
     "dll.hash.sha512": {
-      "array": false,
       "type": "keyword"
     },
     "dll.hash.ssdeep": {
-      "array": false,
       "type": "keyword"
     },
     "dll.hash.tlsh": {
-      "array": false,
       "type": "keyword"
     },
     "dll.name": {
-      "array": false,
       "type": "keyword"
     },
     "dll.origin_referrer_url": {
-      "array": false,
       "type": "keyword"
     },
     "dll.origin_url": {
-      "array": false,
       "type": "keyword"
     },
     "dll.path": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.company": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.description": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.file_version": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.go_imports": {
-      "array": false,
       "type": "object"
     },
     "dll.pe.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "dll.pe.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "dll.pe.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "dll.pe.imphash": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.imports": {
-      "array": true,
       "type": "object"
     },
     "dll.pe.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "dll.pe.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "dll.pe.original_file_name": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.pehash": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.product": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.sections": {
-      "array": true,
       "type": "nested"
     },
     "dll.pe.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "dll.pe.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "dll.pe.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "dll.pe.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "dll.pe.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "dns.answers": {
-      "array": true,
       "type": "object"
     },
     "dns.answers.class": {
-      "array": false,
       "type": "keyword"
     },
     "dns.answers.data": {
-      "array": false,
       "type": "keyword"
     },
     "dns.answers.name": {
-      "array": false,
       "type": "keyword"
     },
     "dns.answers.ttl": {
-      "array": false,
       "type": "long"
     },
     "dns.answers.type": {
-      "array": false,
       "type": "keyword"
     },
     "dns.header_flags": {
-      "array": true,
       "type": "keyword"
     },
     "dns.id": {
-      "array": false,
       "type": "keyword"
     },
     "dns.op_code": {
-      "array": false,
       "type": "keyword"
     },
     "dns.question.class": {
-      "array": false,
       "type": "keyword"
     },
     "dns.question.name": {
-      "array": false,
       "type": "keyword"
     },
     "dns.question.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "dns.question.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "dns.question.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "dns.question.type": {
-      "array": false,
       "type": "keyword"
     },
     "dns.resolved_ip": {
-      "array": true,
       "type": "ip"
     },
     "dns.response_code": {
-      "array": false,
       "type": "keyword"
     },
     "dns.type": {
-      "array": false,
-      "type": "keyword"
-    },
-    "ecs.version": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments": {
-      "array": true,
       "type": "nested"
     },
     "email.attachments.file.extension": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.cdhash": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.sha384": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.sha512": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.ssdeep": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.hash.tlsh": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.mime_type": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.name": {
-      "array": false,
       "type": "keyword"
     },
     "email.attachments.file.size": {
-      "array": false,
       "type": "long"
     },
     "email.bcc.address": {
-      "array": true,
       "type": "keyword"
     },
     "email.cc.address": {
-      "array": true,
       "type": "keyword"
     },
     "email.content_type": {
-      "array": false,
       "type": "keyword"
     },
     "email.delivery_timestamp": {
-      "array": false,
       "type": "date"
     },
     "email.direction": {
-      "array": false,
       "type": "keyword"
     },
     "email.from.address": {
-      "array": true,
       "type": "keyword"
     },
     "email.local_id": {
-      "array": false,
       "type": "keyword"
     },
     "email.message_id": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "email.origination_timestamp": {
-      "array": false,
       "type": "date"
     },
     "email.reply_to.address": {
-      "array": true,
       "type": "keyword"
     },
     "email.sender.address": {
-      "array": false,
       "type": "keyword"
     },
     "email.subject": {
-      "array": false,
       "type": "keyword"
     },
     "email.to.address": {
-      "array": true,
       "type": "keyword"
     },
     "email.x_mailer": {
-      "array": false,
       "type": "keyword"
     },
     "error.code": {
-      "array": false,
       "type": "keyword"
     },
     "error.id": {
-      "array": false,
       "type": "keyword"
     },
     "error.message": {
-      "array": false,
       "type": "text"
     },
     "error.stack_trace": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "error.type": {
-      "array": false,
       "type": "keyword"
     },
     "event.action": {
-      "array": false,
       "type": "keyword"
     },
     "event.agent_id_status": {
-      "array": false,
       "type": "keyword"
     },
     "event.category": {
-      "array": true,
+      "type": "keyword"
+    },
+    "event.changed_fields": {
       "type": "keyword"
     },
     "event.code": {
-      "array": false,
       "type": "keyword"
     },
     "event.collector": {
-      "array": false,
       "type": "keyword"
     },
     "event.created": {
-      "array": false,
       "type": "date"
     },
     "event.dataset": {
-      "array": false,
       "type": "keyword"
     },
     "event.duration": {
-      "array": false,
       "type": "long"
     },
     "event.end": {
-      "array": false,
       "type": "date"
     },
     "event.hash": {
-      "array": false,
       "type": "keyword"
     },
     "event.id": {
-      "array": false,
       "type": "keyword"
     },
     "event.ingested": {
-      "array": false,
       "type": "date"
     },
     "event.kind": {
-      "array": false,
       "type": "keyword"
     },
     "event.module": {
-      "array": false,
       "type": "keyword"
     },
     "event.original": {
-      "array": false,
       "type": "keyword"
     },
     "event.outcome": {
-      "array": false,
       "type": "keyword"
     },
     "event.provider": {
-      "array": false,
       "type": "keyword"
     },
     "event.reason": {
-      "array": false,
       "type": "keyword"
     },
     "event.reference": {
-      "array": false,
       "type": "keyword"
     },
     "event.risk_score": {
-      "array": false,
       "type": "float"
     },
     "event.risk_score_norm": {
-      "array": false,
       "type": "float"
     },
     "event.sequence": {
-      "array": false,
       "type": "long"
     },
     "event.severity": {
-      "array": false,
       "type": "long"
     },
     "event.start": {
-      "array": false,
       "type": "date"
     },
     "event.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "event.type": {
-      "array": true,
       "type": "keyword"
     },
     "event.url": {
-      "array": false,
       "type": "keyword"
     },
     "faas.coldstart": {
-      "array": false,
       "type": "boolean"
     },
     "faas.execution": {
-      "array": false,
       "type": "keyword"
     },
     "faas.id": {
-      "array": false,
       "type": "keyword"
     },
     "faas.name": {
-      "array": false,
       "type": "keyword"
     },
     "faas.trigger.request_id": {
-      "array": false,
       "type": "keyword"
     },
     "faas.trigger.type": {
-      "array": false,
       "type": "keyword"
     },
     "faas.version": {
-      "array": false,
       "type": "keyword"
     },
     "file.accessed": {
-      "array": false,
       "type": "date"
     },
     "file.attributes": {
-      "array": true,
       "type": "keyword"
     },
     "file.code_signature.digest_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "file.code_signature.exists": {
-      "array": false,
       "type": "boolean"
     },
     "file.code_signature.flags": {
-      "array": false,
       "type": "keyword"
     },
     "file.code_signature.signing_id": {
-      "array": false,
       "type": "keyword"
     },
     "file.code_signature.status": {
-      "array": false,
       "type": "keyword"
     },
     "file.code_signature.subject_name": {
-      "array": false,
       "type": "keyword"
     },
     "file.code_signature.team_id": {
-      "array": false,
       "type": "keyword"
     },
     "file.code_signature.thumbprint_sha256": {
-      "array": false,
       "type": "keyword"
     },
     "file.code_signature.timestamp": {
-      "array": false,
       "type": "date"
     },
     "file.code_signature.trusted": {
-      "array": false,
       "type": "boolean"
     },
     "file.code_signature.valid": {
-      "array": false,
       "type": "boolean"
     },
     "file.created": {
-      "array": false,
       "type": "date"
     },
     "file.ctime": {
-      "array": false,
       "type": "date"
     },
     "file.device": {
-      "array": false,
       "type": "keyword"
     },
     "file.directory": {
-      "array": false,
       "type": "keyword"
     },
     "file.drive_letter": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.byte_order": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.cpu_type": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.creation_date": {
-      "array": false,
       "type": "date"
     },
     "file.elf.exports": {
-      "array": true,
       "type": "object"
     },
     "file.elf.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.go_imports": {
-      "array": false,
       "type": "object"
     },
     "file.elf.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.elf.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.elf.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "file.elf.header.abi_version": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.header.class": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.header.data": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.header.entrypoint": {
-      "array": false,
       "type": "long"
     },
     "file.elf.header.object_version": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.header.os_abi": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.header.type": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.header.version": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.imports": {
-      "array": true,
       "type": "object"
     },
     "file.elf.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.elf.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.elf.sections": {
-      "array": true,
       "type": "nested"
     },
     "file.elf.sections.chi2": {
-      "array": false,
       "type": "long"
     },
     "file.elf.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "file.elf.sections.flags": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.sections.physical_offset": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "file.elf.sections.type": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.elf.sections.virtual_address": {
-      "array": false,
       "type": "long"
     },
     "file.elf.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "file.elf.segments": {
-      "array": true,
       "type": "nested"
     },
     "file.elf.segments.sections": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.segments.type": {
-      "array": false,
       "type": "keyword"
     },
     "file.elf.shared_libraries": {
-      "array": true,
       "type": "keyword"
     },
     "file.elf.telfhash": {
-      "array": false,
       "type": "keyword"
     },
     "file.extension": {
-      "array": false,
       "type": "keyword"
     },
     "file.fork_name": {
-      "array": false,
       "type": "keyword"
     },
     "file.gid": {
-      "array": false,
       "type": "keyword"
     },
     "file.group": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.cdhash": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.sha384": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.sha512": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.ssdeep": {
-      "array": false,
       "type": "keyword"
     },
     "file.hash.tlsh": {
-      "array": false,
       "type": "keyword"
     },
     "file.inode": {
-      "array": false,
       "type": "keyword"
     },
     "file.macho.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "file.macho.go_imports": {
-      "array": false,
       "type": "object"
     },
     "file.macho.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.macho.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.macho.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "file.macho.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "file.macho.imports": {
-      "array": true,
       "type": "object"
     },
     "file.macho.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.macho.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.macho.sections": {
-      "array": true,
       "type": "nested"
     },
     "file.macho.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "file.macho.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "file.macho.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "file.macho.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.macho.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "file.macho.symhash": {
-      "array": false,
       "type": "keyword"
     },
     "file.mime_type": {
-      "array": false,
       "type": "keyword"
     },
     "file.mode": {
-      "array": false,
       "type": "keyword"
     },
     "file.mtime": {
-      "array": false,
       "type": "date"
     },
     "file.name": {
-      "array": false,
       "type": "keyword"
     },
     "file.origin_referrer_url": {
-      "array": false,
       "type": "keyword"
     },
     "file.origin_url": {
-      "array": false,
       "type": "keyword"
     },
     "file.owner": {
-      "array": false,
       "type": "keyword"
     },
     "file.path": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.company": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.description": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.file_version": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.go_imports": {
-      "array": false,
       "type": "object"
     },
     "file.pe.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.pe.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.pe.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "file.pe.imphash": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.imports": {
-      "array": true,
       "type": "object"
     },
     "file.pe.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.pe.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.pe.original_file_name": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.pehash": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.product": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.sections": {
-      "array": true,
       "type": "nested"
     },
     "file.pe.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "file.pe.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "file.pe.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "file.pe.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "file.pe.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "file.size": {
-      "array": false,
       "type": "long"
     },
     "file.target_path": {
-      "array": false,
       "type": "keyword"
     },
     "file.type": {
-      "array": false,
       "type": "keyword"
     },
     "file.uid": {
-      "array": false,
       "type": "keyword"
     },
     "file.x509.alternative_names": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.issuer.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.issuer.country": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.issuer.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "file.x509.issuer.locality": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.issuer.organization": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.issuer.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.issuer.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.not_after": {
-      "array": false,
       "type": "date"
     },
     "file.x509.not_before": {
-      "array": false,
       "type": "date"
     },
     "file.x509.public_key_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "file.x509.public_key_curve": {
-      "array": false,
       "type": "keyword"
     },
     "file.x509.public_key_exponent": {
-      "array": false,
       "type": "long"
     },
     "file.x509.public_key_size": {
-      "array": false,
       "type": "long"
     },
     "file.x509.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "file.x509.signature_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "file.x509.subject.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.subject.country": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.subject.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "file.x509.subject.locality": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.subject.organization": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.subject.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.subject.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "file.x509.version_number": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.agent.description": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.agent.id": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.agent.name": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.operation.name": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.output.type": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.request.choice.count": {
-      "array": false,
       "type": "integer"
     },
     "gen_ai.request.encoding_formats": {
-      "array": false,
-      "type": "nested"
+      "type": "keyword"
     },
     "gen_ai.request.frequency_penalty": {
-      "array": false,
       "type": "double"
     },
     "gen_ai.request.max_tokens": {
-      "array": false,
       "type": "integer"
     },
     "gen_ai.request.model": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.request.presence_penalty": {
-      "array": false,
       "type": "double"
     },
     "gen_ai.request.seed": {
-      "array": false,
       "type": "integer"
     },
     "gen_ai.request.stop_sequences": {
-      "array": false,
-      "type": "nested"
+      "type": "keyword"
     },
     "gen_ai.request.temperature": {
-      "array": false,
       "type": "double"
     },
     "gen_ai.request.top_k": {
-      "array": false,
       "type": "double"
     },
     "gen_ai.request.top_p": {
-      "array": false,
       "type": "double"
     },
     "gen_ai.response.finish_reasons": {
-      "array": true,
       "type": "keyword"
     },
     "gen_ai.response.id": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.response.model": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.system": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.token.type": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.tool.call.id": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.tool.name": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.tool.type": {
-      "array": false,
       "type": "keyword"
     },
     "gen_ai.usage.input_tokens": {
-      "array": false,
       "type": "integer"
     },
     "gen_ai.usage.output_tokens": {
-      "array": false,
       "type": "integer"
     },
     "group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "group.id": {
-      "array": false,
       "type": "keyword"
     },
     "group.name": {
-      "array": false,
       "type": "keyword"
     },
     "host.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "host.boot.id": {
-      "array": false,
       "type": "keyword"
     },
+    "host.cpu": {
+      "type": "object"
+    },
+    "host.cpu.cores": {
+      "type": "long"
+    },
+    "host.cpu.name": {
+      "type": "keyword"
+    },
+    "host.cpu.speed": {
+      "type": "long"
+    },
     "host.cpu.usage": {
-      "array": false,
       "type": "scaled_float"
     },
     "host.disk.read.bytes": {
-      "array": false,
       "type": "long"
     },
     "host.disk.write.bytes": {
-      "array": false,
       "type": "long"
     },
     "host.domain": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "host.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "host.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "host.hostname": {
-      "array": false,
       "type": "keyword"
     },
     "host.id": {
-      "array": false,
       "type": "keyword"
     },
     "host.ip": {
-      "array": true,
       "type": "ip"
     },
     "host.mac": {
-      "array": true,
       "type": "keyword"
     },
+    "host.memory": {
+      "type": "object"
+    },
+    "host.memory.free": {
+      "type": "long"
+    },
+    "host.memory.total": {
+      "type": "long"
+    },
+    "host.memory.used": {
+      "type": "object"
+    },
+    "host.memory.used.percentage": {
+      "type": "long"
+    },
     "host.name": {
-      "array": false,
       "type": "keyword"
     },
     "host.network.egress.bytes": {
-      "array": false,
+      "type": "long"
+    },
+    "host.network.egress.drops": {
+      "type": "long"
+    },
+    "host.network.egress.errors": {
       "type": "long"
     },
     "host.network.egress.packets": {
-      "array": false,
+      "type": "long"
+    },
+    "host.network.egress.queue": {
       "type": "long"
     },
     "host.network.ingress.bytes": {
-      "array": false,
+      "type": "long"
+    },
+    "host.network.ingress.drops": {
+      "type": "long"
+    },
+    "host.network.ingress.errors": {
       "type": "long"
     },
     "host.network.ingress.packets": {
-      "array": false,
+      "type": "long"
+    },
+    "host.network.ingress.queue": {
       "type": "long"
     },
     "host.os.family": {
-      "array": false,
       "type": "keyword"
     },
     "host.os.full": {
-      "array": false,
       "type": "keyword"
     },
     "host.os.kernel": {
-      "array": false,
       "type": "keyword"
     },
     "host.os.name": {
-      "array": false,
       "type": "keyword"
     },
     "host.os.platform": {
-      "array": false,
       "type": "keyword"
     },
     "host.os.type": {
-      "array": false,
       "type": "keyword"
     },
     "host.os.version": {
-      "array": false,
       "type": "keyword"
     },
     "host.pid_ns_ino": {
-      "array": false,
       "type": "keyword"
     },
     "host.risk.calculated_level": {
-      "array": false,
       "type": "keyword"
     },
     "host.risk.calculated_score": {
-      "array": false,
       "type": "float"
     },
     "host.risk.calculated_score_norm": {
-      "array": false,
       "type": "float"
     },
     "host.risk.static_level": {
-      "array": false,
       "type": "keyword"
     },
     "host.risk.static_score": {
-      "array": false,
       "type": "float"
     },
     "host.risk.static_score_norm": {
-      "array": false,
       "type": "float"
     },
     "host.type": {
-      "array": false,
       "type": "keyword"
     },
     "host.uptime": {
-      "array": false,
       "type": "long"
     },
     "http.request.body.bytes": {
-      "array": false,
       "type": "long"
     },
     "http.request.body.content": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "http.request.bytes": {
-      "array": false,
       "type": "long"
     },
     "http.request.id": {
-      "array": false,
       "type": "keyword"
     },
     "http.request.method": {
-      "array": false,
       "type": "keyword"
     },
     "http.request.mime_type": {
-      "array": false,
       "type": "keyword"
     },
     "http.request.referrer": {
-      "array": false,
       "type": "keyword"
     },
     "http.response.body.bytes": {
-      "array": false,
       "type": "long"
     },
     "http.response.body.content": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "http.response.bytes": {
-      "array": false,
       "type": "long"
     },
     "http.response.mime_type": {
-      "array": false,
       "type": "keyword"
     },
     "http.response.status_code": {
-      "array": false,
       "type": "long"
     },
     "http.version": {
-      "array": false,
       "type": "keyword"
     },
-    "labels": {
-      "array": false,
-      "type": "object"
+    "interface.alias": {
+      "type": "keyword"
+    },
+    "interface.id": {
+      "type": "keyword"
+    },
+    "interface.mtu": {
+      "type": "long"
+    },
+    "interface.name": {
+      "type": "keyword"
+    },
+    "interface.state": {
+      "type": "keyword"
+    },
+    "interface.type": {
+      "type": "keyword"
     },
     "log.file.path": {
-      "array": false,
       "type": "keyword"
     },
     "log.level": {
-      "array": false,
       "type": "keyword"
     },
     "log.logger": {
-      "array": false,
       "type": "keyword"
     },
     "log.origin.file.line": {
-      "array": false,
       "type": "long"
     },
     "log.origin.file.name": {
-      "array": false,
       "type": "keyword"
     },
     "log.origin.function": {
-      "array": false,
       "type": "keyword"
     },
     "log.syslog": {
-      "array": false,
       "type": "object"
     },
     "log.syslog.appname": {
-      "array": false,
       "type": "keyword"
     },
     "log.syslog.facility.code": {
-      "array": false,
       "type": "long"
     },
     "log.syslog.facility.name": {
-      "array": false,
       "type": "keyword"
     },
     "log.syslog.hostname": {
-      "array": false,
       "type": "keyword"
     },
     "log.syslog.msgid": {
-      "array": false,
       "type": "keyword"
     },
     "log.syslog.priority": {
-      "array": false,
       "type": "long"
     },
     "log.syslog.procid": {
-      "array": false,
       "type": "keyword"
     },
     "log.syslog.severity.code": {
-      "array": false,
       "type": "long"
     },
     "log.syslog.severity.name": {
-      "array": false,
       "type": "keyword"
     },
     "log.syslog.structured_data": {
-      "array": false,
       "type": "object"
     },
     "log.syslog.version": {
-      "array": false,
       "type": "keyword"
     },
     "message": {
-      "array": false,
       "type": "text"
     },
     "network.application": {
-      "array": false,
       "type": "keyword"
     },
+    "network.broadcast": {
+      "type": "ip"
+    },
     "network.bytes": {
-      "array": false,
       "type": "long"
     },
     "network.community_id": {
-      "array": false,
+      "type": "keyword"
+    },
+    "network.dhcp": {
       "type": "keyword"
     },
     "network.direction": {
-      "array": false,
       "type": "keyword"
     },
     "network.forwarded_ip": {
-      "array": false,
+      "type": "ip"
+    },
+    "network.gateway": {
       "type": "ip"
     },
     "network.iana_number": {
-      "array": false,
       "type": "keyword"
     },
     "network.inner": {
-      "array": false,
       "type": "object"
     },
     "network.inner.vlan.id": {
-      "array": false,
       "type": "keyword"
     },
     "network.inner.vlan.name": {
-      "array": false,
       "type": "keyword"
+    },
+    "network.metric": {
+      "type": "long"
     },
     "network.name": {
-      "array": false,
       "type": "keyword"
     },
+    "network.netmask": {
+      "type": "ip"
+    },
     "network.packets": {
-      "array": false,
       "type": "long"
     },
     "network.protocol": {
-      "array": false,
       "type": "keyword"
     },
     "network.transport": {
-      "array": false,
       "type": "keyword"
     },
     "network.type": {
-      "array": false,
       "type": "keyword"
     },
     "network.vlan.id": {
-      "array": false,
       "type": "keyword"
     },
     "network.vlan.name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.egress": {
-      "array": false,
       "type": "object"
     },
     "observer.egress.interface.alias": {
-      "array": false,
       "type": "keyword"
     },
     "observer.egress.interface.id": {
-      "array": false,
       "type": "keyword"
     },
+    "observer.egress.interface.mtu": {
+      "type": "long"
+    },
     "observer.egress.interface.name": {
-      "array": false,
+      "type": "keyword"
+    },
+    "observer.egress.interface.observer.ingress.interface.alias": {
+      "type": "keyword"
+    },
+    "observer.egress.interface.observer.ingress.interface.id": {
+      "type": "keyword"
+    },
+    "observer.egress.interface.observer.ingress.interface.mtu": {
+      "type": "long"
+    },
+    "observer.egress.interface.observer.ingress.interface.name": {
+      "type": "keyword"
+    },
+    "observer.egress.interface.observer.ingress.interface.state": {
+      "type": "keyword"
+    },
+    "observer.egress.interface.observer.ingress.interface.type": {
+      "type": "keyword"
+    },
+    "observer.egress.interface.state": {
+      "type": "keyword"
+    },
+    "observer.egress.interface.type": {
       "type": "keyword"
     },
     "observer.egress.vlan.id": {
-      "array": false,
       "type": "keyword"
     },
     "observer.egress.vlan.name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.egress.zone": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "observer.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "observer.hostname": {
-      "array": false,
       "type": "keyword"
     },
     "observer.ingress": {
-      "array": false,
       "type": "object"
     },
     "observer.ingress.interface.alias": {
-      "array": false,
       "type": "keyword"
     },
     "observer.ingress.interface.id": {
-      "array": false,
       "type": "keyword"
     },
+    "observer.ingress.interface.mtu": {
+      "type": "long"
+    },
     "observer.ingress.interface.name": {
-      "array": false,
+      "type": "keyword"
+    },
+    "observer.ingress.interface.state": {
+      "type": "keyword"
+    },
+    "observer.ingress.interface.type": {
       "type": "keyword"
     },
     "observer.ingress.vlan.id": {
-      "array": false,
       "type": "keyword"
     },
     "observer.ingress.vlan.name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.ingress.zone": {
-      "array": false,
       "type": "keyword"
     },
     "observer.ip": {
-      "array": true,
       "type": "ip"
     },
     "observer.mac": {
-      "array": true,
       "type": "keyword"
     },
     "observer.name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.os.family": {
-      "array": false,
       "type": "keyword"
     },
     "observer.os.full": {
-      "array": false,
       "type": "keyword"
     },
     "observer.os.kernel": {
-      "array": false,
       "type": "keyword"
     },
     "observer.os.name": {
-      "array": false,
       "type": "keyword"
     },
     "observer.os.platform": {
-      "array": false,
       "type": "keyword"
     },
     "observer.os.type": {
-      "array": false,
       "type": "keyword"
     },
     "observer.os.version": {
-      "array": false,
       "type": "keyword"
     },
     "observer.product": {
-      "array": false,
       "type": "keyword"
     },
     "observer.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "observer.type": {
-      "array": false,
       "type": "keyword"
     },
     "observer.vendor": {
-      "array": false,
       "type": "keyword"
     },
     "observer.version": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.api_version": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.cluster.id": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.cluster.name": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.cluster.url": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.cluster.version": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.namespace": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.organization": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.resource.annotation": {
-      "array": true,
       "type": "keyword"
     },
     "orchestrator.resource.id": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.resource.ip": {
-      "array": true,
       "type": "ip"
     },
     "orchestrator.resource.label": {
-      "array": true,
       "type": "keyword"
     },
     "orchestrator.resource.name": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.resource.parent.type": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.resource.type": {
-      "array": false,
       "type": "keyword"
     },
     "orchestrator.type": {
-      "array": false,
       "type": "keyword"
     },
     "organization.id": {
-      "array": false,
       "type": "keyword"
     },
     "organization.name": {
-      "array": false,
       "type": "keyword"
     },
     "package.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "package.build_version": {
-      "array": false,
       "type": "keyword"
     },
     "package.checksum": {
-      "array": false,
       "type": "keyword"
     },
     "package.description": {
-      "array": false,
       "type": "keyword"
     },
     "package.install_scope": {
-      "array": false,
       "type": "keyword"
     },
     "package.installed": {
-      "array": false,
       "type": "date"
     },
     "package.license": {
-      "array": false,
       "type": "keyword"
     },
     "package.name": {
-      "array": false,
       "type": "keyword"
     },
     "package.path": {
-      "array": false,
       "type": "keyword"
     },
     "package.reference": {
-      "array": false,
       "type": "keyword"
     },
     "package.size": {
-      "array": false,
       "type": "long"
     },
     "package.type": {
-      "array": false,
       "type": "keyword"
     },
     "package.version": {
-      "array": false,
+      "type": "keyword"
+    },
+    "policy.description": {
+      "type": "keyword"
+    },
+    "policy.file": {
+      "type": "keyword"
+    },
+    "policy.id": {
+      "type": "keyword"
+    },
+    "policy.name": {
+      "type": "keyword"
+    },
+    "policy.references": {
       "type": "keyword"
     },
     "process.args": {
-      "array": true,
       "type": "keyword"
     },
     "process.args_count": {
-      "array": false,
       "type": "long"
     },
     "process.code_signature.digest_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "process.code_signature.exists": {
-      "array": false,
       "type": "boolean"
     },
     "process.code_signature.flags": {
-      "array": false,
       "type": "keyword"
     },
     "process.code_signature.signing_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.code_signature.status": {
-      "array": false,
       "type": "keyword"
     },
     "process.code_signature.subject_name": {
-      "array": false,
       "type": "keyword"
     },
     "process.code_signature.team_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.code_signature.thumbprint_sha256": {
-      "array": false,
       "type": "keyword"
     },
     "process.code_signature.timestamp": {
-      "array": false,
       "type": "date"
     },
     "process.code_signature.trusted": {
-      "array": false,
       "type": "boolean"
     },
     "process.code_signature.valid": {
-      "array": false,
       "type": "boolean"
     },
     "process.command_line": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "process.elf.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.byte_order": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.cpu_type": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.creation_date": {
-      "array": false,
       "type": "date"
     },
     "process.elf.exports": {
-      "array": true,
       "type": "object"
     },
     "process.elf.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.go_imports": {
-      "array": false,
       "type": "object"
     },
     "process.elf.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.elf.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.elf.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "process.elf.header.abi_version": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.header.class": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.header.data": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.header.entrypoint": {
-      "array": false,
       "type": "long"
     },
     "process.elf.header.object_version": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.header.os_abi": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.header.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.header.version": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.imports": {
-      "array": true,
       "type": "object"
     },
     "process.elf.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.elf.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.elf.sections": {
-      "array": true,
       "type": "nested"
     },
     "process.elf.sections.chi2": {
-      "array": false,
       "type": "long"
     },
     "process.elf.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "process.elf.sections.flags": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.sections.physical_offset": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "process.elf.sections.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.elf.sections.virtual_address": {
-      "array": false,
       "type": "long"
     },
     "process.elf.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "process.elf.segments": {
-      "array": true,
       "type": "nested"
     },
     "process.elf.segments.sections": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.segments.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.elf.shared_libraries": {
-      "array": true,
       "type": "keyword"
     },
     "process.elf.telfhash": {
-      "array": false,
       "type": "keyword"
     },
     "process.end": {
-      "array": false,
       "type": "date"
     },
     "process.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.args": {
-      "array": true,
       "type": "keyword"
     },
     "process.entry_leader.args_count": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.attested_groups.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.attested_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.attested_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.command_line": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "process.entry_leader.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.entry_meta.source.ip": {
-      "array": false,
       "type": "ip"
     },
     "process.entry_leader.entry_meta.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.executable": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.interactive": {
-      "array": false,
       "type": "boolean"
     },
     "process.entry_leader.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.parent.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.parent.pid": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.parent.session_leader.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.parent.session_leader.pid": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.parent.session_leader.start": {
-      "array": false,
       "type": "date"
     },
     "process.entry_leader.parent.session_leader.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.parent.start": {
-      "array": false,
       "type": "date"
     },
     "process.entry_leader.parent.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.pid": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.real_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.real_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.real_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.real_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.same_as_process": {
-      "array": false,
       "type": "boolean"
     },
     "process.entry_leader.saved_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.saved_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.saved_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.saved_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.start": {
-      "array": false,
       "type": "date"
     },
     "process.entry_leader.supplemental_groups.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.supplemental_groups.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.tty": {
-      "array": false,
       "type": "object"
     },
     "process.entry_leader.tty.char_device.major": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.tty.char_device.minor": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.entry_leader.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.entry_leader.working_directory": {
-      "array": false,
       "type": "keyword"
     },
     "process.env_vars": {
-      "array": true,
       "type": "keyword"
     },
     "process.executable": {
-      "array": false,
       "type": "keyword"
     },
     "process.exit_code": {
-      "array": false,
       "type": "long"
     },
     "process.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.args": {
-      "array": true,
       "type": "keyword"
     },
     "process.group_leader.args_count": {
-      "array": false,
       "type": "long"
     },
     "process.group_leader.command_line": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "process.group_leader.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.executable": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.interactive": {
-      "array": false,
       "type": "boolean"
     },
     "process.group_leader.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.pid": {
-      "array": false,
       "type": "long"
     },
     "process.group_leader.real_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.real_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.real_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.real_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.same_as_process": {
-      "array": false,
       "type": "boolean"
     },
     "process.group_leader.saved_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.saved_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.saved_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.saved_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.start": {
-      "array": false,
       "type": "date"
     },
     "process.group_leader.supplemental_groups.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.supplemental_groups.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.tty": {
-      "array": false,
       "type": "object"
     },
     "process.group_leader.tty.char_device.major": {
-      "array": false,
       "type": "long"
     },
     "process.group_leader.tty.char_device.minor": {
-      "array": false,
       "type": "long"
     },
     "process.group_leader.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.group_leader.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.group_leader.working_directory": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.cdhash": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.sha384": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.sha512": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.ssdeep": {
-      "array": false,
       "type": "keyword"
     },
     "process.hash.tlsh": {
-      "array": false,
       "type": "keyword"
     },
     "process.interactive": {
-      "array": false,
       "type": "boolean"
     },
     "process.io": {
-      "array": false,
       "type": "object"
     },
     "process.io.bytes_skipped": {
-      "array": true,
       "type": "object"
     },
     "process.io.bytes_skipped.length": {
-      "array": false,
       "type": "long"
     },
     "process.io.bytes_skipped.offset": {
-      "array": false,
       "type": "long"
     },
     "process.io.max_bytes_per_process_exceeded": {
-      "array": false,
       "type": "boolean"
     },
     "process.io.text": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "process.io.total_bytes_captured": {
-      "array": false,
       "type": "long"
     },
     "process.io.total_bytes_skipped": {
-      "array": false,
       "type": "long"
     },
     "process.io.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.macho.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.macho.go_imports": {
-      "array": false,
       "type": "object"
     },
     "process.macho.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.macho.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.macho.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "process.macho.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.macho.imports": {
-      "array": true,
       "type": "object"
     },
     "process.macho.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.macho.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.macho.sections": {
-      "array": true,
       "type": "nested"
     },
     "process.macho.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "process.macho.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.macho.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "process.macho.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.macho.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "process.macho.symhash": {
-      "array": false,
       "type": "keyword"
     },
     "process.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.args": {
-      "array": true,
       "type": "keyword"
     },
     "process.parent.args_count": {
-      "array": false,
       "type": "long"
     },
     "process.parent.code_signature.digest_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.code_signature.exists": {
-      "array": false,
       "type": "boolean"
     },
     "process.parent.code_signature.flags": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.code_signature.signing_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.code_signature.status": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.code_signature.subject_name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.code_signature.team_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.code_signature.thumbprint_sha256": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.code_signature.timestamp": {
-      "array": false,
       "type": "date"
     },
     "process.parent.code_signature.trusted": {
-      "array": false,
       "type": "boolean"
     },
     "process.parent.code_signature.valid": {
-      "array": false,
       "type": "boolean"
     },
     "process.parent.command_line": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "process.parent.elf.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.byte_order": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.cpu_type": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.creation_date": {
-      "array": false,
       "type": "date"
     },
     "process.parent.elf.exports": {
-      "array": true,
       "type": "object"
     },
     "process.parent.elf.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.go_imports": {
-      "array": false,
       "type": "object"
     },
     "process.parent.elf.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "process.parent.elf.header.abi_version": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.header.class": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.header.data": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.header.entrypoint": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.header.object_version": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.header.os_abi": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.header.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.header.version": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.imports": {
-      "array": true,
       "type": "object"
     },
     "process.parent.elf.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.sections": {
-      "array": true,
       "type": "nested"
     },
     "process.parent.elf.sections.chi2": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.sections.flags": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.sections.physical_offset": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.sections.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.sections.virtual_address": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "process.parent.elf.segments": {
-      "array": true,
       "type": "nested"
     },
     "process.parent.elf.segments.sections": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.segments.type": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.elf.shared_libraries": {
-      "array": true,
       "type": "keyword"
     },
     "process.parent.elf.telfhash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.end": {
-      "array": false,
       "type": "date"
     },
     "process.parent.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.executable": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.exit_code": {
-      "array": false,
       "type": "long"
     },
     "process.parent.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.group_leader.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.group_leader.pid": {
-      "array": false,
       "type": "long"
     },
     "process.parent.group_leader.start": {
-      "array": false,
       "type": "date"
     },
     "process.parent.group_leader.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.parent.hash.cdhash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.hash.sha384": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.hash.sha512": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.hash.ssdeep": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.hash.tlsh": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.interactive": {
-      "array": false,
       "type": "boolean"
     },
     "process.parent.macho.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.macho.go_imports": {
-      "array": false,
       "type": "object"
     },
     "process.parent.macho.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "process.parent.macho.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.macho.imports": {
-      "array": true,
       "type": "object"
     },
     "process.parent.macho.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.sections": {
-      "array": true,
       "type": "nested"
     },
     "process.parent.macho.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.macho.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "process.parent.macho.symhash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.company": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.description": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.file_version": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.go_imports": {
-      "array": false,
       "type": "object"
     },
     "process.parent.pe.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pe.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pe.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "process.parent.pe.imphash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.imports": {
-      "array": true,
       "type": "object"
     },
     "process.parent.pe.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pe.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pe.original_file_name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.pehash": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.product": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.sections": {
-      "array": true,
       "type": "nested"
     },
     "process.parent.pe.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pe.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.pe.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pe.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pe.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "process.parent.pid": {
-      "array": false,
       "type": "long"
     },
     "process.parent.real_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.real_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.real_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.real_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.saved_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.saved_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.saved_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.saved_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.start": {
-      "array": false,
       "type": "date"
     },
     "process.parent.supplemental_groups.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.supplemental_groups.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.thread.capabilities.effective": {
-      "array": true,
       "type": "keyword"
     },
     "process.parent.thread.capabilities.permitted": {
-      "array": true,
       "type": "keyword"
     },
     "process.parent.thread.id": {
-      "array": false,
       "type": "long"
     },
     "process.parent.thread.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.title": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.tty": {
-      "array": false,
       "type": "object"
     },
     "process.parent.tty.char_device.major": {
-      "array": false,
       "type": "long"
     },
     "process.parent.tty.char_device.minor": {
-      "array": false,
       "type": "long"
     },
     "process.parent.uptime": {
-      "array": false,
       "type": "long"
     },
     "process.parent.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.parent.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.parent.working_directory": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.company": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.description": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.file_version": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.go_imports": {
-      "array": false,
       "type": "object"
     },
     "process.pe.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.pe.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.pe.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "process.pe.imphash": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.imports": {
-      "array": true,
       "type": "object"
     },
     "process.pe.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.pe.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.pe.original_file_name": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.pehash": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.product": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.sections": {
-      "array": true,
       "type": "nested"
     },
     "process.pe.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "process.pe.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.pe.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "process.pe.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "process.pe.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "process.pid": {
-      "array": false,
       "type": "long"
     },
     "process.previous.args": {
-      "array": true,
       "type": "keyword"
     },
     "process.previous.args_count": {
-      "array": false,
       "type": "long"
     },
     "process.previous.executable": {
-      "array": false,
       "type": "keyword"
     },
     "process.real_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.real_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.real_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.real_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.saved_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.saved_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.saved_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.saved_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.args": {
-      "array": true,
       "type": "keyword"
     },
     "process.session_leader.args_count": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.command_line": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "process.session_leader.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.executable": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.interactive": {
-      "array": false,
       "type": "boolean"
     },
     "process.session_leader.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.parent.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.parent.pid": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.parent.session_leader.entity_id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.parent.session_leader.pid": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.parent.session_leader.start": {
-      "array": false,
       "type": "date"
     },
     "process.session_leader.parent.session_leader.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.parent.start": {
-      "array": false,
       "type": "date"
     },
     "process.session_leader.parent.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.pid": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.real_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.real_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.real_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.real_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.same_as_process": {
-      "array": false,
       "type": "boolean"
     },
     "process.session_leader.saved_group.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.saved_group.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.saved_user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.saved_user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.start": {
-      "array": false,
       "type": "date"
     },
     "process.session_leader.supplemental_groups.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.supplemental_groups.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.tty": {
-      "array": false,
       "type": "object"
     },
     "process.session_leader.tty.char_device.major": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.tty.char_device.minor": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.session_leader.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.session_leader.working_directory": {
-      "array": false,
       "type": "keyword"
     },
     "process.start": {
-      "array": false,
       "type": "date"
     },
     "process.supplemental_groups.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.supplemental_groups.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.thread.capabilities.effective": {
-      "array": true,
       "type": "keyword"
     },
     "process.thread.capabilities.permitted": {
-      "array": true,
       "type": "keyword"
     },
     "process.thread.id": {
-      "array": false,
       "type": "long"
     },
     "process.thread.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.title": {
-      "array": false,
       "type": "keyword"
     },
     "process.tty": {
-      "array": false,
       "type": "object"
     },
     "process.tty.char_device.major": {
-      "array": false,
       "type": "long"
     },
     "process.tty.char_device.minor": {
-      "array": false,
       "type": "long"
     },
     "process.tty.columns": {
-      "array": false,
       "type": "long"
     },
     "process.tty.rows": {
-      "array": false,
       "type": "long"
     },
     "process.uptime": {
-      "array": false,
       "type": "long"
     },
     "process.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "process.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "process.vpid": {
-      "array": false,
       "type": "long"
     },
     "process.working_directory": {
-      "array": false,
       "type": "keyword"
     },
     "registry.data.bytes": {
-      "array": false,
       "type": "keyword"
     },
     "registry.data.strings": {
-      "array": true,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "registry.data.type": {
-      "array": false,
       "type": "keyword"
     },
     "registry.hive": {
-      "array": false,
       "type": "keyword"
     },
     "registry.key": {
-      "array": false,
       "type": "keyword"
     },
     "registry.path": {
-      "array": false,
       "type": "keyword"
     },
     "registry.value": {
-      "array": false,
       "type": "keyword"
     },
     "related.hash": {
-      "array": true,
       "type": "keyword"
     },
     "related.hosts": {
-      "array": true,
       "type": "keyword"
     },
     "related.ip": {
-      "array": true,
       "type": "ip"
     },
     "related.user": {
-      "array": true,
       "type": "keyword"
     },
     "rule.author": {
-      "array": true,
       "type": "keyword"
     },
     "rule.category": {
-      "array": false,
       "type": "keyword"
     },
     "rule.description": {
-      "array": false,
       "type": "keyword"
     },
     "rule.id": {
-      "array": false,
       "type": "keyword"
     },
     "rule.license": {
-      "array": false,
       "type": "keyword"
     },
     "rule.name": {
-      "array": false,
       "type": "keyword"
     },
     "rule.reference": {
-      "array": false,
       "type": "keyword"
     },
     "rule.ruleset": {
-      "array": false,
       "type": "keyword"
     },
     "rule.uuid": {
-      "array": false,
       "type": "keyword"
     },
     "rule.version": {
-      "array": false,
       "type": "keyword"
     },
     "server.address": {
-      "array": false,
       "type": "keyword"
     },
     "server.as.number": {
-      "array": false,
       "type": "long"
     },
     "server.as.organization.name": {
-      "array": false,
       "type": "keyword"
     },
     "server.bytes": {
-      "array": false,
       "type": "long"
     },
     "server.domain": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "server.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "server.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "server.ip": {
-      "array": false,
       "type": "ip"
     },
     "server.mac": {
-      "array": false,
       "type": "keyword"
     },
     "server.nat.ip": {
-      "array": false,
       "type": "ip"
     },
     "server.nat.port": {
-      "array": false,
       "type": "long"
     },
     "server.packets": {
-      "array": false,
       "type": "long"
     },
     "server.port": {
-      "array": false,
       "type": "long"
     },
     "server.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "server.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "server.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.domain": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.email": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.hash": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "server.user.roles": {
-      "array": true,
       "type": "keyword"
     },
     "service.address": {
-      "array": false,
       "type": "keyword"
     },
     "service.environment": {
-      "array": false,
       "type": "keyword"
     },
     "service.ephemeral_id": {
-      "array": false,
       "type": "keyword"
     },
     "service.id": {
-      "array": false,
       "type": "keyword"
     },
     "service.name": {
-      "array": false,
       "type": "keyword"
     },
     "service.node.name": {
-      "array": false,
       "type": "keyword"
     },
     "service.node.role": {
-      "array": false,
       "type": "keyword"
     },
     "service.node.roles": {
-      "array": true,
       "type": "keyword"
     },
     "service.origin.address": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.environment": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.ephemeral_id": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.id": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.name": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.node.name": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.node.role": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.node.roles": {
-      "array": true,
       "type": "keyword"
     },
     "service.origin.state": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.type": {
-      "array": false,
       "type": "keyword"
     },
     "service.origin.version": {
-      "array": false,
       "type": "keyword"
     },
     "service.state": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.address": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.environment": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.ephemeral_id": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.id": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.name": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.node.name": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.node.role": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.node.roles": {
-      "array": true,
       "type": "keyword"
     },
     "service.target.state": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.type": {
-      "array": false,
       "type": "keyword"
     },
     "service.target.version": {
-      "array": false,
       "type": "keyword"
     },
     "service.type": {
-      "array": false,
       "type": "keyword"
     },
     "service.version": {
-      "array": false,
       "type": "keyword"
     },
     "source.address": {
-      "array": false,
       "type": "keyword"
     },
     "source.as.number": {
-      "array": false,
       "type": "long"
     },
     "source.as.organization.name": {
-      "array": false,
       "type": "keyword"
     },
     "source.bytes": {
-      "array": false,
       "type": "long"
     },
     "source.domain": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "source.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "source.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "source.ip": {
-      "array": false,
       "type": "ip"
     },
     "source.mac": {
-      "array": false,
       "type": "keyword"
     },
     "source.nat.ip": {
-      "array": false,
       "type": "ip"
     },
     "source.nat.port": {
-      "array": false,
       "type": "long"
     },
     "source.packets": {
-      "array": false,
       "type": "long"
     },
     "source.port": {
-      "array": false,
       "type": "long"
     },
     "source.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "source.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "source.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.domain": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.email": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.hash": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.id": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.name": {
-      "array": false,
       "type": "keyword"
     },
     "source.user.roles": {
-      "array": true,
       "type": "keyword"
     },
     "span.id": {
-      "array": false,
       "type": "keyword"
     },
     "tags": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments": {
-      "array": true,
       "type": "nested"
     },
     "threat.enrichments.indicator": {
-      "array": false,
       "type": "object"
     },
     "threat.enrichments.indicator.as.number": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.as.organization.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.confidence": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.description": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.email.address": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.accessed": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.attributes": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.digest_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.exists": {
-      "array": false,
       "type": "boolean"
     },
     "threat.enrichments.indicator.file.code_signature.flags": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.signing_id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.status": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.subject_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.team_id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.thumbprint_sha256": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.code_signature.timestamp": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.code_signature.trusted": {
-      "array": false,
       "type": "boolean"
     },
     "threat.enrichments.indicator.file.code_signature.valid": {
-      "array": false,
       "type": "boolean"
     },
     "threat.enrichments.indicator.file.created": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.ctime": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.device": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.directory": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.drive_letter": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.byte_order": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.cpu_type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.creation_date": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.elf.exports": {
-      "array": true,
       "type": "object"
     },
     "threat.enrichments.indicator.file.elf.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.go_imports": {
-      "array": false,
       "type": "object"
     },
     "threat.enrichments.indicator.file.elf.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "threat.enrichments.indicator.file.elf.header.abi_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.header.class": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.header.data": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.header.entrypoint": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.header.object_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.header.os_abi": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.header.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.header.version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.imports": {
-      "array": true,
       "type": "object"
     },
     "threat.enrichments.indicator.file.elf.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.sections": {
-      "array": true,
       "type": "nested"
     },
     "threat.enrichments.indicator.file.elf.sections.chi2": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.sections.flags": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.sections.physical_offset": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.sections.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.sections.virtual_address": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.elf.segments": {
-      "array": true,
       "type": "nested"
     },
     "threat.enrichments.indicator.file.elf.segments.sections": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.segments.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.shared_libraries": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.elf.telfhash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.extension": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.fork_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.gid": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.group": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.cdhash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.sha384": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.sha512": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.ssdeep": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.hash.tlsh": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.inode": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.mime_type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.mode": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.mtime": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.origin_referrer_url": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.origin_url": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.owner": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.path": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.company": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.description": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.file_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.go_imports": {
-      "array": false,
       "type": "object"
     },
     "threat.enrichments.indicator.file.pe.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.pe.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.pe.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "threat.enrichments.indicator.file.pe.imphash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.imports": {
-      "array": true,
       "type": "object"
     },
     "threat.enrichments.indicator.file.pe.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.pe.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.pe.original_file_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.pehash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.product": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.sections": {
-      "array": true,
       "type": "nested"
     },
     "threat.enrichments.indicator.file.pe.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.pe.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.pe.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.pe.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.pe.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.size": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.target_path": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.uid": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.alternative_names": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.issuer.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.issuer.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.issuer.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.issuer.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.issuer.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.issuer.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.issuer.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.not_after": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.x509.not_before": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.file.x509.public_key_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.public_key_curve": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.public_key_exponent": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.x509.public_key_size": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.file.x509.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.signature_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.subject.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.subject.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.subject.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.subject.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.subject.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.subject.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.subject.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.x509.version_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.first_seen": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "threat.enrichments.indicator.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.ip": {
-      "array": false,
       "type": "ip"
     },
     "threat.enrichments.indicator.last_seen": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.marking.tlp": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.marking.tlp_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.modified_at": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.port": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.provider": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.reference": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.registry.data.bytes": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.registry.data.strings": {
-      "array": true,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.enrichments.indicator.registry.data.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.registry.hive": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.registry.key": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.registry.path": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.registry.value": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.scanner_stats": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.sightings": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.domain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.extension": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.fragment": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.full": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.enrichments.indicator.url.original": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.enrichments.indicator.url.password": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.path": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.enrichments.indicator.url.port": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.url.query": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.scheme": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.username": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.alternative_names": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.issuer.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.issuer.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.issuer.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.issuer.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.issuer.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.issuer.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.issuer.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.not_after": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.x509.not_before": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.indicator.x509.public_key_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.public_key_curve": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.public_key_exponent": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.x509.public_key_size": {
-      "array": false,
       "type": "long"
     },
     "threat.enrichments.indicator.x509.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.signature_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.subject.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.subject.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.subject.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.subject.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.subject.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.subject.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.subject.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.enrichments.indicator.x509.version_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.matched.atomic": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.matched.field": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.matched.id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.matched.index": {
-      "array": false,
       "type": "keyword"
     },
     "threat.enrichments.matched.occurred": {
-      "array": false,
       "type": "date"
     },
     "threat.enrichments.matched.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.feed.dashboard_id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.feed.description": {
-      "array": false,
       "type": "keyword"
     },
     "threat.feed.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.feed.reference": {
-      "array": false,
       "type": "keyword"
     },
     "threat.framework": {
-      "array": false,
       "type": "keyword"
     },
     "threat.group.alias": {
-      "array": true,
       "type": "keyword"
     },
     "threat.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.group.reference": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.as.number": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.as.organization.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.confidence": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.description": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.email.address": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.accessed": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.attributes": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.digest_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.exists": {
-      "array": false,
       "type": "boolean"
     },
     "threat.indicator.file.code_signature.flags": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.signing_id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.status": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.subject_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.team_id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.thumbprint_sha256": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.code_signature.timestamp": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.code_signature.trusted": {
-      "array": false,
       "type": "boolean"
     },
     "threat.indicator.file.code_signature.valid": {
-      "array": false,
       "type": "boolean"
     },
     "threat.indicator.file.created": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.ctime": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.device": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.directory": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.drive_letter": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.byte_order": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.cpu_type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.creation_date": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.elf.exports": {
-      "array": true,
       "type": "object"
     },
     "threat.indicator.file.elf.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.go_imports": {
-      "array": false,
       "type": "object"
     },
     "threat.indicator.file.elf.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "threat.indicator.file.elf.header.abi_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.header.class": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.header.data": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.header.entrypoint": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.header.object_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.header.os_abi": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.header.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.header.version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.imports": {
-      "array": true,
       "type": "object"
     },
     "threat.indicator.file.elf.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.sections": {
-      "array": true,
       "type": "nested"
     },
     "threat.indicator.file.elf.sections.chi2": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.sections.flags": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.sections.physical_offset": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.sections.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.sections.virtual_address": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.elf.segments": {
-      "array": true,
       "type": "nested"
     },
     "threat.indicator.file.elf.segments.sections": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.segments.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.elf.shared_libraries": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.elf.telfhash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.extension": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.fork_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.gid": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.group": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.cdhash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.sha384": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.sha512": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.ssdeep": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.hash.tlsh": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.inode": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.mime_type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.mode": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.mtime": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.origin_referrer_url": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.origin_url": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.owner": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.path": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.architecture": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.company": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.description": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.file_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.go_import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.go_imports": {
-      "array": false,
       "type": "object"
     },
     "threat.indicator.file.pe.go_imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.pe.go_imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.pe.go_stripped": {
-      "array": false,
       "type": "boolean"
     },
     "threat.indicator.file.pe.imphash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.import_hash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.imports": {
-      "array": true,
       "type": "object"
     },
     "threat.indicator.file.pe.imports_names_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.pe.imports_names_var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.pe.original_file_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.pehash": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.product": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.sections": {
-      "array": true,
       "type": "nested"
     },
     "threat.indicator.file.pe.sections.entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.pe.sections.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.pe.sections.physical_size": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.pe.sections.var_entropy": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.pe.sections.virtual_size": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.size": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.target_path": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.uid": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.x509.alternative_names": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.issuer.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.issuer.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.issuer.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.x509.issuer.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.issuer.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.issuer.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.issuer.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.not_after": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.x509.not_before": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.file.x509.public_key_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.x509.public_key_curve": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.x509.public_key_exponent": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.x509.public_key_size": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.file.x509.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.x509.signature_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.x509.subject.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.subject.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.subject.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.file.x509.subject.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.subject.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.subject.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.subject.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.file.x509.version_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.first_seen": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.geo.city_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.continent_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.continent_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.country_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.country_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.location": {
-      "array": false,
       "type": "geo_point"
     },
     "threat.indicator.geo.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.postal_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.region_iso_code": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.region_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.geo.timezone": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.id": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.ip": {
-      "array": false,
       "type": "ip"
     },
     "threat.indicator.last_seen": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.marking.tlp": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.marking.tlp_version": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.modified_at": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.port": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.provider": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.reference": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.registry.data.bytes": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.registry.data.strings": {
-      "array": true,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.indicator.registry.data.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.registry.hive": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.registry.key": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.registry.path": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.registry.value": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.scanner_stats": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.sightings": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.domain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.extension": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.fragment": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.full": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.indicator.url.original": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.indicator.url.password": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.path": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "threat.indicator.url.port": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.url.query": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.scheme": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.url.username": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.x509.alternative_names": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.issuer.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.issuer.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.issuer.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.x509.issuer.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.issuer.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.issuer.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.issuer.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.not_after": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.x509.not_before": {
-      "array": false,
       "type": "date"
     },
     "threat.indicator.x509.public_key_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.x509.public_key_curve": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.x509.public_key_exponent": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.x509.public_key_size": {
-      "array": false,
       "type": "long"
     },
     "threat.indicator.x509.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.x509.signature_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.x509.subject.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.subject.country": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.subject.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.indicator.x509.subject.locality": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.subject.organization": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.subject.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.subject.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "threat.indicator.x509.version_number": {
-      "array": false,
       "type": "keyword"
     },
     "threat.software.alias": {
-      "array": true,
       "type": "keyword"
     },
     "threat.software.id": {
-      "array": false,
       "type": "keyword"
     },
     "threat.software.name": {
-      "array": false,
       "type": "keyword"
     },
     "threat.software.platforms": {
-      "array": true,
       "type": "keyword"
     },
     "threat.software.reference": {
-      "array": false,
       "type": "keyword"
     },
     "threat.software.type": {
-      "array": false,
       "type": "keyword"
     },
     "threat.tactic.id": {
-      "array": true,
       "type": "keyword"
     },
     "threat.tactic.name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.tactic.reference": {
-      "array": true,
       "type": "keyword"
     },
     "threat.technique.id": {
-      "array": true,
       "type": "keyword"
     },
     "threat.technique.name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.technique.reference": {
-      "array": true,
       "type": "keyword"
     },
     "threat.technique.subtechnique.id": {
-      "array": true,
       "type": "keyword"
     },
     "threat.technique.subtechnique.name": {
-      "array": true,
       "type": "keyword"
     },
     "threat.technique.subtechnique.reference": {
-      "array": true,
       "type": "keyword"
     },
     "tls.cipher": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.certificate": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.certificate_chain": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.issuer": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.ja3": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.not_after": {
-      "array": false,
       "type": "date"
     },
     "tls.client.not_before": {
-      "array": false,
       "type": "date"
     },
     "tls.client.server_name": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.subject": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.supported_ciphers": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.alternative_names": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.issuer.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.issuer.country": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.issuer.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.x509.issuer.locality": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.issuer.organization": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.issuer.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.issuer.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.not_after": {
-      "array": false,
       "type": "date"
     },
     "tls.client.x509.not_before": {
-      "array": false,
       "type": "date"
     },
     "tls.client.x509.public_key_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.x509.public_key_curve": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.x509.public_key_exponent": {
-      "array": false,
       "type": "long"
     },
     "tls.client.x509.public_key_size": {
-      "array": false,
       "type": "long"
     },
     "tls.client.x509.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.x509.signature_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.x509.subject.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.subject.country": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.subject.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "tls.client.x509.subject.locality": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.subject.organization": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.subject.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.subject.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "tls.client.x509.version_number": {
-      "array": false,
       "type": "keyword"
     },
     "tls.curve": {
-      "array": false,
       "type": "keyword"
     },
     "tls.established": {
-      "array": false,
       "type": "boolean"
     },
     "tls.next_protocol": {
-      "array": false,
       "type": "keyword"
     },
     "tls.resumed": {
-      "array": false,
       "type": "boolean"
     },
     "tls.server.certificate": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.certificate_chain": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.hash.md5": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.hash.sha1": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.hash.sha256": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.issuer": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.ja3s": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.not_after": {
-      "array": false,
       "type": "date"
     },
     "tls.server.not_before": {
-      "array": false,
       "type": "date"
     },
     "tls.server.subject": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.x509.alternative_names": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.issuer.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.issuer.country": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.issuer.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.x509.issuer.locality": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.issuer.organization": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.issuer.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.issuer.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.not_after": {
-      "array": false,
       "type": "date"
     },
     "tls.server.x509.not_before": {
-      "array": false,
       "type": "date"
     },
     "tls.server.x509.public_key_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.x509.public_key_curve": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.x509.public_key_exponent": {
-      "array": false,
       "type": "long"
     },
     "tls.server.x509.public_key_size": {
-      "array": false,
       "type": "long"
     },
     "tls.server.x509.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.x509.signature_algorithm": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.x509.subject.common_name": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.subject.country": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.subject.distinguished_name": {
-      "array": false,
       "type": "keyword"
     },
     "tls.server.x509.subject.locality": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.subject.organization": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.subject.organizational_unit": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.subject.state_or_province": {
-      "array": true,
       "type": "keyword"
     },
     "tls.server.x509.version_number": {
-      "array": false,
       "type": "keyword"
     },
     "tls.version": {
-      "array": false,
       "type": "keyword"
     },
     "tls.version_protocol": {
-      "array": false,
       "type": "keyword"
     },
     "trace.id": {
-      "array": false,
       "type": "keyword"
     },
     "transaction.id": {
-      "array": false,
       "type": "keyword"
     },
     "url.domain": {
-      "array": false,
       "type": "keyword"
     },
     "url.extension": {
-      "array": false,
       "type": "keyword"
     },
     "url.fragment": {
-      "array": false,
       "type": "keyword"
     },
     "url.full": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "url.original": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "url.password": {
-      "array": false,
       "type": "keyword"
     },
     "url.path": {
-      "array": false,
-      "type": "wildcard"
+      "type": "keyword"
     },
     "url.port": {
-      "array": false,
       "type": "long"
     },
     "url.query": {
-      "array": false,
       "type": "keyword"
     },
     "url.registered_domain": {
-      "array": false,
       "type": "keyword"
     },
     "url.scheme": {
-      "array": false,
       "type": "keyword"
     },
     "url.subdomain": {
-      "array": false,
       "type": "keyword"
     },
     "url.top_level_domain": {
-      "array": false,
       "type": "keyword"
     },
     "url.username": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.email": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.hash": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.changes.roles": {
-      "array": true,
       "type": "keyword"
     },
     "user.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.email": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.hash": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.effective.roles": {
-      "array": true,
       "type": "keyword"
     },
     "user.email": {
-      "array": false,
       "type": "keyword"
     },
     "user.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "user.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.hash": {
-      "array": false,
       "type": "keyword"
     },
     "user.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.risk.calculated_level": {
-      "array": false,
       "type": "keyword"
     },
     "user.risk.calculated_score": {
-      "array": false,
       "type": "float"
     },
     "user.risk.calculated_score_norm": {
-      "array": false,
       "type": "float"
     },
     "user.risk.static_level": {
-      "array": false,
       "type": "keyword"
     },
     "user.risk.static_score": {
-      "array": false,
       "type": "float"
     },
     "user.risk.static_score_norm": {
-      "array": false,
       "type": "float"
     },
     "user.roles": {
-      "array": true,
       "type": "keyword"
     },
     "user.target.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.email": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.full_name": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.group.domain": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.group.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.group.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.hash": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.id": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.name": {
-      "array": false,
       "type": "keyword"
     },
     "user.target.roles": {
-      "array": true,
       "type": "keyword"
     },
     "user_agent.device.name": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.name": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.original": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.os.family": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.os.full": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.os.kernel": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.os.name": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.os.platform": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.os.type": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.os.version": {
-      "array": false,
       "type": "keyword"
     },
     "user_agent.version": {
-      "array": false,
       "type": "keyword"
     },
     "volume.bus_type": {
-      "array": false,
       "type": "keyword"
     },
     "volume.default_access": {
-      "array": false,
       "type": "keyword"
     },
     "volume.device_name": {
-      "array": false,
       "type": "keyword"
     },
     "volume.device_type": {
-      "array": false,
       "type": "keyword"
     },
     "volume.dos_name": {
-      "array": false,
       "type": "keyword"
     },
     "volume.file_system_type": {
-      "array": false,
       "type": "keyword"
     },
     "volume.mount_name": {
-      "array": false,
       "type": "keyword"
     },
     "volume.nt_name": {
-      "array": false,
       "type": "keyword"
     },
     "volume.product_id": {
-      "array": false,
       "type": "keyword"
     },
     "volume.product_name": {
-      "array": false,
       "type": "keyword"
     },
     "volume.removable": {
-      "array": false,
       "type": "boolean"
     },
     "volume.serial_number": {
-      "array": false,
       "type": "keyword"
     },
     "volume.size": {
-      "array": false,
       "type": "long"
     },
     "volume.vendor_id": {
-      "array": false,
       "type": "keyword"
     },
     "volume.vendor_name": {
-      "array": false,
       "type": "keyword"
     },
     "volume.writable": {
-      "array": false,
       "type": "boolean"
     },
     "vulnerability.category": {
-      "array": true,
       "type": "keyword"
     },
     "vulnerability.classification": {
-      "array": false,
       "type": "keyword"
     },
     "vulnerability.description": {
-      "array": false,
       "type": "keyword"
     },
     "vulnerability.enumeration": {
-      "array": false,
       "type": "keyword"
     },
     "vulnerability.id": {
-      "array": false,
       "type": "keyword"
     },
     "vulnerability.reference": {
-      "array": false,
       "type": "keyword"
     },
     "vulnerability.report_id": {
-      "array": false,
+      "type": "keyword"
+    },
+    "vulnerability.scanner.reference": {
       "type": "keyword"
     },
     "vulnerability.scanner.vendor": {
-      "array": false,
       "type": "keyword"
     },
     "vulnerability.score.base": {
-      "array": false,
       "type": "float"
     },
     "vulnerability.score.environmental": {
-      "array": false,
       "type": "float"
     },
     "vulnerability.score.temporal": {
-      "array": false,
       "type": "float"
     },
     "vulnerability.score.version": {
-      "array": false,
       "type": "keyword"
     },
     "vulnerability.severity": {
-      "array": false,
       "type": "keyword"
     },
     "wazuh.decoders": {
-      "array": true,
       "type": "keyword"
     },
-    "wazuh.rules": {
-      "array": true,
+    "wazuh.cluster.name": {
+      "type": "keyword"
+    },
+    "wazuh.cluster.node": {
+      "type": "keyword"
+    },
+    "wazuh.integration.category": {
+      "type": "keyword"
+    },
+    "wazuh.integration.decoders": {
+      "type": "keyword"
+    },
+    "wazuh.integration.name": {
+      "type": "keyword"
+    },
+    "wazuh.integration.rules": {
+      "type": "keyword"
+    },
+    "wazuh.protocol.location": {
+      "type": "keyword"
+    },
+    "wazuh.protocol.queue": {
+      "type": "byte"
+    },
+    "wazuh.schema.version": {
       "type": "keyword"
     }
-  },
-  "name": "schema/engine-schema/0"
+  }
 }

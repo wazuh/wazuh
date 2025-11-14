@@ -395,11 +395,6 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
     // Schema field
     else
     {
-        if (getSchema()->isArray(field.name.value))
-        {
-            throw std::runtime_error(fmt::format("Field '{}' is an array, not supported in logpar", field.name.value));
-        }
-
         type = getParser(field.name.value);
     }
 
