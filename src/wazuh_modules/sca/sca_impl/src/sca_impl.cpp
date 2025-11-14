@@ -386,19 +386,31 @@ int SecurityConfigurationAssessment::setVersion(int version)
 
         m_dBSync->selectRows(selectQuery.query(), selectCallback);
 
-        // Now update each row's version field (like FIM does in db.cpp:148-169)
-        for (auto& row : rows)
+        // Use transaction-based approach to ensure changes are immediately reflected in DB
+        // Create a transaction for syncing the version updates
+        const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&)
         {
-            row["version"] = version; // Modify just the version field in the complete row
+            // No action needed for transaction callback
+        };
 
-            auto updateQuery = SyncRowQuery::builder().table("sca_check").data(row).build();
+        DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, txnCallback};
 
-            const auto updateCallback = [](ReturnTypeCallback, const nlohmann::json&)
+        if (txn.handle() != nullptr)
+        {
+            // Update each row's version field (like FIM does in db.cpp:148-169)
+            for (auto& row : rows)
             {
-                // No action needed for update callback
-            };
+                row["version"] = version; // Modify just the version field in the complete row
 
-            m_dBSync->syncRow(updateQuery.query(), updateCallback);
+                nlohmann::json input;
+                input["table"] = "sca_check";
+                input["data"] = nlohmann::json::array({row});
+
+                txn.syncTxnRow(input);
+            }
+
+            // Call getDeletedRows to ensure changes are immediately reflected in the database
+            txn.getDeletedRows(txnCallback);
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG,
