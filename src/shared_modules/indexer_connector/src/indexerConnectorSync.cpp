@@ -39,7 +39,21 @@ public:
     {
         m_impl.executeUpdateByQuery(indices, updateQuery);
     }
+    
+    void executeGetQuery(const std::string& index,
+                        const nlohmann::json& query,
+                        std::function<void(const nlohmann::json&)> onResponse = nullptr)
+    {
+        m_impl.executeGetQuery(index, query, onResponse);
+    }
 
+    void executeGetContext(const std::vector<std::string>& indices,
+                          const nlohmann::json& query,
+                          std::function<void(const nlohmann::json&)> onResponse = nullptr)
+    {
+        m_impl.executeGetContext(indices, query, onResponse);
+    }
+    
     void bulkDelete(std::string_view id, std::string_view index)
     {
         m_impl.bulkDelete(id, index);
@@ -74,6 +88,8 @@ public:
     {
         return m_impl.isAvailable();
     }
+
+
 };
 
 IndexerConnectorSync::IndexerConnectorSync(
@@ -95,6 +111,20 @@ void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& 
                                                 const nlohmann::json& updateQuery)
 {
     m_impl->executeUpdateByQuery(indices, updateQuery);
+}
+
+void IndexerConnectorSync::executeGetQuery(const std::string& index,
+                                          const nlohmann::json& query,
+                                          std::function<void(const nlohmann::json&)> onResponse)
+{
+    m_impl->executeGetQuery(index, query, onResponse);
+}
+
+void IndexerConnectorSync::executeGetContext(const std::vector<std::string>& indices,
+                                            const nlohmann::json& query,
+                                            std::function<void(const nlohmann::json&)> onResponse)
+{
+    m_impl->executeGetContext(indices, query, onResponse);
 }
 
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)
