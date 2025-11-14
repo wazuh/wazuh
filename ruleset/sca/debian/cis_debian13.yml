@@ -2852,8 +2852,8 @@ checks:
     condition: all
     rules:
       - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15\.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <=15'
-      - 'd:/etc/sudoers.d -> r:.* -> n:timestamp_timeout=(\d+) compare <=15'
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <= 15'
+      - 'd:/etc/sudoers.d -> r:.* -> n:timestamp_timeout=(\d+) compare <= 15'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
   - id: 33182
@@ -3090,8 +3090,8 @@ checks:
       - soc_2: ["CC6.2", "CC6.3"]
     condition: any
     rules:
-      - "f:/etc/security/faillock.conf -> r:even_deny_root"
-      - "f:/etc/security/faillock.conf -> n:root_unlock_time >= 60"
+      - 'f:/etc/security/faillock.conf -> r:even_deny_root'
+      - 'f:/etc/security/faillock.conf -> n:root_unlock_time=(\d+) compare >= 60'
 
   # 5.3.3.2.1 Ensure password number of changed characters is configured. (Automated)
   - id: 33193
