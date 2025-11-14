@@ -40,6 +40,11 @@ public:
         m_impl.executeUpdateByQuery(indices, updateQuery);
     }
 
+    nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
+    {
+        return m_impl.executeSearchQuery(index, searchQuery);
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         m_impl.bulkDelete(id, index);
@@ -95,6 +100,11 @@ void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& 
                                                 const nlohmann::json& updateQuery)
 {
     m_impl->executeUpdateByQuery(indices, updateQuery);
+}
+
+nlohmann::json IndexerConnectorSync::executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
+{
+    return m_impl->executeSearchQuery(index, searchQuery);
 }
 
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)

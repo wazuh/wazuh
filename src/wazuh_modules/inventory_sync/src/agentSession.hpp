@@ -143,11 +143,12 @@ public:
         }
 
         // Create new session.
-        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck don't send data messages, so size can
-        // be 0
+        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck, ModuleCheck don't send data messages,
+        // so size can be 0
         if (data->size() == 0 && data->mode() != Wazuh::SyncSchema::Mode_MetadataDelta &&
             data->mode() != Wazuh::SyncSchema::Mode_MetadataCheck &&
-            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck)
+            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck &&
+            data->mode() != Wazuh::SyncSchema::Mode_ModuleCheck)
         {
             responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
             throw AgentSessionException("Invalid size");
@@ -237,6 +238,39 @@ public:
                 m_endEnqueued = true;
             }
         }
+    }
+
+    /**
+     * @brief Handles an incoming ChecksumModule message.
+     *
+     * Stores the checksum sent by the agent for later verification.
+     *
+     * @param data Parsed flatbuffer ChecksumModule message.
+     */
+    void handleChecksumModule(Wazuh::SyncSchema::ChecksumModule const* data)
+    {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleChecksumModule");
+        }
+
+        std::lock_guard lock(m_mutex);
+
+        if (data->checksum())
+        {
+            m_context->checksum = data->checksum()->str();
+        }
+
+        if (data->index())
+        {
+            m_context->checksumIndex = data->index()->str();
+        }
+
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "ChecksumModule received for session %llu, index: %s, checksum: %s",
+                  m_context->sessionId,
+                  m_context->checksumIndex.c_str(),
+                  m_context->checksum.c_str());
     }
 
     /**

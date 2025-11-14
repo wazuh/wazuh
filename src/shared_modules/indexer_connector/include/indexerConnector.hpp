@@ -82,6 +82,17 @@ public:
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery);
 
     /**
+     * @brief Execute a search query on OpenSearch/Elasticsearch.
+     *
+     * This method allows callers to execute search queries with source filtering and sorting.
+     *
+     * @param index Index name to search.
+     * @param searchQuery JSON object containing the search query body.
+     * @return JSON response from the indexer containing search results.
+     */
+    nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.
