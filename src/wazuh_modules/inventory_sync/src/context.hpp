@@ -37,6 +37,8 @@ struct Context final
     uint64_t globalVersion;
     bool transactionDispatched = false;
     bool ownsAgentLock = false;
+    std::string checksum;
+    std::string checksumIndex;
 };
 
 #endif // _INVENTORY_SYNC_CONTEXT_HPP

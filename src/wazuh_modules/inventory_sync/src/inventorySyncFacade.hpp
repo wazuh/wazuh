@@ -14,6 +14,7 @@
 
 #include "agentSession.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
+#include "hashHelper.h"
 #include "inventorySyncQueryBuilder.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
@@ -161,6 +162,31 @@ class InventorySyncFacadeImpl final
                 }
             }
         }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_ChecksumModule)
+        {
+            const auto checksumModule = syncMessage->content_as<Wazuh::SyncSchema::ChecksumModule>();
+            if (!checksumModule)
+            {
+                throw InventorySyncException("Invalid checksum module message");
+            }
+
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(checksumModule->session()); it == m_agentSessions.end())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                          checksumModule->session());
+            }
+            else
+            {
+                // Handle checksum module.
+                it->second.handleChecksumModule(checksumModule);
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: ChecksumModule handled for session %llu",
+                          checksumModule->session());
+            }
+        }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
         {
             const auto end = syncMessage->content_as<Wazuh::SyncSchema::End>();
@@ -261,6 +287,72 @@ class InventorySyncFacadeImpl final
                 auto response = result.dump();
                 keystoreServer->send(fd, response.c_str(), response.size());
             });
+    }
+
+    std::string calculateChecksumOfChecksums(const std::string& index, const std::string& agentId)
+    {
+        std::string concatenatedChecksums;
+        std::string searchAfter;
+        constexpr size_t BATCH_SIZE = 1000;
+        size_t totalDocs = 0;
+
+        logDebug2(
+            LOGGER_DEFAULT_TAG, "Querying indexer for checksums: agent=%s, index=%s", agentId.c_str(), index.c_str());
+
+        while (true)
+        {
+            nlohmann::json searchQuery;
+            searchQuery["query"]["term"]["agent.id"] = agentId;
+            searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
+            searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"_id", "asc"}})});
+            searchQuery["size"] = BATCH_SIZE;
+
+            if (!searchAfter.empty())
+            {
+                searchQuery["search_after"] = nlohmann::json::array({searchAfter});
+            }
+
+            auto searchResult = m_indexerConnector->executeSearchQuery(index, searchQuery);
+
+            if (!searchResult.contains("hits") || !searchResult["hits"].contains("hits") ||
+                searchResult["hits"]["hits"].empty())
+            {
+                break;
+            }
+
+            const auto& hits = searchResult["hits"]["hits"];
+            for (const auto& hit : hits)
+            {
+                if (hit.contains("_source") && hit["_source"].contains("checksum") &&
+                    hit["_source"]["checksum"].contains("hash") && hit["_source"]["checksum"]["hash"].contains("sha1"))
+                {
+                    concatenatedChecksums += hit["_source"]["checksum"]["hash"]["sha1"].template get<std::string>();
+                }
+
+                if (hit.contains("sort") && !hit["sort"].empty())
+                {
+                    searchAfter = hit["sort"][0].template get<std::string>();
+                }
+            }
+
+            totalDocs += hits.size();
+
+            if (hits.size() < BATCH_SIZE)
+            {
+                break;
+            }
+        }
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Retrieved %zu documents for checksum calculation", totalDocs);
+
+        Utils::HashData hash(Utils::HashType::Sha1);
+        hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
+        const std::vector<unsigned char> hashResult = hash.hash();
+        std::string finalChecksum = Utils::asciiToHex(hashResult);
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Calculated checksum of checksums: %s", finalChecksum.c_str());
+
+        return finalChecksum;
     }
 
 public:
@@ -564,6 +656,80 @@ public:
 
                         // Execute the groups check update
                         m_indexerConnector->executeUpdateByQuery(res.context->indices, groupsCheckQuery);
+                    }
+                    else if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleCheck)
+                    {
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Processing ModuleCheck for agent %s, module %s",
+                                  res.context->agentId.c_str(),
+                                  res.context->moduleName.c_str());
+
+                        try
+                        {
+                            if (res.context->checksumIndex.empty())
+                            {
+                                logError(LOGGER_DEFAULT_TAG,
+                                         "ModuleCheck: No index specified for agent %s",
+                                         res.context->agentId.c_str());
+                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                 res.context->agentId,
+                                                                 res.context->sessionId,
+                                                                 res.context->moduleName);
+                            }
+                            else
+                            {
+                                std::string managerChecksum =
+                                    calculateChecksumOfChecksums(res.context->checksumIndex, res.context->agentId);
+
+                                logInfo(LOGGER_DEFAULT_TAG,
+                                        "ModuleCheck: agent=%s, module=%s, index=%s, agent_checksum=%s, "
+                                        "manager_checksum=%s",
+                                        res.context->agentId.c_str(),
+                                        res.context->moduleName.c_str(),
+                                        res.context->checksumIndex.c_str(),
+                                        res.context->checksum.c_str(),
+                                        managerChecksum.c_str());
+
+                                if (managerChecksum == res.context->checksum)
+                                {
+                                    logInfo(LOGGER_DEFAULT_TAG,
+                                            "ModuleCheck: Checksums match for agent %s - no full resync needed",
+                                            res.context->agentId.c_str());
+                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
+                                                                     res.context->agentId,
+                                                                     res.context->sessionId,
+                                                                     res.context->moduleName);
+                                }
+                                else
+                                {
+                                    logInfo(LOGGER_DEFAULT_TAG,
+                                            "ModuleCheck: Checksums DO NOT match for agent %s - full resync required",
+                                            res.context->agentId.c_str());
+                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                     res.context->agentId,
+                                                                     res.context->sessionId,
+                                                                     res.context->moduleName);
+                                }
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            logError(LOGGER_DEFAULT_TAG,
+                                     "ModuleCheck failed for agent %s: %s",
+                                     res.context->agentId.c_str(),
+                                     e.what());
+                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                             res.context->agentId,
+                                                             res.context->sessionId,
+                                                             res.context->moduleName);
+                        }
+
+                        if (m_agentSessions.erase(res.context->sessionId) == 0)
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                      res.context->sessionId);
+                        }
                     }
                     else
                     {

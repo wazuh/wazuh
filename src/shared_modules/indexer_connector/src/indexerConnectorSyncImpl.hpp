@@ -610,6 +610,40 @@ public:
         } while (needToRetry);
     }
 
+    nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
+    {
+        nlohmann::json resultJson;
+
+        const auto onSuccess = [&resultJson](const std::string& response)
+        {
+            logDebug2(IC_NAME, "Search query response: %s", response.c_str());
+            resultJson = nlohmann::json::parse(response);
+        };
+
+        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        {
+            logError(IC_NAME, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+            throw IndexerConnectorException("Search query failed: " + error);
+        };
+
+        auto serverUrl = m_selector->getNext();
+        std::string url;
+        url += serverUrl;
+        url += "/";
+        url += index;
+        url += "/_search";
+
+        logDebug2(IC_NAME, "Executing search query on: %s", url.c_str());
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = searchQuery.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        return resultJson;
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
