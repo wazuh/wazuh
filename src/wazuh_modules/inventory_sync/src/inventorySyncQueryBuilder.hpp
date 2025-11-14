@@ -286,37 +286,6 @@ namespace InventorySyncQueryBuilder
 
         return query;
     }
-
-    /// @brief Extract search_after value from the last hit in a search response
-    /// @param response JSON response from OpenSearch/Elasticsearch search
-    /// @return The _id value from the last hit's sort, empty string if no hits
-    inline std::string extractSearchAfter(const nlohmann::json& response)
-    {
-        std::string searchAfter;
-
-        try
-        {
-            if (response.contains("hits") && response["hits"].contains("hits") && response["hits"]["hits"].is_array() &&
-                !response["hits"]["hits"].empty())
-            {
-                const auto& hits = response["hits"]["hits"];
-                const auto& lastHit = hits[hits.size() - 1];
-
-                if (lastHit.contains("sort") && lastHit["sort"].is_array() && !lastHit["sort"].empty())
-                {
-                    // Extract _id from sort array (first and only element)
-                    searchAfter = lastHit["sort"][0].get<std::string>();
-                }
-            }
-        }
-        catch (const std::exception&)
-        {
-            // Return empty string if extraction fails
-            searchAfter.clear();
-        }
-
-        return searchAfter;
-    }
 } // namespace InventorySyncQueryBuilder
 
 #endif // _INVENTORY_SYNC_QUERY_BUILDER_HPP
