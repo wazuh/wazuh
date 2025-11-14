@@ -1639,7 +1639,6 @@ stages:
       status_code: 200
       json:
         error: 2
-
         data:
           affected_items:
             - name: wazuh-remoted
