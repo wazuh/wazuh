@@ -8,6 +8,7 @@
   "scaled_float",
   "text",
   "boolean",
+  "byte",
   "date",
   "float"
 ]

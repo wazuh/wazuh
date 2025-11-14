@@ -91,8 +91,6 @@ INSTANTIATE_TEST_SUITE_P(SchemaTest,
                                            ParamsTuple({{"a", {Type::INTEGER}}}, true),
                                            ParamsTuple({{"a", {Type::ERROR}}}, false),
                                            ParamsTuple({{"a", {Type::OBJECT}}}, true),
-                                           ParamsTuple({{"a", {.isArray = true}}}, false),
-                                           ParamsTuple({{"a", {Type::INTEGER, true}}}, true),
                                            ParamsTuple({{"a", {Type::BOOLEAN}}}, true),
                                            ParamsTuple({{"a", {Type::OBJECT}}, {"a", {Type::BOOLEAN}}}, false),
                                            ParamsTuple({{"a", {Type::TEXT}}, {"a.b", {Type::TEXT}}}, false),
@@ -100,9 +98,7 @@ INSTANTIATE_TEST_SUITE_P(SchemaTest,
                                            ParamsTuple({{"a", {Type::OBJECT}}, {"a.b", {Type::TEXT}}}, true),
                                            ParamsTuple({{"a.b.c.d", {Type::BOOLEAN}}}, true),
                                            ParamsTuple({{"a.b.c.d", {Type::INTEGER}}, {"a.b", {Type::TEXT}}}, false),
-                                           ParamsTuple({{"a.b.c.d", {Type::INTEGER}}, {"a.b.a", {Type::TEXT}}}, true),
-                                           ParamsTuple({{"a", {Type::INTEGER, true}}, {"a.b", {Type::INTEGER}}}, false),
-                                           ParamsTuple({{"a", {Type::OBJECT, true}}, {"a.b", {Type::INTEGER}}}, true)));
+                                           ParamsTuple({{"a.b.c.d", {Type::INTEGER}}, {"a.b.a", {Type::TEXT}}}, true)));
 
 using LoadTuple = std::tuple<std::string, bool>;
 class LoadJson : public ::testing::TestWithParam<LoadTuple>
@@ -122,7 +118,6 @@ TEST_P(LoadJson, Loads)
         for (const auto& [key, value] : jsonObj)
         {
             ASSERT_TRUE(schema.hasField(key));
-            ASSERT_EQ(value.getBool("/array").value_or(false), schema.isArray(key));
             ASSERT_EQ(schema.getType(key), strToType(value.getString("/type").value().c_str()));
         }
     }
@@ -157,12 +152,10 @@ INSTANTIATE_TEST_SUITE_P(SchemaTest,
 TEST(SchemaTest, ArrayItem)
 {
     Schema schema;
-    schema.addField("a", {Type::INTEGER, true});
-    ASSERT_TRUE(schema.isArray("a"));
+    schema.addField("a", {Type::INTEGER});
     ASSERT_TRUE(schema.hasField("a.0"));
     ASSERT_EQ(schema.getJsonType("a.0"), json::Json::Type::Number);
     ASSERT_FALSE(schema.hasField("a.n"));
-    ASSERT_FALSE(schema.isArray("a.0"));
     auto itemType = schema.getType("a.0");
     ASSERT_EQ(itemType, Type::INTEGER);
     ASSERT_THROW(schema.getType("a.n"), std::runtime_error);
@@ -184,7 +177,7 @@ TEST(SchemaTest, HasField_KnownECSLeaf_ReturnsTrue)
 {
     Schema schema;
     schema.addField("dns", {Type::OBJECT});
-    schema.addField("dns.answers", {Type::OBJECT, true});  // array of objects in ECS
+    schema.addField("dns.answers", {Type::OBJECT});  // plain object field
     schema.addField("dns.answers.class", {Type::KEYWORD}); // leaf field
 
     ASSERT_TRUE(schema.hasField("dns.answers.class"));
@@ -211,7 +204,7 @@ TEST(SchemaTest, HasField_UnknownChildUnderArrayItem_ReturnsFalse)
 {
     Schema schema;
     schema.addField("dns", {Type::OBJECT});
-    schema.addField("dns.answers", {Type::OBJECT, true});
+    schema.addField("dns.answers", {Type::OBJECT});
     ASSERT_TRUE(schema.hasField("dns.answers.0"));
     ASSERT_NO_THROW({ EXPECT_FALSE(schema.hasField("dns.answers.0.foo")); });
 }

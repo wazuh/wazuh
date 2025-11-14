@@ -37,15 +37,6 @@ public:
     virtual json::Json::Type getJsonType(const DotPath& name) const = 0;
 
     /**
-     * @brief Query if a field is an array.
-     *
-     * @param name Dot-separated path to the field.
-     * @return true
-     * @return false
-     */
-    virtual bool isArray(const DotPath& name) const = 0;
-
-    /**
      * @brief Check if a field exists.
      *
      * @param name Dot-separated path to the field.

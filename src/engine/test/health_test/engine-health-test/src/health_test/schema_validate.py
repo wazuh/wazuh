@@ -187,7 +187,7 @@ def _format_yaml_parse_error(raw_msg: str, file_path: str) -> str:
 
 def load_custom_fields(custom_fields_path, reporter: ErrorReporter, allowed_custom_fields_type):
     """
-    Load custom fields from 'custom_fields.yml' into a map of field -> (type, array_flag, validation_function).
+    Load custom fields from 'custom_fields.yml' into a map of field -> (type, validation_function).
     """
     custom_fields_map = {}
     try:
@@ -236,19 +236,8 @@ def load_custom_fields(custom_fields_path, reporter: ErrorReporter, allowed_cust
                 )
                 continue
 
-            declared_array_flag = bool(item.get('array', False))
-            if ftype == 'nested':
-                if declared_array_flag:
-                    reporter.add_warning(
-                        "Custom Fields", custom_fields_path,
-                        f"Field '{field_name}': 'type: nested' implies array; 'array: true' is redundant."
-                    )
-                array_flag = True
-            else:
-                array_flag = declared_array_flag
-
             validation_fn = get_validation_function(ftype)
-            custom_fields_map[field_name] = (ftype, array_flag, validation_fn)
+            custom_fields_map[field_name] = (ftype, validation_fn)
 
         return custom_fields_map
 
@@ -353,58 +342,6 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
         vals = rec(data, 0)
         return vals if vals else None
 
-    def _validate_array(field, ftype, validate_fn, value, add_err):
-        """
-        Validate an array-typed custom field.
-        Nulls (None) are treated as non-fatal: they raise a warning and are ignored.
-        """
-        if value is None:
-            reporter.add_warning(integration_name, json_file, f"Field '{field}': null array value ignored")
-            return True
-
-        if ftype == 'nested' and isinstance(value, dict):
-            value = [value]
-        if not isinstance(value, list):
-            add_err(f"Field '{field}' declared as array, but schema emits a scalar value: {repr(value)}")
-            return False
-
-        is_valid = True
-        for el in value:
-            if el is None:
-                reporter.add_warning(integration_name, json_file, f"Field '{field}': null array element ignored")
-                continue
-            if ftype == 'nested':
-                if not isinstance(el, dict):
-                    got_t = infer_type_name_for_error(el, ftype)
-                    add_err(f"Field '{field}' nested elements must be objects; got '{got_t}' (value={repr(el)})")
-                    is_valid = False
-                else:
-                    if not el:
-                        reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
-            else:
-                if ftype in {'object', 'flattened'} and isinstance(el, dict) and not el:
-                    reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
-
-                try:
-                    is_valid_element = validate_fn(el)
-                except TypeError:
-                    is_valid_element = False
-
-                if not is_valid_element:
-                    got_t = infer_type_name_for_error(el, ftype)
-                    if ftype in {'date', 'date_nanos'}:
-                        add_err(
-                            f"Field '{field}' declared as '{ftype}' has incompatible scalar value "
-                            f"got '{got_t}' (value={repr(el)})"
-                        )
-                    else:
-                        add_err(
-                            f"Field '{field}' array element type mismatch: expected '{ftype}', "
-                            f"got '{got_t}' (value={repr(el)})"
-                        )
-                    is_valid = False
-        return is_valid
-
     def _validate_scalar(field, ftype, validate_fn, value, add_err):
         """
         Validate a scalar-typed custom field.
@@ -477,30 +414,23 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
                         if _is_under_geopoint(inv):
                             filtered_invalid_fields.discard(inv)
 
-                    for field, (ftype, is_array, validate_function) in custom_fields_map.items():
+                    for field, (ftype, validate_function) in custom_fields_map.items():
                         occurrences = _get_all_values_from_hierarchy(expected, field)
                         if not occurrences:
                             continue
-                        if is_array:
-                            had_json_list_leaf = any(isinstance(v, list) for v in occurrences)
 
-                            if (not had_json_list_leaf) and len(occurrences) == 1 and ftype != 'nested':
-                                only = occurrences[0]
-                                if only is not None and not isinstance(only, list):
-                                    add_err(
-                                        f"Field '{field}' declared as array, but JSON emits a scalar value: {repr(only)}"
-                                    )
+                        flattened_values = []
+                        for v in occurrences:
+                            if isinstance(v, list):
+                                flattened_values.extend(v)
+                            else:
+                                flattened_values.append(v)
 
-                            agg = []
-                            for v in occurrences:
-                                if isinstance(v, list):
-                                    agg.extend(v)
-                                else:
-                                    agg.append(v)
-                            _ = _validate_array(field, ftype, validate_function, agg, add_err)
-                        else:
-                            for v in occurrences:
-                                _ = _validate_scalar(field, ftype, validate_function, v, add_err)
+                        if not flattened_values:
+                            continue
+
+                        for value in flattened_values:
+                            _ = _validate_scalar(field, ftype, validate_function, value, add_err)
 
                         _remove_children(filtered_invalid_fields, field)
 

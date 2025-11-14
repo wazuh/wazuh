@@ -22,7 +22,6 @@ class Field
 private:
     Type m_type;                               ///< The type of the field.
     std::map<std::string, Field> m_properties; ///< The properties of the field.
-    bool m_isArray;                            ///< Whether the field is an array.
 
 public:
     /**
@@ -31,20 +30,18 @@ public:
      * @note This is a struct instead of a class to allow for aggregate initialization.
      *
      * @param type The type of the field.
-     * @param isArray Whether the field is an array.
      * @param properties The properties of the field.
      */
     struct Parameters
     {
         Type type = Type::ERROR;
-        bool isArray = false;
         std::map<std::string, Field> properties = {};
 
         friend std::ostream& operator<<(std::ostream& os, const Parameters& parameters)
         {
             os << "FieldParameters("
-               << "Type:" << typeToStr(parameters.type) << std::boolalpha << ", Array:" << parameters.isArray
-               << ", Properties:" << parameters.properties.size() << ")";
+               << "Type:" << typeToStr(parameters.type) << std::boolalpha
+               << "Properties:" << parameters.properties.size() << ")";
 
             return os;
         }
@@ -61,7 +58,6 @@ public:
 
     Field()
         : m_type(Type::ERROR)
-        , m_isArray(false)
     {
     }
     ~Field() = default;
@@ -72,13 +68,13 @@ public:
 
     friend bool operator==(const Field& lhs, const Field& rhs)
     {
-        return lhs.m_type == rhs.m_type && lhs.m_properties == rhs.m_properties && lhs.m_isArray == rhs.m_isArray;
+        return lhs.m_type == rhs.m_type && lhs.m_properties == rhs.m_properties;
     }
     friend bool operator!=(const Field& lhs, const Field& rhs) { return !(lhs == rhs); }
     friend std::ostream& operator<<(std::ostream& os, const Field& field)
     {
-        os << "Field(Type:" << typeToStr(field.m_type) << std::boolalpha << ", Array:" << field.m_isArray
-           << ", Properties:" << field.m_properties.size() << ")";
+        os << "Field(Type:" << typeToStr(field.m_type) << std::boolalpha << ", Properties:" << field.m_properties.size()
+           << ")";
 
         return os;
     }
@@ -107,14 +103,6 @@ public:
      * @throw std::runtime_error If the field is not an object or an array of objects.
      */
     std::map<std::string, Field>& properties();
-
-    /**
-     * @brief Query whether the field is an array.
-     *
-     * @return true
-     * @return false
-     */
-    inline bool isArray() const { return m_isArray; }
 
     /**
      * @brief Add a property to the field.
