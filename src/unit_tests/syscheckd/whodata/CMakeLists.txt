@@ -26,7 +26,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
                         -Wl,--wrap,fim_db_close_and_delete_database \
                         -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                        -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                        -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                         -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database")
 
@@ -54,7 +54,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
                               -Wl,--wrap,fim_db_close_and_delete_database \
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                              -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                              -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                               -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database")
 
@@ -88,7 +88,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                               -Wl,--wrap,fim_db_close_and_delete_database \
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                              -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                              -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                               -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                               ${DEBUG_OP_WRAPPERS}")
@@ -121,7 +121,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                            -Wl,--wrap,fim_db_close_and_delete_database \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                           -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                           -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                            ${DEBUG_OP_WRAPPERS}")
@@ -139,6 +139,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
 			                "-Wl,--wrap=_minfo -Wl,--wrap,_merror"
                             "-Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required"
                             "-Wl,--wrap,fim_recovery_persist_table_and_resync"
+                            "-Wl,--wrap,fim_db_update_last_sync_time"
                             "-Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff"
                             "-Wl,--wrap,asp_notify_data_clean"
                             "-Wl,--wrap,asp_delete_database"
@@ -178,6 +179,7 @@ else()
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                            -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
+                           -Wl,--wrap,fim_db_update_last_sync_time \
                            ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 

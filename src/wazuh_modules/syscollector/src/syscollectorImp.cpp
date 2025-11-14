@@ -1548,7 +1548,9 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+                                    unsigned int retries,
+                                    size_t maxEps)
 {
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
@@ -1557,7 +1559,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
     }
     catch (const std::exception& ex)
@@ -1568,11 +1570,11 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     }
 }
 
-bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool Syscollector::syncModule(Mode mode)
 {
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps);
+        return m_spSyncProtocol->synchronizeModule(mode);
     }
 
     return false;
@@ -1596,11 +1598,11 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
     return false;
 }
 
-bool Syscollector::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 {
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->notifyDataClean(indices, timeout, retries, maxEps);
+        return m_spSyncProtocol->notifyDataClean(indices);
     }
 
     return false;

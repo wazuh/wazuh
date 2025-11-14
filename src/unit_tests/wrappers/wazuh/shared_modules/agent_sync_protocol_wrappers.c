@@ -9,11 +9,15 @@
 
 #include "agent_sync_protocol_wrappers.h"
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger) {
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t max_eps) {
     check_expected_ptr(module);
     (void)mq_funcs;
     (void)db_path;
     (void)logger;
+    check_expected(sync_end_delay);
+    check_expected(timeout);
+    check_expected(retries);
+    check_expected(max_eps);
     return mock_ptr_type(AgentSyncProtocolHandle*);
 }
 
@@ -36,15 +40,9 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
 }
 
 bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
-                            int mode,
-                            unsigned int sync_timeout,
-                            unsigned int retries,
-                            size_t max_eps) {
+                            int mode) {
     check_expected_ptr(handle);
     check_expected(mode);
-    check_expected(sync_timeout);
-    check_expected(retries);
-    check_expected(max_eps);
     return mock_type(bool);
 }
 
@@ -62,16 +60,10 @@ void __wrap_asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
 
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,
-                                   const char* checksum,
-                                   unsigned int sync_timeout,
-                                   unsigned int sync_retries,
-                                   size_t max_eps) {
+                                   const char* checksum) {
     check_expected_ptr(handle);
     check_expected_ptr(index);
     check_expected_ptr(checksum);
-    check_expected(sync_timeout);
-    check_expected(sync_retries);
-    check_expected(max_eps);
     return mock_type(bool);
 }
 
@@ -87,30 +79,18 @@ void __wrap_asp_clear_in_memory_data(AgentSyncProtocolHandle* handle) {
 }
 
 bool __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                        int mode,
-                                        unsigned int sync_timeout,
-                                        unsigned int sync_retries,
-                                        size_t max_eps) {
+                                        int mode) {
     check_expected_ptr(handle);
     check_expected(mode);
-    check_expected(sync_timeout);
-    check_expected(sync_retries);
-    check_expected(max_eps);
     return mock_type(bool);
 }
 
 bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                                   const char** indices,
-                                  size_t indices_count,
-                                  unsigned int sync_timeout,
-                                  unsigned int sync_retries,
-                                  size_t max_eps) {
+                                  size_t indices_count) {
     check_expected_ptr(handle);
     check_expected_ptr(indices);
     check_expected(indices_count);
-    check_expected(sync_timeout);
-    check_expected(sync_retries);
-    check_expected(max_eps);
     return mock_type(bool);
 }
 

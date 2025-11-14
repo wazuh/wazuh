@@ -76,6 +76,7 @@ syscollector_query_func syscollector_query_ptr = NULL;
 
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
+uint32_t sync_end_delay = 1;                 // Database synchronization end delay in seconds (default value)
 uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
 long sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
 
@@ -167,7 +168,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t *sys) {
                 .start = wm_sys_startmq,
                 .send_binary = wm_sys_send_binary_msg
             };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
 
         syscollector_init_ptr(sys->interval,
                                wm_sys_send_diff_message,
@@ -212,7 +213,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t *sys) {
             bool ret = false;
             while (!ret && !is_shutdown_process_started())
             {
-                ret = syscollector_notify_data_clean_ptr(indices, indices_count, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+                ret = syscollector_notify_data_clean_ptr(indices, indices_count);
                 if (!ret) {
                     for (uint32_t i = 0; i < sync_interval && !is_shutdown_process_started(); i++) {
                         sleep(1);
@@ -298,6 +299,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         enable_synchronization = sys->sync.enable_synchronization;
         if (enable_synchronization) {
             sync_interval = sys->sync.sync_interval;
+            sync_end_delay = sys->sync.sync_end_delay;
             sync_response_timeout = sys->sync.sync_response_timeout;
             sync_max_eps = sys->sync.sync_max_eps;
         }
@@ -337,7 +339,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 .start = wm_sys_startmq,
                 .send_binary = wm_sys_send_binary_msg
             };
-            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
 #ifndef WIN32
             // Launch inventory synchronization thread
             sync_module_running = 1;
@@ -430,6 +432,7 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     cJSON_AddNumberToObject(synchronization, "interval", sys->sync.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", sys->sync.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "response_timeout", sys->sync.sync_response_timeout);
+    cJSON_AddNumberToObject(synchronization, "sync_end_delay", sys->sync.sync_end_delay);
 
     cJSON_AddItemToObject(wm_sys, "synchronization", synchronization);
 
@@ -473,7 +476,7 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
         mtinfo(WM_SYS_LOGTAG, "Running inventory synchronization.");
 
         if (syscollector_sync_module_ptr) {
-            syscollector_sync_module_ptr(MODE_DELTA, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+            syscollector_sync_module_ptr(MODE_DELTA);
         } else {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }

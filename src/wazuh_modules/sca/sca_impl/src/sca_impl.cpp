@@ -231,7 +231,8 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
 // LCOV_EXCL_START
 
 // Sync protocol methods implementation
-void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
+void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
+                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -240,7 +241,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
     }
     catch (const std::exception& ex)
@@ -251,11 +252,11 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
     }
 }
 
-bool SecurityConfigurationAssessment::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool SecurityConfigurationAssessment::syncModule(Mode mode)
 {
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps);
+        return m_spSyncProtocol->synchronizeModule(mode);
     }
 
     return false;
@@ -279,11 +280,11 @@ bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, s
     return false;
 }
 
-bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::string>& indices)
 {
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->notifyDataClean(indices, timeout, retries, maxEps);
+        return m_spSyncProtocol->notifyDataClean(indices);
     }
 
     return false;

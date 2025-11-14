@@ -20,14 +20,25 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../)
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest/lib/)
 
-# Add the test executable
-add_executable(agent_sync_protocol_tests
+# Prepare test sources
+set(TEST_SOURCES
     main.cpp
-    test_agent_sync_protocol.cpp
     test_persistent_queue_storage.cpp
     test_persistent_queue.cpp
     test_metadata_provider.cpp
 )
+
+# Add Router-specific tests only for SERVER builds
+if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
+    list(APPEND TEST_SOURCES test_agent_sync_protocol_router.cpp)
+    list(APPEND TEST_SOURCES test_router_transport.cpp)
+else()
+    list(APPEND TEST_SOURCES test_agent_sync_protocol.cpp)
+    list(APPEND TEST_SOURCES test_mqueue_transport.cpp)
+endif()
+
+# Add the test executable
+add_executable(agent_sync_protocol_tests ${TEST_SOURCES})
 
 # Include paths
 target_include_directories(agent_sync_protocol_tests PRIVATE
@@ -37,6 +48,13 @@ target_include_directories(agent_sync_protocol_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../file_helper/filesystem/tests/mocks
     ${CMAKE_CURRENT_SOURCE_DIR}/../../file_helper/filesystem/include
 )
+
+# Add router includes for SERVER builds
+if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
+    target_include_directories(agent_sync_protocol_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../router/include
+    )
+endif()
 
 target_link_libraries(agent_sync_protocol_tests
     PRIVATE

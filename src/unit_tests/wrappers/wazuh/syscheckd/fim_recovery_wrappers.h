@@ -20,8 +20,6 @@ typedef struct AgentSyncProtocolHandle AgentSyncProtocolHandle;
  * @brief Wrapper for fim_recovery_persist_table_and_resync
  */
 void __wrap_fim_recovery_persist_table_and_resync(char* table_name,
-                                                   uint32_t sync_response_timeout,
-                                                   long sync_max_eps,
                                                    AgentSyncProtocolHandle* handle,
                                                    void* test_callback,
                                                    void* log_callback);
@@ -30,8 +28,6 @@ void __wrap_fim_recovery_persist_table_and_resync(char* table_name,
  * @brief Wrapper for fim_recovery_check_if_full_sync_required
  */
 bool __wrap_fim_recovery_check_if_full_sync_required(char* table_name,
-                                                      uint32_t sync_response_timeout,
-                                                      long sync_max_eps,
                                                       AgentSyncProtocolHandle* handle,
                                                       void* log_callback);
 

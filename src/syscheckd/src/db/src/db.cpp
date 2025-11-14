@@ -23,6 +23,7 @@
 #include "fimDBSpecialization.h"
 #include <hashHelper.h>
 #include "stringHelper.h"
+#include "timeHelper.h"
 
 void DB::init(const int storage,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
@@ -158,25 +159,90 @@ std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName)
 
 void DB::initializeTableMetadata()
 {
-    auto fileEntrySyncQuery = SyncRowQuery::builder()
-                              .table("table_metadata")
-    .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
-    .build();
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-    FIMDB::instance().updateItem(fileEntrySyncQuery.query(), emptyCallback);
+
+    // Check if metadata entries already exist by querying the table
+    bool fileEntryExists = false;
+
+    auto checkCallback = [&fileEntryExists](ReturnTypeCallback result, const nlohmann::json&)
+    {
+        if (result == ReturnTypeCallback::SELECTED)
+        {
+            fileEntryExists = true;
+        }
+    };
+
+    auto checkQuery = SelectQuery::builder()
+                      .table("table_metadata")
+                      .columnList({"table_name"})
+                      .rowFilter("WHERE table_name = 'file_entry'")
+                      .build();
+
+    FIMDB::instance().executeQuery(checkQuery.query(), checkCallback);
+
+    // Only insert if the entry doesn't exist
+    if (!fileEntryExists)
+    {
+        auto fileEntrySyncQuery = SyncRowQuery::builder()
+                                  .table("table_metadata")
+        .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
+        .build();
+        FIMDB::instance().updateItem(fileEntrySyncQuery.query(), emptyCallback);
+    }
 
 #ifdef WIN32
-    auto registryKeySyncQuery = SyncRowQuery::builder()
-                                .table("table_metadata")
-    .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
-    .build();
-    FIMDB::instance().updateItem(registryKeySyncQuery.query(), emptyCallback);
+    bool registryKeyExists = false;
+    auto checkRegistryKeyCallback = [&registryKeyExists](ReturnTypeCallback result, const nlohmann::json&)
+    {
+        if (result == ReturnTypeCallback::SELECTED)
+        {
+            registryKeyExists = true;
+        }
+    };
 
-    auto registryDataSyncQuery = SyncRowQuery::builder()
+    auto checkRegistryKeyQuery = SelectQuery::builder()
                                  .table("table_metadata")
-    .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
-    .build();
-    FIMDB::instance().updateItem(registryDataSyncQuery.query(), emptyCallback);
+                                 .columnList({"table_name"})
+                                 .rowFilter("WHERE table_name = 'registry_key'")
+                                 .build();
+
+    FIMDB::instance().executeQuery(checkRegistryKeyQuery.query(), checkRegistryKeyCallback);
+
+    if (!registryKeyExists)
+    {
+        auto registryKeySyncQuery = SyncRowQuery::builder()
+                                    .table("table_metadata")
+        .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
+        .build();
+        FIMDB::instance().updateItem(registryKeySyncQuery.query(), emptyCallback);
+    }
+
+    bool registryDataExists = false;
+    auto checkRegistryDataCallback = [&registryDataExists](ReturnTypeCallback result, const nlohmann::json&)
+    {
+        if (result == ReturnTypeCallback::SELECTED)
+        {
+            registryDataExists = true;
+        }
+    };
+
+    auto checkRegistryDataQuery = SelectQuery::builder()
+                                  .table("table_metadata")
+                                  .columnList({"table_name"})
+                                  .rowFilter("WHERE table_name = 'registry_data'")
+                                  .build();
+
+    FIMDB::instance().executeQuery(checkRegistryDataQuery.query(), checkRegistryDataCallback);
+
+    if (!registryDataExists)
+    {
+        auto registryDataSyncQuery = SyncRowQuery::builder()
+                                     .table("table_metadata")
+        .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
+        .build();
+        FIMDB::instance().updateItem(registryDataSyncQuery.query(), emptyCallback);
+    }
+
 #endif
 }
 
@@ -253,6 +319,19 @@ FIMDBErrorCode fim_db_init(
 
     // LCOV_EXCL_STOP
     return retVal;
+}
+
+void fim_db_update_last_sync_time(const char* table_name)
+{
+    try
+    {
+        DB::instance().updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
+    }
+    catch (const std::exception& ex)
+    {
+        // Log error but don't exit - this is not critical
+        // The worst case is the integrity check runs again sooner than expected
+    }
 }
 
 TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data)

@@ -33,6 +33,7 @@ static const char *XML_BROWSER_EXTENSIONS = "browser_extensions";
 static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node) {
     const char *XML_DB_SYNC_ENABLED = "enabled";
     const char *XML_DB_SYNC_INTERVAL = "interval";
+    const char *XML_DB_SYNC_END_DELAY = "sync_end_delay";
     const char *XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
 
@@ -52,6 +53,14 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscollector->sync.sync_interval = t;
+            }
+        } else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY) == 0) {
+            long sync_end_delay = w_parse_time(node[i]->content);
+
+            if (sync_end_delay < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscollector->sync.sync_end_delay = (uint32_t) sync_end_delay;
             }
         } else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0) {
             long response_timeout = w_parse_time(node[i]->content);
@@ -105,6 +114,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         // Database synchronization config values
         syscollector->sync.enable_synchronization = 1;
         syscollector->sync.sync_interval = 300;
+        syscollector->sync.sync_end_delay = 1;
         syscollector->sync.sync_response_timeout = 60;
         syscollector->sync.sync_max_eps = 10;
 

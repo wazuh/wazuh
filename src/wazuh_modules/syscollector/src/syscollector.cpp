@@ -119,13 +119,13 @@ void syscollector_stop()
     Syscollector::instance().destroy();
 }
 
-void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs)
+void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries, size_t maxEps)
 {
     if (moduleName && syncDbPath && mqFuncs)
     {
         try
         {
-            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), *mqFuncs);
+            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), *mqFuncs, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries, maxEps);
         }
         catch (const std::exception& ex)
         {
@@ -140,10 +140,10 @@ void syscollector_init_sync(const char* moduleName, const char* syncDbPath, cons
     }
 }
 
-bool syscollector_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int maxEps)
+bool syscollector_sync_module(Mode_t mode)
 {
     Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
-    return Syscollector::instance().syncModule(syncMode, std::chrono::seconds(timeout), retries, maxEps);
+    return Syscollector::instance().syncModule(syncMode);
 }
 
 void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)
@@ -167,7 +167,7 @@ bool syscollector_parse_response(const unsigned char* data, size_t length)
     return false;
 }
 
-bool syscollector_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps)
+bool syscollector_notify_data_clean(const char** indices, size_t indices_count)
 {
     if (indices && indices_count > 0)
     {
@@ -184,7 +184,7 @@ bool syscollector_notify_data_clean(const char** indices, size_t indices_count, 
 
         if (!indicesVec.empty())
         {
-            return Syscollector::instance().notifyDataClean(indicesVec, std::chrono::seconds(timeout), retries, max_eps);
+            return Syscollector::instance().notifyDataClean(indicesVec);
         }
     }
 

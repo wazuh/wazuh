@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include "agent_sync_protocol_c_interface.h"
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger);
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t max_eps);
 
 void __wrap_asp_destroy(AgentSyncProtocolHandle* handle);
 
@@ -35,34 +35,22 @@ void __wrap_asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
                                        const char* data);
 
 bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
-                            int mode,
-                            unsigned int sync_timeout,
-                            unsigned int retries,
-                            size_t max_eps);
+                            int mode);
 
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,
-                                   const char* checksum,
-                                   unsigned int sync_timeout,
-                                   unsigned int sync_retries,
-                                   size_t max_eps);
+                                   const char* checksum);
 
 bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
 
 void __wrap_asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 
 bool __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                        int mode,
-                                        unsigned int sync_timeout,
-                                        unsigned int sync_retries,
-                                        size_t max_eps);
+                                        int mode);
 
 bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                                   const char** indices,
-                                  size_t indices_count,
-                                  unsigned int sync_timeout,
-                                  unsigned int sync_retries,
-                                  size_t max_eps);
+                                  size_t indices_count);
 
 void __wrap_asp_delete_database(AgentSyncProtocolHandle* handle);
 

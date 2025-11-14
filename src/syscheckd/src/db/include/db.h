@@ -169,6 +169,13 @@ EXPORTED void fim_db_teardown();
  */
 EXPORTED void fim_db_close_and_delete_database();
 
+/**
+ * @brief Update the last integrity check timestamp for a table.
+ *
+ * @param table_name Name of the table (e.g., "file_entry", "registry_key", "registry_data").
+ */
+EXPORTED void fim_db_update_last_sync_time(const char* table_name);
+
 #ifdef WIN32
 
 // Registry functions.

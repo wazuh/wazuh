@@ -36,7 +36,7 @@ void log_formatted(fim_recovery_log_callback_t log_callback, modules_log_level_t
 
 extern "C"
 {
-void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback, fim_recovery_log_callback_t log_callback){
+void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback, fim_recovery_log_callback_t log_callback){
     std::vector<nlohmann::json> recoveryItems = DB::instance().getEveryElement(table_name);
     AgentSyncProtocolWrapper* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -103,10 +103,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
         // Use real implementation in production
         // LCOV_EXCL_START
         success = wrapper->impl->synchronizeModule(
-            Mode::FULL,
-            std::chrono::seconds(sync_response_timeout),
-            FIM_SYNC_RETRIES,
-            sync_max_eps
+            Mode::FULL
         );
         // LCOV_EXCL_STOP
     }
@@ -116,14 +113,11 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
     } else {
         log_callback(LOG_INFO, "Recovery synchronization failed, will retry later");
     }
-
-    // Update the last sync time regardless of the synchronization result since we always want to wait for integrity_interval to try again.
-    DB::instance().updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
 }
 
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
 // LCOV_EXCL_START
-bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback){
+bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback){
     log_formatted(log_callback, LOG_INFO, "Attempting to get checksum for ", table_name, " table");
 
     std::string final_checksum = DB::instance().calculateTableChecksum(table_name);
@@ -146,10 +140,7 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
 #endif // WIN32
     needs_full_sync = wrapper->impl->requiresFullSync(
         index,
-        final_checksum,
-        std::chrono::seconds(sync_response_timeout),
-        FIM_SYNC_RETRIES,
-        sync_max_eps
+        final_checksum
     );
 
     if (needs_full_sync) {
@@ -165,6 +156,14 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_re
 bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval){
     int64_t current_time = Utils::getSecondsFromEpoch();
     int64_t last_sync_time = DB::instance().getLastSyncTime(table_name);
+
+    // If never checked before (last_sync_time == 0), initialize timestamp and don't run check yet
+    // This enables integrity checks to run after the configured interval
+    if (last_sync_time == 0) {
+        DB::instance().updateLastSyncTime(table_name, current_time);
+        return false;
+    }
+
     int64_t new_sync_time = current_time - last_sync_time;
     return (new_sync_time >= integrity_interval);
 }

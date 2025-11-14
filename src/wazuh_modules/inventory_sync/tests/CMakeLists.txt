@@ -42,15 +42,17 @@ target_link_libraries(inventory_sync_utest
     optimized gtest_main
     optimized gmock_main
     crypto
+    router
 )
 
-target_include_directories(inventory_sync_utest PRIVATE 
-    ${TEST_SRC_DIR} 
-    ${TEST_MOCK_DIR} 
+target_include_directories(inventory_sync_utest PRIVATE
+    ${TEST_SRC_DIR}
+    ${TEST_MOCK_DIR}
     ${OPENSSL_DIR}
     ${SRC_FOLDER}/shared_modules/utils
     ${SRC_FOLDER}/shared_modules/utils/flatbuffers/include
     ${SRC_FOLDER}/shared_modules/common
+    ${SRC_FOLDER}/shared_modules/router/include
     ${SRC_FOLDER}/headers
     ${SRC_FOLDER}/external/flatbuffers/include
     ${SRC_FOLDER}/external/cJSON

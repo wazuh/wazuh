@@ -143,7 +143,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, SetSyncParametersConfiguresValues)
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     // Set sync parameters
-    EXPECT_NO_THROW(m_agentInfo->setSyncParameters(60, 5, 1000));
+    EXPECT_NO_THROW(m_agentInfo->setSyncParameters(1, 60, 5, 1000));
 
     // Verify the log message contains the parameters
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Sync parameters set"));

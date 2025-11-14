@@ -46,6 +46,7 @@ typedef struct wm_sys_state_t {
 typedef struct wm_sys_db_sync_flags_t {
     unsigned int enable_synchronization:1;  // Enable database synchronization
     uint32_t sync_interval;                 // Synchronization interval
+    uint32_t sync_end_delay;                // Delay for synchronization end message
     uint32_t sync_response_timeout;         // Minimum interval for the synchronization process
     long sync_max_eps;                      // Maximum events per second for synchronization messages.
 } wm_sys_db_sync_flags_t;

@@ -14,8 +14,6 @@
 #include <cmocka.h>
 
 void __wrap_fim_recovery_persist_table_and_resync(__attribute__((unused)) char* table_name,
-                                                   __attribute__((unused)) uint32_t sync_response_timeout,
-                                                   __attribute__((unused)) long sync_max_eps,
                                                    __attribute__((unused)) AgentSyncProtocolHandle* handle,
                                                    __attribute__((unused)) void* test_callback,
                                                    __attribute__((unused)) void* log_callback) {
@@ -23,8 +21,6 @@ void __wrap_fim_recovery_persist_table_and_resync(__attribute__((unused)) char* 
 }
 
 bool __wrap_fim_recovery_check_if_full_sync_required(__attribute__((unused)) char* table_name,
-                                                      __attribute__((unused)) uint32_t sync_response_timeout,
-                                                      __attribute__((unused)) long sync_max_eps,
                                                       __attribute__((unused)) AgentSyncProtocolHandle* handle,
                                                       __attribute__((unused)) void* log_callback) {
     function_called();

@@ -26,6 +26,10 @@ static yaml_to_cjson_func g_yaml_to_cjson_func = NULL;
 static const char* g_module_name = NULL;
 static const char* g_sync_db_path = NULL;
 static const MQ_Functions* g_mq_functions = NULL;
+static unsigned int g_sync_end_delay = 1;
+static unsigned int g_sync_timeout = 30;
+static unsigned int g_sync_retries = 3;
+static size_t g_sync_max_eps = 10;
 
 /// @brief Sets the message pushing functions for SCA module.
 ///
@@ -48,11 +52,19 @@ void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_fu
 /// @param module_name Name identifier for the SCA module
 /// @param sync_db_path Path to the synchronization database file
 /// @param mq_funcs Pointer to message queue function structure for communication
-void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs)
+/// @param sync_end_delay Delay for synchronization end message in seconds
+/// @param timeout Default timeout for synchronization operations in seconds
+/// @param retries Default number of retries for synchronization operations
+/// @param maxEps Default maximum events per second for synchronization operations
+void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t maxEps)
 {
     g_module_name = module_name;
     g_sync_db_path = sync_db_path;
     g_mq_functions = mq_funcs;
+    g_sync_end_delay = sync_end_delay;
+    g_sync_timeout = timeout;
+    g_sync_retries = retries;
+    g_sync_max_eps = maxEps;
 }
 
 /// @brief Starts the SCA module with the given configuration.
@@ -217,7 +229,7 @@ void SCA::init()
         {
             m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
 
-            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
+            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions, std::chrono::seconds(g_sync_end_delay), std::chrono::seconds(g_sync_timeout), g_sync_retries, g_sync_max_eps);
 
             auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
             {
@@ -323,11 +335,11 @@ void SCA::destroy()
 
 // LCOV_EXCL_START
 
-bool SCA::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool SCA::syncModule(Mode mode)
 {
     if (m_sca)
     {
-        return m_sca->syncModule(mode, timeout, retries, maxEps);
+        return m_sca->syncModule(mode);
     }
 
     return false;
@@ -351,11 +363,11 @@ bool SCA::parseResponseBuffer(const uint8_t* data, size_t length)
     return false;
 }
 
-bool SCA::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool SCA::notifyDataClean(const std::vector<std::string>& indices)
 {
     if (m_sca)
     {
-        return m_sca->notifyDataClean(indices, timeout, retries, maxEps);
+        return m_sca->notifyDataClean(indices);
     }
 
     return false;
@@ -470,14 +482,11 @@ std::string SCA::query(const std::string& jsonQuery)
 /// of the SCA module with configurable parameters.
 ///
 /// @param mode Synchronization mode (MODE_FULL or MODE_DELTA)
-/// @param timeout Timeout value in seconds for synchronization operations
-/// @param retries Number of retry attempts on synchronization failure
-/// @param max_eps Maximum events per second during synchronization
 /// @return true if synchronization succeeds, false otherwise
-bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps)
+bool sca_sync_module(Mode_t mode)
 {
     Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
-    return SCA::instance().syncModule(syncMode, std::chrono::seconds(timeout), retries, max_eps);
+    return SCA::instance().syncModule(syncMode);
 }
 
 /// @brief C-style wrapper for persisting SCA differences.
@@ -522,11 +531,8 @@ bool sca_parse_response(const unsigned char* data, size_t length)
 /// @brief C-style wrapper for notifying data clean in SCA module.
 /// @param indices Array of index strings to notify as clean
 /// @param indices_count Number of indices in the array
-/// @param timeout Timeout value in seconds for the notification operation
-/// @param retries Number of retry attempts on failure
-/// @param max_eps Maximum events per second during the notification
 /// @return true if the operation succeeds, false otherwise
-bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps)
+bool sca_notify_data_clean(const char** indices, size_t indices_count)
 {
     if (indices && indices_count > 0)
     {
@@ -543,7 +549,7 @@ bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned 
 
         if (!indicesVec.empty())
         {
-            return SCA::instance().notifyDataClean(indicesVec, std::chrono::seconds(timeout), retries, max_eps);
+            return SCA::instance().notifyDataClean(indicesVec);
         }
     }
 

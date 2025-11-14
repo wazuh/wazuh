@@ -81,11 +81,12 @@ EXPORTED void syscollector_stop();
 EXPORTED void syscollector_start();
 
 // Sync protocol C wrapper functions
-EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs);
-EXPORTED bool syscollector_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int maxEps);
+EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
+                                     size_t maxEps);
+EXPORTED bool syscollector_sync_module(Mode_t mode);
 EXPORTED void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 EXPORTED bool syscollector_parse_response(const unsigned char* data, size_t length);
-EXPORTED bool syscollector_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps);
+EXPORTED bool syscollector_notify_data_clean(const char** indices, size_t indices_count);
 EXPORTED void syscollector_delete_database();
 
 // Query function
@@ -121,11 +122,12 @@ typedef void(*syscollector_start_func)();
 typedef void(*syscollector_stop_func)();
 
 // Sync protocol C wrapper functions
-typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs);
-typedef bool(*syscollector_sync_module_func)(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int maxEps);
+typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
+                                           size_t maxEps);
+typedef bool(*syscollector_sync_module_func)(Mode_t mode);
 typedef void(*syscollector_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 typedef bool(*syscollector_parse_response_func)(const unsigned char* data, size_t length);
-typedef bool(*syscollector_notify_data_clean_func)(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, unsigned int maxEps);
+typedef bool(*syscollector_notify_data_clean_func)(const char** indices, size_t indices_count);
 typedef void(*syscollector_delete_database_func)();
 
 #endif //_SYSCOLLECTOR_H

@@ -81,8 +81,29 @@ add_library(agent_sync_protocol SHARED
   src/metadata_provider.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
+  src/sync_message_transport.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ}
 )
+
+if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
+  # Manager build: use Router transport and link router library
+  target_sources(agent_sync_protocol PRIVATE src/router_transport.cpp)
+
+  # Headers for RouterProvider/RouterSubscriber
+  target_include_directories(agent_sync_protocol
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/../router/include
+  )
+
+  # Router is built in src/build/shared_modules/router/ when using main CMakeLists.txt
+  target_link_directories(agent_sync_protocol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../build/shared_modules/router)
+  target_link_libraries(agent_sync_protocol PRIVATE router)
+  message(STATUS "Linking router from: ${CMAKE_CURRENT_SOURCE_DIR}/../../build/shared_modules/router")
+else()
+  target_sources(agent_sync_protocol PRIVATE src/mqueue_transport.cpp)
+  target_compile_definitions(agent_sync_protocol PRIVATE CLIENT=1)
+endif()
+
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
 target_include_directories(agent_sync_protocol

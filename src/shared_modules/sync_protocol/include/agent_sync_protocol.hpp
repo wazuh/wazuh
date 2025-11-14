@@ -13,8 +13,10 @@
 #include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
+#include "isync_message_transport.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <unordered_map>
@@ -30,7 +32,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue = nullptr);
+        /// @param syncEndDelay Delay for synchronization end message in seconds
+        /// @param timeout Default timeout for synchronization operations.
+        /// @param retries Default number of retries for synchronization operations.
+        /// @param maxEps Default maximum events per second for synchronization operations.
+        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+                                   unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -47,23 +54,20 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                        uint64_t version) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) override;
+        bool synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         bool requiresFullSync(const std::string& index,
-                              const std::string& checksum,
-                              std::chrono::seconds timeout,
-                              unsigned int retries,
-                              size_t maxEps) override;
+                              const std::string& checksum) override;
 
         /// @copydoc IAgentSyncProtocol::clearInMemoryData
         void clearInMemoryData() override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
-        bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, uint64_t globalVersion) override;
+        bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
-        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, Option option = Option::SYNC) override;
+        bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
 
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
@@ -89,8 +93,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
 
-        /// @brief Functions used to interact with MQueue.
-        MQ_Functions m_mqFuncs;
+        /// @brief The message transport (MQueue or Router).
+        std::unique_ptr<ISyncMessageTransport> m_transport;
 
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
@@ -98,11 +102,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Logger function
         LoggerFunc m_logger;
 
-        /// @brief Queue
-        int m_queue = -1;
-
-        /// @brief Sent message counter for eps control
-        std::atomic<size_t> m_msgSent{0};
+        /// @brief Delay for synchronization end message in seconds
+        std::chrono::seconds m_syncEndDelay;
 
         /// @brief Stop flag to abort ongoing operations
         std::atomic<bool> m_stopRequested{false};
@@ -110,26 +111,25 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief In-memory vector to store PersistedData for recovery scenarios
         std::vector<PersistedData> m_inMemoryData;
 
-        /// @brief Ensures that the queue is available
-        /// @return True on success, false on failure
-        bool ensureQueueAvailable();
+        /// @brief Default timeout for synchronization operations
+        std::chrono::seconds m_timeout;
+
+        /// @brief Default number of retries for synchronization operations
+        unsigned int m_retries;
+
+        /// @brief Default maximum events per second for synchronization operations
+        size_t m_maxEps;
 
         /// @brief Sends a start message to the server
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
         /// @param uniqueIndices Vector of unique indices to be synchronized
-        /// @param timeout The timeout for each response wait.
-        /// @param retries The maximum number of re-send attempts.
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @param option Synchronization option.
         /// @param globalVersion Optional global version to include in the Start message
         /// @return True on success, false on failure or timeout
         bool sendStartAndWaitAck(Mode mode,
                                  size_t dataSize,
                                  const std::vector<std::string>& uniqueIndices,
-                                 const std::chrono::seconds timeout,
-                                 unsigned int retries,
-                                 size_t maxEps,
                                  Option option = Option::SYNC,
                                  std::optional<uint64_t> globalVersion = std::nullopt);
 
@@ -141,44 +141,32 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends data messages to the server
         /// @param session Session id
         /// @param data Data to send
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
         bool sendDataMessages(uint64_t session,
-                              const std::vector<PersistedData>& data,
-                              size_t maxEps);
+                              const std::vector<PersistedData>& data);
 
         /// @brief Sends a checksum module message to the server
         /// @param session Session id
         /// @param index Index name
         /// @param checksum Checksum value
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
         bool sendChecksumMessage(uint64_t session,
                                  const std::string& index,
-                                 const std::string& checksum,
-                                 size_t maxEps);
+                                 const std::string& checksum);
 
         /// @brief Sends DataClean messages to the server for each data item
         /// @param session Session id
         /// @param data Vector of PersistedData to send as DataClean messages
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
         bool sendDataCleanMessages(uint64_t session,
-                                   const std::vector<PersistedData>& data,
-                                   size_t maxEps);
+                                   const std::vector<PersistedData>& data);
 
         /// @brief Sends an end message to the server
         /// @param session Session id
-        /// @param timeout The timeout for each response wait.
-        /// @param retries The maximum number of re-send attempts.
         /// @param dataToSync The complete vector of data items being synchronized in the current session.
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure or timeout
         bool sendEndAndWaitAck(uint64_t session,
-                               const std::chrono::seconds timeout,
-                               unsigned int retries,
-                               const std::vector<PersistedData>& dataToSync,
-                               size_t maxEps);
+                               const std::vector<PersistedData>& dataToSync);
 
         /// @brief Receives an endack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -187,9 +175,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Sends a flatbuffer message as a string to the server
         /// @param fbData Flatbuffer data
-        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
-        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, size_t maxEps);
+        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData);
 
         /// @brief Defines the possible phases of a synchronization process.
         enum class SyncPhase

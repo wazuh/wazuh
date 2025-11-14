@@ -42,6 +42,7 @@ static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 // SCA sync protocol variables
 unsigned int sca_enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
+uint32_t sca_sync_end_delay = 1;                 // Database synchronization end message delay in seconds (default value)
 uint32_t sca_sync_response_timeout = 30;         // Database synchronization response timeout (default value)
 long sca_sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
 
@@ -182,7 +183,7 @@ static void wm_handle_sca_disable_and_notify_data_clean()
         if (sca_set_sync_parameters_ptr)
         {
             MQ_Functions mq_funcs = {.start = wm_sca_startmq, .send_binary = wm_sca_send_binary_msg};
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
         }
 
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
@@ -209,7 +210,7 @@ static void wm_handle_sca_disable_and_notify_data_clean()
         bool ret = false;
         while (!ret && !g_shutting_down)
         {
-            ret = sca_notify_data_clean_ptr(indices, 1, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
+            ret = sca_notify_data_clean_ptr(indices, 1);
             if (!ret)
             {
                 for (uint32_t i = 0; i < sca_sync_interval && !g_shutting_down; i++)
@@ -280,13 +281,22 @@ void * wm_sca_main(wm_sca_t * data) {
             sca_set_push_functions_ptr(wm_sca_send_stateless, wm_sca_persist_stateful);
         }
 
+        // Set synchronization parameters from config BEFORE setting sync protocol parameters
+        sca_enable_synchronization = data->sync.enable_synchronization;
+        if (sca_enable_synchronization) {
+            sca_sync_interval = data->sync.sync_interval;
+            sca_sync_end_delay = data->sync.sync_end_delay;
+            sca_sync_response_timeout = data->sync.sync_response_timeout;
+            sca_sync_max_eps = data->sync.sync_max_eps;
+        }
+
         // Set the sync protocol parameters
         if (sca_set_sync_parameters_ptr) {
             MQ_Functions mq_funcs = {
                 .start = wm_sca_startmq,
                 .send_binary = wm_sca_send_binary_msg
             };
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
         }
 
         // Set the yaml to cjson function
@@ -328,14 +338,6 @@ static int wm_sca_start(wm_sca_t *sca) {
     atomic_int_set(&g_n_msg_sent, 0);
 
     minfo("SCA message queue initialized successfully.");
-
-    // Set synchronization parameters
-    sca_enable_synchronization = sca->sync.enable_synchronization;
-    if (sca_enable_synchronization) {
-        sca_sync_interval = sca->sync.sync_interval;
-        sca_sync_response_timeout = sca->sync.sync_response_timeout;
-        sca_sync_max_eps = sca->sync.sync_max_eps;
-    }
 
     if (sca->max_eps) {
         g_max_eps = sca->max_eps;
@@ -402,6 +404,7 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     // Database synchronization values
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", data->sync.enable_synchronization ? "yes" : "no");
+    cJSON_AddNumberToObject(synchronization, "sync_end_delay", data->sync.sync_end_delay);
     cJSON_AddNumberToObject(synchronization, "interval", data->sync.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", data->sync.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "response_timeout", data->sync.sync_response_timeout);
@@ -497,7 +500,7 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         minfo("Running SCA synchronization.");
 
         if (sca_sync_module_ptr) {
-            sca_sync_module_ptr(MODE_DELTA, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
+            sca_sync_module_ptr(MODE_DELTA);
         } else {
             mdebug1("Sync function not available");
         }

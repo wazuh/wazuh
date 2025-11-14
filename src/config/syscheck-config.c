@@ -114,6 +114,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->queue_size                      = 16384;
 #endif
     syscheck->sync_interval                   = 300;
+    syscheck->sync_end_delay                  = 1;
     syscheck->sync_response_timeout           = 60;
     syscheck->sync_max_eps                    = 10;
     syscheck->integrity_interval              = 24 * 60 * 60;  // 24 hours
@@ -1208,6 +1209,7 @@ out_free:
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
      const char *xml_enabled = "enabled";
      const char *xml_sync_interval = "interval";
+     const char *xml_sync_end_delay = "sync_end_delay";
      const char *xml_response_timeout = "response_timeout";
      const char *xml_max_eps = "max_eps";
      const char *xml_integrity_interval = "integrity_interval";
@@ -1228,6 +1230,14 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                  mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
              } else {
                  syscheck->sync_interval = t;
+             }
+         } else if (strcmp(node[i]->element, xml_sync_end_delay) == 0) {
+             long sync_end_delay = w_parse_time(node[i]->content);
+
+             if (sync_end_delay < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_end_delay = (uint32_t) sync_end_delay;
              }
          } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
              long response_timeout = w_parse_time(node[i]->content);

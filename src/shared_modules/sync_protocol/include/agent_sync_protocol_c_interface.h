@@ -25,8 +25,12 @@ extern "C" {
 /// @param db_path The full path to the SQLite database file to be used.
 /// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @param logger Callback function used for logging messages.
+/// @param syncEndDelay Delay for synchronization end message in seconds
+/// @param timeout Default timeout for synchronization operations in seconds.
+/// @param retries Default number of retries for synchronization operations.
+/// @param maxEps Default maximum events per second for synchronization operations.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries, size_t maxEps);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
@@ -68,31 +72,19 @@ void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param mode Synchronization mode (e.g., full, delta).
-/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
-/// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
-/// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if the sync was successfully processed; false otherwise.
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                     Mode_t mode,
-                     unsigned int sync_timeout,
-                     unsigned int sync_retries,
-                     size_t max_eps);
+                     Mode_t mode);
 
 /// @brief Checks if a module index requires full synchronization.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param index The index/table to check.
 /// @param checksum The calculated checksum for the index.
-/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
-/// @param sync_retries The maximum number of attempts for re-sending messages.
-/// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if full sync is required (checksum mismatch); false if integrity is valid.
 bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                             const char* index,
-                            const char* checksum,
-                            unsigned int sync_timeout,
-                            unsigned int sync_retries,
-                            size_t max_eps);
+                            const char* checksum);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.
@@ -113,18 +105,12 @@ void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 /// @param mode Synchronization mode (must be MODE_METADATA_DELTA, MODE_METADATA_CHECK, MODE_GROUP_DELTA, or MODE_GROUP_CHECK)
 /// @param indices Array of index name strings that will be updated by the manager.
 /// @param indices_count Number of indices in the array.
-/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
-/// @param sync_retries The maximum number of attempts for re-sending messages.
-/// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @param global_version Global version to include in the Start message
 /// @return true if synchronization completed successfully, false otherwise
 bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
                                  Mode_t mode,
                                  const char** indices,
                                  size_t indices_count,
-                                 unsigned int sync_timeout,
-                                 unsigned int sync_retries,
-                                 size_t max_eps,
                                  uint64_t global_version);
 
 /// @brief Notifies the manager about data cleaning for specified indices.
@@ -135,16 +121,10 @@ bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param indices Array of index name strings to clean.
 /// @param indices_count Number of indices in the array.
-/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
-/// @param sync_retries The maximum number of attempts for re-sending messages.
-/// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if notification completed successfully and database was cleared, false otherwise
 bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                            const char** indices,
-                           size_t indices_count,
-                           unsigned int sync_timeout,
-                           unsigned int sync_retries,
-                           size_t max_eps);
+                           size_t indices_count);
 
 /// @brief Deletes the database file.
 ///

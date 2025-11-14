@@ -77,7 +77,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             {
                 std::cout << s << std::endl;
             }
-                          );
+                              , syncEndDelay, max_timeout, retries, maxEps);
             asp_destroy(handle);
         }
 
@@ -94,6 +94,7 @@ class AgentSyncProtocolTest : public ::testing::Test
         const unsigned int retries = 1;
         const unsigned int maxEps = 100;
         const unsigned int delay = 100;
+        const unsigned int syncEndDelay = 1;
         const uint8_t min_timeout = 1;
         const uint8_t max_timeout = 3;
 };
@@ -110,7 +111,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     const std::string testId = "test_id";
     const std::string testIndex = "test_index";
@@ -136,7 +137,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     const std::string testId = "test_id";
     const std::string testIndex = "test_index";
@@ -162,7 +163,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceInMemorySuccess)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     const std::string testId = "memory_test_id";
     const std::string testIndex = "memory_test_index";
@@ -186,13 +187,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     bool result = protocol->synchronizeModule(
-                      Mode::DELTA,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::DELTA
                   );
 
     EXPECT_FALSE(result);
@@ -210,16 +208,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsExceptio
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     bool result = protocol->synchronizeModule(
-                      Mode::DELTA,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::DELTA
                   );
 
     EXPECT_FALSE(result);
@@ -237,16 +232,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
     .WillOnce(Return(std::vector<PersistedData> {}));
 
     bool result = protocol->synchronizeModule(
-                      Mode::DELTA,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::DELTA
                   );
 
     EXPECT_TRUE(result);
@@ -265,17 +257,14 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithEmptyInMemoryData)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     // Expect NO calls to fetchAndMarkForSync since FULL mode uses in-memory data
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
     .Times(0);
 
     bool result = protocol->synchronizeModule(
-                      Mode::FULL,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::FULL
                   );
 
     EXPECT_TRUE(result);  // Should return true for empty in-memory data
@@ -293,7 +282,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Add some in-memory data
     protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
@@ -313,10 +302,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::FULL,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::FULL
                       );
         EXPECT_TRUE(result);
     });
@@ -374,7 +360,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     // Add some in-memory data
     protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
@@ -387,10 +373,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
 
     // Simulate synchronization failure (timeout)
     bool result = protocol->synchronizeModule(
-                      Mode::FULL,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::FULL
                   );
 
     EXPECT_FALSE(result);  // Should fail due to timeout
@@ -411,7 +394,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     // Expect NO calls to any queue methods since validation should fail early
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -425,10 +408,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
     Mode invalidMode = static_cast<Mode>(999);
 
     bool result = protocol->synchronizeModule(
-                      invalidMode,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      invalidMode
                   );
 
     EXPECT_FALSE(result);  // Should fail due to invalid mode validation
@@ -446,7 +426,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -461,10 +441,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
     .Times(1);
 
     bool result = protocol->synchronizeModule(
-                      Mode::DELTA,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::DELTA
                   );
 
     EXPECT_FALSE(result);
@@ -482,7 +459,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -500,10 +477,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -543,7 +517,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartAckTimeout)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -558,10 +532,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartAckTimeout)
     .Times(1);
 
     bool result = protocol->synchronizeModule(
-                      Mode::DELTA,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::DELTA
                   );
 
     EXPECT_FALSE(result);
@@ -588,7 +559,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendDataMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendDataMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -606,10 +577,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -658,7 +626,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendEndMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendEndMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -676,10 +644,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -719,7 +684,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -737,10 +702,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -800,7 +762,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -818,10 +780,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -881,7 +840,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -899,10 +858,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -984,7 +940,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingReqRetDataMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingReqRetDataMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -1002,10 +958,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -1074,7 +1027,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -1092,10 +1045,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result);
     });
@@ -1136,7 +1086,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -1154,10 +1104,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_TRUE(result);
     });
@@ -1218,7 +1165,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -1236,10 +1183,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_TRUE(result);
     });
@@ -1337,7 +1281,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Create some sample data for synchronization to make it successful
     std::vector<PersistedData> testData =
@@ -1356,7 +1300,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     // Start synchronization in background
     std::thread syncThread([this]()
     {
-        bool result = protocol->synchronizeModule(Mode::DELTA, std::chrono::seconds(max_timeout), retries, maxEps);
+        bool result = protocol->synchronizeModule(Mode::DELTA);
         EXPECT_TRUE(result); // Should still return true despite the exception in finalization
     });
 
@@ -1417,7 +1361,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithNullBuffer)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     bool response = protocol->parseResponseBuffer(nullptr, 0);
 
@@ -1436,7 +1380,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     flatbuffers::FlatBufferBuilder builder;
 
@@ -1469,7 +1413,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingStartAck phase
     std::thread syncThread([this]()
@@ -1483,10 +1427,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -1527,7 +1468,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingStartAck phase
     std::thread syncThread([this]()
@@ -1541,10 +1482,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -1585,7 +1523,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingStartAck phase
     std::thread syncThread([this]()
@@ -1599,10 +1537,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -1643,7 +1578,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     flatbuffers::FlatBufferBuilder builder;
 
@@ -1676,7 +1611,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingEndAck phase
     std::thread syncThread([this]()
@@ -1690,10 +1625,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -1754,7 +1686,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingEndAck phase
     std::thread syncThread([this]()
@@ -1768,10 +1700,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -1832,7 +1761,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingEndAck phase
     std::thread syncThread([this]()
@@ -1846,10 +1775,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -1910,7 +1836,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     flatbuffers::FlatBufferBuilder builder;
 
@@ -1949,7 +1875,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingEndAck phase
     std::thread syncThread([this]()
@@ -1963,10 +1889,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -2027,7 +1950,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingEndAck phase
     std::thread syncThread([this]()
@@ -2041,10 +1964,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Mode::DELTA,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
+            Mode::DELTA
         );
     });
 
@@ -2111,7 +2031,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnknownMessageType)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     flatbuffers::FlatBufferBuilder builder;
 
@@ -2137,7 +2057,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "matching_checksum";
@@ -2151,10 +2071,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
     {
         bool result = protocol->requiresFullSync(
                           testIndex,
-                          testChecksum,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          testChecksum
                       );
         EXPECT_FALSE(result);
     });
@@ -2212,7 +2129,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "non_matching_checksum";
@@ -2226,10 +2143,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     {
         bool result = protocol->requiresFullSync(
                           testIndex,
-                          testChecksum,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          testChecksum
                       );
         EXPECT_TRUE(result);
     });
@@ -2288,17 +2202,14 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncNoQueueAvailable)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
     bool result = protocol->requiresFullSync(
                       testIndex,
-                      testChecksum,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      testChecksum
                   );
 
     EXPECT_FALSE(result);
@@ -2316,17 +2227,14 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
     bool result = protocol->requiresFullSync(
                       testIndex,
-                      testChecksum,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      testChecksum
                   );
 
     EXPECT_FALSE(result);
@@ -2344,17 +2252,14 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncStartAckTimeout)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
     bool result = protocol->requiresFullSync(
                       testIndex,
-                      testChecksum,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      testChecksum
                   );
 
     EXPECT_FALSE(result);
@@ -2395,7 +2300,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendChecksumMessageFails)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingChecksumMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingChecksumMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
@@ -2405,10 +2310,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendChecksumMessageFails)
     {
         bool result = protocol->requiresFullSync(
                           testIndex,
-                          testChecksum,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          testChecksum
                       );
         EXPECT_FALSE(result); // Should fail due to ChecksumModule message failure
     });
@@ -2463,14 +2365,11 @@ TEST_F(AgentSyncProtocolTest, EnsureQueueAvailableException)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     // Try to synchronize, which should trigger ensureQueueAvailable() and catch the exception
     bool result = protocol->synchronizeModule(
-                      Mode::DELTA,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::DELTA
                   );
 
     EXPECT_FALSE(result); // Should fail due to exception in ensureQueueAvailable
@@ -2505,7 +2404,7 @@ TEST_F(AgentSyncProtocolTest, SendStartAndWaitAckException)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Set up mock data for synchronization to trigger sendStartAndWaitAck
     std::vector<PersistedData> testData =
@@ -2518,10 +2417,7 @@ TEST_F(AgentSyncProtocolTest, SendStartAndWaitAckException)
 
     // Try to synchronize, which should trigger sendStartAndWaitAck and catch the exception
     bool result = protocol->synchronizeModule(
-                      Mode::DELTA,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::DELTA
                   );
 
     EXPECT_FALSE(result); // Should fail due to exception in sendStartAndWaitAck
@@ -2567,7 +2463,7 @@ TEST_F(AgentSyncProtocolTest, SendDataMessagesException)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Set up mock data for synchronization to trigger sendDataMessages
     std::vector<PersistedData> testData =
@@ -2583,10 +2479,7 @@ TEST_F(AgentSyncProtocolTest, SendDataMessagesException)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result); // Should fail due to exception in sendDataMessages
     });
@@ -2630,7 +2523,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataWithEmptyData)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Clear empty in-memory data should not throw
     EXPECT_NO_THROW(protocol->clearInMemoryData());
@@ -2648,7 +2541,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataWithData)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Add some in-memory data
     protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
@@ -2671,7 +2564,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     // Add some in-memory data
     protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
@@ -2685,10 +2578,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
 
     // Simulate synchronization failure (timeout)
     bool result = protocol->synchronizeModule(
-                      Mode::FULL,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps
+                      Mode::FULL
                   );
 
     EXPECT_FALSE(result);  // Should fail due to timeout
@@ -2715,7 +2605,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataMultipleTimes)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Add data and clear multiple times
     protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
@@ -2744,7 +2634,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -2757,9 +2647,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::METADATA_DELTA,
                           testIndices,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps,
                           12345 // globalVersion
                       );
         EXPECT_TRUE(result);
@@ -2818,7 +2705,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -2831,9 +2718,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::METADATA_CHECK,
                           testIndices,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps,
                           12345 // globalVersion
                       );
         EXPECT_TRUE(result);
@@ -2892,7 +2776,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -2905,9 +2789,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_DELTA,
                           testIndices,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps,
                           12345 // globalVersion
                       );
         EXPECT_TRUE(result);
@@ -2966,7 +2847,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
@@ -2979,9 +2860,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_CHECK,
                           testIndices,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps,
                           12345 // globalVersion
                       );
         EXPECT_TRUE(result);
@@ -3040,16 +2918,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithInvalidMode)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     // Try with Mode::DELTA (not allowed for synchronizeMetadataOrGroups)
     std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     bool result = protocol->synchronizeMetadataOrGroups(
                       Mode::DELTA,
                       testIndices,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps,
                       12345 // globalVersion
                   );
 
@@ -3069,15 +2944,12 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     bool result = protocol->synchronizeMetadataOrGroups(
                       Mode::METADATA_DELTA,
                       testIndices,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps,
                       12345 // globalVersion
                   );
 
@@ -3096,16 +2968,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsStartAckTimeout)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     // Don't send any response, causing timeout
     std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     bool result = protocol->synchronizeMetadataOrGroups(
                       Mode::METADATA_CHECK,
                       testIndices,
-                      std::chrono::seconds(min_timeout),
-                      retries,
-                      maxEps,
                       12345 // globalVersion
                   );
 
@@ -3124,7 +2993,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
@@ -3133,9 +3002,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_DELTA,
                           testIndices,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps,
                           12345 // globalVersion
                       );
         EXPECT_FALSE(result);
@@ -3177,7 +3043,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithStartAckError)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
@@ -3186,9 +3052,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithStartAckError)
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::METADATA_DELTA,
                           testIndices,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps,
                           12345 // globalVersion
                       );
         EXPECT_FALSE(result);
@@ -3228,7 +3091,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Start synchronizeMetadataOrGroups in a separate thread
     std::thread syncThread([this]()
@@ -3237,9 +3100,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
         bool result = protocol->synchronizeMetadataOrGroups(
                           Mode::GROUP_CHECK,
                           testIndices,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps,
                           12345 // globalVersion
                       );
         EXPECT_FALSE(result);
@@ -3299,7 +3159,7 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseCallsQueueDeleteDatabase)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     EXPECT_CALL(*mockQueue, deleteDatabase())
     .Times(1);
@@ -3330,7 +3190,7 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseThrowsOnQueueError)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     EXPECT_CALL(*mockQueue, deleteDatabase())
     .WillOnce(::testing::Throw(std::runtime_error("Database deletion failed")));
@@ -3353,7 +3213,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithEmptyIndices)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> emptyIndices;
 
@@ -3361,7 +3221,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithEmptyIndices)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(emptyIndices, std::chrono::seconds(min_timeout), retries, maxEps);
+    bool result = protocol->notifyDataClean(emptyIndices);
 
     EXPECT_FALSE(result); // Should fail with empty indices
 }
@@ -3378,7 +3238,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoQueueAvailable)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1", "test_index_2"};
 
@@ -3386,7 +3246,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoQueueAvailable)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+    bool result = protocol->notifyDataClean(indices);
 
     EXPECT_FALSE(result);
 }
@@ -3403,7 +3263,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendStartFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendMqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1", "test_index_2"};
 
@@ -3411,7 +3271,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendStartFails)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+    bool result = protocol->notifyDataClean(indices);
 
     EXPECT_FALSE(result);
 }
@@ -3428,7 +3288,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1"};
 
@@ -3436,7 +3296,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+    bool result = protocol->notifyDataClean(indices);
 
     EXPECT_FALSE(result); // Should fail due to timeout
 }
@@ -3453,7 +3313,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1"};
 
@@ -3464,7 +3324,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+        bool result = protocol->notifyDataClean(indices);
         EXPECT_FALSE(result); // Should fail due to manager error
     });
 
@@ -3502,7 +3362,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckTimeout)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1"};
 
@@ -3513,7 +3373,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckTimeout)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+        bool result = protocol->notifyDataClean(indices);
         EXPECT_FALSE(result); // Should fail due to timeout
     });
 
@@ -3555,7 +3415,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckError)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1"};
 
@@ -3566,7 +3426,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckError)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+        bool result = protocol->notifyDataClean(indices);
         EXPECT_FALSE(result); // Should fail due to manager error
     });
 
@@ -3623,7 +3483,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanClearItemsByIndexThrows)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1"};
 
@@ -3634,7 +3494,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanClearItemsByIndexThrows)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+        bool result = protocol->notifyDataClean(indices);
         EXPECT_FALSE(result); // Should fail due to clearItemsByIndex exception
     });
 
@@ -3691,7 +3551,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithSingleIndex)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1"};
 
@@ -3702,7 +3562,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithSingleIndex)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+        bool result = protocol->notifyDataClean(indices);
         EXPECT_TRUE(result); // Should succeed
     });
 
@@ -3759,7 +3619,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithMultipleIndices)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1", "test_index_2", "test_index_3"};
 
@@ -3774,7 +3634,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithMultipleIndices)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+        bool result = protocol->notifyDataClean(indices);
         EXPECT_TRUE(result); // Should succeed
     });
 
@@ -3850,7 +3710,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendDataCleanMessagesException)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::vector<std::string> indices = {"test_index_1"};
 
@@ -3861,7 +3721,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendDataCleanMessagesException)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices, std::chrono::seconds(min_timeout), retries, maxEps);
+        bool result = protocol->notifyDataClean(indices);
         EXPECT_FALSE(result); // Should fail due to exception in sendDataCleanMessages
     });
 
@@ -3913,13 +3773,13 @@ TEST_F(AgentSyncProtocolTest, SendChecksumMessageException)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, mockQueue);
+    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     std::string index = "test_index";
     std::string checksum = "test_checksum";
 
     // This should trigger the exception and catch block through requiresFullSync
-    bool result = testProtocol->requiresFullSync(index, checksum, std::chrono::seconds(1), retries, maxEps);
+    bool result = testProtocol->requiresFullSync(index, checksum);
 
     // The method should return false when an exception occurs
     EXPECT_FALSE(result);
@@ -3959,7 +3819,7 @@ TEST_F(AgentSyncProtocolTest, SendEndMessageException)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, mockQueue);
+    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Set up mock data for synchronization
     std::vector<PersistedData> testData =
@@ -3974,10 +3834,7 @@ TEST_F(AgentSyncProtocolTest, SendEndMessageException)
     std::thread syncThread([&testProtocol, this]()
     {
         bool result = testProtocol->synchronizeModule(
-                          Mode::DELTA,
-                          std::chrono::seconds(max_timeout),
-                          retries,
-                          maxEps
+                          Mode::DELTA
                       );
         EXPECT_FALSE(result); // Should fail due to exception in sendEndAndWaitAck
     });
