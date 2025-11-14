@@ -24,10 +24,6 @@
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <cmstore/cmstore.hpp>
-<<<<<<< HEAD
-=======
-//#include <cmsync/cmsync.hpp>
->>>>>>> 0920aac1b0 (Replace store for cmstore and modify interfaces)
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -232,10 +228,6 @@ int main(int argc, char* argv[])
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
-<<<<<<< HEAD
-=======
-    // std::shared_ptr<cm::sync::CMSync> cmsync;
->>>>>>> 0920aac1b0 (Replace store for cmstore and modify interfaces)
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
     std::shared_ptr<cm::store::CMStore> cmStore;
@@ -478,7 +470,7 @@ int main(int argc, char* argv[])
                     std::make_shared<builder::AllowedFields>(base::getResponse<store::Doc>(allowedFieldsDoc));
             }
 
-            builder = std::make_shared<builder::Builder>(nullptr /*cm::store::CMStore*/, schema, defs, allowedFields, builderDeps);
+            builder = std::make_shared<builder::Builder>(cmStore, schema, defs, allowedFields, builderDeps);
             LOG_INFO("Builder initialized.");
         }
 
@@ -545,13 +537,13 @@ int main(int argc, char* argv[])
         //     LOG_INFO("CTI Store initialized");
 
             // TODO: Find a better way to do this - This cannot going to production
-            if (orchestrator->getEntries().empty())
-            {
-                try
-                {
-                    LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
-                }
-            }
+            // if (orchestrator->getEntries().empty())
+            // {
+            //     try
+            //     {
+            //         LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
+            //     }
+            // }
 
         //     // TODO: Find a better way to do this - This cannot going to production
         //     if (orchestrator->getEntries().empty())
@@ -598,7 +590,7 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Router API registered.");
 
             // Tester
-            api::tester::handlers::registerHandlers(orchestrator, store, apiServer);
+            api::tester::handlers::registerHandlers(orchestrator, cmStore, apiServer);
             LOG_DEBUG("Tester API registered.");
 
             // Archiver

@@ -19,7 +19,7 @@ class Builder::Registry final : public builders::RegistryType
 {
 };
 
-Builder::Builder(const std::shared_ptr<cm::store::ICMstore>& cmStore,
+Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                  const std::shared_ptr<IAllowedFields>& allowedFields,
@@ -95,9 +95,13 @@ base::OptError Builder::validateIntegration(const base::Name& name, const cm::st
 
     for (const auto& uuid : integration.getKVDBsByUUID())
     {
-        if (!nsReader->kvdbExistsByUUID(uuid))
+        try
         {
-            return base::Error {fmt::format("KVDB UUID '{}' does not exist in the namespace.", uuid)};
+            nsReader->getKVDBByUUID(uuid);
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {e.what()};
         }
     }
 

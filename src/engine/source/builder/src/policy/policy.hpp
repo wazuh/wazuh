@@ -40,7 +40,7 @@ public:
      * production environment.
      */
     Policy(const cm::store::NamespaceId& namespaceId,
-           const std::shared_ptr<cm::store::ICMstore>& cmStore,
+           const std::shared_ptr<cm::store::ICMStore>& cmStore,
            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
            const std::shared_ptr<builders::RegistryType>& registry,
            const std::shared_ptr<schemf::IValidator>& schema,

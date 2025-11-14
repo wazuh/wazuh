@@ -3,8 +3,8 @@
 
 #include <api/adapter/adapter.hpp>
 #include <base/eventParser.hpp>
+#include <cmstore/icmstore.hpp>
 #include <router/iapi.hpp>
-#include <store/istore.hpp>
 
 namespace api::tester::handlers
 {
@@ -17,11 +17,11 @@ adapter::RouteHandler sessionReload(const std::shared_ptr<::router::ITesterAPI>&
 adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester);
 // Use of session
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                              const std::shared_ptr<store::IStoreReader>& store,
+                              const std::shared_ptr<cm::store::ICMStore>& store,
                               const base::eventParsers::ProtocolHandler& protocolHandler);
 
 inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester,
-                             const std::shared_ptr<store::IStoreReader>& store,
+                             const std::shared_ptr<cm::store::ICMStore>& store,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/tester/session/post", sessionPost(tester));

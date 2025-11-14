@@ -212,8 +212,8 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
                                            [integrationCategory, integrationName, name](auto e)
                                            {
                                                {
-                                                   e->setString(syntax::asset::CATEGORY_PATH, integrationCategory);
-                                                   e->setString(syntax::asset::INTEGRATION_PATH, integrationName);
+                                                   e->setString(integrationCategory, syntax::asset::CATEGORY_PATH);
+                                                   e->setString(integrationName, syntax::asset::INTEGRATION_PATH);
                                                    e->appendString(name.toStr(), syntax::asset::DECODERS_PATH);
                                                }
                                                return base::result::makeSuccess(e, "");

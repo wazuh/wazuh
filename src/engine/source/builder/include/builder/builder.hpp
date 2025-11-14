@@ -40,7 +40,7 @@ class Builder final
 private:
     class Registry;
 
-    std::shared_ptr<cm::store::ICMstore> m_cmStore;                  ///< CMStore interface
+    std::shared_ptr<cm::store::ICMStore> m_cmStore;                  ///< CMStore interface
     std::shared_ptr<schemf::IValidator> m_schema;                    ///< Schema validator
     std::shared_ptr<defs::IDefinitionsBuilder> m_definitionsBuilder; ///< Definitions builder
     std::shared_ptr<IAllowedFields> m_allowedFields; ///< Manages wich fields can be modified by different assets
@@ -60,7 +60,7 @@ public:
      * @param allowedFields Manages wich fields can be modified by different assets
      * @param builderDeps Builders dependencies
      */
-    Builder(const std::shared_ptr<cm::store::ICMstore>& cmStore,
+    Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
             const std::shared_ptr<schemf::IValidator>& schema,
             const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
             const std::shared_ptr<IAllowedFields>& allowedFields,
