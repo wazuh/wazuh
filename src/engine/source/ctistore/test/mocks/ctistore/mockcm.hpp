@@ -10,11 +10,15 @@ namespace cti::store
 class MockCMReader : public ICMReader
 {
 public:
+    // Synchronization
+    MOCK_METHOD(ReadGuard, acquireReadGuard, (), (const, override));
+    MOCK_METHOD(WriteGuard, acquireWriteGuard, (), (override));
+
     // Asset operations
     MOCK_METHOD(std::vector<base::Name>, getAssetList, (cti::store::AssetType type), (const, override));
     MOCK_METHOD(json::Json, getAsset, (const base::Name& name), (const, override));
     MOCK_METHOD(bool, assetExists, (const base::Name& name), (const, override));
-    MOCK_METHOD(std::string, resolvNameFromUUID, (const std::string& uuid), (const, override));
+    MOCK_METHOD(std::string, resolveNameFromUUID, (const std::string& uuid), (const, override));
 
     // KVDB operations
     MOCK_METHOD(std::vector<std::string>, listKVDB, (), (const, override));
@@ -29,6 +33,5 @@ public:
     MOCK_METHOD(bool, policyExists, (const base::Name& name), (const, override));
 };
 } // namespace cti::store
-
 
 #endif // _MOCKS_CM_IREADER_HPP

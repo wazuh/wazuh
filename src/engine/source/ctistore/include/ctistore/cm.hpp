@@ -25,7 +25,9 @@ using ContentDeployCallback = std::function<void(const std::shared_ptr<cti::stor
  * This class manages the CTI Store, providing access to downloaded assets
  * and handling content synchronization from the remote CTI platform.
  */
-class ContentManager : public ICMReader, public std::enable_shared_from_this<ContentManager>
+class ContentManager
+    : public ICMReader
+    , public std::enable_shared_from_this<ContentManager>
 {
 public:
     /**
@@ -44,6 +46,12 @@ public:
     /************************************************************************************
      * ICMReader interface implementation
      ************************************************************************************/
+
+    /** @copydoc ICMReader::acquireReadGuard */
+    ReadGuard acquireReadGuard() const override;
+
+    /** @copydoc ICMReader::acquireWriteGuard */
+    WriteGuard acquireWriteGuard() override;
 
     /** @copydoc ICMReader::getAssetList */
     std::vector<base::Name> getAssetList(cti::store::AssetType type) const override;
