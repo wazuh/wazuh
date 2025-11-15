@@ -21,10 +21,10 @@ Incoming FlatBuffer messages from agents are processed and grouped into **bulk o
     </hosts>
     <ssl>
       <certificate_authorities>
-        <ca>/etc/filebeat/certs/root-ca.pem</ca>
+        <ca>/var/ossec/etc/certs/root-ca.pem</ca>
       </certificate_authorities>
-      <certificate>/etc/filebeat/certs/filebeat.pem</certificate>
-      <key>/etc/filebeat/certs/filebeat-key.pem</key>
+      <certificate>/var/ossec/etc/certs/server.pem</certificate>
+      <key>/var/ossec/etc/certs/server-key.pem</key>
     </ssl>
   </indexer>
 ```
