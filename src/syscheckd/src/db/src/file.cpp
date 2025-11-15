@@ -371,6 +371,45 @@ FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_
     return retVal;
 }
 
+int fim_db_get_max_version_file()
+{
+    auto maxVersion {0};
+
+    try
+    {
+        maxVersion = DB::instance().maxVersion(FIMDB_FILE_TABLE_NAME);
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
+
+    return maxVersion;
+}
+
+int fim_db_set_version_file(int version)
+{
+    auto retval {-1};
+
+    try
+    {
+        retval = DB::instance().updateVersion(FIMDB_FILE_TABLE_NAME, version);
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        retval = -1;
+    }
+
+    // LCOV_EXCL_STOP
+
+    return retval;
+}
+
 #ifdef __cplusplus
 }
 #endif

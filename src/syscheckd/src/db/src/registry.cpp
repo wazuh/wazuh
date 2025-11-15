@@ -66,6 +66,57 @@ int fim_db_get_count_registry_data()
     return count;
 }
 
+int fim_db_get_max_version_registry()
+{
+    auto maxVersionKey {0};
+    auto maxVersionValue {0};
+
+    try
+    {
+        maxVersionKey = DB::instance().maxVersion(FIMDB_REGISTRY_KEY_TABLENAME);
+        maxVersionValue = DB::instance().maxVersion(FIMDB_REGISTRY_VALUE_TABLENAME);
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
+
+    return maxVersionKey > maxVersionValue ? maxVersionKey : maxVersionValue;
+}
+
+int fim_db_set_version_registry(int version)
+{
+    auto retval {-1};
+
+    try
+    {
+        int result_key = DB::instance().updateVersion(FIMDB_REGISTRY_KEY_TABLENAME, version);
+        int result_value = DB::instance().updateVersion(FIMDB_REGISTRY_VALUE_TABLENAME, version);
+
+        if (result_key != 0 || result_value != 0)
+        {
+            retval = -1;
+        }
+        else
+        {
+            retval = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        retval = -1;
+    }
+
+    // LCOV_EXCL_STOP
+
+    return retval;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -152,3 +152,209 @@ TEST_F(DBTestFixture, TestFimDBGetCountRegistryValueEntry)
         ASSERT_EQ(result, 0);
     });
 }
+
+TEST_F(DBTestFixture, TestFimDBGetMaxVersionRegistryEmptyDB)
+{
+    EXPECT_NO_THROW({
+        auto maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 0);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetMaxVersionRegistryWithKeyEntries)
+{
+    EXPECT_NO_THROW({
+        auto result = fim_db_get_max_version_registry();
+        ASSERT_EQ(result, 0);
+
+        // Transaction start
+        auto handler = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, transaction_callback, &txn_ctx);
+        ASSERT_TRUE(handler);
+
+        // Insert registry keys
+        const auto registryKeyFIMTest1 {std::make_unique<RegistryKey>(insertRegistryKeyStatement1)};
+        result = fim_db_transaction_sync_row(handler, registryKeyFIMTest1->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        const auto registryKeyFIMTest2 {std::make_unique<RegistryKey>(insertRegistryKeyStatement2)};
+        result = fim_db_transaction_sync_row(handler, registryKeyFIMTest2->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // End of transaction
+        result = fim_db_transaction_deleted_rows(handler, transaction_callback, &txn_ctx);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_registry(5);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 5);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetMaxVersionRegistryWithValueEntries)
+{
+    EXPECT_NO_THROW({
+        auto result = fim_db_get_max_version_registry();
+        ASSERT_EQ(result, 0);
+
+        // Transaction start
+        auto handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, transaction_callback, &txn_ctx);
+        ASSERT_TRUE(handler);
+
+        // Insert registry values
+        const auto registryValueFIMTest1 {std::make_unique<RegistryValue>(insertRegistryValueStatement1)};
+        result = fim_db_transaction_sync_row(handler, registryValueFIMTest1->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        const auto registryValueFIMTest2 {std::make_unique<RegistryValue>(insertRegistryValueStatement2)};
+        result = fim_db_transaction_sync_row(handler, registryValueFIMTest2->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // End of transaction
+        result = fim_db_transaction_deleted_rows(handler, transaction_callback, &txn_ctx);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_registry(7);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 7);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetMaxVersionRegistryWithBothTables)
+{
+    EXPECT_NO_THROW({
+        auto result = fim_db_get_max_version_registry();
+        ASSERT_EQ(result, 0);
+
+        // Transaction start for registry keys
+        auto handlerKey = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, transaction_callback, &txn_ctx);
+        ASSERT_TRUE(handlerKey);
+
+        // Insert registry key
+        const auto registryKeyFIMTest1 {std::make_unique<RegistryKey>(insertRegistryKeyStatement1)};
+        result = fim_db_transaction_sync_row(handlerKey, registryKeyFIMTest1->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // End of transaction
+        result = fim_db_transaction_deleted_rows(handlerKey, transaction_callback, &txn_ctx);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // Transaction start for registry values
+        auto handlerValue = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, transaction_callback, &txn_ctx);
+        ASSERT_TRUE(handlerValue);
+
+        // Insert registry value
+        const auto registryValueFIMTest1 {std::make_unique<RegistryValue>(insertRegistryValueStatement1)};
+        result = fim_db_transaction_sync_row(handlerValue, registryValueFIMTest1->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // End of transaction
+        result = fim_db_transaction_deleted_rows(handlerValue, transaction_callback, &txn_ctx);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_registry(10);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 10);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionRegistry)
+{
+    EXPECT_NO_THROW({
+        // Transaction start for registry keys
+        auto handlerKey = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, transaction_callback, &txn_ctx);
+        ASSERT_TRUE(handlerKey);
+
+        // Insert registry key
+        const auto registryKeyFIMTest1 {std::make_unique<RegistryKey>(insertRegistryKeyStatement1)};
+        auto result = fim_db_transaction_sync_row(handlerKey, registryKeyFIMTest1->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // End of transaction
+        result = fim_db_transaction_deleted_rows(handlerKey, transaction_callback, &txn_ctx);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_registry(15);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 15);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionRegistryMultipleTimes)
+{
+    EXPECT_NO_THROW({
+        // Transaction start for registry keys
+        auto handlerKey = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, transaction_callback, &txn_ctx);
+        ASSERT_TRUE(handlerKey);
+
+        // Insert registry keys
+        const auto registryKeyFIMTest1 {std::make_unique<RegistryKey>(insertRegistryKeyStatement1)};
+        auto result = fim_db_transaction_sync_row(handlerKey, registryKeyFIMTest1->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        const auto registryKeyFIMTest2 {std::make_unique<RegistryKey>(insertRegistryKeyStatement2)};
+        result = fim_db_transaction_sync_row(handlerKey, registryKeyFIMTest2->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // End of transaction
+        result = fim_db_transaction_deleted_rows(handlerKey, transaction_callback, &txn_ctx);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // Transaction start for registry values
+        auto handlerValue = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, transaction_callback, &txn_ctx);
+        ASSERT_TRUE(handlerValue);
+
+        // Insert registry values
+        const auto registryValueFIMTest1 {std::make_unique<RegistryValue>(insertRegistryValueStatement1)};
+        result = fim_db_transaction_sync_row(handlerValue, registryValueFIMTest1->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        const auto registryValueFIMTest2 {std::make_unique<RegistryValue>(insertRegistryValueStatement2)};
+        result = fim_db_transaction_sync_row(handlerValue, registryValueFIMTest2->toFimEntry());
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // End of transaction
+        result = fim_db_transaction_deleted_rows(handlerValue, transaction_callback, &txn_ctx);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_registry(5);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 5);
+
+        setResult = fim_db_set_version_registry(20);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 20);
+
+        setResult = fim_db_set_version_registry(35);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_registry();
+        ASSERT_EQ(maxVersion, 35);
+    });
+}

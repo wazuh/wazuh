@@ -149,3 +149,11 @@ void __wrap_fim_db_close_and_delete_database() {
 void __wrap_fim_db_update_last_sync_time(__attribute__((unused)) const char* table_name) {
     function_called();
 }
+
+int __wrap_fim_db_get_max_version_file() {
+    return mock_type(int);
+}
+
+int __wrap_fim_db_set_version_file() {
+    return mock_type(int);
+}

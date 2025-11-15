@@ -55,8 +55,9 @@ class AgentSyncProtocolTest : public ::testing::Test
             strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
             strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
             strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
-            metadata.groups = nullptr;
-            metadata.groups_count = 0;
+            char* groups[] = {const_cast<char*>("group1")};
+            metadata.groups = groups;
+            metadata.groups_count = 1;
             metadata_provider_update(&metadata);
 
             // Set logger via asp_create
@@ -3181,7 +3182,7 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseThrowsOnQueueError)
 
     bool errorLogged = false;
     std::string loggedMessage;
-    LoggerFunc testLogger = [&errorLogged, &loggedMessage](modules_log_level_t level, const std::string& message)
+    LoggerFunc testLogger = [&errorLogged, &loggedMessage](modules_log_level_t level, const std::string & message)
     {
         if (level == LOG_ERROR && message.find("Failed to delete database") != std::string::npos)
         {

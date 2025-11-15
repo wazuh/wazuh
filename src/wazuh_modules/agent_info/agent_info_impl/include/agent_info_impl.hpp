@@ -13,8 +13,10 @@
 
 #include <condition_variable>
 #include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -25,6 +27,15 @@ using module_query_callback_t = std::function<int(const std::string& module_name
 class AgentInfoImpl
 {
     public:
+        /// @brief Structure to represent a module query response
+        struct ModuleResponse
+        {
+            bool success;              ///< True if operation succeeded (error code 0)
+            std::string response;      ///< Raw response string
+            int errorCode;             ///< Parsed error code (0 if success)
+            bool isModuleUnavailable;  ///< True if error indicates module is unavailable (50-53)
+        };
+
         /// @brief Constructor
         /// @param dbPath Path to the database file
         /// @param reportDiffFunction Function to report stateless diffs
@@ -115,6 +126,9 @@ class AgentInfoImpl
         /// @param values Values to sync
         void updateChanges(const std::string& table, const nlohmann::json& values);
 
+        /// @brief Update db_metadata table with current in-memory state
+        void updateDbMetadata();
+
         /// @brief Set sync flag in database for a specific table
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
         /// @param value Flag value (true/false)
@@ -146,6 +160,52 @@ class AgentInfoImpl
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
         /// @return true if successful
         bool performIntegritySync(const std::string& table);
+
+        /// @brief Helper to create JSON command messages
+        /// @param command Command name
+        /// @param params Optional parameters map
+        /// @return JSON command string
+        std::string createJsonCommand(const std::string& command,
+                                      const std::map<std::string, nlohmann::json>& params = {}) const;
+
+        /// @brief Helper to query module with retries and error handling
+        /// @param moduleName Module name
+        /// @param jsonMessage JSON message to send
+        /// @return Module response with parsed information
+        ModuleResponse queryModuleWithRetry(const std::string& moduleName, const std::string& jsonMessage);
+
+        /// @brief Helper to resume all paused modules
+        /// @param pausedModules Set of paused module names to resume
+        void resumePausedModules(const std::set<std::string>& pausedModules);
+
+        /// @brief Poll FIM module for pause completion
+        /// @param moduleName Module name (should be FIM)
+        /// @return true if pause completed successfully, false otherwise
+        bool pollFimPauseCompletion(const std::string& moduleName);
+
+        /// @brief Poll FIM module for flush completion
+        /// @param moduleName Module name (should be FIM)
+        /// @return true if flush completed successfully, false otherwise
+        bool pollFimFlushCompletion(const std::string& moduleName);
+
+        /// @brief Pause all coordination modules
+        /// @param pausedModules Output parameter for successfully paused modules
+        /// @return true if at least one module was paused successfully
+        bool pauseCoordinationModules(std::set<std::string>& pausedModules);
+
+        /// @brief Flush all paused modules
+        /// @param pausedModules Set of paused modules to flush
+        /// @return true if all flushes succeeded, false otherwise
+        bool flushPausedModules(const std::set<std::string>& pausedModules);
+
+        /// @brief Get versions from all paused modules and calculate new version
+        /// @param pausedModules Set of paused modules
+        /// @param incrementVersion Whether to increment version (true for metadata, false for groups)
+        /// @param moduleVersions Output parameter for module versions
+        /// @return Calculated new version, or -1 on error
+        int calculateNewVersion(const std::set<std::string>& pausedModules,
+                                bool incrementVersion,
+                                std::map<std::string, int>& moduleVersions);
 
         /// @brief Pointer to IDBSync
         std::shared_ptr<IDBSync> m_dBSync;
@@ -206,6 +266,12 @@ class AgentInfoImpl
 
         /// @brief Last groups integrity check timestamp (Unix epoch seconds)
         int64_t m_lastGroupsIntegrity = 0;
+
+        /// @brief Flag indicating if this is the first run (database just created)
+        bool m_isFirstRun = true;
+
+        /// @brief Flag indicating if this is the first groups run (first population with data)
+        bool m_isFirstGroupsRun = true;
 
         /// @brief Mutex for synchronizing access to sync flags
         std::mutex m_syncFlagsMutex;

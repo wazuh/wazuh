@@ -115,6 +115,23 @@ class EXPORTED DB final
         int countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType);
 
         /**
+         * @brief maxVersion Get the maximum version from a table.
+         *
+         * @param tableName Table name.
+         * @return Maximum version value, 0 if no entries exist.
+         */
+        int maxVersion(const std::string& tableName);
+
+        /**
+         * @brief updateVersion Update the version column for all entries in a table.
+         *
+         * @param tableName Table name.
+         * @param version New version value to set.
+         * @return 0 on success, -1 on error.
+         */
+        int updateVersion(const std::string& tableName, int version);
+
+        /**
          * @brief updateFile Update/insert a file in the database.
          *
          * @param file File entry/data to update/insert.
