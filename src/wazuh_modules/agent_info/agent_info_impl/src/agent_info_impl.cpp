@@ -805,21 +805,25 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
 
 namespace
 {
-    /// @brief Structure to represent a module query response
-    struct ModuleResponse
+    /// @brief RAII wrapper for C-style strings allocated with malloc/strdup
+    struct CStringDeleter
     {
-        bool success;              ///< True if operation succeeded (error code 0)
-        std::string response;      ///< Raw response string
-        int errorCode;             ///< Parsed error code (0 if success)
-        bool isModuleUnavailable;  ///< True if error indicates module is unavailable (50-53)
+        void operator()(char* ptr) const
+        {
+            if (ptr)
+            {
+                free(ptr);
+            }
+        }
     };
+    using UniqueCString = std::unique_ptr<char, CStringDeleter>;
 
     /// @brief Parse JSON response and extract error information
     /// @param responseStr Raw JSON response string
     /// @return ModuleResponse with parsed information
-    ModuleResponse parseModuleResponse(const std::string& responseStr)
+    AgentInfoImpl::ModuleResponse parseModuleResponse(const std::string& responseStr)
     {
-        ModuleResponse result;
+        AgentInfoImpl::ModuleResponse result;
         result.response = responseStr;
         result.success = false;
         result.errorCode = -1;
@@ -843,19 +847,426 @@ namespace
 
         return result;
     }
+}
 
-    /// @brief RAII wrapper for C-style strings allocated with malloc/strdup
-    struct CStringDeleter
+std::string AgentInfoImpl::createJsonCommand(const std::string& command,
+                                             const std::map<std::string, nlohmann::json>& params) const
+{
+    nlohmann::json jsonCmd;
+    jsonCmd["command"] = command;
+
+    // Always include parameters field (even if empty)
+    nlohmann::json paramObj = nlohmann::json::object();
+
+    for (const auto& [key, value] : params)
     {
-        void operator()(char* ptr) const
+        paramObj[key] = value;
+    }
+
+    jsonCmd["parameters"] = paramObj;
+
+    return jsonCmd.dump();
+}
+
+AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::string& moduleName,
+                                                                  const std::string& jsonMessage)
+{
+    m_logFunction(LOG_DEBUG, "Sending JSON command to " + moduleName + ": " + jsonMessage);
+
+    for (int attempt = 1; attempt <= MAX_COORDINATION_RETRIES; ++attempt)
+    {
+        char* rawResponse = nullptr;
+        int result = m_queryModuleFunction(moduleName, jsonMessage, &rawResponse);
+
+        // Use RAII to manage C string memory
+        UniqueCString response(rawResponse);
+
+        // If no response received, create structured error JSON
+        std::string responseStr;
+
+        if (response)
         {
-            if (ptr)
+            responseStr = std::string(response.get());
+        }
+        else
+        {
+            // Create structured error response for null pointer
+            nlohmann::json errorJson;
+            errorJson["error"] = MQ_ERR_INTERNAL;
+            errorJson["message"] = "No response received from module query function";
+            responseStr = errorJson.dump();
+        }
+
+        // Parse response using helper function
+        ModuleResponse moduleResp = parseModuleResponse(responseStr);
+
+        // If query succeeded (error code 0), return immediately
+        if (result == 0 && moduleResp.success)
+        {
+            m_logFunction(LOG_DEBUG, moduleName + " query succeeded");
+            return moduleResp;
+        }
+
+        // If module is unavailable (disabled/not found/not running), return immediately without retrying
+        if (moduleResp.isModuleUnavailable)
+        {
+            m_logFunction(LOG_DEBUG, moduleName + " module is unavailable (error " +
+                          std::to_string(moduleResp.errorCode) + "): " + responseStr);
+            return moduleResp;
+        }
+
+        // For other errors, log and retry
+        m_logFunction(LOG_DEBUG, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_COORDINATION_RETRIES) +
+                      " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) + "): " + responseStr);
+
+        if (attempt < MAX_COORDINATION_RETRIES)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS));
+        }
+    }
+
+    m_logFunction(LOG_WARNING, "Failed to query " + moduleName + " after " + std::to_string(MAX_COORDINATION_RETRIES) + " attempts");
+
+    // Return failure response with structured error JSON
+    nlohmann::json errorJson;
+    errorJson["error"] = MQ_ERR_INTERNAL;
+    errorJson["message"] = "Max retries exceeded (" + std::to_string(MAX_COORDINATION_RETRIES) + " attempts)";
+
+    ModuleResponse failedResp;
+    failedResp.success = false;
+    failedResp.response = errorJson.dump();
+    failedResp.errorCode = MQ_ERR_INTERNAL;
+    failedResp.isModuleUnavailable = false;
+    return failedResp;
+}
+
+void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModules)
+{
+    for (const auto& module : pausedModules)
+    {
+        m_logFunction(LOG_DEBUG, "Resuming paused module: " + module);
+        std::string resumeMessage = createJsonCommand("resume");
+        ModuleResponse response = queryModuleWithRetry(module, resumeMessage);
+        m_logFunction(LOG_DEBUG, "Response from " + module + " resume: " + response.response);
+
+        if (!response.success)
+        {
+            m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response.response);
+        }
+    }
+}
+
+bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
+{
+    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30;  // 30 seconds max wait
+    constexpr int PAUSE_POLL_DELAY_MS = 1000;    // 1 second between polls
+
+    m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for pause completion (async pause)");
+
+    for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
+    {
+        std::string isPauseCompletedMessage = createJsonCommand("is_pause_completed");
+        ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isPauseCompletedMessage);
+
+        if (!pollResponse.success)
+        {
+            m_logFunction(LOG_WARNING, "Failed to poll pause status for " + moduleName + " (attempt " +
+                          std::to_string(attempt) + "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+            std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+            continue;
+        }
+
+        // Parse response to check pause status
+        try
+        {
+            nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
+
+            if (pollJson.contains("data") && pollJson["data"].contains("status"))
             {
-                free(ptr);
+                std::string status = pollJson["data"]["status"].get<std::string>();
+
+                if (status == "in_progress")
+                {
+                    m_logFunction(LOG_DEBUG, moduleName + " pause still in progress (attempt " +
+                                  std::to_string(attempt) + "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+                    continue;
+                }
+                else if (status == "completed")
+                {
+                    std::string result = pollJson["data"]["result"].get<std::string>();
+                    bool pauseSucceeded = (result == "success");
+
+                    m_logFunction(LOG_DEBUG, moduleName + " pause completed with result: " + result);
+
+                    if (!pauseSucceeded)
+                    {
+                        m_logFunction(LOG_ERROR, moduleName + " pause completed with error");
+                        return false;
+                    }
+
+                    m_logFunction(LOG_DEBUG, moduleName + " pause completed successfully");
+                    return true;
+                }
             }
         }
-    };
-    using UniqueCString = std::unique_ptr<char, CStringDeleter>;
+        catch (const std::exception& e)
+        {
+            m_logFunction(LOG_WARNING, "Failed to parse pause poll response from " + moduleName + ": " +
+                          std::string(e.what()) + " - Response: " + pollResponse.response);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+    }
+
+    m_logFunction(LOG_ERROR, moduleName + " pause did not complete within timeout (" +
+                  std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + " seconds)");
+    return false;
+}
+
+bool AgentInfoImpl::pollFimFlushCompletion(const std::string& moduleName)
+{
+    constexpr int FLUSH_POLL_DELAY_MS = 10000;            // 10 seconds between polls
+    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6;     // Log progress every 60 seconds (6 * 10s)
+    int attempt = 0;
+
+    m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for flush completion (async flush)");
+
+    // Poll until flush completes or module is stopped
+    while (!m_stopped)
+    {
+        attempt++;
+        std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
+        ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isFlushCompletedMessage);
+
+        if (!pollResponse.success)
+        {
+            m_logFunction(LOG_WARNING, "Failed to poll flush status for " + moduleName + " (attempt " +
+                          std::to_string(attempt) + "), will retry...");
+            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+            continue;
+        }
+
+        // Parse response to check flush status
+        try
+        {
+            nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
+
+            if (pollJson.contains("data") && pollJson["data"].contains("status"))
+            {
+                std::string status = pollJson["data"]["status"].get<std::string>();
+
+                if (status == "in_progress")
+                {
+                    // Log progress periodically to show we're still waiting
+                    if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
+                    {
+                        m_logFunction(LOG_INFO, moduleName + " flush still in progress (waiting " +
+                                      std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds so far)");
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_DEBUG, moduleName + " flush still in progress (attempt " +
+                                      std::to_string(attempt) + ")");
+                    }
+                }
+                else if (status == "completed")
+                {
+                    std::string result = pollJson["data"]["result"].get<std::string>();
+                    bool flushSucceeded = (result == "success");
+
+                    m_logFunction(LOG_INFO, moduleName + " flush completed with result: " + result +
+                                  " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds)");
+
+                    if (!flushSucceeded)
+                    {
+                        m_logFunction(LOG_ERROR, moduleName + " flush completed with error");
+                        return false;
+                    }
+
+                    m_logFunction(LOG_DEBUG, moduleName + " flush completed successfully");
+                    return true;
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            m_logFunction(LOG_WARNING, "Failed to parse flush poll response from " + moduleName + ": " +
+                          std::string(e.what()) + " - Response: " + pollResponse.response);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+    }
+
+    // Check if we exited due to module stopping
+    m_logFunction(LOG_INFO, "Module stopping, aborting flush polling for " + moduleName);
+    return false;
+}
+
+bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
+{
+    for (const auto& module : COORDINATION_MODULES)
+    {
+        std::string pauseMessage = createJsonCommand("pause");
+        ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
+        m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
+
+        if (response.success)
+        {
+            // FIM-specific: Poll for pause completion (pause is async for FIM)
+            if (module == FIM_NAME)
+            {
+                if (!pollFimPauseCompletion(module))
+                {
+                    m_logFunction(LOG_ERROR, module + " pause failed or timed out, aborting coordination");
+                    resumePausedModules(pausedModules);
+                    return false;
+                }
+            }
+            else
+            {
+                // Other modules: pause is synchronous, already completed
+                m_logFunction(LOG_DEBUG, "Successfully paused " + module);
+            }
+
+            pausedModules.insert(module);
+        }
+        else
+        {
+            // Distinguish between "module unavailable" and "communication error"
+            if (response.isModuleUnavailable)
+            {
+                // Module is disabled/not found/not running - skip it (not an error)
+                m_logFunction(LOG_DEBUG, "Skipping " + module + " (unavailable, error " +
+                              std::to_string(response.errorCode) + "): " + response.response);
+            }
+            else
+            {
+                // Communication error or other failure - abort coordination
+                m_logFunction(LOG_WARNING, "Failed to pause " + module + " (communication error " +
+                              std::to_string(response.errorCode) + "), aborting coordination: " + response.response);
+                resumePausedModules(pausedModules);
+                return false;
+            }
+        }
+    }
+
+    // Return true even if pausedModules is empty - this means all modules are unavailable,
+    // which is a valid state (not an error)
+    return true;
+}
+
+bool AgentInfoImpl::flushPausedModules(const std::set<std::string>& pausedModules)
+{
+    for (const auto& module : pausedModules)
+    {
+        std::string flushMessage = createJsonCommand("flush");
+        ModuleResponse response = queryModuleWithRetry(module, flushMessage);
+        m_logFunction(LOG_DEBUG, "Response from " + module + " flush: " + response.response);
+
+        if (!response.success)
+        {
+            m_logFunction(LOG_ERROR, "Failed to flush " + module + " (error " +
+                          std::to_string(response.errorCode) + "), aborting coordination");
+            return false;
+        }
+
+        m_logFunction(LOG_DEBUG, "Successfully requested flush for " + module);
+
+        // FIM-specific: Poll for flush completion (flush is async for FIM)
+        if (module == FIM_NAME)
+        {
+            if (!pollFimFlushCompletion(module))
+            {
+                m_logFunction(LOG_ERROR, module + " flush failed, timed out, or module stopped");
+                return false;
+            }
+        }
+        else
+        {
+            // Other modules: flush is synchronous, already completed
+            m_logFunction(LOG_DEBUG, "Successfully flushed " + module);
+        }
+    }
+
+    return true;
+}
+
+int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModules,
+                                       bool incrementVersion,
+                                       std::map<std::string, int>& moduleVersions)
+{
+    int globalMaxVersion = 0;
+
+    // Step 1: Get version from each module
+    for (const auto& module : pausedModules)
+    {
+        std::string getVersionMessage = createJsonCommand("get_version");
+        ModuleResponse response = queryModuleWithRetry(module, getVersionMessage);
+        m_logFunction(LOG_DEBUG, "Response from " + module + " get_version: " + response.response);
+
+        if (!response.success)
+        {
+            m_logFunction(LOG_ERROR, "Failed to get version from " + module + " (error " +
+                          std::to_string(response.errorCode) + "), aborting coordination");
+            return -1;
+        }
+
+        // Parse version from JSON format
+        int version = 0;
+
+        try
+        {
+            nlohmann::json responseJson = nlohmann::json::parse(response.response);
+
+            if (responseJson.contains("data") && responseJson["data"].contains("version") &&
+                    responseJson["data"]["version"].is_number())
+            {
+                version = responseJson["data"]["version"].get<int>();
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Invalid JSON response format from " + module + ": missing or invalid version data");
+                return -1;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " +
+                          std::string(e.what()) + " - Response: " + response.response);
+            return -1;
+        }
+
+        moduleVersions[module] = version;
+        globalMaxVersion = std::max(globalMaxVersion, version);
+        m_logFunction(LOG_DEBUG, module + " current version: " + std::to_string(version));
+    }
+
+    // Step 2: Calculate new version
+    // If incrementVersion is true (metadata update): newVersion = max + 1
+    // If incrementVersion is false (groups update): newVersion = max
+    int newVersion = incrementVersion ? (globalMaxVersion + 1) : globalMaxVersion;
+    m_logFunction(LOG_DEBUG, "Calculated new global version: " + std::to_string(newVersion) +
+                  (incrementVersion ? " (max + 1 for metadata update)" : " (max for groups update)"));
+
+    // Step 3: Set new version on all modules
+    for (const auto& module : pausedModules)
+    {
+        std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
+        ModuleResponse response = queryModuleWithRetry(module, setVersionMessage);
+        m_logFunction(LOG_DEBUG, "Response from " + module + " set_version: " + response.response);
+
+        if (!response.success)
+        {
+            m_logFunction(LOG_WARNING, "Failed to set version on " + module + " (error " +
+                          std::to_string(response.errorCode) + "), aborting coordination");
+            return -1;
+        }
+
+        m_logFunction(LOG_DEBUG, "Successfully set version " + std::to_string(newVersion) + " on " + module);
+    }
+
+    return newVersion;
 }
 
 bool AgentInfoImpl::coordinateModules(const std::string& table)
@@ -878,235 +1289,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
     m_logFunction(LOG_DEBUG, "Starting module coordination process");
 
-    // Helper function to create JSON command messages
-    auto createJsonCommand = [](const std::string & command, const std::map<std::string, nlohmann::json>& params = {}) -> std::string
-    {
-        nlohmann::json jsonCmd;
-
-        jsonCmd["command"] = command;
-
-        // Always include parameters field (even if empty)
-        nlohmann::json paramObj = nlohmann::json::object();
-
-        for (const auto& [key, value] : params)
-        {
-            paramObj[key] = value;
-        }
-
-        jsonCmd["parameters"] = paramObj;
-
-        return jsonCmd.dump();
-    };
-
-    // Helper function to query module with retries and error handling using JSON format
-    auto queryModuleWithRetry = [this](const std::string & moduleName, const std::string & jsonMessage) -> ModuleResponse
-    {
-        m_logFunction(LOG_DEBUG, "Sending JSON command to " + moduleName + ": " + jsonMessage);
-
-        for (int attempt = 1; attempt <= MAX_COORDINATION_RETRIES; ++attempt)
-        {
-            char* rawResponse = nullptr;
-            int result = m_queryModuleFunction(moduleName, jsonMessage, &rawResponse);
-
-            // Use RAII to manage C string memory
-            UniqueCString response(rawResponse);
-
-            // If no response received, create structured error JSON
-            std::string responseStr;
-
-            if (response)
-            {
-                responseStr = std::string(response.get());
-            }
-            else
-            {
-                // Create structured error response for null pointer
-                nlohmann::json errorJson;
-                errorJson["error"] = MQ_ERR_INTERNAL;
-                errorJson["message"] = "No response received from module query function";
-                responseStr = errorJson.dump();
-            }
-
-            // Parse response using helper function
-            ModuleResponse moduleResp = parseModuleResponse(responseStr);
-
-            // If query succeeded (error code 0), return immediately
-            if (result == 0 && moduleResp.success)
-            {
-                m_logFunction(LOG_DEBUG, moduleName + " query succeeded");
-                return moduleResp;
-            }
-
-            // If module is unavailable (disabled/not found/not running), return immediately without retrying
-            if (moduleResp.isModuleUnavailable)
-            {
-                m_logFunction(LOG_DEBUG, moduleName + " module is unavailable (error " +
-                              std::to_string(moduleResp.errorCode) + "): " + responseStr);
-                return moduleResp;
-            }
-
-            // For other errors, log and retry
-            m_logFunction(LOG_DEBUG, "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_COORDINATION_RETRIES) +
-                          " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) + "): " + responseStr);
-
-            if (attempt < MAX_COORDINATION_RETRIES)
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS));
-            }
-        }
-
-        m_logFunction(LOG_WARNING, "Failed to query " + moduleName + " after " + std::to_string(MAX_COORDINATION_RETRIES) + " attempts");
-
-        // Return failure response with structured error JSON
-        nlohmann::json errorJson;
-        errorJson["error"] = MQ_ERR_INTERNAL;
-        errorJson["message"] = "Max retries exceeded (" + std::to_string(MAX_COORDINATION_RETRIES) + " attempts)";
-
-        ModuleResponse failedResp;
-        failedResp.success = false;
-        failedResp.response = errorJson.dump();
-        failedResp.errorCode = MQ_ERR_INTERNAL;
-        failedResp.isModuleUnavailable = false;
-        return failedResp;
-    };
-
-    // Helper function to resume paused modules (for cleanup)
-    auto resumePausedModules = [&queryModuleWithRetry, &createJsonCommand, &pausedModules, this]()
-    {
-        for (const auto& module : pausedModules)
-        {
-            m_logFunction(LOG_DEBUG, "Resuming paused module: " + module);
-            std::string resumeMessage = createJsonCommand("resume");
-            ModuleResponse response = queryModuleWithRetry(module, resumeMessage);
-            m_logFunction(LOG_DEBUG, "Response from " + module + " resume: " + response.response);
-
-            if (!response.success)
-            {
-                m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response.response);
-            }
-        }
-
-        pausedModules.clear();
-    };
-
     try
     {
-        // Step 1: Identify available modules and send pause command
-        for (const auto& module : COORDINATION_MODULES)
+        // Step 1: Pause all coordination modules
+        if (!pauseCoordinationModules(pausedModules))
         {
-            std::string pauseMessage = createJsonCommand("pause");
-            ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
-            m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
-
-            if (response.success)
-            {
-                // FIM-specific: Poll for pause completion (pause is async for FIM)
-                if (module == FIM_NAME)
-                {
-                    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30;  // 30 seconds max wait
-                    constexpr int PAUSE_POLL_DELAY_MS = 1000;   // 1 second between polls
-                    bool pauseCompleted = false;
-                    bool pauseSucceeded = false;
-
-                    m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + module + " for pause completion (async pause)");
-
-                    for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
-                    {
-                        std::string isPauseCompletedMessage = createJsonCommand("is_pause_completed");
-                        ModuleResponse pollResponse = queryModuleWithRetry(module, isPauseCompletedMessage);
-
-                        if (!pollResponse.success)
-                        {
-                            m_logFunction(LOG_WARNING, "Failed to poll pause status for " + module + " (attempt " +
-                                          std::to_string(attempt) + "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
-                            std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
-                            continue;
-                        }
-
-                        // Parse response to check pause status
-                        try
-                        {
-                            nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
-
-                            if (pollJson.contains("data") && pollJson["data"].contains("status"))
-                            {
-                                std::string status = pollJson["data"]["status"].get<std::string>();
-
-                                if (status == "in_progress")
-                                {
-                                    m_logFunction(LOG_DEBUG, module + " pause still in progress (attempt " +
-                                                  std::to_string(attempt) + "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
-                                    std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
-                                    continue;
-                                }
-                                else if (status == "completed")
-                                {
-                                    pauseCompleted = true;
-                                    std::string result = pollJson["data"]["result"].get<std::string>();
-                                    pauseSucceeded = (result == "success");
-
-                                    m_logFunction(LOG_DEBUG, module + " pause completed with result: " + result);
-                                    break;
-                                }
-                            }
-                        }
-                        catch (const std::exception& e)
-                        {
-                            m_logFunction(LOG_WARNING, "Failed to parse pause poll response from " + module + ": " +
-                                          std::string(e.what()) + " - Response: " + pollResponse.response);
-                        }
-
-                        std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
-                    }
-
-                    if (!pauseCompleted)
-                    {
-                        m_logFunction(LOG_ERROR, module + " pause did not complete within timeout (" +
-                                      std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + " seconds), aborting coordination");
-                        resumePausedModules();
-                        return false;
-                    }
-
-                    if (!pauseSucceeded)
-                    {
-                        m_logFunction(LOG_ERROR, module + " pause completed with error, aborting coordination");
-                        resumePausedModules();
-                        return false;
-                    }
-
-                    m_logFunction(LOG_DEBUG, module + " pause completed successfully");
-                }
-                else
-                {
-                    // Other modules: pause is synchronous, already completed
-                    m_logFunction(LOG_DEBUG, "Successfully paused " + module);
-                }
-
-                pausedModules.insert(module);
-            }
-            else
-            {
-                // Distinguish between "module unavailable" and "communication error"
-                if (response.isModuleUnavailable)
-                {
-                    // Module is disabled/not found/not running - skip it (not an error)
-                    m_logFunction(LOG_DEBUG, "Skipping " + module + " (unavailable, error " +
-                                  std::to_string(response.errorCode) + "): " + response.response);
-                }
-                else
-                {
-                    // Communication error or other failure - abort coordination
-                    m_logFunction(LOG_WARNING, "Failed to pause " + module + " (communication error " +
-                                  std::to_string(response.errorCode) + "), aborting coordination: " + response.response);
-                    resumePausedModules();
-                    return false;
-                }
-            }
+            return false;
         }
-
-        // Calculate new version
-        int newVersion = 0;
-        int globalMaxVersion = 0;
 
         if (pausedModules.empty())
         {
@@ -1114,189 +1303,23 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             return true;
         }
 
+        // Step 2: Flush all paused modules
+        if (!flushPausedModules(pausedModules))
         {
-            // Step 2: Flush all available modules
-            for (const auto& module : pausedModules)
-            {
-                std::string flushMessage = createJsonCommand("flush");
-                ModuleResponse response = queryModuleWithRetry(module, flushMessage);
-                m_logFunction(LOG_DEBUG, "Response from " + module + " flush: " + response.response);
-
-                if (!response.success)
-                {
-                    m_logFunction(LOG_ERROR, "Failed to flush " + module + " (error " +
-                                  std::to_string(response.errorCode) + "), aborting coordination");
-                    resumePausedModules();
-                    return false;
-                }
-
-                m_logFunction(LOG_DEBUG, "Successfully requested flush for " + module);
-
-                // FIM-specific: Poll for flush completion (flush is async for FIM)
-                if (module == FIM_NAME)
-                {
-                    constexpr int FLUSH_POLL_DELAY_MS = 10000;   // 10 seconds between polls
-                    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6;  // Log progress every 60 seconds (6 * 10s)
-                    int attempt = 0;
-
-                    m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + module + " for flush completion (async flush)");
-
-                    // Poll until flush completes or module is stopped
-                    while (!m_stopped)
-                    {
-                        attempt++;
-                        std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
-                        ModuleResponse pollResponse = queryModuleWithRetry(module, isFlushCompletedMessage);
-
-                        if (!pollResponse.success)
-                        {
-                            m_logFunction(LOG_WARNING, "Failed to poll flush status for " + module + " (attempt " +
-                                          std::to_string(attempt) + "), will retry...");
-                            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
-                            continue;
-                        }
-
-                        // Parse response to check flush status
-                        try
-                        {
-                            nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
-
-                            if (pollJson.contains("data") && pollJson["data"].contains("status"))
-                            {
-                                std::string status = pollJson["data"]["status"].get<std::string>();
-
-                                if (status == "in_progress")
-                                {
-                                    // Log progress periodically to show we're still waiting
-                                    if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
-                                    {
-                                        m_logFunction(LOG_INFO, module + " flush still in progress (waiting " +
-                                                      std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds so far)");
-                                    }
-                                    else
-                                    {
-                                        m_logFunction(LOG_DEBUG, module + " flush still in progress (attempt " +
-                                                      std::to_string(attempt) + ")");
-                                    }
-                                }
-                                else if (status == "completed")
-                                {
-                                    std::string result = pollJson["data"]["result"].get<std::string>();
-                                    bool flushSucceeded = (result == "success");
-
-                                    m_logFunction(LOG_INFO, module + " flush completed with result: " + result +
-                                                  " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds)");
-
-                                    if (!flushSucceeded)
-                                    {
-                                        m_logFunction(LOG_ERROR, module + " flush completed with error, aborting coordination");
-                                        resumePausedModules();
-                                        return false;
-                                    }
-
-                                    m_logFunction(LOG_DEBUG, module + " flush completed successfully");
-                                    break;
-                                }
-                            }
-                        }
-                        catch (const std::exception& e)
-                        {
-                            m_logFunction(LOG_WARNING, "Failed to parse flush poll response from " + module + ": " +
-                                          std::string(e.what()) + " - Response: " + pollResponse.response);
-                        }
-
-                        std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
-                    }
-
-                    // Check if we exited due to module stopping
-                    if (m_stopped)
-                    {
-                        m_logFunction(LOG_INFO, "Module stopping, aborting flush polling for " + module);
-                        resumePausedModules();
-                        return false;
-                    }
-                }
-                else
-                {
-                    // Other modules: flush is synchronous, already completed
-                    m_logFunction(LOG_DEBUG, "Successfully flushed " + module);
-                }
-            }
-
-            // Step 3: Get version from each module
-            for (const auto& module : pausedModules)
-            {
-                std::string getVersionMessage = createJsonCommand("get_version");
-                ModuleResponse response = queryModuleWithRetry(module, getVersionMessage);
-                m_logFunction(LOG_DEBUG, "Response from " + module + " get_version: " + response.response);
-
-                if (!response.success)
-                {
-                    m_logFunction(LOG_ERROR, "Failed to get version from " + module + " (error " +
-                                  std::to_string(response.errorCode) + "), aborting coordination");
-                    resumePausedModules();
-                    return false;
-                }
-
-                // Parse version from JSON format
-                int version = 0;
-
-                try
-                {
-                    nlohmann::json responseJson = nlohmann::json::parse(response.response);
-
-                    if (responseJson.contains("data") && responseJson["data"].contains("version") &&
-                            responseJson["data"]["version"].is_number())
-                    {
-                        version = responseJson["data"]["version"].get<int>();
-                    }
-                    else
-                    {
-                        m_logFunction(LOG_WARNING, "Invalid JSON response format from " + module + ": missing or invalid version data");
-                        resumePausedModules();
-                        return false;
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    m_logFunction(LOG_ERROR, "Failed to parse JSON response from " + module + ": " +
-                                  std::string(e.what()) + " - Response: " + response.response);
-                    resumePausedModules();
-                    return false;
-                }
-
-                moduleVersions[module] = version;
-                globalMaxVersion = std::max(globalMaxVersion, version);
-                m_logFunction(LOG_DEBUG, module + " current version: " + std::to_string(version));
-            }
-
-            // Step 4: Calculate new version
-            // If incrementVersion is true (metadata update): newVersion = max + 1
-            // If incrementVersion is false (groups update): newVersion = max
-            newVersion = incrementVersion ? (globalMaxVersion + 1) : globalMaxVersion;
-            m_logFunction(LOG_DEBUG, "Calculated new global version: " + std::to_string(newVersion) +
-                          (incrementVersion ? " (max + 1 for metadata update)" : " (max for groups update)"));
-
-            // Step 5: Set new version on all modules
-            for (const auto& module : pausedModules)
-            {
-                std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
-                ModuleResponse response = queryModuleWithRetry(module, setVersionMessage);
-                m_logFunction(LOG_DEBUG, "Response from " + module + " set_version: " + response.response);
-
-                if (!response.success)
-                {
-                    m_logFunction(LOG_WARNING, "Failed to set version on " + module + " (error " +
-                                  std::to_string(response.errorCode) + "), aborting coordination");
-                    resumePausedModules();
-                    return false;
-                }
-
-                m_logFunction(LOG_DEBUG, "Successfully set version " + std::to_string(newVersion) + " on " + module);
-            }
+            resumePausedModules(pausedModules);
+            return false;
         }
 
-        // Step 6: Build indices list based on enabled modules and synchronize
+        // Step 3: Get versions, calculate new version, and set it on all modules
+        int newVersion = calculateNewVersion(pausedModules, incrementVersion, moduleVersions);
+
+        if (newVersion < 0)
+        {
+            resumePausedModules(pausedModules);
+            return false;
+        }
+
+        // Step 4: Build indices list based on enabled modules and synchronize
         std::vector<std::string> indicesToSync;
 
         for (const auto& module : pausedModules)
@@ -1320,7 +1343,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             if (!syncSuccess)
             {
                 m_logFunction(LOG_WARNING, "Failed to synchronize " + table);
-                resumePausedModules();
+                resumePausedModules(pausedModules);
                 return false;
             }
 
@@ -1331,9 +1354,9 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
         }
 
-        // Step 7: Resume all modules
+        // Step 5: Resume all modules
         size_t coordinatedModulesCount = pausedModules.size();
-        resumePausedModules();
+        resumePausedModules(pausedModules);
 
         m_logFunction(LOG_DEBUG, "Module coordination completed successfully");
         m_logFunction(LOG_DEBUG, "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
@@ -1344,13 +1367,13 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     catch (const std::exception& e)
     {
         m_logFunction(LOG_ERROR, "Exception during module coordination: " + std::string(e.what()));
-        resumePausedModules();
+        resumePausedModules(pausedModules);
         return false;
     }
     catch (...)
     {
         m_logFunction(LOG_ERROR, "Unknown exception during module coordination");
-        resumePausedModules();
+        resumePausedModules(pausedModules);
         return false;
     }
 }
