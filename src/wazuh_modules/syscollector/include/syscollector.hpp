@@ -137,6 +137,9 @@ class EXPORTED Syscollector final
         void scanBrowserExtensions();
         void scan();
         void scanVDTables();
+        void detectVDChanges();
+        void generateContextForTable(const std::string& table, const std::set<std::string>& deltaHashes);
+        void insertContextItem(const std::string& table, const nlohmann::json& item);
         void scanNonVDTables();
         void syncLoop(std::unique_lock<std::mutex>& lock);
 

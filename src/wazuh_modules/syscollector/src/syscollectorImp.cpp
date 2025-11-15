@@ -193,12 +193,6 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     if (indexIt != INDEX_MAP.end())
     {
         m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
-
-        // Track VD table changes for DataContext determination
-        if (table == OS_TABLE || table == PACKAGES_TABLE || table == HOTFIXES_TABLE)
-        {
-            m_vdTablesWithChanges.insert(table);
-        }
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -1277,7 +1271,123 @@ void Syscollector::scanVDTables()
     TRY_CATCH_TASK(scanPackages);
     TRY_CATCH_TASK(scanHotfixes);
 
+    // Detect which VD tables had changes for DataContext determination
+    TRY_CATCH_TASK(detectVDChanges);
+
     m_logFunction(LOG_INFO, "VD tables evaluation finished.");
+}
+
+void Syscollector::detectVDChanges()
+{
+    m_logFunction(LOG_DEBUG, "Starting VD change detection and context generation");
+    
+    static const std::vector<std::string> VD_TABLES = {
+        OS_TABLE, PACKAGES_TABLE, HOTFIXES_TABLE
+    };
+    
+    // Step 1: Check which VD tables have deltas in VD sync protocol
+    std::map<std::string, std::set<std::string>> tableDeltas; // table -> set of hash IDs
+    
+    for (const auto& table : VD_TABLES) {
+        try {
+            // Query VD sync protocol to see what deltas were stored for this table
+            // Note: We'll query all records and assume they're from current scan since VD sync is cleared per scan
+            SelectQuery vdQuery;
+            vdQuery.table("sync_" + table); // Assuming VD sync table naming convention
+            
+            m_spSyncProtocolVD->selectRows(vdQuery.query(), 
+                [&tableDeltas, &table, this](ReturnTypeCallback result, const nlohmann::json& data) {
+                    if (result != DB_ERROR && !data.empty()) {
+                        // Extract hash ID from the delta record
+                        if (data.contains("id")) {
+                            std::string hashId = data["id"].get<std::string>();
+                            tableDeltas[table].insert(hashId);
+                            m_logFunction(LOG_DEBUG, "Found delta in VD table %s: %s", table.c_str(), hashId.c_str());
+                        }
+                    }
+                });
+        } catch (const std::exception& e) {
+            m_logFunction(LOG_WARNING, "Error querying VD sync for table %s: %s", table.c_str(), e.what());
+        }
+    }
+    
+    // Step 2: For each table with deltas, generate context
+    for (const auto& [table, deltaHashes] : tableDeltas) {
+        if (!deltaHashes.empty()) {
+            m_logFunction(LOG_INFO, "Generating context for VD table %s (found %zu deltas)", 
+                         table.c_str(), deltaHashes.size());
+            generateContextForTable(table, deltaHashes);
+        }
+    }
+    
+    if (tableDeltas.empty()) {
+        m_logFunction(LOG_DEBUG, "No VD changes detected in this scan");
+    } else {
+        m_logFunction(LOG_INFO, "VD context generation completed");
+    }
+}
+
+void Syscollector::generateContextForTable(const std::string& table, const std::set<std::string>& deltaHashes)
+{
+    m_logFunction(LOG_DEBUG, "Generating context for table %s", table.c_str());
+    
+    try {
+        // Query local DB to get ALL current items from this table
+        SelectQuery localQuery;
+        localQuery.table(table);
+        
+        std::vector<nlohmann::json> contextItems;
+        
+        m_spDBSync->selectRows(localQuery.query(), 
+            [&deltaHashes, &contextItems, &table, this](ReturnTypeCallback result, const nlohmann::json& data) {
+                if (result != DB_ERROR && !data.empty()) {
+                    // Calculate hash ID for this local item
+                    std::string localHashId = calculateHashId(data, table);
+                    
+                    // If this item is NOT in the deltas, it's needed as context
+                    if (deltaHashes.find(localHashId) == deltaHashes.end()) {
+                        contextItems.push_back(data);
+                        m_logFunction(LOG_DEBUG_VERBOSE, "Adding context item for table %s: %s", 
+                                     table.c_str(), localHashId.c_str());
+                    }
+                }
+            });
+        
+        // Insert context items into VD sync protocol
+        for (const auto& item : contextItems) {
+            insertContextItem(table, item);
+        }
+        
+        m_logFunction(LOG_INFO, "Generated %zu context items for table %s", 
+                     contextItems.size(), table.c_str());
+                     
+    } catch (const std::exception& e) {
+        m_logFunction(LOG_ERROR, "Error generating context for table %s: %s", table.c_str(), e.what());
+    }
+}
+
+void Syscollector::insertContextItem(const std::string& table, const nlohmann::json& item)
+{
+    try {
+        // Convert item to ECS format and get hash ID
+        auto [ecsData, version] = ecsData(item, table);
+        std::string hashId = calculateHashId(item, table);
+        
+        // Find the corresponding sync index for this table
+        auto indexIt = INDEX_MAP.find(table);
+        if (indexIt != INDEX_MAP.end()) {
+            // Insert as context into VD sync protocol
+            // Note: This will be marked as is_data_context=true by the VD sync protocol
+            m_spSyncProtocolVD->persistDifference(hashId, Operation::CREATE, 
+                                                 indexIt->second, ecsData.dump(), version);
+            
+            m_logFunction(LOG_DEBUG_VERBOSE, "Inserted context item for table %s: %s", 
+                         table.c_str(), hashId.c_str());
+        }
+    } catch (const std::exception& e) {
+        m_logFunction(LOG_WARNING, "Error inserting context item for table %s: %s", 
+                     table.c_str(), e.what());
+    }
 }
 
 void Syscollector::scanNonVDTables()
@@ -1299,6 +1409,9 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Starting evaluation.");
     scanVDTables();
     scanNonVDTables();
+
+    
+
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
