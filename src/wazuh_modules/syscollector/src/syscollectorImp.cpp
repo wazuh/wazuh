@@ -17,6 +17,7 @@
 #include <iostream>
 #include <stack>
 #include <chrono>
+#include <thread>
 
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
@@ -44,6 +45,44 @@ do                                                                      \
 
 constexpr auto EMPTY_VALUE {""};
 constexpr auto UNKNOWN_VALUE {" "};
+
+// RAII guard to ensure scanning flag is always cleaned up
+class ScanGuard
+{
+public:
+    explicit ScanGuard(std::atomic<bool>& flag) : m_flag(flag)
+    {
+        m_flag = true;
+    }
+    ~ScanGuard()
+    {
+        m_flag = false;
+    }
+    // Delete copy and move operations
+    ScanGuard(const ScanGuard&) = delete;
+    ScanGuard& operator=(const ScanGuard&) = delete;
+    ScanGuard(ScanGuard&&) = delete;
+    ScanGuard& operator=(ScanGuard&&) = delete;
+private:
+    std::atomic<bool>& m_flag;
+};
+
+// List of all Syscollector tables with version field
+static const std::vector<std::string> ALL_SYSCOLLECTOR_TABLES = {
+    OS_TABLE,
+    HW_TABLE,
+    HOTFIXES_TABLE,
+    PACKAGES_TABLE,
+    PROCESSES_TABLE,
+    PORTS_TABLE,
+    NET_IFACE_TABLE,
+    NET_PROTOCOL_TABLE,
+    NET_ADDRESS_TABLE,
+    USERS_TABLE,
+    GROUPS_TABLE,
+    SERVICES_TABLE,
+    BROWSER_EXTENSIONS_TABLE
+};
 
 constexpr auto QUEUE_SIZE
 {
@@ -273,6 +312,9 @@ Syscollector::Syscollector()
     , m_stopping { true }
     , m_initialized { false }
     , m_notify { false }
+    , m_paused { false }
+    , m_scanning { false }
+    , m_syncing { false }
     , m_groups { false }
     , m_users { false }
     , m_services { false }
@@ -1262,6 +1304,15 @@ void Syscollector::scanBrowserExtensions()
 
 void Syscollector::scan()
 {
+    if (m_paused)
+    {
+        m_logFunction(LOG_DEBUG, "Syscollector is paused, skipping evaluation.");
+        return;
+    }
+
+    // RAII guard ensures m_scanning is set to false even if function exits early
+    ScanGuard scanGuard(m_scanning);
+
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1282,17 +1333,29 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
     m_logFunction(LOG_INFO, "Module started.");
 
-    if (m_scanOnStart)
-    {
-        scan();
-    }
+    bool firstScan = m_scanOnStart;
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
     return m_stopping;
 }))
     {
-        scan();
+        if (m_paused)
+        {
+            m_logFunction(LOG_DEBUG, "Syscollector scanning paused, skipping scan iteration");
+            firstScan = false;
+            continue;
+        }
+
+        if (firstScan)
+        {
+            scan();
+            firstScan = false;
+        }
+        else
+        {
+            scan();
+        }
     }
     m_spDBSync.reset(nullptr);
 }
@@ -1572,8 +1635,19 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode)
 {
+    if (m_paused)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Syscollector module is paused, skipping synchronization");
+        }
+        return false;
+    }
+
     if (m_spSyncProtocol)
     {
+        // RAII guard ensures m_syncing is set to false even if function exits early
+        ScanGuard syncGuard(m_syncing);
         return m_spSyncProtocol->synchronizeModule(mode);
     }
 
@@ -1621,6 +1695,50 @@ void Syscollector::deleteDatabase()
     }
 }
 
+bool Syscollector::pause()
+{
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "Pausing Syscollector module - waiting for ongoing operations to complete");
+    }
+
+    // Set the pause flag first to prevent new operations from starting
+    m_paused = true;
+
+    // Wait for any ongoing scan or sync operations to complete
+    // Also check m_stopping to avoid infinite loop if module is being destroyed
+    while ((m_scanning || m_syncing) && !m_stopping)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    if (m_logFunction)
+    {
+        if (m_stopping)
+        {
+            m_logFunction(LOG_WARNING, "Syscollector module pause interrupted by shutdown");
+        }
+        else
+        {
+            m_logFunction(LOG_INFO, "Syscollector module paused successfully");
+        }
+    }
+
+    // Return false if interrupted by shutdown, true if successfully paused
+    return !m_stopping;
+}
+
+void Syscollector::resume()
+{
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "Resuming Syscollector module");
+    }
+
+    m_paused = false;
+    m_cv.notify_one();
+}
+
 // LCOV_EXCL_START
 
 // Excluded from code coverage as it is not the real implementation of the query method.
@@ -1661,10 +1779,21 @@ std::string Syscollector::query(const std::string& jsonQuery)
         // Handle coordination commands with JSON responses
         if (command == "pause")
         {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "Syscollector module paused successfully";
-            response["data"]["module"] = "syscollector";
-            response["data"]["action"] = "pause";
+            bool pauseResult = pause();
+            if (pauseResult)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector module paused successfully";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "pause";
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Syscollector module pause interrupted by shutdown";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "pause";
+            }
         }
         else if (command == "flush")
         {
@@ -1695,6 +1824,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
         }
         else if (command == "resume")
         {
+            resume();
             response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector module resumed successfully";
             response["data"]["module"] = "syscollector";

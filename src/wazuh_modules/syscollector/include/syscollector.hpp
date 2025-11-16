@@ -16,6 +16,7 @@
 #include <mutex>
 #include <memory>
 #include <optional>
+#include <atomic>
 
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
@@ -138,6 +139,8 @@ class EXPORTED Syscollector final
         void scanBrowserExtensions();
         void scan();
         void syncLoop(std::unique_lock<std::mutex>& lock);
+        bool pause();
+        void resume();
 
         void setJsonField(nlohmann::json& target,
                           const nlohmann::json& source,
@@ -168,6 +171,9 @@ class EXPORTED Syscollector final
         bool                                                                     m_stopping;
         bool                                                                     m_initialized;
         bool                                                                     m_notify;
+        std::atomic<bool>                                                        m_paused;
+        std::atomic<bool>                                                        m_scanning;
+        std::atomic<bool>                                                        m_syncing;
         bool                                                                     m_groups;
         bool                                                                     m_users;
         bool                                                                     m_services;
