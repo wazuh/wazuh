@@ -142,6 +142,8 @@ class EXPORTED Syscollector final
         bool pause();
         void resume();
         int flush();
+        int getMaxVersion();
+        int setVersion(int version);
 
         void setJsonField(nlohmann::json& target,
                           const nlohmann::json& source,
