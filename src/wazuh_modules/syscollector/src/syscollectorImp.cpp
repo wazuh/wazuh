@@ -1739,6 +1739,43 @@ void Syscollector::resume()
     m_cv.notify_one();
 }
 
+int Syscollector::flush()
+{
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "Syscollector flush requested - syncing pending messages");
+    }
+
+    if (!m_spSyncProtocol)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Syscollector sync protocol not initialized, flush skipped");
+        }
+        return 0; // Not an error - just nothing to flush
+    }
+
+    // Trigger immediate synchronization to flush pending messages
+    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+
+    if (result)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "Syscollector flush completed successfully");
+        }
+        return 0;
+    }
+    else
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Syscollector flush failed");
+        }
+        return -1;
+    }
+}
+
 // LCOV_EXCL_START
 
 // Excluded from code coverage as it is not the real implementation of the query method.
@@ -1797,10 +1834,21 @@ std::string Syscollector::query(const std::string& jsonQuery)
         }
         else if (command == "flush")
         {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "Syscollector module flushed successfully";
-            response["data"]["module"] = "syscollector";
-            response["data"]["action"] = "flush";
+            int flushResult = flush();
+            if (flushResult == 0)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector module flushed successfully";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "flush";
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Syscollector module flush failed";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "flush";
+            }
         }
         else if (command == "get_version")
         {

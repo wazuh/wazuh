@@ -141,6 +141,7 @@ class EXPORTED Syscollector final
         void syncLoop(std::unique_lock<std::mutex>& lock);
         bool pause();
         void resume();
+        int flush();
 
         void setJsonField(nlohmann::json& target,
                           const nlohmann::json& source,
