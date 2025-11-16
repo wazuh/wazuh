@@ -163,9 +163,7 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
                                             const int commandsTimeout,
                                             const bool remoteEnabled,
                                             const std::vector<sca::PolicyData>& policies,
-                                            const YamlToJsonFunc& yamlToJsonFunc,
-                                            std::chrono::seconds syncResponseTimeout,
-                                            size_t syncMaxEps)
+                                            const YamlToJsonFunc& yamlToJsonFunc)
 {
     m_enabled = enabled;
     m_scanOnStart = scanOnStart;
@@ -174,8 +172,6 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
     m_remoteEnabled = remoteEnabled;
     m_policiesData = policies;
     m_yamlToJsonFunc = yamlToJsonFunc;
-    m_syncResponseTimeout = syncResponseTimeout;
-    m_syncMaxEps = syncMaxEps;
 }
 
 void SecurityConfigurationAssessment::Stop()
@@ -442,10 +438,7 @@ int SecurityConfigurationAssessment::flush()
     }
 
     // Trigger immediate synchronization to flush pending messages
-    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA,
-                                                      m_syncResponseTimeout,
-                                                      m_syncRetries,
-                                                      m_syncMaxEps);
+    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
     if (result)
     {
