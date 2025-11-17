@@ -132,6 +132,11 @@ class SecurityConfigurationAssessment
         /// @brief Resume SCA scanning operations after coordination
         void resume();
 
+        /// @brief Handles query commands for the SCA module
+        /// @param jsonQuery JSON-formatted query command string
+        /// @return JSON-formatted response string
+        std::string query(const std::string& jsonQuery);
+
     protected:
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;

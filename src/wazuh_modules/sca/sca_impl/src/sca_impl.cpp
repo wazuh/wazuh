@@ -460,4 +460,146 @@ void SecurityConfigurationAssessment::resume()
     m_cv.notify_one();
 }
 
+std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
+{
+    // Log the received query
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
+
+    try
+    {
+        // Parse JSON command
+        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
+
+        if (!query_json.contains("command") || !query_json["command"].is_string())
+        {
+            nlohmann::json response;
+            response["error"] = 3; // MQ_ERR_INVALID_PARAMS
+            response["message"] = "Missing or invalid parameters";
+            return response.dump();
+        }
+
+        std::string command = query_json["command"];
+        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
+
+        // Log the command being executed
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Executing command: " + command);
+
+        nlohmann::json response;
+
+        // Handle coordination commands with JSON responses
+        if (command == "pause")
+        {
+            pause();
+            response["error"] = 0; // MQ_SUCCESS
+            response["message"] = "SCA module paused successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "pause";
+        }
+        else if (command == "flush")
+        {
+            // Flush triggers immediate sync protocol synchronization
+            int result = flush();
+
+            if (result == 0)
+            {
+                response["error"] = 0; // MQ_SUCCESS
+                response["message"] = "SCA module flushed successfully";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "flush";
+            }
+            else
+            {
+                response["error"] = 1;
+                response["message"] = "SCA module flush failed";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "flush";
+            }
+        }
+        else if (command == "get_version")
+        {
+            const int maxVersion = getMaxVersion();
+
+            if (maxVersion >= 0)
+            {
+                response["error"] = 0; // MQ_SUCCESS
+                response["message"] = "SCA get_version successfully";
+                response["data"]["action"] = "get_version";
+                response["data"]["module"] = "sca";
+                response["data"]["version"] = maxVersion;
+            }
+            else
+            {
+                response["error"] = 3;
+                response["message"] = "SCA fails getting version";
+                response["data"]["action"] = "get_version";
+                response["data"]["module"] = "sca";
+            }
+        }
+        else if (command == "set_version")
+        {
+            // Extract version from parameters
+            int version = -1;
+
+            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
+            {
+                version = parameters["version"].get<int>();
+            }
+
+            if (version < 0)
+            {
+                response["error"] = 3; // MQ_ERR_INVALID_PARAMS
+                response["message"] = "Invalid version parameter";
+                response["data"]["action"] = "set_version";
+                response["data"]["module"] = "sca";
+            }
+            else
+            {
+                int result = setVersion(version);
+
+                if (result == 0)
+                {
+                    response["error"] = 0; // MQ_SUCCESS
+                    response["message"] = "SCA version set successfully";
+                    response["data"]["action"] = "set_version";
+                    response["data"]["module"] = "sca";
+                    response["data"]["version"] = version;
+                }
+                else
+                {
+                    response["error"] = 2;
+                    response["message"] = "SCA fails setting version";
+                    response["data"]["action"] = "set_version";
+                    response["data"]["module"] = "sca";
+                    response["data"]["version"] = version;
+                }
+            }
+        }
+        else if (command == "resume")
+        {
+            resume();
+            response["error"] = 0; // MQ_SUCCESS
+            response["message"] = "SCA module resumed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "resume";
+        }
+        else
+        {
+            response["error"] = 1; // MQ_ERR_UNKNOWN_COMMAND
+            response["message"] = "Unknown SCA command: " + command;
+            response["data"]["command"] = command;
+        }
+
+        return response.dump();
+    }
+    catch (const std::exception& ex)
+    {
+        nlohmann::json response;
+        response["error"] = 98; // MQ_ERR_INTERNAL
+        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
+
+        LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
+        return response.dump();
+    }
+}
+
 // LCOV_EXCL_STOP
