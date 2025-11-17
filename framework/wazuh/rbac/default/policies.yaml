@@ -196,12 +196,12 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  rootcheck_read:
-    description: Allow read rootcheck information.
+  rootcheck_run:
+    description: Allow run rootcheck.
     policies:
       rootcheck:
         actions:
-          - rootcheck:read
+          - rootcheck:run
         resources:
           - agent:id:*
         effect: allow

@@ -20,7 +20,7 @@ relationships:
         - decoders_all
         - kvdbs_all
         - integrations_all
-        - rootcheck_read
+        - rootcheck_run
         - rules_all
         - mitre_read
         - syscheck_run
@@ -38,7 +38,6 @@ relationships:
         - decoders_read
         - kvdbs_read
         - integrations_read
-        - rootcheck_read
         - rules_read
         - mitre_read
       rule_ids: []

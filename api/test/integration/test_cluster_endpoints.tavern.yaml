@@ -2288,7 +2288,8 @@ stages:
 
 ---
 test_name: GET /cluster/version/check with update_check enabled
-
+marks:
+  - xfail # Partial configuration cannot be updated due to test limitations
 stages:
   - name: Get wazuh version
     request:
@@ -2382,7 +2383,8 @@ stages:
 
 ---
 test_name: GET /cluster/version/check with update_check service error
-
+marks:
+  - xfail # Partial configuration cannot be updated due to test limitations
 stages:
 
   - name: Set an invalid CTI url
