@@ -50,7 +50,7 @@ private:
      *   "oauth": {
      *     "indexer": {
      *       "url": "https://indexer.wazuh.com",
-     *       "credentialsEndpoint": "/_wazuh/cti/credentials",  // Optional
+     *       "credentialsEndpoint": "/_plugins/content-manager/subscription",  // Optional
      *       "timeout": 5000                                     // Optional
      *     },
      *     "console": {

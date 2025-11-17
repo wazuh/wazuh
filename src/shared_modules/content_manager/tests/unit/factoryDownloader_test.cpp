@@ -109,7 +109,7 @@ TEST_F(FactoryDownloaderTest, CreateOAuthProvidersComplete)
         "oauth": {
             "indexer": {
                 "url": "https://indexer.wazuh.com",
-                "credentialsEndpoint": "/_wazuh/cti/credentials",
+                "credentialsEndpoint": "/_plugins/content-manager/subscription",
                 "timeout": 5000
             },
             "console": {
@@ -145,7 +145,7 @@ TEST_F(FactoryDownloaderTest, CreateOAuthProvidersIndexerOnly)
         "oauth": {
             "indexer": {
                 "url": "https://indexer.wazuh.com",
-                "credentialsEndpoint": "/_wazuh/cti/credentials"
+                "credentialsEndpoint": "/_plugins/content-manager/subscription"
             }
         }
     })"_json;
@@ -202,7 +202,7 @@ TEST_F(FactoryDownloaderTest, CreateOAuthProvidersMalformed)
         "contentSource": "cti-snapshot",
         "oauth": {
             "indexer": {
-                "credentialsEndpoint": "/_wazuh/cti/credentials"
+                "credentialsEndpoint": "/_plugins/content-manager/subscription"
             }
         }
     })"_json;

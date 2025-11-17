@@ -75,15 +75,18 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_URLTransformation)
     createOAuthProviders();
 
     // Create downloader WITH OAuth providers
-    auto downloader =
-        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, nullptr, m_signedUrlProvider);
+    auto downloader = std::make_shared<CtiOffsetDownloader>(
+        *m_mockUrlRequest, m_credentialsProvider, m_productsProvider, m_signedUrlProvider);
 
     const std::string originalUrl = "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0";
     const std::string signedUrl = originalUrl + "?verify=hmac_signature_12345";
 
     // Setup mock expectations
 
-    // 1. Credentials request
+    // 1. Credentials request (GET /_plugins/content-manager/subscription)
+    // 2. Subscription request (GET /api/v1/instances/me)
+    // 3. Metadata request with signed URL
+    // 4. Offset content request with signed URL
     EXPECT_CALL(*m_mockUrlRequest, get(_, _, _))
         .WillOnce(Invoke(
             [this](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
@@ -92,7 +95,7 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_URLTransformation)
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
                     const auto& params = std::get<TRequestParameters<std::string>>(requestParams);
-                    EXPECT_EQ(params.url.url(), "http://localhost:9200/_wazuh/cti/credentials");
+                    EXPECT_EQ(params.url.url(), "http://localhost:9200/_plugins/content-manager/subscription");
                 }
 
                 // Return credentials
@@ -106,11 +109,32 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_URLTransformation)
                     std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(createCredentialsResponse());
                 }
             }))
-        // 3. Metadata request with signed URL
+        .WillOnce(Invoke(
+            [this, originalUrl](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
+            {
+                // Verify subscription endpoint
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    const auto& params = std::get<TRequestParameters<std::string>>(requestParams);
+                    EXPECT_EQ(params.url.url(), "https://console.wazuh.com/api/v1/instances/me");
+                }
+
+                // Return subscription with product
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(createSubscriptionResponse(originalUrl));
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(createSubscriptionResponse(originalUrl));
+                }
+            }))
         .WillOnce(Invoke(
             [this, signedUrl](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
             {
-                // Verify it's using the SIGNED URL
+                // Verify it's using the SIGNED URL for metadata
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
                     const auto& params = std::get<TRequestParameters<std::string>>(requestParams);
@@ -128,7 +152,6 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_URLTransformation)
                     std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(createMetadataResponse(10));
                 }
             }))
-        // 4. Offset content request with signed URL
         .WillOnce(Invoke(
             [this, signedUrl](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
             {
@@ -151,7 +174,7 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_URLTransformation)
                 }
             }));
 
-    // 2. Token exchange request
+    // Token exchange request (POST /api/v1/instances/token/exchange)
     EXPECT_CALL(*m_mockUrlRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
             [this, originalUrl, signedUrl](
@@ -228,8 +251,8 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_SignedUrlCaching)
 {
     createOAuthProviders();
 
-    auto downloader =
-        std::make_shared<CtiOffsetDownloader>(*m_mockUrlRequest, m_credentialsProvider, nullptr, m_signedUrlProvider);
+    auto downloader = std::make_shared<CtiOffsetDownloader>(
+        *m_mockUrlRequest, m_credentialsProvider, m_productsProvider, m_signedUrlProvider);
 
     const std::string originalUrl = "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0";
     const std::string signedUrl = originalUrl + "?verify=hmac_signature_cached";
@@ -248,6 +271,21 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_SignedUrlCaching)
                 else
                 {
                     std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(createCredentialsResponse());
+                }
+            }))
+        .WillOnce(Invoke(
+            [this, originalUrl](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                // Subscription request
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(createSubscriptionResponse(originalUrl));
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(createSubscriptionResponse(originalUrl));
                 }
             }))
         .WillOnce(Invoke(
@@ -308,8 +346,8 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_SnapshotDownloader)
 {
     createOAuthProviders();
 
-    auto downloader =
-        std::make_shared<CtiSnapshotDownloader>(*m_mockUrlRequest, m_credentialsProvider, nullptr, m_signedUrlProvider);
+    auto downloader = std::make_shared<CtiSnapshotDownloader>(
+        *m_mockUrlRequest, m_credentialsProvider, m_productsProvider, m_signedUrlProvider);
 
     const std::string originalUrl = "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_5.0.0";
     const std::string snapshotUrl = "https://cti.wazuh.com/snapshots/latest.tar.gz";
@@ -329,6 +367,21 @@ TEST_F(CtiDownloaderOAuthTest, OAuth_SnapshotDownloader)
                 else
                 {
                     std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(createCredentialsResponse());
+                }
+            }))
+        .WillOnce(Invoke(
+            [this, originalUrl](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                // Subscription request
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(createSubscriptionResponse(originalUrl));
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(createSubscriptionResponse(originalUrl));
                 }
             }))
         .WillOnce(Invoke(

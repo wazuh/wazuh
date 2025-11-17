@@ -91,6 +91,7 @@ protected:
 
     // OAuth providers
     std::shared_ptr<CTICredentialsProvider> m_credentialsProvider;
+    std::shared_ptr<CTIProductsProvider> m_productsProvider;
     std::shared_ptr<CTISignedUrlProvider> m_signedUrlProvider;
 
     nlohmann::json m_oauthConfig;
@@ -107,10 +108,16 @@ protected:
         m_oauthConfig = R"({
             "indexer": {
                 "url": "http://localhost:9200",
-                "credentialsEndpoint": "/_wazuh/cti/credentials",
+                "credentialsEndpoint": "/_plugins/content-manager/subscription",
                 "pollInterval": 60,
                 "timeout": 5000,
                 "retryAttempts": 3
+            },
+            "console": {
+                "url": "https://console.wazuh.com",
+                "instancesEndpoint": "/api/v1/instances/me",
+                "timeout": 5000,
+                "productType": "catalog:consumer"
             },
             "tokenExchange": {
                 "enabled": true,
@@ -159,6 +166,7 @@ protected:
     {
         m_mockUrlRequest.reset();
         m_credentialsProvider.reset();
+        m_productsProvider.reset();
         m_signedUrlProvider.reset();
 
         // Cleanup test folders
@@ -171,18 +179,45 @@ protected:
     void createOAuthProviders()
     {
         m_credentialsProvider = std::make_shared<CTICredentialsProvider>(*m_mockUrlRequest, m_oauthConfig);
+        m_productsProvider = std::make_shared<CTIProductsProvider>(*m_mockUrlRequest, m_oauthConfig);
         m_signedUrlProvider = std::make_shared<CTISignedUrlProvider>(*m_mockUrlRequest, m_oauthConfig);
     }
 
     /**
      * @brief Helper to create valid credentials JSON response
      */
-    std::string createCredentialsResponse(uint64_t expiresIn = 3600)
+    std::string createCredentialsResponse()
     {
         nlohmann::json response;
         response["access_token"] = "test_access_token_123";
-        response["refresh_token"] = "test_refresh_token_456";
-        response["expires_in"] = expiresIn;
+        response["token_type"] = "Bearer";
+        return response.dump();
+    }
+
+    /**
+     * @brief Helper to create subscription response with products
+     */
+    std::string createSubscriptionResponse(const std::string& resourceUrl)
+    {
+        nlohmann::json response;
+        response["data"]["organization"]["identifier"] = "org-test";
+        response["data"]["organization"]["name"] = "Test Org";
+        response["data"]["plans"] = nlohmann::json::array();
+
+        nlohmann::json plan;
+        plan["identifier"] = "plan-test";
+        plan["name"] = "Test Plan";
+        plan["products"] = nlohmann::json::array();
+
+        nlohmann::json product;
+        product["identifier"] = "test-product";
+        product["type"] = "catalog:consumer";
+        product["name"] = "Test Product";
+        product["resource"] = resourceUrl;
+
+        plan["products"].push_back(product);
+        response["data"]["plans"].push_back(plan);
+
         return response.dump();
     }
 

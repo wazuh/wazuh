@@ -94,7 +94,7 @@ protected:
         m_config = R"({
             "indexer": {
                 "url": "http://localhost:9200",
-                "credentialsEndpoint": "/_wazuh/cti/credentials",
+                "credentialsEndpoint": "/_plugins/content-manager/subscription",
                 "pollInterval": 60,
                 "timeout": 5000,
                 "retryAttempts": 3
@@ -113,12 +113,11 @@ protected:
     /**
      * @brief Helper to create a valid credentials JSON response
      */
-    std::string createCredentialsResponse(uint64_t expiresIn = 3600)
+    std::string createCredentialsResponse()
     {
         nlohmann::json response;
         response["access_token"] = "test_access_token_123";
-        response["refresh_token"] = "test_refresh_token_456";
-        response["expires_in"] = expiresIn;
+        response["token_type"] = "Bearer";
         return response.dump();
     }
 };

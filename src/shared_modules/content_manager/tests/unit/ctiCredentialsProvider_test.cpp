@@ -38,8 +38,6 @@ TEST_F(CTICredentialsProviderTest, FetchCredentialsSuccess)
     auto creds = provider.fetchFromIndexer();
 
     EXPECT_EQ(creds.accessToken, "test_access_token_123");
-    EXPECT_EQ(creds.refreshToken, "test_refresh_token_456");
-    EXPECT_GT(creds.expiresAt, 0);
 }
 
 /**
@@ -148,73 +146,6 @@ TEST_F(CTICredentialsProviderTest, FetchFailureAfterMaxRetries)
 }
 
 /**
- * @brief Test hasValidAccessToken with no token
- */
-TEST_F(CTICredentialsProviderTest, HasValidAccessTokenEmpty)
-{
-    // Don't set up any mock expectations - no HTTP calls should be made
-    CTICredentialsProvider provider(*m_mockUrlRequest, m_config);
-
-    EXPECT_FALSE(provider.hasValidAccessToken());
-}
-
-/**
- * @brief Test hasValidAccessToken with valid token
- */
-TEST_F(CTICredentialsProviderTest, HasValidAccessTokenValid)
-{
-    EXPECT_CALL(*m_mockUrlRequest, get(_, _, _))
-        .WillOnce(Invoke(
-            [this](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
-            {
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(createCredentialsResponse(3600)); // Expires in 1 hour
-                }
-                else
-                {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onSuccess(createCredentialsResponse(3600));
-                }
-            }));
-
-    CTICredentialsProvider provider(*m_mockUrlRequest, m_config);
-    provider.getAccessToken(); // Fetch token
-
-    EXPECT_TRUE(provider.hasValidAccessToken());
-}
-
-/**
- * @brief Test hasValidAccessToken with expired token
- */
-TEST_F(CTICredentialsProviderTest, HasValidAccessTokenExpired)
-{
-    EXPECT_CALL(*m_mockUrlRequest, get(_, _, _))
-        .WillOnce(Invoke(
-            [this](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
-            {
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(createCredentialsResponse(1)); // Expires in 1 second
-                }
-                else
-                {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(createCredentialsResponse(1));
-                }
-            }));
-
-    CTICredentialsProvider provider(*m_mockUrlRequest, m_config);
-    provider.getAccessToken(); // Fetch token
-
-    // Wait for token to expire
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-
-    EXPECT_FALSE(provider.hasValidAccessToken());
-}
-
-/**
  * @brief Test configuration validation - missing indexer section
  */
 TEST_F(CTICredentialsProviderTest, ConfigValidationMissingIndexer)
@@ -231,7 +162,7 @@ TEST_F(CTICredentialsProviderTest, ConfigValidationMissingUrl)
 {
     nlohmann::json badConfig = R"({
         "indexer": {
-            "credentialsEndpoint": "/_wazuh/cti/credentials"
+            "credentialsEndpoint": "/_plugins/content-manager/subscription"
         }
     })"_json;
 
@@ -279,7 +210,7 @@ TEST_F(CTICredentialsProviderTest, FetchMissingFields)
                 // Return JSON missing required fields
                 nlohmann::json response;
                 response["access_token"] = "test_token";
-                // Missing refresh_token and expires_in
+                // Missing token_type
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {

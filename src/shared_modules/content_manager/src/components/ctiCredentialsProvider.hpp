@@ -30,9 +30,7 @@
  */
 struct Credentials
 {
-    std::string accessToken;  ///< OAuth 2.0 access token
-    std::string refreshToken; ///< OAuth 2.0 refresh token (future use)
-    time_t expiresAt;         ///< Unix timestamp when token expires
+    std::string accessToken; ///< OAuth 2.0 access token
 };
 
 /**
@@ -41,8 +39,6 @@ struct Credentials
 struct ProtectedCredentials
 {
     std::string accessToken;
-    std::string refreshToken;
-    time_t expiresAt = 0;
     mutable std::mutex mutex; ///< Protects all credential fields
 };
 
@@ -52,9 +48,9 @@ struct ProtectedCredentials
  * @brief Provides OAuth 2.0 credentials from Wazuh Indexer
  *
  * This class handles:
- * - Fetching credentials from Indexer REST API (GET /_wazuh/cti/credentials)
- * - Storing access_token and refresh_token in memory
- * - Automatic token refresh before expiration (< 5 minutes remaining)
+ * - Fetching credentials from Indexer REST API (GET /_plugins/content-manager/subscription)
+ * - Storing access_token in memory
+ * - Automatic token refresh on each request
  * - Thread-safe credential access
  * - Background refresh thread monitoring
  *
@@ -115,59 +111,36 @@ private:
     }
 
     /**
-     * @brief Check expiration and refresh if needed
+     * @brief Refresh token from indexer
+     *
+     * Always fetches a fresh token since the endpoint doesn't provide expiration info.
      */
     void checkAndRefreshIfNeeded()
     {
         std::lock_guard<std::mutex> lock(m_credentials.mutex);
 
-        if (m_credentials.accessToken.empty())
+        logDebug2(WM_CONTENTUPDATER, "CTICredentialsProvider: Refreshing access token...");
+
+        try
         {
-            logDebug2(WM_CONTENTUPDATER, "CTICredentialsProvider: No token to refresh");
-            return;
+            // Release lock during HTTP call
+            m_credentials.mutex.unlock();
+            auto newCreds = fetchFromIndexer();
+            m_credentials.mutex.lock();
+
+            m_credentials.accessToken = std::move(newCreds.accessToken);
+
+            logInfo(WM_CONTENTUPDATER, "CTICredentialsProvider: Access token refreshed successfully");
         }
-
-        auto now = std::chrono::system_clock::now();
-        auto expiresAt = std::chrono::system_clock::from_time_t(m_credentials.expiresAt);
-        auto timeUntilExpiry = std::chrono::duration_cast<std::chrono::seconds>(expiresAt - now);
-
-        // Refresh if less than 5 minutes remaining
-        constexpr auto REFRESH_THRESHOLD = std::chrono::minutes(5);
-        if (timeUntilExpiry < REFRESH_THRESHOLD)
+        catch (const std::exception& e)
         {
-            logInfo(WM_CONTENTUPDATER,
-                    "CTICredentialsProvider: Access token expiring in %lld seconds, refreshing...",
-                    timeUntilExpiry.count());
-
-            try
+            // Re-acquire lock if we released it
+            if (!m_credentials.mutex.try_lock())
             {
-                // Release lock during HTTP call
-                m_credentials.mutex.unlock();
-                auto newCreds = fetchFromIndexer();
                 m_credentials.mutex.lock();
-
-                m_credentials.accessToken = std::move(newCreds.accessToken);
-                m_credentials.refreshToken = std::move(newCreds.refreshToken);
-                m_credentials.expiresAt = newCreds.expiresAt;
-
-                logInfo(WM_CONTENTUPDATER, "CTICredentialsProvider: Access token refreshed successfully");
             }
-            catch (const std::exception& e)
-            {
-                // Re-acquire lock if we released it
-                if (!m_credentials.mutex.try_lock())
-                {
-                    m_credentials.mutex.lock();
-                }
 
-                logError(WM_CONTENTUPDATER, "CTICredentialsProvider: Failed to refresh token: %s", e.what());
-            }
-        }
-        else
-        {
-            logDebug2(WM_CONTENTUPDATER,
-                      "CTICredentialsProvider: Token valid for %lld more seconds",
-                      timeUntilExpiry.count());
+            logError(WM_CONTENTUPDATER, "CTICredentialsProvider: Failed to refresh token: %s", e.what());
         }
     }
 
@@ -195,7 +168,7 @@ public:
         }
 
         m_indexerUrl = indexerConfig.at("url").get<std::string>();
-        m_credentialsEndpoint = indexerConfig.value("credentialsEndpoint", "/_wazuh/cti/credentials");
+        m_credentialsEndpoint = indexerConfig.value("credentialsEndpoint", "/_plugins/content-manager/subscription");
         m_pollInterval = indexerConfig.value("pollInterval", 60);
         m_timeout = indexerConfig.value("timeout", 5000);
         m_retryAttempts = indexerConfig.value("retryAttempts", 3);
@@ -225,12 +198,11 @@ public:
      * Makes an HTTP GET request to {indexerUrl}{credentialsEndpoint}
      * Expected response format:
      * {
-     *   "access_token": "...",
-     *   "refresh_token": "...",
-     *   "expires_in": 3600
+     *   "access_token": "AYjcyMzY3ZDhiNmJkNTY",
+     *   "token_type": "Bearer"
      * }
      *
-     * @return Credentials struct with tokens and expiration
+     * @return Credentials struct with access token
      * @throws std::runtime_error if fetch fails after retries
      */
     Credentials fetchFromIndexer()
@@ -288,26 +260,17 @@ public:
                 {
                     throw std::runtime_error("Missing 'access_token' in Indexer response");
                 }
-                if (!json.contains("refresh_token"))
+                if (!json.contains("token_type"))
                 {
-                    throw std::runtime_error("Missing 'refresh_token' in Indexer response");
-                }
-                if (!json.contains("expires_in"))
-                {
-                    throw std::runtime_error("Missing 'expires_in' in Indexer response");
+                    throw std::runtime_error("Missing 'token_type' in Indexer response");
                 }
 
                 creds.accessToken = json.at("access_token").get<std::string>();
-                creds.refreshToken = json.at("refresh_token").get<std::string>();
-
-                uint64_t expiresIn = json.at("expires_in").get<uint64_t>();
-                auto now = std::chrono::system_clock::now();
-                auto expiryTime = now + std::chrono::seconds(expiresIn);
-                creds.expiresAt = std::chrono::system_clock::to_time_t(expiryTime);
+                std::string tokenType = json.at("token_type").get<std::string>();
 
                 logInfo(WM_CONTENTUPDATER,
-                        "Credentials fetched successfully from Indexer, expires in %llu seconds",
-                        expiresIn);
+                        "Credentials fetched successfully from Indexer (token_type: %s)",
+                        tokenType.c_str());
 
                 return creds;
             }
@@ -336,8 +299,7 @@ public:
     /**
      * @brief Get current access token
      *
-     * If no token is available or the token is expired, automatically fetches
-     * new credentials from the Indexer.
+     * If no token is available, automatically fetches new credentials from the Indexer.
      *
      * @return Access token string
      * @throws std::runtime_error if unable to obtain token
@@ -346,40 +308,20 @@ public:
     {
         std::lock_guard<std::mutex> lock(m_credentials.mutex);
 
-        // Fetch if no token or expired
-        if (m_credentials.accessToken.empty() || !hasValidAccessToken())
+        // Fetch if no token
+        if (m_credentials.accessToken.empty())
         {
-            logDebug1(WM_CONTENTUPDATER, "No valid access token, fetching from Indexer");
+            logDebug1(WM_CONTENTUPDATER, "No access token available, fetching from Indexer");
 
-            // Note: fetchFromIndexer() doesn't need the lock as it's a local fetch
-            // We release and re-acquire the lock to avoid holding it during HTTP call
+            // Release lock during HTTP call to avoid holding it
             m_credentials.mutex.unlock();
             auto newCreds = fetchFromIndexer();
             m_credentials.mutex.lock();
 
             m_credentials.accessToken = std::move(newCreds.accessToken);
-            m_credentials.refreshToken = std::move(newCreds.refreshToken);
-            m_credentials.expiresAt = newCreds.expiresAt;
         }
 
         return m_credentials.accessToken;
-    }
-
-    /**
-     * @brief Check if has valid access token
-     *
-     * @return true if token exists and not expired
-     */
-    bool hasValidAccessToken() const
-    {
-        if (m_credentials.accessToken.empty())
-        {
-            return false;
-        }
-
-        auto now = std::chrono::system_clock::now();
-        auto expiresAt = std::chrono::system_clock::from_time_t(m_credentials.expiresAt);
-        return now < expiresAt;
     }
 
     /**

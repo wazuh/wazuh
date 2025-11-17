@@ -35,7 +35,7 @@ The output files will be:
 
 The CTI Offset Downloader supports optional OAuth 2.0 authentication with token exchange for accessing protected CTI APIs. When enabled, the downloader can:
 
-1. **Fetch OAuth credentials** from Wazuh Indexer (`/_wazuh/cti/credentials` endpoint)
+1. **Fetch OAuth credentials** from Wazuh Indexer (`/_plugins/content-manager/subscription` endpoint)
 2. **Exchange access tokens** for HMAC-signed URLs via CTI Console token exchange endpoint
 3. **Cache signed URLs** (5-minute lifetime by default) to minimize token exchange requests
 4. **Automatically refresh tokens** before they expire

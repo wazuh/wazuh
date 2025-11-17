@@ -61,7 +61,7 @@ The `CTIProductsProvider` supports filtering products by type, allowing differen
         "oauth": {
             "indexer": {
                 "url": "http://localhost:9200",
-                "credentialsEndpoint": "/_wazuh/cti/credentials"
+                "credentialsEndpoint": "/_plugins/content-manager/subscription"
             },
             "console": {
                 "url": "https://console.wazuh.com",

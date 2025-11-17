@@ -12,9 +12,9 @@ The [CTICredentialsProvider](../../src/components/ctiCredentialsProvider.hpp) is
 
 #### Features
 
-- **Automatic credential fetching** from Wazuh Indexer's `/_wazuh/cti/credentials` endpoint
+- **Automatic credential fetching** from Wazuh Indexer's `/_plugins/content-manager/subscription` endpoint
 - **Thread-safe access** to credentials using mutex protection
-- **Background refresh thread** that automatically refreshes tokens before they expire (<5 minutes remaining)
+- **Background refresh thread** that automatically refreshes tokens on each poll interval
 - **Exponential backoff retry** mechanism (up to 3 attempts) for failed requests
 - **Memory-only storage** - credentials are never persisted to disk
 
@@ -24,10 +24,10 @@ The [CTICredentialsProvider](../../src/components/ctiCredentialsProvider.hpp) is
 nlohmann::json config = {
     {"indexer", {
         {"url", "http://localhost:9200"},
-        {"credentialsEndpoint", "/_wazuh/cti/credentials"},  // Optional, default shown
-        {"pollInterval", 60},                                 // Optional, seconds
-        {"timeout", 5000},                                    // Optional, milliseconds
-        {"retryAttempts", 3}                                  // Optional, default shown
+        {"credentialsEndpoint", "/_plugins/content-manager/subscription"},  // Optional, default shown
+        {"pollInterval", 60},                                                // Optional, seconds
+        {"timeout", 5000},                                                   // Optional, milliseconds
+        {"retryAttempts", 3}                                                 // Optional, default shown
     }}
 };
 
@@ -40,11 +40,8 @@ auto credentialsProvider = std::make_shared<CTICredentialsProvider>(
 #### Usage
 
 ```cpp
-// Get access token (automatically refreshed if needed)
+// Get access token (automatically fetched if not available)
 std::string accessToken = credentialsProvider->getAccessToken();
-
-// Check token expiration
-uint64_t expiresIn = credentialsProvider->getExpiresIn();
 ```
 
 ### CTIProductsProvider
@@ -229,13 +226,13 @@ The complete OAuth flow for CTI content download now includes the new subscripti
 │ CTICredentialsProvider  │
 └────────┬────────────────┘
          │
-         │ 2. GET /_wazuh/cti/credentials
+         │ 2. GET /_plugins/content-manager/subscription
          v
 ┌─────────────────┐
 │ Wazuh Indexer   │
 └────────┬────────┘
          │
-         │ 3. Return access_token + refresh_token + expires_in
+         │ 3. Return access_token + token_type
          v
 ┌─────────────────────────┐
 │ CTICredentialsProvider  │◄─── Background refresh thread
@@ -301,8 +298,8 @@ The complete OAuth flow for CTI content download now includes the new subscripti
 
 ### Flow Summary
 
-1. **CTICredentialsProvider** fetches OAuth credentials (access_token + refresh_token) from Wazuh Indexer
-2. Background thread automatically refreshes tokens before expiration
+1. **CTICredentialsProvider** fetches OAuth credentials (access_token) from Wazuh Indexer
+2. Background thread automatically refreshes tokens on each poll interval
 3. **CTIProductsProvider** uses access_token to fetch subscription information from Console
 4. Console returns organization details and list of subscribed products with their resource URLs
 5. For each catalog product, **CTISignedUrlProvider** exchanges the access_token for a signed URL
@@ -314,8 +311,8 @@ The complete OAuth flow for CTI content download now includes the new subscripti
 
 ### Token Lifetime
 
-- **Access tokens**: Typically valid for 1 hour
-  - Automatically refreshed when <5 minutes remaining
+- **Access tokens**: Lifetime managed by Wazuh Indexer
+  - Automatically refreshed on each poll interval (default: 60 seconds)
   - Never persisted to disk
   - Thread-safe access
 
