@@ -627,16 +627,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
     // Initial wait until FIM is started
     for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-        // Check for pause request during initial wait
-        w_mutex_lock(&syscheck.fim_sync_control_mutex);
-        bool pause_requested = syscheck.fim_pause_requested;
-        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+        // Check for pause request during initial wait (atomic read, no mutex needed)
+        int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
 
         if (pause_requested) {
-            // Acknowledge pause immediately
-            w_mutex_lock(&syscheck.fim_sync_control_mutex);
-            syscheck.fim_pausing_is_allowed = true;
-            w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+            // Acknowledge pause immediately (atomic write, no mutex needed)
+            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
             mdebug2("Pause request detected during initial wait");
             break;
         }
@@ -660,16 +656,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         } else {
             // Wait for sync_interval, checking for pause and flush requests
             for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-                // Check for pause request
-                w_mutex_lock(&syscheck.fim_sync_control_mutex);
-                bool pause_requested = syscheck.fim_pause_requested;
-                w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+                // Check for pause request (atomic read, no mutex needed)
+                int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
 
                 if (pause_requested) {
-                    // Acknowledge pause immediately
-                    w_mutex_lock(&syscheck.fim_sync_control_mutex);
-                    syscheck.fim_pausing_is_allowed = true;
-                    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+                    // Acknowledge pause immediately (atomic write, no mutex needed)
+                    atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
                 }
 
                 // Check for flush request
@@ -688,17 +680,13 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             break;
         }
 
-        // Check for pause request
-        w_mutex_lock(&syscheck.fim_sync_control_mutex);
-        bool pause_requested = syscheck.fim_pause_requested;
-        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+        // Check for pause request (atomic read, no mutex needed)
+        int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
 
         // Handle pause: if paused and no flush, skip this iteration
         if (pause_requested && !flush_request_detected) {
-            // Acknowledge pause
-            w_mutex_lock(&syscheck.fim_sync_control_mutex);
-            syscheck.fim_pausing_is_allowed = true;
-            w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+            // Acknowledge pause (atomic write, no mutex needed)
+            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
 
             mdebug2("FIM is paused, skipping sync iteration");
             continue;
@@ -706,9 +694,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         // If paused and flush requested, acknowledge pause and sync without mutexes
         if (pause_requested && flush_request_detected) {
-            w_mutex_lock(&syscheck.fim_sync_control_mutex);
-            syscheck.fim_pausing_is_allowed = true;
-            w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+            // Acknowledge pause (atomic write, no mutex needed)
+            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
 
             minfo("Running FIM synchronization requested by agent-info.");
 

@@ -148,6 +148,7 @@ typedef enum fdb_stmt {
 #include "shared.h"
 #include "../external/sqlite/sqlite3.h"
 #include "../headers/list_op.h"
+#include "../headers/atomic.h"
 
 /// @brief Opaque handle to the AgentSyncProtocol C++ object.
 ///
@@ -445,9 +446,8 @@ typedef struct _config {
     pthread_mutex_t fim_symlink_mutex;
     unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
 #endif // WIN32
-    pthread_mutex_t fim_sync_control_mutex;            /* Controls pause/resume coordination with fim_run_integrity */
-    bool fim_pause_requested;                          /* Flag to indicate scans should be paused */
-    bool fim_pausing_is_allowed;                       /* Flag to indicate fim_run_integrity acknowledged pause */
+    atomic_int_t fim_pause_requested;                  /* Flag to indicate scans should be paused (0=false, 1=true) */
+    atomic_int_t fim_pausing_is_allowed;               /* Flag to indicate fim_run_integrity acknowledged pause (0=false, 1=true) */
     rtfim *realtime;
     fdb_t *database;
 

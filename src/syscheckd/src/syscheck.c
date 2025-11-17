@@ -116,9 +116,8 @@ void fim_initialize() {
 #else
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL);
 #endif
-    w_mutex_init(&syscheck.fim_sync_control_mutex, NULL);
-    syscheck.fim_pause_requested = false;
-    syscheck.fim_pausing_is_allowed = false;
+    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
     notify_scan = syscheck.notify_first_scan;
 

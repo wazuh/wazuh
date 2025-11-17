@@ -31,18 +31,14 @@ extern void mock_assert(const int result, const char* const expression,
 int fim_execute_pause(void) {
     mdebug1("FIM agent info: pause command received");
 
-    w_mutex_lock(&syscheck.fim_sync_control_mutex);
-
-    // Check if already paused
-    if (syscheck.fim_pause_requested) {
+    // Check if already paused (atomic read, no mutex needed)
+    if (atomic_int_get(&syscheck.fim_pause_requested)) {
         mdebug1("FIM scans are already paused or pause is in progress");
-        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
         return 0;
     }
 
-    // Request pause
-    syscheck.fim_pause_requested = true;
-    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+    // Request pause (atomic write, no mutex needed)
+    atomic_int_set(&syscheck.fim_pause_requested, 1);
 
     mdebug1("FIM pause requested (async), fim_pause_requested=1");
     return 0;
@@ -51,10 +47,9 @@ int fim_execute_pause(void) {
 int fim_execute_is_pause_completed(void) {
     mdebug2("FIM agent info: is_pause_completed command received");
 
-    w_mutex_lock(&syscheck.fim_sync_control_mutex);
-    bool pause_requested = syscheck.fim_pause_requested;
-    bool pausing_is_allowed = syscheck.fim_pausing_is_allowed;
-    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+    // Read pause state atomically (no mutex needed)
+    int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
+    int pausing_is_allowed = atomic_int_get(&syscheck.fim_pausing_is_allowed);
 
     // If no pause was requested, return completed successfully (not in pause)
     if (!pause_requested) {
@@ -68,16 +63,19 @@ int fim_execute_is_pause_completed(void) {
         return 1;  // In progress
     }
 
-    // Pause acknowledged, now acquire all scan mutexes
-    // This prevents new scans from starting while paused
-    w_mutex_lock(&syscheck.fim_scan_mutex);
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    // Double-check pause state under mutex
+    if (atomic_int_get(&syscheck.fim_pause_requested) && atomic_int_get(&syscheck.fim_pausing_is_allowed)) {
+        w_mutex_lock(&syscheck.fim_scan_mutex);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
 #ifdef WIN32
-    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+        w_mutex_lock(&syscheck.fim_registry_scan_mutex);
 #endif
 
-    mdebug1("FIM scans successfully paused");
-    return 0;  // Completed
+        mdebug1("FIM scans successfully paused");
+        return 0;  // Completed
+    }
+
+    return 1;  // State changed, still in progress
 }
 
 int fim_execute_flush(void) {
@@ -167,16 +165,17 @@ int fim_execute_set_version(int version) {
 int fim_execute_resume(void) {
     mdebug1("FIM agent info: resume command received");
 
-    w_mutex_lock(&syscheck.fim_sync_control_mutex);
-
-    // Check if actually paused
-    if (!syscheck.fim_pause_requested) {
+    // Check if actually paused (atomic read)
+    if (!atomic_int_get(&syscheck.fim_pause_requested)) {
         mdebug1("FIM scans are not paused, resume command ignored");
-        w_mutex_unlock(&syscheck.fim_sync_control_mutex);
         return 0;
     }
 
-    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+    // Double-check
+    if (!atomic_int_get(&syscheck.fim_pause_requested)) {
+        mdebug1("FIM scans are not paused, resume command ignored");
+        return 0;
+    }
 
     // Release all scan mutexes
 #ifdef WIN32
@@ -185,11 +184,9 @@ int fim_execute_resume(void) {
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
-    // Clear pause flags
-    w_mutex_lock(&syscheck.fim_sync_control_mutex);
-    syscheck.fim_pausing_is_allowed = false;
-    syscheck.fim_pause_requested = false;
-    w_mutex_unlock(&syscheck.fim_sync_control_mutex);
+    // Clear pause flags atomically
+    atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
+    atomic_int_set(&syscheck.fim_pause_requested, 0);
 
     mdebug1("FIM scans successfully resumed");
     return 0;
