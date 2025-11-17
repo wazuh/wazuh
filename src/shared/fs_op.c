@@ -27,6 +27,7 @@
 #define SYSFS       0x62656572
 #define OVERLAYFS   0x794c7630
 #define BTRFS       0x9123683E
+#define CEPHFS      0x00C36400
 #define CIFS        0xFF534D42
 #define V9FS        0x01021997
 #define ST_NODEV    4
@@ -43,6 +44,7 @@
 const struct file_system_type network_file_systems[] = {
 #ifdef __linux__
     {.name="NFS",  .f_type=NFS, .flag=1},
+    {.name="CEPHFS", .f_type=CEPHFS, .flag=1},
     {.name="CIFS", .f_type=CIFS, .flag=1},
 #endif
     /*  The last entry must be name=NULL */
@@ -67,7 +69,7 @@ short IsNFS(const char *dir_name)
 #if defined(Linux)
     struct statfs stfs;
 
-    /* ignore NFS (0x6969) or CIFS (0xFF534D42) mounts */
+    /* ignore NFS (0x6969) or CEPHFS (0x00C36400) or CIFS (0xFF534D42) mounts */
     if ( ! statfs(dir_name, &stfs) )
     {
         int i;
@@ -150,6 +152,8 @@ bool HasFilesystem(__attribute__((unused))const char * path, __attribute__((unus
 #endif
     case SYSFS:
         return set.sys;
+    case CEPHFS:
+        return set.nfs;
     case CIFS:
         return set.nfs;
     }
