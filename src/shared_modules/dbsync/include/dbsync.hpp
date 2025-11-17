@@ -169,6 +169,12 @@ class EXPORTED DBSync : public IDBSync
          */
         void closeAndDeleteDatabase() override;
 
+        /**
+        * @brief Gets the concatenated checksums from all the elements of a table
+        * @return the concatenated checksum
+        */
+        std::string getConcatenatedChecksums(const std::string& tableName) override;
+
     private:
         DBSYNC_HANDLE m_dbsyncHandle;
         bool m_shouldBeRemoved;

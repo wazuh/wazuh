@@ -141,19 +141,6 @@ class EXPORTED DB final
         void closeAndDeleteDatabase();
 
         /**
-        * @brief Gets the concatenated checksums from all the elements of a table
-        * @return the concatenated checksum
-        */
-        std::string getConcatenatedChecksums(const std::string& tableName);
-
-        /**
-         * @brief Calculate the checksum-of-checksums for a table
-         * @param table_name The table to calculate checksum for
-         * @return The SHA1 checksum-of-checksums as a hex string
-         */
-        std::string calculateTableChecksum(const char* table_name);
-
-        /**
         * @brief Gets all the elements of a table
         * @return a vector of elements in json format
         */

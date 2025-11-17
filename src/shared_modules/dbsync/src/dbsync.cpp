@@ -844,6 +844,30 @@ void DBSync::closeAndDeleteDatabase()
     DBSyncImplementation::instance().closeAndDeleteDatabase(m_dbsyncHandle, m_dbPath);
 }
 
+std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
+{
+    std::string concatenatedChecksums;
+
+    auto callback = [&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json& jsonResult)
+        {
+            if (type == ReturnTypeCallback::SELECTED)
+            {
+                concatenatedChecksums += jsonResult.at("checksum").get<std::string>();
+            }
+        };
+
+    auto selectQuery {SelectQuery::builder()
+        .table(tableName)
+        .columnList({"checksum"})
+        .orderByOpt({"checksum"})
+        .rowFilter("")
+        .distinctOpt(false)
+        .build()};
+
+    selectRows(selectQuery.query(), callback);
+
+    return concatenatedChecksums;
+}
 
 DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const nlohmann::json& tables,
@@ -982,3 +1006,5 @@ SyncRowQuery& SyncRowQuery::reset()
     m_jsQuery["data"].clear();
     return *this;
 }
+
+

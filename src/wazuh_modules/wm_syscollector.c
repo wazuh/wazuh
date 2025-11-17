@@ -10,6 +10,7 @@
  */
 #include <stdlib.h>
 #include "../../wmodules_def.h"
+#include "syscollector/include/syscollector.h"
 #include "wmodules.h"
 #include "module_query_errors.h"
 #include "wm_syscollector.h"
@@ -21,7 +22,6 @@
 #include "commonDefs.h"
 
 #define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
-#define SYS_SYNC_RETRIES 3
 
 // Global flag to stop sync module
 static volatile int sync_module_running = 0;
@@ -79,6 +79,9 @@ typedef void (*syscollector_lock_scan_mutex_func)();
 typedef void (*syscollector_unlock_scan_mutex_func)();
 syscollector_lock_scan_mutex_func syscollector_lock_scan_mutex_ptr = NULL;
 syscollector_unlock_scan_mutex_func syscollector_unlock_scan_mutex_ptr = NULL;
+
+typedef void (*syscollector_run_recovery_process_func)(uint32_t sync_response_timeout, long sync_max_eps);
+syscollector_run_recovery_process_func syscollector_run_recovery_process_ptr = NULL;
 
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
@@ -294,6 +297,8 @@ void* wm_sys_main(wm_sys_t *sys) {
         // Get mutex access function pointers
         syscollector_lock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_lock_scan_mutex");
         syscollector_unlock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_unlock_scan_mutex");
+
+        syscollector_run_recovery_process_ptr = so_get_function_sym(syscollector_module, "syscollector_run_recovery_process");
     } else {
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
         pthread_exit(NULL);
@@ -483,23 +488,17 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
         mtinfo(WM_SYS_LOGTAG, "Starting inventory synchronization.");
 
         if (syscollector_sync_module_ptr) {
-            // Lock the scan mutex to prevent concurrent scan operations during sync
-            if (syscollector_lock_scan_mutex_ptr) {
-                syscollector_lock_scan_mutex_ptr();
-            }
+            syscollector_lock_scan_mutex_ptr();
 
             bool sync_result = syscollector_sync_module_ptr(MODE_DELTA, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
 
             if (sync_result) {
-
+                syscollector_run_recovery_process_ptr(sync_response_timeout, SYS_SYNC_RETRIES);
             } else {
 
             }
 
-            // Unlock the scan mutex after sync completes
-            if (syscollector_unlock_scan_mutex_ptr) {
-                syscollector_unlock_scan_mutex_ptr();
-            }
+            syscollector_unlock_scan_mutex_ptr();
         } else {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }

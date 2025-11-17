@@ -34,6 +34,7 @@ extern "C" {
 #include "logging_helper.h"
 #include "agent_sync_protocol_c_interface_types.h"
 
+#define SYS_SYNC_RETRIES 3
 /* Syscollector sync protocol index names */
 #define SYSCOLLECTOR_SYNC_INDEX_SYSTEM "wazuh-states-inventory-system"
 #define SYSCOLLECTOR_SYNC_INDEX_HARDWARE "wazuh-states-inventory-hardware"
@@ -94,6 +95,9 @@ EXPORTED size_t syscollector_query(const char* query, char** output);
 // Mutex access functions for external synchronization
 EXPORTED void syscollector_lock_scan_mutex();
 EXPORTED void syscollector_unlock_scan_mutex();
+
+// Recovery functions
+EXPORTED bool syscollector_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps);
 
 #ifdef __cplusplus
 }

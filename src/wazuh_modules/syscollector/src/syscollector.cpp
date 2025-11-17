@@ -235,6 +235,10 @@ void syscollector_unlock_scan_mutex()
     Syscollector::instance().unlockScanMutex();
 }
 
+void syscollector_run_recovery_process(uint32_t sync_response_timeout, long sync_max_eps){
+    Syscollector::instance().runRecoveryProcess(sync_response_timeout, sync_max_eps);
+}
+
 #ifdef __cplusplus
 }
 #endif

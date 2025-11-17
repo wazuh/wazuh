@@ -22,6 +22,7 @@
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
 #include "../../module_query_errors.h"
+#include "recovery.hpp"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -1733,3 +1734,39 @@ std::string Syscollector::query(const std::string& jsonQuery)
     }
 }
 // LCOV_EXCL_STOP
+
+bool Syscollector::checkIfFullSyncRequired(std::string tableName, uint32_t syncResponseTimeout, long syncMaxEps){
+    m_logFunction(LOG_INFO, "Attempting to get checksum for " + tableName + " table");
+
+    std::string final_checksum = Recovery::calculateTableChecksum(m_spDBSync->handle(), tableName);
+
+    m_logFunction(LOG_INFO, "Success! Final file table checksum is: " + std::string(final_checksum));
+
+    bool needs_full_sync;
+    needs_full_sync = m_spSyncProtocol->requiresFullSync(
+        INDEX_MAP.at(tableName),
+        final_checksum,
+        std::chrono::seconds(syncResponseTimeout),
+        SYS_SYNC_RETRIES,
+        syncMaxEps
+    );
+
+    if (needs_full_sync) {
+        m_logFunction(LOG_INFO, "Checksum mismatch detected for index " + tableName + " full sync required");
+    } else {
+        m_logFunction(LOG_INFO, "Checksum valid for index " + tableName+ ", delta sync sufficient");
+    }
+
+    return needs_full_sync;
+}
+
+void Syscollector::runRecoveryProcess(uint32_t syncResponseTimeout, long syncMaxEps){
+    for (const auto& [tableName, index] : INDEX_MAP) {
+        m_logFunction(LOG_INFO, "Starting integrity validation process for " + tableName);
+        bool full_sync_required = checkIfFullSyncRequired(tableName, syncResponseTimeout, syncMaxEps);
+        if (full_sync_required) {
+            // Run sync
+        }
+    }
+}
+

@@ -9,6 +9,7 @@
 #include "stringHelper.h"
 #include "syscheck.h"
 #include "../../config/syscheck-config.h"
+#include "recovery.hpp"
 
 // The time() macro from common.h (Included when running unit_tests) interferes with std::time calls in timeHelper.h
 #ifdef time
@@ -126,8 +127,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, uint32_t sync_respo
 bool fim_recovery_check_if_full_sync_required(char* table_name, uint32_t sync_response_timeout, long sync_max_eps, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback){
     log_formatted(log_callback, LOG_INFO, "Attempting to get checksum for ", table_name, " table");
 
-    std::string final_checksum = DB::instance().calculateTableChecksum(table_name);
-
+    std::string final_checksum = Recovery::calculateTableChecksum(DB::instance().DBSyncHandle(), table_name);
     log_formatted(log_callback, LOG_INFO, "Success! Final file table checksum is: ", final_checksum);
 
     bool needs_full_sync;

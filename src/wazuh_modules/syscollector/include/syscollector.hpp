@@ -84,7 +84,11 @@ class EXPORTED Syscollector final
         // Mutex access for external synchronization (e.g., from wm_sync_module)
         void lockScanMutex();
         void unlockScanMutex();
-    private:
+
+        // Recovery functions
+        void runRecoveryProcess(uint32_t syncResponseTimeout, long syncMaxEps);
+
+        private:
         Syscollector();
         ~Syscollector() = default;
         Syscollector(const Syscollector&) = delete;
@@ -153,6 +157,9 @@ class EXPORTED Syscollector final
                                const std::string& destPath,
                                const std::string& sourceKey,
                                bool createFields);
+
+        // Recovery functions
+        bool checkIfFullSyncRequired(std::string tableName, uint32_t syncResponseTimeout, long syncMaxEps);
 
         std::shared_ptr<ISysInfo>                                                m_spInfo;
         std::function<void(const std::string&)>                                  m_reportDiffFunction;

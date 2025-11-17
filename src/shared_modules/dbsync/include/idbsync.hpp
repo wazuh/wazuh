@@ -60,4 +60,8 @@ class IDBSync
 
         /// @brief Closes the database connection and deletes the database file using the stored path.
         virtual void closeAndDeleteDatabase() = 0;
+
+        /// @brief Gets the concatenated checksums from all the elements of a table
+        /// @return the concatenated checksum
+        virtual std::string getConcatenatedChecksums(const std::string& tableName) = 0;
 };
