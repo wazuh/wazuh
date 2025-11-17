@@ -70,9 +70,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                      const std::vector<PersistedData>& data,
                                      size_t maxEps) override;
 
-        /// @copydoc IAgentSyncProtocol::enableDataContext
-        void enableDataContext() override;
-
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
 

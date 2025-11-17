@@ -56,7 +56,8 @@ void PersistentQueueStorage::createTableIfNotExists()
             "operation INTEGER NOT NULL,"
             "sync_status INTEGER NOT NULL DEFAULT 0,"
             "create_status INTEGER NOT NULL DEFAULT 0,"
-            "operation_syncing INTEGER NOT NULL DEFAULT 3);";
+            "operation_syncing INTEGER NOT NULL DEFAULT 3,"
+            "is_data_context INTEGER NOT NULL DEFAULT 0);";
 
         m_connection.execute(query);
     }
@@ -386,23 +387,5 @@ void PersistentQueueStorage::deleteDatabase()
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Error deleting database: ") + ex.what());
         throw;
-    }
-}
-
-void PersistentQueueStorage::addDataContextColumn()
-{
-    try
-    {
-        // Add is_data_context column if it doesn't exist (for VD sync databases)
-        const std::string alterQuery =
-            "ALTER TABLE persistent_queue ADD COLUMN is_data_context INTEGER NOT NULL DEFAULT 0;";
-
-        m_connection.execute(alterQuery);
-        m_logger(LOG_INFO, "PersistentQueueStorage: Added is_data_context column for DataContext support");
-    }
-    catch (const std::exception& ex)
-    {
-        // Column might already exist - log as debug instead of error
-        m_logger(LOG_DEBUG, std::string("PersistentQueueStorage: is_data_context column may already exist: ") + ex.what());
     }
 }

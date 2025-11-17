@@ -26,7 +26,6 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
         MOCK_METHOD(void, resetAllSyncing, (), (override));
         MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
-        MOCK_METHOD(void, addDataContextColumn, (), (override));
 };
 
 TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)

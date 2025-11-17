@@ -453,7 +453,6 @@ bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
             dataContextBuilder.add_data(dataVec);
             auto dataContextOffset = dataContextBuilder.Finish();
 
-            // Once DataContext is added to MessageType union, uncomment this:
             auto message = Wazuh::SyncSchema::CreateMessage(builder,
                                                             Wazuh::SyncSchema::MessageType::DataContext,
                                                             dataContextOffset.Union());
@@ -479,19 +478,6 @@ bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
     }
 
     return false;
-}
-
-void AgentSyncProtocol::enableDataContext()
-{
-    if (m_persistentQueue)
-    {
-        m_persistentQueue->enableDataContext();
-        m_logger(LOG_INFO, "DataContext support enabled for module: " + m_moduleName);
-    }
-    else
-    {
-        m_logger(LOG_WARNING, "Cannot enable DataContext: persistent queue not initialized");
-    }
 }
 
 bool AgentSyncProtocol::ensureQueueAvailable()

@@ -1588,10 +1588,6 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
         // Initialize VD sync protocol (OS, packages, hotfixes)
         m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(moduleName + "_vd", syncDbPathVD, mqFuncs, logger_func, nullptr);
-
-        // Enable DataContext support for VD sync protocol (adds is_data_context column)
-        m_spSyncProtocolVD->enableDataContext();
-
         m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD);
     }
     catch (const std::exception& ex)

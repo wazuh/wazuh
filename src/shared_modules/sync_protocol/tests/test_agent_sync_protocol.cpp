@@ -36,8 +36,6 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, resetSyncingItems, (), (override));
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
-        MOCK_METHOD(void, enableDataContext, (), (override));
-
 };
 
 class AgentSyncProtocolTest : public ::testing::Test

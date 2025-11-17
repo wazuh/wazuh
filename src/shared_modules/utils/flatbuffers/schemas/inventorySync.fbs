@@ -103,6 +103,7 @@ table ChecksumModule {
 
 union MessageType {
     DataValue,
+    DataContext,
     DataClean,
     ChecksumModule,
     Start,

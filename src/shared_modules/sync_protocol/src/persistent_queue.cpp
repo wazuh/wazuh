@@ -123,17 +123,3 @@ void PersistentQueue::deleteDatabase()
         throw;
     }
 }
-
-void PersistentQueue::enableDataContext()
-{
-    try
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_storage->addDataContextColumn();
-    }
-    catch (const std::exception& ex)
-    {
-        m_logger(LOG_ERROR, std::string("PersistentQueue: Error enabling DataContext support: ") + ex.what());
-        throw;
-    }
-}

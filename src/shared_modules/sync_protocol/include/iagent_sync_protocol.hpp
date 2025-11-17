@@ -109,12 +109,6 @@ class IAgentSyncProtocol
                                              const std::vector<PersistedData>& data,
                                              size_t maxEps) = 0;
 
-        /// @brief Enables DataContext support for this sync protocol instance.
-        /// This method adds the is_data_context column to the database schema,
-        /// allowing the protocol to store and differentiate DataContext messages from DataValue messages.
-        /// Should be called after initialization for VD (Vulnerability Detection) sync protocols only.
-        virtual void enableDataContext() = 0;
-
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
