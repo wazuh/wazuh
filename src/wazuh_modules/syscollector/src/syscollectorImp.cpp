@@ -1334,7 +1334,10 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
     m_logFunction(LOG_INFO, "Module started.");
 
-    bool firstScan = m_scanOnStart;
+    if (m_scanOnStart)
+    {
+        scan();
+    }
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
@@ -1344,19 +1347,10 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         if (m_paused)
         {
             m_logFunction(LOG_DEBUG, "Syscollector scanning paused, skipping scan iteration");
-            firstScan = false;
             continue;
         }
 
-        if (firstScan)
-        {
-            scan();
-            firstScan = false;
-        }
-        else
-        {
-            scan();
-        }
+        scan();
     }
     m_spDBSync.reset(nullptr);
 }
