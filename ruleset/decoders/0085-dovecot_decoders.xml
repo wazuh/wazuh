@@ -39,46 +39,16 @@
 
 <decoder name="dovecot-success">
   <parent>dovecot</parent>
-  <prematch offset="after_parent">^\w\w\w\w-login: Login: </prematch>
-  <regex offset="after_prematch">^user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), mpid=\S+, (\S*)$</regex>
-  <order>user, srcip, dstip, protocol</order>
+  <prematch offset="after_parent">^\S+-login: Login: </prematch>
+  <regex offset="after_prematch">^user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), mpid=\S+, (\S+), (\.+), session=\p(\S+)\p</regex>
+  <order>user, srcip, dstip, protocol, extra_data, session</order>
 </decoder>
 
 <decoder name="dovecot-aborted">
   <parent>dovecot</parent>
-  <prematch offset="after_parent">^\w\w\w\w-login: Aborted login</prematch>
-  <regex offset="after_prematch">: user=\p(\S+)\p, method=\S+, rip=(\S+), </regex>
-  <order>user, srcip, dstip</order>
-</decoder>
-
-<decoder name="dovecot-aborted">
-  <parent>dovecot</parent>
-  <regex offset="after_regex">lip=(\S+),</regex>
-  <order>dstip</order>
-</decoder>
-
-<decoder name="dovecot-aborted">
-  <parent>dovecot</parent>
-  <regex offset="after_regex">lip=(\S+)</regex>
-  <order>dstip</order>
-</decoder>
-
-<decoder name="dovecot-aborted">
-  <parent>dovecot</parent>
-  <regex offset="after_regex"> session=\p(\S+\S)>,</regex>
-  <order>session</order>
-</decoder>
-
-<decoder name="dovecot-aborted">
-  <parent>dovecot</parent>
-  <regex offset="after_regex"> session=\p(\S+\S)></regex>
-  <order>session</order>
-</decoder>
-
-<decoder name="dovecot-aborted">
-  <parent>dovecot</parent>
-  <regex offset="after_regex"> (\S*)$</regex>
-  <order>protocol</order>
+  <prematch offset="after_parent">^\S+-login: Disconnected: Aborted login</prematch>
+  <regex offset="after_prematch">: user=\p(\S*)\p, rip=(\S+), lip=(\S+), session=\p(\S+)\p</regex>
+  <order>user, srcip, dstip, session</order>
 </decoder>
 
 <decoder name="dovecot-fail">
@@ -88,18 +58,11 @@
   <order>user, srcip</order>
 </decoder>
 
- <decoder name="dovecot-disconnect-user">
-   <parent>dovecot</parent>
-   <prematch offset="after_parent">^\w\w\w\w-login: Disconnected\.+user=</prematch>
-   <regex offset="after_parent">user=(\S+), method=\S+, rip=(\S+), lip=(\S+),</regex>
-   <order>srcuser, srcip, dstip</order>
- </decoder>
-
-<decoder name="dovecot-disconnect">
+<decoder name="dovecot-disconnect-user">
   <parent>dovecot</parent>
-  <prematch offset="after_parent">^\w\w\w\w-login: Disconnected</prematch>
-  <regex offset="after_prematch">rip=(\S+), lip=(\S+),|rip=(\S+), lip=(\S+)$</regex>
-  <order>srcip, dstip</order>
+  <prematch offset="after_parent">^\S+\p\S+\p\.+: Disconnected: </prematch>
+  <regex offset="after_parent">^\S+\p(\S+)\p\p\S+\p\p(\S+)\p</regex>
+  <order>user, session</order>
 </decoder>
 
 <decoder name="dovecot-info">
@@ -117,4 +80,18 @@
   <parent>dovecot-info</parent>
   <regex offset="after_parent">auth\(\.+\): \S+\((\S+),(\S+)\):</regex>
   <order>user, srcip</order>
+</decoder>
+
+<decoder name="dovecot-disconnected-too-many-bad-commands">
+  <parent>dovecot</parent>
+  <prematch offset="after_parent">^\S+-login: Disconnected: Disconnected: Too many bad commands \.+:</prematch>
+  <regex offset="after_prematch">user=\p(\S*)\p, rip=(\S+), lip=(\S+), \.+, session=\p(\S+)\p</regex>
+  <order>user, srcip, dstip, session</order>
+</decoder>
+
+<decoder name="dovecot-disconnected-too-many-invalid-commands">
+  <parent>dovecot</parent>
+  <prematch offset="after_parent">^\S+-login: Disconnected: Too many invalid commands \.+:</prematch>
+  <regex offset="after_prematch">user=\p(\S*)\p, rip=(\S+), lip=(\S+), \.+, session=\p(\S+)\p</regex>
+  <order>user, srcip, dstip, session</order>
 </decoder>
