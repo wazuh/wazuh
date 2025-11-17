@@ -291,8 +291,6 @@ static int test_process_group_setup(void ** state) {
     state[0] = group->f_time;
     state[1] = group;
 
-    merge_shared = 1;
-
     return 0;
 }
 
@@ -3349,13 +3347,13 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
     expect_string(__wrap__mdebug2, formatted_msg, "Multigroup 'group1,group2' was modified from outside.");
-    merge_shared = 0;
+    logr.nocmerged = 1;
     expect_value(__wrap_OSHash_Next, self, m_hash);
     will_return(__wrap_OSHash_Next, NULL);
 
     process_multi_groups();
 
-    merge_shared = 1;
+    logr.nocmerged = 0;
 
     os_free(hash_node->key);
     os_free(hash_node);

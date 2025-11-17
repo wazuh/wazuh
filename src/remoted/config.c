@@ -55,6 +55,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->conn = NULL;
     cfg->allowips = NULL;
     cfg->denyips = NULL;
+    cfg->nocmerged = 0;
     cfg->queue_size = 131072;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
@@ -203,7 +204,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"shared_reload",shared_reload_interval);
     cJSON_AddNumberToObject(remoted,"disk_storage",disk_storage);
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
-    cJSON_AddNumberToObject(remoted,"merge_shared",merge_shared);
+    cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
     cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
     cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
     cJSON_AddNumberToObject(remoted,"send_chunk",send_chunk);

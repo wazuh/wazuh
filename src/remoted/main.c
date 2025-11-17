@@ -139,8 +139,7 @@ int main(int argc, char **argv)
         merror_exit("Message id verification can't be guaranteed when worker_pool is greater than 1.");
     }
 
-    // Determine merge behavior: disabled by -m flag or by merge_shared config
-    merge_shared = nocmerged ? 0 : merge_shared;
+    logr.nocmerged = nocmerged ? 1 : !merge_shared;
 
     // Read the cluster status and the node type from the configuration file
     switch (w_is_worker()){
@@ -151,7 +150,7 @@ int main(int argc, char **argv)
         case 1:
             logr.worker_node = true;
             mdebug1("Cluster worker node: Disabling the merged.mg creation");
-            merge_shared = 0;
+            logr.nocmerged = 1;
             break;
     }
 

@@ -48,6 +48,7 @@ typedef struct _remoted {
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP
     int position;       ///< This allows the childs to access its corresponding remoted parameters (unique per child)
+    int nocmerged;
     socklen_t peer_size;
     long queue_size;
     bool worker_node;

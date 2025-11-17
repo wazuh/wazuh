@@ -2717,6 +2717,12 @@ win32/setup-syscheck.exe: win32/win_service_rk.o win32/setup-syscheck.o win32/se
 win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
+win32/ui_resource.o: win32/ui/win32ui.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/auth_resource.o: win32/agent-auth.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
 win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
 
