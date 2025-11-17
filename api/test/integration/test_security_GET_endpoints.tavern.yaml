@@ -1721,8 +1721,6 @@ stages:
             description: Reference agent groups via group ID (i.e. group:id:default)
           node:id:
             description: Reference cluster nodes via node ID (i.e. node:id:worker1)
-          rule:file:
-            description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
           policy:id:
             description: Reference security policies via its id (i.e. policy:id:1)
           role:id:
