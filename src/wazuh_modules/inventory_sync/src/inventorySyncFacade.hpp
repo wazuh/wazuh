@@ -312,11 +312,16 @@ class InventorySyncFacadeImpl final
                 searchQuery["search_after"] = nlohmann::json::array({searchAfter});
             }
 
+            logDebug2(LOGGER_DEFAULT_TAG, "Search query: %s", searchQuery.dump().c_str());
+
             auto searchResult = m_indexerConnector->executeSearchQuery(index, searchQuery);
+
+            logDebug2(LOGGER_DEFAULT_TAG, "Search result: %s", searchResult.dump().c_str());
 
             if (!searchResult.contains("hits") || !searchResult["hits"].contains("hits") ||
                 searchResult["hits"]["hits"].empty())
             {
+                logDebug2(LOGGER_DEFAULT_TAG, "No more results, breaking pagination loop");
                 break;
             }
 
@@ -705,7 +710,7 @@ public:
                                     logInfo(LOGGER_DEFAULT_TAG,
                                             "ModuleCheck: Checksums DO NOT match for agent %s - full resync required",
                                             res.context->agentId.c_str());
-                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
                                                                      res.context->agentId,
                                                                      res.context->sessionId,
                                                                      res.context->moduleName);
