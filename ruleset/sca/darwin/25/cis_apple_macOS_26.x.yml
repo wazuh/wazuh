@@ -982,7 +982,6 @@ checks:
        - 'https://derflounder.wordpress.com/2012/01/30/openbsm-auditing-on-mac-os-x/'
        - 'https://www.scip.ch/en/?labs.20150108'
        - 'https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r2.pdf'
-       - 'https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-'
        - 'https://github.com/usnistgov/macos_security'
      compliance:
        - cis: ["3.2"]
@@ -995,8 +994,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "11.5"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-     condition:
+     condition: any
      rules:
+       - "f:/etc/security/audit_control -> r:^flags && r:-fm && r:-ex && r:ad && r:aa && r:lo && r:-fr && r:-fw"
+       - "f:/etc/security/audit_control -> r:^flags && r:-all"
 
   # 3.3 Ensure install.log Is Retained for 365 or More Days and No Maximum Size. (Automated)
    - id: 18578
@@ -1015,8 +1016,10 @@ checks:
        - pci_dss_v3.2.1: ["10.7"]
        - pci_dss_v4.0: ["10.1", "10.1.1"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+       - 'f:/etc/asl/com.apple.install -> !r:^\s*# && n:ttl=(\d+) compare >= 365'
+       - 'not f:/etc/asl/com.apple.install -> !r:^\s*# && r:all_max='
 
   # 3.4 Ensure Security Auditing Retention Is Enabled. (Automated)
    - id: 18579
@@ -1035,51 +1038,19 @@ checks:
        - pci_dss_v3.2.1: ["10.7"]
        - pci_dss_v4.0: ["10.1", "10.1.1"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)s compare >= 5184000'
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)h compare >= 1440'
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)d compare >= 60'
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)y compare >= 1'
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)b compare >= 5368709120'
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)k compare >= 5242880'
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)m compare >= 5120'
+       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)g compare >= 5'
 
-  # 3.5 Ensure Access to Audit Records Is Controlled. (Automated)
-   - id: 18580
-     title: "Ensure Access to Audit Records Is Controlled."
-     description: "The audit system on macOS writes important operational and security information that can be both useful for an attacker and a place for an attacker to attempt to obfuscate unwanted changes that were recorded. As part of defense-in-depth, the /etc/security/audit_control configuration and the files in /var/audit should be owned only by root with group wheel with read-only rights and no other access allowed. macOS ACLs should not be used for these files. The default folder for storing logs is /var/audit, but it can be changed. This recommendation will ensure that any target directory has appropriate access control in place even if the target directory is not the default of /var/audit."
-     rationale: "Audit records should never be changed except by the system daemon posting events. Records may be viewed or extracts manipulated, but the authoritative files should be protected from unauthorized changes."
-     impact: "This control is only checking the default configuration to ensure that unwanted access to audit records is not available. Internal Only - General."
-     remediation: "Terminal Method: Run the following to commands to set the audit records to the root user and wheel group: % /usr/bin/sudo /usr/sbin/chown -R root:wheel /etc/security/audit_control % /usr/bin/sudo /bin/chmod -R 440 /etc/security/audit_control % /usr/bin/sudo /usr/sbin/chown -R root:wheel $(/usr/bin/sudo /usr/bin/grep '^dir' /etc/security/audit_control | /usr/bin/awk -F: '{print $2}') % /usr/bin/sudo /bin/chmod -R 440 $(/usr/bin/grep '^dir' /etc/security/audit_control | /usr/bin/awk -F: '{print $2}') Note: It is recommended to do a thorough verification process on why the audit logs have been changed before following the remediation steps. If the system has different access controls on the audit logs, and the changes cannot be traced, a new install may be prudent. Check for signs of file tampering as well as unapproved OS changes. Note: In macOS 14, and versions going forward, Apple disabled auditd by default. Since that is the default, the /etc/security/audit_control does not exist. If this remediation is ran without copying the /etc/security/audit_control.example to /etc/security/audit_control then it can cause a recursive permissions issue and can cause an unsupported state (undesired results) and booting anomalies."
-     compliance:
-       - cis: ["3.5"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 3.6 Audit Software Inventory. (Manual)
-   - id: 18581
-     title: "Audit Software Inventory."
-     description: "With the introduction of Mac OS X 10.6.6, Apple added a new application, App Store, which resides in the Applications directory. This application allows a user with admin privileges and an Apple Account to browse Apple's online App Store, purchase (including no-cost purchases), and install new applications, bypassing Enterprise software inventory controls. Any admin user can install software in the /Applications directory whether from internet downloads, thumb drives, optical media, cloud storage, or even binaries through email. Even standard users can run executables downloaded to their home folder by default. The source of the software is not nearly as important as a consistent audit of all installed software for patch compliance and appropriateness. A single user desktop where the user, administrator, and the person approving software are all the same person probably does not need to audit software inventory to this extent. It is helpful in the case of stability problems or malware, however. Scan systems on a monthly basis and determine the number of unauthorized pieces of software that are installed. Verify that if an unauthorized piece of software is found one month, it is removed from the system the next. Export System Information through the built-in System Information Application or other third-party tools on an organizationally defined timetable."
-     rationale: "Part of comprehensive IT security involves device management and ensuring that all software is authorized and patched. Checking for macOS updates and app updates are relatively simple for the end user, and can even be updated with minimal privileges from trusted sources, if enabled. Remote monitoring of the patch status for software maintained through Apple is very well supported by management applications. Neither Apple capabilities nor third-party patch management solutions will cover all mission-necessary software for most organizations. Full visibility into software present on the system enables vulnerability and risk management. P.S. Don't forget about browser plugins/extensions for all installed software. Internal Only - General."
-     remediation: "Delete any unnecessary applications from the system."
-     references:
-       - 'https://support.apple.com/en-us/HT203001'
-       - 'https://www.cisecurity.org/controls/inventory-and-control-of-software-assets/'
-     compliance:
-       - cis: ["3.6"]
-       - cis_csc_v8: ["2.1"]
-       - cis_csc_v7: ["2.1"]
-       - cmmc_v2.0: ["CM.L2-3.4.1"]
-       - iso_27001-2013: ["A.8.1.1"]
-       - nist_sp_800-53: ["CM-7(1)", "MA-3"]
-       - pci_dss_v3.2.1: ["1.1.6", "2.4"]
-       - pci_dss_v4.0: ["1.2.5", "6.3.2"]
-       - soc_2: ["CC3.2", "CC6.1"]
-     condition:
-     rules:
+  # 3.5 Ensure Access to Audit Records Is Controlled. (Automated) - Not Implemented
+  # 3.6 Audit Software Inventory. (Manual) - Not Implemented
 
   # 4.1 Ensure Bonjour Advertising Services Is Disabled. (Automated)
    - id: 18582
@@ -1098,8 +1069,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.mDNSResponder'').objectForKey(''NoMulticastAdvertisements'')" -> r:^1$'
 
   # 4.2 Ensure HTTP Server Is Disabled. (Automated)
    - id: 18583
@@ -1109,7 +1081,7 @@ checks:
      impact: "The web server is both a point of attack for the system and a means for unauthorized file transfers."
      remediation: "Terminal Method: Run the following command to disable the HTTP server services: % /usr/bin/sudo /usr/sbin/apachectl stop % /usr/bin/sudo /bin/launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist."
      references:
-       - 'https://www.stigviewer.com/stig/apple_macos_11_big_sur/2021-06-16/finding/V-'
+       - 'https://www.stigviewer.com/stig/apple_macos_11_big_sur/2021-06-16/finding/V-230793'
        - 'https://httpd.apache.org/security/vulnerabilities_24.html'
      compliance:
        - cis: ["4.2"]
@@ -1121,8 +1093,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^0$'
 
   # 4.3 Ensure NFS Server Is Disabled. (Automated)
    - id: 18584
@@ -1141,29 +1114,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - "c:nfsd status -> r:not running"
+       - "not f:/etc/exports"
 
-  # 5.1.1 Ensure Home Folders Are Secure. (Automated)
-   - id: 18585
-     title: "Ensure Home Folders Are Secure."
-     description: "By default, macOS allows all valid users into the top level of every other user's home folder and restricts access to the Apple default folders within. Another user on the same system can see you have a \"Documents\" folder but cannot see inside it. This configuration does work for personal file sharing but can expose user files to standard accounts on the system. The best parallel for Enterprise environments is that everyone who has a Dropbox account can see everything that is at the top level but can't see your pictures. Similarly with macOS, users can see into every new Directory that is created because of the default permissions. Home folders should be restricted to access only by the user. Sharing should be used on dedicated servers or cloud instances that are managing access controls. Some environments may encounter problems if execute rights are removed as well as read and write. Either no access or execute only for group or others is acceptable."
-     rationale: "Allowing all users to view the top level of all networked users' home folder may not be desirable since it may lead to the revelation of sensitive information."
-     impact: "If implemented, users will not be able to use the \"Public\" folders in other users' home folders. \"Public\" folders with appropriate permissions would need to be set up in the /Shared folder. Internal Only - General."
-     remediation: "Terminal Method: For each user, run the following command to secure all home folders: % /usr/bin/sudo /bin/chmod -R og-rwx /Users/<username> Alternately, run the following command if there needs to be executable access for a home folder: % /usr/bin/sudo /bin/chmod -R og-rw /Users/<username> example: % /usr/bin/sudo /bin/chmod -R og-rw /Users/firstuser/ % /usr/bin/sudo /bin/chmod -R og-rwx /Users/thirduser/."
-     compliance:
-       - cis: ["5.1.1"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 5.1.1 Ensure Home Folders Are Secure. (Automated) - Not Implemented
 
   # 5.1.2 Ensure System Integrity Protection Status (SIP) Is Enabled. (Automated)
    - id: 18586
@@ -1171,7 +1127,7 @@ checks:
      description: "System Integrity Protection is a security feature introduced in OS X 10.11 El Capitan. System Integrity Protection restricts access to System domain locations and restricts runtime attachment to system processes. Any attempt to inspect or attach to a system process will fail. Kernel Extensions are now restricted to /Library/Extensions and are required to be signed with a Developer ID."
      rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
      impact: "System binaries and processes could become compromised."
-     remediation: "Terminal Method: Perform the following steps to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command (⌘) + R) 2. Select Utilities 3. Select Terminal 4. Run the following command: # /usr/bin/sudo /usr/bin/csrutil enable Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect. 5. Reboot the computer Note: You should research why the system had SIP disabled. It might be a better option to erase the Mac and reinstall the operating system. That is at your discretion. Note: You cannot enable System Integrity Protection from the booted operating system. If the remediation is attempted in the booted OS and not the Recovery Partition the output will give the error csrutil: failed to modify system integrity configuration. This tool needs to be executed from the Recovery OS."
+     remediation: "Terminal Method: Perform the following steps to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command () + R) 2. Select Utilities 3. Select Terminal 4. Run the following command: # /usr/bin/sudo /usr/bin/csrutil enable Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect. 5. Reboot the computer Note: You should research why the system had SIP disabled. It might be a better option to erase the Mac and reinstall the operating system. That is at your discretion. Note: You cannot enable System Integrity Protection from the booted operating system. If the remediation is attempted in the booted OS and not the Recovery Partition the output will give the error csrutil: failed to modify system integrity configuration. This tool needs to be executed from the Recovery OS."
      references:
        - 'https://developer.apple.com/documentation/security/disabling_and_enabling_syst'
        - 'https://support.apple.com/en-us/HT204899'
@@ -1185,8 +1141,9 @@ checks:
        - pci_dss_v3.2.1: ["1.4"]
        - pci_dss_v4.0: ["1.2.5", "12.3.4", "2.2.4"]
        - soc_2: ["CC5.2", "CC6.8", "CC7.1"]
-     condition:
+     condition: all
      rules:
+       - "c:csrutil status -> r:^System Integrity Protection status: enabled."
 
   # 5.1.3 Ensure Apple Mobile File Integrity (AMFI) Is Enabled. (Automated)
    - id: 18587
@@ -1209,8 +1166,9 @@ checks:
        - nist_sp_800-53: ["CM-10", "CM-7(1)", "CM-7(2)", "CM-8(3)"]
        - pci_dss_v4.0: ["1.2.5", "12.3.4", "2.2.4"]
        - soc_2: ["CC5.2", "CC7.1"]
-     condition:
+     condition: all
      rules:
+       - "not c:nvram -p -> r:amfi_get_out_of_my_way=1"
 
   # 5.1.4 Ensure Signed System Volume (SSV) Is Enabled. (Automated)
    - id: 18588
@@ -1236,74 +1194,13 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - "c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled"
 
-  # 5.1.5 Ensure Appropriate Permissions Are Enabled for System Wide Applications. (Automated)
-   - id: 18589
-     title: "Ensure Appropriate Permissions Are Enabled for System Wide Applications."
-     description: "Applications in the System Applications Directory (/Applications) should be world-executable since that is their reason to be on the system. They should not be world-writable and allow any process or user to alter them for other processes or users to then execute modified versions."
-     rationale: "Unauthorized modifications of applications could lead to the execution of malicious code."
-     impact: "Applications changed will no longer be world-writable. Depending on the environment, there will be different risk tolerances on each non-conforming application. Global changes should not be performed where mission-critical applications are misconfigured."
-     remediation: "Terminal Method: Run the following command to change the permissions for each application that does not meet the requirements: % /usr/bin/sudo IFS=$'\\n' for apps in $( /usr/bin/find /System/Volumes/Data/Applications -iname \"*\\.app\" -type d -perm -2 | grep -v Xcode.app ); do /bin/chmod -R o-w \"$apps\" done Note: Global changes should not be performed where mission-critical applications are part of the improperly permissioned applications. Internal Only - General."
-     compliance:
-       - cis: ["5.1.5"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 5.1.6 Ensure No World Writable Folders Exist in the System Folder. (Automated)
-   - id: 18590
-     title: "Ensure No World Writable Folders Exist in the System Folder."
-     description: "Software sometimes insists on being installed in the /System/Volumes/Data/System Directory and has inappropriate world-writable permissions. Macs with writable files in System should be investigated forensically. A file with open writable permissions is a sign of at best a rogue application. It could also be a sign of a computer compromise and a persistent presence on the system."
-     rationale: "Folders in /System/Volumes/Data/System should not be world-writable. The audit check excludes the downloadDir and locks folders that are part of Apple's default user template."
-     impact: "Changing file permissions could disrupt the use of applications that rely on files in the System Folder with vulnerable permissions."
-     remediation: "Terminal Method: Run the following command to set permissions so that folders are not world-writable in the /System folder: % /usr/bin/sudo IFS=$'\\n' for sysPermissions in $( /usr/bin/find /System/Volumes/Data/System -type d -perm -2 | /usr/bin/grep -vE \"downloadDir|locks\" ); do /bin/chmod -R o-w \"$sysPermissions\" done."
-     compliance:
-       - cis: ["5.1.6"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 5.1.7 Ensure No World Writable Folders Exist in the Library Folder. (Automated)
-   - id: 18591
-     title: "Ensure No World Writable Folders Exist in the Library Folder."
-     description: "Software sometimes insists on being installed in the /System/Volumes/Data/Library directory and has inappropriate world-writable permissions. This software could be compromised with the folder(s) being world-writable by unauthorized actions."
-     rationale: "Folders in /System/Volumes/Data/Library should not be world-writable. The audit check excludes folders where the sticky bit is set by Apple. These folders are required by the operating system to run and should not be modified. Some security vendors use a world-writable folder for their security extension tool. This will be considered compliant due to the tools themselves not allowing a user to write to their folders. This is against the standard practice on POSIX systems. It is considered compliant here because of additional security vendor controls that are controlled through industry standard mitigations."
-     impact: "Applications that are not following standard practices, and have world-writable files in /System/Volumes/Data/Library may not launch or operate correctly after the remediation has been run. The vendor(s) of the software(s) should be notified so they can update their software(s) to follow standard practices. Organizations will have to make risk decisions on the continued operation of this software."
-     remediation: "Terminal Method: Run the following command to set permissions so that folders are not world-writable in the /System/Volumes/Data/Library folder: % /usr/bin/sudo IFS=$'\\n' for libPermissions in $(/usr/bin/find /Library -type d -perm -002 ! -perm - 1000 ! -xattrname com.apple.rootless 2>/dev/null); do /bin/chmod -R o-w \"$libPermissions\" done."
-     references:
-       - 'https://attack.mitre.org/techniques/T1222/002/'
-       - 'https://attack.mitre.org/mitigations/M1022/'
-     compliance:
-       - cis: ["5.1.7"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 5.1.5 Ensure Appropriate Permissions Are Enabled for System Wide Applications. (Automated) - Not Implemented
+  # 5.1.6 Ensure No World Writable Folders Exist in the System Folder. (Automated) - Not Implemented
+  # 5.1.7 Ensure No World Writable Folders Exist in the Library Folder. (Automated) - Not Implemented
 
   # 5.2.1 Ensure Password Account Lockout Threshold Is Configured. (Automated)
    - id: 18592
@@ -1311,14 +1208,16 @@ checks:
      description: "The account lockout threshold specifies the amount of times a user can enter an incorrect password before a lockout will occur. Ensure that a lockout threshold is part of the password policy on the computer."
      rationale: "The account lockout feature mitigates brute-force password attacks on the system."
      impact: "The number of incorrect log on attempts should be reasonably small to minimize the possibility of a successful password attack, while allowing for honest errors made during a normal user log on. The locked account will auto-unlock after a few minutes when bad password attempts stop. The computer will accept the still-valid password if remembered or recovered."
-     remediation: "Terminal Method: Run the following command to set the maximum number of failed login attempts to less than or equal to 5: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy \"maxFailedLoginAttempts=<value≤5>\" example: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy \"maxFailedLoginAttempts=5\" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is maxFailedAttempts 3. The key must be set to <integer><value≤5></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release. Note: This is for the login password only and does not affect the timeout of FileVault."
+     remediation: 'Terminal Method: Run the following command to set the maximum number of failed login attempts to less than or equal to 5: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "maxFailedLoginAttempts=<value<5>" $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "policyAttributeMinutesUntilFailedAuthenticationReset=<value<15>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "maxFailedLoginAttempts=5" /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "policyAttributeMinutesUntilFailedAuthenticationReset=15" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is maxFailedAttempts 3. The key must be set to <integer><value<5></integer> 4. The key to include is minutesUntilFailedLoginReset 5. The key must be set to <integer><value<15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release. Note: This is for the login password only and does not affect the timeout of FileVault.'
      references:
        - 'https://workbench.cisecurity.org/communities/113'
-       - 'https://support.apple.com/guide/security/passcodes-and-passwords-'
+       - 'https://support.apple.com/guide/security/passcodes-and-passwords-sec20230a10d/web'
      compliance:
        - cis: ["5.2.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare <= 5'
+       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:policyAttributeMinutesUntilFailedAuthenticationReset=(\d+) compare >= 15'
 
   # 5.2.2 Ensure Password Minimum Length Is Configured. (Automated)
    - id: 18593
@@ -1326,7 +1225,7 @@ checks:
      description: "A minimum password length is the fewest number of characters a password can contain to meet a system's requirements. Ensure that a minimum of a 15-character password is part of the password policy on the computer. Where the confidentiality of encrypted information in FileVault is more of a concern, requiring a longer password or passphrase may be sufficient rather than imposing additional complexity requirements that may be self-defeating."
      rationale: "Information systems that are not protected with strong password schemes including passwords of minimum length provide a greater opportunity for attackers to crack the password and gain access to the system."
      impact: "Short passwords can be easily attacked."
-     remediation: "Terminal Method: Run the following command to set the password length to greater than or equal to 15: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy \"minChars=<value≥15>\" example: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy \"minChars=15\" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is minLength 3. The key must be set to <integer><value≥15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
+     remediation: 'Terminal Method: Run the following command to set the password length to greater than or equal to 15: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "minChars=<value>15>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "minChars=15" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is minLength 3. The key must be set to <integer><value>15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
      compliance:
        - cis: ["5.2.2"]
        - cis_csc_v8: ["5.2"]
@@ -1335,8 +1234,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare >= 15'
 
   # 5.2.3 Ensure Complex Password Must Contain Alphabetic Characters Is Configured. (Manual)
    - id: 18594
@@ -1344,7 +1244,7 @@ checks:
      description: "Complex passwords contain one character from each of the following classes: English uppercase letters, English lowercase letters, Westernized Arabic numerals, and non-alphanumeric characters. Ensure that an Alphabetic character is part of the password policy on the computer."
      rationale: "The more complex a password, the more resistant it will be against persons seeking unauthorized access to a system."
      impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
-     remediation: "Terminal Method: Run the following command to set that passwords must contain at least one letter: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies \"requiresAlpha=<value≥1>\" example: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy \"requiresAlpha=1\" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
+     remediation: 'Terminal Method: Run the following command to set the that passwords must contain at least one letter: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies "requiresAlpha=<value>1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresAlpha=1" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
      compliance:
        - cis: ["5.2.3"]
        - cis_csc_v8: ["5.2"]
@@ -1353,8 +1253,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
+       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumLetters " -> n:>(\d+)< compare >= 1'
 
   # 5.2.4 Ensure Complex Password Must Contain Numeric Character Is Configured. (Manual)
    - id: 18595
@@ -1362,7 +1264,7 @@ checks:
      description: "Complex passwords contain one character from each of the following classes: English uppercase letters, English lowercase letters, Westernized Arabic numerals, and non-alphanumeric characters. Ensure that a number or numeric value is part of the password policy on the computer."
      rationale: "The more complex a password, the more resistant it will be against persons seeking unauthorized access to a system."
      impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
-     remediation: "Terminal Method: Run the following command to set passwords to require at least one number: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies \"requiresNumeric=<value≥1>\" example: % /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy \"requiresNumeric=2\" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
+     remediation: 'Terminal Method: Run the following command to set passwords to require at least one number: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies "requiresNumeric=<value>1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresNumeric=2" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
      compliance:
        - cis: ["5.2.4"]
        - cis_csc_v8: ["5.2"]
@@ -1371,8 +1273,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
+       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumNumericCharacters " -> n:>(\d+)< compare >= 1'
 
   # 5.2.5 Ensure Complex Password Must Contain Special Character Is Configured. (Manual)
    - id: 18596
