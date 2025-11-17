@@ -111,6 +111,9 @@ void SecurityConfigurationAssessment::Run()
             LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
         }
 
+        // Mark scan as in progress
+        m_scanInProgress.store(true);
+
         // Load policies on each run iteration
         // *INDENT-OFF*
         const SCAPolicyLoader policyLoader(m_policiesData, m_fileSystemWrapper, m_dBSync);
@@ -129,6 +132,12 @@ void SecurityConfigurationAssessment::Run()
         // Check again after policy loading in case stop was called during load
         if (!m_keepRunning)
         {
+            // Mark scan as complete before returning
+            m_scanInProgress.store(false);
+            {
+                std::lock_guard<std::mutex> lock(m_pauseMutex);
+                m_pauseCv.notify_all();
+            }
             return;
         }
 
@@ -145,6 +154,12 @@ void SecurityConfigurationAssessment::Run()
         {
             if (!m_keepRunning)
             {
+                // Mark scan as complete before returning
+                m_scanInProgress.store(false);
+                {
+                    std::lock_guard<std::mutex> lock(m_pauseMutex);
+                    m_pauseCv.notify_all();
+                }
                 return;
             }
 
@@ -154,6 +169,15 @@ void SecurityConfigurationAssessment::Run()
         firstScan = false;
 
         LoggingHelper::getInstance().log(LOG_INFO, "SCA scan ended.");
+
+        // Mark scan as complete
+        m_scanInProgress.store(false);
+
+        // Notify anyone waiting for scan completion
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_pauseCv.notify_all();
+        }
     }
 }
 
@@ -262,9 +286,30 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
 bool SecurityConfigurationAssessment::syncModule(Mode mode)
 {
+    // Check if paused - don't start new sync operations
+    if (m_paused.load())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is paused");
+        return true;  // Return success to avoid error handling in caller
+    }
+
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->synchronizeModule(mode);
+        // Mark sync as in progress
+        m_syncInProgress.store(true);
+
+        bool result = m_spSyncProtocol->synchronizeModule(mode);
+
+        // Mark sync as complete
+        m_syncInProgress.store(false);
+
+        // Notify anyone waiting for sync completion
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_pauseCv.notify_all();
+        }
+
+        return result;
     }
 
     return false;
@@ -423,8 +468,21 @@ int SecurityConfigurationAssessment::setVersion(int version)
 
 void SecurityConfigurationAssessment::pause()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning paused for coordination");
-    m_paused = true;
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA pause requested");
+
+    // Set pause flag to prevent new operations from starting
+    m_paused.store(true);
+
+    // Wait for BOTH scan and sync operations to complete
+    std::unique_lock<std::mutex> lock(m_pauseMutex);
+    m_pauseCv.wait(lock, [this]
+    {
+        bool scanDone = !m_scanInProgress.load();
+        bool syncDone = !m_syncInProgress.load();
+        return (scanDone && syncDone) || !m_keepRunning;
+    });
+
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA module paused - all operations completed");
 }
 
 int SecurityConfigurationAssessment::flush()
@@ -455,7 +513,10 @@ int SecurityConfigurationAssessment::flush()
 void SecurityConfigurationAssessment::resume()
 {
     LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning resumed after coordination");
-    m_paused = false;
+
+    // Clear pause flag to allow operations to resume
+    m_paused.store(false);
+
     // Wake up the Run() loop if it's waiting
     m_cv.notify_one();
 }

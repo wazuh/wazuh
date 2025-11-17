@@ -175,6 +175,12 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if scanning is paused for coordination
         std::atomic<bool> m_paused {false};
 
+        /// @brief Flag indicating if a scan is currently in progress
+        std::atomic<bool> m_scanInProgress {false};
+
+        /// @brief Flag indicating if a sync operation is currently in progress
+        std::atomic<bool> m_syncInProgress {false};
+
         /// @brief Flag indicating if a flush is requested for sync protocol
         std::atomic<bool> m_flushRequested {false};
 
@@ -183,6 +189,12 @@ class SecurityConfigurationAssessment
 
         /// @brief Mutex for condition variable
         std::mutex m_mutex;
+
+        /// @brief Condition variable for pause/resume coordination
+        std::condition_variable m_pauseCv;
+
+        /// @brief Mutex for pause/resume coordination
+        std::mutex m_pauseMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;
