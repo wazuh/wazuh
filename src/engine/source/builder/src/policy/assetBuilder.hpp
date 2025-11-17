@@ -1,9 +1,9 @@
 #ifndef _BUILDER_POLICY_ASSETBUILDER_HPP
 #define _BUILDER_POLICY_ASSETBUILDER_HPP
 
+#include <base/name.hpp>
 #include <defs/idefinitions.hpp>
 
-#include "builders/buildCtx.hpp"
 #include "iassetBuilder.hpp"
 #include "iregistry.hpp"
 
@@ -57,6 +57,13 @@ public:
     std::vector<base::Name> getParents(const json::Json& value) const;
 
     /**
+     * @brief Get the build context.
+     *
+     * @return const std::shared_ptr<builders::BuildCtx>&
+     */
+    builder::builders::Context& getContext() const;
+
+    /**
      * @brief Build the expression of the asset from the object containing the asset stages.
      *
      * If no stages are found, defaults to an asset that always succeeds and does nothing.
@@ -74,7 +81,7 @@ public:
     /**
      * @copydoc IAssetBuilder::operator()
      */
-    Asset operator()(const store::Doc& document) const override;
+    Asset operator()(const json::Json& document) const override;
 };
 
 } // namespace builder::policy

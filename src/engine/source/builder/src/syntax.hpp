@@ -38,6 +38,9 @@ constexpr auto OUTPUTS_KEY = "outputs";               ///< Key for the outputs s
 constexpr auto FILE_OUTPUT_KEY = "file";              ///< Key for the file output stage in an asset.
 constexpr auto INDEXER_OUTPUT_KEY = "wazuh-indexer";  ///< Key for the INDEXER output stage in an asset.
 constexpr auto INDEXER_OUTPUT_INDEX_KEY = "index";    ///< Key for the INDEXER output stage in an asset.
+const auto DECODERS_PATH = json::Json::formatJsonPath("wazuh.integration.decoders");
+const auto INTEGRATION_PATH = json::Json::formatJsonPath("wazuh.integration.name");
+const auto CATEGORY_PATH = json::Json::formatJsonPath("wazuh.integration.category");
 
 constexpr auto CONDITION_NAME =
     "condition"; ///< Name of the condition expression in the asset to be displayed in traces.

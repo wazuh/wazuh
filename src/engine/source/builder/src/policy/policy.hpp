@@ -2,9 +2,8 @@
 #define _BUILDER_POLICY_POLICY_HPP
 
 #include <builder/ipolicy.hpp>
-
+#include <cmstore/icmstore.hpp>
 #include <defs/idefinitions.hpp>
-#include <store/istore.hpp>
 
 #include "builders/ibuildCtx.hpp"
 
@@ -39,8 +38,8 @@ public:
      * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
      * production environment.
      */
-    Policy(const store::Doc& doc,
-           const std::shared_ptr<store::IStoreReader>& store,
+    Policy(const cm::store::NamespaceId& namespaceId,
+           const std::shared_ptr<cm::store::ICMStore>& cmStore,
            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
            const std::shared_ptr<builders::RegistryType>& registry,
            const std::shared_ptr<schemf::IValidator>& schema,
