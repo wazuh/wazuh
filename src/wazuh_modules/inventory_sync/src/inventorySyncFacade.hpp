@@ -20,6 +20,7 @@
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
 #include "stringHelper.h"
+#include "vulnerabilityScannerFacade.hpp"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
 #include <format>
@@ -28,7 +29,6 @@
 #include <json.hpp>
 #include <memory>
 #include <random>
-#include "vulnerabilityScannerFacade.hpp"
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
@@ -903,9 +903,9 @@ public:
                                         res.context->agentId.c_str(),
                                         e.what());
                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                res.context->agentId,
-                                                                res.context->sessionId,
-                                                                res.context->moduleName);
+                                                                 res.context->agentId,
+                                                                 res.context->sessionId,
+                                                                 res.context->moduleName);
 
                                 m_agentSessions.erase(res.context->sessionId);
                             }
