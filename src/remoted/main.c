@@ -135,11 +135,11 @@ int main(int argc, char **argv)
     }
 
     /* Exit if verify msg id is set and worker pool is greater than one */
-    if ((worker_pool > 1) && (_s_verify_counter == 1)) {
+    if ((getDefine_Int("remoted", "worker_pool", 1, 16) > 1) && (getDefine_Int("remoted", "verify_msg_id", 0, 1) == 1)) {
         merror_exit("Message id verification can't be guaranteed when worker_pool is greater than 1.");
     }
 
-    logr.nocmerged = nocmerged ? 1 : !merge_shared;
+    logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
     // Read the cluster status and the node type from the configuration file
     switch (w_is_worker()){
@@ -166,6 +166,7 @@ int main(int argc, char **argv)
 
 
     /* Don't exit when client.keys empty (if set) */
+    pass_empty_keyfile = getDefine_Int("remoted", "pass_empty_keyfile", 0, 1);
     if (pass_empty_keyfile) {
         OS_PassEmptyKeyfile();
     }

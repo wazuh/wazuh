@@ -37,8 +37,25 @@ static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
 
+int rto_sec;
+int rto_msec;
+int max_attempts;
+int request_pool;
+int request_timeout;
+int response_timeout;
+int guess_agent_group;
+
 // Initialize request module
 void req_init() {
+    // Get values from internal options
+    request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
+    request_timeout = getDefine_Int("remoted", "request_timeout", 1, 600);
+    response_timeout = getDefine_Int("remoted", "response_timeout", 1, 3600);
+    rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
+    rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
+    max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
+    guess_agent_group = getDefine_Int("remoted", "guess_agent_group", 0, 1);
+
     if (guess_agent_group && logr.worker_node) {
         mwarn("The internal option guess_agent_group must be configured on the master node.");
     }
