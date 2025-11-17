@@ -20,6 +20,7 @@ from signal import SIGALRM, SIGKILL, alarm, signal
 import psutil
 import yaml
 from cachetools import TTLCache, cached
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
 
@@ -1032,3 +1033,61 @@ def get_utc_strptime(date: str, datetime_format: str) -> datetime:
         The current date.
     """
     return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
+
+
+class KeystoreReader:
+    """Class to read values from a keystore."""
+
+    KEY_SIZE = 32
+    IV_SIZE = 16
+    KEY_VALUE_SEPARATOR = ':'
+
+    def __init__(self, keystore_path: Path):
+        self._data = keystore_path.read_bytes()
+        self._cipher = self._get_cipher()
+        self._keystore = self._decrypt_keystore()
+
+    @staticmethod
+    def _unpad(decrypted):
+        return decrypted[: -ord(decrypted[len(decrypted) - 1 :])]
+
+    def _get_cipher(self) -> Cipher:
+        enc_key = self._data[: self.KEY_SIZE]
+        iv = self._data[self.KEY_SIZE : self.KEY_SIZE + self.IV_SIZE]
+        return Cipher(algorithms.AES(enc_key), modes.CBC(iv))
+
+    def _decrypt_keystore(self) -> dict:
+        value = self._data[self.KEY_SIZE + self.IV_SIZE :]
+        decryptor = self._cipher.decryptor()
+        decrypted = self._unpad(decryptor.update(value)).decode('utf-8')
+
+        lines = decrypted.split('\n')
+        lines.pop()
+        kev_values = {}
+        for line in lines:
+            key_value = line.split(self.KEY_VALUE_SEPARATOR)
+            key = key_value[0]
+            value = key_value[1]
+            kev_values[key] = value
+
+        return kev_values
+
+    def get(self, key: str, default: str | None) -> str | None:
+        """Obtain the value that matches the given key.
+
+        Parameters
+        ----------
+        key : str
+            To obtain the value.
+        default: str | None
+            Value to return if key does not exists.
+
+        Returns
+        -------
+        str | None
+            The value if the key exists, else None.
+        """
+        return self._keystore.get(key, default)
+
+    def __getitem__(self, attr):
+        return self._keystore[attr]
