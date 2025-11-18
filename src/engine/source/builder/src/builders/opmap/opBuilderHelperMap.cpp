@@ -3287,7 +3287,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     if (isMerge && buildCtx->validator().hasField(targetField.dotPath()))
     {
         auto type = buildCtx->validator().getType(targetField.dotPath());
-        if (type != schemf::Type::OBJECT )
+        if (type != schemf::Type::OBJECT)
         {
             throw std::runtime_error(fmt::format("Expected 'object' target field but got field '{}' of type '{}'",
                                                  targetField.dotPath(),

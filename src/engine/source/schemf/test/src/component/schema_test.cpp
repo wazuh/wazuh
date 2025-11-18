@@ -177,7 +177,7 @@ TEST(SchemaTest, HasField_KnownECSLeaf_ReturnsTrue)
 {
     Schema schema;
     schema.addField("dns", {Type::OBJECT});
-    schema.addField("dns.answers", {Type::OBJECT});  // plain object field
+    schema.addField("dns.answers", {Type::OBJECT});        // plain object field
     schema.addField("dns.answers.class", {Type::KEYWORD}); // leaf field
 
     ASSERT_TRUE(schema.hasField("dns.answers.class"));
