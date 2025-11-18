@@ -112,10 +112,12 @@ void fim_initialize() {
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifdef WIN32
-    w_mutex_init(&syscheck.fim_registry_scan_mutex, NULL)
+    w_mutex_init(&syscheck.fim_registry_scan_mutex, NULL);
 #else
-    w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
+    w_mutex_init(&syscheck.fim_symlink_mutex, NULL);
 #endif
+    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
     notify_scan = syscheck.notify_first_scan;
 

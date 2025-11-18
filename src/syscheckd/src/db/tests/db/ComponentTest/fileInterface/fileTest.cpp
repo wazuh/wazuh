@@ -369,3 +369,111 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
+
+TEST_F(DBTestFixture, TestFimDBGetMaxVersionFileEmptyDB)
+{
+    EXPECT_NO_THROW({
+        auto maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 0);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetMaxVersionFileWithEntries)
+{
+    const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
+    const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
+    const auto fileFIMTest3 {std::make_unique<FileItem>(insertStatement3["data"].front())};
+
+    EXPECT_NO_THROW({
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_file(5);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 5);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFile)
+{
+    const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
+
+    EXPECT_NO_THROW({
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_file(10);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 10);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFileMultipleTimes)
+{
+    const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
+    const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
+
+    EXPECT_NO_THROW({
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_file(5);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 5);
+
+        setResult = fim_db_set_version_file(15);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 15);
+
+        setResult = fim_db_set_version_file(20);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 20);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFileWithFileEntries)
+{
+    const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
+    const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
+
+    EXPECT_NO_THROW({
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 1);
+
+        auto setResult = fim_db_set_version_file(100);
+        ASSERT_EQ(setResult, 0);
+
+        maxVersion = fim_db_get_max_version_file();
+        ASSERT_EQ(maxVersion, 100);
+    });
+}

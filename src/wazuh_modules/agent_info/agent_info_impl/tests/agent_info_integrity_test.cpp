@@ -125,6 +125,14 @@ TEST_F(AgentInfoIntegrityTest, StartLogsIntegrityInterval)
                       m_mockFileSystem
                   );
 
+    // Mock SysInfo and FileSystem calls that happen during populateAgentMetadata
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
     m_logOutput.clear();
     m_agentInfo->start(60, 86400, []()
     {
@@ -152,6 +160,11 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckSkippedWithoutSyncProtocol)
         data["last_groups_integrity"] = twoSecondsAgo;
         callback(SELECTED, data);
     }));
+
+    // Mock SysInfo and FileSystem calls that happen during populateAgentMetadata
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(false));
@@ -287,6 +300,8 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
         data["should_sync_groups"] = 0;
         data["last_metadata_integrity"] = 0;
         data["last_groups_integrity"] = 0;
+        data["is_first_run"] = 0;  // NOT first run, so delta sync will be attempted
+        data["is_first_groups_run"] = 0;
         callback(SELECTED, data);
     }));
 

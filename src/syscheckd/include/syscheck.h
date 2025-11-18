@@ -612,6 +612,53 @@ size_t syscom_dispatch(char* command, size_t command_len, char** output);
  */
 size_t syscom_getconfig(const char* section, char** output);
 
+// Flush on-demand synchronization variables (thread-safe with atomic operations)
+extern atomic_int_t fim_flush_in_progress;  // 0 = idle, 1 = flush active
+extern atomic_int_t fim_flush_result;       // 0 = success, -1 = error (valid only when in_progress=0)
+
+/**
+ * @brief Pauses FIM scanning
+ *
+ * @return 0 on success, -1 on error
+ */
+int fim_execute_pause(void);
+
+/**
+ * @brief Flushes FIM synchronization pending data (async)
+ *
+ * @return 0 on success (request accepted), -1 on error
+ */
+int fim_execute_flush(void);
+
+/**
+ * @brief Checks if FIM flush is completed
+ *
+ * @return 1 if flush is in progress, 0 if completed successfully, -1 if completed with error
+ */
+int fim_execute_is_flush_completed(void);
+
+/**
+ * @brief Gets the FIM maximum data version
+ *
+ * @return Version number, -1 on error
+ */
+int fim_execute_get_version(void);
+
+/**
+ * @brief Sets the FIM maximum data version
+ *
+ * @param version The version to set
+ * @return 0 on success, -1 on error
+ */
+int fim_execute_set_version(int version);
+
+/**
+ * @brief Resumes FIM scanning
+ *
+ * @return 0 on success, -1 on error
+ */
+int fim_execute_resume(void);
+
 #ifdef WIN_WHODATA
 /**
  * @brief Updates the SACL of an specific file

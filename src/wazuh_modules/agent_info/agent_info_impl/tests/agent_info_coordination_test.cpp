@@ -712,16 +712,44 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
         nlohmann::json flagData;
         flagData["should_sync_metadata"] = 1;
         flagData["should_sync_groups"] = 0;
+        flagData["last_metadata_integrity"] = 0;
+        flagData["last_groups_integrity"] = 0;
+        flagData["is_first_run"] = 0;  // NOT first run, so coordination will be attempted
+        flagData["is_first_groups_run"] = 0;
         callback(SELECTED, flagData);
     }));
 
     // Create a query function that simulates successful module communication
-    auto queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+    auto queryModuleFunc = [](const std::string& /* module_name */, const std::string & query, char** response) -> int
     {
         if (response)
         {
-            // Return success response for all commands
-            *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+            try
+            {
+                nlohmann::json cmd = nlohmann::json::parse(query);
+                std::string command = cmd["command"];
+
+                if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else
+                {
+                    // Return success response for all other commands
+                    *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+                }
+            }
+            catch (...)
+            {
+                // If JSON parsing fails, return generic success
+                *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+            }
         }
 
         return 0;
@@ -779,6 +807,16 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)
                 else if (command == "get_version")
                 {
                     *response = strdup(R"({"error": 0, "data": {"version": 5}})");
+                }
+                else if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
                 }
                 else
                 {
@@ -862,6 +900,16 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionFailure)
                 else if (command == "get_version")
                 {
                     *response = strdup(R"({"error": 0, "data": {"version": 3}})");
+                }
+                else if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
                 }
                 else
                 {
@@ -1064,6 +1112,10 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithUnknownException)
             nlohmann::json flagData;
             flagData["should_sync_metadata"] = 1;
             flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;  // NOT first run, so coordination will be attempted
+            flagData["is_first_groups_run"] = 0;
             callback(SELECTED, flagData);
         }
 
