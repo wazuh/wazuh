@@ -36,11 +36,13 @@ protected:
     uint64_t sessionId = 12345;
     std::string agentId = "001";
 
-    flatbuffers::Offset<Wazuh::SyncSchema::Start> createStartMessage(uint64_t size,
-                                                                     const std::string& agentIdStr = "001",
-                                                                     const std::string& agentName = "test-agent",
-                                                                     const std::string& agentVersion = "4.0.0",
-                                                                     const std::string& moduleName = "syscollector")
+    flatbuffers::Offset<Wazuh::SyncSchema::Start>
+    createStartMessage(uint64_t size,
+                       const std::string& agentIdStr = "001",
+                       const std::string& agentName = "test-agent",
+                       const std::string& agentVersion = "4.0.0",
+                       const std::string& moduleName = "syscollector",
+                       Wazuh::SyncSchema::Mode mode = Wazuh::SyncSchema::Mode_ModuleFull)
     {
         auto agentIdOffset = builder.CreateString(agentIdStr);
         auto agentNameOffset = builder.CreateString(agentName);
@@ -50,7 +52,7 @@ protected:
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(moduleOffset);
         startBuilder.add_size(size);
-        startBuilder.add_mode(Wazuh::SyncSchema::Mode_ModuleFull);
+        startBuilder.add_mode(mode);
         startBuilder.add_option(Wazuh::SyncSchema::Option_Sync);
         startBuilder.add_agentid(agentIdOffset);
         startBuilder.add_agentname(agentNameOffset);
@@ -263,4 +265,97 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
     EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(0);
 
     session.handleEnd(mockResponseDispatcher);
+}
+
+TEST_F(AgentSessionTest, HandleChecksumModule_Success)
+{
+    auto startMsg =
+        createStartMessage(0, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleCheck);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    // Create session with ModuleCheck mode (size can be 0 for ModuleCheck)
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create ChecksumModule message
+    flatbuffers::FlatBufferBuilder checksumBuilder;
+    auto checksumStr = checksumBuilder.CreateString("abc123def456");
+    auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
+
+    Wazuh::SyncSchema::ChecksumModuleBuilder checksumModuleBuilder(checksumBuilder);
+    checksumModuleBuilder.add_session(sessionId);
+    checksumModuleBuilder.add_checksum(checksumStr);
+    checksumModuleBuilder.add_index(indexStr);
+    auto checksumMsg = checksumModuleBuilder.Finish();
+    checksumBuilder.Finish(checksumMsg);
+
+    auto checksumModule = flatbuffers::GetRoot<Wazuh::SyncSchema::ChecksumModule>(checksumBuilder.GetBufferPointer());
+
+    ASSERT_NO_THROW({ session.handleChecksumModule(checksumModule); });
+}
+
+TEST_F(AgentSessionTest, HandleChecksumModule_NullData)
+{
+    auto startMsg =
+        createStartMessage(0, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleCheck);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    EXPECT_THROW({ session.handleChecksumModule(nullptr); }, AgentSessionException);
+}
+
+TEST_F(AgentSessionTest, HandleChecksumModule_EmptyChecksum)
+{
+    auto startMsg =
+        createStartMessage(0, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleCheck);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create ChecksumModule message with no checksum
+    flatbuffers::FlatBufferBuilder checksumBuilder;
+    auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
+
+    Wazuh::SyncSchema::ChecksumModuleBuilder checksumModuleBuilder(checksumBuilder);
+    checksumModuleBuilder.add_session(sessionId);
+    checksumModuleBuilder.add_index(indexStr);
+    auto checksumMsg = checksumModuleBuilder.Finish();
+    checksumBuilder.Finish(checksumMsg);
+
+    auto checksumModule = flatbuffers::GetRoot<Wazuh::SyncSchema::ChecksumModule>(checksumBuilder.GetBufferPointer());
+
+    // Should handle gracefully without throwing
+    ASSERT_NO_THROW({ session.handleChecksumModule(checksumModule); });
+}
+
+TEST_F(AgentSessionTest, Constructor_ValidSize_ModuleCheck)
+{
+    // Create a StartMessage with ModuleCheck mode and size 0 (which is valid for ModuleCheck)
+    auto agentIdOffset = builder.CreateString("001");
+    auto agentNameOffset = builder.CreateString("test-agent");
+    auto agentVersionOffset = builder.CreateString("4.0.0");
+    auto moduleOffset = builder.CreateString("syscollector");
+
+    Wazuh::SyncSchema::StartBuilder startBuilder(builder);
+    startBuilder.add_module_(moduleOffset);
+    startBuilder.add_size(0);
+    startBuilder.add_mode(Wazuh::SyncSchema::Mode_ModuleCheck);
+    startBuilder.add_option(Wazuh::SyncSchema::Option_Sync);
+    startBuilder.add_agentid(agentIdOffset);
+    startBuilder.add_agentname(agentNameOffset);
+    startBuilder.add_agentversion(agentVersionOffset);
+    auto startMsg = startBuilder.Finish();
+
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    ASSERT_NO_THROW(
+        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); });
 }

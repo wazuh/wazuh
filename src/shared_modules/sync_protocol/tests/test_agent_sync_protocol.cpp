@@ -2172,10 +2172,10 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     // Wait for checksum message
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-    // EndAck with non-matching checksum (Status::Error indicates mismatch)
+    // EndAck with non-matching checksum (Status::ChecksumMismatch indicates mismatch)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::ChecksumMismatch);
     endAckBuilder.add_session(session);
     auto endAckOffset = endAckBuilder.Finish();
 
@@ -3989,19 +3989,89 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
 
     // Send StartAck with OK status
     flatbuffers::FlatBufferBuilder startBuilder;
+
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-                            startBuilder,
-                            Wazuh::SyncSchema::MessageType::StartAck,
-                            startAckOffset.Union());
+        startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
     protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
+
+    // Wait for DataClean to be sent
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    syncThread.join();
+
+    // Verify error was logged
+    bool foundError = false;
+    for (const auto& msg : loggedMessages)
+    {
+        if (msg.find("Failed to clear items by index") != std::string::npos ||
+            msg.find("requires a persistent queue") != std::string::npos)
+        {
+            foundError = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundError);
+}
+
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckChecksumMismatch)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 0; },
+                            .send_binary =
+                                [](int, const void*, size_t, const char*, char)
+                            {
+                                return 0;
+                            }};
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module",
+                                                   ":memory:",
+                                                   mqFuncs,
+                                                   testLogger,
+                                                   std::chrono::seconds(syncEndDelay),
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries,
+                                                   maxEps,
+                                                   mockQueue);
+
+    // Enter in WaitingEndAck phase
+    std::thread syncThread(
+        [this]()
+        {
+            std::vector<PersistedData> testData = {
+                {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
+
+            EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+
+            bool syncResult = protocol->synchronizeModule(Mode::DELTA);
+            EXPECT_FALSE(syncResult);
+        });
+
+    // Wait for WaitingStartAck phase
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck
+    flatbuffers::FlatBufferBuilder startBuilder;
+
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(
+        startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+
+    const uint8_t* startBuffer = startBuilder.GetBufferPointer();
+    protocol->parseResponseBuffer(startBuffer, startBuffer->GetSize());
 
     // Wait for data messages
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -4014,9 +4084,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
+        endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
     endBuilder.Finish(endMessage);
 
     const uint8_t* endBuffer = endBuilder.GetBufferPointer();
@@ -4066,4 +4134,154 @@ TEST_F(AgentSyncProtocolTest, DeleteDatabaseLogsErrorWithoutQueue)
     EXPECT_EQ(loggedLevel, LOG_ERROR);
     EXPECT_TRUE(loggedMessage.find("Failed to delete database") != std::string::npos);
     EXPECT_TRUE(loggedMessage.find("requires a persistent queue") != std::string::npos);
+}
+
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckChecksumMismatch)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 0; },
+                            .send_binary =
+                                [](int, const void*, size_t, const char*, char)
+                            {
+                                return 0;
+                            }};
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module",
+                                                   ":memory:",
+                                                   mqFuncs,
+                                                   testLogger,
+                                                   std::chrono::seconds(syncEndDelay),
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries,
+                                                   maxEps,
+                                                   mockQueue);
+
+    // Enter in WaitingEndAck phase
+    std::thread syncThread(
+        [this]()
+        {
+            std::vector<PersistedData> testData = {
+                {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
+
+            EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+
+            bool syncResult = protocol->synchronizeModule(Mode::DELTA);
+            EXPECT_FALSE(syncResult);
+        });
+
+    // Wait for WaitingStartAck phase
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck
+    flatbuffers::FlatBufferBuilder startBuilder2;
+
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder2(startBuilder2);
+    startAckBuilder2.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder2.add_session(session);
+    auto startAckOffset2 = startAckBuilder2.Finish();
+
+    auto startMessage2 = Wazuh::SyncSchema::CreateMessage(
+        startBuilder2, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset2.Union());
+    startBuilder2.Finish(startMessage2);
+
+    const uint8_t* startBuffer2 = startBuilder2.GetBufferPointer();
+    protocol->parseResponseBuffer(startBuffer2, startBuilder2.GetSize());
+
+    // Wait for WaitingEndAck phase
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // EndAck with ChecksumMismatch status
+    flatbuffers::FlatBufferBuilder endBuilder2;
+
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder2(endBuilder2);
+    endAckBuilder2.add_status(Wazuh::SyncSchema::Status::ChecksumMismatch); // Status ChecksumMismatch
+    endAckBuilder2.add_session(session);
+    auto endAckOffset2 = endAckBuilder2.Finish();
+
+    auto endMessage2 =
+        Wazuh::SyncSchema::CreateMessage(endBuilder2, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset2.Union());
+    endBuilder2.Finish(endMessage2);
+
+    const uint8_t* endBuffer2 = endBuilder2.GetBufferPointer();
+    bool response = protocol->parseResponseBuffer(endBuffer2, endBuilder2.GetSize());
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckGenericError)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 0; },
+                            .send_binary =
+                                [](int, const void*, size_t, const char*, char)
+                            {
+                                return 0;
+                            }};
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module",
+                                                   ":memory:",
+                                                   mqFuncs,
+                                                   testLogger,
+                                                   std::chrono::seconds(syncEndDelay),
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries,
+                                                   maxEps,
+                                                   mockQueue);
+
+    // Enter in WaitingEndAck phase
+    std::thread syncThread(
+        [this]()
+        {
+            std::vector<PersistedData> testData = {
+                {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
+
+            EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+
+            bool syncResult = protocol->synchronizeModule(Mode::DELTA);
+            EXPECT_FALSE(syncResult);
+        });
+
+    // Wait for WaitingStartAck phase
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck
+    flatbuffers::FlatBufferBuilder startBuilder;
+
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(
+        startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+
+    const uint8_t* startBuffer = startBuilder.GetBufferPointer();
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
+
+    // Wait for WaitingEndAck phase
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // EndAck with Error status (which should map to GENERIC_ERROR)
+    flatbuffers::FlatBufferBuilder endBuilder;
+
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // Status Error
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+
+    auto endMessage =
+        Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+
+    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
+    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
 }

@@ -1,0 +1,52 @@
+{
+  "description": "ModuleCheck flow test with missing index: start with ModuleCheck mode -> checksum without index -> end (should error)",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 6,
+        "size": 0,
+        "option": 0,
+        "indices": ["wazuh-states-vulnerabilities"],
+        "agentid": "003",
+        "agentname": "module-check-error-agent",
+        "agentversion": "4.9.0",
+        "architecture": "x86_64",
+        "hostname": "test-host-005",
+        "osname": "Ubuntu",
+        "osplatform": "ubuntu",
+        "ostype": "linux",
+        "osversion": "22.04"
+      },
+      "description": "Start ModuleCheck synchronization - test error case with no index specified",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "checksum_module",
+      "data": {
+        "checksum": "some_checksum_value"
+      },
+      "description": "Send checksum without index field - should trigger error",
+      "delay": 0.5,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End ModuleCheck synchronization - should receive EndAck with Status_Error due to missing index",
+      "delay": 0.5,
+      "use_session_from_start": true,
+      "expect_end_response": true,
+      "expected_status": "Status_Error"
+    }
+  ],
+  "verification": {
+    "check_opensearch": false,
+    "expected_response": {
+      "status": "Status_Error",
+      "message": "No index specified for ModuleCheck"
+    }
+  }
+}

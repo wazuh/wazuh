@@ -1,0 +1,53 @@
+{
+  "description": "ModuleCheck flow test with matching checksums: start with ModuleCheck mode -> checksum -> end (checksums match)",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 6,
+        "size": 0,
+        "option": 0,
+        "indices": ["wazuh-states-vulnerabilities"],
+        "agentid": "001",
+        "agentname": "module-check-agent",
+        "agentversion": "4.9.0",
+        "architecture": "x86_64",
+        "hostname": "test-host-003",
+        "osname": "Ubuntu",
+        "osplatform": "ubuntu",
+        "ostype": "linux",
+        "osversion": "22.04"
+      },
+      "description": "Start ModuleCheck synchronization - verifies checksum matches",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "checksum_module",
+      "data": {
+        "index": "wazuh-states-vulnerabilities",
+        "checksum": "matching_checksum_value_here"
+      },
+      "description": "Send checksum for module verification - should match manager's calculation",
+      "delay": 0.5,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End ModuleCheck synchronization - should receive EndAck with Status_Ok if checksums match",
+      "delay": 0.5,
+      "use_session_from_start": true,
+      "expect_end_response": true,
+      "expected_status": "Status_Ok"
+    }
+  ],
+  "verification": {
+    "check_opensearch": false,
+    "expected_response": {
+      "status": "Status_Ok",
+      "message": "Checksums match - no full resync needed"
+    }
+  }
+}

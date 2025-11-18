@@ -1888,3 +1888,166 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
     EXPECT_EQ(attempts, 2) << "Should have retried once";
     EXPECT_TRUE(notifyCalled) << "Notify callback should have been called after successful retry";
 }
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string requestData;
+    std::string requestUrl;
+
+    // Setup expectations for successful search
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&requestData, &requestUrl](auto requestParams, const auto& postParams, auto /*configParams*/)
+            {
+                std::visit([&requestUrl](const auto& params) { requestUrl = params.url.url(); }, requestParams);
+                std::visit([&requestData](const auto& params) { requestData = params.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    nlohmann::json response;
+                    response["hits"]["total"]["value"] = 2;
+                    response["hits"]["hits"] = nlohmann::json::array();
+
+                    nlohmann::json hit1;
+                    hit1["_id"] = "doc1";
+                    hit1["_source"]["checksum"]["hash"]["sha1"] = "abc123";
+                    hit1["_source"]["agent"]["id"] = "001";
+                    hit1["sort"] = nlohmann::json::array({"doc1"});
+                    response["hits"]["hits"].push_back(hit1);
+
+                    nlohmann::json hit2;
+                    hit2["_id"] = "doc2";
+                    hit2["_source"]["checksum"]["hash"]["sha1"] = "def456";
+                    hit2["_source"]["agent"]["id"] = "001";
+                    hit2["sort"] = nlohmann::json::array({"doc2"});
+                    response["hits"]["hits"].push_back(hit2);
+
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response.dump());
+                }
+            }));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["agent.id"] = "001";
+    searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
+    searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
+    searchQuery["size"] = 1000;
+
+    nlohmann::json result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+
+    // Verify URL is correct
+    EXPECT_EQ(requestUrl, "mockserver:9200/wazuh-states-vulnerabilities/_search");
+
+    // Verify request data contains the query
+    nlohmann::json parsedRequest = nlohmann::json::parse(requestData);
+    EXPECT_EQ(parsedRequest["query"]["term"]["agent.id"], "001");
+    EXPECT_EQ(parsedRequest["size"], 1000);
+
+    // Verify response structure
+    EXPECT_TRUE(result.contains("hits"));
+    EXPECT_EQ(result["hits"]["total"]["value"], 2);
+    EXPECT_EQ(result["hits"]["hits"].size(), 2);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithSearchAfter)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string requestData;
+
+    // Setup expectations for search with search_after
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&requestData](auto requestParams, const auto& postParams, auto /*configParams*/)
+            {
+                std::visit([&requestData](const auto& params) { requestData = params.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    nlohmann::json response;
+                    response["hits"]["hits"] = nlohmann::json::array();
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response.dump());
+                }
+            }));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["agent.id"] = "001";
+    searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
+    searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
+    searchQuery["search_after"] = nlohmann::json::array({"previous_doc_id"});
+    searchQuery["size"] = 1000;
+
+    nlohmann::json result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+
+    // Verify request data contains search_after
+    nlohmann::json parsedRequest = nlohmann::json::parse(requestData);
+    EXPECT_TRUE(parsedRequest.contains("search_after"));
+    EXPECT_EQ(parsedRequest["search_after"][0], "previous_doc_id");
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Setup error expectation
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [](auto requestParams, const auto& postParams, auto /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::string url;
+                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError(url, 500, "Internal server error");
+                }
+            }));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["agent.id"] = "001";
+
+    // Call should throw exception on error
+    EXPECT_THROW(connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryEmptyResults)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Setup expectations for empty search results
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    nlohmann::json response;
+                    response["hits"]["total"]["value"] = 0;
+                    response["hits"]["hits"] = nlohmann::json::array();
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response.dump());
+                }
+            }));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["agent.id"] = "999";
+
+    nlohmann::json result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+
+    // Verify response structure with no results
+    EXPECT_TRUE(result.contains("hits"));
+    EXPECT_EQ(result["hits"]["total"]["value"], 0);
+    EXPECT_EQ(result["hits"]["hits"].size(), 0);
+}

@@ -975,6 +975,54 @@ def test_inventory_sync_groups_delta(inventory_sync_tester):
     inventory_sync_tester.check_opensearch_indices("groups_delta_flow")
 
 
+def test_inventory_sync_module_check_match(inventory_sync_tester):
+    """
+    Test ModuleCheck synchronization flow with matching checksums.
+    This test verifies that when agent and manager checksums match,
+    the server responds with Status_Ok and no full resync is triggered.
+    """
+    result = inventory_sync_tester.execute_test_sequence("module_check_match_flow")
+    assert result["validation"]["passed"], f"ModuleCheck match test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for matching checksums"
+
+
+def test_inventory_sync_module_check_mismatch(inventory_sync_tester):
+    """
+    Test ModuleCheck synchronization flow with mismatched checksums.
+    This test verifies that when agent and manager checksums don't match,
+    the server responds with Status_ChecksumMismatch to trigger a full resync.
+    """
+    result = inventory_sync_tester.execute_test_sequence("module_check_mismatch_flow")
+    assert result["validation"]["passed"], f"ModuleCheck mismatch test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_ChecksumMismatch
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_ChecksumMismatch", "Expected Status_ChecksumMismatch for mismatched checksums"
+
+
+def test_inventory_sync_module_check_no_index(inventory_sync_tester):
+    """
+    Test ModuleCheck synchronization flow with missing index field.
+    This test verifies that when the index field is not provided in ChecksumModule,
+    the server responds with Status_Error.
+    """
+    result = inventory_sync_tester.execute_test_sequence("module_check_no_index_flow")
+    assert result["validation"]["passed"], f"ModuleCheck no index test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Error
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Error", "Expected Status_Error for missing index"
+
+
 @pytest.mark.parametrize('opensearch', [False], indirect=True)
 def test_opensearch_health(opensearch):
     """Test OpenSearch health check."""
