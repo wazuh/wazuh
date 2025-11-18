@@ -1,0 +1,59 @@
+{
+  "description": "Expected results for DataClean multiple indices flow test",
+  "expected_message_count": 5,
+  "validate_session_consistency": true,
+  "expected_messages": [
+    {
+      "type": "start",
+      "expected_status": "sent",
+      "description": "Start message should be sent successfully",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "start_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 5.0
+      }
+    },
+    {
+      "type": "dataclean",
+      "expected_status": "sent",
+      "description": "First DataClean message should be sent successfully",
+      "expected_response": null
+    },
+    {
+      "type": "dataclean",
+      "expected_status": "sent",
+      "description": "Second DataClean message should be sent successfully",
+      "expected_response": null
+    },
+    {
+      "type": "dataclean",
+      "expected_status": "sent",
+      "description": "Third DataClean message should be sent successfully",
+      "expected_response": null
+    },
+    {
+      "type": "end",
+      "expected_status": "sent",
+      "description": "End message should be sent successfully",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "end_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 30.0
+      }
+    }
+  ],
+  "validation_rules": {
+    "session_consistency": "All messages should use the same session ID",
+    "message_order": "Messages should be sent in the correct order: start -> dataclean(x3) -> end",
+    "response_format": "DataClean messages should receive no immediate response; End should receive EndAck with Status_Ok",
+    "sequence_tracking": "All DataClean sequence numbers (0, 1, 2) should be tracked correctly"
+  }
+}

@@ -334,6 +334,114 @@ TEST_F(AgentSessionTest, HandleChecksumModule_EmptyChecksum)
     ASSERT_NO_THROW({ session.handleChecksumModule(checksumModule); });
 }
 
+TEST_F(AgentSessionTest, HandleDataClean_Success)
+{
+    auto startMsg = createStartMessage(1, "001", "test-agent", "4.0.0", "fim", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create DataClean message
+    flatbuffers::FlatBufferBuilder dataCleanBuilder;
+    auto indexStr = dataCleanBuilder.CreateString("wazuh-states-fim-files");
+
+    Wazuh::SyncSchema::DataCleanBuilder dataCleanMsgBuilder(dataCleanBuilder);
+    dataCleanMsgBuilder.add_session(sessionId);
+    dataCleanMsgBuilder.add_seq(0);
+    dataCleanMsgBuilder.add_index(indexStr);
+    auto dataCleanMsg = dataCleanMsgBuilder.Finish();
+    dataCleanBuilder.Finish(dataCleanMsg);
+
+    auto dataClean = flatbuffers::GetRoot<Wazuh::SyncSchema::DataClean>(dataCleanBuilder.GetBufferPointer());
+
+    // Handle DataClean message
+    ASSERT_NO_THROW({ session.handleDataClean(dataClean); });
+}
+
+TEST_F(AgentSessionTest, HandleDataClean_MultipleIndices)
+{
+    auto startMsg = createStartMessage(3, "001", "test-agent", "4.0.0", "fim", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create DataClean messages for multiple indices
+    std::vector<std::string> indices = {
+        "wazuh-states-fim-files", "wazuh-states-fim-registry-keys", "wazuh-states-fim-registry-values"};
+
+    for (size_t i = 0; i < indices.size(); ++i)
+    {
+        flatbuffers::FlatBufferBuilder dataCleanBuilder;
+        auto indexStr = dataCleanBuilder.CreateString(indices[i]);
+
+        Wazuh::SyncSchema::DataCleanBuilder dataCleanMsgBuilder(dataCleanBuilder);
+        dataCleanMsgBuilder.add_session(sessionId);
+        dataCleanMsgBuilder.add_seq(i);
+        dataCleanMsgBuilder.add_index(indexStr);
+        auto dataCleanMsg = dataCleanMsgBuilder.Finish();
+        dataCleanBuilder.Finish(dataCleanMsg);
+
+        auto dataClean = flatbuffers::GetRoot<Wazuh::SyncSchema::DataClean>(dataCleanBuilder.GetBufferPointer());
+        ASSERT_NO_THROW({ session.handleDataClean(dataClean); });
+    }
+}
+
+TEST_F(AgentSessionTest, HandleDataClean_NullData)
+{
+    auto startMsg = createStartMessage(1, "001", "test-agent", "4.0.0", "fim", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Passing null should throw
+    ASSERT_THROW({ session.handleDataClean(nullptr); }, AgentSessionException);
+}
+
+TEST_F(AgentSessionTest, HandleDataClean_WithEnd)
+{
+    auto startMsg = createStartMessage(1, "001", "test-agent", "4.0.0", "fim", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create DataClean message
+    flatbuffers::FlatBufferBuilder dataCleanBuilder;
+    auto indexStr = dataCleanBuilder.CreateString("wazuh-states-fim-files");
+
+    Wazuh::SyncSchema::DataCleanBuilder dataCleanMsgBuilder(dataCleanBuilder);
+    dataCleanMsgBuilder.add_session(sessionId);
+    dataCleanMsgBuilder.add_seq(0);
+    dataCleanMsgBuilder.add_index(indexStr);
+    auto dataCleanMsg = dataCleanMsgBuilder.Finish();
+    dataCleanBuilder.Finish(dataCleanMsg);
+
+    auto dataClean = flatbuffers::GetRoot<Wazuh::SyncSchema::DataClean>(dataCleanBuilder.GetBufferPointer());
+
+    // Handle DataClean message
+    session.handleDataClean(dataClean);
+
+    // Create and handle End message
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndBuilder endMsgBuilder(endBuilder);
+    endMsgBuilder.add_session(sessionId);
+    auto endMsg = endMsgBuilder.Finish();
+    endBuilder.Finish(endMsg);
+
+    auto end = flatbuffers::GetRoot<Wazuh::SyncSchema::End>(endBuilder.GetBufferPointer());
+
+    // Expect the indexer queue to be pushed when all sequences received
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    ASSERT_NO_THROW({ session.handleEnd(mockResponseDispatcher); });
+}
+
 TEST_F(AgentSessionTest, Constructor_ValidSize_ModuleCheck)
 {
     // Create a StartMessage with ModuleCheck mode and size 0 (which is valid for ModuleCheck)

@@ -114,6 +114,31 @@ class InventorySyncFacadeImpl final
                     LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Data handled for session %llu", data->session());
             }
         }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataClean)
+        {
+            const auto dataClean = syncMessage->content_as<Wazuh::SyncSchema::DataClean>();
+            if (!dataClean)
+            {
+                throw InventorySyncException("Invalid data clean message");
+            }
+
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(dataClean->session()); it == m_agentSessions.end())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu",
+                          dataClean->session());
+            }
+            else
+            {
+                // Handle DataClean - stores index and tracks seq number
+                it->second.handleDataClean(dataClean);
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: DataClean handled for session %llu",
+                          dataClean->session());
+            }
+        }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
         {
             const auto startMsg = syncMessage->content_as<Wazuh::SyncSchema::Start>();
@@ -738,6 +763,23 @@ public:
                     }
                     else
                     {
+                        // Execute DataClean deletions if any were received during the session
+                        if (!res.context->dataCleanIndices.empty())
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Processing DataClean for %zu indices...",
+                                      res.context->dataCleanIndices.size());
+                            // Delete from each index specified in DataClean messages
+                            for (const auto& index : res.context->dataCleanIndices)
+                            {
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade::start: Deleting data from index '%s' for agent %s",
+                                          index.c_str(),
+                                          res.context->agentId.c_str());
+                                m_indexerConnector->deleteByQuery(index, res.context->agentId);
+                            }
+                        }
+
                         // Send delete by query to indexer if mode is full.
                         if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
                         {

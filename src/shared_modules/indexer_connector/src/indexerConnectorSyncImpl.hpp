@@ -34,8 +34,9 @@ constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
 
-constexpr auto HTTP_CONTENT_LENGTH {413};
+constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_VERSION_CONFLICT {409};
+constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
 
 // JSON structure components for bulk operations
@@ -92,27 +93,35 @@ class IndexerConnectorSyncImpl final
         const auto onErrorDeleteByQuery =
             [this](const std::string& error, const long statusCode, const std::string& responseBody)
         {
-            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-            if (statusCode == HTTP_VERSION_CONFLICT)
+            if (statusCode == HTTP_NOT_FOUND)
             {
-                logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
+                // Index doesn't exist - this is OK, nothing to delete
+                logDebug2(IC_NAME, "Index not found (404) for deleteByQuery - nothing to delete, continuing.");
+                return;
+            }
+            else if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                logDebug2(IC_NAME, "Document version conflict for deleteByQuery - continuing.");
                 // For deleteByQuery, we don't retry - just log and continue
                 return;
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
-                logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                logDebug2(IC_NAME, "Too many requests for deleteByQuery - continuing.");
                 // For deleteByQuery, we don't retry - just log and continue
                 return;
             }
             else
             {
-                logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                logError(IC_NAME, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
                 m_bulkData.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
             }
         };
+
+        // Track if we have pending deleteByQuery operations that need notification
+        const bool hasDeleteByQuery = !m_deleteByQuery.empty();
 
         for (const auto& [index, query] : m_deleteByQuery)
         {
@@ -208,6 +217,17 @@ class IndexerConnectorSyncImpl final
                     std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
                 }
             } while (needToRetry);
+        }
+
+        // If we only had deleteByQuery operations (no bulk data), trigger notify callbacks
+        // since they weren't triggered by the bulk POST onSuccess callback
+        if (hasDeleteByQuery && m_bulkData.empty())
+        {
+            for (const auto& notify : m_notify)
+            {
+                notify();
+            }
+            m_notify.clear();
         }
 
         m_bulkData.clear();
@@ -449,8 +469,8 @@ public:
                     auto timeoutResult = m_cv.wait_for(
                         timeoutLock, std::chrono::seconds(FlushInterval), [this] { return m_stopping.load(); });
 
-                    // Process bulk data if there's data to process
-                    if (!m_bulkData.empty())
+                    // Process bulk data or deleteByQuery if there's data to process
+                    if (!m_bulkData.empty() || !m_deleteByQuery.empty())
                     {
                         try
                         {

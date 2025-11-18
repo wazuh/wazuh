@@ -274,6 +274,60 @@ public:
     }
 
     /**
+     * @brief Handles an incoming DataClean message.
+     *
+     * Stores the index to be cleaned and tracks the sequence number in the GapSet.
+     * Uses a set to automatically handle duplicates from retransmissions.
+     * Triggers indexing if handleEnd() was already called and the session is now complete.
+     *
+     * @param data Parsed flatbuffer DataClean message.
+     */
+    void handleDataClean(Wazuh::SyncSchema::DataClean const* data)
+    {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleDataClean");
+        }
+
+        std::lock_guard lock(m_mutex);
+
+        const auto seq = data->seq();
+        const auto session = data->session();
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
+
+        if (data->index())
+        {
+            std::string index = data->index()->str();
+            m_context->dataCleanIndices.insert(index);
+
+            logDebug2(LOGGER_DEFAULT_TAG,
+                      "DataClean received for session %llu, seq %llu, index: %s",
+                      m_context->sessionId,
+                      seq,
+                      index.c_str());
+        }
+        else
+        {
+            logError(LOGGER_DEFAULT_TAG,
+                     "DataClean received without index for session %llu, seq %llu",
+                     m_context->sessionId,
+                     seq);
+        }
+
+        m_gapSet->observe(seq);
+
+        if (m_endReceived)
+        {
+            if (m_gapSet->empty())
+            {
+                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                m_endEnqueued = true;
+            }
+        }
+    }
+
+    /**
      * @brief Handles the end-of-transmission signal from the agent.
      *
      * If all chunks were received, pushes the final acknowledgment. Otherwise, triggers missing range dispatch.

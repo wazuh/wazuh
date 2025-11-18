@@ -1266,6 +1266,83 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
 }
 
+TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
+{
+    // This test verifies the fix for DataClean: when there's only deleteByQuery (no bulk data),
+    // the notify callbacks should still be triggered after flush
+    bool notifyCalled = false;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                // Simulate successful deleteByQuery response
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":5,"deleted":10})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"({"took":5,"deleted":10})");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Register notify callback
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Call deleteByQuery (no bulk data)
+    connector.deleteByQuery("test-index", "agent-123");
+
+    // Flush should process deleteByQuery and trigger notify callback even without bulk data
+    connector.flush();
+
+    EXPECT_TRUE(notifyCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithBulkDataTriggersNotifyOnce)
+{
+    // Verify that notify is only called once when there's both deleteByQuery and bulk data
+    int notifyCallCount = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":5,"deleted":10})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"({"took":5,"deleted":10})");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Register notify callback
+    connector.registerNotify([&notifyCallCount]() { notifyCallCount++; });
+
+    // Add both bulk data and deleteByQuery
+    connector.bulkIndex("id1", "test-index", R"({"field":"value"})");
+    connector.deleteByQuery("test-index", "agent-123");
+
+    // Flush should process both and trigger notify callback only once (from bulk onSuccess)
+    connector.flush();
+
+    EXPECT_EQ(notifyCallCount, 1);
+}
+
 // Test to specifically trigger processBulkChunk execution
 TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkDirectExecution)
 {

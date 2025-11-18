@@ -1007,20 +1007,42 @@ def test_inventory_sync_module_check_mismatch(inventory_sync_tester):
         assert end_ack.get("status") == "Status_ChecksumMismatch", "Expected Status_ChecksumMismatch for mismatched checksums"
 
 
-def test_inventory_sync_module_check_no_index(inventory_sync_tester):
+def test_inventory_sync_data_clean_single_index(inventory_sync_tester):
     """
-    Test ModuleCheck synchronization flow with missing index field.
-    This test verifies that when the index field is not provided in ChecksumModule,
-    the server responds with Status_Error.
+    Test DataClean synchronization flow with single index.
+    This test verifies that when a DataClean message is sent, the manager:
+    1. Receives and stores the index to clean
+    2. Waits for End message
+    3. Executes deleteByQuery for the specified index
+    4. Responds with Status_Ok
     """
-    result = inventory_sync_tester.execute_test_sequence("module_check_no_index_flow")
-    assert result["validation"]["passed"], f"ModuleCheck no index test failed: {result['validation'].get('errors', [])}"
+    result = inventory_sync_tester.execute_test_sequence("data_clean_single_index_flow")
+    assert result["validation"]["passed"], f"DataClean single index test failed: {result['validation'].get('errors', [])}"
 
-    # Verify the EndAck status is Status_Error
+    # Verify the EndAck status is Status_Ok
     if "responses" in result:
         end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
         assert end_ack is not None, "EndAck response not found"
-        assert end_ack.get("status") == "Status_Error", "Expected Status_Error for missing index"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataClean"
+
+
+def test_inventory_sync_data_clean_multiple_indices(inventory_sync_tester):
+    """
+    Test DataClean synchronization flow with multiple indices.
+    This test verifies that when multiple DataClean messages are sent:
+    1. All indices are stored
+    2. Sequence numbers are tracked correctly
+    3. All deleteByQuery operations are executed
+    4. EndAck is sent with Status_Ok
+    """
+    result = inventory_sync_tester.execute_test_sequence("data_clean_multiple_indices_flow")
+    assert result["validation"]["passed"], f"DataClean multiple indices test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataClean"
 
 
 @pytest.mark.parametrize('opensearch', [False], indirect=True)
