@@ -107,9 +107,7 @@ case "$1" in
 
     # Restore group files
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        for file in ${WAZUH_TMP_DIR}/group/* ; do
-            mv ${file} ${DIR}/etc/shared/
-        done
+        cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
         rm -rf ${WAZUH_TMP_DIR}/group
     fi
 
