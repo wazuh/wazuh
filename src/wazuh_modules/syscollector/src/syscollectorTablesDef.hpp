@@ -287,6 +287,14 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
 };
 
+constexpr auto TABLE_METADATA_SQL_STATEMENT
+{
+    R"(CREATE TABLE IF NOT EXISTS table_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_sync_time INTEGER NOT NULL
+    );)"
+};
+
 constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };
 constexpr auto NET_PROTOCOL_TABLE           { "dbsync_network_protocol"     };
 constexpr auto NET_ADDRESS_TABLE            { "dbsync_network_address"      };
@@ -300,3 +308,5 @@ constexpr auto USERS_TABLE                  { "dbsync_users"                };
 constexpr auto GROUPS_TABLE                 { "dbsync_groups"               };
 constexpr auto SERVICES_TABLE               { "dbsync_services"             };
 constexpr auto BROWSER_EXTENSIONS_TABLE     { "dbsync_browser_extensions"   };
+
+constexpr auto METADATA_TABLE               { "table_metadata"              };

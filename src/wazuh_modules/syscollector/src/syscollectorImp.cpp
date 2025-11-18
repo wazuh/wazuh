@@ -297,6 +297,7 @@ std::string Syscollector::getCreateStatement() const
     ret += USERS_SQL_STATEMENT;
     ret += SERVICES_SQL_STATEMENT;
     ret += BROWSER_EXTENSIONS_SQL_STATEMENT;
+    ret += TABLE_METADATA_SQL_STATEMENT;
     return ret;
 }
 
