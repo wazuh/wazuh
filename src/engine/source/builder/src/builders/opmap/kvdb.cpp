@@ -80,6 +80,17 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     {
         auto res = buildCtx->validator().validate(targetField.dotPath(), schemf::runtimeValidation());
         targetValueValidator = base::getResponse<schemf::ValidationResult>(res).getValidator();
+
+        if (doMerge)
+        {
+            auto type = buildCtx->validator().getType(targetField.dotPath());
+            if (type != schemf::Type::OBJECT)
+            {
+                throw std::runtime_error(fmt::format("Expected target field '{}' to be an object but got '{}'",
+                                                     targetField.dotPath(),
+                                                     schemf::typeToStr(type)));
+            }
+        }
     }
 
     // Format name for the tracer
