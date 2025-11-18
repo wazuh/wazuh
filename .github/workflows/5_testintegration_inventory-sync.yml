@@ -216,9 +216,9 @@ jobs:
 
           # Remove SSL certificate lines from ossec.conf
           echo "[>] Removing SSL certificate lines from ossec.conf..."
-          sudo sed -i '/<certificate>\/etc\/filebeat\/certs\/filebeat.pem<\/certificate>/d' /var/ossec/etc/ossec.conf
-          sudo sed -i '/<key>\/etc\/filebeat\/certs\/filebeat-key.pem<\/key>/d' /var/ossec/etc/ossec.conf
-          sudo sed -i '/<ca>\/etc\/filebeat\/certs\/root-ca.pem<\/ca>/d' /var/ossec/etc/ossec.conf
+          sudo sed -i '/<certificate>\/var\/ossec\/etc\/certs\/server.pem<\/certificate>/d' /var/ossec/etc/ossec.conf
+          sudo sed -i '/<key>\/var\/ossec\/etc\/certs\/server-key.pem<\/key>/d' /var/ossec/etc/ossec.conf
+          sudo sed -i '/<ca>\/var\/ossec\/etc\/certs\/root-ca.pem<\/ca>/d' /var/ossec/etc/ossec.conf
           echo "[+] SSL certificate lines removed from ossec.conf"
 
           # Print ossec.conf content for verification

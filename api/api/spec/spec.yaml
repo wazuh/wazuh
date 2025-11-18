@@ -9163,11 +9163,11 @@ paths:
                         ssl:
                           certificate_authorities:
                             ca:
-                              - /etc/filebeat/certs/root-ca.pem
+                              - /var/ossec/etc/certs/root-ca.pem
                           certificate:
-                            - /etc/filebeat/certs/filebeat.pem
+                            - /var/ossec/etc/certs/server.pem
                           key:
-                            - /etc/filebeat/certs/filebeat-key.pem
+                            - /var/ossec/etc/certs/server-key.pem
                       syscheck:
                         disabled: no
                         frequency: 43200
