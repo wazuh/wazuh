@@ -130,7 +130,7 @@ protected:
      * @return std::string The effective URL to use (signed URL or original URL)
      * @throws std::runtime_error If OAuth authentication fails
      */
-    std::string getEffectiveUrl(const std::string& originalUrl)
+    std::string getEffectiveUrl(const std::string& originalUrl) const
     {
         // If no providers configured, return original URL (backward compatibility)
         if (!m_credentialsProvider || !m_signedUrlProvider)
@@ -163,17 +163,30 @@ protected:
                         "CtiDownloader: Found %zu catalog products in subscription",
                         catalogProducts.size());
 
-                // Try to find a matching product by checking if originalUrl contains the product identifier
-                // This allows flexibility in how URLs are constructed
+                // Try to find a matching product by extracting the product identifier from the URL and comparing for
+                // exact match
                 bool foundProduct = false;
+                // Helper lambda to extract product identifier from URL path
+                auto extractProductIdentifierFromUrl = [](const std::string& url) -> std::string
+                {
+                    // Example: "/contexts/vulnerabilities/..." -> "vulnerabilities"
+                    // Find "/contexts/" in the URL
+                    const std::string contextsPrefix = "/contexts/";
+                    auto pos = url.find(contextsPrefix);
+                    if (pos == std::string::npos)
+                        return "";
+                    pos += contextsPrefix.length();
+                    // Find the next '/' after the contexts prefix
+                    auto endPos = url.find('/', pos);
+                    if (endPos == std::string::npos)
+                        return url.substr(pos);
+                    return url.substr(pos, endPos - pos);
+                };
+                std::string urlProductIdentifier = extractProductIdentifierFromUrl(originalUrl);
                 for (const auto& product : catalogProducts)
                 {
-                    // Check if the originalUrl contains the product identifier
-                    // This handles cases like:
-                    // - "/contexts/vulnerabilities/..." contains "vulnerabilities"
-                    // - "vulnerabilities-pro" identifier
-                    if (originalUrl.find(product.identifier) != std::string::npos ||
-                        product.identifier.find(originalUrl) != std::string::npos)
+                    // Compare extracted product identifier from URL with product.identifier for exact match
+                    if (!urlProductIdentifier.empty() && urlProductIdentifier == product.identifier)
                     {
                         resourceUrl = product.resource;
                         foundProduct = true;
@@ -310,9 +323,7 @@ protected:
         std::string effectiveURL;
         try
         {
-            // Note: getEffectiveUrl() is const-correct because it doesn't modify observable state
-            // (credential/token refresh is internal cache management)
-            effectiveURL = const_cast<CtiDownloader*>(this)->getEffectiveUrl(URL);
+            effectiveURL = getEffectiveUrl(URL);
         }
         catch (const std::exception& e)
         {

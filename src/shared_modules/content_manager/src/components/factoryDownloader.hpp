@@ -99,21 +99,17 @@ private:
 
             // Step 2: Create products provider (optional, for subscription-based product discovery)
             std::shared_ptr<CTIProductsProvider> productsProvider = nullptr;
-            bool enableProductsProvider = true;
-            if (oauthConfig.contains("enableProductsProvider"))
-            {
-                enableProductsProvider = oauthConfig.at("enableProductsProvider").get<bool>();
-            }
+            bool enableProductsProvider = oauthConfig.value("enableProductsProvider", true);
 
-            if (enableProductsProvider && oauthConfig.contains("console"))
+            if (!enableProductsProvider)
+            {
+                logDebug1(WM_CONTENTUPDATER, "FactoryDownloader: CTIProductsProvider disabled by configuration");
+            }
+            else if (oauthConfig.contains("console"))
             {
                 logDebug1(WM_CONTENTUPDATER, "FactoryDownloader: Creating CTIProductsProvider");
                 productsProvider = std::make_shared<CTIProductsProvider>(HTTPRequest::instance(), oauthConfig);
                 logInfo(WM_CONTENTUPDATER, "FactoryDownloader: CTIProductsProvider created successfully");
-            }
-            else if (!enableProductsProvider)
-            {
-                logDebug1(WM_CONTENTUPDATER, "FactoryDownloader: CTIProductsProvider disabled by configuration");
             }
             else
             {

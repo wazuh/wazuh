@@ -65,7 +65,6 @@ private:
     std::string m_indexerUrl;                ///< Indexer base URL
     std::string m_credentialsEndpoint;       ///< Credentials API endpoint
     uint32_t m_pollInterval;                 ///< Refresh check interval (seconds)
-    uint32_t m_timeout;                      ///< HTTP request timeout (milliseconds)
     uint32_t m_retryAttempts;                ///< Number of retry attempts
     std::thread m_refreshThread;             ///< Background refresh thread
     std::atomic<bool> m_stopRefresh {false}; ///< Flag to stop refresh thread
@@ -117,16 +116,16 @@ private:
      */
     void checkAndRefreshIfNeeded()
     {
-        std::lock_guard<std::mutex> lock(m_credentials.mutex);
+        std::unique_lock<std::mutex> lock(m_credentials.mutex);
 
         logDebug2(WM_CONTENTUPDATER, "CTICredentialsProvider: Refreshing access token...");
 
         try
         {
             // Release lock during HTTP call
-            m_credentials.mutex.unlock();
+            lock.unlock();
             auto newCreds = fetchFromIndexer();
-            m_credentials.mutex.lock();
+            lock.lock();
 
             m_credentials.accessToken = std::move(newCreds.accessToken);
 
@@ -135,9 +134,9 @@ private:
         catch (const std::exception& e)
         {
             // Re-acquire lock if we released it
-            if (!m_credentials.mutex.try_lock())
+            if (!lock.owns_lock())
             {
-                m_credentials.mutex.lock();
+                lock.lock();
             }
 
             logError(WM_CONTENTUPDATER, "CTICredentialsProvider: Failed to refresh token: %s", e.what());
@@ -170,7 +169,6 @@ public:
         m_indexerUrl = indexerConfig.at("url").get<std::string>();
         m_credentialsEndpoint = indexerConfig.value("credentialsEndpoint", "/_plugins/content-manager/subscription");
         m_pollInterval = indexerConfig.value("pollInterval", 60);
-        m_timeout = indexerConfig.value("timeout", 5000);
         m_retryAttempts = indexerConfig.value("retryAttempts", 3);
 
         logInfo(WM_CONTENTUPDATER,
@@ -306,7 +304,7 @@ public:
      */
     std::string getAccessToken()
     {
-        std::lock_guard<std::mutex> lock(m_credentials.mutex);
+        std::unique_lock<std::mutex> lock(m_credentials.mutex);
 
         // Fetch if no token
         if (m_credentials.accessToken.empty())
@@ -314,9 +312,9 @@ public:
             logDebug1(WM_CONTENTUPDATER, "No access token available, fetching from Indexer");
 
             // Release lock during HTTP call to avoid holding it
-            m_credentials.mutex.unlock();
+            lock.unlock();
             auto newCreds = fetchFromIndexer();
-            m_credentials.mutex.lock();
+            lock.lock();
 
             m_credentials.accessToken = std::move(newCreds.accessToken);
         }

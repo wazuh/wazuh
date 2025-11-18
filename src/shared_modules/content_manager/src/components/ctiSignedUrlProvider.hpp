@@ -90,6 +90,31 @@ private:
     }
 
     /**
+     * @brief Remove expired entries from cache (internal helper)
+     *
+     * @note Caller must hold m_cacheMutex lock
+     * @param nowTime Current time as UNIX timestamp
+     * @return Number of entries removed
+     */
+    size_t removeExpiredEntriesUnlocked(uint64_t nowTime)
+    {
+        size_t removedCount = 0;
+        for (auto it = m_signedUrlCache.begin(); it != m_signedUrlCache.end();)
+        {
+            if (it->second.expiresAt <= nowTime)
+            {
+                it = m_signedUrlCache.erase(it);
+                ++removedCount;
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        return removedCount;
+    }
+
+    /**
      * @brief Perform token exchange HTTP request
      */
     std::string performTokenExchange(const std::string& resourceUrl)
@@ -201,12 +226,12 @@ public:
         m_cacheEnabled = tokenExConfig.value("cacheSignedUrls", true);
         m_signedUrlLifetime = tokenExConfig.value("signedUrlLifetime", 300);
 
-        logInfo(WM_CONTENTUPDATER,
-                "CTISignedUrlProvider initialized (Console: %s, endpoint: %s, cache: %s, lifetime: %us)",
-                m_consoleUrl.c_str(),
-                m_tokenEndpoint.c_str(),
-                m_cacheEnabled ? "enabled" : "disabled",
-                m_signedUrlLifetime);
+        logDebug1(WM_CONTENTUPDATER,
+                  "CTISignedUrlProvider initialized (Console: %s, endpoint: %s, cache: %s, lifetime: %us)",
+                  m_consoleUrl.c_str(),
+                  m_tokenEndpoint.c_str(),
+                  m_cacheEnabled ? "enabled" : "disabled",
+                  m_signedUrlLifetime);
     }
 
     /**
@@ -230,7 +255,7 @@ public:
 
         m_accessToken = token;
 
-        logDebug2(WM_CONTENTUPDATER, "CTISignedUrlProvider: Access token set (length: %zu)", token.length());
+        logDebug2(WM_CONTENTUPDATER, "CTISignedUrlProvider: Access token set");
     }
 
     /**
@@ -305,17 +330,11 @@ public:
         // Opportunistically clean expired entries
         // Note: We're already holding the lock, so we can clean directly
         auto nowTime = std::chrono::system_clock::to_time_t(now);
-        for (auto it = m_signedUrlCache.begin(); it != m_signedUrlCache.end();)
+        size_t removedCount = removeExpiredEntriesUnlocked(nowTime);
+
+        if (removedCount > 0)
         {
-            if (it->second.expiresAt <= nowTime)
-            {
-                logDebug2(WM_CONTENTUPDATER, "CTISignedUrlProvider: Removing expired cache entry");
-                it = m_signedUrlCache.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
+            logDebug2(WM_CONTENTUPDATER, "CTISignedUrlProvider: Removed %zu expired cache entries", removedCount);
         }
     }
 
@@ -329,19 +348,7 @@ public:
         auto now = std::chrono::system_clock::now();
         auto nowTime = std::chrono::system_clock::to_time_t(now);
 
-        size_t removedCount = 0;
-        for (auto it = m_signedUrlCache.begin(); it != m_signedUrlCache.end();)
-        {
-            if (it->second.expiresAt <= nowTime)
-            {
-                it = m_signedUrlCache.erase(it);
-                ++removedCount;
-            }
-            else
-            {
-                ++it;
-            }
-        }
+        size_t removedCount = removeExpiredEntriesUnlocked(nowTime);
 
         if (removedCount > 0)
         {
