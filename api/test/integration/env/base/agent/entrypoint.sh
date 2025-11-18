@@ -8,12 +8,16 @@ cp /tmp_volume/configuration_files/test.keys /var/ossec/etc/test.keys
 
 # Modify ossec.conf
 for conf_file in /tmp_volume/configuration_files/*.conf; do
-  # Do not apply 4.x configuration changes to agents with version 3.x
-  if [ "$3" == "agent_old" ] && [ $conf_file == "/tmp_volume/configuration_files/ossec_4.x.conf" ]; then
-    continue
+  # Do not apply 5.x configuration changes to agents with version 3.x
+  if [ "$3" == "agent_old" ]; then
+    if [ $conf_file == "/tmp_volume/configuration_files/ossec_3.x.conf" ]; then
+      python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
+    fi
+  else
+    if [ $conf_file == "/tmp_volume/configuration_files/ossec_5.x.conf" ]; then
+      python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
+    fi
   fi
-
-  python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
 done
 
 sed -n "/$2 /p" /var/ossec/etc/test.keys > /var/ossec/etc/client.keys

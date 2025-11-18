@@ -1150,7 +1150,7 @@ stages:
           failed_items: []
         message: !anystr
 
-  - name: Upgrade all agents with os version 18.04.5 LTS and query
+  - name: Upgrade all agents with os version 18.04.6 LTS and query
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -1160,7 +1160,7 @@ stages:
       params:
         agents_list: 'all'
         upgrade_version: '4.0.0'
-        os.version: '18.04.5 LTS'
+        os.version: '18.04.6 LTS'
         q: registerIP=any;id<7;id>5
     response:
       status_code: 200

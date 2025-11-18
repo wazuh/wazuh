@@ -20,12 +20,10 @@ relationships:
         - decoders_all
         - kvdbs_all
         - integrations_all
-        - rootcheck_read
+        - rootcheck_run
         - rules_all
         - mitre_read
-        - sca_read
-        - syscheck_read
-        - syscollector_read
+        - syscheck_run
         - logtest_all
         - task_status
         - events_ingest
@@ -40,12 +38,8 @@ relationships:
         - decoders_read
         - kvdbs_read
         - integrations_read
-        - rootcheck_read
         - rules_read
         - mitre_read
-        - sca_read
-        - syscheck_read
-        - syscollector_read
       rule_ids: []
 
     users_admin:

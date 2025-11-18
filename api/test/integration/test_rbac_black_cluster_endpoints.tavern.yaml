@@ -329,15 +329,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - alerts: !anything
-              auth: !anything
+            - auth: !anything
               cluster: !anything
               command: !anything
               global: !anything
               localfile: !anything
               remote: !anything
               rootcheck: !anything
-              ruleset: !anything
               sca: !anything
               syscheck: !anything
               syscollector: !anything
@@ -413,20 +411,20 @@ test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Try to show the config of analisys/global through a worker
+  - name: Try to show the config of logcollector/localfile through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/logcollector/localfile"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       <<: *permission_denied
 
-  - name: Try to show the config of analisys/global through a worker
+  - name: Try to show the config of logcollector/localfile through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/logcollector/localfile"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

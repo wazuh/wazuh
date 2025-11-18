@@ -67,6 +67,9 @@ The team currently has automated tests whose output should be thoroughly reviewe
   - [ ] ASAN for test (utest/ctest)
   - [ ] TSAN for test and wazuh-engine.
 
+- Wazuh server API/Framework
+  - [ ] Run API Integration Tests
+
 ### Artifacts Affected
 
 <!--
