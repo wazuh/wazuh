@@ -29,19 +29,16 @@ int Read_Indexer(const char* config_file)
     char *indexer_config_str = get_indexer_cnf(config_file, error_buffer, sizeof(error_buffer));
 
     if (!indexer_config_str) {
+        if (error_buffer[0] != '\0') {
+            merror("%s", error_buffer);
+        }
         return OS_INVALID;
-    }
-
-    bool is_empty = false;
-    if (strcmp(indexer_config_str, "{}") == 0) {
-        mdebug1("Empty configuration for module 'indexer'");
-        is_empty = true;
     }
 
     indexer_config = cJSON_Parse(indexer_config_str);
     cJSON_free(indexer_config_str);
 
-    return (NULL != indexer_config && !is_empty) ? OS_SUCCESS : OS_INVALID;
+    return OS_SUCCESS;
 }
 
 #endif // WIN32
