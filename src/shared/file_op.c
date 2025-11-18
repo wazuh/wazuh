@@ -2336,12 +2336,44 @@ int cldir_ex(const char *name) {
 }
 
 
-int cldir_ex_ignore(const char * name, const char ** ignore) {
+/* Helper function to check if a relative path should be preserved based on ignore list
+ * Returns 1 if the path or any of its descendants are in the ignore list, 0 otherwise
+ */
+static int should_preserve_path(const char * relative_path, const char ** ignore) {
+    int i;
+    size_t path_len;
+
+    if (!ignore || !relative_path) {
+        return 0;
+    }
+
+    path_len = strlen(relative_path);
+
+    for (i = 0; ignore[i]; i++) {
+        const char *ignore_entry = ignore[i];
+
+        // Check if ignore[i] matches the relative path exactly
+        if (strcmp(relative_path, ignore_entry) == 0) {
+            return 1;
+        }
+
+        // Check if ignore[i] is a descendant of relative_path
+        if (strncmp(relative_path, ignore_entry, path_len) == 0 &&
+            ignore_entry[path_len] == '/') {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/* Internal recursive implementation that tracks the base directory */
+static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, const char ** ignore) {
     DIR *dir;
     struct dirent *dirent = NULL;
     char path[PATH_MAX + 1];
-
-    // Erase content
+    char relative_path[PATH_MAX + 1];
+    size_t base_len = strlen(base_dir);
 
     dir = wopendir(name);
 
@@ -2351,7 +2383,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
-        if ((dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) || w_str_in_array(dirent->d_name, ignore)) {
+        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
         }
 
@@ -2360,6 +2392,27 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
             return -1;
         }
 
+        if (strncmp(base_dir, path, base_len) == 0 && path[base_len] == '/') {
+            snprintf(relative_path, PATH_MAX + 1, "%s", path + base_len + 1);
+        } else {
+            snprintf(relative_path, PATH_MAX + 1, "%s", dirent->d_name);
+        }
+
+        if (should_preserve_path(relative_path, ignore)) {
+            if (IsDir(path) == 0) {
+                // Recursively clean the directory, preserving protected files
+                if (cldir_ex_ignore_recursive(path, base_dir, ignore) < 0) {
+                    closedir(dir);
+                    return -1;
+                }
+
+                // If it still contains protected files, rmdir will fail with ENOTEMPTY, which is fine
+                rmdir(path);
+            }
+            continue;
+        }
+
+        // Not in ignore list, remove it
         if (rmdir_ex(path) < 0) {
             closedir(dir);
             return -1;
@@ -2367,6 +2420,10 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
     }
 
     return closedir(dir);
+}
+
+int cldir_ex_ignore(const char * name, const char ** ignore) {
+    return cldir_ex_ignore_recursive(name, name, ignore);
 }
 
 
