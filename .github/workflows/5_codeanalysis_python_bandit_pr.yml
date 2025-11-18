@@ -8,7 +8,6 @@ on:
       - 'framework/**/*.py'
       - 'api/**/*.py'
       - 'wodles/**/*.py'
-      - 'integrations/**/*.py'
 
 
 jobs:
