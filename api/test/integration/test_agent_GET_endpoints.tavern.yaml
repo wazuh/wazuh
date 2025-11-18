@@ -1135,7 +1135,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=20)
+        q: id<5;id!=2;manager~waz;(os.major=16,os.major=24)
     response:
       status_code: 200
       json:
@@ -1476,7 +1476,6 @@ stages:
           client:
             auto_restart: !anystr
             config-profile: !anystr
-            crypto_method: !anystr
             notify_time: !anyint
             remote_conf: !anystr
             server: !anything
@@ -1550,101 +1549,6 @@ stages:
               request_rto_msec: !anyint
               request_rto_sec: !anyint
               verify_msg_id: !anyint
-
-  - name: Get global configuration from analysis component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/global"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          global:
-            host_information: !anyint
-            integrity_checking: !anyint
-            max_output_size: !anyint
-            memory_size: !anyint
-            prelude_output: !anystr
-            rootkit_detection: !anyint
-            rotate_interval: !anyint
-            stats: !anyint
-            white_list: !anything
-            zeromq_output: !anystr
-
-  - name: Get active_response configuration from analysis component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/active_response"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          active-response: !anything
-
-  - name: Get alerts configuration from analysis component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/alerts"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          alerts:
-            log_alert_level: !anyint
-
-  - name: Get command configuration from analysis component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/command"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          command: !anything
-
-  - name: Get internal configuration from analysis component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          internal:
-            analysisd:
-              debug: !anyint
-              decoder_order_size: !anyint
-              default_timeframe: !anyint
-              fts_list_size: !anyint
-              fts_min_size_for_str: !anyint
-              label_cache_maxage: !anyint
-              log_fw: !anyint
-              min_rotate_interval: !anyint
-              rlimit_nofile: !anyint
-              show_hidden_labels: !anyint
-              stats_maxdiff: !anyint
-              stats_mindiff: !anyint
-              stats_percent_diff: !anyint
 
   - name: Get auth configuration from auth component
     request:
@@ -1936,7 +1840,6 @@ stages:
             frequency: !anyint
             ignore: !anything
             nodiff: !anything
-            scan_on_start: !anystr
             skip_nfs: !anystr
             whodata: !anything
 
@@ -1958,7 +1861,6 @@ stages:
             frequency: !anyint
             ignore: !anything
             nodiff: !anything
-            scan_on_start: !anystr
             skip_nfs: !anystr
             whodata: !anything
 
@@ -1976,17 +1878,12 @@ stages:
         data:
           rootcheck:
             check_dev: !anystr
-            check_files: !anystr
             check_if: !anystr
             check_pids: !anystr
             check_ports: !anystr
             check_sys: !anystr
-            check_trojans: !anystr
-            check_unixaudit: !anystr
             disabled: !anystr
             frequency: !anyint
-            rootkit_files: !anystr
-            rootkit_trojans: !anystr
             scanall: !anystr
             skip_nfs: !anystr
 
@@ -2004,17 +1901,12 @@ stages:
         data:
           rootcheck:
             check_dev: !anystr
-            check_files: !anystr
             check_if: !anystr
             check_pids: !anystr
             check_ports: !anystr
             check_sys: !anystr
-            check_trojans: !anystr
-            check_unixaudit: !anystr
             disabled: !anystr
             frequency: !anyint
-            rootkit_files: !anystr
-            rootkit_trojans: !anystr
             scanall: !anystr
             skip_nfs: !anystr
 
@@ -2222,7 +2114,6 @@ stages:
       error: 0
       data:
         bind_addr: !anystr
-        disabled: !anybool
         hidden: !anystr
         key: !anystr
         name: !anystr
@@ -2422,7 +2313,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - timestamp: !anystr
@@ -2431,15 +2322,11 @@ stages:
                 - id: 1
                   uptime: !anystr
                   metrics: !anything
-            - timestamp: !anystr
-              name: wazuh-analysisd
-              agents:
-                - id: 1
-                  uptime: !anystr
-                  metrics: !anything
-          failed_items: []
-          total_affected_items: 2
-          total_failed_items: 0
+          failed_items:
+            - id: [ wazuh-analysisd ]
+          total_affected_items: 1
+          total_failed_items: 1
+          
 
   - name: Try to get all daemons' stats from agent 001 with a wrong daemons list
     request:
@@ -4870,7 +4757,7 @@ stages:
       <<: *distinct_request
       params:
         fields: status
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=20)
+        q: id<5;id!=2;manager~waz;(os.major=16,os.major=24)
     response:
       status_code: 200
       json:
