@@ -2617,6 +2617,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     // Opening directory
     will_return(__wrap_opendir, 1);
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__merror, formatted_msg, "Couldn't open directory 'etc/shared': error.");
 
@@ -2666,6 +2667,7 @@ void test_wdb_update_groups_removing_group_db(void **state) {
     // Opening directory
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, 0);
+    will_return(__wrap_closedir, 0);
 
     ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
@@ -2697,6 +2699,7 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
 
     // Opening directory
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
 
     // Adding new groups
     will_return(__wrap_opendir, 0);
@@ -2737,9 +2740,11 @@ void test_wdb_update_groups_success(void **state) {
 
     // Opening directory
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
 
     // Adding new groups
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_readdir, dir_ent);
     expect_string(__wrap_IsDir, file, "etc/shared/test_group");
     will_return(__wrap_IsDir, 0);

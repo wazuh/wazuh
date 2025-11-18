@@ -1796,6 +1796,7 @@ void test_c_multi_group_call_copy_directory(void **state)
 
     expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
+    will_return(__wrap_closedir, 0);
 
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
 
@@ -1830,6 +1831,7 @@ void test_c_multi_group_read_dir_fail_no_entry(void **state)
 
     // Open the multi-group files and generate merged //
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_strerror, "Not a directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': Not a directory");
 
@@ -1905,6 +1907,7 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
 
     // Open the multi-group files and generate merged //
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
@@ -1941,6 +1944,7 @@ void test_c_multi_group_subdir_fail(void **state)
     // End copy_directory function
 
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_strerror, "ERROR");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': ERROR");
 
@@ -1968,6 +1972,7 @@ void test_c_multi_group_call_c_group(void **state)
 
     // Open the multi-group files and generate merged //
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
 
     // Start copy_directory function
     expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
@@ -1979,6 +1984,7 @@ void test_c_multi_group_call_c_group(void **state)
     // End copy_directory function
 
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
 
     // Start c_group function
     expect_function_call(__wrap_OSHash_Create);
@@ -2597,8 +2603,8 @@ void test_process_groups_open_directory_fail(void **state)
 void test_process_groups_readdir_fail(void **state)
 {
     will_return(__wrap_opendir, 1);
-
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     process_groups();
 }
@@ -2619,6 +2625,7 @@ void test_process_groups_subdir_null(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test'");
 
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     process_groups();
 
@@ -2632,10 +2639,9 @@ void test_process_groups_skip(void **state)
     strcpy(entry->d_name, ".");
 
     will_return(__wrap_opendir, 1);
-
     will_return(__wrap_readdir, entry);
-
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     process_groups();
 
@@ -2649,10 +2655,9 @@ void test_process_groups_skip_2(void **state)
     strcpy(entry->d_name, "..");
 
     will_return(__wrap_opendir, 1);
-
     will_return(__wrap_readdir, entry);
-
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     process_groups();
 
@@ -2739,6 +2744,7 @@ void test_process_groups_find_group_null(void **state)
     // End c_group function
 
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     process_groups();
 
@@ -2855,6 +2861,7 @@ void test_process_groups_find_group_changed(void **state)
     will_return(__wrap_OSHash_Clean, NULL);
 
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     process_groups();
 
@@ -2933,6 +2940,7 @@ void test_process_groups_find_group_not_changed(void **state)
     will_return(__wrap_OSHash_Clean, NULL);
 
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     process_groups();
 
@@ -4428,6 +4436,7 @@ void test_copy_directory_valid_file_subfolder_file(void **state)
     will_return(__wrap_wreaddir, files2);
 
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_closedir, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
@@ -4458,6 +4467,7 @@ void test_copy_directory_mkdir_fail(void **state)
     will_return(__wrap_wreaddir, files);
 
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Making new directory: subfolder");
 
@@ -4495,6 +4505,7 @@ void test_copy_directory_mkdir_exist(void **state)
     errno = 17;
     expect_string(__wrap_wreaddir, name, "src_path/subfolder");
     will_return(__wrap_wreaddir, NULL);
+    will_return(__wrap_closedir, 0);
 
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'src_path/subfolder'. Group folder was deleted.");
 
@@ -4532,6 +4543,7 @@ void test_copy_directory_file_subfolder_file(void **state)
     will_return(__wrap_w_copy_file, 0);
 
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Making new directory: subfolder");
 

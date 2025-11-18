@@ -7698,6 +7698,7 @@ void test_wdb_global_remove_old_backups_success_without_removing(void **state) {
 
     will_return(__wrap_opendir, (DIR*)1);
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     result = wdb_global_remove_old_backups();
 
@@ -7727,6 +7728,8 @@ void test_wdb_global_remove_old_backups_success(void **state) {
     expect_string(__wrap_stat, __file, "backup/db/global.db-backup-TIMESTAMP");
     will_return(__wrap_stat, file_info);
     will_return(__wrap_stat, OS_SUCCESS);
+    will_return(__wrap_closedir, 0);
+    will_return(__wrap_closedir, 0);
 
     expect_string(__wrap_unlink, file, "backup/db/global.db-backup-TIMESTAMP");
     will_return(__wrap_unlink, OS_SUCCESS);
@@ -7762,6 +7765,7 @@ void test_wdb_global_get_backups_success(void **state) {
     will_return(__wrap_opendir, (DIR*)1);
     will_return_count(__wrap_readdir, entry, 2);
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     j_result = wdb_global_get_backups();
@@ -7880,6 +7884,7 @@ void test_wdb_global_get_most_recent_backup_success(void **state) {
     expect_string(__wrap_stat, __file, "backup/db/global.db-backup-TIMESTAMP");
     will_return(__wrap_stat, file_info);
     will_return(__wrap_stat, OS_SUCCESS);
+    will_return(__wrap_closedir, 0);
 
     most_recent_backup_time = wdb_global_get_most_recent_backup(&most_recent_backup_name);
 
@@ -7922,6 +7927,7 @@ void test_wdb_global_get_oldest_backup_success(void **state) {
     expect_string(__wrap_stat, __file, "backup/db/global.db-backup-TIMESTAMP");
     will_return(__wrap_stat, file_info);
     will_return(__wrap_stat, OS_SUCCESS);
+    will_return(__wrap_closedir, 0);
 
     oldest_backup_time = wdb_global_get_oldest_backup(&oldest_backup_name);
 
@@ -9896,7 +9902,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
     will_return(__wrap_wdb_exec_stmt, find_group_resp);
 
     expect_function_call(__wrap_cJSON_Delete);
-    
+
     // Mock: wdb_global_insert_agent_belong
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -9987,7 +9993,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **stat
     will_return(__wrap_wdb_exec_stmt, find_group_resp);
 
     expect_function_call(__wrap_cJSON_Delete);
-    
+
     // Mock: wdb_global_insert_agent_belong
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);

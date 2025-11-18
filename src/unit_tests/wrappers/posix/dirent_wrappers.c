@@ -15,13 +15,13 @@
 
 
 int __wrap_closedir(__attribute__((unused)) DIR *dirp) {
-    return 1;
-}
-
-int __wrap_opendir() {
     return mock();
 }
 
-struct dirent * __wrap_readdir() {
+DIR * __wrap_opendir(__attribute__((unused)) const char *name) {
+    return mock_type(DIR *);
+}
+
+struct dirent * __wrap_readdir(__attribute__((unused)) DIR *dirp) {
     return mock_type(struct dirent *);
 }
