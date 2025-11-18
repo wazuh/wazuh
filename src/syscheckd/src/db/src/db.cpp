@@ -129,41 +129,6 @@ void DB::initializeTableMetadata()
 #endif
 }
 
-void DB::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
-{
-    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-    auto syncQuery = SyncRowQuery::builder()
-                     .table("table_metadata")
-    .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
-    .build();
-
-    FIMDB::instance().updateItem(syncQuery.query(), emptyCallback);
-}
-
-int64_t DB::getLastSyncTime(const std::string& tableName)
-{
-    int64_t lastSyncTime = 0;
-
-    auto callback = [&lastSyncTime](ReturnTypeCallback result, const nlohmann::json & data)
-    {
-        if (result == ReturnTypeCallback::SELECTED && data.contains("last_sync_time"))
-        {
-            lastSyncTime = data.at("last_sync_time").get<int64_t>();
-        }
-    };
-
-    auto selectQuery = SelectQuery::builder()
-                       .table("table_metadata")
-                       .columnList({"last_sync_time"})
-                       .rowFilter("WHERE table_name = '" + tableName + "'")
-                       .build();
-
-    FIMDB::instance().executeQuery(selectQuery.query(), callback);
-
-    return lastSyncTime;
-}
-
 #ifdef __cplusplus
 extern "C"
 {

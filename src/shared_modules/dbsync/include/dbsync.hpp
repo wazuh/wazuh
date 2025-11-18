@@ -171,6 +171,7 @@ class EXPORTED DBSync : public IDBSync
 
         /**
         * @brief Gets the concatenated checksums from all the elements of a table
+        * @param tableName Name of the table to query.
         * @return the concatenated checksum
         */
         std::string getConcatenatedChecksums(const std::string& tableName) override;
