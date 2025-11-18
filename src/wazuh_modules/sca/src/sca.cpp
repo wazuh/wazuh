@@ -1,8 +1,8 @@
 #include <sca.hpp>
 #include <sca_impl.hpp>
 
-#include <iostream>
 #include <cJSON.h>
+#include <iostream>
 #include <json.hpp>
 
 #ifdef __cplusplus
@@ -10,14 +10,14 @@ extern "C"
 {
 #endif
 
-#include "../../wm_sca.h"
 #include "../../module_query_errors.h"
+#include "../../wm_sca.h"
 #include "../wazuh_modules/wmodules_def.h"
 
 #include "logging_helper.hpp"
 
-#include <unistd.h>
 #include <chrono>
+#include <unistd.h>
 
 static push_stateless_func g_push_stateless_func = NULL;
 static push_stateful_func g_push_stateful_func = NULL;
@@ -381,100 +381,18 @@ void SCA::deleteDatabase()
     }
 }
 
-// LCOV_EXCL_START
-
-// Excluded from code coverage as it is not the real implementation of the query method.
-// This is just a placeholder to comply with the module interface requirements.
-// The real implementation should be done in the future iterations.
 std::string SCA::query(const std::string& jsonQuery)
 {
-    // Log the received query
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
-
-    try
+    if (m_sca)
     {
-        // Parse JSON command
-        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
-
-        if (!query_json.contains("command") || !query_json["command"].is_string())
-        {
-            nlohmann::json response;
-            response["error"] = MQ_ERR_INVALID_PARAMS;
-            response["message"] = MQ_MSG_INVALID_PARAMS;
-            return response.dump();
-        }
-
-        std::string command = query_json["command"];
-        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
-
-        // Log the command being executed
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Executing command: " + command);
-
-        nlohmann::json response;
-
-        // Handle coordination commands with JSON responses
-        if (command == "pause")
-        {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA module paused successfully";
-            response["data"]["module"] = "sca";
-            response["data"]["action"] = "pause";
-        }
-        else if (command == "flush")
-        {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA module flushed successfully";
-            response["data"]["module"] = "sca";
-            response["data"]["action"] = "flush";
-        }
-        else if (command == "get_version")
-        {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA version retrieved";
-            response["data"]["version"] = 4;
-        }
-        else if (command == "set_version")
-        {
-            // Extract version from parameters
-            int version = 0;
-
-            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
-            {
-                version = parameters["version"].get<int>();
-            }
-
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA version set successfully";
-            response["data"]["version"] = version;
-        }
-        else if (command == "resume")
-        {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "SCA module resumed successfully";
-            response["data"]["module"] = "sca";
-            response["data"]["action"] = "resume";
-        }
-        else
-        {
-            response["error"] = MQ_ERR_UNKNOWN_COMMAND;
-            response["message"] = "Unknown SCA command: " + command;
-            response["data"]["command"] = command;
-        }
-
-        return response.dump();
+        return m_sca->query(jsonQuery);
     }
-    catch (const std::exception& ex)
-    {
-        nlohmann::json response;
-        response["error"] = MQ_ERR_INTERNAL;
-        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
 
-        LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
-        return response.dump();
-    }
+    nlohmann::json response;
+    response["error"] = MQ_ERR_MODULE_NOT_RUNNING;
+    response["message"] = MQ_MSG_MODULE_NOT_RUNNING;
+    return response.dump();
 }
-
-// LCOV_EXCL_STOP
 
 /// @brief C-style wrapper for SCA module synchronization.
 ///

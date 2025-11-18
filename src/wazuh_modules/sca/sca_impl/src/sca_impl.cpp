@@ -10,8 +10,8 @@
 #include <iostream>
 #include <thread>
 
-#include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
+#include "logging_helper.hpp"
 
 // Static member definitions
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -98,10 +98,21 @@ void SecurityConfigurationAssessment::Run()
             return;
         }
 
+        // Check if paused for coordination - skip scanning but stay in loop
+        if (m_paused)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning paused, skipping scan iteration");
+            firstScan = false;  // Clear first scan flag even when paused
+            continue;
+        }
+
         if (firstScan && m_scanOnStart)
         {
             LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
         }
+
+        // Mark scan as in progress
+        m_scanInProgress.store(true);
 
         // Load policies on each run iteration
         // *INDENT-OFF*
@@ -121,6 +132,12 @@ void SecurityConfigurationAssessment::Run()
         // Check again after policy loading in case stop was called during load
         if (!m_keepRunning)
         {
+            // Mark scan as complete before returning
+            m_scanInProgress.store(false);
+            {
+                std::lock_guard<std::mutex> lock(m_pauseMutex);
+                m_pauseCv.notify_all();
+            }
             return;
         }
 
@@ -137,6 +154,12 @@ void SecurityConfigurationAssessment::Run()
         {
             if (!m_keepRunning)
             {
+                // Mark scan as complete before returning
+                m_scanInProgress.store(false);
+                {
+                    std::lock_guard<std::mutex> lock(m_pauseMutex);
+                    m_pauseCv.notify_all();
+                }
                 return;
             }
 
@@ -146,6 +169,15 @@ void SecurityConfigurationAssessment::Run()
         firstScan = false;
 
         LoggingHelper::getInstance().log(LOG_INFO, "SCA scan ended.");
+
+        // Mark scan as complete
+        m_scanInProgress.store(false);
+
+        // Notify anyone waiting for scan completion
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_pauseCv.notify_all();
+        }
     }
 }
 
@@ -254,9 +286,30 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
 bool SecurityConfigurationAssessment::syncModule(Mode mode)
 {
+    // Check if paused - don't start new sync operations
+    if (m_paused.load())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is paused");
+        return true;  // Return success to avoid error handling in caller
+    }
+
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->synchronizeModule(mode);
+        // Mark sync as in progress
+        m_syncInProgress.store(true);
+
+        bool result = m_spSyncProtocol->synchronizeModule(mode);
+
+        // Mark sync as complete
+        m_syncInProgress.store(false);
+
+        // Notify anyone waiting for sync completion
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_pauseCv.notify_all();
+        }
+
+        return result;
     }
 
     return false;
@@ -300,6 +353,313 @@ void SecurityConfigurationAssessment::deleteDatabase()
     if (m_dBSync)
     {
         m_dBSync->closeAndDeleteDatabase();
+    }
+}
+
+int SecurityConfigurationAssessment::getMaxVersion()
+{
+    int maxVersion = 0;
+
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get max version");
+        return -1;
+    }
+
+    try
+    {
+        auto selectQuery =
+            SelectQuery::builder().table("sca_check").columnList({"MAX(version) AS max_version"}).build();
+
+        const auto callback = [&maxVersion](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("max_version"))
+            {
+                if (resultData["max_version"].is_number())
+                {
+                    maxVersion = resultData["max_version"].get<int>();
+                }
+                else if (resultData["max_version"].is_null())
+                {
+                    // No rows in table, version is 0
+                    maxVersion = 0;
+                }
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), callback);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA get_version returned: " + std::to_string(maxVersion));
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error getting max version: " + std::string(err.what()));
+        return -1;
+    }
+
+    return maxVersion;
+}
+
+int SecurityConfigurationAssessment::setVersion(int version)
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot set version");
+        return -1;
+    }
+
+    try
+    {
+        // First, get ALL rows with ALL columns (like FIM does in db.cpp:130-137)
+        std::vector<nlohmann::json> rows;
+
+        auto selectQuery = SelectQuery::builder()
+                           .table("sca_check")
+                           .columnList({"*"}) // Get all columns to properly identify and update rows
+                           .build();
+
+        const auto selectCallback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED)
+            {
+                rows.push_back(resultData);
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), selectCallback);
+
+        // Use transaction-based approach to ensure changes are immediately reflected in DB
+        // Create a transaction for syncing the version updates
+        const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&)
+        {
+            // No action needed for transaction callback
+        };
+
+        DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, txnCallback};
+
+        if (txn.handle() != nullptr)
+        {
+            // Update each row's version field (like FIM does in db.cpp:148-169)
+            for (auto& row : rows)
+            {
+                row["version"] = version; // Modify just the version field in the complete row
+
+                nlohmann::json input;
+                input["table"] = "sca_check";
+                input["data"] = nlohmann::json::array({row});
+
+                txn.syncTxnRow(input);
+            }
+
+            // Call getDeletedRows to ensure changes are immediately reflected in the database
+            txn.getDeletedRows(txnCallback);
+        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "SCA set_version to " + std::to_string(version) + " for " +
+                                         std::to_string(rows.size()) + " checks");
+        return 0;
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error setting version: " + std::string(err.what()));
+        return -1;
+    }
+}
+
+void SecurityConfigurationAssessment::pause()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA pause requested");
+
+    // Set pause flag to prevent new operations from starting
+    m_paused.store(true);
+
+    // Wait for BOTH scan and sync operations to complete
+    std::unique_lock<std::mutex> lock(m_pauseMutex);
+    m_pauseCv.wait(lock, [this]
+    {
+        bool scanDone = !m_scanInProgress.load();
+        bool syncDone = !m_syncInProgress.load();
+        return (scanDone && syncDone) || !m_keepRunning;
+    });
+
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA module paused - all operations completed");
+}
+
+int SecurityConfigurationAssessment::flush()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA flush requested - syncing pending messages");
+
+    if (!m_spSyncProtocol)
+    {
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA sync protocol not initialized, flush skipped");
+        return 0;  // Not an error - just nothing to flush
+    }
+
+    // Trigger immediate synchronization to flush pending messages
+    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+
+    if (result)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush completed successfully");
+        return 0;
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA flush failed");
+        return -1;
+    }
+}
+
+void SecurityConfigurationAssessment::resume()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning resumed after coordination");
+
+    // Clear pause flag to allow operations to resume
+    m_paused.store(false);
+
+    // Wake up the Run() loop if it's waiting
+    m_cv.notify_one();
+}
+
+std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
+{
+    // Log the received query
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
+
+    try
+    {
+        // Parse JSON command
+        nlohmann::json query_json = nlohmann::json::parse(jsonQuery);
+
+        if (!query_json.contains("command") || !query_json["command"].is_string())
+        {
+            nlohmann::json response;
+            response["error"] = 3; // MQ_ERR_INVALID_PARAMS
+            response["message"] = "Missing or invalid parameters";
+            return response.dump();
+        }
+
+        std::string command = query_json["command"];
+        nlohmann::json parameters = query_json.contains("parameters") ? query_json["parameters"] : nlohmann::json();
+
+        // Log the command being executed
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Executing command: " + command);
+
+        nlohmann::json response;
+
+        // Handle coordination commands with JSON responses
+        if (command == "pause")
+        {
+            pause();
+            response["error"] = 0; // MQ_SUCCESS
+            response["message"] = "SCA module paused successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "pause";
+        }
+        else if (command == "flush")
+        {
+            // Flush triggers immediate sync protocol synchronization
+            int result = flush();
+
+            if (result == 0)
+            {
+                response["error"] = 0; // MQ_SUCCESS
+                response["message"] = "SCA module flushed successfully";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "flush";
+            }
+            else
+            {
+                response["error"] = 1;
+                response["message"] = "SCA module flush failed";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "flush";
+            }
+        }
+        else if (command == "get_version")
+        {
+            const int maxVersion = getMaxVersion();
+
+            if (maxVersion >= 0)
+            {
+                response["error"] = 0; // MQ_SUCCESS
+                response["message"] = "SCA get_version successfully";
+                response["data"]["action"] = "get_version";
+                response["data"]["module"] = "sca";
+                response["data"]["version"] = maxVersion;
+            }
+            else
+            {
+                response["error"] = 3;
+                response["message"] = "SCA fails getting version";
+                response["data"]["action"] = "get_version";
+                response["data"]["module"] = "sca";
+            }
+        }
+        else if (command == "set_version")
+        {
+            // Extract version from parameters
+            int version = -1;
+
+            if (parameters.is_object() && parameters.contains("version") && parameters["version"].is_number())
+            {
+                version = parameters["version"].get<int>();
+            }
+
+            if (version < 0)
+            {
+                response["error"] = 3; // MQ_ERR_INVALID_PARAMS
+                response["message"] = "Invalid version parameter";
+                response["data"]["action"] = "set_version";
+                response["data"]["module"] = "sca";
+            }
+            else
+            {
+                int result = setVersion(version);
+
+                if (result == 0)
+                {
+                    response["error"] = 0; // MQ_SUCCESS
+                    response["message"] = "SCA version set successfully";
+                    response["data"]["action"] = "set_version";
+                    response["data"]["module"] = "sca";
+                    response["data"]["version"] = version;
+                }
+                else
+                {
+                    response["error"] = 2;
+                    response["message"] = "SCA fails setting version";
+                    response["data"]["action"] = "set_version";
+                    response["data"]["module"] = "sca";
+                    response["data"]["version"] = version;
+                }
+            }
+        }
+        else if (command == "resume")
+        {
+            resume();
+            response["error"] = 0; // MQ_SUCCESS
+            response["message"] = "SCA module resumed successfully";
+            response["data"]["module"] = "sca";
+            response["data"]["action"] = "resume";
+        }
+        else
+        {
+            response["error"] = 1; // MQ_ERR_UNKNOWN_COMMAND
+            response["message"] = "Unknown SCA command: " + command;
+            response["data"]["command"] = command;
+        }
+
+        return response.dump();
+    }
+    catch (const std::exception& ex)
+    {
+        nlohmann::json response;
+        response["error"] = 98; // MQ_ERR_INTERNAL
+        response["message"] = "Exception parsing JSON or executing command: " + std::string(ex.what());
+
+        LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
+        return response.dump();
     }
 }
 

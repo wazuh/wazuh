@@ -113,6 +113,30 @@ class SecurityConfigurationAssessment
         /// @brief Delete the database
         void deleteDatabase();
 
+        /// @brief Get the maximum version from the sca_check table
+        /// @return Maximum version number, or -1 on error, 0 if table is empty
+        int getMaxVersion();
+
+        /// @brief Set the version for all rows in the sca_check table
+        /// @param version Version number to set
+        /// @return 0 on success, -1 on error
+        int setVersion(int version);
+
+        /// @brief Pause SCA scanning operations for coordination
+        void pause();
+
+        /// @brief Flush pending sync protocol messages
+        /// @return 0 on success, -1 on error
+        int flush();
+
+        /// @brief Resume SCA scanning operations after coordination
+        void resume();
+
+        /// @brief Handles query commands for the SCA module
+        /// @param jsonQuery JSON-formatted query command string
+        /// @return JSON-formatted response string
+        std::string query(const std::string& jsonQuery);
+
     protected:
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
@@ -148,11 +172,29 @@ class SecurityConfigurationAssessment
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};
 
+        /// @brief Flag indicating if scanning is paused for coordination
+        std::atomic<bool> m_paused {false};
+
+        /// @brief Flag indicating if a scan is currently in progress
+        std::atomic<bool> m_scanInProgress {false};
+
+        /// @brief Flag indicating if a sync operation is currently in progress
+        std::atomic<bool> m_syncInProgress {false};
+
+        /// @brief Flag indicating if a flush is requested for sync protocol
+        std::atomic<bool> m_flushRequested {false};
+
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;
 
         /// @brief Mutex for condition variable
         std::mutex m_mutex;
+
+        /// @brief Condition variable for pause/resume coordination
+        std::condition_variable m_pauseCv;
+
+        /// @brief Mutex for pause/resume coordination
+        std::mutex m_pauseMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;
