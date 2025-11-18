@@ -730,6 +730,19 @@ components:
           type: string
           description: "Reload operation message"
 
+    NodeContentUpdate:
+      type: object
+      required:
+        - name
+        - msg
+      properties:
+        name:
+          type: string
+          description: "Node name"
+        msg:
+          type: string
+          description: "Content update message"
+
     AllItemsResponse:
       type: object
       required:
@@ -858,6 +871,18 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/NodeAnalysisdReload'
+
+    AllItemsResponseNodeContentUpdate:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              items:
+                $ref: '#/components/schemas/NodeContentUpdate '
 
     AllItemsResponseNodeHealthcheck:
       allOf:
@@ -14382,6 +14407,52 @@ paths:
                   failed_items: []
                 message: "All specified task's status were returned"
                 error: 0
+
+  /content/update:
+    put:
+      tags:
+        - Content
+      summary: "Update content on on-demand"
+      description: "Updates the Engine and VD content on all nodes in the cluster."
+      operationId: api.controllers.content_controller.put_content_update
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/content:update'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "List of affected nodes and return messages"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeAnalysisdReload'
+                example:
+                  data:
+                    affected_items:
+                      - name: "manager"
+                        msg: "Content update request sent successfully."
+                      - name: "worker"
+                        msg: "Content update request sent successfully."
+                    total_affected_items: 2
+                    total_failed_items: 0
+                    failed_items: [ ]
+                  message: "Content update request sent to all nodes"
+                  error: 0
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
 externalDocs:
   description: "Learn more about the Wazuh API"
