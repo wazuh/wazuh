@@ -21,14 +21,16 @@
 #include <set>
 #include <unistd.h>
 
-AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay,
+                                     std::chrono::seconds timeout,
                                      unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue)
     : m_moduleName(moduleName),
       m_logger(std::move(logger)),
       m_syncEndDelay(syncEndDelay),
       m_timeout(timeout),
       m_retries(retries),
-      m_maxEps(maxEps)
+      m_maxEps(maxEps),
+      m_persistentQueue(nullptr) // Ensure initialized to nullptr
 {
     if (!m_logger)
     {
@@ -37,7 +39,16 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
 
     try
     {
-        m_persistentQueue = queue ? std::move(queue) : std::make_shared<PersistentQueue>(dbPath, m_logger);
+        if (queue)
+        {
+            m_persistentQueue = std::move(queue);
+        }
+        else if (dbPath.has_value())
+        {
+            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger);
+        }
+
+        // else: m_persistentQueue remains nullptr for in-memory-only operation
 
 #if CLIENT
         m_transport = SyncTransportFactory::createDefaultTransport(moduleName, mqFuncs, m_logger);
@@ -73,6 +84,11 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
 {
     try
     {
+        if (!m_persistentQueue)
+        {
+            throw std::runtime_error("persistDifference() requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
+        }
+
         m_persistentQueue->submit(id, index, data, operation, version);
     }
     catch (const std::exception& e)
@@ -136,6 +152,11 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         // For DELTA mode, use traditional database persistence
         try
         {
+            if (!m_persistentQueue)
+            {
+                throw std::runtime_error("DELTA mode requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
+            }
+
             dataToSync = m_persistentQueue->fetchAndMarkForSync();
         }
         catch (const std::exception& e)
@@ -193,6 +214,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
             }
             else
             {
+                // No need to check m_persistentQueue for nullptr here as it was validated earlier
                 // For DELTA mode, clear database synced items
                 m_persistentQueue->clearSyncedItems();
             }
@@ -207,6 +229,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
             }
             else
             {
+                // No need to check m_persistentQueue for nullptr here as it was validated earlier
                 m_persistentQueue->resetSyncingItems();
             }
         }
@@ -384,6 +407,11 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     {
         if (success)
         {
+            if (!m_persistentQueue)
+            {
+                throw std::runtime_error("notifyDataClean() requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
+            }
+
             m_logger(LOG_DEBUG, "DataClean notification completed successfully. Clearing local database.");
 
             // Clear the local database after successful notification
@@ -1099,6 +1127,11 @@ void AgentSyncProtocol::deleteDatabase()
 {
     try
     {
+        if (!m_persistentQueue)
+        {
+            throw std::runtime_error("deleteDatabase() requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
+        }
+
         m_persistentQueue->deleteDatabase();
     }
     catch (const std::exception& e)

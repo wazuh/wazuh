@@ -22,7 +22,7 @@ extern "C" {
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
 /// @param module Name of the module associated with this instance.
-/// @param db_path The full path to the SQLite database file to be used.
+/// @param db_path Optional full path to the SQLite database file to be used (nullptr for in-memory only).
 /// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @param logger Callback function used for logging messages.
 /// @param syncEndDelay Delay for synchronization end message in seconds

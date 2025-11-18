@@ -19,6 +19,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 #include <condition_variable>
@@ -28,7 +29,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
     public:
         /// @brief Constructs the synchronization protocol handler.
         /// @param moduleName Name of the module associated with this instance.
-        /// @param dbPath Path to the SQLite database file for this protocol instance.
+        /// @param dbPath Optional path to the SQLite database file for this protocol instance. If not provided, only in-memory synchronization is available.
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
         /// @param queue Optional persistent queue to use for message storage and retrieval.
@@ -36,7 +37,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param timeout Default timeout for synchronization operations.
         /// @param retries Default number of retries for synchronization operations.
         /// @param maxEps Default maximum events per second for synchronization operations.
-        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+        explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
                                    unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
