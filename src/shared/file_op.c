@@ -729,6 +729,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
     int state_ok;
     int file_count = 0;
     size_t i = 0, n = 0, files_size = 0;
+    size_t optdir_len = 0;
     char *files;
     char * copy;
     char final_name[2048 + 1];
@@ -741,6 +742,11 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
     if (!finalfp) {
         merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
+    }
+
+    /* Calculate optdir length once for optimization */
+    if (optdir) {
+        optdir_len = strlen(optdir);
     }
 
     /* Finds index of the last element on the list */
@@ -861,24 +867,28 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
         }
 
         if (unmerged_files != NULL) {
-            /* Removes path from file name */
-            file_name = strrchr(final_name, '/');
-            if (file_name) {
-                file_name++;
-            }
-            else {
+            char *file_name_copy = NULL;
+
+            /* Calculate relative path from optdir to preserve directory structure */
+            if (optdir_len > 0) {
+                /* Skip optdir and the following '/' to get relative path */
+                if (strncmp(final_name, optdir, optdir_len) == 0 && final_name[optdir_len] == '/') {
+                    file_name = final_name + optdir_len + 1;
+                } else {
+                    /* Fallback: remove path from file name */
+                    file_name = strrchr(final_name, '/');
+                    file_name = file_name ? file_name + 1 : final_name;
+                }
+            } else {
+                /* No optdir specified, use full path */
                 file_name = final_name;
             }
 
-            /* Appends file name to unmerged files list */
-            os_realloc(*unmerged_files, (file_count + 2) * sizeof(char *), *unmerged_files);
-            os_strdup(file_name, *(*unmerged_files + file_count));
+            /* Append relative file path to unmerged files list */
+            os_strdup(file_name, file_name_copy);
+            *unmerged_files = w_strarray_append(*unmerged_files, file_name_copy, file_count);
             file_count++;
         }
-    }
-
-    if (unmerged_files != NULL) {
-        *(*unmerged_files + file_count) = NULL;
     }
 
     fclose(finalfp);
