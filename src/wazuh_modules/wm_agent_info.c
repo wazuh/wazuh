@@ -30,13 +30,6 @@
 #define static
 #endif
 
-// Platform-specific defines
-#ifdef WIN32
-#define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue\\agent_info\\db\\agent_info_sync.db"
-#else
-#define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue/agent_info/db/agent_info_sync.db"
-#endif
-
 // Logging macros
 #undef minfo
 #undef mwarn
@@ -332,7 +325,7 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     // Database synchronization config values
     agent_info->sync.enable_synchronization = 1;
     agent_info->sync.sync_end_delay = 1;
-    agent_info->sync.sync_response_timeout = 60;
+    agent_info->sync.sync_response_timeout = 30;
     agent_info->sync.sync_retries = 3;
     agent_info->sync.sync_max_eps = 10;
 
@@ -521,7 +514,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     if (agent_info_init_sync_protocol_ptr)
     {
         MQ_Functions mq_funcs = {.start = wm_agent_info_startmq, .send_binary = wm_agent_info_send_binary_msg};
-        agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, AGENT_INFO_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+        agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, &mq_funcs);
     }
 
     // Initialize the C++ implementation (this will create the AgentInfoImpl with the callbacks)

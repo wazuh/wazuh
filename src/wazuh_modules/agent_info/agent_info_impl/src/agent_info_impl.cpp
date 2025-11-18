@@ -284,7 +284,6 @@ void AgentInfoImpl::stop()
 }
 
 void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
-                                     const std::string& syncDbPath,
                                      const MQ_Functions& mqFuncs)
 {
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
@@ -294,9 +293,9 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, std::chrono::seconds(m_syncEndDelay), std::chrono::seconds(m_syncResponseTimeout), m_syncRetries,
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, std::nullopt, mqFuncs, logger_func, std::chrono::seconds(m_syncEndDelay), std::chrono::seconds(m_syncResponseTimeout), m_syncRetries,
                                                                m_syncMaxEps, nullptr);
-        m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with database: " + syncDbPath);
+        m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with only in-memory synchronization");
     }
     catch (const std::exception& ex)
     {

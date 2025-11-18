@@ -249,7 +249,7 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckTriggeredWhenIntervalElapsed)
     m_agentInfo->setSyncParameters(1, 1, 1, 1000);
 
     MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", ":memory:", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -332,7 +332,7 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
     m_agentInfo->setSyncParameters(1, 1, 0, 1000);
 
     MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", ":memory:", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -418,7 +418,7 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckForBothMetadataAndGroups)
     m_agentInfo->setSyncParameters(1, 1, 1, 1000);
 
     MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", ":memory:", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));

@@ -162,11 +162,11 @@ TEST_F(AgentInfoDBSyncIntegrationTest, InitSyncProtocolLogsMessages)
     m_logOutput.clear();
 
     // Initialize sync protocol
-    EXPECT_NO_THROW(m_agentInfo->initSyncProtocol("test-module", ":memory:", mq_funcs));
+    EXPECT_NO_THROW(m_agentInfo->initSyncProtocol("test_module", mq_funcs));
 
     // Verify initialization log
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent-info sync protocol initialized"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(":memory:"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("only in-memory synchronization"));
 }
 
 TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsWithException)

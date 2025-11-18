@@ -39,7 +39,7 @@ EXPORTED void agent_info_set_log_function(log_callback_t log_callback);
 EXPORTED void agent_info_set_report_function(report_callback_t report_callback);
 
 EXPORTED void
-agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs);
+agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_funcs);
 
 EXPORTED bool agent_info_parse_response(const uint8_t* data, size_t data_len);
 
@@ -54,7 +54,6 @@ typedef void (*agent_info_stop_func)();
 typedef void (*agent_info_set_log_function_func)(log_callback_t log_callback);
 typedef void (*agent_info_set_report_function_func)(report_callback_t report_callback);
 typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
-                                                   const char* sync_db_path,
                                                    const MQ_Functions* mq_funcs);
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
 typedef void (*agent_info_set_query_module_function_func)(query_module_callback_t query_module_callback);
