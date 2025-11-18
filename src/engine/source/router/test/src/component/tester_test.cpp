@@ -301,7 +301,7 @@ TEST_F(OrchestratorTesterTest, IngestTest)
 
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
-    EXPECT_CALL(*m_mockController, stop()).Times(0);
+    EXPECT_CALL(*m_mockController, stop()).Times(1);
 
     std::unordered_set<std::string> fakeAssetsString {};
     fakeAssetsString.insert("decoder/fake/0");
