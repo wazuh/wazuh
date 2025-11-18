@@ -20,7 +20,10 @@ using ProdQueueType = base::queue::iQueue<base::Event>;
 using TestQueueType = base::queue::iQueue<test::QueueType>;
 
 // Forward declarations
+template<typename T>
 class IWorker;
+class IRouter;
+class ITester;
 class EnvironmentBuilder;
 class EntryConverter;
 
@@ -37,8 +40,9 @@ protected:
     constexpr static const char* STORE_PATH_ROUTER_EPS = "router/eps/0";      ///< Default path for the EPS state
 
     // Workers synchronization
-    std::list<std::shared_ptr<IWorker>> m_workers; ///< List of workers
-    mutable std::shared_mutex m_syncMutex;         ///< Mutex for the Workers synchronization (1 query at a time)
+    std::list<std::shared_ptr<IWorker<IRouter>>> m_routerWorkers;
+    std::shared_ptr<IWorker<ITester>> m_testerWorker;
+    mutable std::shared_mutex m_syncMutex; ///< Mutex for the Workers synchronization (1 query at a time)
 
     // Workers configuration
     std::shared_ptr<ProdQueueType> m_eventQueue;      ///< The event queue
@@ -51,8 +55,11 @@ protected:
     base::Name m_storeRouterName;                  ///< Path of internal configuration state for routers
     std::size_t m_testTimeout;                     ///< Timeout for the tests
 
-    using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker>&)>;
-    base::OptError forEachWorker(const WorkerOp& f); ///< Apply the function f to each worker
+
+    template<typename T>
+    using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker<T>>&)>;
+    base::OptError forEachRouterWorker(const WorkerOp<IRouter>& f);
+    base::OptError forTesterWorker(const WorkerOp<ITester>& f);
 
     void dumpTesters() const;                                                ///< Dump the testers to the store
     void dumpRouters() const;                                                ///< Dump the routers to the store
@@ -67,12 +74,10 @@ protected:
      * @param testerEntries The tester entries to initialize the worker
      * @return base::OptError The error if the worker can't be initialized
      */
-    base::OptError initWorker(const std::shared_ptr<IWorker>& worker,
-                              const std::vector<EntryConverter>& routerEntries,
+    base::OptError initRouterWorker(const std::shared_ptr<IWorker<IRouter>>& worker,
+                              const std::vector<EntryConverter>& routerEntries);
+    base::OptError initTesterWorker(const std::shared_ptr<IWorker<ITester>>& worker,
                               const std::vector<EntryConverter>& testerEntries);
-
-    base::OptError addWorker(std::shared_ptr<IWorker> worker); ///< Add a new worker to the list
-    base::OptError removeWorker();                             ///< Remove a worker from the list
 
     Orchestrator() = default; ///< Default constructor for testing purposes
 
