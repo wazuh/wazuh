@@ -181,9 +181,6 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if a sync operation is currently in progress
         std::atomic<bool> m_syncInProgress {false};
 
-        /// @brief Flag indicating if a flush is requested for sync protocol
-        std::atomic<bool> m_flushRequested {false};
-
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;
 
