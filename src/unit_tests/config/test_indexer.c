@@ -302,6 +302,29 @@ void test_fail_missing_port_setting_value(void **state) {
     assert_null(indexer_config);
 }
 
+void test_fail_missing_port_setting_value_with_port_separator(void **state) {
+    const char *string =
+    "<ossec_config>"
+        "<indexer>"
+            "<enabled>yes</enabled>"
+            "<hosts>"
+                "<host>http://hostname:</host>"
+            "</hosts>"
+        "</indexer>"
+    "</ossec_config>";
+
+    FILE * output = fopen(test_path, "w");
+    fwrite(string, 1, strlen(string), output);
+    fclose(output);
+
+    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
+
+    expect_string(__wrap__merror, formatted_msg, "Invalid host 'http://hostname:' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
+    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_null(indexer_config);
+}
+
 void test_fail_invalid_port_setting_value(void **state) {
     const char *string =
     "<ossec_config>"
@@ -689,6 +712,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fail_empty_host_setting_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fail_empty_hostname_setting_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fail_missing_port_setting_value, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_fail_missing_port_setting_value_with_port_separator, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fail_invalid_port_setting_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fail_missing_protocol_setting_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fail_empty_certificate_file_path, setup_test_read, teardown_test_read),
