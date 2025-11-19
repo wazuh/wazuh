@@ -192,9 +192,33 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, option))
     {
-        if (sendDataMessages(m_syncState.session, dataToSync))
+        // Separate DataValue and DataContext items
+        std::vector<PersistedData> dataValueItems;
+        std::vector<PersistedData> dataContextItems;
+
+        for (const auto& item : dataToSync)
         {
-            if (sendEndAndWaitAck(m_syncState.session, dataToSync))
+            if (item.is_data_context)
+            {
+                dataContextItems.push_back(item);
+            }
+            else
+            {
+                dataValueItems.push_back(item);
+            }
+        }
+
+        // Send DataValue messages first
+        if (sendDataMessages(m_syncState.session, dataValueItems))
+        {
+            // Then send DataContext messages if any exist
+            bool dataContextSuccess = true;
+            if (!dataContextItems.empty())
+            {
+                dataContextSuccess = sendDataContextMessages(m_syncState.session, dataContextItems);
+            }
+
+            if (dataContextSuccess && sendEndAndWaitAck(m_syncState.session, dataToSync))
             {
                 success = true;
             }
