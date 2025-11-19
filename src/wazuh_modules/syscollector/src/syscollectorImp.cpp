@@ -70,24 +70,6 @@ class ScanGuard
         std::condition_variable& m_cv;
 };
 
-// List of all Syscollector tables with version field
-static const std::vector<std::string> ALL_SYSCOLLECTOR_TABLES =
-{
-    OS_TABLE,
-    HW_TABLE,
-    HOTFIXES_TABLE,
-    PACKAGES_TABLE,
-    PROCESSES_TABLE,
-    PORTS_TABLE,
-    NET_IFACE_TABLE,
-    NET_PROTOCOL_TABLE,
-    NET_ADDRESS_TABLE,
-    USERS_TABLE,
-    GROUPS_TABLE,
-    SERVICES_TABLE,
-    BROWSER_EXTENSIONS_TABLE
-};
-
 constexpr auto QUEUE_SIZE
 {
     4096
@@ -1797,7 +1779,7 @@ int Syscollector::getMaxVersion()
     try
     {
         // Iterate through all Syscollector tables to find the maximum version
-        for (const auto& tableName : ALL_SYSCOLLECTOR_TABLES)
+        for (const auto& [tableName, indexName] : INDEX_MAP)
         {
             int tableMaxVersion = 0;
 
@@ -1865,7 +1847,7 @@ int Syscollector::setVersion(int version)
         int totalRowsUpdated = 0;
 
         // Iterate through all Syscollector tables to update version
-        for (const auto& tableName : ALL_SYSCOLLECTOR_TABLES)
+        for (const auto& [tableName, indexName] : INDEX_MAP)
         {
             std::vector<nlohmann::json> rows;
 
