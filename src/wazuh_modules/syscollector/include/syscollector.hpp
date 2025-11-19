@@ -184,6 +184,8 @@ class EXPORTED Syscollector final
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
+        std::condition_variable                                                  m_pauseCv;
+        std::mutex                                                               m_pauseMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
 };

@@ -50,13 +50,15 @@ constexpr auto UNKNOWN_VALUE {" "};
 class ScanGuard
 {
     public:
-        explicit ScanGuard(std::atomic<bool>& flag) : m_flag(flag)
+        explicit ScanGuard(std::atomic<bool>& flag, std::condition_variable& cv)
+            : m_flag(flag), m_cv(cv)
         {
             m_flag = true;
         }
         ~ScanGuard()
         {
             m_flag = false;
+            m_cv.notify_all();
         }
         // Delete copy and move operations
         ScanGuard(const ScanGuard&) = delete;
@@ -65,6 +67,7 @@ class ScanGuard
         ScanGuard& operator=(ScanGuard&&) = delete;
     private:
         std::atomic<bool>& m_flag;
+        std::condition_variable& m_cv;
 };
 
 // List of all Syscollector tables with version field
@@ -1312,7 +1315,7 @@ void Syscollector::scan()
     }
 
     // RAII guard ensures m_scanning is set to false even if function exits early
-    ScanGuard scanGuard(m_scanning);
+    ScanGuard scanGuard(m_scanning, m_pauseCv);
 
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
@@ -1643,7 +1646,7 @@ bool Syscollector::syncModule(Mode mode)
     if (m_spSyncProtocol)
     {
         // RAII guard ensures m_syncing is set to false even if function exits early
-        ScanGuard syncGuard(m_syncing);
+        ScanGuard syncGuard(m_syncing, m_pauseCv);
         return m_spSyncProtocol->synchronizeModule(mode);
     }
 
@@ -1701,12 +1704,14 @@ bool Syscollector::pause()
     // Set the pause flag first to prevent new operations from starting
     m_paused = true;
 
-    // Wait for any ongoing scan or sync operations to complete
-    // Also check m_stopping to avoid infinite loop if module is being destroyed
-    while ((m_scanning || m_syncing) && !m_stopping)
+    // Wait for BOTH scan and sync operations to complete
+    std::unique_lock<std::mutex> lock(m_pauseMutex);
+    m_pauseCv.wait(lock, [this]
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
+        bool scanDone = !m_scanning.load();
+        bool syncDone = !m_syncing.load();
+        return (scanDone && syncDone) || m_stopping;
+    });
 
     if (m_logFunction)
     {
