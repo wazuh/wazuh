@@ -71,18 +71,11 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(PropertiesParamsTuple({Type::OBJECT}, {{"a", {Type::TEXT}}}, true),
                       PropertiesParamsTuple({Type::OBJECT}, {{"a", {Type::INTEGER}}}, true),
                       PropertiesParamsTuple({Type::OBJECT}, {{"a", {Type::OBJECT}}}, true),
-                      PropertiesParamsTuple({Type::OBJECT}, {{"a", {Type::INTEGER, true}}}, true),
                       PropertiesParamsTuple({Type::OBJECT}, {{"a", {Type::BOOLEAN}}}, true),
                       PropertiesParamsTuple({Type::OBJECT}, {{"a", {Type::TEXT}}, {"a", {Type::TEXT}}}, false),
                       PropertiesParamsTuple({Type::TEXT}, {{"a", {Type::TEXT}}}, false),
                       PropertiesParamsTuple({Type::INTEGER}, {{"a", {Type::TEXT}}}, false),
                       PropertiesParamsTuple({Type::BOOLEAN}, {{"a", {Type::TEXT}}}, false),
-                      PropertiesParamsTuple({Type::OBJECT, true}, {{"a", {Type::TEXT}}}, true),
-                      PropertiesParamsTuple({Type::OBJECT, true}, {{"a", {Type::INTEGER}}}, true),
-                      PropertiesParamsTuple({Type::OBJECT, true}, {{"a", {Type::OBJECT}}}, true),
-                      PropertiesParamsTuple({Type::OBJECT, true}, {{"a", {Type::INTEGER, true}}}, true),
-                      PropertiesParamsTuple({Type::OBJECT, true}, {{"a", {Type::BOOLEAN}}}, true),
-                      PropertiesParamsTuple({Type::OBJECT, true}, {{"a", {Type::TEXT}}, {"a", {Type::TEXT}}}, false),
                       PropertiesParamsTuple({Type::OBJECT}, {{"a", {Type::TEXT}}, {"b", {Type::TEXT}}}, true)));
 
 using EqualsTuple = std::tuple<Field::Parameters, Field::Parameters, bool>;
@@ -114,10 +107,7 @@ INSTANTIATE_TEST_SUITE_P(
         EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
                     {.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
                     true),
-        EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}}, {Type::OBJECT}, false),
-        EqualsTuple({.type = Type::OBJECT, .isArray = true, .properties = {{"a", Field({Type::TEXT})}}},
-                    {.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
-                    false)));
+        EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}}, {Type::OBJECT}, false)));
 
 using BuildsParamsTuple = std::tuple<Field::Parameters, bool>;
 class BuildsParams : public ::testing::TestWithParam<BuildsParamsTuple>
@@ -177,12 +167,5 @@ INSTANTIATE_TEST_SUITE_P(FieldTest,
                                            BuildsParamsTuple({Type::INTEGER}, true),
                                            BuildsParamsTuple({Type::ERROR}, false),
                                            BuildsParamsTuple({Type::OBJECT}, true),
-                                           BuildsParamsTuple({.isArray = false}, false),
-                                           BuildsParamsTuple({Type::TEXT, true}, true),
-                                           BuildsParamsTuple({Type::INTEGER, true}, true),
-                                           BuildsParamsTuple({Type::ERROR, true}, false),
-                                           BuildsParamsTuple({Type::OBJECT, true}, true),
                                            BuildsParamsTuple({.type = Type::INTEGER, .properties = {{}}}, false),
-                                           BuildsParamsTuple({.type = Type::OBJECT, .properties = {{}}}, true),
-                                           BuildsParamsTuple({Type::OBJECT, true, {{}}}, true),
-                                           BuildsParamsTuple({Type::BOOLEAN, true, {{}}}, false)));
+                                           BuildsParamsTuple({.type = Type::OBJECT, .properties = {{}}}, true)));

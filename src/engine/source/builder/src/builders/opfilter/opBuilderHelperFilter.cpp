@@ -1338,18 +1338,6 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
                                                  std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
         }
     }
-    else
-    {
-        auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
-        if (buildCtx->validator().hasField(ref->dotPath()))
-        {
-            if (!buildCtx->validator().isArray(ref->dotPath()))
-            {
-                throw std::runtime_error(fmt::format(
-                    "Expected a reference of an array but got reference '{}' which is not an array", ref->dotPath()));
-            }
-        }
-    }
 
     const auto name = buildCtx->context().opName;
 
@@ -1756,12 +1744,6 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
 
         if (validator.hasField(arrayRef.dotPath()))
         {
-            if (!validator.isArray(arrayRef.dotPath()))
-            {
-                throw std::runtime_error(fmt::format(
-                    "Expected 'array' reference but got reference '{}' wich is not an array", arrayRef.dotPath()));
-            }
-
             auto jType = validator.getJsonType(arrayRef.dotPath());
             if (jType != json::Json::Type::String)
             {

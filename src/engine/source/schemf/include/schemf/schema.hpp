@@ -84,11 +84,6 @@ public:
     bool hasField(const DotPath& name) const override;
 
     /**
-     * @copydoc ISchema::isArray
-     */
-    inline bool isArray(const DotPath& name) const override { return get(name).isArray(); }
-
-    /**
      * @brief Load a schema from a JSON object, adding each field to the schema.
      *
      * @param json The JSON object schema.

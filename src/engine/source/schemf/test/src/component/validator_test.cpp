@@ -90,11 +90,6 @@ DotPath getField(ST stype)
     return {fmt::format("field_{}", schemf::typeToStr(stype))};
 }
 
-DotPath getArrayField(ST stype)
-{
-    return {fmt::format("field_{}_array", schemf::typeToStr(stype))};
-}
-
 } // namespace
 
 namespace buildvalidationtest
@@ -119,7 +114,6 @@ protected:
         for (auto stype : ALLSCHEMATYPES)
         {
             schema->addField(getField(stype), Field(Field::Parameters {.type = stype}));
-            schema->addField(getArrayField(stype), Field(Field::Parameters {.type = stype, .isArray = true}));
         }
     }
 
@@ -155,7 +149,6 @@ TEST_P(BuildValidation, CompatibleSType)
     auto validator = getValidator();
 
     auto target = getField(targetType);
-    auto targetArray = getArrayField(targetType);
 
     // Non array success schema validations
     for (auto type : validSTypesNoRun)
@@ -176,26 +169,6 @@ TEST_P(BuildValidation, CompatibleSType)
                                  schemf::typeToStr(type));
         validateTest(validator, target, valToken, true, true, trace);
     }
-
-    // Array success schema validations
-    for (auto type : validSTypesNoRun)
-    {
-        auto valToken = STypeToken::create(type, true);
-        auto trace = fmt::format("{} [targetSType(ARRAY): {}, tokenStype(ARRAY): {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 schemf::typeToStr(type));
-        validateTest(validator, targetArray, valToken, true, false, trace);
-    }
-    for (auto type : validSTypesRun)
-    {
-        auto valToken = STypeToken::create(type, true);
-        auto trace = fmt::format("{} [targetSType(ARRAY): {}, tokenStype(ARRAY): {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 schemf::typeToStr(type));
-        validateTest(validator, targetArray, valToken, true, true, trace);
-    }
 }
 
 TEST_P(BuildValidation, IncompatibleSType)
@@ -210,7 +183,6 @@ TEST_P(BuildValidation, IncompatibleSType)
                    std::inserter(validSTypes, validSTypes.end()));
 
     auto target = getField(targetType);
-    auto targetArray = getArrayField(targetType);
 
     // Non array failure schema validations
     std::set<ST> invalidSTypes;
@@ -228,26 +200,6 @@ TEST_P(BuildValidation, IncompatibleSType)
                                  schemf::typeToStr(type));
         validateTest(validator, target, valToken, false, false, trace);
     }
-
-    // Array failure schema validations
-    for (auto type : ALLSCHEMATYPES)
-    {
-        auto valToken = STypeToken::create(type, false);
-        auto trace = fmt::format("{} [targetSType(ARRAY): {}, tokenStype: {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 schemf::typeToStr(type));
-        validateTest(validator, targetArray, valToken, false, false, trace);
-    }
-    for (auto type : ALLSCHEMATYPES)
-    {
-        auto valToken = STypeToken::create(type, true);
-        auto trace = fmt::format("{} [ARRAY, targetSType: {}, tokenStype(ARRAY): {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 schemf::typeToStr(type));
-        validateTest(validator, target, valToken, false, false, trace);
-    }
 }
 
 TEST_P(BuildValidation, CompatibleJType)
@@ -256,7 +208,6 @@ TEST_P(BuildValidation, CompatibleJType)
     auto validator = getValidator();
 
     auto target = getField(targetType);
-    auto targetArray = getArrayField(targetType);
 
     // Non array success json validations
     for (auto type : validJTypesRun)
@@ -268,17 +219,6 @@ TEST_P(BuildValidation, CompatibleJType)
                                  json::Json::typeToStr(type));
         validateTest(validator, target, valToken, true, true, trace);
     }
-
-    // Array success json validations
-    for (auto type : validJTypesRun)
-    {
-        auto valToken = JTypeToken::create(type, true);
-        auto trace = fmt::format("{} [targetSType(ARRAY): {}, tokenJtype(ARRAY): {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 json::Json::typeToStr(type));
-        validateTest(validator, targetArray, valToken, true, true, trace);
-    }
 }
 
 TEST_P(BuildValidation, IncompatibleJType)
@@ -287,7 +227,6 @@ TEST_P(BuildValidation, IncompatibleJType)
     auto validator = getValidator();
 
     auto target = getField(targetType);
-    auto targetArray = getArrayField(targetType);
 
     // Non array failure json validations
     std::set<JT> invalidJTypes;
@@ -305,26 +244,6 @@ TEST_P(BuildValidation, IncompatibleJType)
                                  json::Json::typeToStr(type));
         validateTest(validator, target, valToken, false, false, trace);
     }
-
-    // Array failure json validations
-    for (auto type : ALLJTYPES)
-    {
-        auto valToken = JTypeToken::create(type, false);
-        auto trace = fmt::format("{} [targetSType(ARRAY): {}, tokenJtype: {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 json::Json::typeToStr(type));
-        validateTest(validator, targetArray, valToken, false, false, trace);
-    }
-    for (auto type : ALLJTYPES)
-    {
-        auto valToken = JTypeToken::create(type, true);
-        auto trace = fmt::format("{} [ARRAY, targetSType: {}, tokenJtype(ARRAY): {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 json::Json::typeToStr(type));
-        validateTest(validator, target, valToken, false, false, trace);
-    }
 }
 
 TEST_P(BuildValidation, JValueCompatible)
@@ -333,7 +252,6 @@ TEST_P(BuildValidation, JValueCompatible)
     auto validator = getValidator();
 
     auto target = getField(targetType);
-    auto targetArray = getArrayField(targetType);
 
     std::set<ST> validSTypes;
     std::set_union(validSTypesNoRun.begin(),
@@ -351,20 +269,6 @@ TEST_P(BuildValidation, JValueCompatible)
                                  schemf::typeToStr(targetType),
                                  SCHEMA_JSON.at(type).str());
         validateTest(validator, target, valToken, true, false, trace);
-    }
-
-    // Array success json validations
-    for (auto type : validSTypesNoRun)
-    {
-        json::Json value;
-        value.setArray();
-        value.appendJson(SCHEMA_JSON.at(type));
-        auto valToken = ValueToken::create(value);
-        auto trace = fmt::format("{} [targetSType(ARRAY): {}, tokenJvalue(ARRAY): {}] -> ",
-                                 GFAIL_CASE,
-                                 schemf::typeToStr(targetType),
-                                 SCHEMA_JSON.at(type).str());
-        validateTest(validator, targetArray, valToken, true, false, trace);
     }
 }
 

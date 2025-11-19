@@ -27,7 +27,6 @@ auto builderArrayRefNotArray(const std::string& refName)
     {
         expectValidatorAccess(mocks);
         EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }
@@ -38,7 +37,6 @@ auto builderArrayRefWrongElement(const std::string& refName)
     {
         expectValidatorAccess(mocks);
         EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillRepeatedly(testing::Return(true));
         EXPECT_CALL(*mocks.validator, getJsonType(DotPath(refName)))
             .WillRepeatedly(testing::Return(json::Json::Type::String));
         return None {};
@@ -71,7 +69,6 @@ auto opArrayRefNotArray(const std::string& refName)
     {
         expectValidatorAccess(mocks);
         EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }

@@ -13,38 +13,26 @@ namespace schemf
 {
 
 /**
- * @brief This token only holds the is array information. It is the base class for all other tokens.
+ * @brief It is the base class for all other tokens.
  *
  */
 class BaseToken : public std::enable_shared_from_this<BaseToken>
 {
 protected:
-    bool m_isArray;
-    BaseToken()
-        : m_isArray(false)
-    {
-    }
-
-    explicit BaseToken(bool isArray)
-        : m_isArray(isArray)
-    {
-    }
+    BaseToken() = default;
 
 public:
     /**
-     * @brief Create a new BaseToken. Specifies whether the token is an array.
+     * @brief Create a new BaseToken.
      *
-     * @param isArray Default is false.
      * @return std::shared_ptr<BaseToken>
      */
-    [[nodiscard]] static std::shared_ptr<BaseToken> create(bool isArray = false)
+    [[nodiscard]] static std::shared_ptr<BaseToken> create()
     {
-        return std::shared_ptr<BaseToken>(new BaseToken(isArray));
+        return std::shared_ptr<BaseToken>(new BaseToken());
     }
 
     virtual ~BaseToken() = default;
-
-    bool isArray() const { return m_isArray; }
 
     virtual bool isJType() const { return false; }
     virtual bool isSType() const { return false; }
@@ -58,9 +46,8 @@ public:
 class JTypeToken final : public BaseToken
 {
 private:
-    explicit JTypeToken(json::Json::Type type, bool isArray)
-        : BaseToken(isArray)
-        , m_type(type)
+    explicit JTypeToken(json::Json::Type type)
+        : m_type(type)
     {
         if (type == json::Json::Type::Array)
         {
@@ -75,12 +62,11 @@ public:
      * @brief Create a new JTypeToken. Specifies the JSON type and whether the token is an array.
      *
      * @param type The JSON type. Array is not allowed.
-     * @param isArray Default is false.
      * @return std::shared_ptr<JTypeToken>
      */
-    [[nodiscard]] static std::shared_ptr<JTypeToken> create(json::Json::Type type, bool isArray = false)
+    [[nodiscard]] static std::shared_ptr<JTypeToken> create(json::Json::Type type)
     {
-        return std::shared_ptr<JTypeToken>(new JTypeToken(type, isArray));
+        return std::shared_ptr<JTypeToken>(new JTypeToken(type));
     }
 
     bool isJType() const override { return true; }
@@ -94,9 +80,8 @@ public:
 class STypeToken final : public BaseToken
 {
 private:
-    explicit STypeToken(Type type, bool isArray)
-        : BaseToken(isArray)
-        , m_type(type)
+    explicit STypeToken(Type type)
+        : m_type(type)
     {
     }
 
@@ -107,12 +92,11 @@ public:
      * @brief Create a new STypeToken. Specifies the schema type and whether the token is an array.
      *
      * @param type The schema type.
-     * @param isArray Default is false.
      * @return std::shared_ptr<STypeToken>
      */
-    [[nodiscard]] static std::shared_ptr<STypeToken> create(Type type, bool isArray = false)
+    [[nodiscard]] static std::shared_ptr<STypeToken> create(Type type)
     {
-        return std::shared_ptr<STypeToken>(new STypeToken(type, isArray));
+        return std::shared_ptr<STypeToken>(new STypeToken(type));
     }
 
     bool isSType() const override { return true; }
@@ -127,8 +111,7 @@ class ValueToken final : public BaseToken
 {
 private:
     explicit ValueToken(const json::Json& value)
-        : BaseToken(value.type() == json::Json::Type::Array)
-        , m_value(value)
+        : m_value(value)
     {
     }
 
@@ -165,7 +148,7 @@ inline ValueValidator asArray(const ValueValidator& validator)
     {
         if (!value.isArray())
         {
-            return base::Error {"Value must be an array"};
+            return validator(value);
         }
 
         // TODO: Update when iterator over json::Json is available
@@ -235,23 +218,16 @@ inline ValidationToken runtimeValidation()
 }
 
 /**
- * @brief Token that checks if the field is an array. Always needs runtime validation.
+ * @brief Request validation for array elements instead of the whole array.
+ *
+ * Used by builders that operate on individual entries (e.g. append/contains) to ensure we keep the runtime validator
+ * associated with the item type and still detect array/type mismatches during build time.
  *
  * @return ValidationToken
  */
-inline ValidationToken isArrayToken()
+inline ValidationToken elementValidationToken()
 {
-    return BaseToken::create(true);
-}
-
-/**
- * @brief Token that checks if the field is not an array. Always needs runtime validation.
- *
- * @return ValidationToken
- */
-inline ValidationToken isNotArrayToken()
-{
-    return BaseToken::create(false);
+    return BaseToken::create();
 }
 
 /**
@@ -268,7 +244,7 @@ inline ValidationToken tokenFromReference(const DotPath& reference, const IValid
         return runtimeValidation();
     }
 
-    return STypeToken::create(validator.getType(reference), validator.isArray(reference));
+    return STypeToken::create(validator.getType(reference));
 }
 
 } // namespace schemf
