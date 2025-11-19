@@ -21,6 +21,7 @@
 #include "commonDefs.h"
 
 #define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
+#define SYS_SYNC_PROTOCOL_VD_DB_PATH "queue/syscollector/db/syscollector_vd_sync.db"
 #define SYS_SYNC_RETRIES 3
 
 // Global flag to stop sync module
@@ -168,7 +169,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t *sys) {
                 .start = wm_sys_startmq,
                 .send_binary = wm_sys_send_binary_msg
             };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
 
         syscollector_init_ptr(sys->interval,
                                wm_sys_send_diff_message,
@@ -339,7 +340,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 .start = wm_sys_startmq,
                 .send_binary = wm_sys_send_binary_msg
             };
-            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
 #ifndef WIN32
             // Launch inventory synchronization thread
             sync_module_running = 1;
