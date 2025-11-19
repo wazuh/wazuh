@@ -9,6 +9,7 @@
 #include "stringHelper.h"
 #include "syscheck.h"
 #include "../../config/syscheck-config.h"
+#include "../../file/file.h"
 
 // The time() macro from common.h (Included when running unit_tests) interferes with std::time calls in timeHelper.h
 #ifdef time
@@ -29,6 +30,41 @@ void log_formatted(fim_recovery_log_callback_t log_callback, modules_log_level_t
 // LCOV_EXCL_STOP
 
 /**
+ * @brief Wrapper function to build stateful event from a JSON string
+ * @param path File path
+ * @param file_json_str JSON string containing file attributes
+ * @param sha1_hash SHA1 hash of the file
+ * @param document_version Version number of the document
+ * @return Stateful event as a std::string
+ */
+static std::string buildStatefulEventFromJSONString(const std::string& path, const std::string& file_json_str, const std::string& sha1_hash, const uint64_t document_version, fim_recovery_log_callback_t log_callback) {
+    // Parse JSON string to cJSON
+    cJSON* file_stateful = cJSON_Parse(file_json_str.c_str());
+    if (file_stateful == NULL) {
+        log_callback(LOG_ERROR, "Error parsing JSON string");
+        return "";
+    }
+
+    // Build stateful event
+    cJSON* stateful_event = build_stateful_event(path.c_str(), file_stateful, sha1_hash.c_str(), document_version);
+    if (stateful_event == NULL) {
+        cJSON_Delete(file_stateful);
+        log_formatted(log_callback, LOG_ERROR, "Error building stateful event for ", path);
+        return "";
+    }
+
+    // Convert to string
+    char* result_cstr = cJSON_PrintUnformatted(stateful_event);
+    std::string result(result_cstr);
+
+    // Cleanup
+    cJSON_free(result_cstr);
+    cJSON_Delete(stateful_event);
+
+    return result;
+}
+
+/**
  * @brief Calculate the checksum-of-checksums for a table
  * @param table_name The table to calculate checksum for
  * @return The SHA1 checksum-of-checksums as a hex string
@@ -47,10 +83,12 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     std::string index;
     for (const nlohmann::json& item : recoveryItems) {
         // Calculate SHA1 hash to get an id for persistDifferenceInMemory()
+        std::string path;
 #ifdef WIN32
 #endif // WIN32
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-            id = item["path"];
+            path = item["path"];
+            id = path;
             index = FIM_FILES_SYNC_INDEX;
         }
 #ifdef WIN32
@@ -58,12 +96,14 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             // We use the value of 'architecture' in this way to use the same format for the hash as the one used by registry_key_transaction_callback from registry.c
             // This guarantees persisted entries share a consistent id format.
             int arch = (item["architecture"].get<std::string>() == "[x32]") ? ARCH_32BIT: ARCH_64BIT;
-            id = std::to_string(arch) + ":" + item["path"].get<std::string>();
+            path = item["path"].get<std::string>();
+            id = std::to_string(arch) + ":" + path;
             index = FIM_REGISTRY_KEYS_SYNC_INDEX;
         }
         else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
             int arch = (item["architecture"].get<std::string>() == "[x32]") ? ARCH_32BIT: ARCH_64BIT;
-            id = item["path"].get<std::string>() + ":" + std::to_string(arch) + ":" + item["value"].get<std::string>();
+            path = item["path"].get<std::string>();
+            id = path + ":" + std::to_string(arch) + ":" + item["value"].get<std::string>();
             index = FIM_REGISTRY_VALUES_SYNC_INDEX;
         }
 #endif // WIN32
@@ -80,12 +120,26 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
         }
         // LCOV_EXCL_STOP
+
+        // Build stateful event using wrapper
+        std::string item_str = item.dump();
+        std::string checksum = item["checksum"].get<std::string>();
+        uint64_t document_version = item["version"].get<uint64_t>();
+
+        std::string stateful_event_str = buildStatefulEventFromJSONString(
+            path,
+            item_str,
+            checksum,
+            document_version,
+            log_callback
+        );
+
         wrapper->impl->persistDifferenceInMemory(
             id,
             Operation::CREATE,
             index,
-            item.dump(),
-            item["version"]
+            stateful_event_str,
+            document_version
         );
     }
 
@@ -144,9 +198,9 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtoco
     );
 
     if (needs_full_sync) {
-        log_formatted(log_callback, LOG_INFO, "Checksum mismatch detected for index ", table_name, ", full sync required");
+        log_formatted(log_callback, LOG_INFO, "Checksum mismatch detected for table ", table_name, ", full sync required");
     } else {
-        log_formatted(log_callback, LOG_INFO, "Checksum valid for index ", table_name, ", delta sync sufficient");
+        log_formatted(log_callback, LOG_INFO, "Checksum valid for table ", table_name, ", delta sync sufficient");
     }
 
     return needs_full_sync;
