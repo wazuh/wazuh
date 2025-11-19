@@ -468,23 +468,25 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void * args) {
 void * wm_sync_module(__attribute__((unused)) void * args) {
 #endif
     // Initial wait until syscollector is started
-    for (uint32_t i = 0; i < sync_interval && sync_module_running; i++) {
+    for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
+    {
         sleep(1);
     }
 
-    while (sync_module_running) {
-        mtinfo(WM_SYS_LOGTAG, "Running inventory synchronization.");
-
-        if (syscollector_sync_module_ptr) {
+    while (sync_module_running)
+    {
+        if (syscollector_sync_module_ptr)
+        {
             syscollector_sync_module_ptr(MODE_DELTA);
-        } else {
+        }
+        else
+        {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }
 
-        mtinfo(WM_SYS_LOGTAG, "Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
-
         // Sleep in small intervals to allow responsive stopping
-        for (uint32_t i = 0; i < sync_interval && sync_module_running; i++) {
+        for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
+        {
             sleep(1);
         }
     }
