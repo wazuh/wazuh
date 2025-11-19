@@ -74,7 +74,7 @@ class EXPORTED Syscollector final
         void destroy();
 
         // Sync protocol methods
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
                               size_t maxEps);
         bool syncModule(Mode mode);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
@@ -198,6 +198,7 @@ class EXPORTED Syscollector final
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
+        std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
 };
 
 
