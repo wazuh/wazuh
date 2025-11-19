@@ -1694,7 +1694,7 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
                                     unsigned int retries,
                                     size_t maxEps)
 {
@@ -1707,8 +1707,13 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
     try
     {
+        // Initialize regular sync protocol
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Initialize VD sync protocol
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD);
     }
     catch (const std::exception& ex)
     {
@@ -1755,7 +1760,16 @@ bool Syscollector::syncModule(Mode mode)
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
-    if (m_spSyncProtocol)
+    // VD tables: system (os), packages, hotfixes
+    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+    if (isVDTable && m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version);
+    }
+    else if (m_spSyncProtocol)
     {
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
@@ -1763,9 +1777,16 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
-    if (m_spSyncProtocol)
+    // Try regular sync protocol first
+    if (m_spSyncProtocol && m_spSyncProtocol->parseResponseBuffer(data, length))
     {
-        return m_spSyncProtocol->parseResponseBuffer(data, length);
+        return true;
+    }
+
+    // If regular protocol didn't handle it, try VD sync protocol
+    if (m_spSyncProtocolVD && m_spSyncProtocolVD->parseResponseBuffer(data, length))
+    {
+        return true;
     }
 
     return false;
