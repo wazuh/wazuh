@@ -657,6 +657,56 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
     return false;
 }
 
+bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
+                                                const std::vector<PersistedData>& data)
+{
+    try
+    {
+        for (const auto& item : data)
+        {
+            // Check if stop was requested
+            if (shouldStop())
+            {
+                m_logger(LOG_INFO, "Stop requested, aborting DataContext message sending");
+                return false;
+            }
+
+            flatbuffers::FlatBufferBuilder builder;
+            auto idStr = builder.CreateString(item.id);
+            auto idxStr = builder.CreateString(item.index);
+            auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+
+            Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
+            dataContextBuilder.add_seq(item.seq);
+            dataContextBuilder.add_session(session);
+            dataContextBuilder.add_id(idStr);
+            dataContextBuilder.add_index(idxStr);
+            dataContextBuilder.add_data(dataVec);
+            auto dataContextOffset = dataContextBuilder.Finish();
+
+            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataContext, dataContextOffset.Union());
+            builder.Finish(message);
+
+            const uint8_t* buffer_ptr = builder.GetBufferPointer();
+            const size_t buffer_size = builder.GetSize();
+            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+            if (!sendFlatBufferMessageAsString(messageVector))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when sending DataContext messages: ") + e.what());
+    }
+
+    return false;
+}
+
 bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
                                             const std::string& index,
                                             const std::string& checksum)
