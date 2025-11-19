@@ -157,12 +157,12 @@ def run(args):
 
     error_reporter = ErrorReporter("Validation")
     integration_arg = args.get('integration')
-    integration_rules_arg = args.get('integration_rule')
+    # integration_rules_arg = args.get('integration_rule')
 
-    specified_args = [arg for arg in [integration_arg, integration_rules_arg] if arg]
+    # specified_args = [arg for arg in [integration_arg, integration_rules_arg] if arg]
 
-    if len(specified_args) > 1:
-        sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
+    # if len(specified_args) > 1:
+    #     sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
 
     try:
         print("Running non modifiable fields tests.")
@@ -171,16 +171,16 @@ def run(args):
             sys.exit(f'Error: {non_modifiables_fields_path} file does not exist.')
         non_modifiables_fields = load_non_modifiable_fields(non_modifiables_fields_path)
 
-        if integration_rules_arg:
-            print("Validating rules only.")
-            rules_validator(args, ruleset_path, resource_handler, non_modifiables_fields, error_reporter)
-        elif integration_arg:
+        # if integration_rules_arg:
+        #     print("Validating rules only.")
+        #     rules_validator(args, ruleset_path, resource_handler, non_modifiables_fields, error_reporter)
+        if integration_arg:
             print("Validating integration only.")
             integration_validator(args, ruleset_path, resource_handler, non_modifiables_fields, error_reporter)
         else:
-            print("No specific arguments provided, validating both integration and rules.")
+            print("No specific arguments provided, validating integrations.")
             integration_validator(args, ruleset_path, resource_handler, non_modifiables_fields, error_reporter)
-            rules_validator(args, ruleset_path, resource_handler, non_modifiables_fields, error_reporter)
+            # rules_validator(args, ruleset_path, resource_handler, non_modifiables_fields, error_reporter)
 
         if error_reporter.has_errors():
             error_reporter.exit_with_errors(

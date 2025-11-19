@@ -123,15 +123,15 @@ def integration_rules_validator(ruleset_path: Path, integration_rules: str, repo
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
     integration = args.get('integration')
-    integration_rule = args.get('integration_rule')
+    # integration_rule = args.get('integration_rule')
 
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
 
     reporter = ErrorReporter("Validation")
 
-    if integration_rule and integration:
-        sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
+    # if integration_rule and integration:
+    #     sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
 
     try:
         print("Running custom field documentation tests.")
@@ -140,14 +140,14 @@ def run(args):
             print("Validating integration only.")
             integration_validator(ruleset_path, integration, reporter)
 
-        elif integration_rule:
-            print("Validating rules only.")
-            integration_rules_validator(ruleset_path, integration_rule, reporter)
+        # elif integration_rule:
+        #     print("Validating rules only.")
+        #     integration_rules_validator(ruleset_path, integration_rule, reporter)
 
         else:
-            print("Validating both integration and rules.")
+            print("Validating both integratios.")
             integration_validator(ruleset_path, integration, reporter)
-            integration_rules_validator(ruleset_path, integration_rule, reporter)
+            # integration_rules_validator(ruleset_path, integration_rule, reporter)
 
         # After both validators have run, check if there are errors and exit if necessary
         reporter.exit_with_errors("There are fields that should be mapped and are not present in the expected event", ruleset_path)

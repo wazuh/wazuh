@@ -103,16 +103,15 @@ def validator(ruleset_path: Path):
     if not decoders_path.exists() or not decoders_path.is_dir():
         sys.exit(f"Error: '{decoders_path}' directory does not exist or not found.")
 
-    rules_path = ruleset_path / 'rules'
-    if not rules_path.exists() or not rules_path.is_dir():
-        sys.exit(f"Error: '{rules_path}' directory does not exist or not found.")
+    # rules_path = ruleset_path / 'rules'
+    # if not rules_path.exists() or not rules_path.is_dir():
+    #     sys.exit(f"Error: '{rules_path}' directory does not exist or not found.")
 
     decoder_list = find_and_collect_assets(decoders_path)
-    rules_list = find_and_collect_assets(rules_path)
+    # rules_list = find_and_collect_assets(rules_path)
 
     all_assets = {
-        'decoders': decoder_list,
-        'rules': rules_list
+        'decoders': decoder_list
     }
     verify(all_assets, ruleset_path)
 
