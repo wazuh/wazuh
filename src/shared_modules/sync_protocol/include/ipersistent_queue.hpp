@@ -69,6 +69,9 @@ struct PersistedData
 
     /// @brief Version of the data.
     uint64_t version;
+
+    /// @brief Flag indicating if this is DataContext (true) or DataValue (false).
+    bool is_data_context = false;
 };
 
 /// @brief Interface for persistent message queues.
