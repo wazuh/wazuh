@@ -9,7 +9,7 @@
         "size": 0,
         "option": 0,
         "indices": ["wazuh-states-vulnerabilities"],
-        "agentid": "002",
+        "agentid": "001",
         "agentname": "module-check-mismatch-agent",
         "agentversion": "4.9.0",
         "architecture": "x86_64",

@@ -139,6 +139,32 @@ class InventorySyncFacadeImpl final
                           dataClean->session());
             }
         }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataContext)
+        {
+            const auto dataContext = syncMessage->content_as<Wazuh::SyncSchema::DataContext>();
+            if (!dataContext)
+            {
+                throw InventorySyncException("Invalid data context message");
+            }
+
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
+                          dataContext->session());
+            }
+            else
+            {
+                // Handle DataContext - stores context in RocksDB and tracks seq number
+                it->second.handleDataContext(
+                    dataContext, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: DataContext handled for session %llu",
+                          dataContext->session());
+            }
+        }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
         {
             const auto startMsg = syncMessage->content_as<Wazuh::SyncSchema::Start>();
@@ -825,9 +851,22 @@ public:
 
                         const auto prefix = std::format("{}_", res.context->sessionId);
 
+                        // Track if we have any bulk data to send to indexer
+                        bool hasBulkData = false;
+
                         // Send bulk query (with handling of 413 error).
                         for (const auto& [key, value] : m_dataStore->seek(prefix))
                         {
+                            // Skip DataContext entries - they are stored with "_context" suffix and not sent to indexer
+                            if (key.ends_with("_context"))
+                            {
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade::start: Skipping DataContext entry: %s",
+                                          key.c_str());
+                                continue;
+                            }
+
+                            hasBulkData = true;
                             logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing data...");
                             flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(value.data()),
                                                            value.size());
@@ -918,23 +957,48 @@ public:
                             }
                         }
 
-                        // Register notify callback for bulk operations (after accumulating all data)
-                        m_indexerConnector->registerNotify(
-                            [this, ctx = res.context]()
-                            {
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
-                                // Delete data from database.
-                                m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
-                                // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                        // Only register notify callback if there's bulk data or deleteByQuery operations
+                        if (hasBulkData || !res.context->dataCleanIndices.empty() ||
+                            res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
+                        {
+                            // Register notify callback for bulk operations (after accumulating all data)
+                            m_indexerConnector->registerNotify(
+                                [this, ctx = res.context]()
                                 {
-                                    logDebug2(LOGGER_DEFAULT_TAG,
-                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                              ctx->sessionId);
-                                }
-                            });
+                                    // Send ACK to agent.
+                                    m_responseDispatcher->sendEndAck(
+                                        Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                    // Delete data from database.
+                                    m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                                    // Delete Session.
+                                    if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                    {
+                                        logDebug2(LOGGER_DEFAULT_TAG,
+                                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                                  ctx->sessionId);
+                                    }
+                                });
+                        }
+                        else
+                        {
+                            // No bulk data and no deleteByQuery - send immediate response (e.g., DataContext-only
+                            // session)
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: No bulk data or deleteByQuery, sending immediate "
+                                      "response for session %llu",
+                                      res.context->sessionId);
+                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
+                                                             res.context->agentId,
+                                                             res.context->sessionId,
+                                                             res.context->moduleName);
+                            m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                            if (m_agentSessions.erase(res.context->sessionId) == 0)
+                            {
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                          res.context->sessionId);
+                            }
+                        }
                     } // End of else block for non-MetadataDelta/GroupDelta modes
                 }
                 catch (const InventorySyncException& e)

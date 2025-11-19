@@ -442,6 +442,141 @@ TEST_F(AgentSessionTest, HandleDataClean_WithEnd)
     ASSERT_NO_THROW({ session.handleEnd(mockResponseDispatcher); });
 }
 
+TEST_F(AgentSessionTest, HandleDataContext_Success)
+{
+    auto startMsg =
+        createStartMessage(1, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create DataContext message
+    flatbuffers::FlatBufferBuilder dataContextBuilder;
+    auto idStr = dataContextBuilder.CreateString("context-id-123");
+    auto indexStr = dataContextBuilder.CreateString("wazuh-states-vulnerabilities");
+    std::vector<int8_t> contextData = {0x01, 0x02, 0x03, 0x04};
+    auto dataVec = dataContextBuilder.CreateVector(contextData);
+
+    Wazuh::SyncSchema::DataContextBuilder dataContextMsgBuilder(dataContextBuilder);
+    dataContextMsgBuilder.add_session(sessionId);
+    dataContextMsgBuilder.add_seq(0);
+    dataContextMsgBuilder.add_id(idStr);
+    dataContextMsgBuilder.add_index(indexStr);
+    dataContextMsgBuilder.add_data(dataVec);
+    auto dataContextMsg = dataContextMsgBuilder.Finish();
+    dataContextBuilder.Finish(dataContextMsg);
+
+    auto dataContext = flatbuffers::GetRoot<Wazuh::SyncSchema::DataContext>(dataContextBuilder.GetBufferPointer());
+
+    // Expect put call to RocksDB
+    EXPECT_CALL(mockStore, put(_, _)).Times(1);
+
+    // Handle DataContext message
+    ASSERT_NO_THROW({
+        session.handleDataContext(dataContext, dataContextBuilder.GetBufferPointer(), dataContextBuilder.GetSize());
+    });
+}
+
+TEST_F(AgentSessionTest, HandleDataContext_MultipleMessages)
+{
+    auto startMsg =
+        createStartMessage(3, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    EXPECT_CALL(mockStore, put(_, _)).Times(3); // Expect 3 put calls for 3 DataContext messages
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create multiple DataContext messages
+    for (size_t i = 0; i < 3; ++i)
+    {
+        flatbuffers::FlatBufferBuilder dataContextBuilder;
+        auto idStr = dataContextBuilder.CreateString(std::string("context-id-") + std::to_string(i));
+        auto indexStr = dataContextBuilder.CreateString("wazuh-states-vulnerabilities");
+        std::vector<int8_t> contextData = {static_cast<int8_t>(i), 0x02, 0x03, 0x04};
+        auto dataVec = dataContextBuilder.CreateVector(contextData);
+
+        Wazuh::SyncSchema::DataContextBuilder dataContextMsgBuilder(dataContextBuilder);
+        dataContextMsgBuilder.add_session(sessionId);
+        dataContextMsgBuilder.add_seq(i);
+        dataContextMsgBuilder.add_id(idStr);
+        dataContextMsgBuilder.add_index(indexStr);
+        dataContextMsgBuilder.add_data(dataVec);
+        auto dataContextMsg = dataContextMsgBuilder.Finish();
+        dataContextBuilder.Finish(dataContextMsg);
+
+        auto dataContext = flatbuffers::GetRoot<Wazuh::SyncSchema::DataContext>(dataContextBuilder.GetBufferPointer());
+        ASSERT_NO_THROW({
+            session.handleDataContext(dataContext, dataContextBuilder.GetBufferPointer(), dataContextBuilder.GetSize());
+        });
+    }
+}
+
+TEST_F(AgentSessionTest, HandleDataContext_NullData)
+{
+    auto startMsg =
+        createStartMessage(1, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Passing null should throw
+    ASSERT_THROW({ session.handleDataContext(nullptr, nullptr, 0); }, AgentSessionException);
+}
+
+TEST_F(AgentSessionTest, HandleDataContext_WithEnd)
+{
+    auto startMsg =
+        createStartMessage(1, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Create DataContext message
+    flatbuffers::FlatBufferBuilder dataContextBuilder;
+    auto idStr = dataContextBuilder.CreateString("context-id-123");
+    auto indexStr = dataContextBuilder.CreateString("wazuh-states-vulnerabilities");
+    std::vector<int8_t> contextData = {0x01, 0x02, 0x03, 0x04};
+    auto dataVec = dataContextBuilder.CreateVector(contextData);
+
+    Wazuh::SyncSchema::DataContextBuilder dataContextMsgBuilder(dataContextBuilder);
+    dataContextMsgBuilder.add_session(sessionId);
+    dataContextMsgBuilder.add_seq(0);
+    dataContextMsgBuilder.add_id(idStr);
+    dataContextMsgBuilder.add_index(indexStr);
+    dataContextMsgBuilder.add_data(dataVec);
+    auto dataContextMsg = dataContextMsgBuilder.Finish();
+    dataContextBuilder.Finish(dataContextMsg);
+
+    auto dataContext = flatbuffers::GetRoot<Wazuh::SyncSchema::DataContext>(dataContextBuilder.GetBufferPointer());
+
+    // Expect put call to RocksDB
+    EXPECT_CALL(mockStore, put(_, _)).Times(1);
+
+    // Handle DataContext message
+    session.handleDataContext(dataContext, dataContextBuilder.GetBufferPointer(), dataContextBuilder.GetSize());
+
+    // Create and handle End message
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndBuilder endMsgBuilder(endBuilder);
+    endMsgBuilder.add_session(sessionId);
+    auto endMsg = endMsgBuilder.Finish();
+    endBuilder.Finish(endMsg);
+
+    auto end = flatbuffers::GetRoot<Wazuh::SyncSchema::End>(endBuilder.GetBufferPointer());
+
+    // Expect the indexer queue to be pushed when all sequences received
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    ASSERT_NO_THROW({ session.handleEnd(mockResponseDispatcher); });
+}
+
 TEST_F(AgentSessionTest, Constructor_ValidSize_ModuleCheck)
 {
     // Create a StartMessage with ModuleCheck mode and size 0 (which is valid for ModuleCheck)

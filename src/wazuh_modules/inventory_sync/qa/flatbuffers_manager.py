@@ -57,6 +57,7 @@ class FlatBuffersManager:
             import Wazuh.SyncSchema.Pair as PairModule
             import Wazuh.SyncSchema.ReqRet as ReqRetModule
             import Wazuh.SyncSchema.DataClean as DataCleanModule
+            import Wazuh.SyncSchema.DataContext as DataContextModule
             import Wazuh.SyncSchema.ChecksumModule as ChecksumModuleModule
             import Wazuh.SyncSchema.Message as MessageModule
             import flatbuffers
@@ -74,6 +75,7 @@ class FlatBuffersManager:
                 'Pair': PairModule.Pair,
                 'ReqRet': ReqRetModule.ReqRet,
                 'DataClean': DataCleanModule.DataClean,
+                'DataContext': DataContextModule.DataContext,
                 'ChecksumModule': ChecksumModuleModule.ChecksumModule,
                 'Message': MessageModule.Message,
                 'FlatBufferBuilder': flatbuffers.Builder
@@ -187,6 +189,32 @@ class FlatBuffersManager:
                 DataCleanModule.DataCleanAddIndex(builder, index_str)
                 dataclean = DataCleanModule.DataCleanEnd(builder)
                 content = dataclean
+
+            elif message_type == "datacontext":
+                msg_type = self.schema['MessageType'].DataContext
+
+                # Import the functions from the DataContext module
+                import Wazuh.SyncSchema.DataContext as DataContextModule
+
+                # Create id and index strings
+                id_str = builder.CreateString(data.get('id', ''))
+                index_str = builder.CreateString(data.get('index', ''))
+
+                # Create data bytes vector
+                import json
+                context_data = data.get('data', {})
+                context_data_bytes = json.dumps(context_data).encode('utf-8')
+                data_vector = builder.CreateByteVector(context_data_bytes)
+
+                # Create DataContext message
+                DataContextModule.DataContextStart(builder)
+                DataContextModule.DataContextAddSeq(builder, data.get('seq', 0))
+                DataContextModule.DataContextAddSession(builder, data.get('session', 0))
+                DataContextModule.DataContextAddId(builder, id_str)
+                DataContextModule.DataContextAddIndex(builder, index_str)
+                DataContextModule.DataContextAddData(builder, data_vector)
+                datacontext = DataContextModule.DataContextEnd(builder)
+                content = datacontext
 
             elif message_type == "checksum_module":
                 msg_type = self.schema['MessageType'].ChecksumModule
@@ -321,6 +349,32 @@ class FlatBuffersManager:
                         'type': 'reqret',
                         'session': req_ret.Session(),
                         'ranges': ranges
+                    }
+            elif content_type == self.schema['MessageType'].DataContext:
+                # Get the union table and cast it to DataContext
+                content_table = message.Content()
+                if content_table:
+                    import Wazuh.SyncSchema.DataContext as DataContextModule
+                    data_context = DataContextModule.DataContext()
+                    data_context.Init(content_table.Bytes, content_table.Pos)
+
+                    # Parse the data bytes
+                    import json
+                    context_data = {}
+                    if data_context.DataLength() > 0:
+                        try:
+                            context_data_bytes = data_context.DataAsNumpy().tobytes()
+                            context_data = json.loads(context_data_bytes.decode('utf-8'))
+                        except:
+                            context_data = {'raw': data_context.DataAsNumpy().tobytes()}
+
+                    return {
+                        'type': 'datacontext',
+                        'seq': data_context.Seq(),
+                        'session': data_context.Session(),
+                        'id': data_context.Id().decode('utf-8') if data_context.Id() else '',
+                        'index': data_context.Index().decode('utf-8') if data_context.Index() else '',
+                        'data': context_data
                     }
             else:
                 return {

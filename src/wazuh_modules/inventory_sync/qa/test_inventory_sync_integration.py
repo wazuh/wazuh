@@ -1045,6 +1045,46 @@ def test_inventory_sync_data_clean_multiple_indices(inventory_sync_tester):
         assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataClean"
 
 
+def test_inventory_sync_data_context_single(inventory_sync_tester):
+    """
+    Test DataContext synchronization flow with single context message.
+    This test verifies that when a DataContext message is sent, the manager:
+    1. Receives and stores the context data in RocksDB
+    2. Tracks the sequence number in GapSet
+    3. Does NOT send the context to the indexer
+    4. Waits for End message
+    5. Responds with Status_Ok
+    """
+    result = inventory_sync_tester.execute_test_sequence("data_context_single_flow")
+    assert result["validation"]["passed"], f"DataContext single test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataContext"
+
+
+def test_inventory_sync_data_context_multiple(inventory_sync_tester):
+    """
+    Test DataContext synchronization flow with multiple context messages.
+    This test verifies that when multiple DataContext messages are sent:
+    1. All context data is stored in RocksDB with 'context_' prefix
+    2. All sequence numbers are tracked correctly in GapSet
+    3. None of the context data is sent to the indexer
+    4. ReqRet mechanism works if sequences are missing
+    5. EndAck is sent with Status_Ok when all sequences received
+    """
+    result = inventory_sync_tester.execute_test_sequence("data_context_multiple_flow")
+    assert result["validation"]["passed"], f"DataContext multiple test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataContext"
+
+
 @pytest.mark.parametrize('opensearch', [False], indirect=True)
 def test_opensearch_health(opensearch):
     """Test OpenSearch health check."""

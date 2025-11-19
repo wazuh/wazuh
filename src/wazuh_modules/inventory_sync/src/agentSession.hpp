@@ -274,6 +274,54 @@ public:
     }
 
     /**
+     * @brief Handles an incoming DataContext message.
+     *
+     * Stores the raw context payload in RocksDB and marks the chunk as observed in the GapSet.
+     * DataContext is NOT sent to the indexer - it's context data for VD (future implementation).
+     * Triggers indexing if `handleEnd()` was already called and the session is now complete.
+     *
+     * @param data Parsed flatbuffer DataContext metadata (e.g., sequence number).
+     * @param dataRaw Raw binary payload of the chunk.
+     * @param dataSize Size of the raw payload.
+     */
+    void handleDataContext(Wazuh::SyncSchema::DataContext const* data, const uint8_t* dataRaw, size_t dataSize)
+    {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleDataContext");
+        }
+
+        std::lock_guard lock(m_mutex);
+
+        const auto seq = data->seq();
+        const auto session = data->session();
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
+
+        // Store in RocksDB with "_context" suffix to distinguish from DataValue
+        m_store.put(std::format("{}_{}_context", session, seq),
+                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
+
+        m_gapSet->observe(seq);
+
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "DataContext received: %s %llu %llu %s",
+                  std::format("{}_{}_context", session, seq).c_str(),
+                  m_context->sessionId,
+                  m_context->agentId,
+                  m_context->moduleName.c_str());
+
+        if (m_endReceived)
+        {
+            if (m_gapSet->empty())
+            {
+                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                m_endEnqueued = true;
+            }
+        }
+    }
+
+    /**
      * @brief Handles an incoming DataClean message.
      *
      * Stores the index to be cleaned and tracks the sequence number in the GapSet.
