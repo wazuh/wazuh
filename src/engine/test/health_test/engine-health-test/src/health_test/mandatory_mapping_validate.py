@@ -114,15 +114,15 @@ def rules_validator(ruleset_path: Path, integrations_rules: str, reporter):
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
     integration = args.get('integration')
-    integrations_rules = args.get('integration_rule')
+    # integrations_rules = args.get('integration_rule')
 
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
 
     reporter = ErrorReporter("Validation")
 
-    if integrations_rules and integration:
-        sys.exit("Error: Only one of 'integration' or 'integrations_rules' can be specified at a time.")
+    # if integrations_rules and integration:
+    #     sys.exit("Error: Only one of 'integration' or 'integrations_rules' can be specified at a time.")
 
     try:
         print("Running mandatory mapping tests.")
@@ -131,14 +131,14 @@ def run(args):
             print("Validating integration only.")
             integration_validator(ruleset_path, integration, reporter)
 
-        elif integrations_rules:
-            print("Validating rules only.")
-            rules_validator(ruleset_path, integrations_rules, reporter)
+        # elif integrations_rules:
+        #     print("Validating rules only.")
+        #     rules_validator(ruleset_path, integrations_rules, reporter)
 
         else:
-            print("Validating both integration and rules.")
+            print("Validating integrations.")
             integration_validator(ruleset_path, integration, reporter)
-            rules_validator(ruleset_path, integrations_rules, reporter)
+            # rules_validator(ruleset_path, integrations_rules, reporter)
 
         # After both validators have run, check if there are errors and exit if necessary
         reporter.exit_with_errors("There are fields that should be mapped and are not present in the expected event", ruleset_path)

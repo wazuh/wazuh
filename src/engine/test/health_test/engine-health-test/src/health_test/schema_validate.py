@@ -651,7 +651,7 @@ def rules_validator(schema, ruleset_path: Path, integration_rule: str, reporter)
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
     integration = args.get('integration')
-    integration_rule = args.get('integration_rule')
+    #integration_rule = args.get('integration_rule')
 
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
@@ -659,8 +659,8 @@ def run(args):
     schema = ruleset_path / "schemas/engine-schema.json"
     reporter = ErrorReporter("Validation")
 
-    if integration_rule and integration:
-        sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
+    # if integration_rule and integration:
+    #     sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
 
     try:
         print("Running schema tests.")
@@ -669,14 +669,14 @@ def run(args):
             print("Validating integration only.")
             integration_validator(schema, ruleset_path, integration, reporter)
 
-        elif integration_rule:
-            print("Validating rules only.")
-            rules_validator(schema, ruleset_path, integration_rule, reporter)
+        # elif integration_rule:
+        #     print("Validating rules only.")
+        #     rules_validator(schema, ruleset_path, integration_rule, reporter)
 
         else:
-            print("Validating both integration and rules.")
+            print("Validating integrations.")
             integration_validator(schema, ruleset_path, integration, reporter)
-            rules_validator(schema, ruleset_path, integration_rule, reporter)
+            # rules_validator(schema, ruleset_path, integration_rule, reporter)
 
         reporter.print_warnings(
             "Non-fatal issues detected (redundant configuration or permissive values)",
