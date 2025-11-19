@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.content;
+
+/******************** Common types ********************/
+enum ContentType
+{
+    CONTENT_TYPE_UNSPECIFIED = 0;
+    CONTENT_TYPE_DECODER     = 1;
+    CONTENT_TYPE_OUTPUT      = 2;
+    CONTENT_TYPE_RULE        = 3;
+    CONTENT_TYPE_FILTER      = 4;
+    CONTENT_TYPE_INTEGRATION = 5;
+    CONTENT_TYPE_KVDB        = 6;
+}
+
+/* Small summary of a catalog item */
+message ResourceSummary
+{
+    optional string uuid = 1; // Resource UUID (unique within namespace)
+    optional string name = 2; // Logical name (e.g. decoder/apache_access)
+    optional string hash = 3; // Content hash (YAML or canonical representation)
+}
+
+/******************** Namespace operations ********************/
+/***************************************************
+ * List all namespaces
+ *
+ * command: content.namespace/get (<resource>/<action>)
+ **************************************************/
+message namespaceGet_Request
+{
+    // Empty request: list all namespaces.
+}
+
+message namespaceGet_Response
+{
+    ReturnStatus status = 1;      // Status of the query
+    optional string error = 2;    // Error message if status is ERROR
+    repeated string spaces = 3;   // List of namespaces if status is OK (empty on error)
+}
+
+/***************************************************
+ * Create / ensure a namespace exists
+ *
+ * command: content.namespace/post (<resource>/<action>)
+ **************************************************/
+message namespacePost_Request
+{
+    string space = 1; // Namespace name to create/ensure (e.g. draft, testing, custom, wazuh)
+}
+// message namespacePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a namespace
+ *
+ * command: content.namespace/delete (<resource>/<action>)
+ **************************************************/
+message namespaceDelete_Request
+{
+    string space = 1; // Namespace name to delete
+}
+// message namespaceDelete_Response -> Return a GenericStatus_Response
+
+/******************** Policy operations ********************/
+/***************************************************
+ * Upsert policy for a namespace
+ *
+ * command: content.policy/post (<resource>/<action>)
+ **************************************************/
+message policyPost_Request
+{
+    string space = 1;        // Namespace name (draft, testing, custom, wazuh)
+    string ymlContent = 2;   // Policy payload as YAML string
+}
+// message policyPost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete policy from a namespace
+ *
+ * command: content.policy/delete (<resource>/<action>)
+ **************************************************/
+message policyDelete_Request
+{
+    string space = 1; // Namespace name
+}
+// message policyDelete_Response -> Return a GenericStatus_Response
+
+/******************** Resource catalog operations ********************/
+/***************************************************
+ * List resources in a namespace by type
+ *
+ * command: content.resource/list (<resource>/<action>)
+ **************************************************/
+message resourceList_Request
+{
+    string space = 1;      // Namespace name (draft, testing, custom, wazuh)
+    ContentType type  = 2;      // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+}
+
+message resourceList_Response
+{
+    ReturnStatus status = 1;             // Status of the query
+    optional string error = 2;           // Error message if status is ERROR
+    repeated ResourceSummary resources = 3; // List of resources if status is OK (Empty on error)
+}
+
+/***************************************************
+ * Get a resource YAML by UUID
+ *
+ * command: content.resource/get (<resource>/<action>)
+ **************************************************/
+message resourceGet_Request
+{
+    string space = 1; // Namespace name
+    string uuid = 2;  // UUID of the resource to retrieve
+}
+
+message resourceGet_Response
+{
+    ReturnStatus status = 1;      // Status of the query
+    optional string error = 2;    // Error message if status is ERROR
+    optional string ymlContent = 3; // YAML representation of the resource (asset/integration/kvdb)
+}
+
+/***************************************************
+ * Upsert a resource (asset / integration / kvdb)
+ *
+ * command: content.resource/post (<resource>/<action>)
+ **************************************************/
+message resourcePost_Request
+{
+    string space = 1;      // Namespace name (must be writable, e.g. draft)
+    ContentType type  = 2; // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    string ymlContent = 3; // Raw YAML payload of the resource
+}
+// message resourcePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a resource by UUID
+ *
+ * command: content.resource/delete (<resource>/<action>)
+ **************************************************/
+message resourceDelete_Request
+{
+    string space = 1; // Namespace name (must be writable, e.g. draft)
+    string uuid = 2;  // UUID of the resource to delete
+}
+// message resourceDelete_Response -> Return a GenericStatus_Response
