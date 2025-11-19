@@ -98,7 +98,7 @@ INSTANTIATE_TEST_SUITE_P(Parses,
                                            ParseExprT("lit(?lit", false),
                                            ParseExprT("literal<text><~custom/long><~>", false),
                                            ParseExprT("literal<text>:<~custom/long/error_arg><~>", false),
-                                           ParseExprT("literal<array>", false)));
+                                           ParseExprT("literal<array>", true)));
 
 using BuildParseT = std::tuple<bool, std::string, std::string, json::Json>;
 class LogparBuildParseTest

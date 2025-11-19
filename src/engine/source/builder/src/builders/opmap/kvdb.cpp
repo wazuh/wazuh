@@ -75,21 +75,22 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     }
 
     // Validate the target field
-    schemf::ValueValidator validator = nullptr;
+    schemf::ValueValidator targetValueValidator = nullptr;
     if (buildCtx->validator().hasField(targetField.dotPath()))
     {
-        if (doMerge
-            && (buildCtx->validator().getType(targetField.dotPath()) != schemf::Type::OBJECT
-                && !buildCtx->validator().isArray(targetField.dotPath())))
-        {
-            throw std::runtime_error(
-                fmt::format("Expected target field '{}' to be an object or array but got '{}'",
-                            targetField.dotPath(),
-                            schemf::typeToStr(buildCtx->validator().getType(targetField.dotPath()))));
-        }
-
         auto res = buildCtx->validator().validate(targetField.dotPath(), schemf::runtimeValidation());
-        validator = base::getResponse<schemf::ValidationResult>(res).getValidator();
+        targetValueValidator = base::getResponse<schemf::ValidationResult>(res).getValidator();
+
+        if (doMerge)
+        {
+            auto type = buildCtx->validator().getType(targetField.dotPath());
+            if (type != schemf::Type::OBJECT)
+            {
+                throw std::runtime_error(fmt::format("Expected target field '{}' to be an object but got '{}'",
+                                                     targetField.dotPath(),
+                                                     schemf::typeToStr(type)));
+            }
+        }
     }
 
     // Format name for the tracer
@@ -171,9 +172,9 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         try
         {
             json::Json value {base::getResponse<std::string>(resultValue).c_str()};
-            if (validator != nullptr)
+            if (targetValueValidator != nullptr)
             {
-                auto res = validator(value);
+                auto res = targetValueValidator(value);
                 if (base::isError(res))
                 {
                     RETURN_FAILURE(runState, event, failureTrace7 + res.value().message);
@@ -414,11 +415,6 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
             const auto& ref = *std::static_pointer_cast<const Reference>(keyArray);
             if (buildCtx->validator().hasField(ref.dotPath()))
             {
-                if (!buildCtx->validator().isArray(ref.dotPath()))
-                {
-                    throw std::runtime_error(fmt::format("Reference field '{}' is not an array", ref.dotPath()));
-                }
-
                 auto jType = buildCtx->validator().getJsonType(ref.dotPath());
                 if (jType != json::Json::Type::String)
                 {
@@ -437,14 +433,14 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }
 
         // Validate target field
-        auto valRes = buildCtx->validator().validate(targetField.dotPath(), schemf::isArrayToken());
+        auto valRes = buildCtx->validator().validate(targetField.dotPath(), schemf::elementValidationToken());
         if (base::isError(valRes))
         {
             throw std::runtime_error(fmt::format("Error validating target field '{}': {}",
                                                  targetField.dotPath(),
                                                  std::get<base::Error>(valRes).message));
         }
-        auto validator = base::getResponse<schemf::ValidationResult>(valRes).getValidator();
+        auto targetValidator = base::getResponse<schemf::ValidationResult>(valRes).getValidator();
 
         // Trace messages
         const auto name = buildCtx->context().opName;
@@ -570,9 +566,9 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
             }
 
             // Validate target array
-            if (validator != nullptr)
+            if (targetValidator != nullptr)
             {
-                auto res = validator(targetArray);
+                auto res = targetValidator(targetArray);
                 if (base::isError(res))
                 {
                     RETURN_FAILURE(runState, event, failureTrace6 + res.value().message);
@@ -701,15 +697,11 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
 
     if (buildCtx->validator().hasField(targetField.dotPath()))
     {
-        if (!buildCtx->validator().isArray(targetField.dotPath()))
-        {
-            throw std::runtime_error(fmt::format("Expected target field '{}' to be an array", targetField.dotPath()));
-        }
         auto jType = buildCtx->validator().getJsonType(targetField.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(
-                fmt::format("Expected target field '{}' to be an array of strings", targetField.dotPath()));
+                fmt::format("Expected target field '{}' to contain string", targetField.dotPath()));
         }
     }
 

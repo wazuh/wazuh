@@ -99,9 +99,8 @@ Field Schema::get(const DotPath& name) const
         if (it != name.cend() - 1)
         {
             // Handle arrays e.g. "field/0"
-            // If the field is an array and the next part is the last one and a number, return a new field with the
-            // array type
-            if (entry->second.isArray() && (it + 1) == (name.cend() - 1))
+            // If the next part is the last one and a number, return a new field matching the current type
+            if ((it + 1) == (name.cend() - 1))
             {
                 auto arrayIndex = *(it + 1);
                 auto isIndex = true;
@@ -115,7 +114,7 @@ Field Schema::get(const DotPath& name) const
                 }
                 if (isIndex)
                 {
-                    return Field({.type = entry->second.type(), .isArray = false});
+                    return Field({.type = entry->second.type()});
                 }
             }
             current = &entry->second.properties();
@@ -155,8 +154,8 @@ bool Schema::hasField(const DotPath& name) const
         if (it != name.cend() - 1)
         {
             // Handle arrays e.g. "field/0"
-            // If the field is an array and the next part is the last one and a number, return true
-            if (entry->second.isArray() && it + 1 == name.cend() - 1)
+            // If the next part is the last one and a number, return true
+            if (it + 1 == name.cend() - 1)
             {
                 const auto& arrayIndex = *(it + 1);
                 bool isIndex = true;
@@ -201,7 +200,6 @@ Field Schema::entryToField(const std::string& name, const json::Json& entry) con
         throw std::runtime_error(fmt::format("Field '{}' must have a type", name));
     }
     params.type = strToType(type.value());
-    params.isArray = entry.getBool("/array").value_or(false);
 
     Field field;
     try

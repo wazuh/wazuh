@@ -1026,12 +1026,6 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
 
     if (buildCtx->validator().hasField(arrayRef.dotPath()))
     {
-        if (!buildCtx->validator().isArray(arrayRef.dotPath()))
-        {
-            throw std::runtime_error(fmt::format(
-                "Expected 'array' reference but got reference '{}' which is not an array", arrayRef.dotPath()));
-        }
-
         auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
         if (jType != json::Json::Type::String)
         {
@@ -1388,12 +1382,6 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
 
     if (buildCtx->validator().hasField(arrayRef.dotPath()))
     {
-        if (!buildCtx->validator().isArray(arrayRef.dotPath()))
-        {
-            throw std::runtime_error(fmt::format(
-                "Expected 'array' reference but got reference '{}' which is not an array", arrayRef.dotPath()));
-        }
-
         auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
         if (jType != json::Json::Type::Object)
         {
@@ -1582,12 +1570,6 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
 
     if (buildCtx->validator().hasField(arrayRef.dotPath()))
     {
-        if (!buildCtx->validator().isArray(arrayRef.dotPath()))
-        {
-            throw std::runtime_error(fmt::format(
-                "Expected 'array' reference but got reference '{}' which is not an array", arrayRef.dotPath()));
-        }
-
         auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
         if (jType != json::Json::Type::Object)
         {
@@ -3305,12 +3287,11 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     if (isMerge && buildCtx->validator().hasField(targetField.dotPath()))
     {
         auto type = buildCtx->validator().getType(targetField.dotPath());
-        if (type != schemf::Type::OBJECT && !buildCtx->validator().isArray(targetField.dotPath()))
+        if (type != schemf::Type::OBJECT)
         {
-            throw std::runtime_error(
-                fmt::format("Expected 'object' or 'array' target field but got field '{}' of type '{}'",
-                            targetField.dotPath(),
-                            schemf::typeToStr(type)));
+            throw std::runtime_error(fmt::format("Expected 'object' target field but got field '{}' of type '{}'",
+                                                 targetField.dotPath(),
+                                                 schemf::typeToStr(type)));
         }
     }
 
