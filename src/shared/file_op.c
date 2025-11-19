@@ -2346,8 +2346,24 @@ int cldir_ex(const char *name) {
 }
 
 
-/* Helper function to check if a relative path should be preserved based on ignore list
- * Returns 1 if the path or any of its descendants are in the ignore list, 0 otherwise
+/**
+ * @brief Check if a relative path should be preserved based on the ignore list
+ *
+ * This function verifies whether a given relative path or any of its descendants
+ * are present in the ignore list. It performs both exact matching and prefix
+ * matching to detect if the path contains protected files in subdirectories.
+ *
+ * @param relative_path The relative path to check (e.g., "subfolder/file.txt")
+ * @param ignore NULL-terminated array of paths to ignore (can be NULL)
+ * @return 1 if the path should be preserved, 0 otherwise
+ *
+ * @note This function uses path prefix matching with '/' as delimiter to avoid
+ *       false positives (e.g., "sub" won't match "subfolder/file.txt")
+ *
+ * Example:
+ * - relative_path = "subfolder", ignore = ["subfolder/file1.txt"] -> returns 1
+ * - relative_path = "file.txt", ignore = ["file.txt"] -> returns 1
+ * - relative_path = "other.txt", ignore = ["file.txt"] -> returns 0
  */
 static int should_preserve_path(const char * relative_path, const char ** ignore) {
     int i;
@@ -2377,7 +2393,19 @@ static int should_preserve_path(const char * relative_path, const char ** ignore
     return 0;
 }
 
-/* Internal recursive implementation that tracks the base directory */
+/**
+ * @brief Internal recursive implementation to clean a directory while preserving ignored paths
+ *
+ * This function recursively removes files and directories within the specified directory,
+ * while preserving any paths that are present in the ignore list. It maintains a reference
+ * to the original base directory throughout the recursion to correctly calculate relative
+ * paths for matching against the ignore list.
+ *
+ * @param name The current directory to clean (changes during recursion)
+ * @param base_dir The original base directory (remains constant during recursion)
+ * @param ignore NULL-terminated array of relative paths to preserve (can be NULL)
+ * @return 0 on success, -1 on error
+ */
 static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, const char ** ignore) {
     DIR *dir;
     struct dirent *dirent = NULL;
