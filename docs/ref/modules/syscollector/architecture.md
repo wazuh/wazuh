@@ -52,8 +52,73 @@ Responsibilities:
   - Triggers scans for enabled inventory types (hardware, OS, packages, etc.)
   - Coordinates with SysInfo provider for data collection
   - Manages scan timing and throttling
+  - Respects pause state before initiating scans
 * Triggers `updateChanges()` which leads to database transactions and callbacks
 * Runs continuously in background thread launched at Syscollector startup
+
+### **Operation State Control**
+
+Syscollector implements atomic state flags to coordinate operations and enable external control:
+
+**State Flags:**
+* `m_paused` - Indicates if the module is paused (prevents new operations from starting)
+* `m_scanning` - Indicates if a scan operation is currently in progress
+* `m_syncing` - Indicates if a synchronization operation is currently in progress
+
+**Coordination Flow:**
+
+```
+External Coordination Command (pause)
+         │
+         ▼
+Set m_paused = true
+         │
+         ▼
+Wait for m_scanning = false AND m_syncing = false
+         │
+         ▼
+Operations Complete - Module Paused
+         │
+         ▼
+External Coordination Command (resume)
+         │
+         ▼
+Set m_paused = false
+         │
+         ▼
+Notify Main Loop (m_cv.notify_one())
+         │
+         ▼
+Operations Resume
+```
+
+**Operation Protection:**
+
+Before starting scan or sync operations, the module checks the pause state:
+
+```cpp
+// Before scan operation
+if (!m_paused) {
+    m_scanning = true;
+    // Perform scan...
+    m_scanning = false;
+    m_pauseCv.notify_all();  // Notify pause() if waiting
+}
+
+// Before sync operation
+if (!m_paused) {
+    m_syncing = true;
+    // Perform sync...
+    m_syncing = false;
+    m_pauseCv.notify_all();  // Notify pause() if waiting
+}
+```
+
+This coordination mechanism ensures that:
+- Pause commands wait for ongoing operations to complete gracefully
+- No new operations start while paused
+- Resume commands immediately allow operations to continue
+- Module state is consistent and thread-safe
 
 ---
 
@@ -319,4 +384,148 @@ Send data clean notification ────────► syscollector_notify_dat
 2. Syscollector database file does not exist
 3. Skip data clean notification (nothing to clean)
 4. Exit module startup immediately
+```
+
+---
+
+## Coordination Commands Architecture
+
+The coordination commands provide external control over Syscollector operations, allowing the manager or other components to coordinate module behavior. These commands were added to support centralized coordination of module operations across the agent.
+
+### Command Types
+
+#### Pause/Resume Commands
+
+**Purpose:** Allow temporary suspension of Syscollector operations without stopping the module completely.
+
+**Use Cases:**
+- Manager-requested coordination during configuration changes
+- Agent reconfiguration that requires stable module state
+- Coordination with other modules that need Syscollector to be idle
+- Testing and maintenance operations
+
+**Implementation:**
+
+The pause command follows this sequence:
+
+```
+Pause Command Received
+         │
+         ▼
+Set m_paused = true (atomic flag)
+         │
+         ▼
+Wait for Current Operations
+         │
+         ├─► Wait for m_scanning = false
+         │   (any ongoing scan completes)
+         │
+         └─► Wait for m_syncing = false
+             (any ongoing sync completes)
+         │
+         ▼
+Both Operations Complete
+         │
+         ▼
+Return Success to Caller
+```
+
+The resume command is immediate:
+
+```
+Resume Command Received
+         │
+         ▼
+Set m_paused = false (atomic flag)
+         │
+         ▼
+Notify Main Loop (m_cv.notify_one())
+         │
+         ▼
+Module Resumes Normal Operations
+```
+
+#### Flush Command
+
+**Purpose:** Force immediate synchronization of pending inventory changes, bypassing the normal sync interval.
+
+**Use Cases:**
+- Agent shutdown (ensure all inventory is sent before exit)
+- Manager-requested immediate inventory update
+- Critical inventory changes that need immediate delivery
+- Testing and verification operations
+
+**Implementation:**
+
+```
+Flush Command Received
+         │
+         ▼
+Check if Sync Protocol Initialized
+         │
+         ├─► Not Initialized → Return 0 (nothing to flush)
+         │
+         └─► Initialized
+             │
+             ▼
+Call synchronizeModule(Mode::DELTA)
+             │
+             ├─► Sends all pending differences
+             ├─► Waits for manager acknowledgment
+             └─► Returns sync result
+```
+
+The flush operation does not wait for an ongoing sync to complete—it triggers a new sync session immediately.
+
+#### Version Management Commands
+
+**Purpose:** Query and set version numbers for tracking scanning operations and coordination state.
+
+**Use Cases:**
+- Coordination protocol needs to track which scan produced inventory data
+- Manager needs to verify agent scan completion
+- Rolling back to a previous inventory state version
+- Marking inventory data with specific scan identifiers
+
+**getMaxVersion() Implementation:**
+
+```
+getMaxVersion() Called
+         │
+         ▼
+Initialize maxVersion = 0
+         │
+         ▼
+For Each Syscollector Table:
+         │
+         ├─► Execute: SELECT MAX(version) FROM table
+         │
+         ├─► Compare result with maxVersion
+         │
+         └─► Update maxVersion if higher
+         │
+         ▼
+Return maxVersion
+```
+
+**setVersion() Implementation:**
+
+```
+setVersion(newVersion) Called
+         │
+         ▼
+For Each Syscollector Table:
+         │
+         ├─► Execute: SELECT * FROM table
+         │
+         ├─► For Each Row:
+         │   │
+         │   ├─► Update row with new version
+         │   │
+         │   └─► Increment counter
+         │
+         └─► Continue to next table
+         │
+         ▼
+Return Total Rows Updated
 ```

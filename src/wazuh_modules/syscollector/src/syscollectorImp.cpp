@@ -17,6 +17,7 @@
 #include <iostream>
 #include <stack>
 #include <chrono>
+#include <thread>
 
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
@@ -44,6 +45,30 @@ do                                                                      \
 
 constexpr auto EMPTY_VALUE {""};
 constexpr auto UNKNOWN_VALUE {" "};
+
+// RAII guard to ensure scanning flag is always cleaned up
+class ScanGuard
+{
+    public:
+        explicit ScanGuard(std::atomic<bool>& flag, std::condition_variable& cv)
+            : m_flag(flag), m_cv(cv)
+        {
+            m_flag = true;
+        }
+        ~ScanGuard()
+        {
+            m_flag = false;
+            m_cv.notify_all();
+        }
+        // Delete copy and move operations
+        ScanGuard(const ScanGuard&) = delete;
+        ScanGuard& operator=(const ScanGuard&) = delete;
+        ScanGuard(ScanGuard&&) = delete;
+        ScanGuard& operator=(ScanGuard&&) = delete;
+    private:
+        std::atomic<bool>& m_flag;
+        std::condition_variable& m_cv;
+};
 
 constexpr auto QUEUE_SIZE
 {
@@ -273,6 +298,9 @@ Syscollector::Syscollector()
     , m_stopping { true }
     , m_initialized { false }
     , m_notify { false }
+    , m_paused { false }
+    , m_scanning { false }
+    , m_syncing { false }
     , m_groups { false }
     , m_users { false }
     , m_services { false }
@@ -1262,6 +1290,15 @@ void Syscollector::scanBrowserExtensions()
 
 void Syscollector::scan()
 {
+    if (m_paused)
+    {
+        m_logFunction(LOG_DEBUG, "Syscollector is paused, skipping evaluation.");
+        return;
+    }
+
+    // RAII guard ensures m_scanning is set to false even if function exits early
+    ScanGuard scanGuard(m_scanning, m_pauseCv);
+
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1292,6 +1329,12 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     return m_stopping;
 }))
     {
+        if (m_paused)
+        {
+            m_logFunction(LOG_DEBUG, "Syscollector scanning paused, skipping scan iteration");
+            continue;
+        }
+
         scan();
     }
     m_spDBSync.reset(nullptr);
@@ -1572,8 +1615,20 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode)
 {
+    if (m_paused)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Syscollector module is paused, skipping synchronization");
+        }
+
+        return false;
+    }
+
     if (m_spSyncProtocol)
     {
+        // RAII guard ensures m_syncing is set to false even if function exits early
+        ScanGuard syncGuard(m_syncing, m_pauseCv);
         return m_spSyncProtocol->synchronizeModule(mode);
     }
 
@@ -1621,11 +1676,244 @@ void Syscollector::deleteDatabase()
     }
 }
 
-// LCOV_EXCL_START
+bool Syscollector::pause()
+{
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "Pausing Syscollector module - waiting for ongoing operations to complete");
+    }
 
-// Excluded from code coverage as it is not the real implementation of the query method.
-// This is just a placeholder to comply with the module interface requirements.
-// The real implementation should be done in the future iterations.
+    // Set the pause flag first to prevent new operations from starting
+    m_paused = true;
+
+    // Wait for BOTH scan and sync operations to complete
+    std::unique_lock<std::mutex> lock(m_pauseMutex);
+    m_pauseCv.wait(lock, [this]
+    {
+        bool scanDone = !m_scanning.load();
+        bool syncDone = !m_syncing.load();
+        return (scanDone && syncDone) || m_stopping;
+    });
+
+    if (m_logFunction)
+    {
+        if (m_stopping)
+        {
+            m_logFunction(LOG_WARNING, "Syscollector module pause interrupted by shutdown");
+        }
+        else
+        {
+            m_logFunction(LOG_INFO, "Syscollector module paused successfully");
+        }
+    }
+
+    // Return false if interrupted by shutdown, true if successfully paused
+    return !m_stopping;
+}
+
+void Syscollector::resume()
+{
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "Resuming Syscollector module");
+    }
+
+    m_paused = false;
+    m_cv.notify_one();
+}
+
+int Syscollector::flush()
+{
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "Syscollector flush requested - syncing pending messages");
+    }
+
+    if (!m_spSyncProtocol)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Syscollector sync protocol not initialized, flush skipped");
+        }
+
+        return 0; // Not an error - just nothing to flush
+    }
+
+    // Trigger immediate synchronization to flush pending messages
+    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+
+    if (result)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "Syscollector flush completed successfully");
+        }
+
+        return 0;
+    }
+    else
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Syscollector flush failed");
+        }
+
+        return -1;
+    }
+}
+
+int Syscollector::getMaxVersion()
+{
+    int maxVersion = 0;
+
+    if (!m_spDBSync)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "DBSync is null, cannot get max version");
+        }
+
+        return -1;
+    }
+
+    try
+    {
+        // Iterate through all Syscollector tables to find the maximum version
+        for (const auto& [tableName, indexName] : INDEX_MAP)
+        {
+            int tableMaxVersion = 0;
+
+            auto selectQuery = SelectQuery::builder()
+                               .table(tableName)
+                               .columnList({"MAX(version) AS max_version"})
+                               .build();
+
+            const auto callback = [&tableMaxVersion](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+            {
+                if (returnType == SELECTED && resultData.contains("max_version"))
+                {
+                    if (resultData["max_version"].is_number())
+                    {
+                        tableMaxVersion = resultData["max_version"].get<int>();
+                    }
+                    else if (resultData["max_version"].is_null())
+                    {
+                        tableMaxVersion = 0;
+                    }
+                }
+            };
+
+            m_spDBSync->selectRows(selectQuery.query(), callback);
+
+            // Update global max if this table's max is higher
+            if (tableMaxVersion > maxVersion)
+            {
+                maxVersion = tableMaxVersion;
+            }
+        }
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Syscollector get_version returned: " + std::to_string(maxVersion));
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Error getting max version: " + std::string(ex.what()));
+        }
+
+        return -1;
+    }
+
+    return maxVersion;
+}
+
+int Syscollector::setVersion(int version)
+{
+    if (!m_spDBSync)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "DBSync is null, cannot set version");
+        }
+
+        return -1;
+    }
+
+    try
+    {
+        int totalRowsUpdated = 0;
+
+        // Iterate through all Syscollector tables to update version
+        for (const auto& [tableName, indexName] : INDEX_MAP)
+        {
+            std::vector<nlohmann::json> rows;
+
+            auto selectQuery = SelectQuery::builder()
+                               .table(tableName)
+                               .columnList({"*"})
+                               .build();
+
+            const auto selectCallback = [&rows](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+            {
+                if (returnType == SELECTED)
+                {
+                    rows.push_back(resultData);
+                }
+            };
+
+            m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+
+            if (!rows.empty())
+            {
+                const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+                DBSyncTxn txn
+                {
+                    m_spDBSync->handle(),
+                    nlohmann::json{tableName},
+                    0,
+                    QUEUE_SIZE,
+                    txnCallback
+                };
+
+                for (auto& row : rows)
+                {
+                    row["version"] = version;
+
+                    nlohmann::json input;
+                    input["table"] = tableName;
+                    input["data"] = nlohmann::json::array({row});
+
+                    txn.syncTxnRow(input);
+                }
+
+                txn.getDeletedRows(txnCallback);
+                totalRowsUpdated += rows.size();
+            }
+        }
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Syscollector set_version to " + std::to_string(version) +
+                          " for " + std::to_string(totalRowsUpdated) + " total rows across all tables");
+        }
+
+        return 0;
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Error setting version: " + std::string(ex.what()));
+        }
+
+        return -1;
+    }
+}
+
 std::string Syscollector::query(const std::string& jsonQuery)
 {
     // Log the received query
@@ -1661,23 +1949,58 @@ std::string Syscollector::query(const std::string& jsonQuery)
         // Handle coordination commands with JSON responses
         if (command == "pause")
         {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "Syscollector module paused successfully";
-            response["data"]["module"] = "syscollector";
-            response["data"]["action"] = "pause";
+            bool pauseResult = pause();
+
+            if (pauseResult)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector module paused successfully";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "pause";
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Syscollector module pause interrupted by shutdown";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "pause";
+            }
         }
         else if (command == "flush")
         {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "Syscollector module flushed successfully";
-            response["data"]["module"] = "syscollector";
-            response["data"]["action"] = "flush";
+            int flushResult = flush();
+
+            if (flushResult == 0)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector module flushed successfully";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "flush";
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Syscollector module flush failed";
+                response["data"]["module"] = "syscollector";
+                response["data"]["action"] = "flush";
+            }
         }
         else if (command == "get_version")
         {
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "Syscollector version retrieved";
-            response["data"]["version"] = 3;
+            int maxVersion = getMaxVersion();
+
+            if (maxVersion >= 0)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector version retrieved";
+                response["data"]["version"] = maxVersion;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector version";
+                response["data"]["version"] = -1;
+            }
         }
         else if (command == "set_version")
         {
@@ -1688,13 +2011,31 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 version = parameters["version"].get<int>();
             }
+            else
+            {
+                response["error"] = MQ_ERR_INVALID_PARAMS;
+                response["message"] = "Invalid or missing version parameter";
+                return response.dump();
+            }
 
-            response["error"] = MQ_SUCCESS;
-            response["message"] = "Syscollector version set successfully";
-            response["data"]["version"] = version;
+            int result = setVersion(version);
+
+            if (result == 0)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector version set successfully";
+                response["data"]["version"] = version;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to set Syscollector version";
+                response["data"]["version"] = version;
+            }
         }
         else if (command == "resume")
         {
+            resume();
             response["error"] = MQ_SUCCESS;
             response["message"] = "Syscollector module resumed successfully";
             response["data"]["module"] = "syscollector";
@@ -1723,4 +2064,3 @@ std::string Syscollector::query(const std::string& jsonQuery)
         return response.dump();
     }
 }
-// LCOV_EXCL_STOP

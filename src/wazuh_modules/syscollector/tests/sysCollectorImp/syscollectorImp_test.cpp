@@ -12,6 +12,7 @@
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
+#include "../../module_query_errors.h"
 
 #include <mock_sysinfo.hpp>
 
@@ -2432,4 +2433,463 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     {
         t.join();
     }
+}
+
+// ========================================
+// Tests for query method and coordination commands
+// ========================================
+
+TEST_F(SyscollectorImpTest, queryCommandPause)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Start the module in a thread
+    std::thread t
+    {
+        []()
+        {
+            Syscollector::instance().start();
+        }
+    };
+
+    // Give it time to start
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Test pause command
+    std::string queryJson = R"({"command":"pause"})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+    EXPECT_TRUE(responseJson.contains("data"));
+
+    // Verify success
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["module"], "syscollector");
+    EXPECT_EQ(responseJson["data"]["action"], "pause");
+
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, queryCommandResume)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Start the module in a thread
+    std::thread t
+    {
+        []()
+        {
+            Syscollector::instance().start();
+        }
+    };
+
+    // Give it time to start
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // First pause
+    std::string pauseJson = R"({"command":"pause"})";
+    Syscollector::instance().query(pauseJson);
+
+    // Then test resume command
+    std::string queryJson = R"({"command":"resume"})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+    EXPECT_TRUE(responseJson.contains("data"));
+
+    // Verify success
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["module"], "syscollector");
+    EXPECT_EQ(responseJson["data"]["action"], "resume");
+
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, queryCommandFlushNoSyncProtocol)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Test flush command without sync protocol initialized
+    std::string queryJson = R"({"command":"flush"})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+    EXPECT_TRUE(responseJson.contains("data"));
+
+    // Verify success (flush returns 0 even if sync protocol not initialized)
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["module"], "syscollector");
+    EXPECT_EQ(responseJson["data"]["action"], "flush");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetVersion)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HOTFIXES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, true, true, true, true, true, true, true, true, true, true, true, true, true, false);
+
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for scan to complete
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // Test get_version command
+    std::string queryJson = R"({"command":"get_version"})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+    EXPECT_TRUE(responseJson.contains("data"));
+
+    // Verify success
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_TRUE(responseJson["data"].contains("version"));
+    // Version should be > 0 since we did a scan
+    EXPECT_GT(responseJson["data"]["version"].get<int>(), 0);
+
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, queryCommandSetVersion)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HOTFIXES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, true, true, true, true, true, true, true, true, true, true, true, true, true, false);
+
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for scan to complete
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // Test set_version command
+    int newVersion = 42;
+    std::string queryJson = R"({"command":"set_version","parameters":{"version":)" + std::to_string(newVersion) + R"(}})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+    EXPECT_TRUE(responseJson.contains("data"));
+
+    // Verify success
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_TRUE(responseJson["data"].contains("version"));
+    EXPECT_EQ(responseJson["data"]["version"].get<int>(), newVersion);
+
+    // Verify version was actually set
+    std::string getVersionJson = R"({"command":"get_version"})";
+    std::string getVersionResponse = Syscollector::instance().query(getVersionJson);
+    auto getVersionResponseJson = nlohmann::json::parse(getVersionResponse);
+    EXPECT_EQ(getVersionResponseJson["data"]["version"].get<int>(), newVersion);
+
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, queryCommandUnknown)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Test unknown command
+    std::string queryJson = R"({"command":"unknown_command"})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+    EXPECT_TRUE(responseJson.contains("data"));
+
+    // Verify error
+    EXPECT_EQ(responseJson["error"], MQ_ERR_UNKNOWN_COMMAND);
+    EXPECT_EQ(responseJson["data"]["command"], "unknown_command");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryInvalidJson)
+{
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping queryInvalidJson test on Windows due to exception handling issues in Wine environment";
+#endif
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Test invalid JSON
+    std::string queryJson = "invalid json";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+
+    // Verify error
+    EXPECT_EQ(responseJson["error"], MQ_ERR_INTERNAL);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryMissingCommand)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Test missing command field
+    std::string queryJson = R"({"parameters":{"version":1}})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+
+    // Verify error
+    EXPECT_EQ(responseJson["error"], MQ_ERR_INVALID_PARAMS);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, querySetVersionMissingParameter)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Test set_version without version parameter
+    std::string queryJson = R"({"command":"set_version","parameters":{}})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+
+    // Verify error
+    EXPECT_EQ(responseJson["error"], MQ_ERR_INVALID_PARAMS);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, querySetVersionInvalidParameterType)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Test set_version with invalid parameter type (string instead of number)
+    std::string queryJson = R"({"command":"set_version","parameters":{"version":"not_a_number"}})";
+    std::string response = Syscollector::instance().query(queryJson);
+
+    // Parse response
+    auto responseJson = nlohmann::json::parse(response);
+
+    // Verify response structure
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("message"));
+
+    // Verify error
+    EXPECT_EQ(responseJson["error"], MQ_ERR_INVALID_PARAMS);
+
+    Syscollector::instance().destroy();
 }

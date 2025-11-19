@@ -53,6 +53,95 @@ Responsibilities:
 * Monitors configured directories for changes (create, modify, delete, move)
 * Triggers `fim_checker()` which leads to database transactions and `transaction_callback()`
 * Runs continuously in background thread launched at FIM startup
+* **Respects pause state** - checks `fim_pause_requested` before processing changes
+
+### **Integrity Scanning Thread**
+
+Dedicated thread that performs periodic full scans and handles synchronization.
+Responsibilities:
+
+* **`fim_run_integrity()`** - Main integrity scanning thread:
+  - Runs periodic full filesystem scans based on configured interval
+  - Manages synchronization with the manager
+  - Handles flush requests by checking `fim_flush_in_progress` flag
+  - **Respects pause state** - checks `fim_pause_requested` before initiating scans
+  - Coordinates with sync protocol for reliable message delivery
+
+### **Operation State Control**
+
+FIM implements atomic state flags to coordinate operations and enable external control. Unlike Syscollector's synchronous model, FIM uses an **asynchronous model with polling**.
+
+**State Flags (Atomic Variables):**
+* `fim_pause_requested` - Indicates if a pause has been requested
+* `fim_pausing_is_allowed` - Indicates if FIM has acknowledged the pause (operations stopped)
+* `fim_flush_in_progress` - Indicates if a flush operation is active
+* `fim_flush_result` - Result of the flush operation (0 = success, -1 = error)
+
+**Coordination Flow (Asynchronous):**
+
+```
+External Coordination Command (pause)
+         │
+         ▼
+Set fim_pause_requested = 1 (atomic)
+         │
+         ▼
+Return immediately (non-blocking)
+         │
+         ▼
+Caller Polls: fim_execute_is_pause_completed()
+         │
+         ├─► Returns 1 (in progress) - FIM threads detecting flag
+         │
+         ├─► FIM threads check fim_pause_requested
+         │   └─► Pause at safe points
+         │   └─► Set fim_pausing_is_allowed = 1
+         │
+         ├─► Returns 1 (in progress) - waiting for acknowledgment
+         │
+         └─► Returns 0 (completed) - both flags set
+         │
+         ▼
+External Coordination Command (resume)
+         │
+         ▼
+Release mutexes and clear flags
+         │
+         ▼
+FIM threads resume operations
+```
+
+**Operation Protection:**
+
+Before starting scan operations, FIM threads check the pause state:
+
+```c
+// In fim_run_integrity (periodic scanning)
+if (atomic_int_get(&syscheck.fim_pause_requested)) {
+    // Set acknowledgment flag
+    atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
+
+    // Wait on mutex (blocking until resume)
+    w_mutex_lock(&syscheck.fim_scan_mutex);
+    w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+    // Clear acknowledgment flag
+    atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
+}
+
+// Check flush request
+if (atomic_int_get(&fim_flush_in_progress)) {
+    // Perform synchronization immediately
+    bool result = asp_sync_module(...);
+
+    // Update result and clear in-progress flag
+    atomic_int_set(&fim_flush_result, result ? 0 : -1);
+    atomic_int_set(&fim_flush_in_progress, 0);
+}
+
+// Proceed with normal scanning
+perform_integrity_scan();
+```
 
 ---
 
@@ -415,3 +504,138 @@ Run Delta Sync ──► asp_sync_module(MODE_DELTA)
                                                                      ▼
                                                          Full Sync with Manager
     ```
+
+---
+
+## Coordination Commands Architecture
+
+The coordination commands provide external control over FIM operations, allowing the manager or other components to coordinate module behavior. FIM implements an **asynchronous model with polling** where commands return immediately and callers poll for completion status.
+
+### Command Types
+
+#### Pause/Resume Commands
+
+**Purpose:** Allow temporary suspension of FIM scanning operations without stopping the module completely.
+
+**Implementation:**
+
+The pause command follows this **asynchronous sequence**:
+
+```
+Pause Command Received (fim_execute_pause)
+         │
+         ▼
+Set fim_pause_requested = 1 (atomic)
+         │
+         ▼
+Return 0 immediately (non-blocking)
+         │
+         ▼
+Caller Polls Status (fim_execute_is_pause_completed)
+         │
+         ├─► Returns 1: In progress
+         │   │
+         │   ├─► FIM threads detect fim_pause_requested
+         │   │
+         │   ├─► Threads pause at safe points
+         │   │   └─► Set fim_pausing_is_allowed = 1
+         │   │   └─► Wait on scan mutexes
+         │   │
+         │   └─► Caller waits and polls again
+         │
+         └─► Returns 0: Completed (both flags set)
+```
+
+The resume command is **synchronous**:
+
+```
+Resume Command Received (fim_execute_resume)
+         │
+         ▼
+Check if FIM is paused
+         │
+         ├─► Not paused → Return (idempotent)
+         │
+         └─► Paused → Continue
+                 │
+                 ▼
+         Release all mutexes:
+                 │
+                 ├─► fim_realtime_mutex
+                 ├─► fim_scan_mutex
+                 └─► fim_registry_scan_mutex (Windows)
+                 │
+                 ▼
+         Clear atomic flags:
+                 │
+                 ├─► fim_pause_requested = 0
+                 └─► fim_pausing_is_allowed = 0
+                 │
+                 ▼
+         FIM threads immediately resume
+```
+
+#### Flush Command
+
+**Purpose:** Force immediate synchronization of pending file integrity changes, bypassing the normal sync interval.
+
+**Implementation:**
+
+```
+Flush Command Received (fim_execute_flush)
+         │
+         ▼
+Check if Sync Enabled
+         │
+         ├─► Disabled → Return 0 (nothing to flush)
+         │
+         └─► Enabled → Continue
+                 │
+                 ▼
+         Check if flush already in progress
+                 │
+                 ├─► In progress → Return 0 (idempotent)
+                 │
+                 └─► Not in progress → Continue
+                         │
+                         ▼
+                 Reset result and set flags (atomic):
+                         │
+                         ├─► fim_flush_result = 0
+                         └─► fim_flush_in_progress = 1
+                         │
+                         ▼
+                 Return 0 immediately (non-blocking)
+                         │
+                         ▼
+         FIM Integrity Thread Detects Flag
+                         │
+                         ▼
+         Call asp_sync_module(MODE_DELTA)
+                         │
+                         ├─► Sends all pending differences
+                         ├─► Waits for manager acknowledgment
+                         └─► Gets sync result
+                         │
+                         ▼
+         Update atomic flags:
+                         │
+                         ├─► fim_flush_result = result ? 0 : -1
+                         └─► fim_flush_in_progress = 0
+                         │
+                         ▼
+         Caller Polls Status (fim_execute_is_flush_completed)
+                         │
+                         ├─► Returns 1: In progress
+                         ├─► Returns 0: Success
+                         └─► Returns -1: Error
+```
+
+### Thread Safety
+
+All coordination commands are thread-safe:
+
+- **Atomic operations** (`atomic_int_get`, `atomic_int_set`) ensure consistent flag reads/writes
+- **Mutexes** coordinate between command handlers and FIM threads
+- **Lock-free polling** allows non-blocking status checks
+- **Idempotent operations** allow safe retries

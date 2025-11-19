@@ -196,6 +196,123 @@ Send data clean notification ────────► sca_notify_data_clean()
 
 ---
 
+## Coordination Commands Architecture
+
+The coordination commands provide external control over SCA operations, allowing the agent-info to coordinate module behavior. SCA implements a **synchronous blocking model** using C++ threading primitives, similar to Syscollector.
+
+### Command Types
+
+#### Pause/Resume Commands
+
+**Purpose:** Allow temporary suspension of SCA scanning operations without stopping the module completely.
+
+**Implementation:**
+
+The pause command follows this **synchronous sequence**:
+
+```
+Pause Command Received
+         │
+         ▼
+Set m_paused = true (atomic flag)
+         │
+         ▼
+Wait for Current Operations
+         │
+         ├─► Wait for m_scanInProgress = false
+         │   (any ongoing scan completes)
+         │
+         └─► Wait for m_syncInProgress = false
+             (any ongoing sync completes)
+         │
+         ▼
+Both Operations Complete
+         │
+         ▼
+Return to Caller (blocking complete)
+```
+
+The resume command:
+
+```
+Resume Command Received
+         │
+         ▼
+Set m_paused = false (atomic flag)
+         │
+         ▼
+Notify Main Loop (m_cv.notify_one())
+         │
+         ▼
+SCA Resumes Normal Operations
+```
+
+#### Flush Command
+
+**Purpose:** Force immediate synchronization of pending SCA check results, bypassing the normal sync interval.
+
+**Implementation:**
+
+```
+Flush Command Received
+         │
+         ▼
+Check if Sync Protocol Initialized
+         │
+         ├─► Not Initialized → Return 0 (nothing to flush)
+         │
+         └─► Initialized
+             │
+             ▼
+Call synchronizeModule(Mode::DELTA)
+             │
+             ├─► Waits for manager acknowledgment
+             └─► Returns sync result
+```
+
+#### Version Management Commands
+
+**Purpose:** Query and set version numbers for tracking SCA scanning operations and coordination state.
+
+**getMaxVersion() Implementation:**
+
+```
+getMaxVersion() Called
+         │
+         ▼
+Execute SQL Query
+         │
+         └─► SELECT MAX(version) FROM sca_check
+         │
+         ▼
+Return Maximum Version (or 0 if empty, -1 on error)
+```
+
+**setVersion() Implementation:**
+
+```
+setVersion(newVersion) Called
+         │
+         ▼
+Start Database Transaction
+         │
+         ├─► For Each Row in sca_check Table:
+         │   │
+         │   ├─► Retrieve all columns
+         │   │
+         │   ├─► Update version = newVersion
+         │   │
+         │   └─► Continue to next row
+         │
+         ▼
+Commit Transaction
+         │
+         ▼
+Return 0 (success) or -1 (error)
+```
+
+---
+
 ## Event Types
 
 ### Stateful Events

@@ -16,6 +16,7 @@
 #include <mutex>
 #include <memory>
 #include <optional>
+#include <atomic>
 
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
@@ -138,6 +139,11 @@ class EXPORTED Syscollector final
         void scanBrowserExtensions();
         void scan();
         void syncLoop(std::unique_lock<std::mutex>& lock);
+        bool pause();
+        void resume();
+        int flush();
+        int getMaxVersion();
+        int setVersion(int version);
 
         void setJsonField(nlohmann::json& target,
                           const nlohmann::json& source,
@@ -168,6 +174,9 @@ class EXPORTED Syscollector final
         bool                                                                     m_stopping;
         bool                                                                     m_initialized;
         bool                                                                     m_notify;
+        std::atomic<bool>                                                        m_paused;
+        std::atomic<bool>                                                        m_scanning;
+        std::atomic<bool>                                                        m_syncing;
         bool                                                                     m_groups;
         bool                                                                     m_users;
         bool                                                                     m_services;
@@ -175,6 +184,8 @@ class EXPORTED Syscollector final
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
+        std::condition_variable                                                  m_pauseCv;
+        std::mutex                                                               m_pauseMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
 };

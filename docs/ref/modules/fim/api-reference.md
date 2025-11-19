@@ -293,3 +293,254 @@ if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
     }
 }
 ```
+
+---
+
+## Coordination Commands
+
+The coordination commands allow external control of FIM operations for coordination with the manager or other modules. FIM implements an **asynchronous model with polling** where commands return immediately and separate functions check completion status.
+
+### Pause and Resume Operations
+
+#### `fim_execute_pause()`
+
+Requests the FIM module to pause scanning operations. This is an asynchronous request that returns immediately.
+
+**Signature:**
+```c
+int fim_execute_pause(void);
+```
+
+**Returns:**
+- `0` if pause request was accepted or FIM is already paused
+- `-1` on error
+
+**Description:**
+
+This function sets an atomic flag (`fim_pause_requested`) to signal FIM threads to pause their operations. The function returns immediately without waiting for operations to complete. Use `fim_execute_is_pause_completed()` to poll the pause status.
+
+**Behavior:**
+- Sets `fim_pause_requested` atomic flag to `1`
+- Returns immediately (non-blocking)
+- FIM threads check this flag and pause when safe
+- Idempotent: safe to call multiple times
+
+**Usage Example:**
+```c
+// Request FIM to pause
+int result = fim_execute_pause();
+if (result == 0) {
+    // Pause request accepted
+    // Use fim_execute_is_pause_completed() to check when complete
+}
+```
+
+#### `fim_execute_is_pause_completed()`
+
+Checks whether the FIM pause operation has completed.
+
+**Signature:**
+```c
+int fim_execute_is_pause_completed(void);
+```
+
+**Returns:**
+- `0` if pause is completed (FIM is fully paused)
+- `1` if pause is still in progress
+- `-1` on error
+
+**Description:**
+
+This function checks atomic flags to determine if FIM has acknowledged the pause request and all scanning operations have stopped. It should be called repeatedly (polling) after `fim_execute_pause()` until it returns `0`.
+
+**Behavior:**
+- Reads `fim_pause_requested` and `fim_pausing_is_allowed` atomic flags
+- Returns immediately (non-blocking)
+- Returns `0` when both conditions are met:
+  - Pause was requested (`fim_pause_requested = 1`)
+  - FIM acknowledged the pause (`fim_pausing_is_allowed = 1`)
+
+**Usage Example:**
+```c
+// Request pause
+fim_execute_pause();
+
+// Poll until pause completes (with timeout)
+int max_attempts = 100;
+for (int i = 0; i < max_attempts; i++) {
+    int status = fim_execute_is_pause_completed();
+    if (status == 0) {
+        // Pause completed successfully
+        break;
+    } else if (status == 1) {
+        // Still in progress, wait and retry
+        sleep(1);
+    } else {
+        // Error occurred
+        break;
+    }
+}
+```
+
+#### `fim_execute_resume()`
+
+Resumes FIM scanning operations after a pause.
+
+**Signature:**
+```c
+int fim_execute_resume(void);
+```
+
+**Returns:**
+- `0` on success
+- `-1` on error
+
+**Description:**
+
+This function clears the pause request flag and releases all scan mutexes, allowing FIM threads to resume their operations. The function completes synchronously.
+
+**Behavior:**
+- Checks if FIM is actually paused
+- Releases all scan mutexes:
+  - `fim_realtime_mutex`
+  - `fim_scan_mutex`
+  - `fim_registry_scan_mutex` (Windows only)
+- Clears atomic flags:
+  - Sets `fim_pause_requested = 0`
+  - Sets `fim_pausing_is_allowed = 0`
+- FIM threads resume scanning immediately
+
+**Usage Example:**
+```c
+// Resume FIM operations
+int result = fim_execute_resume();
+if (result == 0) {
+    // FIM resumed successfully
+}
+```
+
+---
+
+### Synchronization Control
+
+#### `fim_execute_flush()`
+
+Requests FIM to immediately synchronize all pending file integrity changes with the manager. This is an asynchronous request that returns immediately.
+
+**Signature:**
+```c
+int fim_execute_flush(void);
+```
+
+**Returns:**
+- `0` if flush request was accepted or synchronization is disabled
+- `-1` on error
+
+**Description:**
+
+This function sets atomic flags to trigger an immediate synchronization of all pending FIM changes, bypassing the normal sync interval. The function returns immediately without waiting for synchronization to complete. Use `fim_execute_is_flush_completed()` to poll the flush status.
+
+**Behavior:**
+- Checks if synchronization is enabled
+- Checks if a flush is already in progress (idempotent)
+- Sets atomic flags:
+  - `fim_flush_in_progress = 1`
+  - `fim_flush_result = 0` (reset previous result)
+- Returns immediately (non-blocking)
+- The FIM integrity thread (`fim_run_integrity`) detects the flag and performs the sync
+
+**Usage Example:**
+```c
+// Request immediate synchronization
+int result = fim_execute_flush();
+if (result == 0) {
+    // Flush request accepted
+    // Use fim_execute_is_flush_completed() to check when complete
+}
+```
+
+#### `fim_execute_is_flush_completed()`
+
+Checks whether the FIM flush operation has completed.
+
+**Signature:**
+```c
+int fim_execute_is_flush_completed(void);
+```
+
+**Returns:**
+- `0` if flush completed successfully
+- `1` if flush is still in progress
+- `-1` if flush completed with error
+
+**Description:**
+
+This function checks atomic flags to determine if the flush operation has finished and retrieves the result. It should be called repeatedly (polling) after `fim_execute_flush()` until it returns `0` or `-1`.
+
+**Behavior:**
+- Reads atomic flags:
+  - `fim_flush_in_progress` (0 = idle, 1 = active)
+  - `fim_flush_result` (0 = success, -1 = error)
+- Returns immediately (non-blocking)
+- If synchronization is disabled, returns `0` immediately
+
+**Usage Example:**
+```c
+// Request flush
+fim_execute_flush();
+
+// Poll until flush completes (with timeout)
+int max_attempts = 60;
+for (int i = 0; i < max_attempts; i++) {
+    int status = fim_execute_is_flush_completed();
+    if (status == 0) {
+        // Flush completed successfully
+        break;
+    } else if (status == 1) {
+        // Still in progress, wait and retry
+        sleep(1);
+    } else {
+        // Flush failed
+        break;
+    }
+}
+```
+
+---
+
+### Asynchronous Pattern
+
+FIM coordination commands follow an **asynchronous pattern with polling**:
+
+```
+1. Call command function (returns immediately)
+   ├─► fim_execute_pause() → returns 0
+   ├─► fim_execute_flush() → returns 0
+
+2. Poll completion status (loop until done)
+   ├─► fim_execute_is_pause_completed() → 1 (in progress)
+   ├─► fim_execute_is_flush_completed() → 1 (in progress)
+   │
+   └─► Wait/sleep between polls
+
+3. Operation completes
+   ├─► fim_execute_is_pause_completed() → 0 (success)
+   ├─► fim_execute_is_flush_completed() → 0 or -1 (success/error)
+```
+
+**Advantages of this pattern:**
+- Non-blocking: caller can perform other operations while waiting
+- Timeout control: caller decides how long to wait
+- Status monitoring: can check progress at any interval
+- Thread-safe: uses atomic operations
+
+**Comparison with Syscollector:**
+| Feature | FIM | Syscollector |
+|---------|-----|--------------|
+| Pattern | Asynchronous + polling | Synchronous blocking |
+| Pause/Flush | Returns immediately | Waits for completion |
+| Status check | Separate `is_completed()` functions | Not needed |
+| Implementation | Atomic flags | Condition variables |
+| Use case | Legacy C codebase | Modern C++ codebase |
+
+---

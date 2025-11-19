@@ -313,3 +313,192 @@ bool parseResponseBuffer(const uint8_t* data, size_t length);
 bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
 void deleteDatabase();
 ```
+
+---
+
+## Coordination Commands
+
+The coordination commands allow external control of SCA operations for coordination with the manager or other modules. SCA implements a **synchronous blocking model**.
+
+### Pause and Resume Operations
+
+#### `pause()`
+
+Pauses the SCA module by waiting for ongoing scanning and synchronization operations to complete, then preventing new operations from starting.
+
+**Signature:**
+```cpp
+void SecurityConfigurationAssessment::pause();
+```
+
+**Description:**
+
+This method sets the pause flag and waits for both scanning (`m_scanInProgress`) and synchronization (`m_syncInProgress`) operations to complete before returning. Once paused, no new scan or sync operations will start until `resume()` is called.
+
+**Behavior:**
+- Sets the internal pause flag (`m_paused = true`)
+- Waits for ongoing scan operations to finish
+- Waits for ongoing sync operations to finish
+- Blocks until both operations are complete or if the module is shutting down
+- Returns when operations complete
+
+**Thread Safety:**
+- Uses condition variable (`m_pauseCv`) with mutex (`m_pauseMutex`)
+- Atomic flag (`m_paused`) ensures thread-safe state checks
+- Blocks calling thread until pause conditions are met
+
+**Usage Example:**
+```cpp
+// Pause SCA operations (synchronous - blocks until complete)
+sca_instance.pause();
+// Module is now fully paused, safe to perform maintenance
+```
+
+---
+
+#### `resume()`
+
+Resumes the SCA module after a pause, allowing scanning and synchronization operations to continue.
+
+**Signature:**
+```cpp
+void SecurityConfigurationAssessment::resume();
+```
+
+**Description:**
+
+Clears the pause flag and notifies the main loop to continue operations. After calling this method, pending scans and synchronizations will resume according to the configured intervals.
+
+**Behavior:**
+- Clears the pause flag (`m_paused = false`)
+- Notifies the main loop via condition variable (`m_cv.notify_one()`)
+- Operations resume immediately
+- Returns without waiting
+
+**Usage Example:**
+```cpp
+// Resume SCA operations (immediate)
+sca_instance.resume();
+// Module resumes scanning immediately
+```
+
+---
+
+### Synchronization Control
+
+#### `flush()`
+
+Forces an immediate synchronization of all pending SCA check results with the manager.
+
+**Signature:**
+```cpp
+int SecurityConfigurationAssessment::flush();
+```
+
+**Returns:**
+- `0` if flush completed successfully or if sync protocol is not initialized
+- Non-zero value if flush failed
+
+**Description:**
+
+Triggers an immediate synchronization session to send all pending SCA check changes to the manager, bypassing the normal synchronization interval. This is useful when immediate delivery of security assessment state is required, such as before agent shutdown or after critical policy changes.
+
+**Behavior:**
+- Checks if sync protocol is initialized
+- If not initialized, returns `0` (not an error, just nothing to flush)
+- If initialized, calls `synchronizeModule()` with `Mode::DELTA`
+- Blocks until synchronization completes
+- Returns result of synchronization operation
+
+**Usage Example:**
+```cpp
+// Flush pending SCA check results immediately (synchronous)
+int result = sca_instance.flush();
+if (result == 0) {
+    // Flush successful or nothing to flush
+} else {
+    // Flush failed
+}
+```
+
+---
+
+### Version Management
+
+The version management methods allow querying and setting version numbers for all SCA check results.
+
+#### `getMaxVersion()`
+
+Retrieves the maximum version number from the SCA check results table.
+
+**Signature:**
+```cpp
+int SecurityConfigurationAssessment::getMaxVersion();
+```
+
+**Returns:**
+- The maximum version number found in the `sca_check` table (≥ 0)
+- `-1` if an error occurred (e.g., database not initialized)
+- `0` if the table is empty
+
+**Description:**
+
+Queries the `sca_check` table to find the highest version number. This is useful for determining the current state version before performing coordination operations.
+
+**Implementation Details:**
+- Executes SQL query: `SELECT MAX(version) FROM sca_check`
+- Returns the maximum version value found
+- Thread-safe database access
+
+**Usage Example:**
+```cpp
+// Get current maximum version
+int currentVersion = sca_instance.getMaxVersion();
+if (currentVersion >= 0) {
+    // Use version for coordination
+} else {
+    // Error getting version
+}
+```
+
+---
+
+#### `setVersion()`
+
+Sets the version number for all rows in the SCA check results table.
+
+**Signature:**
+```cpp
+int SecurityConfigurationAssessment::setVersion(int version);
+```
+
+**Parameters:**
+- `version`: The version number to set for all check results
+
+**Returns:**
+- `0` on success
+- `-1` if an error occurred (e.g., database not initialized)
+
+**Description:**
+
+Updates the version field for every row in the `sca_check` table using a transaction-based approach. This is used by the coordination system to mark all check results with a specific version number.
+
+**Implementation Details:**
+- Uses database transaction for atomicity
+- Retrieves all columns from each row in `sca_check` table
+- Updates each row with the new version number
+- Commits transaction upon completion
+- Rollback on error
+
+**Usage Example:**
+```cpp
+// Set version 42 for all check results
+int result = sca_instance.setVersion(42);
+if (result == 0) {
+    // Version set successfully
+} else {
+    // Error setting version
+}
+```
+
+---
