@@ -8,12 +8,12 @@ package com.wazuh.api.engine.content;
 enum ContentType
 {
     CONTENT_TYPE_UNSPECIFIED = 0;
-    CONTENT_TYPE_DECODER     = 1;
-    CONTENT_TYPE_OUTPUT      = 2;
-    CONTENT_TYPE_RULE        = 3;
-    CONTENT_TYPE_FILTER      = 4;
+    CONTENT_TYPE_DECODER = 1;
+    CONTENT_TYPE_OUTPUT = 2;
+    CONTENT_TYPE_RULE = 3;
+    CONTENT_TYPE_FILTER = 4;
     CONTENT_TYPE_INTEGRATION = 5;
-    CONTENT_TYPE_KVDB        = 6;
+    CONTENT_TYPE_KVDB = 6;
 }
 
 /* Small summary of a catalog item */
@@ -37,9 +37,9 @@ message namespaceGet_Request
 
 message namespaceGet_Response
 {
-    ReturnStatus status = 1;      // Status of the query
-    optional string error = 2;    // Error message if status is ERROR
-    repeated string spaces = 3;   // List of namespaces if status is OK (empty on error)
+    ReturnStatus status = 1;    // Status of the query
+    optional string error = 2;  // Error message if status is ERROR
+    repeated string spaces = 3; // List of namespaces if status is OK (empty on error)
 }
 
 /***************************************************
@@ -72,8 +72,8 @@ message namespaceDelete_Request
  **************************************************/
 message policyPost_Request
 {
-    string space = 1;        // Namespace name (draft, testing, custom, wazuh)
-    string ymlContent = 2;   // Policy payload as YAML string
+    string space = 1;      // Namespace name (draft, testing, custom, wazuh)
+    string ymlContent = 2; // Policy payload as YAML string
 }
 // message policyPost_Response -> Return a GenericStatus_Response
 
@@ -96,14 +96,14 @@ message policyDelete_Request
  **************************************************/
 message resourceList_Request
 {
-    string space = 1;      // Namespace name (draft, testing, custom, wazuh)
-    ContentType type  = 2;      // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    string space = 1;     // Namespace name (draft, testing, custom, wazuh)
+    ContentType type = 2; // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
 }
 
 message resourceList_Response
 {
-    ReturnStatus status = 1;             // Status of the query
-    optional string error = 2;           // Error message if status is ERROR
+    ReturnStatus status = 1;                // Status of the query
+    optional string error = 2;              // Error message if status is ERROR
     repeated ResourceSummary resources = 3; // List of resources if status is OK (Empty on error)
 }
 
@@ -120,8 +120,8 @@ message resourceGet_Request
 
 message resourceGet_Response
 {
-    ReturnStatus status = 1;      // Status of the query
-    optional string error = 2;    // Error message if status is ERROR
+    ReturnStatus status = 1;        // Status of the query
+    optional string error = 2;      // Error message if status is ERROR
     optional string ymlContent = 3; // YAML representation of the resource (asset/integration/kvdb)
 }
 
@@ -133,7 +133,7 @@ message resourceGet_Response
 message resourcePost_Request
 {
     string space = 1;      // Namespace name (must be writable, e.g. draft)
-    ContentType type  = 2; // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    ContentType type = 2;  // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
     string ymlContent = 3; // Raw YAML payload of the resource
 }
 // message resourcePost_Response -> Return a GenericStatus_Response
