@@ -205,6 +205,191 @@ Syscollector::instance().deleteDatabase();
 
 ---
 
+## Coordination Commands
+
+The coordination commands allow external control of Syscollector operations for coordination with the manager or other modules.
+
+### Pause and Resume Operations
+
+#### `pause()`
+
+Pauses the Syscollector module by waiting for ongoing scanning and synchronization operations to complete, then preventing new operations from starting.
+
+**Signature:**
+```cpp
+bool Syscollector::pause();
+```
+
+**Returns:**
+- `true` if module was paused successfully
+- `false` if pause was interrupted by shutdown
+
+**Description:**
+
+This method sets the pause flag and waits for both scanning (`m_scanning`) and synchronization (`m_syncing`) operations to complete before returning. Once paused, no new scan or sync operations will start until `resume()` is called. This is useful for coordinating module operations during agent reconfigurations or manager-requested pauses.
+
+**Behavior:**
+- Sets the internal pause flag (`m_paused = true`)
+- Waits for ongoing scan operations to finish
+- Waits for ongoing sync operations to finish
+- Returns when both operations are complete or if the module is shutting down
+
+**Usage Example:**
+```cpp
+// Pause Syscollector operations
+bool success = Syscollector::instance().pause();
+if (success) {
+    // Module successfully paused, safe to perform maintenance
+} else {
+    // Pause interrupted by shutdown
+}
+```
+
+#### `resume()`
+
+Resumes the Syscollector module after a pause, allowing scanning and synchronization operations to continue.
+
+**Signature:**
+```cpp
+void Syscollector::resume();
+```
+
+**Description:**
+
+Clears the pause flag and notifies the main loop to continue operations. After calling this method, pending scans and synchronizations will resume according to the configured intervals.
+
+**Usage Example:**
+```cpp
+// Resume Syscollector operations
+Syscollector::instance().resume();
+```
+
+---
+
+### Synchronization Control
+
+#### `flush()`
+
+Forces an immediate synchronization of all pending inventory differences with the manager.
+
+**Signature:**
+```cpp
+int Syscollector::flush();
+```
+
+**Returns:**
+- `0` if flush completed successfully or if sync protocol is not initialized
+- Non-zero value if flush failed
+
+**Description:**
+
+Triggers an immediate synchronization session to send all pending inventory changes to the manager, bypassing the normal synchronization interval. This is useful when immediate delivery of inventory state is required, such as before agent shutdown or after critical inventory changes.
+
+**Behavior:**
+- Checks if sync protocol is initialized
+- If not initialized, returns `0` (not an error, just nothing to flush)
+- If initialized, calls `synchronizeModule()` with `Mode::DELTA`
+- Returns result of synchronization operation
+
+**Usage Example:**
+```cpp
+// Flush pending inventory changes immediately
+int result = Syscollector::instance().flush();
+if (result == 0) {
+    // Flush successful or nothing to flush
+} else {
+    // Flush failed
+}
+```
+
+---
+
+### Version Management
+
+The version management methods allow querying and setting version numbers across all Syscollector inventory tables. These versions are used by the coordination system to track scanning operations and synchronization state.
+
+#### `getMaxVersion()`
+
+Retrieves the maximum version number across all Syscollector inventory tables.
+
+**Signature:**
+```cpp
+int Syscollector::getMaxVersion();
+```
+
+**Returns:**
+- The maximum version number found across all tables (≥ 0)
+- `-1` if an error occurred (e.g., DBSync not initialized)
+
+**Description:**
+
+Queries all Syscollector tables (hardware, OS, packages, processes, ports, etc.) to find the highest version number. This is useful for determining the current state version before performing coordination operations.
+
+**Tables Queried:**
+- `dbsync_hwinfo` (hardware)
+- `dbsync_osinfo` (OS)
+- `dbsync_packages` (packages)
+- `dbsync_processes` (processes)
+- `dbsync_ports` (ports)
+- `dbsync_network_iface` (network interfaces)
+- `dbsync_network_protocol` (network protocols)
+- `dbsync_network_address` (network addresses)
+- `dbsync_hotfixes` (Windows hotfixes)
+- `dbsync_users` (system users)
+- `dbsync_groups` (system groups)
+- `dbsync_services` (system services)
+- `dbsync_browser_extensions` (browser extensions)
+
+**Usage Example:**
+```cpp
+// Get current maximum version
+int currentVersion = Syscollector::instance().getMaxVersion();
+if (currentVersion >= 0) {
+    // Use version for coordination
+} else {
+    // Error getting version
+}
+```
+
+#### `setVersion()`
+
+Sets the version number for all rows across all Syscollector inventory tables.
+
+**Signature:**
+```cpp
+int Syscollector::setVersion(int version);
+```
+
+**Parameters:**
+- `version`: The version number to set for all inventory items
+
+**Returns:**
+- Total number of rows updated across all tables (≥ 0)
+- `-1` if an error occurred (e.g., DBSync not initialized)
+
+**Description:**
+
+Updates the version field for every row in all Syscollector tables. This is used by the coordination system to mark all inventory data with a specific version number, allowing the manager to track which scanning operation produced each piece of inventory data.
+
+**Implementation Details:**
+- Reads all existing rows from each table
+- Updates each row with the new version number
+- Uses database transactions for consistency
+- Returns total count of updated rows
+
+**Usage Example:**
+```cpp
+// Set version 42 for all inventory items
+int rowsUpdated = Syscollector::instance().setVersion(42);
+if (rowsUpdated >= 0) {
+    // Version set successfully for rowsUpdated items
+} else {
+    // Error setting version
+}
+```
+
+---
+
 ## Operation Types
 
 Syscollector uses the following operation types defined in the Agent Sync Protocol:
