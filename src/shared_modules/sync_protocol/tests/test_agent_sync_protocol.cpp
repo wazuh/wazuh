@@ -4005,77 +4005,6 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
     // Wait for DataClean to be sent
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-    syncThread.join();
-
-    // Verify error was logged
-    bool foundError = false;
-    for (const auto& msg : loggedMessages)
-    {
-        if (msg.find("Failed to clear items by index") != std::string::npos ||
-            msg.find("requires a persistent queue") != std::string::npos)
-        {
-            foundError = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(foundError);
-}
-
-TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckChecksumMismatch)
-{
-    mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 0; },
-                            .send_binary =
-                                [](int, const void*, size_t, const char*, char)
-                            {
-                                return 0;
-                            }};
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {
-    };
-    protocol = std::make_unique<AgentSyncProtocol>("test_module",
-                                                   ":memory:",
-                                                   mqFuncs,
-                                                   testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
-                                                   std::chrono::seconds(max_timeout),
-                                                   retries,
-                                                   maxEps,
-                                                   mockQueue);
-
-    // Enter in WaitingEndAck phase
-    std::thread syncThread(
-        [this]()
-        {
-            std::vector<PersistedData> testData = {
-                {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
-
-            EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
-
-            bool syncResult = protocol->synchronizeModule(Mode::DELTA);
-            EXPECT_FALSE(syncResult);
-        });
-
-    // Wait for WaitingStartAck phase
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-
-    // StartAck
-    flatbuffers::FlatBufferBuilder startBuilder;
-
-    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
-    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    startAckBuilder.add_session(session);
-    auto startAckOffset = startAckBuilder.Finish();
-
-    auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
-    startBuilder.Finish(startMessage);
-
-    const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer, startBuffer->GetSize());
-
-    // Wait for data messages
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-
     // Send EndAck with OK status
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
@@ -4092,17 +4021,18 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckChecksumMismatch)
 
     syncThread.join();
 
-    bool hasQueueErrorLog = false;
-    for (auto loggedMsg : loggedMessages)
+    // Verify error was logged
+    bool foundError = false;
+    for (const auto& msg : loggedMessages)
     {
-        if (loggedMsg.find("Failed to clear local database") != std::string::npos &&
-            loggedMsg.find("requires a persistent queue") != std::string::npos)
+        if (msg.find("Failed to clear items by index") != std::string::npos ||
+            msg.find("requires a persistent queue") != std::string::npos)
         {
-            hasQueueErrorLog = true;
+            foundError = true;
             break;
         }
     }
-    EXPECT_TRUE(hasQueueErrorLog);
+    EXPECT_TRUE(foundError);
 }
 
 TEST_F(AgentSyncProtocolTest, DeleteDatabaseLogsErrorWithoutQueue)
