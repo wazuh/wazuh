@@ -38,10 +38,11 @@ void PersistentQueue::submit(const std::string& id,
                              const std::string& index,
                              const std::string& data,
                              Operation operation,
-                             uint64_t version)
+                             uint64_t version,
+                             bool isDataContext)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    PersistedData msg{0, id, index, data, operation, version};
+    PersistedData msg{0, id, index, data, operation, version, isDataContext};
 
     try
     {
