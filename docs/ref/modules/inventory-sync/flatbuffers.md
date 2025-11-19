@@ -136,25 +136,33 @@ enum Operation : byte {
 
 #### DataContext
 
-Lightweight message for vulnerability scanning context:
+Context message for vulnerability scanning metadata:
 
 ```flatbuffers
 table DataContext {
     seq: ulong;
     session: ulong;
     id: string;
+    index: string;
     data: [byte];
 }
 ```
 
 **Fields:**
 
-- `seq`: Sequence number
-- `session`: Session identifier
-- `id`: Document identifier
-- `data`: Context payload
+- `seq`: Sequence number for ordering and gap detection
+- `session`: Session identifier linking to the synchronization session
+- `id`: Context document identifier
+- `index`: Target index name for context association
+- `data`: Context payload as byte array (typically JSON)
 
-**Usage:** Reserved for future Vulnerability Scanner integration.
+**Storage:**
+- Stored in RocksDB with key format: `{session}_{seq}_context`
+- **Not sent to indexer** - reserved for future Vulnerability Scanner integration
+- Tracked in GapSet for ReqRet mechanism
+- Cleaned up automatically when session completes
+
+**Usage:** Reserved for future Vulnerability Detector integration to provide additional context for vulnerability scanning without indexing the data.
 
 #### DataClean
 

@@ -73,7 +73,11 @@ The Inventory Sync protocol operates in **three phases**:
    * Agent transmits inventory data in chunks (for module modes).
    * Data is written into RocksDB with session-prefixed keys.
    * FlatBuffer validation ensures message integrity.
-   * Both insert (upsert) and delete operations are supported.
+   * Multiple message types supported:
+     - **DataValue**: Standard inventory data with upsert/delete operations
+     - **DataContext**: Context metadata (stored but not indexed, for future VD integration)
+     - **DataClean**: Bulk delete-by-query requests for index cleanup
+     - **ChecksumModule**: Integrity verification checksums
    * For metadata/groups check modes: data phase is skipped (disaster recovery).
 
 3. **End Phase**
@@ -84,6 +88,66 @@ The Inventory Sync protocol operates in **three phases**:
    * For disaster recovery modes: update-by-query operations scan all indices.
    * An acknowledgment is sent back, and session data is cleaned up.
    * Agent is unlocked if it was locked for metadata/groups operations.
+
+---
+
+## Message Type Handling
+
+The module processes four distinct data message types during the Data Phase:
+
+### DataValue Messages
+
+**Purpose:** Standard inventory data for indexing
+
+**Processing:**
+- Stored in RocksDB with key format: `{session}_{seq}`
+- Tracked in GapSet for sequence validation
+- Accumulated for bulk indexing operations
+- Supports both Upsert and Delete operations
+
+**Indexer Integration:**
+- Sent to indexer via `bulkIndex()` or `bulkDelete()`
+- Includes agent context enrichment (metadata, groups)
+- Triggers notify callback after successful indexing
+
+### DataContext Messages
+
+**Purpose:** Context metadata for Vulnerability Detector (future integration)
+
+**Processing:**
+- Stored in RocksDB with key format: `{session}_{seq}_context`
+- Tracked in GapSet (participates in ReqRet mechanism)
+- **NOT sent to indexer** - preserved for future VD use
+- Automatically cleaned up with session completion
+
+**Special Handling:**
+- Skipped during indexer processing loop (`key.ends_with("_context")`)
+- If session contains ONLY DataContext (no DataValue/DataClean), EndAck is sent immediately
+- No bulk operations registered for DataContext-only sessions
+
+### DataClean Messages
+
+**Purpose:** Bulk deletion via deleteByQuery
+
+**Processing:**
+- Tracked in GapSet for sequence validation
+- Stored in context: `dataCleanIndices` set
+- Triggers `deleteByQuery` for specified indices during End Phase
+
+**Error Handling:**
+- Gracefully handles 404 errors (index doesn't exist)
+- Prevents cascade failures for non-existent indices
+- Continues processing even when target index is missing
+
+### ChecksumModule Messages
+
+**Purpose:** Integrity verification for ModuleCheck mode
+
+**Processing:**
+- Stores checksum and index in session context
+- Triggers checksum calculation on manager side
+- Compares agent checksum vs manager checksum
+- Supports retry mechanism (5 attempts, 10s delay) to handle indexer flush delays
 
 ---
 
