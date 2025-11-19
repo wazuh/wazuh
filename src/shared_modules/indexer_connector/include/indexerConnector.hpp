@@ -82,6 +82,33 @@ public:
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery);
 
     /**
+     * @brief Execute a GET query against the indexer.
+     *
+     * @param index Index name.
+     * @param query Query JSON object containing the search parameters.
+     * @param onResponse Optional callback to process the response to extract search_after for pagination.
+     *                   Callback receives the response as nlohmann::json.
+     */
+    void executeGetQuery(const std::string& index,
+                        const nlohmann::json& query,
+                        std::function<void(const nlohmann::json&)> onResponse = nullptr);
+
+    /**
+     * @brief Execute a GET context query against multiple indexer indices.
+     *
+     * This method executes the same query across multiple indices sequentially,
+     * useful for gathering context information from different inventory indices.
+     *
+     * @param indices List of index names to query.
+     * @param query Query JSON object containing the search parameters.
+     * @param onResponse Optional callback to process each index response to extract search_after for pagination.
+     *                   Callback receives the response as nlohmann::json.
+     */
+    void executeGetContext(const std::vector<std::string>& indices,
+                          const nlohmann::json& query,
+                          std::function<void(const nlohmann::json&)> onResponse = nullptr);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.

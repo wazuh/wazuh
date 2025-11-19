@@ -1888,3 +1888,725 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
     EXPECT_EQ(attempts, 2) << "Should have retried once";
     EXPECT_TRUE(notifyCalled) << "Notify callback should have been called after successful retry";
 }
+
+// Tests for executeGetQuery method
+TEST_F(IndexerConnectorSyncTest, ExecuteGetQuerySuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+
+    // Setup expectations
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
+                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Build a query using the query builder
+    nlohmann::json query;
+    query["size"] = 1000;
+    query["query"]["bool"]["must"][0]["term"]["agent.id"] = "004";
+    query["query"]["bool"]["must"][1]["term"]["package.name"] = "firefox";
+    query["query"]["bool"]["must"][2]["term"]["package.version"] = "140.4.0esr-2";
+    query["sort"][0]["vulnerability.id"]["order"] = "asc";
+
+    // Call executeGetQuery with actual parameters
+    EXPECT_NO_THROW(connector.executeGetQuery("wazuh-states-vulnerabilities-*", query));
+
+    // Verify the request was made
+    EXPECT_EQ(callCount, 1);
+    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called";
+
+    // Verify the request contained the query we passed
+    auto requestData = nlohmann::json::parse(receivedData[0]);
+    
+    // Verify query structure
+    ASSERT_TRUE(requestData.contains("query"));
+    ASSERT_TRUE(requestData["query"].contains("bool"));
+    ASSERT_TRUE(requestData["query"]["bool"].contains("must"));
+    
+    // Verify the query values match what we passed
+    auto must = requestData["query"]["bool"]["must"];
+    ASSERT_EQ(must.size(), 3);
+    
+    // Verify agent.id = "004"
+    EXPECT_EQ(must[0]["term"]["agent.id"], "004");
+    
+    // Verify package.name = "firefox"
+    EXPECT_EQ(must[1]["term"]["package.name"], "firefox");
+    
+    // Verify package.version = "140.4.0esr-2"
+    EXPECT_EQ(must[2]["term"]["package.version"], "140.4.0esr-2");
+    
+    // Verify sort is present
+    ASSERT_TRUE(requestData.contains("sort"));
+    EXPECT_EQ(requestData["sort"][0]["vulnerability.id"]["order"], "asc");
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetQueryUsesInputParameters)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Setup expectations
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([this](auto requestParams, const auto& postParams, auto configParams)
+                         { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    // Build a custom query with different parameters
+    nlohmann::json customQuery;
+    customQuery["size"] = 500;
+    customQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = "123";
+    customQuery["query"]["bool"]["must"][1]["term"]["host.os.name"] = "Ubuntu";
+    customQuery["query"]["bool"]["must"][2]["term"]["host.os.version"] = "22.04";
+    customQuery["query"]["bool"]["must"][3]["term"]["host.os.kernel"] = "5.15.0-generic";
+    customQuery["sort"][0]["vulnerability.id"]["order"] = "desc";
+    
+    EXPECT_NO_THROW(connector.executeGetQuery("wazuh-states-vulnerabilities-*", customQuery));
+
+    // Verify the query uses the custom parameters we passed
+    auto requestData = nlohmann::json::parse(receivedData[0]);
+    
+    // Verify it uses the input parameters, not hardcoded values
+    EXPECT_EQ(requestData["size"], 500);
+    EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["agent.id"], "123");
+    EXPECT_EQ(requestData["query"]["bool"]["must"][1]["term"]["host.os.name"], "Ubuntu");
+    EXPECT_EQ(requestData["query"]["bool"]["must"][2]["term"]["host.os.version"], "22.04");
+    EXPECT_EQ(requestData["query"]["bool"]["must"][3]["term"]["host.os.kernel"], "5.15.0-generic");
+    EXPECT_EQ(requestData["sort"][0]["vulnerability.id"]["order"], "desc");
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetQueryConnectionError)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Setup mock to return connection error
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([](auto, const auto& postParams, auto)
+                         {
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onError("Connection refused", 0, "");
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                     .onError("Connection refused", 0, "");
+                             }
+                         }));
+
+    // expect exception
+    EXPECT_THROW(connector.executeGetQuery("", nlohmann::json{}), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetQueryVersionConflictRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // Use connector with no retry delay for faster test
+    IndexerConnectorSyncImpl<MockServerSelector, MockHTTPRequest, 1024, 0, 0> connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    int localCallCount = 0;
+
+    // First call returns 409, second succeeds
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke([&](auto, const auto& postParams, auto)
+                         {
+                             localCallCount++;
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onError("Version conflict", 409, "");
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                     .onError("Version conflict", 409, "");
+                             }
+                         }))
+        .WillOnce(Invoke([&](auto requestParams, const auto& postParams, auto configParams)
+                         {
+                             localCallCount++;
+                             // Simulate success on retry
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    // should retry and succeed
+    EXPECT_NO_THROW(connector.executeGetQuery("", nlohmann::json{}));
+    EXPECT_EQ(localCallCount, 2) << "Should have retried once after 409";
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetQueryTooManyRequestsRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // Use connector with no retry delay for faster test
+    IndexerConnectorSyncImpl<MockServerSelector, MockHTTPRequest, 1024, 0, 0> connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    int localCallCount = 0;
+
+    // First call returns 429, second succeeds
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke([&](auto, const auto& postParams, auto)
+                         {
+                             localCallCount++;
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onError("Too many requests", 429, "");
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                     .onError("Too many requests", 429, "");
+                             }
+                         }))
+        .WillOnce(Invoke([&](auto requestParams, const auto& postParams, auto configParams)
+                         {
+                             localCallCount++;
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    // should retry and succeed
+    EXPECT_NO_THROW(connector.executeGetQuery("", nlohmann::json{}));
+    EXPECT_EQ(localCallCount, 2) << "Should have retried once after 429";
+}
+
+/**
+ * @brief Test executeGetQuery without callback (callback is empty/nullptr)
+ * 
+ * This test verifies that executeGetQuery works correctly when no callback is provided:
+ * - The query executes successfully
+ * - No callback is invoked (because none was provided)
+ * - The method returns normally without errors
+ */
+TEST_F(IndexerConnectorSyncTest, ExecuteGetQueryWithoutCallback)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([](auto, const auto& postParams, auto)
+                         {
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    nlohmann::json query;
+    query["size"] = 1000;
+    query["query"]["term"]["package.name"] = "test-package";
+
+    // Execute WITHOUT callback (callback parameter not provided)
+    EXPECT_NO_THROW(connector.executeGetQuery("test-index", query));
+}
+
+/**
+ * @brief Test executeGetQuery with callback receiving two pages
+ * 
+ * This test verifies pagination behavior:
+ * - First page returns data with hits
+ * - Callback is invoked with first page data
+ * - Second query includes search_after parameter
+ * - Second page returns empty hits (end of pagination)
+ * - Callback is invoked with empty page
+ */
+TEST_F(IndexerConnectorSyncTest, ExecuteGetQueryWithCallbackTwoPages)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    int callbackCount = 0;
+    int postCallCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
+                         {
+                             postCallCount++;
+                             // First page with data, hits has an ID and sort field for pagination
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":2},"hits":[{"_id":"1","sort":["1"]}]}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }))
+        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
+                         {
+                             postCallCount++;
+                             // Second page empty, hits is empty
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    nlohmann::json query;
+    query["size"] = 1000;
+    query["query"]["term"]["package.name"] = "test-package";
+    query["sort"][0]["_id"] = "asc";
+
+    auto callback = [&callbackCount](const nlohmann::json& response) {
+        callbackCount++;
+    };
+
+    EXPECT_NO_THROW(connector.executeGetQuery("test-index", query, callback));
+
+    EXPECT_EQ(postCallCount, 2) << "Should have made 2 POST requests (2 pages)";
+    EXPECT_EQ(callbackCount, 2) << "Callback should have been invoked 2 times (first page + empty page)";
+}
+
+// Tests for executeGetContext method
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextSuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+    int postCallCount = 0;
+
+    // Define test indices
+    std::vector<std::string> indices = {
+        "wazuh-states-inventory-system-*",
+        "wazuh-states-inventory-packages-*",
+        "wazuh-states-inventory-hotfixes-*",
+        "wazuh-states-vulnerabilities-*"
+    };
+
+    nlohmann::json query = {
+        {"_source", {{"excludes", nlohmann::json::array({"wazuh*"})}}},
+        {"query", {{"term", {{"agent.id", "004"}}}}},
+        {"size", 1000}
+    };
+
+    // Expect 4 calls (one per index)
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(4)
+        .WillRepeatedly(Invoke([this, &postCallCount](auto requestParams, const auto& postParams, auto configParams)
+                         {
+                             postCallCount++;
+                             this->simulateSuccessfulPost(requestParams, postParams, configParams);
+                         }));
+
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    // Execute
+    EXPECT_NO_THROW(connector.executeGetContext(indices, query));
+
+    // Verify 4 requests were made (one per index)
+    EXPECT_EQ(postCallCount, 4);
+    EXPECT_EQ(callCount, 4);
+    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called";
+
+    // Verify each request contains the correct query
+    for (int i = 0; i < 4; ++i)
+    {
+        auto requestData = nlohmann::json::parse(receivedData[i]);
+        
+        ASSERT_TRUE(requestData.contains("query"));
+        ASSERT_TRUE(requestData["query"].contains("term"));
+        EXPECT_EQ(requestData["query"]["term"]["agent.id"], "004");
+        EXPECT_EQ(requestData["size"], 1000);
+        ASSERT_TRUE(requestData.contains("_source"));
+        EXPECT_EQ(requestData["_source"]["excludes"][0], "wazuh*");
+    }
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextMultipleIndices)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {
+        "index-1",
+        "index-2",
+        "index-3"
+    };
+
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    int postCallCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(3)
+        .WillRepeatedly(Invoke([this, &postCallCount](auto requestParams, const auto& postParams, auto configParams)
+                         {
+                             postCallCount++;
+                             this->simulateSuccessfulPost(requestParams, postParams, configParams);
+                         }));
+
+    EXPECT_NO_THROW(connector.executeGetContext(indices, query));
+
+    EXPECT_EQ(postCallCount, 3) << "Should execute query for each index";
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextEmptyIndices)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> emptyIndices;
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    // No calls should be made for empty indices
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    EXPECT_NO_THROW(connector.executeGetContext(emptyIndices, query));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextConnectionError)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"test-index-1", "test-index-2"};
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    // First index fails with connection error
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([](auto, const auto& postParams, auto)
+                         {
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onError("Connection refused", 0, "");
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                     .onError("Connection refused", 0, "");
+                             }
+                         }));
+
+    // Should throw on first index error
+    EXPECT_THROW(connector.executeGetContext(indices, query), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextVersionConflictRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"test-index"};
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    int localCallCount = 0;
+
+    // First call returns 409, second succeeds
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke([&](auto, const auto& postParams, auto)
+                         {
+                             localCallCount++;
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onError("Version conflict", 409, "");
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                     .onError("Version conflict", 409, "");
+                             }
+                         }))
+        .WillOnce(Invoke([&](auto requestParams, const auto& postParams, auto configParams)
+                         {
+                             localCallCount++;
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    // Execute - should retry and succeed
+    EXPECT_NO_THROW(connector.executeGetContext(indices, query));
+    EXPECT_EQ(localCallCount, 2) << "Should have retried once after 409";
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextTooManyRequestsRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"test-index"};
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    int localCallCount = 0;
+
+    // First call returns 429 (too many requests), second succeeds
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke([&](auto, const auto& postParams, auto)
+                         {
+                             localCallCount++;
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onError("Too many requests", 429, "");
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                     .onError("Too many requests", 429, "");
+                             }
+                         }))
+        .WillOnce(Invoke([&](auto requestParams, const auto& postParams, auto configParams)
+                         {
+                             localCallCount++;
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    // Execute - should retry and succeed
+    EXPECT_NO_THROW(connector.executeGetContext(indices, query));
+    EXPECT_EQ(localCallCount, 2) << "Should have retried once after 429";
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextPartialFailure)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"index-1", "index-2"};
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    int localCallCount = 0;
+
+    // First index succeeds, second index fails
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke([this, &localCallCount](auto requestParams, const auto& postParams, auto configParams)
+                         {
+                             localCallCount++;
+                             this->simulateSuccessfulPost(requestParams, postParams, configParams);
+                         }))
+        .WillOnce(Invoke([&localCallCount](auto, const auto& postParams, auto)
+                         {
+                             localCallCount++;
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                     .onError("Internal Server Error", 500, "");
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                     .onError("Internal Server Error", 500, "");
+                             }
+                         }));
+
+    // Should throw on second index error
+    EXPECT_THROW(connector.executeGetContext(indices, query), IndexerConnectorException);
+    EXPECT_EQ(localCallCount, 2) << "Should have attempted both indices";
+}
+
+/**
+ * @brief Test executeGetContext without callback (callback is empty/nullptr)
+ * 
+ * This test verifies that executeGetContext works correctly when no callback is provided:
+ * - The query executes successfully for all indices
+ * - No callback is invoked (because none was provided)
+ * - The method returns normally without errors
+ */
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextWithoutCallback)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"test-index-1", "test-index-2"};
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillRepeatedly(Invoke([](auto, const auto& postParams, auto)
+                         {
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    // Execute WITHOUT callback (callback parameter not provided)
+    EXPECT_NO_THROW(connector.executeGetContext(indices, query));
+}
+
+/**
+ * @brief Test executeGetContext with callback receiving two pages per index
+ * 
+ * This test verifies pagination behavior across multiple indices:
+ * - For each index, first page returns data with hits
+ * - Callback is invoked with first page data
+ * - Second query includes search_after parameter
+ * - Second page returns empty hits (end of pagination)
+ * - Callback is invoked with empty page
+ * - Process repeats for all indices
+ */
+TEST_F(IndexerConnectorSyncTest, ExecuteGetContextWithCallbackTwoPages)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::vector<std::string> indices = {"test-index-1", "test-index-2"};
+    nlohmann::json query = {{"query", {{"match_all", nlohmann::json::object()}}}};
+
+    int callbackCount = 0;
+    int postCallCount = 0;
+
+    // Each index will make 2 calls (first page with data, second page empty)
+    // Total: 2 indices * 2 pages = 4 POST requests
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(4)
+        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
+                         {
+                             postCallCount++;
+                             // Index 1, page 1: data
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":2},"hits":[{"_id":"1","sort":["sort1"]}]}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }))
+        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
+                         {
+                             postCallCount++;
+                             // Index 1, page 2: empty
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }))
+        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
+                         {
+                             postCallCount++;
+                             // Index 2, page 1: data
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":2},"hits":[{"_id":"2","sort":["sort2"]}]}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }))
+        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
+                         {
+                             postCallCount++;
+                             // Index 2, page 2: empty
+                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
+                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                             {
+                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                             }
+                             else
+                             {
+                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                             }
+                         }));
+
+    auto callback = [&callbackCount](const nlohmann::json& response) {
+        callbackCount++;
+    };
+
+    EXPECT_NO_THROW(connector.executeGetContext(indices, query, callback));
+
+    EXPECT_EQ(postCallCount, 4) << "Should have made 4 POST requests (2 indices * 2 pages each)";
+    EXPECT_EQ(callbackCount, 4) << "Callback should have been invoked 4 times (2 pages per index)";
+}
