@@ -729,6 +729,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
     int state_ok;
     int file_count = 0;
     size_t i = 0, n = 0, files_size = 0;
+    size_t optdir_len = 0;
     char *files;
     char * copy;
     char final_name[2048 + 1];
@@ -741,6 +742,11 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
     if (!finalfp) {
         merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
+    }
+
+    /* Calculate optdir length once for optimization */
+    if (optdir) {
+        optdir_len = strlen(optdir);
     }
 
     /* Finds index of the last element on the list */
@@ -861,24 +867,28 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
         }
 
         if (unmerged_files != NULL) {
-            /* Removes path from file name */
-            file_name = strrchr(final_name, '/');
-            if (file_name) {
-                file_name++;
-            }
-            else {
+            char *file_name_copy = NULL;
+
+            /* Calculate relative path from optdir to preserve directory structure */
+            if (optdir_len > 0) {
+                /* Skip optdir and the following '/' to get relative path */
+                if (strncmp(final_name, optdir, optdir_len) == 0 && final_name[optdir_len] == '/') {
+                    file_name = final_name + optdir_len + 1;
+                } else {
+                    /* Fallback: remove path from file name */
+                    file_name = strrchr(final_name, '/');
+                    file_name = file_name ? file_name + 1 : final_name;
+                }
+            } else {
+                /* No optdir specified, use full path */
                 file_name = final_name;
             }
 
-            /* Appends file name to unmerged files list */
-            os_realloc(*unmerged_files, (file_count + 2) * sizeof(char *), *unmerged_files);
-            os_strdup(file_name, *(*unmerged_files + file_count));
+            /* Append relative file path to unmerged files list */
+            os_strdup(file_name, file_name_copy);
+            *unmerged_files = w_strarray_append(*unmerged_files, file_name_copy, file_count);
             file_count++;
         }
-    }
-
-    if (unmerged_files != NULL) {
-        *(*unmerged_files + file_count) = NULL;
     }
 
     fclose(finalfp);
@@ -2336,12 +2346,72 @@ int cldir_ex(const char *name) {
 }
 
 
-int cldir_ex_ignore(const char * name, const char ** ignore) {
+/**
+ * @brief Check if a relative path should be preserved based on the ignore list
+ *
+ * This function verifies whether a given relative path or any of its descendants
+ * are present in the ignore list. It performs both exact matching and prefix
+ * matching to detect if the path contains protected files in subdirectories.
+ *
+ * @param relative_path The relative path to check (e.g., "subfolder/file.txt")
+ * @param ignore NULL-terminated array of paths to ignore (can be NULL)
+ * @return 1 if the path should be preserved, 0 otherwise
+ *
+ * @note This function uses path prefix matching with '/' as delimiter to avoid
+ *       false positives (e.g., "sub" won't match "subfolder/file.txt")
+ *
+ * Example:
+ * - relative_path = "subfolder", ignore = ["subfolder/file1.txt"] -> returns 1
+ * - relative_path = "file.txt", ignore = ["file.txt"] -> returns 1
+ * - relative_path = "other.txt", ignore = ["file.txt"] -> returns 0
+ */
+static int should_preserve_path(const char * relative_path, const char ** ignore) {
+    int i;
+    size_t path_len;
+
+    if (!ignore || !relative_path) {
+        return 0;
+    }
+
+    path_len = strlen(relative_path);
+
+    for (i = 0; ignore[i]; i++) {
+        const char *ignore_entry = ignore[i];
+
+        // Check if ignore[i] matches the relative path exactly
+        if (strcmp(relative_path, ignore_entry) == 0) {
+            return 1;
+        }
+
+        // Check if ignore[i] is a descendant of relative_path
+        if (strncmp(relative_path, ignore_entry, path_len) == 0 &&
+            ignore_entry[path_len] == '/') {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Internal recursive implementation to clean a directory while preserving ignored paths
+ *
+ * This function recursively removes files and directories within the specified directory,
+ * while preserving any paths that are present in the ignore list. It maintains a reference
+ * to the original base directory throughout the recursion to correctly calculate relative
+ * paths for matching against the ignore list.
+ *
+ * @param name The current directory to clean (changes during recursion)
+ * @param base_dir The original base directory (remains constant during recursion)
+ * @param ignore NULL-terminated array of relative paths to preserve (can be NULL)
+ * @return 0 on success, -1 on error
+ */
+static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, const char ** ignore) {
     DIR *dir;
     struct dirent *dirent = NULL;
     char path[PATH_MAX + 1];
-
-    // Erase content
+    char relative_path[PATH_MAX + 1];
+    size_t base_len = strlen(base_dir);
 
     dir = wopendir(name);
 
@@ -2351,7 +2421,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
-        if ((dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) || w_str_in_array(dirent->d_name, ignore)) {
+        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
         }
 
@@ -2360,6 +2430,27 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
             return -1;
         }
 
+        if (strncmp(base_dir, path, base_len) == 0 && path[base_len] == '/') {
+            snprintf(relative_path, PATH_MAX + 1, "%s", path + base_len + 1);
+        } else {
+            snprintf(relative_path, PATH_MAX + 1, "%s", dirent->d_name);
+        }
+
+        if (should_preserve_path(relative_path, ignore)) {
+            if (IsDir(path) == 0) {
+                // Recursively clean the directory, preserving protected files
+                if (cldir_ex_ignore_recursive(path, base_dir, ignore) < 0) {
+                    closedir(dir);
+                    return -1;
+                }
+
+                // If it still contains protected files, rmdir will fail with ENOTEMPTY, which is fine
+                rmdir(path);
+            }
+            continue;
+        }
+
+        // Not in ignore list, remove it
         if (rmdir_ex(path) < 0) {
             closedir(dir);
             return -1;
@@ -2367,6 +2458,10 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
     }
 
     return closedir(dir);
+}
+
+int cldir_ex_ignore(const char * name, const char ** ignore) {
+    return cldir_ex_ignore_recursive(name, name, ignore);
 }
 
 

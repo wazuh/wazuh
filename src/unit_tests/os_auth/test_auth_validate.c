@@ -268,6 +268,7 @@ static void test_w_auth_validate_groups(void **state) {
 
     /* Existent group */
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
     response[0] = '\0';
     err = w_auth_validate_groups(EXISTENT_GROUP1, response);
     assert_int_equal(err, OS_SUCCESS);
@@ -283,7 +284,9 @@ static void test_w_auth_validate_groups(void **state) {
 
     /* Existent multigroups */
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
     response[0] = '\0';
     err = w_auth_validate_groups(EXISTENT_GROUP1","EXISTENT_GROUP2, response);
     assert_int_equal(err, OS_SUCCESS);
@@ -291,7 +294,9 @@ static void test_w_auth_validate_groups(void **state) {
 
     /* One Non Existent on multigroups */
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_opendir, 1);
+    will_return(__wrap_closedir, 0);
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__merror, formatted_msg, "Invalid group: "UNKNOWN_GROUP);
     response[0] = '\0';

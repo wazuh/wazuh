@@ -95,6 +95,11 @@ int __wrap_link(const char *path1, const char *path2) {
     return mock();
 }
 
+int __wrap_rmdir(const char *path) {
+    check_expected(path);
+    return mock();
+}
+
 int __wrap_access (const char *__name, int __type) {
     check_expected(__name);
     check_expected(__type);
