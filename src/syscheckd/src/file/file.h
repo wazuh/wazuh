@@ -227,4 +227,21 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
                                      cJSON* changed_attributes,
                                      cJSON* old_attributes);
 
+/**
+ * @brief Build a stateful event JSON structure
+ *
+ * @param path File path
+ * @param file_stateful cJSON object containing file attributes
+ * @param sha1_hash SHA1 hash of the file
+ * @param document_version Version number of the document
+ * @return Complete stateful event cJSON object (must be freed by caller)
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+cJSON* build_stateful_event(const char* path, const cJSON* file_stateful, const char* sha1_hash, const uint64_t document_version);
+#ifdef __cplusplus
+}
+#endif
+
 #endif

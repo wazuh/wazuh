@@ -38,6 +38,45 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+
+cJSON* build_stateful_event(const char* path, const cJSON* file_stateful, const char* sha1_hash, const uint64_t document_version){
+    cJSON* stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        return NULL;
+    }
+
+    // File
+    cJSON_AddItemToObject(stateful_event, "file", file_stateful);
+#ifdef WIN32
+     char *utf8_path = auto_to_utf8(path);
+     if (utf8_path) {
+        cJSON_AddStringToObject(file_stateful, "path", utf8_path);
+        os_free(utf8_path);
+     } else {
+        cJSON_AddStringToObject(file_stateful, "path", path);
+     }
+ #else
+     cJSON_AddStringToObject(file_stateful, "path", path);
+ #endif
+
+    // Checksum
+    cJSON* checksum = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
+    cJSON* hash = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum, "hash", hash);
+    cJSON_AddStringToObject(hash, "sha1", sha1_hash);
+
+    // State
+    cJSON* state = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "state", state);
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+    cJSON_AddNumberToObject(state, "document_version", document_version);
+
+    return stateful_event;
+}
+
 // DBSync Callback
 
 /**
@@ -117,11 +156,6 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
-    stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
-        goto end; // LCOV_EXCL_LINE
-    }
-
     cJSON_AddStringToObject(stateless_event, "collector", "file");
     cJSON_AddStringToObject(stateless_event, "module", "fim");
 
@@ -137,23 +171,18 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
 
     cJSON* file_stateless = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
     cJSON_AddItemToObject(data, "file", file_stateless);
-
     cJSON* file_stateful = cJSON_Duplicate(file_stateless, 1);
-    cJSON_AddItemToObject(stateful_event, "file", file_stateful);
 
 #ifdef WIN32
      char *utf8_path = auto_to_utf8(path);
      if (utf8_path) {
         cJSON_AddStringToObject(file_stateless, "path", utf8_path);
-        cJSON_AddStringToObject(file_stateful, "path", utf8_path);
         os_free(utf8_path);
      } else {
         cJSON_AddStringToObject(file_stateless, "path", path);
-        cJSON_AddStringToObject(file_stateful, "path", path);
      }
  #else
      cJSON_AddStringToObject(file_stateless, "path", path);
-     cJSON_AddStringToObject(file_stateful, "path", path);
  #endif
 
     cJSON_AddStringToObject(file_stateless, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
@@ -192,31 +221,18 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         send_syscheck_msg(stateless_event);
     }
 
-    // Add checksum only to stateful event
-    cJSON* checksum = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
-    cJSON* hash = cJSON_CreateObject();
-    cJSON_AddItemToObject(checksum, "hash", hash);
-
+    char* sha1_checksum;
     if (txn_context->entry != NULL && txn_context->entry->file_entry.data != NULL) {
-        cJSON_AddStringToObject(hash, "sha1", txn_context->entry->file_entry.data->checksum);
+        sha1_checksum = txn_context->entry->file_entry.data->checksum;
     } else {
         cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
         if (aux != NULL) {
-            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
+            sha1_checksum = cJSON_GetStringValue(aux);
         } else {
             mdebug1("Couldn't find checksum for '%s", path);
             goto end; // LCOV_EXCL_LINE
         }
     }
-
-    // Add state modified_at and document_version fields for stateful event only
-    cJSON* state = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "state", state);
-
-    char modified_at_time[32];
-    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
-    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
 
     cJSON *version_aux = NULL;
     // For MODIFIED events, version is in the "new" object
@@ -231,14 +247,20 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     uint64_t document_version = 0;
     if (version_aux != NULL) {
         document_version = (uint64_t)version_aux->valueint;
-        cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
     } else {
         mdebug1("Couldn't find version for '%s", path);
         goto end; // LCOV_EXCL_LINE
     }
 
+    // TODO: file_path_sha???? what about the registry ones? prabable bug
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
+
+    stateful_event = build_stateful_event(path, file_stateful, sha1_checksum, document_version);
+    if (!stateful_event) {
+        mdebug1("Couldn't create stateful event for %s", path);
+        goto end; // LCOV_EXCL_LINE
+    }
 
     persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
 
