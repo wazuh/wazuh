@@ -82,6 +82,16 @@ class IAgentSyncProtocol
         /// @return true if notification completed successfully and database was cleared, false otherwise
         virtual bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) = 0;
 
+        /// @brief Sends DataContext messages to the server for VD sync.
+        ///
+        /// This method sends DataContext flatbuffer messages for each data item in the vector.
+        /// DataContext messages are used for vulnerability detection data that bypasses the indexer.
+        /// @param session Session id for the current sync
+        /// @param data Vector of PersistedData to send as DataContext messages
+        /// @return true if all messages were sent successfully, false otherwise
+        virtual bool sendDataContextMessages(uint64_t session,
+                                            const std::vector<PersistedData>& data) = 0;
+
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
