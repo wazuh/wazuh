@@ -117,52 +117,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  decoders_read:
-    description: Allow reading all decoders in the system.
-    policies:
-      resourceless:
-        actions:
-          - decoders:read
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  decoders_all:
-    description: Allow managing all decoders in the system.
-    policies:
-      resourceless:
-        actions:
-          - decoders:create
-          - decoders:read 
-          - decoders:update
-          - decoders:delete
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  kvdbs_read:
-    description: Allow reading KVDBs.
-    policies:
-      resourceless:
-          actions:
-          - kvdbs:read
-          resources:
-            - '*:*:*'
-          effect: allow
-
-  kvdbs_all:
-    description: Allow managing KVDBs (create, update, delete).
-    policies:
-      resourceless:
-        actions:
-          - kvdbs:create
-          - kvdbs:read
-          - kvdbs:update
-          - kvdbs:delete
-        resources:
-          - '*:*:*'
-        effect: allow
-
   mitre_read:
     description: Allow read MITRE database information.
     policies:
@@ -173,28 +127,59 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  integrations_read:
-    description: Allow reading all integrations files in the system.
+  integrations_order_read:
+    description: Allow reading integrations order.
     policies:
-      resourceless:
+      integrations_order:
         actions:
-          - integrations:read
+          - asset:read
         resources:
-          - '*:*:*'
+          - 'content:space:*'
         effect: allow
 
-  integrations_all:
-    description: Allow managing all integrations files in the system.
+  integrations_order_all:
+    description: Allow managing integrations order.
     policies:
-      resourceless:
+      integrations_order:
         actions:
-          - integrations:create
-          - integrations:read
-          - integrations:update
-          - integrations:delete
+          - asset:read
+          - asset:update
         resources:
-          - '*:*:*'
+          - 'content:space:draft'
         effect: allow
+
+  assets_read:
+    description: Allow reading assets.
+    policies:
+      assets:
+        actions:
+          - asset:read
+        resources:
+          - 'content:space:*'
+        effect: allow
+
+  assets_all:
+    description: Allow managing all assets.
+    policies:
+      assets:
+        actions:
+          - asset:create
+          - asset:read
+          - asset:update
+          - asset:delete
+        resources:
+          - 'content:space:draft'
+        effect: allow
+
+  catalog_read:
+    description: Allow reading the catalog.
+    policies:
+      catalog:
+        actions:
+          - asset:read
+        resources:
+          - 'content:space:*'
+        effect: allow 
 
   rootcheck_run:
     description: Allow run rootcheck.

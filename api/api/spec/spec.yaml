@@ -82,6 +82,9 @@ x-rbac-catalog:
       description: "Reference security rules via its id (i.e. rule:id:1)"
     'user:id':
       description: "Reference security users via its id (i.e. user:id:1)"
+    'content:space':
+      description: "Reference content spaces via its name (i.e. content:space:draft)"
+
   actions:
     'active-response:command':
       description: "Execute active response commands in the agents"
@@ -250,101 +253,37 @@ x-rbac-catalog:
         actions: ['mitre:read']
         resources: ['*:*:*']
         effect: "allow"
-    'decoders:read':
-      description: "Read decoders"
+    'asset:create':
+      description: "Create content asset"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/content:space'
       example:
-        actions: ['decoders:read']
-        resources: ['*:*:*']
+        actions: ['asset:create']
+        resources: ['content:space:draft']
         effect: "allow"
-    'decoders:update':
-      description: "Update decoders"
+    'asset:read':
+      description: "Read content asset"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/content:space'
       example:
-        actions: ['decoders:update']
-        resources: ['*:*:*']
+        actions: ['asset:read']
+        resources: ['content:space:draft']
         effect: "allow"
-    'decoders:delete':
-      description: "Delete decoders"
+    'asset:update':
+      description: "Update content asset"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/content:space'
       example:
-        actions: ['decoders:delete']
-        resources: ['*:*:*']
+        actions: ['asset:update']
+        resources: ['content:space:draft']
         effect: "allow"
-    'decoders:create':
-      description: "Create decoders"
+    'asset:delete':
+      description: "Delete content asset"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/content:space'
       example:
-        actions: ['decoders:create']
-        resources: ['*:*:*']
-        effect: "allow"
-    'kvdbs:read':
-      description: "Read KVDBs"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['kvdbs:read']
-        resources: ['*:*:*']
-        effect: "allow"
-    'kvdbs:create':
-      description: "Create KVDBs"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['kvdbs:create']
-        resources: ['*:*:*']
-        effect: "allow"
-    'kvdbs:update':
-      description: "Update KVDBs"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['kvdbs:update']
-        resources: ['*:*:*']
-        effect: "allow"
-    'kvdbs:delete':
-      description: "Delete KVDBs"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['kvdbs:delete']
-        resources: ['*:*:*']
-        effect: "allow"
-    'integrations:create':
-      description: "Create integration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'integrations:create' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
-    'integrations:read':
-      description: "Read integration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'integrations:read' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
-    'integrations:update':
-      description: "Update integration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'integrations:update' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
-    'integrations:delete':
-      description: "Delete integration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'integrations:delete' ]
-        resources: [ '*:*:*' ]
+        actions: ['asset:delete']
+        resources: ['content:space:draft']
         effect: "allow"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
@@ -764,6 +703,33 @@ components:
               items:
                 $ref: '#/components/schemas/Agent'
 
+    AllItemsResponseContentCatalog:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/CatalogItem'
+
+    AllItemsResponseAssetAffected:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/AssetUUID'     
+    
+
     AllItemsResponseAgentsDistinct:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1121,6 +1087,8 @@ components:
             - enabled
             - disabled
 
+
+
     ## Active-response models
     ActiveResponseBody:
       type: object
@@ -1218,6 +1186,33 @@ components:
         group_config_status:
           type: string
           description: "Agent groups configuration sync status"
+
+    AssetBody:
+      type: object
+      properties:
+        content:
+          description: "YAML string representing the asset"
+          type: string
+      required:
+        - content
+  
+    AssetUUID:
+      type: string
+      format: uuid
+      description: "Asset UUID"
+
+    CatalogItem:
+      type: object
+      properties:
+        uuid:
+          $ref: '#/components/schemas/AssetUUID'
+        name:
+          type: string
+          description: "Asset name"
+        hash:
+          type: string
+          format: hash
+          description: "Asset hash"
 
     AgentAddBody:
       type: object
@@ -1931,59 +1926,6 @@ components:
               enum:
               - "yes"
               - "no"
-
-    # KVDB models
-    ItemKVDB:
-      allOf:
-        - $ref: '#/components/schemas/CommonRuleset'
-        - type: object
-          description: "KVDB asset descriptor and content"
-          required:
-            - id
-            - name
-            - content
-          properties:
-            integration_id:
-              type: string
-              nullable: true
-              description: "Optional integration owner ID"
-            content:
-              type: object
-              additionalProperties: true
-              description: "Key-Value map (or object) managed by the Engine"
-
-    KVDBUpsertRequest:
-      allOf:
-        - $ref: '#/components/schemas/CommonRuleset'
-        - type: object
-          required:
-            - id
-            - content
-          properties:
-            integration_id:
-              type: string
-              nullable: true
-            content:
-              type: object
-              additionalProperties: true
-
-    AllItempsResponseKVDBs:
-      allOf:
-        - $ref: '#/components/schemas/ApiResponse'
-        - type: object
-          properties:
-            data:
-              allOf:
-                - $ref: '#/components/schemas/AllItemsResponse'
-                - type: object
-                  required:
-                    - affected_items
-                  properties:
-                    affected_items:
-                      type: array
-                      description: "KVDBs affected/returned by the API call"
-                      items:
-                        $ref: '#/components/schemas/ItemKVDB'
 
     # Logtest models
     LogtestRequest:
@@ -4095,75 +4037,6 @@ components:
           items:
             $ref: '#/components/schemas/Agent'
 
-    # Integrations models
-    IntegrationCreateModel:
-      type: object
-      properties:
-        type:
-          type: string
-          description: Integration type.
-        name:
-          type: string
-          description: Integration name.
-        id:
-          type: string
-          description: Integration ID.
-        description:
-          type: string
-          description: Integration description.
-        documentation:
-          type: string
-          description: Integration documentation.
-        status:
-          type: string
-          description: Integration status.
-        kvdbs:
-          type: array
-          items:
-            type: string
-          description: List of KVDBs associated with the integration.
-        decoders:
-          type: array
-          items:
-            type: string
-          description: List of decoders associated with the integration.
-      required:
-        - type
-        - name
-        - id
-        - description
-        - documentation
-        - status
-        - kvdbs
-        - decoders
-
-
-    # Integrations order models
-    IntegrationInfo:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Integration ID.
-        name:
-          type: string
-          description: Integration name.
-      required:
-        - id
-        - name
-
-    IntegrationsOrder:
-      type: object
-      properties:
-        order:
-          type: array
-          items:
-            $ref: '#/components/schemas/IntegrationInfo'
-          description: List of IntegrationInfo objects representing the order.
-      required:
-        - order
-
-
   securitySchemes:
     basicAuth:
       type: http
@@ -5971,6 +5844,42 @@ components:
       schema:
         type: string
         format: xml_filename_path
+    space_crud:
+      name: space
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: 
+          - draft
+    space_read_only:
+      name: space
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - draft
+          - testing
+          - custom
+          - wazuh
+    asset_type:
+      name: asset_type
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - integrations
+          - decoders
+          - kvdbs
+    asset_uuid:
+      name: asset_uuid
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
 tags:
   - name: API Info
@@ -5981,14 +5890,10 @@ tags:
     description: "Agents management related operations"
   - name: Cluster
     description: "Wazuh cluster and nodes management"
-  - name: Decoders
-    description: "Decoders management"
   - name: Events
     description: "Ingestion endpoints"
   - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: KVDBs
-    description: "User-defined KVDBs management"
   - name: Logtest
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
@@ -6011,6 +5916,8 @@ tags:
     description: "Syscollector information"
   - name: Tasks
     description: "Tasks information"
+  - name: Content
+    description: "Wazuh content management"
 
 security:
   - jwt: []
@@ -8418,6 +8325,213 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /content/catalog/{space}/{asset_type}:
+    get:
+      tags:
+        - Content
+      summary: Retrieve catalog of assets by type
+      description: |
+        Retrieves all assets of the given type from the specified space.
+        Response may be a structured list depending on asset type.
+      operationId: api.controllers.content_controller.get_catalog
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/asset:read'
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+        - $ref: "#/components/parameters/space_read_only"
+        - $ref: "#/components/parameters/asset_type"
+      responses:
+        "200":
+          description: Catalog retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllItemsResponseContentCatalog"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /content/asset/{space}/{asset_uuid}:
+    get:
+      tags:
+        - Content
+      summary: Retrieve a single asset by UUID
+      description: |
+        Returns the full definition of an asset from the specified space.
+      operationId: api.controllers.content_controller.get_asset
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/asset:read'
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+        - $ref: "#/components/parameters/space_read_only"
+        - $ref: "#/components/parameters/asset_uuid"
+      responses:
+        "200":
+          description: Asset found
+          content:
+            application/json:
+              data:
+                $ref: "#/components/schemas/AssetBody"
+              error:
+                type: integer
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+        - Content
+      summary: Delete an asset
+      description: |
+        Deletes an existing asset
+      operationId: api.controllers.content_controller.delete_asset
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/asset:delete'
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+        - $ref: "#/components/parameters/space_crud"
+        - $ref: "#/components/parameters/asset_uuid"
+      responses:
+        "200":
+          description: Asset successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllItemsResponseAssetAffected"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /content/asset/{space}/{asset_type}:
+    put:
+      tags:
+        - Content
+      summary: Create or update an asset.
+      description: |
+        Creates or updates an asset definition.
+      operationId: api.controllers.content_controller.upsert_asset
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/asset:create'
+        - $ref: '#/x-rbac-catalog/actions/asset:update'
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+        - $ref: "#/components/parameters/space_crud"
+        - $ref: "#/components/parameters/asset_type"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetBody"
+      responses:
+        "200":
+          description: Asset created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllItemsResponseAssetAffected"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /content/integration-order/{space}:
+    get:
+      tags:
+        - Content
+      summary: Retrieve integration execution order
+      description: Returns the integration-order object for the given space.
+      operationId: api.controllers.content_controller.get_integration_order
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/asset:read'
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+        - $ref: "#/components/parameters/space_crud"
+      responses:
+        "200":
+          description: Integration order retrieved
+          content:
+            application/json:
+              schema:
+              $ref: "#/components/schemas/AllItemsResponseAssetAffected"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+        - Content
+      summary: Update integration-order
+      description: |
+        Updates the integration execution order.
+      operationId: api.controllers.content_controller.put_integration_order
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/asset:update'
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+        - $ref: "#/components/parameters/space_read_only"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetBody"
+      responses:
+        "200":
+          description: Integration order updated
+          content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllItemsResponseAssetAffected"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /cluster/local/info:
     get:
       tags:
@@ -10361,503 +10475,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /integrations:
-    post:
-      tags:
-        - Integrations
-      summary: "Create a new integration"
-      description: "Creates a new integration asset"
-      operationId: api.controllers.integration_controller.upsert_integration
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:create'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IntegrationCreateModel'
-      responses:
-        '200':
-          description: Integration created
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    get:
-      tags:
-        - Integrations
-      summary: "Get integrations"
-      description: "Get a list of integrations"
-      operationId: api.controllers.integration_controller.get_integration
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:read'
-      parameters:
-        - $ref: '#/components/parameters/integration_id'
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/status_resource'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: List of integrations
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags:
-        - Integrations
-      summary: "Update integrations"
-      description: "Updates the contents of an Integration"
-      operationId: api.controllers.integration_controller.upsert_integration
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:update'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IntegrationCreateModel'
-      responses:
-        '200':
-          description: Integration updated
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-        - Integrations
-      summary: "Delete integrations"
-      description: "Delete a list of integrations"
-      operationId: api.controllers.integration_controller.delete_integration
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:delete'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/integration_id'
-      responses:
-        '200':
-          description: Integrations deleted
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /integrations_order:
-    get:
-      tags:
-        - Integrations_order
-      summary: "Get list ofget integrations orders"
-      description: "Get list of integrations orders"
-      operationId: api.controllers.integrations_order_controller.get_integrations_order
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-      responses:
-        '200':
-          description: List of integration info
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags:
-        - Integrations_order
-      summary: "Create integrations orders"
-      description: "Create a list of integrations orders"
-      operationId: api.controllers.integrations_order_controller.upsert_integrations_order
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:create'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/IntegrationInfo'
-      responses:
-        '200':
-          description: Integrations order created
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-        - Integrations_order
-      summary: "Delete integrations orders"
-      description: "Delete integrations orders"
-      operationId: api.controllers.integrations_order_controller.delete_integrations_order
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:delete'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_type'
-      responses:
-        '200':
-          description: Integrations order deleted
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /kvdbs:
-    get:
-      tags:
-        - KVDBs
-      summary: "List KVDB resources"
-      description: "Return KVDBs."
-      operationId: api.controllers.kvdb_controller.get_kvdb
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/kvdbs:read'
-      parameters:
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/kvdb_id'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: "KVDBs"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AllItempsResponseKVDBs'
-              example:
-                data:
-                  affected_items:
-                      id: ip_reputation
-                      integration_id: threatintel_v1
-                      name: "IP Reputation"
-                      content:
-                        "1.2.3.4": "malicious"
-                        "5.6.7.8": "suspicious"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "KVDBs returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    post:
-      tags:
-        - KVDBs
-      summary: "Create a KVDB"
-      description: "Create a KVDB."
-      operationId: api.controllers.kvdb_controller.upsert_kvdb
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/kvdbs:create'
-      parameters:
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ItemKVDB'
-            example:
-              id: kvdb_id
-              integration_id: integration_a_id
-              name: "Example KVDB"
-              content:
-                Key1: "Value1"
-                Key2: "Value2"
-      responses:
-        '200':
-          description: "Created"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - kvdb_id
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "KVDB created"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags:
-        - KVDBs
-      summary: "Update a KVDB"
-      description: "Update a KVDB."
-      operationId: api.controllers.kvdb_controller.upsert_kvdb
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/kvdbs:update'
-      parameters:
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/KVDBUpsertRequest'
-            example:
-              id: kvdb_id
-              integration_id: integration_a_id
-              content:
-                Key1: "NewValue1"
-                Key3: "Value3"
-      responses:
-        '200':
-          description: "Updated"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AllItempsResponseKVDBs'
-              example:
-                data:
-                  affected_items:
-                      id: kvdb_id
-                      integration_id: integration_a_id
-                      name: "Example KVDB"
-                      content:
-                        Key1: "NewValue1"
-                        Key3: "Value3"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "KVDB updated"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-        - KVDBs
-      summary: "Delete KVDBs"
-      description: "Delete one or more KVDBs."
-      operationId: api.controllers.kvdb_controller.delete_kvdb
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/kvdbs:delete'
-      parameters:
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/kvdb_id'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Deleted"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - kvdb_id
-                    - kvdb_old
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: "KVDBs deleted"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /logtest:
     put:
       tags:
@@ -11529,521 +11146,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /rules:
-    get:
-      tags:
-        - Rules
-      summary: "List rules"
-      description: "Return a list containing information about each rule such as file where it's defined, description,
-      rule group, status, etc"
-      operationId: api.controllers.rule_controller.get_rules
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rules:read'
-      parameters:
-        - $ref: '#/components/parameters/rule_ids'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/group'
-        - $ref: '#/components/parameters/level'
-        - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/pci_dss'
-        - $ref: '#/components/parameters/gdpr'
-        - $ref: '#/components/parameters/gpg13'
-        - $ref: '#/components/parameters/hipaa'
-        - $ref: '#/components/parameters/nist-800-53'
-        - $ref: '#/components/parameters/tsc'
-        - $ref: '#/components/parameters/mitre'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: "Rule"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseRules'
-              example:
-                data:
-                  affected_items:
-                    - filename: "0020-syslog_rules.xml"
-                      relative_dirname: "ruleset/rules"
-                      id: 1001
-                      level: 2
-                      status: enabled
-                      details:
-                        match:
-                          pattern: "^Couldn't open /etc/securetty"
-                      pci_dss:
-                        - "0.2.4"
-                      gpg13:
-                        - "4.1"
-                      gdpr:
-                        - "IV_35.7.d"
-                      hipaa:
-                        - "164.312.b"
-                      nist_800_53:
-                        - "AU.14"
-                        - "AC.7"
-                      tsc:
-                        - "CC6.1"
-                        - "CC6.8"
-                        - "CC7.2"
-                        - "CC7.3"
-                      mitre: []
-                      groups:
-                        - syslog
-                        - errors
-                      description: "File missing. Root access unrestricted."
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected rules were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /rules/groups:
-    get:
-      tags:
-        - Rules
-      summary: "Get groups"
-      description: "Return a list containing all rule groups names"
-      operationId: api.controllers.rule_controller.get_rules_groups
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rules:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "Rule groups names"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - active_response
-                    - attacks
-                    - firewall
-                    - gdpr_II_5.1.f
-                    - gdpr_IV_30.1.g
-                  total_affected_items: 6
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All groups in rules were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /rules/requirement/{requirement}:
-    get:
-      tags:
-        - Rules
-      summary: "Get requirements"
-      description: "Return all specified requirement names defined in the Wazuh ruleset"
-      operationId: api.controllers.rule_controller.get_rules_requirement
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rules:read'
-      parameters:
-        - $ref: '#/components/parameters/rule_requirement'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "Requirements names"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - A1.2
-                    - CC6.1
-                    - CC6.2
-                    - CC6.3
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected rules were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /rules/files:
-    get:
-      tags:
-        - Rules
-      summary: "Get files"
-      description: "Return a list containing all files used to define rules and their status"
-      operationId: api.controllers.rule_controller.get_rules_files
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rules:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/xml_filename'
-        - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: "Rule"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseRulesFiles'
-              example:
-                data:
-                  affected_items:
-                    - file: 0010-rules_config.xml
-                      relative_dirname: ruleset/rules
-                      status: enabled
-                    - file: 0015-ossec_rules.xml
-                      relative_dirname: ruleset/rules
-                      status: enabled
-                    - file: 0016-wazuh_rules.xml
-                      relative_dirname: ruleset/rules
-                      status: enabled
-                    - file: 0020-syslog_rules.xml
-                      relative_dirname: ruleset/rules
-                      status: enabled
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All rules files were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /rules/files/{filename}:
-    get:
-      tags:
-        - Rules
-      summary: "Get rules file content"
-      description: "Get the content of a specified rule in the ruleset"
-      operationId: api.controllers.rule_controller.get_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rules:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/raw'
-        - $ref: '#/components/parameters/get_dirnames_path'
-      responses:
-        '200':
-          description: "Rule content"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - group:
-                      - "@name": syslog,
-                        rule:
-                          "@id": '1'
-                          "@level": '0'
-                          "@noalert": '1'
-                          category: syslog
-                          description: "Generic template for all syslog rules."
-                      - "@name": firewall,
-                        rule:
-                          "@id": '2'
-                          "@level": '0'
-                          "@noalert": '1'
-                          category: firewall
-                          description: "Generic template for all firewall rules."
-                      - "@name": ids,
-                        rule:
-                          "@id": '3'
-                          "@level": '0'
-                          "@noalert": '1'
-                          category: ids
-                          description: "Generic template for all ids rules."
-                      - "@name": web-log,
-                        rule:
-                          "@id": '4'
-                          "@level": '0'
-                          "@noalert": '1'
-                          category: web-log
-                          description: "Generic template for all web rules."
-                      - "@name": squid,
-                        rule:
-                          "@id": '5'
-                          "@level": '0'
-                          "@noalert": '1'
-                          category: squid
-                          description: "Generic template for all web proxy rules."
-                      - "@name": windows,
-                        rule:
-                          "@id": '6'
-                          "@level": '0'
-                          "@noalert": '1'
-                          category: windows
-                          description: "Generic template for all windows rules."
-                      - "@name": ossec,
-                        rule:
-                          "@id": '7'
-                          "@level": '0'
-                          "@noalert": '1'
-                          category: ossec
-                          description: "Generic template for all wazuh rules."
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: Selected rule was returned
-                error: 0
-            application/xml:
-              schema:
-                type: string
-              example: |
-                <!--
-                  -  Rules config
-                  -  Author: Daniel Cid.
-                  -  Updated by Wazuh, Inc.
-                  -  Copyright (C) 2015, Wazuh Inc.
-                  -  Copyright (C) 2009 Trend Micro Inc.
-                  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
-                -->
-                <group name="syslog,">
-                  <rule id="1" level="0" noalert="1">
-                    <category>syslog</category>
-                    <description>Generic template for all syslog rules.</description>
-                  </rule>
-                </group>
-                <group name="firewall,">
-                  <rule id="2" level="0" noalert="1">
-                    <category>firewall</category>
-                    <description>Generic template for all firewall rules.</description>
-                  </rule>
-                </group>
-                <group name="ids,">
-                  <rule id="3" level="0" noalert="1">
-                    <category>ids</category>
-                    <description>Generic template for all ids rules.</description>
-                  </rule>
-                </group>
-                <group name="web-log,">
-                  <rule id="4" level="0" noalert="1">
-                    <category>web-log</category>
-                    <description>Generic template for all web rules.</description>
-                  </rule>
-                </group>
-                <group name="squid,">
-                  <rule id="5" level="0" noalert="1">
-                    <category>squid</category>
-                    <description>Generic template for all web proxy rules.</description>
-                  </rule>
-                </group>
-                <group name="windows,">
-                  <rule id="6" level="0" noalert="1">
-                    <category>windows</category>
-                    <description>Generic template for all windows rules.</description>
-                  </rule>
-                </group>
-                <group name="ossec,">
-                  <rule id="7" level="0" noalert="1">
-                    <category>ossec</category>
-                    <description>Generic template for all ossec rules.</description>
-                  </rule>
-                </group>
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags:
-        - Rules
-      summary: "Update rules file"
-      description: "Upload or replace a user ruleset file content"
-      operationId: api.controllers.rule_controller.put_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rules:update'
-        - $ref: '#/x-rbac-catalog/actions/rules:delete'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/overwrite'
-        - $ref: '#/components/parameters/get_dirnames_path'
-      requestBody:
-        description: "Content of the rule to be uploaded"
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/rules/new_rule.xml"
-                  failed_items: []
-                  total_affected_items: 1
-                  total_failed_items: 0
-                message: "Rule was successfully uploaded"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    delete:
-      tags:
-        - Rules
-      summary: "Delete rules file"
-      description: "Delete a specified rule file"
-      operationId: api.controllers.rule_controller.delete_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rules:delete'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/get_dirnames_path'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/rules/new_rule.xml"
-                  failed_items: []
-                  total_affected_items: 1
-                  total_failed_items: 0
-                message: "Rule was successfully deleted"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /syscheck:
     put:
       tags:
@@ -12092,179 +11194,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /decoders:
-    get:
-      tags:
-        - Decoders
-      summary: "Get decoders"
-      description: "Get decoders"
-      operationId: api.controllers.decoder_controller.get_decoder
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/decoder_id'
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/status_resource'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: "List of decoders."
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseDecoders'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    put:
-      tags:
-        - Decoders
-      summary: "Update decoders"
-      description: "Update decoders"
-      operationId: api.controllers.decoder_controller.upsert_decoder
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:update'
-      parameters:
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Decoder'
-            example:
-              type: decoder
-              id: decoder_id
-              integration_id: integration_id
-              name: Example new decoder
-              status: enabled
-              document:
-                metadata:
-                  author:
-                    date: date
-                    name: name
-                  compatibility: compatibility
-                  description: description
-                  module: module
-                  references: references
-                  title: title
-                  versions: versions
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    post:
-      tags:
-        - Decoders
-      summary: "Create decoders"
-      description: "Create decoders"
-      operationId: api.controllers.decoder_controller.upsert_decoder
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:create'
-      parameters:
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Decoder'
-            example:
-              type: decoder
-              id: decoder_id
-              integration_id: integration_id
-              name: Example new decoder
-              status: enabled
-              document:
-                metadata:
-                  author:
-                    date: date
-                    name: name
-                  compatibility: compatibility
-                  description: description
-                  module: module
-                  references: references
-                  title: title
-                  versions: versions
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-    delete:
-      tags:
-        - Decoders
-      summary: "Delete decoders"
-      description: "Delete decoders"
-      operationId: api.controllers.decoder_controller.delete_decoder
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
-      parameters:
-        - $ref: '#/components/parameters/decoder_id'
-        - $ref: '#/components/parameters/policy_type'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
   /events:
     post:
       tags:

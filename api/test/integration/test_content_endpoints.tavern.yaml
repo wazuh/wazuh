@@ -1,0 +1,410 @@
+
+---
+test_name: GET /content/catalog/{space}/{asset_type}
+
+marks:
+  - parametrize:
+      key: space
+      vals:
+        - wazuh
+        - custom
+        - testing
+        - draft
+  - parametrize:
+      key: asset_type
+      vals:
+        - decoders
+        - integrations
+        - kvdvs
+
+stages:
+
+  - name: Get content catalog for {space} and {asset_type}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/catalog/{space:s}/{asset_type:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          affected_items:
+            - uuid: !anystr
+              name: !anystr
+              hash: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+---
+test_name: GET /content/catalog/{space}/{asset_type} with invalid space
+mark:
+  - parametrize:
+      key: asset_type
+      vals:
+        - decoders
+        - integrations
+        - kvdvs
+
+stages:
+
+  - name: Get content catalog for invalid space
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/catalog/invalid_space/{asset_type:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      headers:
+        content-type: application/json
+
+---
+test_name: GET /content/catalog/{space}/{asset_type} with invalid asset_type
+mark:
+  - parametrize:
+      key: space
+      vals:
+        - wazuh
+        - custom
+        - testing
+        - draft
+
+stages:
+
+  - name: Get content catalog for invalid asset_type
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/catalog/{space:s}/invalid_asset_type"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      headers:
+        content-type: application/json
+
+---
+test_name: /content/catalog/{space}/{asset_type} with invalid method
+mark:
+  - parametrize:
+      method:
+        - POST
+        - PUT
+        - DELETE
+  - parametrize:
+      key: space
+      vals:
+        - wazuh
+        - custom
+        - testing
+        - draft
+  - parametrize:
+      key: asset_type
+      vals:
+        - decoders
+        - integrations
+        - kvdvs
+
+stages:
+
+  - name: Call content catalog with invalid method {method}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/catalog/{space:s}/{asset_type:s}"
+      method: "{method:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 405
+
+---
+test_name: GET /content/integration-order/{space}
+
+marks:
+  - parametrize:
+      key: space
+      vals:
+        - wazuh
+        - custom
+        - testing
+        - draft
+
+stages:
+
+  - name: Get integrations order for {space}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/integration-order/{space:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          integration_order:
+            - !anystr
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: []
+        message: "Integration order for {space} was returned"
+
+---
+test_name: GET /content/integration-order/{space} with invalid space
+
+stages:
+
+  - name: Get integrations order for invalid space
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/integration-order/invalid_space"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      headers:
+        content-type: application/json
+      json:
+        error: 4040
+        data: {}
+
+---
+test_name: /content/integration-order/{space} with invalid methods
+
+marks:
+  - parametrize:
+      method:
+        - POST
+        - DELETE
+  - parametrize:
+      key: space
+      vals:
+        - wazuh
+        - custom
+        - testing
+        - draft
+
+stages:
+
+  - name: Call integrations order with invalid method {method}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/integration-order/{space:s}"
+      method: "{method:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 405
+      headers:
+        content-type: application/json
+      json:
+        error: 4050
+        data: {}
+
+---
+test_name: PUT /content/integration-order/{space} with allowed spaces
+
+marks:
+  - parametrize:
+      key: space
+      vals:
+        - draft
+
+stages:
+
+  - name: Update integrations order for {space}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/integration-order/{space:s}"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        integration_order:
+          - "integration_1"
+          - "integration_2"
+          - "integration_3"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          integration_order:
+            - "integration_1"
+            - "integration_2"
+            - "integration_3"
+
+---
+test_name: PUT /content/integration-order/{space} with not allowed spaces
+
+marks:
+  - parametrize:
+      key: space
+      vals:
+        - wazuh
+        - custom
+        - testing
+
+stages:
+
+  - name: Update integrations order for not allowed space {space}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/integration-order/{space:s}"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        integration_order:
+          - "integration_1"
+          - "integration_2"
+          - "integration_3"
+    response:
+      status_code: 403
+
+---
+test_name: Lifecycle /content/asset/{space}/{asset_type}
+
+marks:
+  - parametrize:
+      key: space
+      vals:
+        - draft
+  - parametrize:
+      key: asset_type
+      vals:
+        - integrations
+        - decoders
+        - kvdvs
+
+stages:
+
+  - name: Create asset content for {space}, {asset_type}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/asset/{space:s}/{asset_type:s}"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      content-type: application/json
+      json:
+        content: "{{asset_type:s}_sample:s}"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          affected_items:
+            - uuid: !anystr
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+        message: "{asset_type:s} was successfully created"
+      save:
+        json:
+          asset_uuid: data.affected_items[0].uuid
+
+  - name: Get asset content for {space}, {asset_type}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/asset/{space:s}/{asset_type:s}/{asset_uuid:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          content: "{{asset_type:s}_sample:s}"
+
+  - name: Update asset content for {space}, {asset_type}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/asset/{space:s}/{asset_type:s}"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      content-type: application/json
+      json:
+        content: "{{asset_type:s}_sample_2:s}"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          affected_items:
+            - uuid: "{asset_uuid:s}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+        message: "{asset_type:s} was successfully updated"
+
+
+  - name: Get updated asset content for {space}, {asset_type}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/asset/{space:s}/{asset_type:s}/{asset_uuid:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          content: "{{asset_type:s}_sample_2:s}"
+
+  - name: Delete asset content for {space}, {asset_type}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/asset/{space:s}/{asset_type:s}/{asset_uuid:s}"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        error: 0
+        data:
+          affected_items:
+            - uuid: "{asset_uuid:s}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+        message: "{asset_type:s} was successfully deleted"
+
+  - name: Get deleted asset content for {space}, {asset_type}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/content/asset/{space:s}/{asset_type:s}/{asset_uuid:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404

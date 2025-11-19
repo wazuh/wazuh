@@ -17,9 +17,11 @@ relationships:
         - agents_commands
         - security_all
         - cluster_all
-        - decoders_all
-        - kvdbs_all
-        - integrations_all
+        - assets_read
+        - assets_all
+        - catalog_read
+        - integrations_order_read
+        - integrations_order_all
         - rootcheck_run
         - rules_all
         - mitre_read
@@ -35,9 +37,9 @@ relationships:
       policy_ids:
         - agents_read
         - cluster_read
-        - decoders_read
-        - kvdbs_read
-        - integrations_read
+        - assets_read
+        - catalog_read
+        - integrations_order_read
         - rules_read
         - mitre_read
       rule_ids: []
