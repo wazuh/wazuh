@@ -708,19 +708,47 @@ public:
                             }
                             else
                             {
-                                std::string managerChecksum =
-                                    calculateChecksumOfChecksums(res.context->checksumIndex, res.context->agentId);
+                                // Retry logic: attempt checksum validation with delays between retries
+                                // This handles cases where recent delta syncs haven't been indexed yet
+                                constexpr int MAX_RETRIES = 5;
+                                constexpr int RETRY_DELAY_SEC = 10;
+                                bool checksumMatch = false;
+                                std::string managerChecksum;
 
-                                logInfo(LOGGER_DEFAULT_TAG,
-                                        "ModuleCheck: agent=%s, module=%s, index=%s, agent_checksum=%s, "
-                                        "manager_checksum=%s",
-                                        res.context->agentId.c_str(),
-                                        res.context->moduleName.c_str(),
-                                        res.context->checksumIndex.c_str(),
-                                        res.context->checksum.c_str(),
-                                        managerChecksum.c_str());
+                                for (int attempt = 0; attempt < MAX_RETRIES; ++attempt)
+                                {
+                                    if (attempt > 0)
+                                    {
+                                        logDebug2(LOGGER_DEFAULT_TAG,
+                                                  "ModuleCheck: Retry attempt %d for agent %s after %ds delay",
+                                                  attempt,
+                                                  res.context->agentId.c_str(),
+                                                  RETRY_DELAY_SEC);
+                                        std::this_thread::sleep_for(std::chrono::seconds(RETRY_DELAY_SEC));
+                                    }
 
-                                if (managerChecksum == res.context->checksum)
+                                    managerChecksum =
+                                        calculateChecksumOfChecksums(res.context->checksumIndex, res.context->agentId);
+
+                                    logInfo(LOGGER_DEFAULT_TAG,
+                                            "ModuleCheck (attempt %d/%d): agent=%s, module=%s, index=%s, "
+                                            "agent_checksum=%s, manager_checksum=%s",
+                                            attempt + 1,
+                                            MAX_RETRIES,
+                                            res.context->agentId.c_str(),
+                                            res.context->moduleName.c_str(),
+                                            res.context->checksumIndex.c_str(),
+                                            res.context->checksum.c_str(),
+                                            managerChecksum.c_str());
+
+                                    if (managerChecksum == res.context->checksum)
+                                    {
+                                        checksumMatch = true;
+                                        break; // Success - exit retry loop
+                                    }
+                                }
+
+                                if (checksumMatch)
                                 {
                                     logInfo(LOGGER_DEFAULT_TAG,
                                             "ModuleCheck: Checksums match for agent %s - no full resync needed",
@@ -733,8 +761,10 @@ public:
                                 else
                                 {
                                     logInfo(LOGGER_DEFAULT_TAG,
-                                            "ModuleCheck: Checksums DO NOT match for agent %s - full resync required",
-                                            res.context->agentId.c_str());
+                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - full "
+                                            "resync required",
+                                            res.context->agentId.c_str(),
+                                            MAX_RETRIES);
                                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
                                                                      res.context->agentId,
                                                                      res.context->sessionId,
