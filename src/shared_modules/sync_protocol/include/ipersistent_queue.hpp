@@ -95,7 +95,8 @@ class IPersistentQueue
                             const std::string& index,
                             const std::string& data,
                             Operation operation,
-                            uint64_t version) = 0;
+                            uint64_t version,
+                            bool isDataContext = false) = 0;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @return A vector of messages now marked as SYNCING.
