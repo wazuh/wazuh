@@ -15,6 +15,7 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 #include <iostream>
+#include <fstream>
 #include <stack>
 #include <chrono>
 #include <thread>
@@ -1659,10 +1660,42 @@ bool Syscollector::syncModule(Mode mode)
 >>>>>>> ea12db3268 (fix(syscollector): sync both VD and non-VD protocols with backward-compatible options)
     }
 
-    // Sync VD data using regular SYNC option for backward compatibility
+    // Sync VD data with appropriate option based on first scan status
     if (m_spSyncProtocolVD)
     {
-        success = m_spSyncProtocolVD->synchronizeModule(mode, Option::SYNC) && success;
+        // Check if first VD scan has been completed
+        const std::string vdFlagFile = "queue/syscollector/db/.vd_first_sync_done";
+        std::ifstream flagCheck(vdFlagFile);
+        bool firstSyncDone = flagCheck.good();
+        flagCheck.close();
+
+        // Use VDFIRST for first scan, VDSYNC for subsequent syncs
+        Option vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
+
+        bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+
+        // Create flag file after successful first sync
+        if (vdSuccess && !firstSyncDone)
+        {
+            m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + vdFlagFile);
+            std::ofstream flagFile(vdFlagFile);
+            if (flagFile.is_open())
+            {
+                flagFile << "1";
+                flagFile.close();
+                m_logFunction(LOG_INFO, "VD first sync completed, flag file created");
+            }
+            else
+            {
+                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + vdFlagFile);
+            }
+        }
+        else if (!vdSuccess)
+        {
+            m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
+        }
+
+        success = vdSuccess && success;
     }
 
     return success;
@@ -1704,12 +1737,41 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 {
-    if (m_spSyncProtocol)
+    // Separate VD and non-VD indices
+    std::vector<std::string> vdIndices;
+    std::vector<std::string> nonVdIndices;
+
+    for (const auto& index : indices)
     {
-        return m_spSyncProtocol->notifyDataClean(indices);
+        bool isVDIndex = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                          index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                          index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+        if (isVDIndex)
+        {
+            vdIndices.push_back(index);
+        }
+        else
+        {
+            nonVdIndices.push_back(index);
+        }
     }
 
-    return false;
+    bool success = true;
+
+    // Clean non-VD data with regular SYNC option
+    if (!nonVdIndices.empty() && m_spSyncProtocol)
+    {
+        success = m_spSyncProtocol->notifyDataClean(nonVdIndices, Option::SYNC);
+    }
+
+    // Clean VD data with VDCLEAN option
+    if (!vdIndices.empty() && m_spSyncProtocolVD)
+    {
+        success = m_spSyncProtocolVD->notifyDataClean(vdIndices, Option::VDCLEAN) && success;
+    }
+
+    return success;
 }
 
 void Syscollector::deleteDatabase()
