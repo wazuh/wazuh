@@ -1,17 +1,9 @@
 import engine_pb2 as _engine_pb2
 from google.protobuf.internal import containers as _containers
-from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
-CONTENT_TYPE_DECODER: ContentType
-CONTENT_TYPE_FILTER: ContentType
-CONTENT_TYPE_INTEGRATION: ContentType
-CONTENT_TYPE_KVDB: ContentType
-CONTENT_TYPE_OUTPUT: ContentType
-CONTENT_TYPE_RULE: ContentType
-CONTENT_TYPE_UNSPECIFIED: ContentType
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class ResourceSummary(_message.Message):
@@ -95,8 +87,8 @@ class resourceList_Request(_message.Message):
     SPACE_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
     space: str
-    type: ContentType
-    def __init__(self, space: _Optional[str] = ..., type: _Optional[_Union[ContentType, str]] = ...) -> None: ...
+    type: str
+    def __init__(self, space: _Optional[str] = ..., type: _Optional[str] = ...) -> None: ...
 
 class resourceList_Response(_message.Message):
     __slots__ = ["error", "resources", "status"]
@@ -114,9 +106,6 @@ class resourcePost_Request(_message.Message):
     TYPE_FIELD_NUMBER: _ClassVar[int]
     YMLCONTENT_FIELD_NUMBER: _ClassVar[int]
     space: str
-    type: ContentType
+    type: str
     ymlContent: str
-    def __init__(self, space: _Optional[str] = ..., type: _Optional[_Union[ContentType, str]] = ..., ymlContent: _Optional[str] = ...) -> None: ...
-
-class ContentType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = []
+    def __init__(self, space: _Optional[str] = ..., type: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
