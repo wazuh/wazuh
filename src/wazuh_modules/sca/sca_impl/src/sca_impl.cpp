@@ -295,6 +295,9 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 
     if (m_spSyncProtocol)
     {
+        // Log
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA synchronization started.");
+
         // Mark sync as in progress
         m_syncInProgress.store(true);
 
@@ -307,6 +310,15 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
         {
             std::lock_guard<std::mutex> lock(m_pauseMutex);
             m_pauseCv.notify_all();
+        }
+
+        if (result)
+        {
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization finished successfully.");
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization failed.");
         }
 
         return result;
@@ -487,7 +499,7 @@ void SecurityConfigurationAssessment::pause()
 
 int SecurityConfigurationAssessment::flush()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA flush requested - syncing pending messages");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush requested - syncing pending messages");
 
     if (!m_spSyncProtocol)
     {
@@ -500,7 +512,7 @@ int SecurityConfigurationAssessment::flush()
 
     if (result)
     {
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush completed successfully");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush completed successfully");
         return 0;
     }
     else

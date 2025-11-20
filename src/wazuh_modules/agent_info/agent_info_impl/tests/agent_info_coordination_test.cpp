@@ -779,7 +779,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
 
     // Verify the "sync protocol not available" message was logged
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Sync protocol not available, skipping synchronization"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Module coordination completed successfully"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Synchronization coordination completed successfully"));
 }
 
 TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)

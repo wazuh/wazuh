@@ -943,7 +943,7 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 {
     for (const auto& module : pausedModules)
     {
-        m_logFunction(LOG_DEBUG, "Resuming paused module: " + module);
+        m_logFunction(LOG_INFO, "Resuming paused module: " + module);
         std::string resumeMessage = createJsonCommand("resume");
         ModuleResponse response = queryModuleWithRetry(module, resumeMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " resume: " + response.response);
@@ -996,15 +996,13 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
                     std::string result = pollJson["data"]["result"].get<std::string>();
                     bool pauseSucceeded = (result == "success");
 
-                    m_logFunction(LOG_DEBUG, moduleName + " pause completed with result: " + result);
-
                     if (!pauseSucceeded)
                     {
                         m_logFunction(LOG_ERROR, moduleName + " pause completed with error");
                         return false;
                     }
 
-                    m_logFunction(LOG_DEBUG, moduleName + " pause completed successfully");
+                    m_logFunction(LOG_INFO, moduleName + " pause completed successfully");
                     return true;
                 }
             }
@@ -1060,8 +1058,8 @@ bool AgentInfoImpl::pollFimFlushCompletion(const std::string& moduleName)
                     // Log progress periodically to show we're still waiting
                     if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
                     {
-                        m_logFunction(LOG_INFO, moduleName + " flush still in progress (waiting " +
-                                      std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds so far)");
+                        m_logFunction(LOG_INFO, "Waiting for " + moduleName + " module to complete synchronization (" +
+                                      std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds elapsed)");
                     }
                     else
                     {
@@ -1074,7 +1072,7 @@ bool AgentInfoImpl::pollFimFlushCompletion(const std::string& moduleName)
                     std::string result = pollJson["data"]["result"].get<std::string>();
                     bool flushSucceeded = (result == "success");
 
-                    m_logFunction(LOG_INFO, moduleName + " flush completed with result: " + result +
+                    m_logFunction(LOG_INFO, moduleName + " pending operations completed with result: " + result +
                                   " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds)");
 
                     if (!flushSucceeded)
@@ -1083,7 +1081,6 @@ bool AgentInfoImpl::pollFimFlushCompletion(const std::string& moduleName)
                         return false;
                     }
 
-                    m_logFunction(LOG_DEBUG, moduleName + " flush completed successfully");
                     return true;
                 }
             }
@@ -1098,7 +1095,7 @@ bool AgentInfoImpl::pollFimFlushCompletion(const std::string& moduleName)
     }
 
     // Check if we exited due to module stopping
-    m_logFunction(LOG_INFO, "Module stopping, aborting flush polling for " + moduleName);
+    m_logFunction(LOG_INFO, "Module stopping, aborting pending operations polling for " + moduleName);
     return false;
 }
 
@@ -1106,6 +1103,14 @@ bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModule
 {
     for (const auto& module : COORDINATION_MODULES)
     {
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
+            return false;
+        }
+
+        m_logFunction(LOG_INFO, "Pausing " + module + " module for synchronization coordination");
+
         std::string pauseMessage = createJsonCommand("pause");
         ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
@@ -1159,6 +1164,14 @@ bool AgentInfoImpl::flushPausedModules(const std::set<std::string>& pausedModule
 {
     for (const auto& module : pausedModules)
     {
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pending operations phase");
+            return false;
+        }
+
+        m_logFunction(LOG_INFO, "Waiting for " + module + " module to complete synchronization");
+
         std::string flushMessage = createJsonCommand("flush");
         ModuleResponse response = queryModuleWithRetry(module, flushMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " flush: " + response.response);
@@ -1200,6 +1213,12 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     // Step 1: Get version from each module
     for (const auto& module : pausedModules)
     {
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during version calculation");
+            return -1;
+        }
+
         std::string getVersionMessage = createJsonCommand("get_version");
         ModuleResponse response = queryModuleWithRetry(module, getVersionMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " get_version: " + response.response);
@@ -1251,6 +1270,12 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     // Step 3: Set new version on all modules
     for (const auto& module : pausedModules)
     {
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during version update");
+            return -1;
+        }
+
         std::string setVersionMessage = createJsonCommand("set_version", {{"version", newVersion}});
         ModuleResponse response = queryModuleWithRetry(module, setVersionMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " set_version: " + response.response);
@@ -1286,7 +1311,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     std::set<std::string> pausedModules;
     std::map<std::string, int> moduleVersions;
 
-    m_logFunction(LOG_DEBUG, "Starting module coordination process");
+    m_logFunction(LOG_INFO, "Starting module coordination process");
 
     try
     {
@@ -1357,7 +1382,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         size_t coordinatedModulesCount = pausedModules.size();
         resumePausedModules(pausedModules);
 
-        m_logFunction(LOG_DEBUG, "Module coordination completed successfully");
+        m_logFunction(LOG_INFO, "Synchronization coordination completed successfully");
         m_logFunction(LOG_DEBUG, "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
                       ", New version: " + std::to_string(newVersion));
 
@@ -1668,7 +1693,7 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
 
         if (success)
         {
-            m_logFunction(LOG_DEBUG, "Successfully coordinated " + table);
+            m_logFunction(LOG_INFO, "Successfully coordinated " + table);
             resetSyncFlag(table);
         }
         else

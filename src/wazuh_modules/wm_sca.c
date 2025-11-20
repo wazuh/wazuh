@@ -492,22 +492,24 @@ DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
 void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #endif
     // Initial wait until SCA is started
-    for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++) {
+    for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
+    {
         sleep(1);
     }
 
-    while (sca_sync_module_running) {
-        minfo("Running SCA synchronization.");
-
-        if (sca_sync_module_ptr) {
+    while (sca_sync_module_running)
+    {
+        if (sca_sync_module_ptr)
+        {
             sca_sync_module_ptr(MODE_DELTA);
-        } else {
+        }
+        else
+        {
             mdebug1("Sync function not available");
         }
 
-        minfo("SCA synchronization finished, waiting for %d seconds before next run.", sca_sync_interval);
-
-        for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++) {
+        for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
+        {
             sleep(1);
         }
     }

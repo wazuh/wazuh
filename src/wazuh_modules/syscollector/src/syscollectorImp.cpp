@@ -1627,9 +1627,22 @@ bool Syscollector::syncModule(Mode mode)
 
     if (m_spSyncProtocol)
     {
+        m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
+
         // RAII guard ensures m_syncing is set to false even if function exits early
         ScanGuard syncGuard(m_syncing, m_pauseCv);
-        return m_spSyncProtocol->synchronizeModule(mode);
+        bool result = m_spSyncProtocol->synchronizeModule(mode);
+
+        if (result)
+        {
+            m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
+        }
+        else
+        {
+            m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
+        }
+
+        return result;
     }
 
     return false;
