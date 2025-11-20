@@ -1695,7 +1695,8 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
+                                    std::chrono::seconds timeout,
                                     unsigned int retries,
                                     size_t maxEps)
 {
@@ -1784,6 +1785,7 @@ bool Syscollector::syncModule(Mode mode)
         {
             m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + vdFlagFile);
             std::ofstream flagFile(vdFlagFile);
+
             if (flagFile.is_open())
             {
                 flagFile << "1";
