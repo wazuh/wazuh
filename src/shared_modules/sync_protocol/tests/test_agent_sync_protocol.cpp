@@ -121,7 +121,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
     const Operation testOperation = Operation::CREATE; // Any value
     const uint64_t testVersion = 123;
 
-    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion))
+    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion, false))
     .Times(1);
 
     protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion);
@@ -147,7 +147,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
     const Operation testOperation = Operation::CREATE; // Any value
     const uint64_t testVersion = 123;
 
-    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion))
+    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion, false))
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     EXPECT_NO_THROW(protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion));

@@ -78,7 +78,7 @@ TEST_F(MetadataProviderTest, GetMetadataAfterUpdate)
     EXPECT_STREQ(retrieved.os_name, "Ubuntu");
     EXPECT_STREQ(retrieved.os_type, "linux");
     EXPECT_STREQ(retrieved.os_version, "22.04");
-    EXPECT_EQ(retrieved.groups_count, 0);
+    EXPECT_EQ(retrieved.groups_count, 0u);
     EXPECT_EQ(retrieved.groups, nullptr);
 }
 
@@ -123,7 +123,7 @@ TEST_F(MetadataProviderTest, UpdateMetadataWithGroups)
     agent_metadata_t retrieved{};
     ASSERT_EQ(metadata_provider_get(&retrieved), 0);
 
-    EXPECT_EQ(retrieved.groups_count, 3);
+    EXPECT_EQ(retrieved.groups_count, 3u);
     ASSERT_NE(retrieved.groups, nullptr);
     EXPECT_STREQ(retrieved.groups[0], "group1");
     EXPECT_STREQ(retrieved.groups[1], "group2");
@@ -168,7 +168,7 @@ TEST_F(MetadataProviderTest, FreeMetadataWithGroups)
     metadata_provider_free_metadata(&metadata);
 
     EXPECT_EQ(metadata.groups, nullptr);
-    EXPECT_EQ(metadata.groups_count, 0);
+    EXPECT_EQ(metadata.groups_count, 0u);
 }
 
 // Test free metadata with NULL pointer
@@ -332,7 +332,7 @@ TEST_F(MetadataProviderTest, GroupsReplacementOnUpdate)
     agent_metadata_t retrieved{};
     ASSERT_EQ(metadata_provider_get(&retrieved), 0);
 
-    EXPECT_EQ(retrieved.groups_count, 3);
+    EXPECT_EQ(retrieved.groups_count, 3u);
     EXPECT_STREQ(retrieved.groups[0], "groupA");
     EXPECT_STREQ(retrieved.groups[1], "groupB");
     EXPECT_STREQ(retrieved.groups[2], "groupC");

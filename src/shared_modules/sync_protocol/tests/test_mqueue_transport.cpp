@@ -164,7 +164,7 @@ TEST_F(MQueueTransportTest, CheckStatusFailsWhenQueueUnavailable)
 
     EXPECT_FALSE(result);
     EXPECT_EQ(mqStartCalls, 1);
-    EXPECT_EQ(logMessages.size(), 1);
+    EXPECT_EQ(logMessages.size(), 1u);
     EXPECT_TRUE(logMessages[0].find("Failed to open queue") != std::string::npos);
 }
 
@@ -203,7 +203,7 @@ TEST_F(MQueueTransportTest, CheckStatusCachesException)
 
     // Queue should only be opened once
     EXPECT_EQ(mqStartCalls, 1);
-    EXPECT_EQ(logMessages.size(), 2);
+    EXPECT_EQ(logMessages.size(), 2u);
     EXPECT_TRUE(logMessages[0].find("Exception when checking queue availability") != std::string::npos);
     EXPECT_TRUE(logMessages[1].find("Failed to open queue") != std::string::npos);
 }
@@ -278,7 +278,7 @@ TEST_F(MQueueTransportTest, SendMessageSucceedsAfterQueueReinit)
     EXPECT_TRUE(result);
     EXPECT_EQ(mqSendCalls, 2);
     EXPECT_EQ(mqStartCalls, 1);  // Opens queue once for reinit
-    EXPECT_EQ(logMessages.size(), 1);
+    EXPECT_EQ(logMessages.size(), 1u);
     EXPECT_TRUE(logMessages[0].find("SendMSG failed, attempting to reinitialize queue") != std::string::npos);
 }
 
@@ -300,7 +300,7 @@ TEST_F(MQueueTransportTest, SendMessageFailsAfterRetry)
     EXPECT_FALSE(result);
     EXPECT_EQ(mqSendCalls, 2);
     EXPECT_EQ(mqStartCalls, 1);  // Opens queue once for reinit
-    EXPECT_EQ(logMessages.size(), 2);
+    EXPECT_EQ(logMessages.size(), 2u);
     EXPECT_TRUE(logMessages[0].find("SendMSG failed, attempting to reinitialize queue") != std::string::npos);
     EXPECT_TRUE(logMessages[1].find("SendMSG failed to send message after retry") != std::string::npos);
 }
@@ -337,7 +337,7 @@ TEST_F(MQueueTransportTest, SendMessageFailsWhenQueueReinitFails)
     EXPECT_FALSE(result);
     EXPECT_EQ(mqSendCalls, 1);  //  send_binary is not called again on reinit failure
     EXPECT_EQ(mqStartCalls, 1);  // Opens queue once for reinit
-    EXPECT_EQ(logMessages.size(), 2);
+    EXPECT_EQ(logMessages.size(), 2u);
     EXPECT_TRUE(logMessages[0].find("SendMSG failed, attempting to reinitialize queue") != std::string::npos);
     EXPECT_TRUE(logMessages[1].find("SendMSG failed to send message after retry") != std::string::npos);
 }
