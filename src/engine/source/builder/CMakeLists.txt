@@ -71,7 +71,6 @@ target_link_libraries(builder
     streamlogger::istreamlogger
     wIndexerConnector::iwIndexerConnector
     logpar
-
     PRIVATE
     re2::re2
     logicexpr
