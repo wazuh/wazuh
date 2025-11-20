@@ -380,8 +380,8 @@ int main(int argc, char* argv[])
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
                 LOG_INFO("Indexer Connector initialized.");
             } catch (const std::exception& e) {
-                // ALLOW the engine to start even if the indexer connector fails.
                 LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());
+                return EXIT_FAILURE;
             }
         }
 
