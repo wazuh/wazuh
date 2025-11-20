@@ -85,9 +85,10 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition: all
+    condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> r:^1$"
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallAppUpdates'')" -> r:^1$'
 
   # 1.5 Ensure Install Security Responses and System Files Is Enabled. (Automated)
   - id: 18504
@@ -113,6 +114,7 @@ checks:
     condition: all
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" -> r:^1$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''CriticalUpdateInstall'')" -> r:^1$'
 
   # 1.6 Ensure Software Update Deferment Is Less Than or Equal to 30 Days. (Automated)
   - id: 18505
@@ -133,7 +135,7 @@ checks:
       - soc_2: ["CC7.1"]
     condition: all
     rules:
-      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> n:^(\d+)$ compare <= 30'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> n:^(\d+)$ compare > 30'
 
   ##########################################################################
   # 2 System Settings
@@ -171,7 +173,8 @@ checks:
     condition: any
     rules:
       - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate -> r:^Firewall\s*\t*is\s*\t*enabled'
-      - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.security.firewall'').objectForKey(''EnableFirewall'')" -> r:^1$|^true$'
+      - "c:/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate -> r:^1$|^2$"
       - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableFirewall -> r:^1$|^2$|^true$"
 
   # 2.2.2 Ensure Firewall Stealth Mode Is Enabled. (Automated)
@@ -196,6 +199,7 @@ checks:
     condition: any
     rules:
       - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode -> r:^Firewall\s*\t*stealth\s*\t*mode\s*\t*is\s*\t*on'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.security.firewall'').objectForKey(''EnableStealthMode'')" -> r:^1$|^true$'
       - "c:defaults read /Library/Preferences/com.apple.alf stealthenabled -> r:^1$|^2$"
       - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableStealthMode -> r:^1$|^2$|^true$"
 
@@ -329,6 +333,7 @@ checks:
     condition: all
     rules:
       - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
+      - 'c:sh -c "launchctl list | grep -c com.openssh.sshd" -> r:^0$'
 
   # 2.3.3.5 Ensure Remote Management Is Disabled. (Automated)
   - id: 18523
@@ -688,7 +693,7 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^1$|^true$'
@@ -875,6 +880,7 @@ checks:
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''DisableGuestAccount'')" -> r:^1$'
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''GuestEnabled'')" -> r:^0$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''EnableGuestAccount'')" -> r:^0$'
 
   # 2.13.2 Ensure Guest Access to Shared Folders Is Disabled. (Automated)
   - id: 18569
