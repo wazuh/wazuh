@@ -79,7 +79,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             {
                 std::cout << s << std::endl;
             }
-                              , syncEndDelay, max_timeout, retries, maxEps);
+            , syncEndDelay, max_timeout, retries, maxEps);
             asp_destroy(handle);
         }
 
@@ -189,7 +189,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     bool result = protocol->synchronizeModule(
                       Mode::DELTA
@@ -428,7 +429,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -561,7 +563,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendDataMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendDataMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                   mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -628,7 +631,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendEndMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendEndMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                   mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -942,7 +946,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingReqRetDataMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingReqRetDataMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                   mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -2204,7 +2209,8 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncNoQueueAvailable)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                   mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
@@ -2229,7 +2235,8 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
@@ -2302,7 +2309,8 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendChecksumMessageFails)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingChecksumMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingChecksumMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
@@ -2367,7 +2375,8 @@ TEST_F(AgentSyncProtocolTest, EnsureQueueAvailableException)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     // Try to synchronize, which should trigger ensureQueueAvailable() and catch the exception
     bool result = protocol->synchronizeModule(
@@ -2406,7 +2415,8 @@ TEST_F(AgentSyncProtocolTest, SendStartAndWaitAckException)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                   mockQueue);
 
     // Set up mock data for synchronization to trigger sendStartAndWaitAck
     std::vector<PersistedData> testData =
@@ -2465,7 +2475,8 @@ TEST_F(AgentSyncProtocolTest, SendDataMessagesException)
         }
     };
 
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                   mockQueue);
 
     // Set up mock data for synchronization to trigger sendDataMessages
     std::vector<PersistedData> testData =
@@ -2946,7 +2957,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     bool result = protocol->synchronizeMetadataOrGroups(
@@ -3240,7 +3252,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoQueueAvailable)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     std::vector<std::string> indices = {"test_index_1", "test_index_2"};
 
@@ -3265,7 +3278,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendStartFails)
         }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
 
     std::vector<std::string> indices = {"test_index_1", "test_index_2"};
 
@@ -3775,7 +3789,8 @@ TEST_F(AgentSyncProtocolTest, SendChecksumMessageException)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                            mockQueue);
 
     std::string index = "test_index";
     std::string checksum = "test_checksum";
@@ -3821,7 +3836,8 @@ TEST_F(AgentSyncProtocolTest, SendEndMessageException)
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", throwingMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                            mockQueue);
 
     // Set up mock data for synchronization
     std::vector<PersistedData> testData =
@@ -3867,4 +3883,456 @@ TEST_F(AgentSyncProtocolTest, SendEndMessageException)
 
     // Verify the message sending function was called enough times (Start, Data, End)
     EXPECT_GT(callCount, 2);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithVDFirstOption)
+{
+    // Test synchronization with VDFIRST option
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    // Create test data
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .WillOnce(testing::Return(testData));
+
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+
+    MQ_Functions testMq
+    {
+        .start = [](const char*, short, short) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                            mockQueue);
+
+    // Start sync in background
+    std::thread syncThread([&testProtocol]()
+    {
+        bool result = testProtocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+        EXPECT_TRUE(result);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send StartAck
+    flatbuffers::FlatBufferBuilder startBuilder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+    testProtocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
+
+    // Send EndAck
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    testProtocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+    syncThread.join();
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithVDSyncOption)
+{
+    // Test synchronization with VDSYNC option
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .WillOnce(testing::Return(testData));
+
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+
+    MQ_Functions testMq
+    {
+        .start = [](const char*, short, short) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                            mockQueue);
+
+    std::thread syncThread([&testProtocol]()
+    {
+        bool result = testProtocol->synchronizeModule(Mode::DELTA, Option::VDSYNC);
+        EXPECT_TRUE(result);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send StartAck
+    flatbuffers::FlatBufferBuilder startBuilder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+    testProtocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
+
+    // Send EndAck
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    testProtocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+    syncThread.join();
+}
+
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithVDCleanOption)
+{
+    // Test notifyDataClean with VDCLEAN option
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    EXPECT_CALL(*mockQueue, clearItemsByIndex("test_index"))
+    .Times(1);
+
+    MQ_Functions testMq
+    {
+        .start = [](const char*, short, short) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    auto testProtocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testMq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps,
+                                                            mockQueue);
+
+    std::vector<std::string> indices = {"test_index"};
+
+    std::thread syncThread([&testProtocol, &indices]()
+    {
+        bool result = testProtocol->notifyDataClean(indices, Option::VDCLEAN);
+        EXPECT_TRUE(result);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send StartAck
+    flatbuffers::FlatBufferBuilder startBuilder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+    testProtocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
+
+    // Send EndAck
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    testProtocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+    syncThread.join();
+}
+
+// ============================
+// DataContext Feature Tests
+// ============================
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithDataContextItemsOnly)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    // Create test data with only DataContext items
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1, true},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2, true}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .WillOnce(Return(testData));
+
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+
+    // Start synchronization
+    std::thread syncThread([this]()
+    {
+        bool result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_TRUE(result);
+    });
+
+    // Wait for start
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send StartAck
+    flatbuffers::FlatBufferBuilder builder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    builder.Finish(message);
+    const uint8_t* buffer = builder.GetBufferPointer();
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
+
+    // Wait for data messages
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send EndAck
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
+    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+
+    syncThread.join();
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithMixedDataContextAndDataValue)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    // Create test data with mixed DataValue and DataContext items
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1, false},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2, true},
+        {0, "test_id_3", "test_index_3", "test_data_3", Operation::CREATE, 3, false},
+        {0, "test_id_4", "test_index_4", "test_data_4", Operation::MODIFY, 4, true}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .WillOnce(Return(testData));
+
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+
+    // Start synchronization
+    std::thread syncThread([this]()
+    {
+        bool result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_TRUE(result);
+    });
+
+    // Wait for start
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send StartAck
+    flatbuffers::FlatBufferBuilder builder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    builder.Finish(message);
+    const uint8_t* buffer = builder.GetBufferPointer();
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
+
+    // Wait for data messages (both DataValue and DataContext)
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send EndAck
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
+    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+
+    syncThread.join();
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataContextMessagesFailure)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            // Fail on third message (after DataValue, during DataContext)
+            static int call_count = 0;
+            call_count++;
+            if (call_count >= 3)
+            {
+                return -1;
+            }
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    // Create test data with DataValue first, then DataContext
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1, false},
+        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2, true}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .WillOnce(Return(testData));
+
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(1);
+
+    // Start synchronization
+    std::thread syncThread([this]()
+    {
+        bool result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(result);
+    });
+
+    // Wait for start
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send StartAck
+    flatbuffers::FlatBufferBuilder builder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    builder.Finish(message);
+    const uint8_t* buffer = builder.GetBufferPointer();
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
+
+    // Wait for failure
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
+
+    syncThread.join();
+}
+
+TEST_F(AgentSyncProtocolTest, PersistDifferenceWithDataContextFlag)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    // Test with isDataContext = false (default for first call)
+    EXPECT_CALL(*mockQueue, submit("test_id", "test_index", "test_data", Operation::CREATE, 1, false))
+    .Times(1);
+
+    protocol->persistDifference("test_id", Operation::CREATE, "test_index", "test_data", 1);
+
+    // Test with isDataContext = false (default for second call)
+    EXPECT_CALL(*mockQueue, submit("test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2, false))
+    .Times(1);
+
+    protocol->persistDifference("test_id_2", Operation::MODIFY, "test_index_2", "test_data_2", 2);
+}
+
+TEST_F(AgentSyncProtocolTest, SendDataContextMessagesWithEmptyVector)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    // Empty vector should return true without sending anything
+    std::vector<PersistedData> emptyData;
+    bool result = protocol->sendDataContextMessages(session, emptyData);
+    EXPECT_TRUE(result);
+}
+
+TEST_F(AgentSyncProtocolTest, SendDataContextMessagesWithMultipleItems)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    static int send_count = 0;
+    send_count = 0;
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            send_count++;
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    std::vector<PersistedData> testData =
+    {
+        {1, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1, true},
+        {2, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2, true},
+        {3, "test_id_3", "test_index_3", "test_data_3", Operation::DELETE_, 3, true}
+    };
+
+    bool result = protocol->sendDataContextMessages(session, testData);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(send_count, 3);
 }

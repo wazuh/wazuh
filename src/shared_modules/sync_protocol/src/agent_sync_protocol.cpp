@@ -192,6 +192,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         {
             // Then send DataContext messages if any exist
             bool dataContextSuccess = true;
+
             if (!dataContextItems.empty())
             {
                 dataContextSuccess = sendDataContextMessages(m_syncState.session, dataContextItems);

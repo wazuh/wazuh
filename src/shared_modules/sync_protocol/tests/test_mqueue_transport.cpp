@@ -28,65 +28,67 @@ using ::testing::SetArgReferee;
  */
 class MQueueTransportTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        logMessages.clear();
-        mqStartCalls = 0;
-        mqSendCalls = 0;
-        mqStartReturnValue = 1;  // Valid queue descriptor
-        mqSendReturnValue = 0;   // Success
-        shouldThrowException = false;
-    }
-
-    void TearDown() override
-    {
-        logMessages.clear();
-    }
-
-    // Mock state
-    static std::vector<std::string> logMessages;
-    static int mqStartCalls;
-    static int mqSendCalls;
-    static int mqStartReturnValue;
-    static int mqSendReturnValue;
-    static bool shouldThrowException;
-
-    // Mock MQ_Functions
-    static int mockMqStart(const char* path, short type, short n)
-    {
-        mqStartCalls++;
-        if (shouldThrowException)
+    protected:
+        void SetUp() override
         {
-            throw std::runtime_error("MQ start error");
+            logMessages.clear();
+            mqStartCalls = 0;
+            mqSendCalls = 0;
+            mqStartReturnValue = 1;  // Valid queue descriptor
+            mqSendReturnValue = 0;   // Success
+            shouldThrowException = false;
         }
-        return mqStartReturnValue;
-    }
 
-    static int mockMqSendBinary(int queue, const void* buffer, size_t size, const char* module, char mq_type)
-    {
-        mqSendCalls++;
-        return mqSendReturnValue;
-    }
-
-    static void mockLogger(modules_log_level_t level, const std::string& msg)
-    {
-        logMessages.push_back(msg);
-    }
-
-    MQ_Functions createMockMqFunctions()
-    {
-        return MQ_Functions
+        void TearDown() override
         {
-            mockMqStart,
-            mockMqSendBinary
-        };
-    }
+            logMessages.clear();
+        }
 
-    LoggerFunc createMockLogger()
-    {
-        return mockLogger;
-    }
+        // Mock state
+        static std::vector<std::string> logMessages;
+        static int mqStartCalls;
+        static int mqSendCalls;
+        static int mqStartReturnValue;
+        static int mqSendReturnValue;
+        static bool shouldThrowException;
+
+        // Mock MQ_Functions
+        static int mockMqStart(const char* path, short type, short n)
+        {
+            mqStartCalls++;
+
+            if (shouldThrowException)
+            {
+                throw std::runtime_error("MQ start error");
+            }
+
+            return mqStartReturnValue;
+        }
+
+        static int mockMqSendBinary(int queue, const void* buffer, size_t size, const char* module, char mq_type)
+        {
+            mqSendCalls++;
+            return mqSendReturnValue;
+        }
+
+        static void mockLogger(modules_log_level_t level, const std::string& msg)
+        {
+            logMessages.push_back(msg);
+        }
+
+        MQ_Functions createMockMqFunctions()
+        {
+            return MQ_Functions
+            {
+                mockMqStart,
+                mockMqSendBinary
+            };
+        }
+
+        LoggerFunc createMockLogger()
+        {
+            return mockLogger;
+        }
 };
 
 // Initialize static members
@@ -122,7 +124,7 @@ TEST_F(MQueueTransportTest, ShutdownDoesNothing)
     auto logger = createMockLogger();
 
     MQueueTransport transport("test_module", mqFuncs, logger);
-    
+
     transport.shutdown();
 
     // Constructor should not call any MQ functions yet
@@ -262,10 +264,12 @@ TEST_F(MQueueTransportTest, SendMessageSucceedsAfterQueueReinit)
             mqSendCalls++;
             static int count = 0;
             count++;
+
             if (count == 1)
             {
                 return -1;
             }
+
             return 5;
         }
     };
@@ -321,10 +325,12 @@ TEST_F(MQueueTransportTest, SendMessageFailsWhenQueueReinitFails)
             mqSendCalls++;
             static int count = 0;
             count++;
+
             if (count == 1)
             {
                 return -1;
             }
+
             return 5;
         }
     };
