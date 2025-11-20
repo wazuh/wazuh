@@ -1577,12 +1577,21 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode)
 {
+    bool success = true;
+
+    // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
-        return m_spSyncProtocol->synchronizeModule(mode);
+        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
     }
 
-    return false;
+    // Sync VD data using regular SYNC option for backward compatibility
+    if (m_spSyncProtocolVD)
+    {
+        success = m_spSyncProtocolVD->synchronizeModule(mode, Option::SYNC) && success;
+    }
+
+    return success;
 }
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
