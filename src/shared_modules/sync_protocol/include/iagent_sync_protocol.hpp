@@ -90,7 +90,7 @@ class IAgentSyncProtocol
         /// @param data Vector of PersistedData to send as DataContext messages
         /// @return true if all messages were sent successfully, false otherwise
         virtual bool sendDataContextMessages(uint64_t session,
-                                            const std::vector<PersistedData>& data) = 0;
+                                             const std::vector<PersistedData>& data) = 0;
 
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.

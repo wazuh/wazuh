@@ -23,7 +23,8 @@ extern "C" {
  * This structure holds all metadata fields required by the sync protocol.
  * All string fields are null-terminated C strings with fixed maximum lengths.
  */
-typedef struct {
+typedef struct
+{
     char agent_id[256];           ///< Agent identifier (e.g., "001", "000" for server)
     char agent_name[256];         ///< Agent name
     char agent_version[256];      ///< Wazuh agent version

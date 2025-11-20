@@ -23,43 +23,43 @@ using ::testing::Return;
 // Mock for IPersistentQueue
 class MockPersistentQueue : public IPersistentQueue
 {
-public:
-    MOCK_METHOD(void, submit, (const std::string& id,
-                               const std::string& index,
-                               const std::string& data,
-                               Operation operation,
-                               uint64_t version,
-                               bool isDataContext), (override));
-    MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
-    MOCK_METHOD(void, clearSyncedItems, (), (override));
-    MOCK_METHOD(void, resetSyncingItems, (), (override));
-    MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
-    MOCK_METHOD(void, deleteDatabase, (), (override));
+    public:
+        MOCK_METHOD(void, submit, (const std::string& id,
+                                   const std::string& index,
+                                   const std::string& data,
+                                   Operation operation,
+                                   uint64_t version,
+                                   bool isDataContext), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
+        MOCK_METHOD(void, clearSyncedItems, (), (override));
+        MOCK_METHOD(void, resetSyncingItems, (), (override));
+        MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
+        MOCK_METHOD(void, deleteDatabase, (), (override));
 };
 
 class AgentSyncProtocolRouterTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // SERVER builds use Router transport
-    }
+    protected:
+        void SetUp() override
+        {
+            // SERVER builds use Router transport
+        }
 
-    std::shared_ptr<MockPersistentQueue> mockQueue;
-    std::unique_ptr<AgentSyncProtocol> protocol;
+        std::shared_ptr<MockPersistentQueue> mockQueue;
+        std::unique_ptr<AgentSyncProtocol> protocol;
 
-    const uint64_t session = 1234;
-    const unsigned int retries = 1;
-    const unsigned int maxEps = 100;
-    const unsigned int syncEndDelay = 1;
-    const uint8_t min_timeout = 1;
-    const uint8_t max_timeout = 3;
+        const uint64_t session = 1234;
+        const unsigned int retries = 1;
+        const unsigned int maxEps = 100;
+        const unsigned int syncEndDelay = 1;
+        const uint8_t min_timeout = 1;
+        const uint8_t max_timeout = 3;
 
-    // Helper to create test logger
-    LoggerFunc createTestLogger()
-    {
-        return [](modules_log_level_t, const std::string&) {};
-    }
+        // Helper to create test logger
+        LoggerFunc createTestLogger()
+        {
+            return [](modules_log_level_t, const std::string&) {};
+        }
 };
 
 // Test that AgentSyncProtocol initializes with Router transport in SERVER builds
@@ -72,7 +72,8 @@ TEST_F(AgentSyncProtocolRouterTest, InitializesWithRouterTransport)
     LoggerFunc testLogger = createTestLogger();
 
     // Should create RouterTransport internally without errors
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         protocol = std::make_unique<AgentSyncProtocol>(
             "test_module",
             ":memory:",
@@ -97,16 +98,16 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceSuccess)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     const std::string testId = "test_id";
     const std::string testIndex = "test_index";
@@ -115,7 +116,7 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceSuccess)
     const uint64_t testVersion = 123;
 
     EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion, false))
-        .Times(1);
+    .Times(1);
 
     protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion);
 }
@@ -128,16 +129,16 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceInMemorySuccess)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     const std::string testId = "memory_test_id";
     const std::string testIndex = "memory_test_index";
@@ -158,24 +159,24 @@ TEST_F(AgentSyncProtocolRouterTest, SynchronizeModuleWithEmptyDataReturnsSuccess
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Empty data should return true immediately
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(std::vector<PersistedData>{}));
+    .WillOnce(Return(std::vector<PersistedData> {}));
 
     bool result = protocol->synchronizeModule(
-        Mode::DELTA
-    );
+                      Mode::DELTA
+                  );
 
     EXPECT_TRUE(result);
 }
@@ -188,29 +189,29 @@ TEST_F(AgentSyncProtocolRouterTest, FullModeUsesInMemoryData)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Add in-memory data
     protocol->persistDifferenceInMemory("id1", Operation::CREATE, "index1", "data1", 1);
 
     // Should NOT call fetchAndMarkForSync for FULL mode
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .Times(0);
+    .Times(0);
 
     // Note: This will timeout because Router needs to be running
     // In a real integration test, the Router infrastructure would be available
     bool result = protocol->synchronizeModule(
-        Mode::FULL
-    );
+                      Mode::FULL
+                  );
 
     // Expected to timeout since Router is not running in unit test
     EXPECT_FALSE(result);
@@ -224,24 +225,24 @@ TEST_F(AgentSyncProtocolRouterTest, DeltaModeUsesDatabaseQueue)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Should call fetchAndMarkForSync for DELTA mode
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(std::vector<PersistedData>{}));
+    .WillOnce(Return(std::vector<PersistedData> {}));
 
     bool result = protocol->synchronizeModule(
-        Mode::DELTA
-    );
+                      Mode::DELTA
+                  );
 
     EXPECT_TRUE(result);
 }
@@ -254,26 +255,26 @@ TEST_F(AgentSyncProtocolRouterTest, InvalidModeReturnsFailure)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Should NOT call any queue methods for invalid mode
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .Times(0);
+    .Times(0);
 
     Mode invalidMode = static_cast<Mode>(999);
 
     bool result = protocol->synchronizeModule(
-        invalidMode
-    );
+                      invalidMode
+                  );
 
     EXPECT_FALSE(result);
 }
@@ -286,16 +287,16 @@ TEST_F(AgentSyncProtocolRouterTest, ParseResponseBufferWithNullReturnsFailure)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     bool result = protocol->parseResponseBuffer(nullptr, 0);
     EXPECT_FALSE(result);
@@ -309,16 +310,16 @@ TEST_F(AgentSyncProtocolRouterTest, ParseResponseBufferWhenNotSyncingReturnsTrue
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Create a StartAck message
     flatbuffers::FlatBufferBuilder builder;
@@ -328,10 +329,10 @@ TEST_F(AgentSyncProtocolRouterTest, ParseResponseBufferWhenNotSyncingReturnsTrue
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union()
-    );
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union()
+                   );
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
@@ -349,24 +350,24 @@ TEST_F(AgentSyncProtocolRouterTest, FetchAndMarkForSyncExceptionHandled)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Throw exception from fetchAndMarkForSync
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     bool result = protocol->synchronizeModule(
-        Mode::DELTA
-    );
+                      Mode::DELTA
+                  );
 
     EXPECT_FALSE(result);
 }
@@ -379,20 +380,20 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceExceptionHandled)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Throw exception from submit
     EXPECT_CALL(*mockQueue, submit(_, _, _, _, _, _))
-        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     // Should not throw, just log error
     EXPECT_NO_THROW(
@@ -408,16 +409,16 @@ TEST_F(AgentSyncProtocolRouterTest, ClearInMemoryDataSuccess)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Add in-memory data
     protocol->persistDifferenceInMemory("id1", Operation::CREATE, "index1", "data1", 1);
@@ -428,11 +429,11 @@ TEST_F(AgentSyncProtocolRouterTest, ClearInMemoryDataSuccess)
 
     // After clearing, FULL mode should have no data
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .Times(0);
+    .Times(0);
 
     bool result = protocol->synchronizeModule(
-        Mode::FULL
-    );
+                      Mode::FULL
+                  );
 
     // Should return true for empty data
     EXPECT_TRUE(result);
@@ -446,19 +447,19 @@ TEST_F(AgentSyncProtocolRouterTest, DeleteDatabaseCallsQueue)
     LoggerFunc testLogger = createTestLogger();
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        dummyMqFuncs,
-        testLogger,
-        std::chrono::seconds(syncEndDelay),
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   dummyMqFuncs,
+                   testLogger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(min_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     EXPECT_CALL(*mockQueue, deleteDatabase())
-        .Times(1);
+    .Times(1);
 
     EXPECT_NO_THROW(protocol->deleteDatabase());
 }

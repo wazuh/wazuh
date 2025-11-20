@@ -81,7 +81,8 @@ EXPORTED void syscollector_stop();
 EXPORTED void syscollector_start();
 
 // Sync protocol C wrapper functions
-EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
+EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
+                                     unsigned int retries,
                                      size_t maxEps);
 EXPORTED bool syscollector_sync_module(Mode_t mode);
 EXPORTED void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
@@ -122,7 +123,8 @@ typedef void(*syscollector_start_func)();
 typedef void(*syscollector_stop_func)();
 
 // Sync protocol C wrapper functions
-typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
+typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
+                                           unsigned int retries,
                                            size_t maxEps);
 typedef bool(*syscollector_sync_module_func)(Mode_t mode);
 typedef void(*syscollector_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
