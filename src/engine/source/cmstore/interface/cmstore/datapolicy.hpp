@@ -47,7 +47,7 @@ constexpr std::string_view PATH_KEY_ROOT_PARENT = "/root_decoder";
 
 namespace
 {
-const auto DEFAULT_ROOT_DECODER {"decoder/wazuh-core-message/0"};
+const auto DEFAULT_ROOT_DECODER {"decoder/core-wazuh-message/0"};
 const base::Name ROOT_DECODER_NAME {DEFAULT_ROOT_DECODER};
 } // namespace
 

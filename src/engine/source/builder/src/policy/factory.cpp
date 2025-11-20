@@ -62,14 +62,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                     defaultParentName = policy.getDefaultParent();
                 }
 
-                if (defaultParentName != asset.name().toStr())
-                {
-                    asset.parents().emplace_back(std::move(defaultParentName));
-                }
-                else
-                {
-                    asset.parents().emplace_back(policy.getRootDecoder().toStr());
-                }
+                asset.parents().emplace_back(std::move(defaultParentName));
             }
 
             auto& decodersData = builtAssets[cm::store::ResourceType::DECODER];
