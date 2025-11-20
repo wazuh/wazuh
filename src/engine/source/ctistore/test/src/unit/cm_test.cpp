@@ -21,6 +21,8 @@ std::string makeIsolatedConfig(cti::store::ContentManagerConfig& cfg, const std:
     cfg.outputFolder = base + "/content";
     cfg.databasePath = base + "/rocksdb";
     cfg.assetStorePath = base + "/assets";
+    // Disable OAuth for tests by clearing console URL
+    cfg.oauth.console.url.clear();
     return base;
 }
 } // namespace

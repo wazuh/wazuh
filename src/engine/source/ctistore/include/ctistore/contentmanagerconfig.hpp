@@ -56,9 +56,18 @@ struct ContentManagerConfig
 
         struct ConsoleConfig
         {
-            std::string url {};
+            std::string url {"https://console.cti.wazuh.com"};
+            std::string instancesEndpoint {"/api/v1/instances/me"};
             std::string productType {"catalog:consumer:decoders"};
+            int timeout {5000}; // milliseconds
         } console;
+
+        struct TokenExchangeConfig
+        {
+            bool enabled {true};
+            std::string tokenEndpoint {"/api/v1/instances/token/exchange"};
+            bool cacheSignedUrls {true};
+        } tokenExchange;
 
         bool enableProductsProvider {true};
     } oauth;
