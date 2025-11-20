@@ -349,6 +349,31 @@ def manager_restart() -> WazuhResult:
     return WazuhResult({'message': 'Restart request sent'})
 
 
+def update_content() -> WazuhResult:
+    """Update Engine and VD content.
+
+    Send JSON message with the 'update-content' command to <SOCKET> socket.
+
+    Raises
+    ------
+    WazuhInternalError(1901)
+        If the socket path doesn't exist.
+    WazuhInternalError(1902)
+        If there is a socket connection error.
+    WazuhInternalError(1014)
+        If there is a socket communication error.
+
+    Returns
+    -------
+    WazuhResult
+        Confirmation message.
+    """
+
+    # Implement the content update logic here
+
+    return WazuhResult({"message": "Update content request sent"})
+
+
 @lru_cache()
 def get_cluster_items():
     """Load and return the content of cluster.json file as a dict.

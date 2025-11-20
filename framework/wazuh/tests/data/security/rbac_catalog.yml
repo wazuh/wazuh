@@ -687,6 +687,7 @@ get_rbac_actions:
           - POST /security/users/{user_id}/roles
           - POST /security/roles/{role_id}/policies
           - POST /security/roles/{role_id}/rules
+          - PUT /content/update
       security:create:
         description: Create new system security resources
         resources:
