@@ -27,8 +27,7 @@ static const char* const SPECIAL_ARRAY_KEYS[] = {"indexer.hosts", "indexer.ssl.c
  * Valid configuration paths for indexer settings
  * Any path not in this list will generate a warning and be ignored
  */
-static const char* const VALID_CONFIG_PATHS[] = {"indexer.enabled",
-                                                 "indexer.hosts",
+static const char* const VALID_CONFIG_PATHS[] = {"indexer.hosts",
                                                  "indexer.ssl",
                                                  "indexer.ssl.certificate_authorities",
                                                  "indexer.ssl.certificate",
