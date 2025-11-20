@@ -45,8 +45,17 @@ static std::string buildStatefulEventFromJSONString(const std::string& path, con
         return "";
     }
 
+    // Patch inode: convert from number to string (same as file.cpp:fim_db_file_update)
+    cJSON* inode_item = cJSON_GetObjectItem(file_stateful, "inode");
+    if (inode_item != NULL && cJSON_IsNumber(inode_item)) {
+        uint64_t inode_value = static_cast<uint64_t>(inode_item->valuedouble);
+        std::string inode_str = std::to_string(inode_value);
+        cJSON_DeleteItemFromObject(file_stateful, "inode");
+        cJSON_AddStringToObject(file_stateful, "inode", inode_str.c_str());
+    }
+
     // Build stateful event
-    cJSON* stateful_event = build_stateful_event(path.c_str(), file_stateful, sha1_hash.c_str(), document_version);
+    cJSON* stateful_event = build_stateful_event(path.c_str(), sha1_hash.c_str(), document_version, file_stateful, NULL);
     if (stateful_event == NULL) {
         cJSON_Delete(file_stateful);
         log_formatted(log_callback, LOG_ERROR, "Error building stateful event for ", path);

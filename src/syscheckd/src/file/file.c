@@ -38,14 +38,16 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+cJSON* build_stateful_event(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *data){
+    const directory_t* config = fim_configuration_directory(path, true);
 
-cJSON* build_stateful_event(const char* path, const cJSON* file_stateful, const char* sha1_hash, const uint64_t document_version){
     cJSON* stateful_event = cJSON_CreateObject();
     if (stateful_event == NULL) {
         return NULL;
     }
 
     // File
+    cJSON* file_stateful = fim_attributes_json(dbsync_event, data, config);
     cJSON_AddItemToObject(stateful_event, "file", file_stateful);
 #ifdef WIN32
      char *utf8_path = auto_to_utf8(path);
@@ -90,7 +92,6 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
                                  const cJSON* result_json,
                                  void* user_data) {
     cJSON* stateless_event = NULL;
-    cJSON* stateful_event = NULL;
     cJSON *json_path = NULL;
     cJSON* old_data = NULL;
     cJSON* old_attributes = NULL;
@@ -171,7 +172,6 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
 
     cJSON* file_stateless = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
     cJSON_AddItemToObject(data, "file", file_stateless);
-    cJSON* file_stateful = cJSON_Duplicate(file_stateless, 1);
 
 #ifdef WIN32
      char *utf8_path = auto_to_utf8(path);
@@ -256,7 +256,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
-    stateful_event = build_stateful_event(path, file_stateful, sha1_checksum, document_version);
+    cJSON* stateful_event = build_stateful_event(path, sha1_checksum, document_version, result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL);
     if (!stateful_event) {
         mdebug1("Couldn't create stateful event for %s", path);
         goto end; // LCOV_EXCL_LINE

@@ -239,7 +239,7 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
 #ifdef __cplusplus
 extern "C" {
 #endif
-cJSON* build_stateful_event(const char* path, const cJSON* file_stateful, const char* sha1_hash, const uint64_t document_version);
+cJSON* build_stateful_event(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *data);
 #ifdef __cplusplus
 }
 #endif
