@@ -141,6 +141,27 @@ class InventorySyncFacadeImpl final
             }
             else
             {
+                // Log the Start message reception with option information
+                auto mode = startMsg->mode();
+                auto option = startMsg->option();
+                auto size = startMsg->size();
+                auto indexCount = startMsg->index() ? startMsg->index()->size() : 0;
+
+                logInfo(LOGGER_DEFAULT_TAG,
+                        "Manager<-Agent: Received Start message | AgentID: %.*s | Module: %.*s | Mode: %s | Option: %s "
+                        "| Size: %llu | Indices: %zu",
+                        static_cast<int>(agentId.size()),
+                        agentId.data(),
+                        static_cast<int>(moduleName.size()),
+                        moduleName.data(),
+                        mode == Wazuh::SyncSchema::Mode_ModuleFull ? "FULL" : "DELTA",
+                        option == Wazuh::SyncSchema::Option_VDFirst   ? "VDFIRST"
+                        : option == Wazuh::SyncSchema::Option_VDSync  ? "VDSYNC"
+                        : option == Wazuh::SyncSchema::Option_VDClean ? "VDCLEAN"
+                                                                      : "SYNC",
+                        size,
+                        indexCount);
+
                 // Generate random number for session ID.
                 std::random_device rd;
                 std::mt19937 gen(rd());
