@@ -6,8 +6,8 @@
 #include <tuple>
 #include <vector>
 
-#include <ctistore/icmreader.hpp>
 #include <ctistore/adapter.hpp>
+#include <ctistore/icmreader.hpp>
 
 #include <cmstore/icmstore.hpp>
 
@@ -20,7 +20,7 @@ namespace cm::store
 class CMStoreCTI : public ICMstoreNS
 {
 private:
-    NamespaceId m_namespaceId;           ///< Namespace ID associated to this CMStoreCTI
+    NamespaceId m_namespaceId;                     ///< Namespace ID associated to this CMStoreCTI
     std::weak_ptr<cti::store::ICMReader> m_reader; ///< CTI Store Reader
 
 public:
@@ -30,9 +30,7 @@ public:
      */
     CMStoreCTI(std::shared_ptr<cti::store::ICMReader> reader, NamespaceId nsId)
         : m_namespaceId(std::move(nsId))
-        , m_reader(reader)
-    {
-    };
+        , m_reader(reader) {};
 
     ~CMStoreCTI() override = default; // TODO Dump cache to disk on destruction
 
@@ -45,6 +43,8 @@ public:
     std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const override;
     /** @copydoc ICMStoreNSReader::resolveNameFromUUID */
     std::tuple<std::string, ResourceType> resolveNameFromUUID(const std::string& uuid) const override;
+    /** @copydoc ICMStoreNSReader::resolveHashFromUUID */
+    std::string resolveHashFromUUID(const std::string& uuid) const override;
     /** @copydoc ICMStoreNSReader::resolveUUIDFromName */
     std::string resolveUUIDFromName(const std::string& name, ResourceType type) const override;
 
