@@ -37,7 +37,7 @@ The CTI Offset Downloader supports optional OAuth 2.0 authentication with token 
 
 1. **Fetch OAuth credentials** from Wazuh Indexer (`/_plugins/content-manager/subscription` endpoint)
 2. **Exchange access tokens** for HMAC-signed URLs via CTI Console token exchange endpoint
-3. **Cache signed URLs** (5-minute lifetime by default) to minimize token exchange requests
+3. **Cache signed URLs** (lifetime based on Console response) to minimize token exchange requests
 4. **Automatically refresh tokens** before they expire
 
 ### OAuth Configuration
@@ -53,7 +53,7 @@ auto credentialsProvider = std::make_shared<CTICredentialsProvider>(
 
 auto signedUrlProvider = std::make_shared<CTISignedUrlProvider>(
     httpRequest,
-    tokenExchangeConfig  // Contains: consoleUrl, tokenEndpoint, cacheSignedUrls, signedUrlLifetime
+    tokenExchangeConfig  // Contains: consoleUrl, tokenEndpoint, cacheSignedUrls
 );
 
 // Create downloader with OAuth support
@@ -76,7 +76,7 @@ When OAuth is enabled, the download process is modified as follows:
 
 2. **Token management**:
    - Access tokens are automatically refreshed when they expire (<5 minutes remaining)
-   - Signed URLs are cached and reused until they expire (5 minutes by default)
+   - Signed URLs are cached and reused until they expire (lifetime determined by Console response)
    - Background threads handle automatic token refresh
 
 3. **Error handling**:

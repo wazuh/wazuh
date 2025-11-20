@@ -38,8 +38,17 @@ nlohmann::json contentManagerConfigToNlohmann(const ContentManagerConfig& config
 
     nlohmann::json console;
     console["url"] = config.oauth.console.url;
+    console["instancesEndpoint"] = config.oauth.console.instancesEndpoint;
+    console["timeout"] = config.oauth.console.timeout;
     console["productType"] = config.oauth.console.productType;
     oauth["console"] = std::move(console);
+
+    nlohmann::json tokenExchange;
+    tokenExchange["enabled"] = config.oauth.tokenExchange.enabled;
+    tokenExchange["consoleUrl"] = config.oauth.console.url;
+    tokenExchange["tokenEndpoint"] = config.oauth.tokenExchange.tokenEndpoint;
+    tokenExchange["cacheSignedUrls"] = config.oauth.tokenExchange.cacheSignedUrls;
+    oauth["tokenExchange"] = std::move(tokenExchange);
 
     oauth["enableProductsProvider"] = config.oauth.enableProductsProvider;
     cfg["oauth"] = std::move(oauth);
@@ -133,6 +142,16 @@ void ContentManagerConfig::fromJson(const json::Json& config)
             {
                 oauth.console.url = config.getString("/configData/oauth/console/url").value_or(oauth.console.url);
             }
+            if (config.exists("/configData/oauth/console/instancesEndpoint"))
+            {
+                oauth.console.instancesEndpoint = config.getString("/configData/oauth/console/instancesEndpoint")
+                                                      .value_or(oauth.console.instancesEndpoint);
+            }
+            if (config.exists("/configData/oauth/console/timeout"))
+            {
+                oauth.console.timeout =
+                    config.getInt("/configData/oauth/console/timeout").value_or(oauth.console.timeout);
+            }
             if (config.exists("/configData/oauth/console/productType"))
             {
                 oauth.console.productType =
@@ -142,6 +161,23 @@ void ContentManagerConfig::fromJson(const json::Json& config)
             {
                 oauth.enableProductsProvider =
                     config.getBool("/configData/oauth/enableProductsProvider").value_or(oauth.enableProductsProvider);
+            }
+
+            // TokenExchange configuration
+            if (config.exists("/configData/oauth/tokenExchange/enabled"))
+            {
+                oauth.tokenExchange.enabled =
+                    config.getBool("/configData/oauth/tokenExchange/enabled").value_or(oauth.tokenExchange.enabled);
+            }
+            if (config.exists("/configData/oauth/tokenExchange/tokenEndpoint"))
+            {
+                oauth.tokenExchange.tokenEndpoint = config.getString("/configData/oauth/tokenExchange/tokenEndpoint")
+                                                        .value_or(oauth.tokenExchange.tokenEndpoint);
+            }
+            if (config.exists("/configData/oauth/tokenExchange/cacheSignedUrls"))
+            {
+                oauth.tokenExchange.cacheSignedUrls = config.getBool("/configData/oauth/tokenExchange/cacheSignedUrls")
+                                                          .value_or(oauth.tokenExchange.cacheSignedUrls);
             }
         }
     }
