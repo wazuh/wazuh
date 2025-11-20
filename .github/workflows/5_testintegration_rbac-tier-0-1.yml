@@ -67,6 +67,12 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
+
+          sudo mkdir -p /var/ossec/etc/certs
+          sudo touch /var/ossec/etc/certs/root-ca.pem
+          sudo sed -i '/<certificate>/d' /var/ossec/etc/ossec.conf
+          sudo sed -i '/server-key.pem/d' /var/ossec/etc/ossec.conf
+
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
