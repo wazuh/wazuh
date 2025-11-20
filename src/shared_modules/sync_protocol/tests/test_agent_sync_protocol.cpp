@@ -31,7 +31,8 @@ class MockPersistentQueue : public IPersistentQueue
                                    const std::string& index,
                                    const std::string& data,
                                    Operation operation,
-                                   uint64_t version), (override));
+                                   uint64_t version,
+                                   bool isDataContext), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
         MOCK_METHOD(void, clearSyncedItems, (), (override));
         MOCK_METHOD(void, resetSyncingItems, (), (override));
