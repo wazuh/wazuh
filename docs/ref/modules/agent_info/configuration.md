@@ -26,10 +26,10 @@ The `agent_info` module is configured in the `ossec.conf` file. It defines the s
 
 ### Core Settings
 
-| Option               | Type    | Default | Description                                                                                               |
-| -------------------- | ------- | ------- | --------------------------------------------------------------------------------------------------------- |
-| `interval`           | integer | `60`    | Time between periodic scans to collect agent metadata in seconds.                                                    |
-| `integrity_interval` | integer | `86400` | Time between integrity checks to verify that the agent's state is synchronized with the manager in seconds.          |
+| Option               | Type    | Default | Description                                                                                                 |
+| -------------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `interval`           | integer | `60`    | Time between periodic scans to collect agent metadata in seconds.                                           |
+| `integrity_interval` | integer | `86400` | Time between integrity checks to verify that the agent's state is synchronized with the manager in seconds. |
 
 ### Synchronization Settings
 
@@ -37,7 +37,7 @@ The `<synchronization>` block configures the coordination protocol used when age
 
 | Option             | Type    | Default | Description                                                                                       |
 | ------------------ | ------- | ------- | ------------------------------------------------------------------------------------------------- |
-| `enabled`          | boolean | `yes`   | Enables or disables the module coordination and synchronization features.                           |
+| `enabled`          | boolean | `yes`   | Enables or disables the module coordination and synchronization features.                         |
 | `sync_end_delay`   |  time   | `1s`    | Delay in seconds before sending the synchronization end message.                                  |
 | `response_timeout` |  time   | `30s`   | Timeout in seconds to wait for a response from other modules during coordination.                 |
 | `retries`          | integer | `5`     | Number of retry attempts when a coordination command fails.                                       |

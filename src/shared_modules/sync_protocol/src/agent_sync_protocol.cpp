@@ -25,12 +25,12 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
                                      std::chrono::seconds timeout,
                                      unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue)
     : m_moduleName(moduleName),
+      m_persistentQueue(nullptr), // Ensure initialized to nullptr
       m_logger(std::move(logger)),
       m_syncEndDelay(syncEndDelay),
       m_timeout(timeout),
       m_retries(retries),
-      m_maxEps(maxEps),
-      m_persistentQueue(nullptr) // Ensure initialized to nullptr
+      m_maxEps(maxEps)
 {
     if (!m_logger)
     {

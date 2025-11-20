@@ -24,17 +24,17 @@ CREATE TABLE IF NOT EXISTS agent_metadata (
 );
 ```
 
-| Mandatory | Column              | Data Type | Description                                        | ECS Mapping             |
-| :-------: | ------------------- | --------- | -------------------------------------------------- | ----------------------- |
-|     ✔️    | `agent_id`          | TEXT      | The unique ID of the agent (e.g., "001").          | `agent.id`              |
-|           | `agent_name`        | TEXT      | The name of the agent.                             | `agent.name`            |
-|           | `agent_version`     | TEXT      | The version of the Wazuh agent.                    | `agent.version`         |
+| Mandatory | Column              | Data Type | Description                                           | ECS Mapping             |
+| :-------: | ------------------- | --------- | ----------------------------------------------------- | ----------------------- |
+|     ✔️    | `agent_id`          | TEXT      | The unique ID of the agent (e.g., "001").             | `agent.id`              |
+|           | `agent_name`        | TEXT      | The name of the agent.                                | `agent.name`            |
+|           | `agent_version`     | TEXT      | The version of the Wazuh agent.                       | `agent.version`         |
 |           | `host_architecture` | TEXT      | The hardware architecture of the host (e.g., x86_64). | `host.architecture`     |
-|           | `host_hostname`     | TEXT      | The hostname of the host machine.                  | `host.hostname`         |
-|           | `host_os_name`      | TEXT      | The name of the operating system (e.g., Ubuntu).   | `host.os.name`          |
-|           | `host_os_type`      | TEXT      | The type of the operating system (e.g., Linux).    | `host.os.type`          |
-|           | `host_os_platform`  | TEXT      | The OS platform identifier (e.g., ubuntu).         | `host.os.platform`      |
-|           | `host_os_version`   | TEXT      | The version of the operating system (e.g., 22.04). | `host.os.version`       |
+|           | `host_hostname`     | TEXT      | The hostname of the host machine.                     | `host.hostname`         |
+|           | `host_os_name`      | TEXT      | The name of the operating system (e.g., Ubuntu).      | `host.os.name`          |
+|           | `host_os_type`      | TEXT      | The type of the operating system (e.g., Linux).       | `host.os.type`          |
+|           | `host_os_platform`  | TEXT      | The OS platform identifier (e.g., ubuntu).            | `host.os.platform`      |
+|           | `host_os_version`   | TEXT      | The version of the operating system (e.g., 22.04).    | `host.os.version`       |
 
 ---
 
@@ -77,9 +77,9 @@ CREATE TABLE IF NOT EXISTS db_metadata (
 | Column                    | Data Type | Description                                                                                    |
 | ------------------------- | --------- | ---------------------------------------------------------------------------------------------- |
 | `id`                      | INTEGER   | Primary key, always `1`.                                                                       |
-| `should_sync_metadata`    | INTEGER   | A boolean flag (`0` or `1`) indicating if `agent_metadata` changes need to be synchronized.      |
-| `should_sync_groups`      | INTEGER   | A boolean flag (`0` or `1`) indicating if `agent_groups` changes need to be synchronized.        |
-| `last_metadata_integrity` | INTEGER   | A Unix timestamp of the last successful integrity check for the `agent_metadata` table.          |
-| `last_groups_integrity`   | INTEGER   | A Unix timestamp of the last successful integrity check for the `agent_groups` table.            |
-| `is_first_run`            | INTEGER   | A boolean flag that is true if the module is running for the first time with a new database.     |
-| `is_first_groups_run`     | INTEGER   | A boolean flag that is true if agent groups are being populated for the first time.              |
+| `should_sync_metadata`    | INTEGER   | A boolean flag (`0` or `1`) indicating if `agent_metadata` changes need to be synchronized.    |
+| `should_sync_groups`      | INTEGER   | A boolean flag (`0` or `1`) indicating if `agent_groups` changes need to be synchronized.      |
+| `last_metadata_integrity` | INTEGER   | A Unix timestamp of the last successful integrity check for the `agent_metadata` table.        |
+| `last_groups_integrity`   | INTEGER   | A Unix timestamp of the last successful integrity check for the `agent_groups` table.          |
+| `is_first_run`            | INTEGER   | A boolean flag that is true if the module is running for the first time with a new database.   |
+| `is_first_groups_run`     | INTEGER   | A boolean flag that is true if agent groups are being populated for the first time.            |

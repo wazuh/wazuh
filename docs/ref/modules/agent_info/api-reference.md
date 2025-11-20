@@ -156,7 +156,7 @@ The `agent_info` module acts as a coordinator, sending JSON-based commands to ot
 | Command                | Parameters                | Description                                                                                               |
 | ---------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `pause`                | (none)                    | Requests the target module to pause its operations and file scanning.                                     |
-| `flush`                | (none)                    | Requests the module to flush any pending events or data to ensure a clean state before synchronization. |
+| `flush`                | (none)                    | Requests the module to flush any pending events or data to ensure a clean state before synchronization.   |
 | `get_version`          | (none)                    | Asks the module for its current database synchronization version.                                         |
 | `set_version`          | `{"version": <number>}`   | Instructs the module to set its internal synchronization version to the provided value.                   |
 | `resume`               | (none)                    | Requests the module to resume its normal operations after coordination is complete.                       |
