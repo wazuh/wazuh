@@ -15,6 +15,8 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
+#include "router.h"
+#include "sym_load.h"
 
 #ifndef CLIENT
 
@@ -283,6 +285,91 @@ void wm_sync_agents() {
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
+static router_provider_create_func router_provider_create_ptr = NULL;
+static router_provider_send_func router_provider_send_ptr = NULL;
+
+/**
+ * @brief Initialize router functions for agent deletion notifications
+ *
+ * @return true if router functions were successfully loaded, false otherwise
+ */
+static bool initialize_router_functions(void) {
+    void *router_module = so_get_module_handle("router");
+    if (router_module) {
+        router_provider_create_ptr = so_get_function_sym(router_module, "router_provider_create");
+        router_provider_send_ptr = so_get_function_sym(router_module, "router_provider_send");
+    } else {
+        mtdebug2(WM_DATABASE_LOGTAG, "Unable to load router module.");
+        return false;
+    }
+
+    if (!router_provider_create_ptr || !router_provider_send_ptr) {
+        mtdebug2(WM_DATABASE_LOGTAG, "Unable to load router provider functions.");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Send agent deletion message to inventory-sync via router
+ *
+ * @param agent_id The ID of the agent to delete
+ */
+static void send_agent_delete_to_inventory_sync(const char *agent_id) {
+    static ROUTER_PROVIDER_HANDLE router_inventory_handle = NULL;
+    static bool router_initialized = false;
+
+    // Try to initialize router functions on first use
+    if (!router_initialized) {
+        router_initialized = true;
+        if (!initialize_router_functions()) {
+            return;
+        }
+    }
+
+    if (!router_provider_create_ptr || !router_provider_send_ptr) {
+        return;  // Router not available
+    }
+
+    // Try to create router handle if not already created
+    if (!router_inventory_handle) {
+        router_inventory_handle = router_provider_create_ptr("inventory-states", false);
+        if (!router_inventory_handle) {
+            mtdebug2(WM_DATABASE_LOGTAG, "Router not available for inventory-states topic, skipping agent deletion notification");
+            return;
+        }
+    }
+
+    // Build JSON message: {"command": "delete_agent", "agent_id": "001"}
+    cJSON *json_msg = cJSON_CreateObject();
+    if (!json_msg) {
+        mterror(WM_DATABASE_LOGTAG, "Failed to create JSON message for agent deletion");
+        return;
+    }
+
+    cJSON_AddStringToObject(json_msg, "command", "delete_agent");
+    cJSON_AddStringToObject(json_msg, "agent_id", agent_id);
+
+    char *json_str = cJSON_PrintUnformatted(json_msg);
+    cJSON_Delete(json_msg);
+
+    if (!json_str) {
+        mterror(WM_DATABASE_LOGTAG, "Failed to serialize JSON message for agent deletion");
+        return;
+    }
+
+    // Send message to router
+    int result = router_provider_send_ptr(router_inventory_handle, json_str, strlen(json_str) + 1);
+    if (result != 0) {
+        mtdebug1(WM_DATABASE_LOGTAG, "Failed to send agent deletion message for agent '%s' to inventory-sync", agent_id);
+    } else {
+        mtinfo(WM_DATABASE_LOGTAG, "Sent agent deletion request for agent '%s' to inventory-sync", agent_id);
+    }
+
+    cJSON_free(json_str);
+}
+
 /**
  * @brief Synchronizes a keystore with the agent table of global.db. It will insert
  *        the agents that are in the keystore and are not in global.db.
@@ -342,6 +429,9 @@ void sync_keys_with_wdb(keystore *keys) {
             // Remove agent-related files
             OS_RemoveCounter(ids[i]);
             OS_RemoveAgentTimestamp(ids[i]);
+
+            // Notify inventory-sync to delete agent data from indexer
+            send_agent_delete_to_inventory_sync(ids[i]);
 
             os_free(agent_name);
         }
