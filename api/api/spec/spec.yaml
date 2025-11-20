@@ -9154,10 +9154,8 @@ paths:
                         interval: "12h"
                       vulnerability-detection:
                         enabled: yes
-                        index-status: yes
                         feed-update-interval: "60m"
                       indexer:
-                        enabled: yes
                         hosts:
                           - http://127.0.0.1:9200
                         ssl:

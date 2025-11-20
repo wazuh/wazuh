@@ -145,10 +145,9 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
-    
+
       <vulnerability-detection>
         <enabled>no</enabled>
-        <index-status>yes</index-status>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
     </ossec_config>
@@ -175,10 +174,9 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
-    
+
       <vulnerability-detection>
         <enabled>no</enabled>
-        <index-status>yes</index-status>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
     </ossec_config>
@@ -187,10 +185,9 @@ variables:
     <ossec_config>
       <global>
       </global>
-    
+
       <vulnerability-detection>
         <enabled>no</enabled>
-        <index-status>yes</index-status>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
 
@@ -242,10 +239,9 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
-    
+
       <vulnerability-detection>
         <enabled>no</enabled>
-        <index-status>yes</index-status>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
     </ossec_config>
