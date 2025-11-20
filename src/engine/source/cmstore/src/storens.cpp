@@ -283,6 +283,20 @@ std::tuple<std::string, ResourceType> CMStoreNS::resolveNameFromUUID(const std::
     return opt.value();
 }
 
+std::string CMStoreNS::resolveHashFromUUID(const std::string& uuid) const
+{
+    // Search in cache the hash for the given UUID
+    std::shared_lock lock(m_mutex);
+    auto opt = m_cache.getHashByUUID(uuid);
+
+    if (!opt.has_value())
+    {
+        throw std::runtime_error(fmt::format("Resource with UUID '{}' does not exist", uuid));
+    }
+
+    return opt.value();
+}
+
 std::string CMStoreNS::resolveUUIDFromName(const std::string& name, ResourceType type) const
 {
     // Search in cache the UUID for the given name-type pair

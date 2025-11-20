@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <api/archiver/handlers.hpp>
+#include <api/cmcrud/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
 #include <archiver/archiver.hpp>
@@ -21,9 +22,12 @@
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
+#include <cmcrud/cmcontentvalidator.hpp>
+#include <cmcrud/cmcrudservice.hpp>
+#include <cmstore/cmstore.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
-#include <cmstore/cmstore.hpp>
+#include <ctistore/cm.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -36,7 +40,6 @@
 #include <streamlog/logger.hpp>
 #include <udgramsrv/udsrv.hpp>
 #include <wiconnector/windexerconnector.hpp>
-#include <ctistore/cm.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
@@ -58,7 +61,6 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 
 std::shared_ptr<udsrv::Server> g_engineLocalServer {};
 volatile sig_atomic_t g_shutdown_requested = 0;
-
 
 void sigintHandler(const int signum)
 {
@@ -231,6 +233,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
     std::shared_ptr<cm::store::CMStore> cmStore;
+    std::shared_ptr<cm::crud::ICrudService> cmCrudService;
 
     try
     {
@@ -378,11 +381,15 @@ int main(int argc, char* argv[])
                 return icConfig.toJson();
             };
 
-            try {
-                const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
+            try
+            {
+                const auto jsonCnf =
+                    isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
                 LOG_INFO("Indexer Connector initialized.");
-            } catch (const std::exception& e) {
+            }
+            catch (const std::exception& e)
+            {
                 // ALLOW the engine to start even if the indexer connector fails.
                 LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());
             }
@@ -474,6 +481,14 @@ int main(int argc, char* argv[])
             LOG_INFO("Builder initialized.");
         }
 
+        // Crud Service
+        {
+            std::shared_ptr<cm::crud::IContentValidator> contentValidator =
+                std::make_shared<cm::crud::ContentValidator>(builder);
+            cmCrudService = std::make_shared<cm::crud::CrudService>(cmStore, contentValidator);
+            LOG_INFO("Content Manager CRUD Service initialized.");
+        }
+
         // Router
         {
             // External queues
@@ -521,29 +536,28 @@ int main(int argc, char* argv[])
                             { archiver->deactivate(); });
         }
 
-
         // // CTI Store (initialized after CMSync to pass deploy callback)
         // if (confManager.get<bool>(conf::key::CTI_ENABLED)) {
         //     const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
         //     cti::store::ContentManagerConfig ctiCfg;
         //     ctiCfg.basePath = baseCtiPath;
 
-            // auto deployCallback = [](const std::shared_ptr<cti::store::ICMReader>& cmstore)
-            // {
-            //     LOG_INFO("CTI Store deploy callback triggered. TODO: IMPLMENT");
-            // };
+        // auto deployCallback = [](const std::shared_ptr<cti::store::ICMReader>& cmstore)
+        // {
+        //     LOG_INFO("CTI Store deploy callback triggered. TODO: IMPLMENT");
+        // };
 
         //     ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, deployCallback);
         //     LOG_INFO("CTI Store initialized");
 
-            // TODO: Find a better way to do this - This cannot going to production
-            // if (orchestrator->getEntries().empty())
-            // {
-            //     try
-            //     {
-            //         LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
-            //     }
-            // }
+        // TODO: Find a better way to do this - This cannot going to production
+        // if (orchestrator->getEntries().empty())
+        // {
+        //     try
+        //     {
+        //         LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
+        //     }
+        // }
 
         //     // TODO: Find a better way to do this - This cannot going to production
         //     if (orchestrator->getEntries().empty())
@@ -597,6 +611,10 @@ int main(int argc, char* argv[])
             // should be refactored to use the rotation and dont use a semaphore for writing
             api::archiver::handlers::registerHandlers(archiver, apiServer);
             LOG_DEBUG("Archiver API registered.");
+
+            // Crud Manager
+            api::cmcrud::handlers::registerHandlers(cmCrudService, apiServer);
+            LOG_DEBUG("Content Manager CRUD API registered.");
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));

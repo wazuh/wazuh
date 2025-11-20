@@ -15,7 +15,7 @@ class Constants:
     SOCKET_PATH: str = '/var/ossec/queue/sockets/analysis'
     DEFAULT_POLICY: str = 'policy/wazuh/0'
     DEFAULT_SESSION: str = 'default'
-    DEFAULT_NS: str = 'user'
+    DEFAULT_NS: str = 'draft'
     DEFAULT_API_TIMEOUT: int = 1000000
     PLACEHOLDER = "ENV_PATH_PLACEHOLDER"
 

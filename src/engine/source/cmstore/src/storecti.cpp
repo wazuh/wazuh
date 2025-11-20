@@ -20,22 +20,27 @@ std::vector<std::tuple<std::string, std::string>> CMStoreCTI::getCollection(Reso
 
 std::tuple<std::string, ResourceType> CMStoreCTI::resolveNameFromUUID(const std::string& uuid) const
 {
-   return {};
+    return {};
+}
+
+std::string CMStoreCTI::resolveHashFromUUID(const std::string& uuid) const
+{
+    return {};
 }
 
 std::string CMStoreCTI::resolveUUIDFromName(const std::string& name, ResourceType type) const
 {
-   return {};
+    return {};
 }
 
 bool CMStoreCTI::assetExistsByName(const base::Name& name) const
 {
-   return {};
+    return {};
 }
 
 bool CMStoreCTI::assetExistsByUUID(const std::string& uuid) const
 {
-   return {};
+    return {};
 }
 
 /*********************************** General Resource ************************************/
@@ -87,36 +92,36 @@ void CMStoreCTI::deletePolicy()
 
 dataType::Integration CMStoreCTI::getIntegrationByName(const std::string& name) const
 {
-    return dataType::Integration::fromJson(json::Json{});
+    return dataType::Integration::fromJson(json::Json {});
 }
 
 dataType::Integration CMStoreCTI::getIntegrationByUUID(const std::string& uuid) const
 {
-    return dataType::Integration::fromJson(json::Json{});
+    return dataType::Integration::fromJson(json::Json {});
 }
 
 /**************************************** KVDB ******************************************/
 
 dataType::KVDB CMStoreCTI::getKVDBByName(const std::string& name) const
 {
-    return dataType::KVDB::fromJson(json::Json{});
+    return dataType::KVDB::fromJson(json::Json {});
 }
 
 dataType::KVDB CMStoreCTI::getKVDBByUUID(const std::string& uuid) const
 {
-    return dataType::KVDB::fromJson(json::Json{});
+    return dataType::KVDB::fromJson(json::Json {});
 }
 
 /**************************************** ASSETS ****************************************/
 
 json::Json CMStoreCTI::getAssetByName(const base::Name& name) const
 {
-    return json::Json{};
+    return json::Json {};
 }
 
 json::Json CMStoreCTI::getAssetByUUID(const std::string& uuid) const
 {
-    return json::Json{};
+    return json::Json {};
 }
 
 } // namespace cm::store

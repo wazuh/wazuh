@@ -15,8 +15,8 @@ namespace cm::store
 
 namespace pathns
 {
-constexpr std::string_view JSON_ID_PATH = "/id";           ///< Universal path for UUID field in JSON/YML objects
-constexpr std::string_view YML_PAIR_FMT = "id: {}\n";      ///< YML pair format for UUID field
+constexpr std::string_view JSON_ID_PATH = "/id";      ///< Universal path for UUID field in JSON/YML objects
+constexpr std::string_view YML_PAIR_FMT = "id: {}\n"; ///< YML pair format for UUID field
 // Files and extensions
 constexpr std::string_view CACHE_NS_FILE = "cache_ns.json";
 constexpr std::string_view ASSET_EXTENSION = ".yml";
@@ -133,6 +133,8 @@ public:
     std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const override;
     /** @copydoc ICMStoreNSReader::resolveNameFromUUID */
     std::tuple<std::string, ResourceType> resolveNameFromUUID(const std::string& uuid) const override;
+    /** @copydoc ICMStoreNSReader::resolveHashFromUUID */
+    std::string resolveHashFromUUID(const std::string& uuid) const override;
     /** @copydoc ICMStoreNSReader::resolveUUIDFromName */
     std::string resolveUUIDFromName(const std::string& name, ResourceType type) const override;
 
