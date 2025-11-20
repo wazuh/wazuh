@@ -15,6 +15,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "metadata_provider.h"
 
+#include <optional>
 #include <thread>
 #include <iostream>
 
@@ -3866,4 +3867,203 @@ TEST_F(AgentSyncProtocolTest, SendEndMessageException)
 
     // Verify the message sending function was called enough times (Start, Data, End)
     EXPECT_GT(callCount, 2);
+}
+
+// ============================================================================
+// Tests for Optional Database Path (No Persistence Mode)
+// ============================================================================
+
+TEST_F(AgentSyncProtocolTest, ConstructionWithoutDbPathSuccess)
+{
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Construct without dbPath
+    EXPECT_NO_THROW({
+        protocol = std::make_unique<AgentSyncProtocol>("test_module", std::nullopt, mqFuncs, testLogger,
+                                                        std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout),
+                                                        retries, maxEps, nullptr);
+    });
+}
+
+TEST_F(AgentSyncProtocolTest, PersistDifferenceLogsErrorWithoutQueue)
+{
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    // Capture logger output
+    std::string loggedMessage;
+    modules_log_level_t loggedLevel;
+    LoggerFunc testLogger = [&loggedMessage, &loggedLevel](modules_log_level_t level, const std::string& msg)
+    {
+        loggedLevel = level;
+        loggedMessage = msg;
+    };
+
+    // Construct without dbPath and without queue
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", std::nullopt, mqFuncs, testLogger,
+                                                    std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout),
+                                                    retries, maxEps, nullptr);
+
+    // persistDifference should log error when no queue is available
+    protocol->persistDifference("id1", Operation::CREATE, "index1", "data1", 1);
+
+    // Verify error was logged
+    EXPECT_EQ(loggedLevel, LOG_ERROR);
+    EXPECT_TRUE(loggedMessage.find("Failed to persist item") != std::string::npos);
+    EXPECT_TRUE(loggedMessage.find("requires a persistent queue") != std::string::npos);
+}
+
+TEST_F(AgentSyncProtocolTest, DeltaModeSyncLogsErrorWithoutQueue)
+{
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    // Capture logger output
+    std::string loggedMessage;
+    modules_log_level_t loggedLevel;
+    LoggerFunc testLogger = [&loggedMessage, &loggedLevel](modules_log_level_t level, const std::string& msg)
+    {
+        loggedLevel = level;
+        loggedMessage = msg;
+    };
+
+    // Construct without dbPath
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", std::nullopt, mqFuncs, testLogger,
+                                                    std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout),
+                                                    retries, maxEps, nullptr);
+
+    // DELTA mode should return false and log error when no queue is available
+    bool result = protocol->synchronizeModule(Mode::DELTA);
+
+    EXPECT_FALSE(result);
+    EXPECT_EQ(loggedLevel, LOG_ERROR);
+    EXPECT_TRUE(loggedMessage.find("Failed to fetch items for sync") != std::string::npos);
+    EXPECT_TRUE(loggedMessage.find("requires a persistent queue") != std::string::npos);
+}
+
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
+{
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 1; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 1;
+        }
+    };
+
+    // Capture logger output
+    std::vector<std::string> loggedMessages;
+    std::vector<modules_log_level_t> loggedLevels;
+    LoggerFunc testLogger = [&loggedMessages, &loggedLevels](modules_log_level_t level, const std::string& msg)
+    {
+        loggedLevels.push_back(level);
+        loggedMessages.push_back(msg);
+    };
+
+    // Construct without dbPath
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", std::nullopt, mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, nullptr);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    // Start synchronization in background
+    std::thread syncThread([this, &indices]()
+    {
+        bool result = protocol->notifyDataClean(indices);
+        EXPECT_FALSE(result); // Should fail due to clearItemsByIndex exception
+    });
+
+    // Wait for start
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send StartAck with OK status
+    flatbuffers::FlatBufferBuilder startBuilder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+
+    const uint8_t* startBuffer = startBuilder.GetBufferPointer();
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
+
+    // Wait for data messages
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Send EndAck with OK status
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+
+    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
+    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+
+    syncThread.join();
+
+    bool hasQueueErrorLog = false;
+    for (auto loggedMsg : loggedMessages)
+    {
+        if (loggedMsg.find("Failed to clear local database") != std::string::npos &&
+            loggedMsg.find("requires a persistent queue") != std::string::npos)
+        {
+            hasQueueErrorLog = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(hasQueueErrorLog);
+}
+
+TEST_F(AgentSyncProtocolTest, DeleteDatabaseLogsErrorWithoutQueue)
+{
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    // Capture logger output
+    std::string loggedMessage;
+    modules_log_level_t loggedLevel;
+    LoggerFunc testLogger = [&loggedMessage, &loggedLevel](modules_log_level_t level, const std::string& msg)
+    {
+        loggedLevel = level;
+        loggedMessage = msg;
+    };
+
+    // Construct without dbPath
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", std::nullopt, mqFuncs, testLogger,
+                                                    std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout),
+                                                    retries, maxEps, nullptr);
+
+    // deleteDatabase should log error when no queue is available
+    protocol->deleteDatabase();
+
+    // Verify error was logged
+    EXPECT_EQ(loggedLevel, LOG_ERROR);
+    EXPECT_TRUE(loggedMessage.find("Failed to delete database") != std::string::npos);
+    EXPECT_TRUE(loggedMessage.find("requires a persistent queue") != std::string::npos);
 }

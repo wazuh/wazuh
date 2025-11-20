@@ -62,11 +62,10 @@ class AgentInfoImpl
         /// @param value True if running on an agent, false if on a manager
         void setIsAgent(bool value);
 
-        /// @brief Initialize the synchronization protocol
+        /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
-        /// @param syncDbPath Path to sync database
         /// @param mqFuncs Message queue functions
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const MQ_Functions& mqFuncs);
+        void initSyncProtocol(const std::string& moduleName, const MQ_Functions& mqFuncs);
 
         /// @brief Set synchronization parameters
         /// @param syncEndDelay Delay for synchronization end message in seconds

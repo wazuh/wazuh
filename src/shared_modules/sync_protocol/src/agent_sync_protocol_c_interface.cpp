@@ -16,11 +16,11 @@ extern "C" {
         {
 #if CLIENT
 
-            if (!mq_funcs || !db_path || !module || !logger) return nullptr;
+            if (!mq_funcs || !module || !logger) return nullptr;
 
 #else
 
-            if (!db_path || !module || !logger) return nullptr;
+            if (!module || !logger) return nullptr;
 
 #endif
             LoggerFunc logger_wrapper =
@@ -29,7 +29,9 @@ extern "C" {
                 logger(level, msg.c_str());
             };
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, db_path, *mq_funcs, logger_wrapper, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries,
+            std::optional<std::string> dbPathOpt = db_path ? std::make_optional(std::string(db_path)) : std::nullopt;
+
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, dbPathOpt, *mq_funcs, logger_wrapper, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries,
                                                                                            maxEps));
         }
         catch (const std::exception& ex)

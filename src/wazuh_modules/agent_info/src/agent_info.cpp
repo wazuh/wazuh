@@ -41,7 +41,6 @@ static query_module_callback_t g_query_module_callback = nullptr;
 
 // Global sync protocol parameters
 static const char* g_module_name = nullptr;
-static const char* g_sync_db_path = nullptr;
 static const MQ_Functions* g_mq_functions = nullptr;
 
 // Internal wrapper functions that capture the callbacks
@@ -144,7 +143,7 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
                                                  agent_info_config->sync.sync_max_eps);
 
             // Initialize sync protocol immediately after creating instance
-            if (g_module_name && g_sync_db_path && g_mq_functions)
+            if (g_module_name && g_mq_functions)
             {
                 if (g_log_callback)
                 {
@@ -152,7 +151,7 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
                 }
 
                 g_agent_info_impl->initSyncProtocol(
-                    std::string(g_module_name), std::string(g_sync_db_path), *g_mq_functions);
+                    std::string(g_module_name), *g_mq_functions);
             }
             else
             {
@@ -216,10 +215,9 @@ void agent_info_stop()
     }
 }
 
-void agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs)
+void agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_funcs)
 {
     g_module_name = module_name;
-    g_sync_db_path = sync_db_path;
     g_mq_functions = mq_funcs;
 }
 
