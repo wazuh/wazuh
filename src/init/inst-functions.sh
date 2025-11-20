@@ -1010,7 +1010,6 @@ InstallCommon()
 
 }
 
-
 generateSchemaFiles()
 {
     echo "Generating schema files..."
@@ -1144,6 +1143,10 @@ InstallLocal()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so
         fi
     fi
+
+    ### Categories JSON
+    cp "external/categories/logtypes.json" ${INSTALLDIR}/engine/categories.json
+    echo "Categories JSON moved to: ${INSTALLDIR}/engine/categories.json"
 }
 
 TransferShared()

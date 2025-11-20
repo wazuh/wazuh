@@ -699,6 +699,7 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides/0
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/outputs
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/outputs/*.yml
+%attr(644, root, root) %{_localstatedir}/engine/categories.json
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*

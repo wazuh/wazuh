@@ -1361,7 +1361,7 @@ INDEXER_TEMPLATES_SERVER_STREAMS := \
 WCS_FLAT_DIR := external/wcs-flat-files
 WCS_FLAT_STATELESS_PATH := ecs/stateless
 
-# TODO: can I avoid the list and just bring everything in that dir?
+# List can be avoided and bring everything in that directory
 WCS_FLAT_YAML_FILES := \
 	access-management-ecs-flat.yml \
 	applications-ecs-flat.yml \
@@ -1369,6 +1369,13 @@ WCS_FLAT_YAML_FILES := \
 	other-ecs-flat.yml \
 	security-ecs-flat.yml \
 	system-activity-ecs-flat.yml
+
+# Categories are fetched from a different repository
+INDEXER_SECURITY_BASE_URL := https://raw.githubusercontent.com/wazuh/wazuh-indexer-security-analytics
+CATEGORIES_URL_PATH := src/main/resources/OSMapping
+CATEGORIES_RESOURCE_FILE := logtypes.json
+CATEGORIES_DIR := external/categories
+CATEGORIES_FILE := $(CATEGORIES_DIR)/$(CATEGORIES_RESOURCE_FILE)
 
 # Create WCS flat file paths
 WCS_FLAT_FILES := $(WCS_FLAT_YAML_FILES:%=$(WCS_FLAT_DIR)/%)
@@ -1385,7 +1392,7 @@ endif
 INDEXER_TEMPLATE_FILES := $(INDEXER_TEMPLATES_STATES:%=$(INDEXER_PLUGINS_DIR)/%) $(INDEXER_TEMPLATES_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%)
 
 .PHONY: deps
-deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES)
+deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES) $(CATEGORIES_FILE)
 
 external/$(CPYTHON).tar.gz:
 # Python interpreter
@@ -1508,6 +1515,26 @@ $(WCS_FLAT_DIR)/%-ecs-flat.yml: | $(WCS_FLAT_DIR)
 	done; \
 	if [ $$success -eq 0 ]; then \
 		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		exit 1; \
+	fi
+
+# Categories directory
+$(CATEGORIES_DIR):
+	mkdir -p $(CATEGORIES_DIR)
+
+# Rule for categories files
+$(CATEGORIES_DIR)/$(CATEGORIES_RESOURCE_FILE): | $(CATEGORIES_DIR)
+	@success=0; \
+	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+		url="$(INDEXER_SECURITY_BASE_URL)/$$ref/$(CATEGORIES_URL_PATH)/$(CATEGORIES_RESOURCE_FILE)"; \
+		echo "curl -f -s -o $@ $$url"; \
+		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+			success=1; \
+			break; \
+		fi; \
+	done; \
+	if [ $$success -eq 0 ]; then \
+		echo "ERROR: Failed to download $(CATEGORIES_RESOURCE_FILE) from any reference" >&2; \
 		exit 1; \
 	fi
 
