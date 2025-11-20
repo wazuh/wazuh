@@ -28,7 +28,8 @@ public:
                                const std::string& index,
                                const std::string& data,
                                Operation operation,
-                               uint64_t version), (override));
+                               uint64_t version,
+                               bool isDataContext), (override));
     MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
     MOCK_METHOD(void, clearSyncedItems, (), (override));
     MOCK_METHOD(void, resetSyncingItems, (), (override));
@@ -113,7 +114,7 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceSuccess)
     const Operation testOperation = Operation::CREATE;
     const uint64_t testVersion = 123;
 
-    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion))
+    EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation, testVersion, false))
         .Times(1);
 
     protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion);
@@ -390,7 +391,7 @@ TEST_F(AgentSyncProtocolRouterTest, PersistDifferenceExceptionHandled)
     );
 
     // Throw exception from submit
-    EXPECT_CALL(*mockQueue, submit(_, _, _, _, _))
+    EXPECT_CALL(*mockQueue, submit(_, _, _, _, _, _))
         .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     // Should not throw, just log error
