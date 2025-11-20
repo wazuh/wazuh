@@ -1725,6 +1725,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode)
 {
+<<<<<<< HEAD
     if (m_paused)
     {
         if (m_logFunction)
@@ -1753,9 +1754,23 @@ bool Syscollector::syncModule(Mode mode)
         }
 
         return result;
+=======
+    bool success = true;
+
+    // Sync regular (non-VD) data
+    if (m_spSyncProtocol)
+    {
+        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+>>>>>>> ea12db3268 (fix(syscollector): sync both VD and non-VD protocols with backward-compatible options)
     }
 
-    return false;
+    // Sync VD data using regular SYNC option for backward compatibility
+    if (m_spSyncProtocolVD)
+    {
+        success = m_spSyncProtocolVD->synchronizeModule(mode, Option::SYNC) && success;
+    }
+
+    return success;
 }
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
