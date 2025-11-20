@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "builders/utils.hpp"
+#include <cmstore/categories.hpp>
 
 namespace builder::builders
 {
@@ -46,17 +47,27 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     }
 
     auto indexName = value.getString().value();
+    std::optional<std::unordered_map<std::string_view, std::string_view>> categoryToIndexMap = std::nullopt;
     // Verify index name starts with wazuh- and contains only lowecase alphanumeric characters, hyphens and dots
-    if (!std::regex_match(indexName, std::regex("wazuh-[a-z0-9.-]+")))
+    if (indexName == "auto")
     {
-        throw std::runtime_error(fmt::format("Invalid index name '{}'. Index name must start with 'wazuh-' and contain "
-                                             "only lowercase alphanumeric characters, hyphens and dots",
-                                             indexName));
+        // Get category-to-index map from cm::store
+        categoryToIndexMap = cm::store::categories::getMapping();
+        // runtime_error if not possible -> right now this check doesn't make any sens
+    }
+    else if (!std::regex_match(indexName, std::regex("wazuh-[a-z0-9.-]+")))
+    {
+        throw std::runtime_error(
+            fmt::format("Invalid index name '{}'. If not using 'auto' index name must start with 'wazuh-' and contain "
+                        "only lowercase alphanumeric characters, hyphens and dots",
+                        indexName));
     }
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
+    const auto failureTrace2 = fmt::format("{} -> No index associated to category", name);
+    const auto failureTrace3 = fmt::format("{} -> Event doesn't have wazuh.category.integration field", name);
 
     // Get shared ptr
     auto wic = iConnector.lock();
@@ -67,10 +78,38 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
     return base::Term<base::EngineOp>::create(
         name,
-        [indexName, wic, successTrace, failureTrace, runState = buildCtx->runState()](
-            base::Event event) -> base::result::Result<base::Event>
+        [indexName,
+         wic,
+         successTrace,
+         failureTrace,
+         failureTrace2,
+         failureTrace3,
+         runState = buildCtx->runState(),
+         categoryToIndexMap](base::Event event) -> base::result::Result<base::Event>
         {
-            wic->index(indexName, event->str());
+            auto finalIndexName = indexName;
+            if (categoryToIndexMap != std::nullopt)
+            {
+                // get wazuh.category.integration from event
+                auto categoryIntegration = event->getString("/wazuh/category/integration");
+                if (!categoryIntegration.has_value())
+                {
+                    RETURN_FAILURE(runState, event, failureTrace3);
+                }
+
+                std::string_view categoryKey{categoryIntegration.value()};
+                if (categoryToIndexMap.value().find(categoryKey) != categoryToIndexMap.value().end())
+                {
+                    finalIndexName = categoryToIndexMap.value().at(categoryKey);
+                }
+                else
+                {
+                    RETURN_FAILURE(runState, event, failureTrace2);
+                }
+
+            }
+            // check if present in map, if not throw 3
+            wic->index(finalIndexName, event->str());
             RETURN_SUCCESS(runState, event, successTrace);
         });
 }
