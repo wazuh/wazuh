@@ -70,6 +70,10 @@ jobs:
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
 
+          touch /var/ossec/etc/certs/root-ca.pem
+          sed -i '/<certificate>/d' /var/ossec/etc/ossec.conf
+          sed -i '/server-key.pem/d' /var/ossec/etc/ossec.conf
+
           sudo /var/ossec/bin/wazuh-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework

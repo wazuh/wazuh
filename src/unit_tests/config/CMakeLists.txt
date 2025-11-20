@@ -34,7 +34,7 @@ list(APPEND config_flags "-Wl,--wrap,OS_GetHost -Wl,--wrap=Start_win32_Syscheck 
 
 if(${TARGET} STREQUAL "server")
     list(APPEND config_names "test_indexer")
-    list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
+    list(APPEND config_flags "-Wl,--wrap,Read_Indexer -Wl,--wrap,get_indexer_cnf ${DEBUG_OP_WRAPPERS}")
     list(APPEND config_names "test_cluster")
     list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
 endif()
