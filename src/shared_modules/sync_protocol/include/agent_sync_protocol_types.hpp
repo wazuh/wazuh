@@ -21,5 +21,6 @@ enum class SyncResult
 {
     SUCCESS,             ///< Operation completed successfully
     COMMUNICATION_ERROR, ///< Manager is offline or unreachable
-    CHECKSUM_ERROR       ///< Checksum validation failed
+    CHECKSUM_ERROR,      ///< Checksum validation failed
+    GENERIC_ERROR        ///< Generic synchronization error
 };

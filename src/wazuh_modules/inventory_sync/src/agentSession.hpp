@@ -143,11 +143,12 @@ public:
         }
 
         // Create new session.
-        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck don't send data messages, so size can
-        // be 0
+        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck, ModuleCheck don't send data messages,
+        // so size can be 0
         if (data->size() == 0 && data->mode() != Wazuh::SyncSchema::Mode_MetadataDelta &&
             data->mode() != Wazuh::SyncSchema::Mode_MetadataCheck &&
-            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck)
+            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck &&
+            data->mode() != Wazuh::SyncSchema::Mode_ModuleCheck)
         {
             responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
             throw AgentSessionException("Invalid size");
@@ -228,6 +229,141 @@ public:
                   m_context->sessionId,
                   m_context->agentId,
                   m_context->moduleName.c_str());
+
+        if (m_endReceived)
+        {
+            if (m_gapSet->empty())
+            {
+                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                m_endEnqueued = true;
+            }
+        }
+    }
+
+    /**
+     * @brief Handles an incoming ChecksumModule message.
+     *
+     * Stores the checksum sent by the agent for later verification.
+     *
+     * @param data Parsed flatbuffer ChecksumModule message.
+     */
+    void handleChecksumModule(Wazuh::SyncSchema::ChecksumModule const* data)
+    {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleChecksumModule");
+        }
+
+        std::lock_guard lock(m_mutex);
+
+        if (data->checksum())
+        {
+            m_context->checksum = data->checksum()->str();
+        }
+
+        if (data->index())
+        {
+            m_context->checksumIndex = data->index()->str();
+        }
+
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "ChecksumModule received for session %llu, index: %s, checksum: %s",
+                  m_context->sessionId,
+                  m_context->checksumIndex.c_str(),
+                  m_context->checksum.c_str());
+    }
+
+    /**
+     * @brief Handles an incoming DataContext message.
+     *
+     * Stores the raw context payload in RocksDB and marks the chunk as observed in the GapSet.
+     * DataContext is NOT sent to the indexer - it's context data for VD (future implementation).
+     * Triggers indexing if `handleEnd()` was already called and the session is now complete.
+     *
+     * @param data Parsed flatbuffer DataContext metadata (e.g., sequence number).
+     * @param dataRaw Raw binary payload of the chunk.
+     * @param dataSize Size of the raw payload.
+     */
+    void handleDataContext(Wazuh::SyncSchema::DataContext const* data, const uint8_t* dataRaw, size_t dataSize)
+    {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleDataContext");
+        }
+
+        std::lock_guard lock(m_mutex);
+
+        const auto seq = data->seq();
+        const auto session = data->session();
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
+
+        // Store in RocksDB with "_context" suffix to distinguish from DataValue
+        m_store.put(std::format("{}_{}_context", session, seq),
+                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
+
+        m_gapSet->observe(seq);
+
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "DataContext received: %s %llu %llu %s",
+                  std::format("{}_{}_context", session, seq).c_str(),
+                  m_context->sessionId,
+                  m_context->agentId,
+                  m_context->moduleName.c_str());
+
+        if (m_endReceived)
+        {
+            if (m_gapSet->empty())
+            {
+                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                m_endEnqueued = true;
+            }
+        }
+    }
+
+    /**
+     * @brief Handles an incoming DataClean message.
+     *
+     * Stores the index to be cleaned and tracks the sequence number in the GapSet.
+     * Uses a set to automatically handle duplicates from retransmissions.
+     * Triggers indexing if handleEnd() was already called and the session is now complete.
+     *
+     * @param data Parsed flatbuffer DataClean message.
+     */
+    void handleDataClean(Wazuh::SyncSchema::DataClean const* data)
+    {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleDataClean");
+        }
+
+        std::lock_guard lock(m_mutex);
+
+        const auto seq = data->seq();
+        const auto session = data->session();
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
+
+        if (data->index())
+        {
+            std::string index = data->index()->str();
+            m_context->dataCleanIndices.insert(index);
+
+            logDebug2(LOGGER_DEFAULT_TAG,
+                      "DataClean received for session %llu, seq %llu, index: %s",
+                      m_context->sessionId,
+                      seq,
+                      index.c_str());
+        }
+        else
+        {
+            logError(LOGGER_DEFAULT_TAG,
+                     "DataClean received without index for session %llu, seq %llu",
+                     m_context->sessionId,
+                     seq);
+        }
+
+        m_gapSet->observe(seq);
 
         if (m_endReceived)
         {

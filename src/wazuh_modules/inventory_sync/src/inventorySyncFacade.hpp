@@ -14,6 +14,7 @@
 
 #include "agentSession.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
+#include "hashHelper.h"
 #include "inventorySyncQueryBuilder.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
@@ -113,6 +114,57 @@ class InventorySyncFacadeImpl final
                     LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Data handled for session %llu", data->session());
             }
         }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataClean)
+        {
+            const auto dataClean = syncMessage->content_as<Wazuh::SyncSchema::DataClean>();
+            if (!dataClean)
+            {
+                throw InventorySyncException("Invalid data clean message");
+            }
+
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(dataClean->session()); it == m_agentSessions.end())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu",
+                          dataClean->session());
+            }
+            else
+            {
+                // Handle DataClean - stores index and tracks seq number
+                it->second.handleDataClean(dataClean);
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: DataClean handled for session %llu",
+                          dataClean->session());
+            }
+        }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataContext)
+        {
+            const auto dataContext = syncMessage->content_as<Wazuh::SyncSchema::DataContext>();
+            if (!dataContext)
+            {
+                throw InventorySyncException("Invalid data context message");
+            }
+
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
+                          dataContext->session());
+            }
+            else
+            {
+                // Handle DataContext - stores context in RocksDB and tracks seq number
+                it->second.handleDataContext(
+                    dataContext, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: DataContext handled for session %llu",
+                          dataContext->session());
+            }
+        }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
         {
             const auto startMsg = syncMessage->content_as<Wazuh::SyncSchema::Start>();
@@ -159,6 +211,31 @@ class InventorySyncFacadeImpl final
                         sessionId, sessionId, startMsg, *m_dataStore, *m_indexerQueue, *m_responseDispatcher);
                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
                 }
+            }
+        }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_ChecksumModule)
+        {
+            const auto checksumModule = syncMessage->content_as<Wazuh::SyncSchema::ChecksumModule>();
+            if (!checksumModule)
+            {
+                throw InventorySyncException("Invalid checksum module message");
+            }
+
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(checksumModule->session()); it == m_agentSessions.end())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                          checksumModule->session());
+            }
+            else
+            {
+                // Handle checksum module.
+                it->second.handleChecksumModule(checksumModule);
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: ChecksumModule handled for session %llu",
+                          checksumModule->session());
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
@@ -261,6 +338,77 @@ class InventorySyncFacadeImpl final
                 auto response = result.dump();
                 keystoreServer->send(fd, response.c_str(), response.size());
             });
+    }
+
+    std::string calculateChecksumOfChecksums(const std::string& index, const std::string& agentId)
+    {
+        std::string concatenatedChecksums;
+        std::string searchAfter;
+        constexpr size_t BATCH_SIZE = 1000;
+        size_t totalDocs = 0;
+
+        logDebug2(
+            LOGGER_DEFAULT_TAG, "Querying indexer for checksums: agent=%s, index=%s", agentId.c_str(), index.c_str());
+
+        while (true)
+        {
+            nlohmann::json searchQuery;
+            searchQuery["query"]["term"]["agent.id"] = agentId;
+            searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
+            searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
+            searchQuery["size"] = BATCH_SIZE;
+
+            if (!searchAfter.empty())
+            {
+                searchQuery["search_after"] = nlohmann::json::array({searchAfter});
+            }
+
+            logDebug2(LOGGER_DEFAULT_TAG, "Search query: %s", searchQuery.dump().c_str());
+
+            auto searchResult = m_indexerConnector->executeSearchQuery(index, searchQuery);
+
+            logDebug2(LOGGER_DEFAULT_TAG, "Search result: %s", searchResult.dump().c_str());
+
+            if (!searchResult.contains("hits") || !searchResult["hits"].contains("hits") ||
+                searchResult["hits"]["hits"].empty())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG, "No more results, breaking pagination loop");
+                break;
+            }
+
+            const auto& hits = searchResult["hits"]["hits"];
+            for (const auto& hit : hits)
+            {
+                if (hit.contains("_source") && hit["_source"].contains("checksum") &&
+                    hit["_source"]["checksum"].contains("hash") && hit["_source"]["checksum"]["hash"].contains("sha1"))
+                {
+                    concatenatedChecksums += hit["_source"]["checksum"]["hash"]["sha1"].template get<std::string>();
+                }
+
+                if (hit.contains("sort") && !hit["sort"].empty())
+                {
+                    searchAfter = hit["sort"][0].template get<std::string>();
+                }
+            }
+
+            totalDocs += hits.size();
+
+            if (hits.size() < BATCH_SIZE)
+            {
+                break;
+            }
+        }
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Retrieved %zu documents for checksum calculation", totalDocs);
+
+        Utils::HashData hash(Utils::HashType::Sha1);
+        hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
+        const std::vector<unsigned char> hashResult = hash.hash();
+        std::string finalChecksum = Utils::asciiToHex(hashResult);
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Calculated checksum of checksums: %s", finalChecksum.c_str());
+
+        return finalChecksum;
     }
 
 public:
@@ -565,8 +713,129 @@ public:
                         // Execute the groups check update
                         m_indexerConnector->executeUpdateByQuery(res.context->indices, groupsCheckQuery);
                     }
+                    else if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleCheck)
+                    {
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: Processing ModuleCheck for agent %s, module %s",
+                                  res.context->agentId.c_str(),
+                                  res.context->moduleName.c_str());
+
+                        try
+                        {
+                            if (res.context->checksumIndex.empty())
+                            {
+                                logError(LOGGER_DEFAULT_TAG,
+                                         "ModuleCheck: No index specified for agent %s",
+                                         res.context->agentId.c_str());
+                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                 res.context->agentId,
+                                                                 res.context->sessionId,
+                                                                 res.context->moduleName);
+                            }
+                            else
+                            {
+                                // Retry logic: attempt checksum validation with delays between retries
+                                // This handles cases where recent delta syncs haven't been indexed yet
+                                constexpr int MAX_RETRIES = 5;
+                                constexpr int RETRY_DELAY_SEC = 10;
+                                bool checksumMatch = false;
+                                std::string managerChecksum;
+
+                                for (int attempt = 0; attempt < MAX_RETRIES; ++attempt)
+                                {
+                                    if (attempt > 0)
+                                    {
+                                        logDebug2(LOGGER_DEFAULT_TAG,
+                                                  "ModuleCheck: Retry attempt %d for agent %s after %ds delay",
+                                                  attempt,
+                                                  res.context->agentId.c_str(),
+                                                  RETRY_DELAY_SEC);
+                                        std::this_thread::sleep_for(std::chrono::seconds(RETRY_DELAY_SEC));
+                                    }
+
+                                    managerChecksum =
+                                        calculateChecksumOfChecksums(res.context->checksumIndex, res.context->agentId);
+
+                                    logInfo(LOGGER_DEFAULT_TAG,
+                                            "ModuleCheck (attempt %d/%d): agent=%s, module=%s, index=%s, "
+                                            "agent_checksum=%s, manager_checksum=%s",
+                                            attempt + 1,
+                                            MAX_RETRIES,
+                                            res.context->agentId.c_str(),
+                                            res.context->moduleName.c_str(),
+                                            res.context->checksumIndex.c_str(),
+                                            res.context->checksum.c_str(),
+                                            managerChecksum.c_str());
+
+                                    if (managerChecksum == res.context->checksum)
+                                    {
+                                        checksumMatch = true;
+                                        break; // Success - exit retry loop
+                                    }
+                                }
+
+                                if (checksumMatch)
+                                {
+                                    logInfo(LOGGER_DEFAULT_TAG,
+                                            "ModuleCheck: Checksums match for agent %s - no full resync needed",
+                                            res.context->agentId.c_str());
+                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
+                                                                     res.context->agentId,
+                                                                     res.context->sessionId,
+                                                                     res.context->moduleName);
+                                }
+                                else
+                                {
+                                    logInfo(LOGGER_DEFAULT_TAG,
+                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - full "
+                                            "resync required",
+                                            res.context->agentId.c_str(),
+                                            MAX_RETRIES);
+                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
+                                                                     res.context->agentId,
+                                                                     res.context->sessionId,
+                                                                     res.context->moduleName);
+                                }
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            logError(LOGGER_DEFAULT_TAG,
+                                     "ModuleCheck failed for agent %s: %s",
+                                     res.context->agentId.c_str(),
+                                     e.what());
+                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                             res.context->agentId,
+                                                             res.context->sessionId,
+                                                             res.context->moduleName);
+                        }
+
+                        if (m_agentSessions.erase(res.context->sessionId) == 0)
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                      res.context->sessionId);
+                        }
+                    }
                     else
                     {
+                        // Execute DataClean deletions if any were received during the session
+                        if (!res.context->dataCleanIndices.empty())
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Processing DataClean for %zu indices...",
+                                      res.context->dataCleanIndices.size());
+                            // Delete from each index specified in DataClean messages
+                            for (const auto& index : res.context->dataCleanIndices)
+                            {
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade::start: Deleting data from index '%s' for agent %s",
+                                          index.c_str(),
+                                          res.context->agentId.c_str());
+                                m_indexerConnector->deleteByQuery(index, res.context->agentId);
+                            }
+                        }
+
                         // Send delete by query to indexer if mode is full.
                         if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
                         {
@@ -582,9 +851,22 @@ public:
 
                         const auto prefix = std::format("{}_", res.context->sessionId);
 
+                        // Track if we have any bulk data to send to indexer
+                        bool hasBulkData = false;
+
                         // Send bulk query (with handling of 413 error).
                         for (const auto& [key, value] : m_dataStore->seek(prefix))
                         {
+                            // Skip DataContext entries - they are stored with "_context" suffix and not sent to indexer
+                            if (key.ends_with("_context"))
+                            {
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade::start: Skipping DataContext entry: %s",
+                                          key.c_str());
+                                continue;
+                            }
+
+                            hasBulkData = true;
                             logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing data...");
                             flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(value.data()),
                                                            value.size());
@@ -675,23 +957,48 @@ public:
                             }
                         }
 
-                        // Register notify callback for bulk operations (after accumulating all data)
-                        m_indexerConnector->registerNotify(
-                            [this, ctx = res.context]()
-                            {
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
-                                // Delete data from database.
-                                m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
-                                // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                        // Only register notify callback if there's bulk data or deleteByQuery operations
+                        if (hasBulkData || !res.context->dataCleanIndices.empty() ||
+                            res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
+                        {
+                            // Register notify callback for bulk operations (after accumulating all data)
+                            m_indexerConnector->registerNotify(
+                                [this, ctx = res.context]()
                                 {
-                                    logDebug2(LOGGER_DEFAULT_TAG,
-                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                              ctx->sessionId);
-                                }
-                            });
+                                    // Send ACK to agent.
+                                    m_responseDispatcher->sendEndAck(
+                                        Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                    // Delete data from database.
+                                    m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                                    // Delete Session.
+                                    if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                    {
+                                        logDebug2(LOGGER_DEFAULT_TAG,
+                                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                                  ctx->sessionId);
+                                    }
+                                });
+                        }
+                        else
+                        {
+                            // No bulk data and no deleteByQuery - send immediate response (e.g., DataContext-only
+                            // session)
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: No bulk data or deleteByQuery, sending immediate "
+                                      "response for session %llu",
+                                      res.context->sessionId);
+                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
+                                                             res.context->agentId,
+                                                             res.context->sessionId,
+                                                             res.context->moduleName);
+                            m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                            if (m_agentSessions.erase(res.context->sessionId) == 0)
+                            {
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                          res.context->sessionId);
+                            }
+                        }
                     } // End of else block for non-MetadataDelta/GroupDelta modes
                 }
                 catch (const InventorySyncException& e)

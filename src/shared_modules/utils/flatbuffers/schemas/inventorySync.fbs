@@ -19,7 +19,8 @@ enum Status: byte {
     Ok,
     PartialOk,
     Error,
-    Offline
+    Offline,
+    ChecksumMismatch
 }
 
 enum Option: byte {

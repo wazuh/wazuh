@@ -59,6 +59,10 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 #define INVENTORY_SYNC_HEADER "s:"
 #define INVENTORY_SYNC_HEADER_SIZE 2
 
+// Headers for DBSYNC messages (4.x agents - not supported in 5.0)
+#define DBSYNC_HEADER "5:"
+#define DBSYNC_HEADER_SIZE 2
+
 // Router message forwarder - returns true if message was forwarded to router
 bool router_message_forward(char* msg, size_t msg_length, const char* agent_id);
 
@@ -950,6 +954,13 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
     if (sock_idle >= 0) {
         _close_sock(&keys, sock_idle);
+    }
+
+    // Discard DBSYNC messages from 4.x agents (not supported in 5.0)
+    if (strncmp(tmp_msg, DBSYNC_HEADER, DBSYNC_HEADER_SIZE) == 0) {
+        mdebug2("Discarding DBSYNC message from 4.x agent '%s' (not supported in 5.0)", agentid_str);
+        os_free(agentid_str);
+        return;
     }
 
     // Check if message should be forwarded to router instead of analysisd

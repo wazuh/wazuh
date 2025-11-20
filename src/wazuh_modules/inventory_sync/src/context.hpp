@@ -14,6 +14,7 @@
 
 #include "flatbuffers/include/inventorySync_generated.h"
 #include <cstdint>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,9 @@ struct Context final
     uint64_t globalVersion;
     bool transactionDispatched = false;
     bool ownsAgentLock = false;
+    std::string checksum;
+    std::string checksumIndex;
+    std::set<std::string> dataCleanIndices;
 };
 
 #endif // _INVENTORY_SYNC_CONTEXT_HPP

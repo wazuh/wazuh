@@ -975,6 +975,116 @@ def test_inventory_sync_groups_delta(inventory_sync_tester):
     inventory_sync_tester.check_opensearch_indices("groups_delta_flow")
 
 
+def test_inventory_sync_module_check_match(inventory_sync_tester):
+    """
+    Test ModuleCheck synchronization flow with matching checksums.
+    This test verifies that when agent and manager checksums match,
+    the server responds with Status_Ok and no full resync is triggered.
+    """
+    result = inventory_sync_tester.execute_test_sequence("module_check_match_flow")
+    assert result["validation"]["passed"], f"ModuleCheck match test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for matching checksums"
+
+
+def test_inventory_sync_module_check_mismatch(inventory_sync_tester):
+    """
+    Test ModuleCheck synchronization flow with mismatched checksums.
+    This test verifies that when agent and manager checksums don't match,
+    the server responds with Status_ChecksumMismatch to trigger a full resync.
+    """
+    result = inventory_sync_tester.execute_test_sequence("module_check_mismatch_flow")
+    assert result["validation"]["passed"], f"ModuleCheck mismatch test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_ChecksumMismatch
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_ChecksumMismatch", "Expected Status_ChecksumMismatch for mismatched checksums"
+
+
+def test_inventory_sync_data_clean_single_index(inventory_sync_tester):
+    """
+    Test DataClean synchronization flow with single index.
+    This test verifies that when a DataClean message is sent, the manager:
+    1. Receives and stores the index to clean
+    2. Waits for End message
+    3. Executes deleteByQuery for the specified index
+    4. Responds with Status_Ok
+    """
+    result = inventory_sync_tester.execute_test_sequence("data_clean_single_index_flow")
+    assert result["validation"]["passed"], f"DataClean single index test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataClean"
+
+
+def test_inventory_sync_data_clean_multiple_indices(inventory_sync_tester):
+    """
+    Test DataClean synchronization flow with multiple indices.
+    This test verifies that when multiple DataClean messages are sent:
+    1. All indices are stored
+    2. Sequence numbers are tracked correctly
+    3. All deleteByQuery operations are executed
+    4. EndAck is sent with Status_Ok
+    """
+    result = inventory_sync_tester.execute_test_sequence("data_clean_multiple_indices_flow")
+    assert result["validation"]["passed"], f"DataClean multiple indices test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataClean"
+
+
+def test_inventory_sync_data_context_single(inventory_sync_tester):
+    """
+    Test DataContext synchronization flow with single context message.
+    This test verifies that when a DataContext message is sent, the manager:
+    1. Receives and stores the context data in RocksDB
+    2. Tracks the sequence number in GapSet
+    3. Does NOT send the context to the indexer
+    4. Waits for End message
+    5. Responds with Status_Ok
+    """
+    result = inventory_sync_tester.execute_test_sequence("data_context_single_flow")
+    assert result["validation"]["passed"], f"DataContext single test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataContext"
+
+
+def test_inventory_sync_data_context_multiple(inventory_sync_tester):
+    """
+    Test DataContext synchronization flow with multiple context messages.
+    This test verifies that when multiple DataContext messages are sent:
+    1. All context data is stored in RocksDB with 'context_' prefix
+    2. All sequence numbers are tracked correctly in GapSet
+    3. None of the context data is sent to the indexer
+    4. ReqRet mechanism works if sequences are missing
+    5. EndAck is sent with Status_Ok when all sequences received
+    """
+    result = inventory_sync_tester.execute_test_sequence("data_context_multiple_flow")
+    assert result["validation"]["passed"], f"DataContext multiple test failed: {result['validation'].get('errors', [])}"
+
+    # Verify the EndAck status is Status_Ok
+    if "responses" in result:
+        end_ack = next((r for r in result["responses"] if r.get("type") == "EndAck"), None)
+        assert end_ack is not None, "EndAck response not found"
+        assert end_ack.get("status") == "Status_Ok", "Expected Status_Ok for successful DataContext"
+
+
 @pytest.mark.parametrize('opensearch', [False], indirect=True)
 def test_opensearch_health(opensearch):
     """Test OpenSearch health check."""

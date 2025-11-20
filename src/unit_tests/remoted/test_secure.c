@@ -2523,6 +2523,72 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
     batch_queue_free(events_queue);
 }
 
+void test_HandleSecureMessage_discard_dbsync_message(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "5:dbsync_data_from_4x_agent";
+    message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("test_agent");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedIP
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // Expect debug message about discarding DBSYNC message
+    expect_string(__wrap__mdebug2, formatted_msg, "Discarding DBSYNC message from 4.x agent '001' (not supported in 5.0)");
+
+    // Message should be discarded, not forwarded to router or analysisd
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
 void test_handle_new_tcp_connection_success(void** state)
 {
     struct sockaddr_in peer_info;
@@ -2890,6 +2956,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_json_without_parameters),
         cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed),
         cmocka_unit_test(test_HandleSecureMessage_router_forwarding_disabled),
+        cmocka_unit_test(test_HandleSecureMessage_discard_dbsync_message),
         // Tests handle_new_tcp_connection
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_success, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_wnotify_fail, setup_new_tcp, teardown_new_tcp),

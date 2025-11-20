@@ -1,0 +1,38 @@
+{
+  "description": "DataContext flow test with single context message: start -> datacontext -> end",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "syscollector",
+        "mode": 1,
+        "size": 1,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
+      },
+      "description": "Start synchronization session for DataContext",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "datacontext",
+      "data": {
+        "seq": 0,
+        "id": "context-id-123",
+        "index": "wazuh-states-vulnerabilities",
+        "data": {"cve": "CVE-2024-1234", "severity": "high"}
+      },
+      "description": "Send DataContext message for vulnerability context",
+      "delay": 0.5,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End synchronization session",
+      "delay": 0.5,
+      "use_session_from_start": true
+    }
+  ]
+}

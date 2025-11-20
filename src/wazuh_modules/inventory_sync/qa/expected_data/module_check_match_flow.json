@@ -1,0 +1,23 @@
+{
+  "test_name": "module_check_match_flow",
+  "description": "Expected responses for ModuleCheck flow with matching checksums",
+  "expected_responses": [
+    {
+      "message_type": "StartAck",
+      "status": "Status_Ok",
+      "description": "StartAck should be received with OK status"
+    },
+    {
+      "message_type": "EndAck",
+      "status": "Status_Ok",
+      "description": "EndAck should be received with OK status when checksums match"
+    }
+  ],
+  "expected_logs": [
+    {
+      "level": "INFO",
+      "pattern": "ModuleCheck: Checksums match.*no full resync needed",
+      "description": "Log should indicate checksums match"
+    }
+  ]
+}
