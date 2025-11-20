@@ -34,6 +34,7 @@
 #include "os_err.h"
 #include "generate_cert.h"
 #include <sys/epoll.h>
+#include "router.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -627,6 +628,9 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
+    /* Initialize router module for inventory-sync communication */
+    router_initialize(taggedLogFunction);
+
     /* Start working threads */
 
     if (status = pthread_create(&thread_local_server, NULL, (void *)&run_local_server, NULL), status != 0) {
@@ -1055,6 +1059,52 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
+/**
+ * @brief Send agent deletion message to inventory-sync via router
+ *
+ * @param agent_id The ID of the agent to delete
+ */
+static void send_agent_delete_to_inventory_sync(const char *agent_id) {
+    static ROUTER_PROVIDER_HANDLE router_inventory_handle = NULL;
+
+    // Try to create router handle if not already created
+    if (!router_inventory_handle) {
+        router_inventory_handle = router_provider_create("inventory-states", false);
+        if (!router_inventory_handle) {
+            mdebug2("Router not available for inventory-states topic, skipping agent deletion notification");
+            return;
+        }
+    }
+
+    // Build JSON message: {"command": "delete_agent", "agent_id": "001"}
+    cJSON *json_msg = cJSON_CreateObject();
+    if (!json_msg) {
+        merror("Failed to create JSON message for agent deletion");
+        return;
+    }
+
+    cJSON_AddStringToObject(json_msg, "command", "delete_agent");
+    cJSON_AddStringToObject(json_msg, "agent_id", agent_id);
+
+    char *json_str = cJSON_PrintUnformatted(json_msg);
+    cJSON_Delete(json_msg);
+
+    if (!json_str) {
+        merror("Failed to serialize JSON message for agent deletion");
+        return;
+    }
+
+    // Send message to router
+    int result = router_provider_send(router_inventory_handle, json_str, strlen(json_str) + 1);
+    if (result != 0) {
+        mdebug1("Failed to send agent deletion message for agent '%s' to inventory-sync", agent_id);
+    } else {
+        minfo("Sent agent deletion request for agent '%s' to inventory-sync", agent_id);
+    }
+
+    cJSON_free(json_str);
+}
+
 /* Thread for writing keystore onto disk */
 void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
@@ -1181,6 +1231,9 @@ void* run_writer(__attribute__((unused)) void *arg) {
             }
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            // Notify inventory-sync to delete agent data from indexer
+            send_agent_delete_to_inventory_sync(cur->id);
 
             os_free(cur->id);
             os_free(cur->name);
