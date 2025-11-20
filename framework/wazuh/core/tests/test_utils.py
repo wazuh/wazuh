@@ -2118,11 +2118,6 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
     (
         "<ossec_config><indexer></indexer></ossec_config>",
         "<ossec_config><indexer></indexer></ossec_config>",
-        True,
-     ),
-    (
-        "<ossec_config><indexer></indexer></ossec_config>",
-        "<ossec_config><indexer></indexer></ossec_config>",
         False,
     ),
     (
