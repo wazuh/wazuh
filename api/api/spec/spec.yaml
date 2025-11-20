@@ -882,7 +882,7 @@ components:
             affected_items:
               type: array
               items:
-                $ref: '#/components/schemas/NodeContentUpdate '
+                $ref: '#/components/schemas/NodeContentUpdate'
 
     AllItemsResponseNodeHealthcheck:
       allOf:
@@ -14416,10 +14416,9 @@ paths:
       description: "Updates the Engine and VD content on all nodes in the cluster."
       operationId: api.controllers.content_controller.put_content_update
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/content:update'
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: "List of affected nodes and return messages"
