@@ -142,33 +142,33 @@ def run(args):
 
     error_reporter = ErrorReporter("Validation")
     integration_arg = args.get('integration')
-    integration_rule_arg = args.get('integration_rule')
+    # integration_rule_arg = args.get('integration_rule')
     decoder_arg = args.get('decoder')
-    rule_arg = args.get('rule')
+    # rule_arg = args.get('rule')
 
-    specified_args = [arg for arg in [integration_arg, integration_rule_arg, rule_arg, decoder_arg] if arg]
+    specified_args = [arg for arg in [integration_arg, decoder_arg] if arg]
 
     if len(specified_args) > 1:
-        sys.exit("Error: Only one of 'integration', 'rule_folder', 'rule' or 'decoder' can be specified at a time.")
+        sys.exit("Error: Only one of 'integration', 'decoder' can be specified at a time.")
 
     try:
         print("Running metadata tests.")
-        if integration_rule_arg:
-            print("Validating integrations rules only.")
-            rules_validator(args, ruleset_path, resource_handler, error_reporter)
-        elif integration_arg:
+        # if integration_rule_arg:
+        #     print("Validating integrations rules only.")
+        #     rules_validator(args, ruleset_path, resource_handler, error_reporter)
+        if integration_arg:
             print("Validating integration only.")
             integration_validator(args, ruleset_path, resource_handler, error_reporter)
         elif decoder_arg:
             print("Validating decoder only.")
             asset_validator(args, ruleset_path, resource_handler, 'decoder', error_reporter)
-        elif rule_arg:
-            print("Validating decoder only.")
-            asset_validator(args, ruleset_path, resource_handler, 'rule', error_reporter)
+        # elif rule_arg:
+        #     print("Validating decoder only.")
+        #     asset_validator(args, ruleset_path, resource_handler, 'rule', error_reporter)
         else:
             print("No specific arguments provided, validating both integration and rules.")
             integration_validator(args, ruleset_path, resource_handler, error_reporter)
-            rules_validator(args, ruleset_path, resource_handler, error_reporter)
+            # rules_validator(args, ruleset_path, resource_handler, error_reporter)
 
         if error_reporter.has_errors():
             error_reporter.exit_with_errors("There are mandatory fields in the metadata field that are not present", ruleset_path)
