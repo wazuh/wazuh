@@ -31,12 +31,68 @@ The output files will be:
 - `/tmp/contents/3000-data.json` (data from offsets 2000 to 3000)
 - `/tmp/contents/3200-data.json` (data from offsets 3000 to 3200)
 
+## OAuth 2.0 Authentication (Optional)
+
+The CTI Offset Downloader supports optional OAuth 2.0 authentication with token exchange for accessing protected CTI APIs. When enabled, the downloader can:
+
+1. **Fetch OAuth credentials** from Wazuh Indexer (`/_plugins/content-manager/subscription` endpoint)
+2. **Exchange access tokens** for HMAC-signed URLs via CTI Console token exchange endpoint
+3. **Cache signed URLs** (5-minute lifetime by default) to minimize token exchange requests
+4. **Automatically refresh tokens** before they expire
+
+### OAuth Configuration
+
+OAuth authentication is configured by providing optional `CTICredentialsProvider` and `CTISignedUrlProvider` instances when instantiating the downloader:
+
+```cpp
+// Create OAuth providers
+auto credentialsProvider = std::make_shared<CTICredentialsProvider>(
+    httpRequest,
+    indexerConfig  // Contains: url, username, password, ssl options
+);
+
+auto signedUrlProvider = std::make_shared<CTISignedUrlProvider>(
+    httpRequest,
+    tokenExchangeConfig  // Contains: consoleUrl, tokenEndpoint, cacheSignedUrls, signedUrlLifetime
+);
+
+// Create downloader with OAuth support
+auto downloader = std::make_shared<CtiOffsetDownloader>(
+    httpRequest,
+    credentialsProvider,    // Optional: nullptr for no OAuth
+    signedUrlProvider       // Optional: nullptr for no OAuth
+);
+```
+
+### OAuth Flow
+
+When OAuth is enabled, the download process is modified as follows:
+
+1. **Before each HTTP request**, the downloader calls `getEffectiveUrl(originalUrl)`:
+   - If no providers are configured (nullptr), returns the original URL (backward compatible)
+   - Otherwise, gets an access token from the credentials provider
+   - Exchanges the access token for a signed URL via the signed URL provider
+   - Returns the signed URL to use for the request
+
+2. **Token management**:
+   - Access tokens are automatically refreshed when they expire (<5 minutes remaining)
+   - Signed URLs are cached and reused until they expire (5 minutes by default)
+   - Background threads handle automatic token refresh
+
+3. **Error handling**:
+   - Authentication failures are properly propagated
+   - Retries follow the same logic as non-OAuth requests (5xx errors only)
+
+### Backward Compatibility
+
+OAuth is completely optional. When providers are not provided (or set to `nullptr`), the downloader behaves exactly as before, using the original URLs without any authentication transformation.
+
 ## Relation with the UpdaterContext
 
 The context fields related to this stage are:
 
 - `configData`
-  + `url`: Used as the CTI API URL to download from.
+  + `url`: Used as the CTI API URL to download from. When OAuth is enabled, this URL is transformed into a signed URL before making requests.
   + `compressionType`: Used to determine whether the input file is compressed or not.
   + `contentfileName`: Used as name for the output content file.
 - `downloadsFolder`: Used as output folder when the input file is compressed.
