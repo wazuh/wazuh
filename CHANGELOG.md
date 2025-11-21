@@ -3,7 +3,26 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.2]
 
-## [v4.14.1]
+### Manager
+
+#### Fixed
+
+- Prevented Azure Log Analytics bookmarks from being overwritten across similar configurations. ([#33046](https://github.com/wazuh/wazuh/pull/33046))
+
+### Agent
+
+#### Fixed
+
+- Fixed agent post-install upgrade failures when shared group subfolders already exist. ([#33182](https://github.com/wazuh/wazuh/pull/33182))
+
+### Other
+
+#### Changed
+
+- Upgraded the `starlette` dependency to 0.49.1. ([#33069](https://github.com/wazuh/wazuh/pull/33069))
+
+
+## [v4.14.1] - 2025-11-12
 
 ### Manager
 
