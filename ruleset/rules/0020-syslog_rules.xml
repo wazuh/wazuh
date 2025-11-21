@@ -310,7 +310,7 @@
   <rule id="5104" level="8">
     <if_sid>5100</if_sid>
     <regex>Promiscuous mode enabled|</regex>
-    <regex>device \S+ entered promiscuous mode</regex>
+    <regex>\S+ entered promiscuous mode</regex>
     <description>Interface entered in promiscuous(sniffing) mode.</description>
     <mitre>
       <id>T1040</id>
