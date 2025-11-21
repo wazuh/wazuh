@@ -21,6 +21,7 @@
 #include "singleton.hpp"
 #include "socketServer.hpp"
 #include "stringHelper.h"
+#include "vulnerabilityScannerFacade.hpp"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
 #include <format>
@@ -672,6 +673,36 @@ public:
                             else
                             {
                                 throw InventorySyncException("Invalid message type");
+                            }
+                        }
+
+                        if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
+                            res.context->option == Wazuh::SyncSchema::Option_VDClean ||
+                            res.context->option == Wazuh::SyncSchema::Option_VDSync)
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Running vulnerability scanner for agent %s...",
+                                      res.context->agentId.c_str());
+
+                            // Run vulnerability scanner
+                            try
+                            {
+                                VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                            }
+                            catch (const std::exception& e)
+                            {
+                                logError(LOGGER_DEFAULT_TAG,
+                                         "InventorySyncFacade::start: Vulnerability scanner exception for agent %s: %s",
+                                         res.context->agentId.c_str(),
+                                         e.what());
+                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                 res.context->agentId,
+                                                                 res.context->sessionId,
+                                                                 res.context->moduleName);
+
+                                m_agentSessions.erase(res.context->sessionId);
+
+                                return;
                             }
                         }
 
