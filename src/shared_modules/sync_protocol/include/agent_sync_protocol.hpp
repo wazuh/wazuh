@@ -69,6 +69,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
 
+        /// @copydoc IAgentSyncProtocol::sendDataContextMessages
+        bool sendDataContextMessages(uint64_t session,
+                                     const std::vector<PersistedData>& data) override;
+
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
 

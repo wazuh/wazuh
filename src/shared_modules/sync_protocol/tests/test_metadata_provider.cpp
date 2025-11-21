@@ -17,35 +17,35 @@
 
 class MetadataProviderTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Reset provider before each test to ensure test isolation
-        metadata_provider_reset();
-    }
+    protected:
+        void SetUp() override
+        {
+            // Reset provider before each test to ensure test isolation
+            metadata_provider_reset();
+        }
 
-    void TearDown() override
-    {
-        // Reset provider after each test
-        metadata_provider_reset();
-    }
+        void TearDown() override
+        {
+            // Reset provider after each test
+            metadata_provider_reset();
+        }
 
-    // Helper to create sample metadata
-    agent_metadata_t createSampleMetadata()
-    {
-        agent_metadata_t metadata{};
-        std::strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
-        std::strncpy(metadata.agent_name, "test_agent", sizeof(metadata.agent_name) - 1);
-        std::strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
-        std::strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
-        std::strncpy(metadata.hostname, "test_host", sizeof(metadata.hostname) - 1);
-        std::strncpy(metadata.os_name, "Ubuntu", sizeof(metadata.os_name) - 1);
-        std::strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
-        std::strncpy(metadata.os_version, "22.04", sizeof(metadata.os_version) - 1);
-        metadata.groups = nullptr;
-        metadata.groups_count = 0;
-        return metadata;
-    }
+        // Helper to create sample metadata
+        agent_metadata_t createSampleMetadata()
+        {
+            agent_metadata_t metadata{};
+            std::strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+            std::strncpy(metadata.agent_name, "test_agent", sizeof(metadata.agent_name) - 1);
+            std::strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+            std::strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+            std::strncpy(metadata.hostname, "test_host", sizeof(metadata.hostname) - 1);
+            std::strncpy(metadata.os_name, "Ubuntu", sizeof(metadata.os_name) - 1);
+            std::strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+            std::strncpy(metadata.os_version, "22.04", sizeof(metadata.os_version) - 1);
+            metadata.groups = nullptr;
+            metadata.groups_count = 0;
+            return metadata;
+        }
 };
 
 // Test update with valid metadata
@@ -78,7 +78,7 @@ TEST_F(MetadataProviderTest, GetMetadataAfterUpdate)
     EXPECT_STREQ(retrieved.os_name, "Ubuntu");
     EXPECT_STREQ(retrieved.os_type, "linux");
     EXPECT_STREQ(retrieved.os_version, "22.04");
-    EXPECT_EQ(retrieved.groups_count, 0);
+    EXPECT_EQ(retrieved.groups_count, 0u);
     EXPECT_EQ(retrieved.groups, nullptr);
 }
 
@@ -102,8 +102,9 @@ TEST_F(MetadataProviderTest, UpdateMetadataWithGroups)
 
     // Add groups
     const char* group_names[] = {"group1", "group2", "group3"};
-    metadata.groups = new char*[3];
+    metadata.groups = new char* [3];
     metadata.groups_count = 3;
+
     for (size_t i = 0; i < 3; ++i)
     {
         metadata.groups[i] = new char[strlen(group_names[i]) + 1];
@@ -117,13 +118,14 @@ TEST_F(MetadataProviderTest, UpdateMetadataWithGroups)
     {
         delete[] metadata.groups[i];
     }
+
     delete[] metadata.groups;
 
     // Retrieve and verify
     agent_metadata_t retrieved{};
     ASSERT_EQ(metadata_provider_get(&retrieved), 0);
 
-    EXPECT_EQ(retrieved.groups_count, 3);
+    EXPECT_EQ(retrieved.groups_count, 3u);
     ASSERT_NE(retrieved.groups, nullptr);
     EXPECT_STREQ(retrieved.groups[0], "group1");
     EXPECT_STREQ(retrieved.groups[1], "group2");
@@ -157,7 +159,7 @@ TEST_F(MetadataProviderTest, MultipleUpdates)
 TEST_F(MetadataProviderTest, FreeMetadataWithGroups)
 {
     agent_metadata_t metadata{};
-    metadata.groups = new char*[2];
+    metadata.groups = new char* [2];
     metadata.groups_count = 2;
     metadata.groups[0] = new char[10];
     metadata.groups[1] = new char[10];
@@ -168,7 +170,7 @@ TEST_F(MetadataProviderTest, FreeMetadataWithGroups)
     metadata_provider_free_metadata(&metadata);
 
     EXPECT_EQ(metadata.groups, nullptr);
-    EXPECT_EQ(metadata.groups_count, 0);
+    EXPECT_EQ(metadata.groups_count, 0u);
 }
 
 // Test free metadata with NULL pointer
@@ -198,7 +200,8 @@ TEST_F(MetadataProviderTest, ThreadSafetyConcurrentUpdates)
 
     for (int i = 0; i < num_threads; ++i)
     {
-        threads.emplace_back([&, i]() {
+        threads.emplace_back([&, i]()
+        {
             agent_metadata_t metadata = createSampleMetadata();
             std::string agent_id = "agent_" + std::to_string(i);
             std::strncpy(metadata.agent_id, agent_id.c_str(), sizeof(metadata.agent_id) - 1);
@@ -234,8 +237,10 @@ TEST_F(MetadataProviderTest, ThreadSafetyConcurrentReads)
 
     for (int i = 0; i < num_threads; ++i)
     {
-        threads.emplace_back([&]() {
+        threads.emplace_back([&]()
+        {
             agent_metadata_t retrieved{};
+
             if (metadata_provider_get(&retrieved) == 0)
             {
                 success_count++;
@@ -292,7 +297,7 @@ TEST_F(MetadataProviderTest, GroupsReplacementOnUpdate)
 {
     // First update with 2 groups
     agent_metadata_t metadata1 = createSampleMetadata();
-    metadata1.groups = new char*[2];
+    metadata1.groups = new char* [2];
     metadata1.groups_count = 2;
     metadata1.groups[0] = new char[10];
     metadata1.groups[1] = new char[10];
@@ -306,11 +311,12 @@ TEST_F(MetadataProviderTest, GroupsReplacementOnUpdate)
     {
         delete[] metadata1.groups[i];
     }
+
     delete[] metadata1.groups;
 
     // Second update with 3 different groups
     agent_metadata_t metadata2 = createSampleMetadata();
-    metadata2.groups = new char*[3];
+    metadata2.groups = new char* [3];
     metadata2.groups_count = 3;
     metadata2.groups[0] = new char[10];
     metadata2.groups[1] = new char[10];
@@ -326,13 +332,14 @@ TEST_F(MetadataProviderTest, GroupsReplacementOnUpdate)
     {
         delete[] metadata2.groups[i];
     }
+
     delete[] metadata2.groups;
 
     // Verify the new groups replaced the old ones
     agent_metadata_t retrieved{};
     ASSERT_EQ(metadata_provider_get(&retrieved), 0);
 
-    EXPECT_EQ(retrieved.groups_count, 3);
+    EXPECT_EQ(retrieved.groups_count, 3u);
     EXPECT_STREQ(retrieved.groups[0], "groupA");
     EXPECT_STREQ(retrieved.groups[1], "groupB");
     EXPECT_STREQ(retrieved.groups[2], "groupC");

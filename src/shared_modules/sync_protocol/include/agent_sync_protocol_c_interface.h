@@ -30,7 +30,8 @@ extern "C" {
 /// @param retries Default number of retries for synchronization operations.
 /// @param maxEps Default maximum events per second for synchronization operations.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries, size_t maxEps);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
+                                    size_t maxEps);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
