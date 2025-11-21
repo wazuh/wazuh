@@ -971,7 +971,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^1$'
+      - 'c:sh -c "launchctl list | grep -c auditd" -> r:^1$'
 
   # 3.2 Ensure Security Auditing Flags For User-Attributable Events Are Configured Per Local Organizational Requirements. (Automated)
   - id: 18577
@@ -998,7 +998,7 @@ checks:
     condition: any
     rules:
       - "f:/etc/security/audit_control -> r:^flags && r:-fm && r:-ex && r:ad && r:aa && r:lo && r:-fr && r:-fw"
-      - "f:/etc/security/audit_control -> r:^flags && r:-all"
+      - "f:/etc/security/audit_control -> r:^flags && r:-all && r:ad && r:aa && r:lo"
 
   # 3.3 Ensure install.log Is Retained for 365 or More Days and No Maximum Size. (Automated)
   - id: 18578
@@ -1096,7 +1096,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^0$'
+      - 'c:sh -c "launchctl list | grep -c org.apache.httpd" -> r:^0$'
 
   # 4.3 Ensure NFS Server Is Disabled. (Automated)
   - id: 18584
@@ -1117,7 +1117,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:nfsd status -> r:not running"
+      - "c:nfsd status -> r:is disabled"
       - "not f:/etc/exports"
 
   # 5.1.1 Ensure Home Folders Are Secure. (Automated) - Not Implemented
@@ -1218,7 +1218,6 @@ checks:
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare <= 5'
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:policyAttributeMinutesUntilFailedAuthenticationReset=(\d+) compare >= 15'
 
   # 5.2.2 Ensure Password Minimum Length Is Configured. (Automated)
   - id: 18593
@@ -1254,7 +1253,7 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: any
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
       - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 minimumLetters" -> n:>(\d+)< compare >= 1'
@@ -1274,7 +1273,7 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: any
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
       - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 minimumNumericCharacters" -> n:>(\d+)< compare >= 1'
@@ -1294,10 +1293,10 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: any
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one special character"
-      - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 requiresSymbol" -> n:>(\d+)< compare >= 1'
+      - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 minimumSymbols" -> n:>(\d+)< compare >= 1'
 
   # 5.2.6 Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured. (Manual)
   - id: 18597
@@ -1348,7 +1347,7 @@ checks:
       - cis: ["5.2.8"]
     condition: all
     rules:
-      - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 usingHistory" -> n:>(\d+)< compare >= 24'
+      - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 policyAttributePasswordHistoryDepth" -> n:>(\d+)< compare >= 24'
 
   # 5.3.1 Ensure all user storage APFS volumes are encrypted. (Manual) - Not Implemented
   # 5.3.2 Ensure all user storage CoreStorage volumes are encrypted. (Manual) - Not Implemented
@@ -1417,6 +1416,7 @@ checks:
     condition: all
     rules:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
+      - "c:dscl . -read /Users/root -> r:/bin/false"
 
   # 5.7 Ensure an Administrator Account Cannot Login to Another User's Active and Locked Session. (Automated)
   - id: 18605
