@@ -53,7 +53,7 @@ private:
 
 public:
     WazuhAuthSimulator(const std::string& host_addr = "localhost", int port_num = 1515,
-                      const std::string& password = "topsecret");
+                      const std::string& password = "");
     ~WazuhAuthSimulator();
 
     void run_simulation(int num_threads, int total_registrations, double new_ratio,

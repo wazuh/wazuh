@@ -5,12 +5,13 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
+from hashlib import md5
 import json
 import logging
 from datetime import datetime, timezone
 from os import remove
 from os.path import abspath, dirname, exists, getsize, join
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from dateutil.parser import ParserError, parse
 from sqlalchemy import Column, String, Text, UniqueConstraint, create_engine, update
@@ -339,3 +340,30 @@ def get_default_min_max_values() -> str:
         Execution date as a string with format %Y-%m-%dT%H:%M:%S.%fZ
     """
     return datetime.utcnow().replace(tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
+
+def create_pk(**kwargs: Any) -> str:
+    """Create a deterministic MD5 hash for use as a primary key.
+
+    Parameters
+    ----------
+    **kwargs : Any
+        Keyword arguments to include in the hash. Keys are sorted for deterministic output.
+
+    Returns
+    -------
+    str
+        The hexadecimal MD5 hash string.
+
+    Notes
+    -----
+    Intended for uniqueness, not for cryptographic security.
+    """
+    # Sort items for deterministic hashing
+    sorted_items = sorted(kwargs.items())
+
+    # Build a string representation of key-value pairs
+    concatenated = "|".join(f"{k}={v}" for k, v in sorted_items)
+
+    # Compute the MD5 hash
+    return md5(concatenated.encode("utf-8")).hexdigest()

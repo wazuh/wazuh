@@ -350,11 +350,32 @@ int cldir_ex(const char *name);
 
 
 /**
- * @brief Delete directory content with exception list.
+ * @brief Delete directory content while preserving specified paths
  *
- * @param name Path of the folder.
- * @param ignore Array of files to be ignored. This array must be NULL terminated.
- * @return 0 on success. On error, -1 is returned, and errno is set appropriately.
+ * Recursively removes all files and subdirectories within the specified directory,
+ * except for paths listed in the ignore array. The function supports both simple
+ * filenames and paths with subdirectories.
+ *
+ * The ignore list can contain:
+ * - Simple filenames (e.g., "file.txt") to preserve files in the root directory
+ * - Relative paths (e.g., "subfolder/file.txt") to preserve files in subdirectories
+ *
+ * Directories that contain preserved files are automatically kept. Empty directories
+ * are removed after processing their contents.
+ *
+ * @param name Path of the directory to clean
+ * @param ignore NULL-terminated array of relative paths to preserve (can be NULL to delete everything)
+ * @return 0 on success, -1 on error (errno is set appropriately)
+ *
+ * Example:
+ * @code
+ * const char *preserve[] = {"keep.txt", "subfolder/important.conf", NULL};
+ * cldir_ex_ignore("/var/ossec/etc/shared", preserve);
+ * // Preserves: /var/ossec/etc/shared/keep.txt
+ * //            /var/ossec/etc/shared/subfolder/important.conf
+ * //            /var/ossec/etc/shared/subfolder/ (directory kept because it has preserved file)
+ * // Deletes:   Everything else
+ * @endcode
  */
 int cldir_ex_ignore(const char * name, const char ** ignore);
 

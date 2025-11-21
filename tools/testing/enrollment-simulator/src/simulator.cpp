@@ -135,8 +135,13 @@ AgentConfig WazuhAuthSimulator::create_agent_config(double new_ratio, double inc
 
 std::string WazuhAuthSimulator::build_request(const AgentConfig& config) {
     std::stringstream ss;
-    ss << "OSSEC PASS: " << config.password
-       << " OSSEC A:'" << config.name
+
+    // Only include "OSSEC PASS: " if password is not empty
+    if (!config.password.empty()) {
+        ss << "OSSEC PASS: " << config.password << " ";
+    }
+
+    ss << "OSSEC A:'" << config.name
        << "' V:'" << config.version << "'";
 
     if (config.has_group) {

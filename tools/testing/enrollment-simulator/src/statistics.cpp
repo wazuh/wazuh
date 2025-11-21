@@ -7,6 +7,7 @@
 #include <cmath>
 
 void StatisticsManager::add_result(const RegistrationResult& result) {
+    std::lock_guard<std::mutex> lock(results_mutex);
     results.push_back(result);
 }
 

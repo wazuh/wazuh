@@ -254,6 +254,7 @@ void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **stat
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning directory 'queue/agent-groups'.");
     will_return(__wrap_readdir, dir_ent);
+    will_return(__wrap_closedir, 0);
     is_worker = 1;
 
     // Logging result, removing agent groups file, and finalizing the dir iteration
@@ -286,6 +287,7 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning directory 'queue/agent-groups'.");
     will_return(__wrap_readdir, dir_ent);
+    will_return(__wrap_closedir, 0);
     is_worker = 0;
 
     // Preparing data for the call to wm_sync_group_file
@@ -341,6 +343,7 @@ void test_wm_sync_legacy_groups_files_error_files(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning directory 'queue/agent-groups'.");
     will_return(__wrap_readdir, dir_ent);
+    will_return(__wrap_closedir, 0);
     is_worker = 0;
 
     // Preparing data for the call to wm_sync_group_file

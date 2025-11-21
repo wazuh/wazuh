@@ -7,7 +7,6 @@
 
 import logging
 import sys
-from hashlib import md5
 from json import dumps
 from os.path import abspath, dirname
 
@@ -68,7 +67,7 @@ def start_log_analytics(args):
     )
 
     # Build the request
-    md5_hash = md5(args.la_query.encode()).hexdigest()
+    md5_hash = orm.create_pk(workspace=args.workspace, query=args.la_query)
     url = f'{URL_ANALYTICS}/v1/workspaces/{args.workspace}/query'
     body = build_log_analytics_query(
         query=args.la_query,
@@ -122,7 +121,7 @@ def build_log_analytics_query(
             )
     except orm.AzureORMError as e:
         logging.error(
-            f'Error trying to obtain row object from "{orm.LogAnalytics.__tablename__}" using md5="{md5}": '
+            f'Error trying to obtain row object from "{orm.LogAnalytics.__tablename__}" using md5="{md5_hash}": '
             f'{e}'
         )
         sys.exit(1)

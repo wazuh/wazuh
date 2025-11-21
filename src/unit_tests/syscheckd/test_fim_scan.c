@@ -1623,6 +1623,7 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_readdir, NULL);
+    will_return_always(__wrap_closedir, 0);
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -1656,6 +1657,7 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
     will_return(__wrap_opendir, 1);
     strcpy(fim_data->entry->d_name, "test");
     will_return(__wrap_readdir, fim_data->entry);
+    will_return(__wrap_closedir, 0);
 
     expect_string(__wrap_lstat, filename, "/media/test");
     will_return(__wrap_lstat, &statbuf);
@@ -1764,6 +1766,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_closedir, 0);
     }
 
     expect_wrapper_fim_db_get_count_file_entry(50000);
@@ -1790,6 +1793,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_closedir, 0);
     }
     expect_wrapper_fim_db_get_count_file_entry(50000);
 
@@ -1849,6 +1853,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_closedir, 0);
     }
 
     expect_wrapper_fim_db_get_count_file_entry(25000);
@@ -1911,6 +1916,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_closedir, 0);
     }
 
     // fim_scan
@@ -1981,6 +1987,7 @@ static void test_fim_scan_no_limit(void **state) {
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_closedir, 0);
     }
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
 
@@ -2260,7 +2267,7 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return_always(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
-
+    will_return(__wrap_closedir, 0);
 
     snprintf(skip_directory_message, OS_MAXSTR,
         "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
@@ -2363,6 +2370,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
         will_return(__wrap_readdir, NULL);
         will_return(__wrap_opendir, 1);
+        will_return(__wrap_closedir, 0);
     }
     expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
     will_return_maybe(__wrap_realtime_adddir, 0);
@@ -2424,6 +2432,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_closedir, 0);
     }
 
     expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
@@ -2486,6 +2495,7 @@ static void test_fim_scan_no_limit(void **state) {
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_closedir, 0);
     }
     expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
     will_return_maybe(__wrap_realtime_adddir, 0);
@@ -2808,6 +2818,7 @@ static void test_fim_directory(void **state) {
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test/test'");
@@ -2830,6 +2841,7 @@ static void test_fim_directory_ignore(void **state) {
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
 
     ret = fim_directory(".", &evt_data, NULL, NULL, NULL);
 
