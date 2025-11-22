@@ -23,6 +23,7 @@
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
 #include "../../module_query_errors.h"
+#include "defs.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -378,6 +379,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_spNormalizer  = std::move(normalizer);
     m_initialized   = true;
 
+    // Populate the list of disabled collectors with existing data
+    populateDisabledCollectorsIndices();
 }
 
 void Syscollector::start()
@@ -2075,5 +2078,299 @@ std::string Syscollector::query(const std::string& jsonQuery)
         }
 
         return response.dump();
+    }
+}
+
+bool Syscollector::hasDataInTable(const std::string& tableName)
+{
+    if (!m_spDBSync)
+    {
+        return false;
+    }
+
+    try
+    {
+        int count = 0;
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"COUNT(*) AS count"})
+                           .build();
+
+        const auto callback = [&count](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+        {
+            if (returnType == SELECTED && resultData.contains("count"))
+            {
+                if (resultData["count"].is_number())
+                {
+                    count = resultData["count"].get<int>();
+                }
+            }
+        };
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+        return count > 0;
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Error checking data in table " + tableName + ": " + std::string(ex.what()));
+        }
+
+        return false;
+    }
+}
+
+void Syscollector::populateDisabledCollectorsIndices()
+{
+    m_disabledCollectorsIndices.clear();
+
+    if (!m_hardware && hasDataInTable(HW_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_HARDWARE);
+    }
+
+    if (!m_os && hasDataInTable(OS_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+    }
+
+    if (!m_packages && hasDataInTable(PACKAGES_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+    }
+
+    if (!m_hotfixes && hasDataInTable(HOTFIXES_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+    }
+
+    if (!m_processes && hasDataInTable(PROCESSES_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PROCESSES);
+    }
+
+    if (!m_ports && hasDataInTable(PORTS_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PORTS);
+    }
+
+    if (!m_users && hasDataInTable(USERS_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_USERS);
+    }
+
+    if (!m_groups && hasDataInTable(GROUPS_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_GROUPS);
+    }
+
+    if (!m_services && hasDataInTable(SERVICES_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_SERVICES);
+    }
+
+    if (!m_browserExtensions && hasDataInTable(BROWSER_EXTENSIONS_TABLE))
+    {
+        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS);
+    }
+
+    if (!m_network)
+    {
+        if (hasDataInTable(NET_IFACE_TABLE))
+        {
+            m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_INTERFACES);
+        }
+
+        if (hasDataInTable(NET_PROTOCOL_TABLE))
+        {
+            m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS);
+        }
+
+        if (hasDataInTable(NET_ADDRESS_TABLE))
+        {
+            m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_NETWORKS);
+        }
+    }
+
+    if (!m_disabledCollectorsIndices.empty() && m_logFunction)
+    {
+        std::string indices;
+
+        for (const auto& idx : m_disabledCollectorsIndices)
+        {
+            if (!indices.empty())
+            {
+                indices += ", ";
+            }
+
+            indices += idx;
+        }
+
+        m_logFunction(LOG_INFO, "Disabled collectors with data detected: " + indices);
+    }
+}
+
+bool Syscollector::notifyDisableCollectorsDataClean()
+{
+    if (m_disabledCollectorsIndices.empty())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "No disabled collectors with data to notify for cleanup");
+        }
+
+        return true;
+    }
+
+    if (!m_spSyncProtocol)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean");
+        }
+
+        return false;
+    }
+
+    if (m_logFunction)
+    {
+        std::string indices;
+
+        for (const auto& idx : m_disabledCollectorsIndices)
+        {
+            if (!indices.empty())
+            {
+                indices += ", ";
+            }
+
+            indices += idx;
+        }
+
+        m_logFunction(LOG_INFO, "Notifying DataClean for disabled collectors: " + indices);
+    }
+
+    return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndices);
+}
+
+void Syscollector::deleteDisableCollectorsData()
+{
+    if (m_disabledCollectorsIndices.empty())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "No disabled collectors data to delete");
+        }
+
+        return;
+    }
+
+    if (m_logFunction)
+    {
+        std::string indices;
+
+        for (const auto& idx : m_disabledCollectorsIndices)
+        {
+            if (!indices.empty())
+            {
+                indices += ", ";
+            }
+
+            indices += idx;
+        }
+
+        m_logFunction(LOG_INFO, "Deleting data for disabled collectors: " + indices);
+    }
+
+    clearTablesForIndices(m_disabledCollectorsIndices);
+    m_disabledCollectorsIndices.clear();
+}
+
+void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices)
+{
+    if (!m_spDBSync)
+    {
+        return;
+    }
+
+    for (const auto& index : indices)
+    {
+        std::string tableName;
+
+        for (const auto& [table, idx] : INDEX_MAP)
+        {
+            if (idx == index)
+            {
+                tableName = table;
+                break;
+            }
+        }
+
+        if (!tableName.empty())
+        {
+            try
+            {
+                nlohmann::json deleteQuery =
+                {
+                    {"table", tableName},
+                    {
+                        "query", {
+                            {"data", nlohmann::json::array()},
+                            {"where_filter_opt", "1=1"}
+                        }
+                    }
+                };
+
+                m_spDBSync->deleteRows(deleteQuery);
+
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Cleared table " + tableName);
+                }
+            }
+            catch (const std::exception& ex)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Error clearing table " + tableName + ": " + std::string(ex.what()));
+                }
+            }
+        }
+    }
+
+    // Force commit by temporarily resetting and recreating the DBSync connection
+    // The destructor of DBSync will commit the pending transaction
+    if (!indices.empty())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Committing database changes by resetting connection");
+        }
+
+        // Reset will trigger the DBSync destructor, which commits the transaction
+        m_spDBSync.reset();
+
+        // Recreate the DBSync connection
+        try
+        {
+            auto dbSync = std::make_unique<DBSync>(HostType::AGENT,
+                                                   DbEngineType::SQLITE3,
+                                                   SYSCOLLECTOR_DB_DISK_PATH,
+                                                   getCreateStatement(),
+                                                   DbManagement::PERSISTENT);
+            m_spDBSync = std::move(dbSync);
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Database connection reset successfully");
+            }
+        }
+        catch (const std::exception& ex)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Error recreating database connection: " + std::string(ex.what()));
+            }
+        }
     }
 }

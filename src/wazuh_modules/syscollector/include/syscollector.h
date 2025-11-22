@@ -89,6 +89,21 @@ EXPORTED bool syscollector_parse_response(const unsigned char* data, size_t leng
 EXPORTED bool syscollector_notify_data_clean(const char** indices, size_t indices_count);
 EXPORTED void syscollector_delete_database();
 
+/**
+ * Notify DataClean for disabled collectors that have data in their tables.
+ * Uses internal array populated during syscollector_init().
+ * Logs which collectors are being notified.
+ * @return true if notification was successful or no collectors needed cleanup, false on failure
+ */
+EXPORTED bool syscollector_notify_disable_collectors_data_clean(void);
+
+/**
+ * Delete database tables for disabled collectors that have data.
+ * Uses internal array populated during syscollector_init().
+ * Logs which collectors are being deleted.
+ */
+EXPORTED void syscollector_delete_disable_collectors_data(void);
+
 // Query function
 EXPORTED size_t syscollector_query(const char* query, char** output);
 
@@ -129,5 +144,7 @@ typedef void(*syscollector_persist_diff_func)(const char* id, Operation_t operat
 typedef bool(*syscollector_parse_response_func)(const unsigned char* data, size_t length);
 typedef bool(*syscollector_notify_data_clean_func)(const char** indices, size_t indices_count);
 typedef void(*syscollector_delete_database_func)();
+typedef bool(*syscollector_notify_disable_collectors_data_clean_func)(void);
+typedef void(*syscollector_delete_disable_collectors_data_func)(void);
 
 #endif //_SYSCOLLECTOR_H

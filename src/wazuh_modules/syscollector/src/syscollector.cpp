@@ -196,6 +196,30 @@ void syscollector_delete_database()
     Syscollector::instance().deleteDatabase();
 }
 
+bool syscollector_notify_disable_collectors_data_clean(void)
+{
+    try
+    {
+        return Syscollector::instance().notifyDisableCollectorsDataClean();
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+void syscollector_delete_disable_collectors_data(void)
+{
+    try
+    {
+        Syscollector::instance().deleteDisableCollectorsData();
+    }
+    catch (...)
+    {
+        // Log error but don't throw - this is called from C code
+    }
+}
+
 /// @brief Query handler for Syscollector module.
 ///
 /// Handles query commands sent to the Syscollector module from other modules.
