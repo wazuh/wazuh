@@ -7,7 +7,6 @@
 
 import json
 import sys
-from hashlib import md5
 from os.path import abspath, dirname, join, realpath
 from unittest.mock import MagicMock, call, patch
 
@@ -91,7 +90,7 @@ def test_start_log_analytics(
         domain=tenant,
         scope=f'{URL_ANALYTICS}/.default',
     )
-    md5_hash = md5(query.encode()).hexdigest()
+    md5_hash = orm.create_pk(workspace=workspace, query=query)
     mock_build.assert_called_with(query=query, offset=offset, reparse=reparse, md5_hash=md5_hash)
     mock_get_logs.assert_called_with(
         url=f'{URL_ANALYTICS}/v1/workspaces/{workspace}/query',

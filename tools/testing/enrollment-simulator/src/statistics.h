@@ -4,10 +4,12 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <mutex>
 
 class StatisticsManager {
 private:
     std::vector<RegistrationResult> results;
+    std::mutex results_mutex;
 
     template<typename Predicate>
     void print_category_stats(const std::string& category, const std::string& true_label,

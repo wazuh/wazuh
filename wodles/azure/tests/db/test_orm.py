@@ -290,3 +290,42 @@ def test_min_max_invalid_old_format(monkeypatch):
 
     result = orm.get_min_max_values(json_content)
     assert result == {'min': expected_value, 'max': expected_value}
+
+def test_create_pk_deterministic():
+    """The same kwargs should produce the same hash."""
+    h1 = orm.create_pk(a=1, b=2, c=3)
+    h2 = orm.create_pk(a=1, b=2, c=3)
+    assert h1 == h2
+    # Ensure the hash matches manual md5 computation
+    expected = hashlib.md5("a=1|b=2|c=3".encode("utf-8")).hexdigest()
+    assert h1 == expected
+
+
+def test_create_pk_different_values():
+    """Different kwargs should produce different hashes."""
+    h1 = orm.create_pk(a=1, b=2)
+    h2 = orm.create_pk(a=1, b=3)
+    assert h1 != h2
+
+
+def test_create_pk_different_order():
+    """Order of keyword arguments should not affect the hash."""
+    h1 = orm.create_pk(x=10, y=20)
+    h2 = orm.create_pk(y=20, x=10)
+    assert h1 == h2
+
+
+def test_create_pk_mixed_types():
+    """Supports mixed value types (int, str, bool, None)."""
+    result = orm.create_pk(a=1, b="text", c=True, d=None)
+    # Build expected hash manually
+    concatenated = "a=1|b=text|c=True|d=None"
+    expected = hashlib.md5(concatenated.encode("utf-8")).hexdigest()
+    assert result == expected
+
+
+def test_create_pk_empty():
+    """Handles the case where no kwargs are provided."""
+    result = orm.create_pk()
+    expected = hashlib.md5("".encode("utf-8")).hexdigest()
+    assert result == expected

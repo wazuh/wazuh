@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <errno.h>
 #include "../headers/defs.h"
 #include "../headers/file_op.h"
 #include "../error_messages/error_messages.h"
@@ -1370,6 +1372,373 @@ void test_w_stat64_network_path(void **state) {
 
 #endif
 
+/* ===================== Tests for cldir_ex and cldir_ex_ignore ===================== */
+
+#ifndef TEST_WINAGENT
+
+/* Macro to create mock dirent entries on the stack */
+#define CREATE_MOCK_DIRENT(var_name, name_str) \
+    struct dirent var_name; \
+    memset(&var_name, 0, sizeof(var_name)); \
+    strncpy(var_name.d_name, name_str, sizeof(var_name.d_name) - 1)
+
+/* Test cldir_ex with NULL ignore list (should delete everything) */
+void test_cldir_ex_empty_directory(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Return NULL to indicate end of directory
+    will_return(__wrap_readdir, NULL);
+
+    // closedir returns 0 on success
+    will_return(__wrap_closedir, 0);
+
+    int ret = cldir_ex("/test/dir");
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore with NULL ignore list */
+void test_cldir_ex_ignore_null_ignore(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    int ret = cldir_ex_ignore("/test/dir", NULL);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore with single file to delete */
+void test_cldir_ex_ignore_delete_single_file(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Mock readdir to return one file
+    CREATE_MOCK_DIRENT(entry_1, "file_to_delete.txt");
+    will_return(__wrap_readdir, &entry_1);
+
+    expect_string(__wrap_rmdir, path, "/test/dir/file_to_delete.txt");
+    will_return(__wrap_rmdir, 0);
+
+    // End of directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore preserves file in ignore list */
+void test_cldir_ex_ignore_preserve_file_in_ignore(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Mock readdir to return two files
+    CREATE_MOCK_DIRENT(entry_2, "keep_me.txt");
+    will_return(__wrap_readdir, &entry_2);
+
+    // lstat for keep_me.txt
+    expect_string(__wrap_stat, __file, "/test/dir/keep_me.txt");
+    struct stat mock_stat = { .st_mode = S_IFREG };
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    // keep_me.txt should NOT call rmdir_ex (it's in ignore list)
+
+    CREATE_MOCK_DIRENT(entry_3, "delete_me.txt");
+    will_return(__wrap_readdir, &entry_3);
+
+    // delete_me.txt should be deleted
+    expect_string(__wrap_rmdir, path, "/test/dir/delete_me.txt");
+    will_return(__wrap_rmdir, 0);
+
+    // End of directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { "keep_me.txt", NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore with subdirectory path in ignore list */
+void test_cldir_ex_ignore_preserve_subdirectory_file(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Mock readdir to return "subfolder"
+    CREATE_MOCK_DIRENT(entry_4, "subfolder");
+    will_return(__wrap_readdir, &entry_4);
+
+    // lstat for subfolder - it's a directory
+    expect_string(__wrap_stat, __file, "/test/dir/subfolder");
+    struct stat mock_stat_dir = { .st_mode = S_IFDIR };
+    will_return(__wrap_stat, &mock_stat_dir);
+    will_return(__wrap_stat, 0);
+
+    // Because "subfolder/file1.txt" is in ignore, should_preserve_path returns 1
+    // This means we recurse into subfolder
+
+    // Recursive call: opendir("/test/dir/subfolder")
+    will_return(__wrap_opendir, (DIR *)2);
+
+    // Inside subfolder: return "file1.txt"
+    CREATE_MOCK_DIRENT(entry_5, "file1.txt");
+    will_return(__wrap_readdir, &entry_5);
+
+    // lstat for file1.txt
+    expect_string(__wrap_stat, __file, "/test/dir/subfolder/file1.txt");
+    struct stat mock_stat_file = { .st_mode = S_IFREG };
+    will_return(__wrap_stat, &mock_stat_file);
+    will_return(__wrap_stat, 0);
+
+    // file1.txt is in ignore list (subfolder/file1.txt), so should NOT be deleted
+
+    // Return "file2.txt"
+    CREATE_MOCK_DIRENT(entry_6, "file2.txt");
+    will_return(__wrap_readdir, &entry_6);
+
+    // file2.txt NOT in ignore, should be deleted
+    expect_string(__wrap_rmdir, path, "/test/dir/subfolder/file2.txt");
+    will_return(__wrap_rmdir, 0);
+
+    // End of subfolder directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    // Try to rmdir the subfolder (will fail because file1.txt is still there)
+    expect_string(__wrap_rmdir, path, "/test/dir/subfolder");
+    will_return(__wrap_rmdir, -1);
+    errno = ENOTEMPTY;
+
+    // End of main directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { "subfolder/file1.txt", NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore removes empty subdirectory */
+void test_cldir_ex_ignore_remove_empty_subdirectory(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Mock readdir to return "empty_folder"
+    CREATE_MOCK_DIRENT(entry_7, "empty_folder");
+    will_return(__wrap_readdir, &entry_7);
+
+    // empty_folder NOT in ignore, so call rmdir_ex
+    expect_string(__wrap_rmdir, path, "/test/dir/empty_folder");
+    will_return(__wrap_rmdir, 0);
+
+    // End of directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore with nested subdirectory paths */
+void test_cldir_ex_ignore_nested_subdirectory_paths(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Mock readdir to return "subfolder"
+    CREATE_MOCK_DIRENT(entry_8, "subfolder");
+    will_return(__wrap_readdir, &entry_8);
+
+    // lstat for subfolder - it's a directory
+    expect_string(__wrap_stat, __file, "/test/dir/subfolder");
+    struct stat mock_stat_dir = { .st_mode = S_IFDIR };
+    will_return(__wrap_stat, &mock_stat_dir);
+    will_return(__wrap_stat, 0);
+
+    // Recurse into subfolder
+    will_return(__wrap_opendir, (DIR *)2);
+
+    // Inside subfolder: return "nested"
+    CREATE_MOCK_DIRENT(entry_9, "nested");
+    will_return(__wrap_readdir, &entry_9);
+
+    // lstat for nested - it's a directory
+    expect_string(__wrap_stat, __file, "/test/dir/subfolder/nested");
+    will_return(__wrap_stat, &mock_stat_dir);
+    will_return(__wrap_stat, 0);
+
+    // Recurse into nested
+    will_return(__wrap_opendir, (DIR *)3);
+
+    // Inside nested: return "file.txt"
+    CREATE_MOCK_DIRENT(entry_10, "file.txt");
+    will_return(__wrap_readdir, &entry_10);
+
+    // lstat for file.txt
+    expect_string(__wrap_stat, __file, "/test/dir/subfolder/nested/file.txt");
+    struct stat mock_stat_file = { .st_mode = S_IFREG };
+    will_return(__wrap_stat, &mock_stat_file);
+    will_return(__wrap_stat, 0);
+
+    // file.txt is in ignore list, should NOT be deleted
+
+    // End of nested directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    // Try to rmdir nested (will fail because file.txt is still there)
+    expect_string(__wrap_rmdir, path, "/test/dir/subfolder/nested");
+    will_return(__wrap_rmdir, -1);
+    errno = ENOTEMPTY;
+
+    // End of subfolder directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    // Try to rmdir subfolder (will fail because nested is still there)
+    expect_string(__wrap_rmdir, path, "/test/dir/subfolder");
+    will_return(__wrap_rmdir, -1);
+    errno = ENOTEMPTY;
+
+    // End of main directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { "subfolder/nested/file.txt", NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore skips . and .. entries */
+void test_cldir_ex_ignore_skip_dot_entries(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Mock readdir to return ".", "..", and a normal file
+    CREATE_MOCK_DIRENT(entry_11, ".");
+    will_return(__wrap_readdir, &entry_11);
+    CREATE_MOCK_DIRENT(entry_12, "..");
+    will_return(__wrap_readdir, &entry_12);
+    CREATE_MOCK_DIRENT(entry_13, "file.txt");
+    will_return(__wrap_readdir, &entry_13);
+
+    // file.txt should be deleted
+    expect_string(__wrap_rmdir, path, "/test/dir/file.txt");
+    will_return(__wrap_rmdir, 0);
+
+    // End of directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore with opendir failure */
+void test_cldir_ex_ignore_opendir_failure(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, NULL);
+
+    int ret = cldir_ex_ignore("/test/dir", NULL);
+    assert_int_equal(ret, -1);
+}
+
+/* Test cldir_ex_ignore with rmdir_ex failure */
+void test_cldir_ex_ignore_rmdir_ex_failure(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Mock readdir to return a file
+    CREATE_MOCK_DIRENT(entry_15, "file.txt");
+    will_return(__wrap_readdir, &entry_15);
+
+    // rmdir_ex fails
+    expect_string(__wrap_rmdir, path, "/test/dir/file.txt");
+    will_return(__wrap_rmdir, -1);
+
+    will_return(__wrap_closedir, 0);
+
+    errno = 0;
+
+    const char *ignore[] = { NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, -1);
+}
+
+/* Test cldir_ex_ignore with multiple files in ignore list */
+void test_cldir_ex_ignore_multiple_files_in_ignore(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Return three files
+    CREATE_MOCK_DIRENT(entry_16, "keep1.txt");
+    will_return(__wrap_readdir, &entry_16);
+    expect_string(__wrap_stat, __file, "/test/dir/keep1.txt");
+    struct stat mock_stat = { .st_mode = S_IFREG };
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    CREATE_MOCK_DIRENT(entry_17, "delete.txt");
+    will_return(__wrap_readdir, &entry_17);
+    expect_string(__wrap_rmdir, path, "/test/dir/delete.txt");
+    will_return(__wrap_rmdir, 0);
+
+    CREATE_MOCK_DIRENT(entry_18, "keep2.txt");
+    will_return(__wrap_readdir, &entry_18);
+    expect_string(__wrap_stat, __file, "/test/dir/keep2.txt");
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    // End of directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { "keep1.txt", "keep2.txt", NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+/* Test cldir_ex_ignore preserves directory with partial ignore match */
+void test_cldir_ex_ignore_partial_path_match(void **state) {
+    (void) state;
+
+    will_return(__wrap_opendir, (DIR *)1);
+
+    // Return "sub" directory
+    CREATE_MOCK_DIRENT(entry_19, "sub");
+    will_return(__wrap_readdir, &entry_19);
+
+    // "subfolder/file.txt" is in ignore, but "sub" should NOT match
+    // So "sub" should be deleted
+    expect_string(__wrap_rmdir, path, "/test/dir/sub");
+    will_return(__wrap_rmdir, 0);
+
+    // End of directory
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_closedir, 0);
+
+    const char *ignore[] = { "subfolder/file.txt", NULL };
+    int ret = cldir_ex_ignore("/test/dir", ignore);
+    assert_int_equal(ret, 0);
+}
+
+#endif /* TEST_WINAGENT */
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifndef TEST_WINAGENT
@@ -1417,6 +1786,19 @@ int main(void) {
         cmocka_unit_test(test_get_file_pointer_NULL),
         cmocka_unit_test(test_get_file_pointer_invalid),
         cmocka_unit_test(test_get_file_pointer_success),
+        // cldir_ex and cldir_ex_ignore
+        cmocka_unit_test(test_cldir_ex_empty_directory),
+        cmocka_unit_test(test_cldir_ex_ignore_null_ignore),
+        cmocka_unit_test(test_cldir_ex_ignore_delete_single_file),
+        cmocka_unit_test(test_cldir_ex_ignore_preserve_file_in_ignore),
+        cmocka_unit_test(test_cldir_ex_ignore_preserve_subdirectory_file),
+        cmocka_unit_test(test_cldir_ex_ignore_remove_empty_subdirectory),
+        cmocka_unit_test(test_cldir_ex_ignore_nested_subdirectory_paths),
+        cmocka_unit_test(test_cldir_ex_ignore_skip_dot_entries),
+        cmocka_unit_test(test_cldir_ex_ignore_opendir_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_rmdir_ex_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_multiple_files_in_ignore),
+        cmocka_unit_test(test_cldir_ex_ignore_partial_path_match),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
