@@ -15,8 +15,8 @@
 
 int __wrap_closedir(DIR *dirp);
 
-int __wrap_opendir();
+DIR * __wrap_opendir(const char *name);
 
-struct dirent * __wrap_readdir();
+struct dirent * __wrap_readdir(DIR *dirp);
 
 #endif
