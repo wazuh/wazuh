@@ -84,11 +84,26 @@ int check_auditd_enabled(void) {
 
 int configure_audisp(const char *audisp_path, const char *audisp_config) {
     FILE *fp;
-    char buffer[PATH_MAX] = {'\0'};
+    char tmp_file_path[PATH_MAX] = {'\0'};
+    struct stat st;
 
     minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
-    abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+    if (unlink(audisp_path) < 0) {
+        if (errno != ENOENT) {
+            merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    if (unlink(abs_path_socket) < 0) {
+        if (errno != ENOENT) {
+            merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    abspath(AUDIT_CONF_FILE, tmp_file_path, PATH_MAX);
 
     fp = wfopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
@@ -103,23 +118,9 @@ int configure_audisp(const char *audisp_path, const char *audisp_config) {
         return -1;
     }
 
-    if (symlink(buffer, audisp_path) < 0) {
-        switch (errno) {
-        case EEXIST:
-            if (unlink(audisp_path) < 0) {
-                merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
-                return -1;
-            }
-
-            if (symlink(buffer, audisp_path) == 0) {
-                break;
-            }
-
-        // Fallthrough
-        default:
-            merror(LINK_ERROR, audisp_path, AUDIT_CONF_FILE, errno, strerror(errno));
-            return -1;
-        }
+    if (OS_MoveFile(tmp_file_path, audisp_path) < 0) {
+        merror("Failed to move '%s' to '%s'", tmp_file_path, audisp_path);
+        return -1;
     }
 
     if (syscheck.restart_audit) {
