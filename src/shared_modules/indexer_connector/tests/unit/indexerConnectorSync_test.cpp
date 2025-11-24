@@ -2129,14 +2129,6 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryEmptyResults)
     EXPECT_EQ(result["hits"]["hits"].size(), 0);
 }
 
-/**
- * @brief Test executeSearchQueryWithPagination without callback (callback is empty/nullptr)
- * 
- * This test verifies that executeSearchQueryWithPagination works correctly when no callback is provided:
- * - The query executes successfully
- * - No callback is invoked (because none was provided)
- * - The method returns normally without errors
- */
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithoutCallback)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -2145,18 +2137,19 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithoutCallback
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillOnce(Invoke([](auto, const auto& postParams, auto)
-                         {
-                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
-                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                             {
-                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
-                             }
-                             else
-                             {
-                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
-                             }
-                         }));
+        .WillOnce(Invoke(
+            [](auto, const auto& postParams, auto)
+            {
+                std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }));
 
     nlohmann::json query;
     query["size"] = 1000;
@@ -2166,16 +2159,6 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithoutCallback
     EXPECT_NO_THROW(connector.executeSearchQueryWithPagination("test-index", query));
 }
 
-/**
- * @brief Test executeSearchQueryWithPagination with callback receiving two pages
- * 
- * This test verifies pagination behavior:
- * - First page returns data with hits
- * - Callback is invoked with first page data
- * - Second query includes search_after parameter
- * - Second page returns empty hits (end of pagination)
- * - Callback is invoked with empty page
- */
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithCallbackTwoPages)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -2188,41 +2171,46 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithCallbackTwo
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(2)
-        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
-                         {
-                             postCallCount++;
-                             // First page with data, hits has an ID and sort field for pagination
-                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":2},"hits":[{"_id":"1","sort":["1"]}]}})";
-                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                             {
-                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
-                             }
-                             else
-                             {
-                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
-                             }
-                         }))
-        .WillOnce(Invoke([&postCallCount](auto, const auto& postParams, auto)
-                         {
-                             postCallCount++;
-                             // Second page empty, hits is empty
-                             std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
-                             if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                             {
-                                 std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
-                             }
-                             else
-                             {
-                                 std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
-                             }
-                         }));
+        .WillOnce(Invoke(
+            [&postCallCount](auto, const auto& postParams, auto)
+            {
+                postCallCount++;
+                // First page with data, hits has an ID and sort field for pagination
+                // NOTE: Returns 1 hit.
+                std::string mockResponse =
+                    R"({"took":1,"hits":{"total":{"value":2},"hits":[{"_id":"1","sort":["1"]}]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }))
+        .WillOnce(Invoke(
+            [&postCallCount](auto, const auto& postParams, auto)
+            {
+                postCallCount++;
+                // Second page empty, hits is empty
+                std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }));
 
     nlohmann::json query;
-    query["size"] = 1000;
+    query["size"] = 1;
     query["query"]["term"]["package.name"] = "test-package";
     query["sort"][0]["_id"] = "asc";
 
-    auto callback = [&callbackCount](const nlohmann::json& response) {
+    auto callback = [&callbackCount](const nlohmann::json& response)
+    {
         callbackCount++;
     };
 

@@ -670,12 +670,11 @@ public:
     {
         nlohmann::json currentQuery = query;
         std::string searchAfter;
-        bool firstPage = true;
         while (true)
         {
             nlohmann::json searchResult = executeSearchQuery(index, currentQuery);
 
-            // Always call the callback, even for empty pages (test expects this)
+            // Always call the callback, even for empty pages, to notify the caller of each page's result (including empty pages).
             if (onResponse)
             {
                 onResponse(searchResult);
@@ -708,7 +707,6 @@ public:
 
             // Update query for next page
             currentQuery["search_after"] = nlohmann::json::array({searchAfter});
-            firstPage = false;
         }
     }
 

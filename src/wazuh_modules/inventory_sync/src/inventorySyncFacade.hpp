@@ -31,7 +31,6 @@
 #include <json.hpp>
 #include <memory>
 #include <random>
-#include "vulnerabilityScannerFacade.hpp"
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
@@ -413,210 +412,6 @@ class InventorySyncFacadeImpl final
         return finalChecksum;
     }
 
-    /**
-     * @brief Test method for executeSearchQueryWithPagination using context queries
-     * 
-     * This method tests the pagination functionality with the same indices and queries
-     * used by eventGetContext, allowing manual verification of the pagination behavior.
-     * 
-     * @param agentId Agent ID to query
-     */
-    void testExecuteSearchQueryWithPagination(const std::string& agentId)
-    {
-        logDebug1(LOGGER_DEFAULT_TAG, 
-                  "=== Testing executeSearchQueryWithPagination for agent %s ===", 
-                  agentId.c_str());
-
-        // Define the same indices used in eventGetContext
-        const std::vector<std::string> indexes = {
-            "wazuh-states-inventory-system-*",
-            "wazuh-states-inventory-packages-*",
-            "wazuh-states-inventory-hotfixes-*",
-            "wazuh-states-vulnerabilities-*"
-        };
-
-        // Test with each index
-        for (const auto& index : indexes)
-        {
-            logDebug1(LOGGER_DEFAULT_TAG, 
-                      "\n--- Testing index: %s ---", 
-                      index.c_str());
-
-            size_t totalDocs = 0;
-            int pageCount = 0;
-
-            // Build context query using the same builder as eventGetContext
-            auto query = InventorySyncQueryBuilder::buildContextGetQuery(agentId, 1000, "");
-
-            logDebug2(LOGGER_DEFAULT_TAG, "Query: %s", query.dump().c_str());
-
-            // Execute with pagination and callback
-            m_indexerConnector->executeSearchQueryWithPagination(
-                index, 
-                query,
-                [&totalDocs, &pageCount, &index, &agentId](const nlohmann::json& response)
-                {
-                    pageCount++;
-                    
-                    if (response.contains("hits") && response["hits"].contains("hits"))
-                    {
-                        const auto& hits = response["hits"]["hits"];
-                        size_t pageSize = hits.size();
-                        totalDocs += pageSize;
-
-                        logDebug1(LOGGER_DEFAULT_TAG, 
-                                  "  Page %d: %zu documents", 
-                                  pageCount, 
-                                  pageSize);
-
-                        // Show first and last document IDs for verification
-                        if (!hits.empty())
-                        {
-                            const auto& firstDoc = hits[0];
-                            const auto& lastDoc = hits[hits.size() - 1];
-
-                            logDebug2(LOGGER_DEFAULT_TAG, 
-                                      "    First doc ID: %s", 
-                                      firstDoc["_id"].get<std::string>().c_str());
-                            
-                            if (hits.size() > 1)
-                            {
-                                logDebug2(LOGGER_DEFAULT_TAG, 
-                                          "    Last doc ID: %s", 
-                                          lastDoc["_id"].get<std::string>().c_str());
-                            }
-
-                            // Show search_after value from last doc
-                            if (lastDoc.contains("sort") && !lastDoc["sort"].empty())
-                            {
-                                logDebug2(LOGGER_DEFAULT_TAG, 
-                                          "    Last sort value (search_after): %s",
-                                          lastDoc["sort"][0].dump().c_str());
-                            }
-                        }
-                    }
-                });
-
-            logDebug1(LOGGER_DEFAULT_TAG, 
-                      "Index %s completed: %d pages, %zu total documents\n", 
-                      index.c_str(), 
-                      pageCount, 
-                      totalDocs);
-        }
-
-        logDebug1(LOGGER_DEFAULT_TAG, 
-                  "=== Test completed for agent %s ===\n", 
-                  agentId.c_str());
-    }
-
-    /**
-     * @brief Test method for executeSearchQueryWithPagination using CVE queries
-     * 
-     * This method tests the pagination functionality with CVE queries,
-     * similar to eventGetCve.
-     * 
-     * @param agentId Agent ID to query
-     * @param packageName Package name to search for
-     * @param packageVersion Package version to search for
-     */
-    void testExecuteSearchQueryWithPaginationCVE(const std::string& agentId,
-                                                  const std::string& packageName,
-                                                  const std::string& packageVersion)
-    {
-        logDebug1(LOGGER_DEFAULT_TAG, 
-                  "=== Testing executeSearchQueryWithPagination for CVEs ===");
-        logDebug1(LOGGER_DEFAULT_TAG, 
-                  "Agent: %s, Package: %s %s", 
-                  agentId.c_str(), 
-                  packageName.c_str(), 
-                  packageVersion.c_str());
-
-        const std::string index = "wazuh-states-vulnerabilities-*";
-        
-        size_t totalDocs = 0;
-        int pageCount = 0;
-        std::vector<std::string> cveIds;
-
-        // Build CVE query using the same builder as eventGetCve
-        auto query = InventorySyncQueryBuilder::buildCveGetQuery(
-            agentId, 
-            packageName, 
-            packageVersion, 
-            1000, 
-            "");
-
-        logDebug2(LOGGER_DEFAULT_TAG, "Query: %s", query.dump().c_str());
-
-        // Execute with pagination and callback
-        m_indexerConnector->executeSearchQueryWithPagination(
-            index, 
-            query,
-            [&totalDocs, &pageCount, &cveIds](const nlohmann::json& response)
-            {
-                pageCount++;
-                
-                if (response.contains("hits") && response["hits"].contains("hits"))
-                {
-                    const auto& hits = response["hits"]["hits"];
-                    size_t pageSize = hits.size();
-                    totalDocs += pageSize;
-
-                    logDebug1(LOGGER_DEFAULT_TAG, 
-                              "  Page %d: %zu CVE documents", 
-                              pageCount, 
-                              pageSize);
-
-                    // Collect CVE IDs from this page
-                    for (const auto& hit : hits)
-                    {
-                        if (hit.contains("_id"))
-                        {
-                            std::string cveId = hit["_id"].get<std::string>();
-                            cveIds.push_back(cveId);
-                            
-                            // Log first few CVEs from each page
-                            if (cveIds.size() <= 5 || (cveIds.size() > totalDocs - 5))
-                            {
-                                logDebug2(LOGGER_DEFAULT_TAG, 
-                                          "    CVE: %s", 
-                                          cveId.c_str());
-                            }
-                        }
-                    }
-
-                    // Show search_after value
-                    if (!hits.empty())
-                    {
-                        const auto& lastDoc = hits[hits.size() - 1];
-                        if (lastDoc.contains("sort") && !lastDoc["sort"].empty())
-                        {
-                            logDebug2(LOGGER_DEFAULT_TAG, 
-                                      "    Last sort value: %s",
-                                      lastDoc["sort"][0].dump().c_str());
-                        }
-                    }
-                }
-            });
-
-        logDebug1(LOGGER_DEFAULT_TAG, 
-                  "CVE test completed: %d pages, %zu total CVE documents", 
-                  pageCount, 
-                  totalDocs);
-        logDebug1(LOGGER_DEFAULT_TAG, 
-                  "Total unique CVEs found: %zu", 
-                  cveIds.size());
-        
-        if (!cveIds.empty())
-        {
-            logDebug1(LOGGER_DEFAULT_TAG, 
-                      "First CVE: %s", 
-                      cveIds.front().c_str());
-            logDebug1(LOGGER_DEFAULT_TAG, 
-                      "Last CVE: %s\n", 
-                      cveIds.back().c_str());
-        }
-    }
-
 public:
     /**
      * @brief Starts facade.
@@ -651,43 +446,6 @@ public:
         m_clusterName = Utils::toLowerCase(configuration.at("clusterName").get_ref<const std::string&>());
 
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
-
-        // ========== TEST: executeSearchQueryWithPagination ==========
-        // Uncomment these lines to test the pagination functionality
-        // TODO: Remove or comment out before production deployment
-        
-        if (m_indexerConnector->isAvailable())
-        {
-            logDebug1(LOGGER_DEFAULT_TAG, "\n\n***** RUNNING PAGINATION TESTS *****\n");
-            
-            // Test 1: Context queries (like eventGetContext)
-            try
-            {
-                testExecuteSearchQueryWithPagination("001");
-            }
-            catch (const std::exception& e)
-            {
-                logError(LOGGER_DEFAULT_TAG, "Context pagination test failed: %s", e.what());
-            }
-            
-            // Test 2: CVE queries (like eventGetCve)
-            try
-            {
-                testExecuteSearchQueryWithPaginationCVE("001", "curl", "7.68.0");
-            }
-            catch (const std::exception& e)
-            {
-                logError(LOGGER_DEFAULT_TAG, "CVE pagination test failed: %s", e.what());
-            }
-            
-            logDebug1(LOGGER_DEFAULT_TAG, "\n***** PAGINATION TESTS COMPLETED *****\n\n");
-        }
-        else
-        {
-            logWarn(LOGGER_DEFAULT_TAG, "Indexer not available, skipping pagination tests");
-        }
-        // ========== END TEST ==========
-
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
             {
@@ -793,28 +551,6 @@ public:
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
                     auto lock = m_indexerConnector->scopeLock();
-
-                    if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
-                        res.context->option == Wazuh::SyncSchema::Option_VDClean ||
-                        res.context->option == Wazuh::SyncSchema::Option_VDSync)
-                    {
-                        logDebug2(LOGGER_DEFAULT_TAG,
-                                  "InventorySyncFacade::start: Running vulnerability scanner for agent %s...",
-                                  res.context->agentId.c_str());
-
-                        // Run vulnerability scanner
-                        try
-                        {
-                            VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
-                        }
-                        catch (const std::exception& e)
-                        {
-                            logError(LOGGER_DEFAULT_TAG,
-                                     "InventorySyncFacade::start: Vulnerability scanner exception for agent %s: %s",
-                                     res.context->agentId.c_str(),
-                                     e.what());
-                        }
-                    }
 
                     if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta)
                     {
@@ -1226,8 +962,8 @@ public:
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
                             logDebug2(LOGGER_DEFAULT_TAG,
-                                    "InventorySyncFacade: Running vulnerability scanner for agent %s...",
-                                    res.context->agentId.c_str());
+                                      "InventorySyncFacade: Running vulnerability scanner for agent %s...",
+                                      res.context->agentId.c_str());
 
                             // Run vulnerability scanner
                             try
@@ -1237,9 +973,9 @@ public:
                             catch (const std::exception& e)
                             {
                                 logError(LOGGER_DEFAULT_TAG,
-                                        "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
-                                        res.context->agentId.c_str(),
-                                        e.what());
+                                         "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
+                                         res.context->agentId.c_str(),
+                                         e.what());
                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                  res.context->agentId,
                                                                  res.context->sessionId,
