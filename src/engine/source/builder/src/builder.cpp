@@ -183,7 +183,7 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
 }
 
 base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                                      const base::Name& name) const
+                                      const json::Json& assetJson) const
 {
     try
     {
@@ -192,9 +192,23 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
         buildCtx->setValidator(m_schema);
         buildCtx->setAllowedFields(m_allowedFields);
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
+        auto asset = (*assetBuilder)(assetJson);
 
-        const auto& jsonAsset = nsReader->getAssetByName(name);
-        auto asset = (*assetBuilder)(jsonAsset);
+        const auto& nsId = nsReader->getNamespaceId();
+        const auto& assetName = asset.name();
+        const auto& parents = asset.parents();
+
+        for (const auto& parentName : parents)
+        {
+            if (!nsReader->assetExistsByName(parentName))
+            {
+                return base::Error {
+                    fmt::format("Parent '{}' referenced by asset '{}' does not exist in namespace '{}'.",
+                                parentName.toStr(),
+                                assetName.toStr(),
+                                nsId.toStr())};
+            }
+        }
     }
     catch (const std::exception& e)
     {
@@ -214,8 +228,8 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
     const auto& defaultParent = policy.getDefaultParent();
     if (!nsReader->assetExistsByName(defaultParent))
     {
-        return base::Error {
-            fmt::format("Default parent '{}' does not exist as asset in policy '{}'.", defaultParent.toStr(), policyName)};
+        return base::Error {fmt::format(
+            "Default parent '{}' does not exist as asset in policy '{}'.", defaultParent.toStr(), policyName)};
     }
 
     // Root decoder optional

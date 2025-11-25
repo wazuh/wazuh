@@ -14,34 +14,48 @@ ContentValidator::ContentValidator(std::shared_ptr<builder::IValidator> builderV
     }
 }
 
-void ContentValidator::validateNamespace(std::string_view /*nsName*/) const
+void ContentValidator::validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                      const cm::store::dataType::Policy& policy) const
 {
-    // TODO: implementar reglas de validación de espacios (namespaces)
+    base::OptError err = m_builderValidator->softPolicyValidate(nsReader, policy);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err); // o simplemente err->message
+        throw std::runtime_error(fmt::format(
+            "Policy validation failed in namespace '{}': {}", nsReader->getNamespaceId().toStr(), e.message));
+    }
 }
 
-void ContentValidator::validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& /*nsReader*/,
-                                      const cm::store::dataType::Policy& /*policy*/) const
+void ContentValidator::validateIntegration(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                           const cm::store::dataType::Integration& integration) const
 {
-    // TODO: implementar validación de Policy
-}
-
-void ContentValidator::validateIntegration(const std::shared_ptr<cm::store::ICMStoreNSReader>& /*nsReader*/,
-                                           const cm::store::dataType::Integration& /*integration*/) const
-{
-    // TODO: implementar validación de Integration
+    base::OptError err = m_builderValidator->softIntegrationValidate(nsReader, integration);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format("Integration validation failed for '{}' in namespace '{}': {}",
+                                             integration.getName(),
+                                             nsReader->getNamespaceId().toStr(),
+                                             e.message));
+    }
 }
 
 void ContentValidator::validateKVDB(const std::shared_ptr<cm::store::ICMStoreNSReader>& /*nsReader*/,
                                     const cm::store::dataType::KVDB& /*kvdb*/) const
 {
-    // TODO: implementar validación de KVDB
+    // Currently, no validation is performed for KVDBs.
 }
 
-void ContentValidator::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& /*nsReader*/,
-                                     const base::Name& /*name*/,
-                                     const json::Json& /*asset*/) const
+void ContentValidator::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                     const json::Json& asset) const
 {
-    // TODO: implementar validación de assets (decoder/rule/filter/output)
+    auto err = m_builderValidator->validateAsset(nsReader, asset);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format(
+            "Asset validation failed in namespace '{}': {}", nsReader->getNamespaceId().toStr(), e.message));
+    }
 }
 
 } // namespace cm::crud
