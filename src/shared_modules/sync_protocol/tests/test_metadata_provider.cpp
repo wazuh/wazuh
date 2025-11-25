@@ -271,7 +271,7 @@ TEST_F(MetadataProviderTest, LargeStringValues)
     agent_metadata_t retrieved{};
     ASSERT_EQ(metadata_provider_get(&retrieved), 0);
 
-    EXPECT_EQ(std::string(retrieved.hostname).length(), 250);
+    EXPECT_EQ(std::string(retrieved.hostname).length(), 250u);
 }
 
 // Test empty string values

@@ -260,3 +260,19 @@ TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)
 
     EXPECT_THROW(queue.resetSyncingItems(), std::exception);
 }
+
+// Test to cover IPersistentQueue D0 destructor (delete through base pointer)
+TEST(InterfaceDestructorTest, IPersistentQueueDeletingDestructor)
+{
+    // Create concrete implementation through base interface pointer
+    IPersistentQueue* queue = nullptr;
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Create PersistentQueue through base interface pointer
+    queue = new PersistentQueue(":memory:", testLogger, mockStorage);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete queue;
+}
