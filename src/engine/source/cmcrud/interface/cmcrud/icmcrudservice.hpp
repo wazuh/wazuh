@@ -147,17 +147,10 @@ public:
      * The behavior depends on @p type:
      *  - For assets (DECODER, RULE, FILTER, OUTPUT):
      *      - The document is parsed into an internal asset representation.
-     *      - The logical name is inferred (e.g. via base::Name).
      *  - For integrations:
      *      - The document is parsed into cm::store::dataType::Integration.
      *  - For KVDBs:
      *      - The document is parsed into cm::store::dataType::KVDB.
-     *
-     * In all cases:
-     *  - An optional UUID may be present inside the document, influencing
-     *    whether the operation is treated as create or update.
-     *  - The resulting object is validated before any mutation.
-     *  - The underlying cm::store namespace is updated accordingly.
      *
      * @param nsName     Target namespace name.
      * @param type       Resource type.
