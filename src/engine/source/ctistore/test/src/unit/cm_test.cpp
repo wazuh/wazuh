@@ -97,3 +97,188 @@ TEST(ContentManagerTest, processSkipsUnclassifiedLines)
 
     std::filesystem::remove_all(base);
 }
+
+// ============================
+// resolveUUIDFromName Tests
+// ============================
+
+TEST(ContentManagerTest, ResolveUUIDFromName_Integration)
+{
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_uuid");
+    cfg.deleteDownloadedContent = false;
+
+    cti::store::ContentManager cm(cfg);
+
+    // Store an integration via content processing
+    std::filesystem::create_directories(cfg.outputFolder);
+    const std::string filePath = cfg.outputFolder + "/integration.json";
+    std::ofstream f(filePath);
+    ASSERT_TRUE(f.is_open());
+    f << R"({"name":"integration-uuid-123","offset":1,"version":1,"inserted_at":"2025-01-01T00:00:00Z","payload":{"document":{"title":"Test Integration","decoders":[],"kvdbs":[]},"type":"integration"}})"
+      << '\n';
+    f.close();
+
+    std::string message = std::string("{\"paths\":[\"") + filePath + "\"],\"type\":\"raw\",\"offset\":0}";
+    auto result = cm.testProcessMessage(message);
+    EXPECT_TRUE(std::get<2>(result));
+
+    // Resolve UUID from name
+    std::string uuid = cm.resolveUUIDFromName(base::Name("Test Integration"), "integration");
+    EXPECT_EQ(uuid, "integration-uuid-123");
+
+    std::filesystem::remove_all(base);
+}
+
+TEST(ContentManagerTest, ResolveUUIDFromName_Decoder)
+{
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_uuid_decoder");
+    cfg.deleteDownloadedContent = false;
+
+    cti::store::ContentManager cm(cfg);
+
+    // Store a decoder
+    std::filesystem::create_directories(cfg.outputFolder);
+    const std::string filePath = cfg.outputFolder + "/decoder.json";
+    std::ofstream f(filePath);
+    ASSERT_TRUE(f.is_open());
+    f << R"({"name":"decoder-uuid-456","offset":1,"version":1,"inserted_at":"2025-01-01T00:00:00Z","payload":{"document":{"name":"test_decoder","metadata":{"module":"test"}},"type":"decoder"}})"
+      << '\n';
+    f.close();
+
+    std::string message = std::string("{\"paths\":[\"") + filePath + "\"],\"type\":\"raw\",\"offset\":0}";
+    auto result = cm.testProcessMessage(message);
+    EXPECT_TRUE(std::get<2>(result));
+
+    // Resolve UUID from name
+    std::string uuid = cm.resolveUUIDFromName(base::Name("test_decoder"), "decoder");
+    EXPECT_EQ(uuid, "decoder-uuid-456");
+
+    std::filesystem::remove_all(base);
+}
+
+TEST(ContentManagerTest, ResolveUUIDFromName_NotFound)
+{
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_uuid_notfound");
+
+    cti::store::ContentManager cm(cfg);
+
+    // Try to resolve UUID for non-existent integration
+    EXPECT_THROW(
+        cm.resolveUUIDFromName(base::Name("NonExistent"), "integration"),
+        std::runtime_error
+    );
+
+    std::filesystem::remove_all(base);
+}
+
+TEST(ContentManagerTest, ResolveUUIDFromName_ConsistentResults)
+{
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_uuid_consistent");
+    cfg.deleteDownloadedContent = false;
+
+    cti::store::ContentManager cm(cfg);
+
+    // Store an integration
+    std::filesystem::create_directories(cfg.outputFolder);
+    const std::string filePath = cfg.outputFolder + "/integration.json";
+    std::ofstream f(filePath);
+    ASSERT_TRUE(f.is_open());
+    f << R"({"name":"consistent-uuid","offset":1,"version":1,"inserted_at":"2025-01-01T00:00:00Z","payload":{"document":{"title":"Consistent Test","decoders":[],"kvdbs":[]},"type":"integration"}})"
+      << '\n';
+    f.close();
+
+    std::string message = std::string("{\"paths\":[\"") + filePath + "\"],\"type\":\"raw\",\"offset\":0}";
+    auto result = cm.testProcessMessage(message);
+    EXPECT_TRUE(std::get<2>(result));
+
+    // Test round-trip: Name -> UUID -> Name
+    std::string uuid = cm.resolveUUIDFromName(base::Name("Consistent Test"), "integration");
+    EXPECT_EQ(uuid, "consistent-uuid");
+
+    // Verify round-trip using resolveNameAndTypeFromUUID
+    auto nameType = cm.resolveNameAndTypeFromUUID(uuid);
+    EXPECT_EQ(nameType.first, "Consistent Test");
+    EXPECT_EQ(nameType.second, cti::store::AssetType::INTEGRATION);
+
+    std::filesystem::remove_all(base);
+}
+
+  // ============================
+  // resolveNameAndTypeFromUUID Tests
+  // ============================
+
+  TEST(ContentManagerTest, ResolveNameAndTypeFromUUID_Integration)
+  {
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_name_type");
+    cfg.deleteDownloadedContent = false;
+
+    cti::store::ContentManager cm(cfg);
+
+    // Store an integration via content processing
+    std::filesystem::create_directories(cfg.outputFolder);
+    const std::string filePath = cfg.outputFolder + "/integration_name.json";
+    std::ofstream f(filePath);
+    ASSERT_TRUE(f.is_open());
+    f << R"({"name":"integration-uuid-123","offset":1,"version":1,"inserted_at":"2025-01-01T00:00:00Z","payload":{"document":{"title":"Test Integration","decoders":[],"kvdbs":[]},"type":"integration"}})" 
+      << '\n';
+    f.close();
+
+    std::string message = std::string("{\"paths\":[\"") + filePath + "\"],\"type\":\"raw\",\"offset\":0}";
+    auto result = cm.testProcessMessage(message);
+    EXPECT_TRUE(std::get<2>(result));
+
+    auto nameType = cm.resolveNameAndTypeFromUUID("integration-uuid-123");
+    EXPECT_EQ(nameType.first, "Test Integration");
+    EXPECT_EQ(nameType.second, cti::store::AssetType::INTEGRATION);
+
+    std::filesystem::remove_all(base);
+  }
+
+  TEST(ContentManagerTest, ResolveNameAndTypeFromUUID_Decoder)
+  {
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_name_type_decoder");
+    cfg.deleteDownloadedContent = false;
+
+    cti::store::ContentManager cm(cfg);
+
+    // Store a decoder
+    std::filesystem::create_directories(cfg.outputFolder);
+    const std::string filePath = cfg.outputFolder + "/decoder_name.json";
+    std::ofstream f(filePath);
+    ASSERT_TRUE(f.is_open());
+    f << R"({"name":"decoder-uuid-456","offset":1,"version":1,"inserted_at":"2025-01-01T00:00:00Z","payload":{"document":{"name":"test_decoder","metadata":{"module":"test"}},"type":"decoder"}})" 
+      << '\n';
+    f.close();
+
+    std::string message = std::string("{\"paths\":[\"") + filePath + "\"],\"type\":\"raw\",\"offset\":0}";
+    auto result = cm.testProcessMessage(message);
+    EXPECT_TRUE(std::get<2>(result));
+
+    auto nameType = cm.resolveNameAndTypeFromUUID("decoder-uuid-456");
+    EXPECT_EQ(nameType.first, "test_decoder");
+    EXPECT_EQ(nameType.second, cti::store::AssetType::DECODER);
+
+    std::filesystem::remove_all(base);
+  }
+
+  TEST(ContentManagerTest, ResolveNameAndTypeFromUUID_NotFound)
+  {
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_name_type_notfound");
+
+    cti::store::ContentManager cm(cfg);
+
+    // Try to resolve name/type for non-existent uuid
+    EXPECT_THROW(
+      cm.resolveNameAndTypeFromUUID("non-existent-uuid"),
+      std::runtime_error
+    );
+
+    std::filesystem::remove_all(base);
+  }

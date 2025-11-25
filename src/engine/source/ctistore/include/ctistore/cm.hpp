@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <shared_mutex>
+#include <utility>
 
 #include <ctistore/contentmanagerconfig.hpp>
 #include <ctistore/ctistoragedb.hpp>
@@ -56,6 +57,12 @@ public:
 
     /** @copydoc ICMReader::resolveNameFromUUID */
     std::string resolveNameFromUUID(const std::string& uuid) const override;
+
+    /** @copydoc ICMReader::resolveNameAndTypeFromUUID */
+    std::pair<std::string, cti::store::AssetType> resolveNameAndTypeFromUUID(const std::string& uuid) const override;
+
+    /** @copydoc ICMReader::resolveUUIDFromName */
+    std::string resolveUUIDFromName(const base::Name& name, const std::string& type) const override;
 
     /** @copydoc ICMReader::listKVDB */
     std::vector<std::string> listKVDB() const override;

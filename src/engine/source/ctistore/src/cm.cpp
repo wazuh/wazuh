@@ -188,6 +188,63 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
     throw std::runtime_error(fmt::format("Asset with UUID '{}' not found: {}", uuid, errorMsg ? *errorMsg : "unknown error"));
 }
 
+std::pair<std::string, cti::store::AssetType> ContentManager::resolveNameAndTypeFromUUID(const std::string& uuid) const
+{
+    if (!m_storage || !m_storage->isOpen())
+    {
+        throw std::runtime_error("Storage not initialized");
+    }
+
+    static const std::array<std::pair<std::string, cti::store::AssetType>, 2> types = {{{"integration", cti::store::AssetType::INTEGRATION}, {"decoder", cti::store::AssetType::DECODER}}};
+
+    for (const auto& t : types)
+    {
+        try
+        {
+            auto names = m_storage->getAssetList(t.first);
+            for (const auto& nm : names)
+            {
+                try
+                {
+                    auto resolvedUuid = m_storage->resolveUUIDFromName(nm, t.first);
+                    if (resolvedUuid == uuid)
+                    {
+                        return {nm.fullName(), t.second};
+                    }
+                }
+                catch (const std::exception&)
+                {
+                    // ignore and continue with next name
+                }
+            }
+        }
+        catch (const std::exception&)
+        {
+            continue;
+        }
+    }
+
+    throw std::runtime_error(fmt::format("Asset with UUID '{}' not found", uuid));
+}
+
+std::string ContentManager::resolveUUIDFromName(const base::Name& name, const std::string& type) const
+{
+    if (!m_storage || !m_storage->isOpen())
+    {
+        throw std::runtime_error("Storage not initialized");
+    }
+
+    try
+    {
+        return m_storage->resolveUUIDFromName(name, type);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to resolve UUID for name '{}' of type '{}': {}",
+                                             name.toStr(), type, e.what()));
+    }
+}
+
 std::vector<std::string> ContentManager::listKVDB() const
 {
     if (!m_storage || !m_storage->isOpen())

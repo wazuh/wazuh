@@ -2029,3 +2029,118 @@ TEST_F(CTIStorageDBTest, PolicyDeleteBothFormats)
     EXPECT_FALSE(m_storage->policyExists(base::Name("Flat Policy")));
     EXPECT_EQ(m_storage->getPolicyList().size(), 0);
 }
+
+// ============================
+// resolveUUIDFromName Tests
+// ============================
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_Integration)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration-uuid-123", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Resolve UUID from name
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Test Integration"), "integration");
+
+    EXPECT_EQ(uuid, "integration-uuid-123");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_Decoder)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder-uuid-456", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Resolve UUID from name
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("test_decoder"), "decoder");
+
+    EXPECT_EQ(uuid, "decoder-uuid-456");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_Policy)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy-uuid-789");
+    m_storage->storePolicy(policy);
+
+    // Resolve UUID from name (policies use title)
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Wazuh 5.0"), "policy");
+
+    EXPECT_EQ(uuid, "policy-uuid-789");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_KVDB)
+{
+    // Create and store KVDB
+    json::Json kvdb;
+    kvdb.setObject();
+    kvdb.setString("kvdb-uuid-abc", "/name");
+    kvdb.setInt(1, "/offset");
+    kvdb.setInt(1, "/version");
+    kvdb.setString("2025-09-19T14:35:57.830144Z", "/inserted_at");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("kvdb", "/type");
+    payload.setString("test-integration", "/integration_id");
+
+    json::Json document;
+    document.setObject();
+    document.setString("test_kvdb", "/title");
+
+    json::Json content;
+    content.setObject();
+    content.setString("value1", "/key1");
+    content.setString("value2", "/key2");
+    document.set("/content", content);
+
+    payload.set("/document", document);
+    kvdb.set("/payload", payload);
+
+    m_storage->storeKVDB(kvdb);
+
+    // Resolve UUID from name
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("test_kvdb"), "kvdb");
+
+    EXPECT_EQ(uuid, "kvdb-uuid-abc");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_NotFound)
+{
+    // Try to resolve UUID for non-existent integration
+    EXPECT_THROW(
+        m_storage->resolveUUIDFromName(base::Name("NonExistent"), "integration"),
+        std::runtime_error
+    );
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_InvalidType)
+{
+    // Try to resolve UUID with invalid asset type
+    EXPECT_THROW(
+        m_storage->resolveUUIDFromName(base::Name("SomeName"), "invalid_type"),
+        std::invalid_argument
+    );
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_MultipleAssetsOfSameType)
+{
+    // Store multiple integrations
+    auto integration1 = createSampleIntegration("int-uuid-1", "Integration One");
+    auto integration2 = createSampleIntegration("int-uuid-2", "Integration Two");
+    auto integration3 = createSampleIntegration("int-uuid-3", "Integration Three");
+
+    m_storage->storeIntegration(integration1);
+    m_storage->storeIntegration(integration2);
+    m_storage->storeIntegration(integration3);
+
+    // Resolve UUIDs individually
+    std::string uuid1 = m_storage->resolveUUIDFromName(base::Name("Integration One"), "integration");
+    std::string uuid2 = m_storage->resolveUUIDFromName(base::Name("Integration Two"), "integration");
+    std::string uuid3 = m_storage->resolveUUIDFromName(base::Name("Integration Three"), "integration");
+
+    EXPECT_EQ(uuid1, "int-uuid-1");
+    EXPECT_EQ(uuid2, "int-uuid-2");
+    EXPECT_EQ(uuid3, "int-uuid-3");
+}
