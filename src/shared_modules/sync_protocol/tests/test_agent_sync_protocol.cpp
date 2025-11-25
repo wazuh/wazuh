@@ -4255,3 +4255,27 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckGenericError)
 
     syncThread.join();
 }
+
+// Test to cover IAgentSyncProtocol D0 destructor (delete through base pointer)
+TEST(InterfaceDestructorTest, IAgentSyncProtocolDeletingDestructor)
+{
+    // Create concrete implementation through base interface pointer
+    IAgentSyncProtocol* protocol = nullptr;
+
+    // Set up mock queue
+    auto mockQueue = std::make_shared<MockPersistentQueue>();
+
+    // Create mock MQ functions
+    MQ_Functions mockMq{
+        [](const char*, short, short) { return 1; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Create AgentSyncProtocol through base interface pointer
+    protocol = new AgentSyncProtocol("test_module", std::nullopt, mockMq, testLogger, std::chrono::seconds(1), std::chrono::seconds(1000), 1, 100, mockQueue);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete protocol;
+}

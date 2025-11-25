@@ -45,7 +45,7 @@ class RouterTransportTest : public ::testing::Test
         static bool callbackInvoked;
         static std::vector<char> callbackData;
 
-        static void mockLogger(modules_log_level_t level, const std::string& msg)
+        static void mockLogger([[maybe_unused]] modules_log_level_t level, const std::string& msg)
         {
             logMessages.push_back(msg);
         }
@@ -327,3 +327,19 @@ TEST_F(RouterTransportTest, SendMessageAfterShutdown)
     EXPECT_FALSE(result);
 }
 
+
+// Test to cover ISyncMessageTransport D0 destructor (delete through base pointer) - Router variant
+TEST(InterfaceDestructorTest, ISyncMessageTransportDeletingDestructorRouter)
+{
+    // Create concrete implementation through base interface pointer
+    ISyncMessageTransport* transport = nullptr;
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    std::function<void(const std::vector<char>&)> callback = [](const std::vector<char>&) {};
+
+    // Create RouterTransport through base interface pointer
+    transport = new RouterTransport("test_module", testLogger, callback);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete transport;
+}

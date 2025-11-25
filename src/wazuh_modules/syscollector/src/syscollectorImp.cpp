@@ -1622,7 +1622,6 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
 bool Syscollector::syncModule(Mode mode)
 {
-<<<<<<< HEAD
     if (m_paused)
     {
         if (m_logFunction)
@@ -1633,32 +1632,17 @@ bool Syscollector::syncModule(Mode mode)
         return false;
     }
 
-    if (m_spSyncProtocol)
-    {
-        m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
+    m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
 
-        // RAII guard ensures m_syncing is set to false even if function exits early
-        ScanGuard syncGuard(m_syncing, m_pauseCv);
-        bool result = m_spSyncProtocol->synchronizeModule(mode);
+    // RAII guard ensures m_syncing is set to false even if function exits early
+    ScanGuard syncGuard(m_syncing, m_pauseCv);
 
-        if (result)
-        {
-            m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
-        }
-        else
-        {
-            m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
-        }
-
-        return result;
-=======
     bool success = true;
 
     // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
         success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
->>>>>>> ea12db3268 (fix(syscollector): sync both VD and non-VD protocols with backward-compatible options)
     }
 
     // Sync VD data with appropriate option based on first scan status
@@ -1698,6 +1682,15 @@ bool Syscollector::syncModule(Mode mode)
         }
 
         success = vdSuccess && success;
+    }
+
+    if (success)
+    {
+        m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
+    }
+    else
+    {
+        m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
     }
 
     return success;
