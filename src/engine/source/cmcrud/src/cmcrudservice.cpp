@@ -22,7 +22,6 @@ std::string jsonToYaml(const json::Json& jsonDoc)
     auto ymlNode = yml::Converter::jsonToYaml(doc);
     YAML::Emitter ymlEmitter;
     ymlEmitter << ymlNode;
-
     return ymlEmitter.c_str();
 }
 
@@ -78,8 +77,8 @@ void CrudService::createNamespace(std::string_view nsName)
 {
     try
     {
+        // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
         cm::store::NamespaceId nsId {nsName};
-        m_validator->validateNamespace(nsName);
         m_store->createNamespace(nsId);
     }
     catch (const std::exception& e)
@@ -92,8 +91,8 @@ void CrudService::deleteNamespace(std::string_view nsName)
 {
     try
     {
+        // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
         cm::store::NamespaceId nsId {nsName};
-        m_validator->validateNamespace(nsName);
         m_store->deleteNamespace(nsId);
     }
     catch (const std::exception& e)
@@ -267,17 +266,14 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
             case cm::store::ResourceType::FILTER:
             {
                 json::Json assetJson = yamlToJson(document);
-
                 auto name = assetNameFromJson(assetJson);
-                auto idOpt = assetJson.getString("/id");
+                m_validator->validateAsset(nsReader, assetJson);
 
-                m_validator->validateAsset(nsReader, name, assetJson);
+                const std::string nameStr = name.toStr();
 
-                const std::string nameStr = static_cast<std::string>(name);
-
-                if (idOpt.has_value() && nsReader->assetExistsByUUID(*idOpt))
+                if (nsReader->assetExistsByName(name))
                 {
-                    ns->updateResourceByUUID(*idOpt, yml);
+                    ns->updateResourceByName(nameStr, type, yml);
                 }
                 else
                 {
@@ -314,7 +310,8 @@ void CrudService::deleteResourceByUUID(std::string_view nsName, const std::strin
     }
 }
 
-std::shared_ptr<cm::store::ICMStoreNSReader> CrudService::getNamespaceStoreView(const cm::store::NamespaceId& nsId) const
+std::shared_ptr<cm::store::ICMStoreNSReader>
+CrudService::getNamespaceStoreView(const cm::store::NamespaceId& nsId) const
 {
     auto ns = m_store->getNSReader(nsId);
     if (!ns)

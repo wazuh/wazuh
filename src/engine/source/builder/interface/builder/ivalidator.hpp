@@ -29,7 +29,7 @@ public:
      * @return base::OptError An error if the Asset is not valid.
      */
     virtual base::OptError validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                                             const base::Name& name) const = 0;
+                                         const json::Json& assetJson) const = 0;
 
     /**
      * @brief Validate a Policy.

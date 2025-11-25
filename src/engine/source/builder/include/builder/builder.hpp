@@ -86,7 +86,7 @@ public:
      * @copydoc IBuilder::validateAsset
      */
     base::OptError validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                                 const base::Name& name) const override;
+                                 const json::Json& assetJson) const override;
 
     /**
      * @copydoc IBuilder::validatePolicy
