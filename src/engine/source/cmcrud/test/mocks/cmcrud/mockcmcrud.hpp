@@ -23,27 +23,19 @@ public:
                 (std::string_view nsName, cm::store::ResourceType type),
                 (const, override));
 
-    MOCK_METHOD(std::string,
-                getResourceByUUID,
-                (std::string_view nsName, const std::string& uuid),
-                (const, override));
+    MOCK_METHOD(std::string, getResourceByUUID, (std::string_view nsName, const std::string& uuid), (const, override));
 
     MOCK_METHOD(void,
                 upsertResource,
                 (std::string_view nsName, cm::store::ResourceType type, std::string_view document),
                 (override));
 
-    MOCK_METHOD(void,
-                deleteResourceByUUID,
-                (std::string_view nsName, const std::string& uuid),
-                (override));
+    MOCK_METHOD(void, deleteResourceByUUID, (std::string_view nsName, const std::string& uuid), (override));
 };
 
 class MockContentValidator : public IContentValidator
 {
 public:
-    MOCK_METHOD(void, validateNamespace, (std::string_view nsName), (const, override));
-
     MOCK_METHOD(void,
                 validatePolicy,
                 (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
@@ -58,15 +50,12 @@ public:
 
     MOCK_METHOD(void,
                 validateKVDB,
-                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                 const cm::store::dataType::KVDB& kvdb),
+                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, const cm::store::dataType::KVDB& kvdb),
                 (const, override));
 
     MOCK_METHOD(void,
                 validateAsset,
-                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                 const base::Name& name,
-                 const json::Json& asset),
+                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, const json::Json& asset),
                 (const, override));
 };
 
