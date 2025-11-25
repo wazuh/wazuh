@@ -406,3 +406,44 @@ void PersistentQueueStorage::addDataContextColumn()
         m_logger(LOG_DEBUG, std::string("PersistentQueueStorage: is_data_context column may already exist: ") + ex.what());
     }
 }
+
+std::vector<PersistedData> PersistentQueueStorage::getAllEvents()
+{
+    std::vector<PersistedData> result;
+
+    try
+    {
+        // This is EXACTLY the same query as fetchAndMarkForSync() but WITHOUT the UPDATE
+        std::string selectQuery =
+            "SELECT rowid, id, idx, data, operation, "
+            "COALESCE(is_data_context, 0) as is_data_context "
+            "FROM persistent_queue "
+            "WHERE sync_status = ? "
+            "ORDER BY rowid ASC;";
+
+        SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
+        selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
+
+        while (selectStmt.step() == SQLITE_ROW)
+        {
+            PersistedData data;
+            data.seq = selectStmt.value<int64_t>(0);  // rowid serves as sequence
+            data.id = selectStmt.value<std::string>(1);
+            data.index = selectStmt.value<std::string>(2);
+            data.data = selectStmt.value<std::string>(3);
+            data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+            data.is_data_context = selectStmt.value<int>(5) != 0;
+
+            result.emplace_back(std::move(data));
+        }
+
+        m_logger(LOG_DEBUG, std::string("PersistentQueueStorage: Retrieved ") + std::to_string(result.size()) + " events (read-only)");
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Failed to get all events: ") + e.what());
+        throw;
+    }
+
+    return result;
+}

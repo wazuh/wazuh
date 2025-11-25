@@ -74,6 +74,9 @@ class PersistentQueue : public IPersistentQueue
         /// @copydoc IPersistentQueue::enableDataContext
         void enableDataContext() override;
 
+        /// @copydoc IPersistentQueue::getAllEvents
+        std::vector<PersistedData> getAllEvents() override;
+
     private:
         /// @brief Mutex to protect concurrent access to internal maps.
         std::mutex m_mutex;

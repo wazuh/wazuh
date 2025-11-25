@@ -75,6 +75,9 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @copydoc IPersistentQueueStorage::addDataContextColumn
         void addDataContextColumn() override;
 
+        /// @copydoc IPersistentQueueStorage::getAllEvents
+        std::vector<PersistedData> getAllEvents() override;
+
     private:
         /// @brief Active SQLite database connection.
         SQLite3Wrapper::Connection m_connection;

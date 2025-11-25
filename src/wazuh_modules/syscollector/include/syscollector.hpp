@@ -137,9 +137,8 @@ class EXPORTED Syscollector final
         void scanBrowserExtensions();
         void scan();
         void scanVDTables();
-        void detectVDChanges();
-        void generateContextForTable(const std::string& table, const std::set<std::string>& deltaHashes);
-        void insertContextItem(const std::string& table, const nlohmann::json& item);
+        void vdContextEvaluator();
+        void analyzeDataContextEvent(const PersistedData& event, const nlohmann::json& eventData);
         void scanNonVDTables();
         void syncLoop(std::unique_lock<std::mutex>& lock);
 
@@ -177,7 +176,6 @@ class EXPORTED Syscollector final
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
         bool                                                                     m_vdHasModifyOrDelete;
-        std::set<std::string>                                                    m_vdTablesWithChanges;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;

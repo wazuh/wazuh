@@ -73,6 +73,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::enableDataContext
         void enableDataContext() override;
 
+        /// @copydoc IAgentSyncProtocol::getAllEvents
+        std::vector<PersistedData> getAllEvents() override;
+
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
 

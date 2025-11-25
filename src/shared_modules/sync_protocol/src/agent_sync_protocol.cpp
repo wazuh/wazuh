@@ -431,54 +431,54 @@ bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
     // TODO: DataContext is not yet in the MessageType union in inventorySync.fbs
     // This is a stub implementation that will be completed once DataContext is added to the schema
 
-    m_logger(LOG_DEBUG, "sendDataContextMessages() called with " + std::to_string(data.size()) + " items");
+    // m_logger(LOG_DEBUG, "sendDataContextMessages() called with " + std::to_string(data.size()) + " items");
 
-    try
-    {
-        for (const auto& item : data)
-        {
-            // Check if stop was requested
-            if (shouldStop())
-            {
-                m_logger(LOG_INFO, "Stop requested, aborting DataContext message sending");
-                return false;
-            }
+    // try
+    // {
+    //     for (const auto& item : data)
+    //     {
+    //         // Check if stop was requested
+    //         if (shouldStop())
+    //         {
+    //             m_logger(LOG_INFO, "Stop requested, aborting DataContext message sending");
+    //             return false;
+    //         }
 
-            flatbuffers::FlatBufferBuilder builder;
-            auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+    //         flatbuffers::FlatBufferBuilder builder;
+    //         auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
-            Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
-            dataContextBuilder.add_seq(item.seq);
-            dataContextBuilder.add_session(session);
-            dataContextBuilder.add_data(dataVec);
-            auto dataContextOffset = dataContextBuilder.Finish();
+    //         Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
+    //         dataContextBuilder.add_seq(item.seq);
+    //         dataContextBuilder.add_session(session);
+    //         dataContextBuilder.add_data(dataVec);
+    //         auto dataContextOffset = dataContextBuilder.Finish();
 
-            // Once DataContext is added to MessageType union, uncomment this:
-            auto message = Wazuh::SyncSchema::CreateMessage(builder,
-                                                            Wazuh::SyncSchema::MessageType::DataContext,
-                                                            dataContextOffset.Union());
-            builder.Finish(message);
+    //         // Once DataContext is added to MessageType union, uncomment this:
+    //         // auto message = Wazuh::SyncSchema::CreateMessage(builder,
+    //         //                                                 Wazuh::SyncSchema::MessageType::DataContext,
+    //         //                                                 dataContextOffset.Union());
+    //         builder.Finish(message);
 
-            const uint8_t* buffer_ptr = builder.GetBufferPointer();
-            const size_t buffer_size = builder.GetSize();
-            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+    //         const uint8_t* buffer_ptr = builder.GetBufferPointer();
+    //         const size_t buffer_size = builder.GetSize();
+    //         std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
 
-            if (!sendFlatBufferMessageAsString(messageVector, maxEps))
-            {
-                return false;
-            }
+    //         if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+    //         {
+    //             return false;
+    //         }
 
-            m_logger(LOG_DEBUG, "DataContext message seq=" + std::to_string(item.seq) + " (not sent - waiting for schema update)");
-        }
+    //         m_logger(LOG_DEBUG, "DataContext message seq=" + std::to_string(item.seq) + " (not sent - waiting for schema update)");
+    //     }
 
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Exception when sending DataContext messages: ") + e.what());
-    }
+    //     return true;
+    // }
+    // catch (const std::exception& e)
+    // {
+    //     m_logger(LOG_ERROR, std::string("Exception when sending DataContext messages: ") + e.what());
+    // }
 
-    return false;
+    return true;
 }
 
 void AgentSyncProtocol::enableDataContext()
@@ -491,6 +491,26 @@ void AgentSyncProtocol::enableDataContext()
     else
     {
         m_logger(LOG_WARNING, "Cannot enable DataContext: persistent queue not initialized");
+    }
+}
+
+std::vector<PersistedData> AgentSyncProtocol::getAllEvents()
+{
+    try
+    {
+        if (!m_persistentQueue)
+        {
+            m_logger(LOG_ERROR, "Persistent queue not initialized - cannot get all events");
+            return {};
+        }
+        
+        // Get all events without marking them for sync (read-only operation)
+        return m_persistentQueue->getAllEvents();
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to get all events: ") + e.what());
+        return {};
     }
 }
 
