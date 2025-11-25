@@ -25,6 +25,12 @@
 #include <thread>
 #include <utility>
 
+namespace Log
+{
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION;
+}; // namespace Log
+
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
 static const auto TEMPLATE_DATA = R"(

@@ -14,13 +14,9 @@
 
 #include "agentSession.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
-#include "hashHelper.h"
-#include "inventorySyncQueryBuilder.hpp"
-#include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
-#include "socketServer.hpp"
 #include "stringHelper.h"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
@@ -40,7 +36,6 @@ constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
 constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
-constexpr auto SOCKET_KEYSTORE_PATH {"/var/ossec/queue/sockets/keystore"};
 
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
@@ -266,149 +261,6 @@ class InventorySyncFacadeImpl final
         {
             throw InventorySyncException("Invalid message type");
         }
-    }
-
-    void initializeKeystoreSocket()
-    {
-        m_keystoreSocketServer = std::make_unique<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(
-            SOCKET_KEYSTORE_PATH);
-
-        m_keystoreSocketServer->listen(
-            [keystoreServer = m_keystoreSocketServer.get()](
-                const int fd, const char* body, const uint32_t bodySize, const char*, const uint32_t)
-            {
-                std::string_view queryView(body, bodySize);
-                nlohmann::json result;
-
-                try
-                {
-                    size_t pos1 = queryView.find('|');
-                    size_t pos2 = queryView.find('|', pos1 + 1);
-                    size_t pos3 = queryView.find('|', pos2 + 1);
-
-                    if (pos1 == std::string_view::npos || pos2 == std::string_view::npos)
-                    {
-                        throw std::runtime_error("Invalid query format");
-                    }
-
-                    auto queryOp = queryView.substr(0, pos1);
-                    auto queryCf = queryView.substr(pos1 + 1, pos2 - pos1 - 1);
-                    auto key = (pos3 == std::string_view::npos) ? queryView.substr(pos2 + 1)
-                                                                : queryView.substr(pos2 + 1, pos3 - pos2 - 1);
-                    auto val = (pos3 == std::string_view::npos) ? std::string_view() : queryView.substr(pos3 + 1);
-
-                    if (queryOp == "GET")
-                    {
-                        std::string value;
-                        Keystore::get(std::string(queryCf), std::string(key), value);
-                        result["status"] = "ok";
-                        result["operation"] = "get";
-                        result["columnFamily"] = queryCf;
-                        result["key"] = key;
-                        result["value"] = value;
-                    }
-                    else if (queryOp == "PUT")
-                    {
-                        Keystore::put(std::string(queryCf), std::string(key), std::string(val));
-                        result["status"] = "ok";
-                        result["operation"] = "put";
-                        result["columnFamily"] = queryCf;
-                        result["key"] = key;
-                    }
-                    else if (queryOp == "DELETE")
-                    {
-                        Keystore::put(std::string(queryCf), std::string(key), "");
-                        result["status"] = "ok";
-                        result["operation"] = "delete";
-                        result["columnFamily"] = queryCf;
-                        result["key"] = key;
-                    }
-                    else
-                    {
-                        result["status"] = "error";
-                        result["message"] = "Unknown operation";
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    result["status"] = "error";
-                    result["message"] = e.what();
-                }
-
-                auto response = result.dump();
-                keystoreServer->send(fd, response.c_str(), response.size());
-            });
-    }
-
-    std::string calculateChecksumOfChecksums(const std::string& index, const std::string& agentId)
-    {
-        std::string concatenatedChecksums;
-        std::string searchAfter;
-        constexpr size_t BATCH_SIZE = 1000;
-        size_t totalDocs = 0;
-
-        logDebug2(
-            LOGGER_DEFAULT_TAG, "Querying indexer for checksums: agent=%s, index=%s", agentId.c_str(), index.c_str());
-
-        while (true)
-        {
-            nlohmann::json searchQuery;
-            searchQuery["query"]["term"]["agent.id"] = agentId;
-            searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
-            searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
-            searchQuery["size"] = BATCH_SIZE;
-
-            if (!searchAfter.empty())
-            {
-                searchQuery["search_after"] = nlohmann::json::array({searchAfter});
-            }
-
-            logDebug2(LOGGER_DEFAULT_TAG, "Search query: %s", searchQuery.dump().c_str());
-
-            auto searchResult = m_indexerConnector->executeSearchQuery(index, searchQuery);
-
-            logDebug2(LOGGER_DEFAULT_TAG, "Search result: %s", searchResult.dump().c_str());
-
-            if (!searchResult.contains("hits") || !searchResult["hits"].contains("hits") ||
-                searchResult["hits"]["hits"].empty())
-            {
-                logDebug2(LOGGER_DEFAULT_TAG, "No more results, breaking pagination loop");
-                break;
-            }
-
-            const auto& hits = searchResult["hits"]["hits"];
-            for (const auto& hit : hits)
-            {
-                if (hit.contains("_source") && hit["_source"].contains("checksum") &&
-                    hit["_source"]["checksum"].contains("hash") && hit["_source"]["checksum"]["hash"].contains("sha1"))
-                {
-                    concatenatedChecksums += hit["_source"]["checksum"]["hash"]["sha1"].template get<std::string>();
-                }
-
-                if (hit.contains("sort") && !hit["sort"].empty())
-                {
-                    searchAfter = hit["sort"][0].template get<std::string>();
-                }
-            }
-
-            totalDocs += hits.size();
-
-            if (hits.size() < BATCH_SIZE)
-            {
-                break;
-            }
-        }
-
-        logDebug2(LOGGER_DEFAULT_TAG, "Retrieved %zu documents for checksum calculation", totalDocs);
-
-        Utils::HashData hash(Utils::HashType::Sha1);
-        hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
-        const std::vector<unsigned char> hashResult = hash.hash();
-        std::string finalChecksum = Utils::asciiToHex(hashResult);
-
-        logDebug2(LOGGER_DEFAULT_TAG, "Calculated checksum of checksums: %s", finalChecksum.c_str());
-
-        return finalChecksum;
     }
 
 public:
@@ -1098,9 +950,6 @@ public:
                 }
             });
 
-        // Init the socket server to attend keystore requests
-        initializeKeystoreSocket();
-
         logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
     }
 
@@ -1291,7 +1140,6 @@ public:
         m_indexerQueue.reset();
         m_indexerConnector.reset();
         m_dataStore.reset();
-        m_keystoreSocketServer.reset();
     }
 
 private:
@@ -1309,12 +1157,6 @@ private:
     std::unique_ptr<TRouterSubscriber> m_inventorySubscription;
     std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
     std::thread m_sessionTimeoutThread;
-    std::unique_ptr<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_keystoreSocketServer;
-
-    // Agent locking mechanism for metadata/groups updates
-    std::unordered_set<std::string> m_blockedAgents; ///< Set of locked agent IDs
-    mutable std::shared_mutex m_blockedAgentsMutex;  ///< Mutex for blocked agents set
-    std::atomic<bool> m_allAgentsLocked {false};     ///< Global lock for all agents
 };
 
 using InventorySyncFacade = InventorySyncFacadeImpl<AgentSession,
