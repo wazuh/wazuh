@@ -17,8 +17,6 @@ public:
     explicit ContentValidator(std::shared_ptr<builder::IValidator> builderValidator);
     ~ContentValidator() override = default;
 
-    void validateNamespace(std::string_view nsName) const override;
-
     void validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                         const cm::store::dataType::Policy& policy) const override;
 
@@ -29,7 +27,6 @@ public:
                       const cm::store::dataType::KVDB& kvdb) const override;
 
     void validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                       const base::Name& name,
                        const json::Json& asset) const override;
 
 private:
