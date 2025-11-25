@@ -17,7 +17,7 @@
  * {
  *   "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
  *   "title": "windows",
- *   "enabled": true|false,
+ *   "enable_decoders": true|false,
  *   "category": "ossec",
  *   "default_parent": "docoder/windows/0", --> Optional
  *   "decoders":
@@ -194,26 +194,27 @@ public:
     {
         json::Json integrationJson;
 
-        integrationJson.setString(jsonintegration::PATH_KEY_ID, m_uuid);
-        integrationJson.setString(jsonintegration::PATH_KEY_NAME, m_name);
-        integrationJson.setString(jsonintegration::PATH_KEY_CATEGORY, m_category);
+        integrationJson.setString(m_uuid, jsonintegration::PATH_KEY_ID);
+        integrationJson.setString(m_name, jsonintegration::PATH_KEY_NAME);
+        integrationJson.setString(m_category, jsonintegration::PATH_KEY_CATEGORY);
 
         if (m_defaultParent.has_value())
         {
-            integrationJson.setString(jsonintegration::PATH_KEY_DEFAULT_PARENT, m_defaultParent->toStr());
+            integrationJson.setString(m_defaultParent->toStr(), jsonintegration::PATH_KEY_DEFAULT_PARENT);
         }
 
+        integrationJson.setBool(m_enabled, jsonintegration::PATH_KEY_ENABLED);
         integrationJson.setArray(jsonintegration::PATH_KEY_DECODERS);
         integrationJson.setArray(jsonintegration::PATH_KEY_KVDBS);
 
         for (std::size_t i = 0; i < m_decodersByUUID.size(); ++i)
         {
-            integrationJson.setString(fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i), m_decodersByUUID[i]);
+            integrationJson.setString(m_decodersByUUID[i], fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i));
         }
 
         for (std::size_t i = 0; i < m_kvdbsByUUID.size(); ++i)
         {
-            integrationJson.setString(fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i), m_kvdbsByUUID[i]);
+            integrationJson.setString(m_kvdbsByUUID[i], fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i));
         }
 
         return integrationJson;
