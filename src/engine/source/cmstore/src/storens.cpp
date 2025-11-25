@@ -273,14 +273,7 @@ std::tuple<std::string, ResourceType> CMStoreNS::resolveNameFromUUID(const std::
 {
     // Search in cache the name-type pair for the given UUID
     std::shared_lock lock(m_mutex);
-    auto opt = m_cache.getNameTypeByUUID(uuid);
-
-    if (!opt.has_value())
-    {
-        throw std::runtime_error(fmt::format("Resource with UUID '{}' does not exist", uuid));
-    }
-
-    return opt.value();
+    return resolveNameFromUUIDUnlocked(uuid);
 }
 
 std::string CMStoreNS::resolveHashFromUUID(const std::string& uuid) const
@@ -301,15 +294,7 @@ std::string CMStoreNS::resolveUUIDFromName(const std::string& name, ResourceType
 {
     // Search in cache the UUID for the given name-type pair
     std::shared_lock lock(m_mutex);
-    auto opt = m_cache.getUUIDByNameType(name, type);
-
-    if (!opt.has_value())
-    {
-        throw std::runtime_error(
-            fmt::format("Resource with name '{}' and type '{}' does not exist", name, resourceTypeToString(type)));
-    }
-
-    return opt.value();
+    return resolveUUIDFromNameUnlocked(name, type);
 }
 
 bool CMStoreNS::assetExistsByName(const base::Name& name) const
@@ -411,7 +396,7 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock
 
     // Resolve existing UUID from name
-    auto existingUUID = resolveUUIDFromName(name, type);
+    auto existingUUID = resolveUUIDFromNameUnlocked(name, type);
     auto& uuid = optUUID.value();
 
     // Check if the UUID in content matches the existing one
@@ -462,7 +447,7 @@ void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string&
 
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock
     // Resolve name-type from UUID
-    auto [name, type] = resolveNameFromUUID(uuid);
+    auto [name, type] = resolveNameFromUUIDUnlocked(uuid);
     // Generate the file path
     auto resourcePath = getResourcePaths(name, type);
     // Compute new hash for the updated content
@@ -488,7 +473,7 @@ void CMStoreNS::deleteResourceByName(const std::string& name, ResourceType type)
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock
 
     // Resolve UUID from name
-    auto uuid = resolveUUIDFromName(name, type);
+    auto uuid = resolveUUIDFromNameUnlocked(name, type);
 
     // Generate the file path
     auto resourcePath = getResourcePaths(name, type);
@@ -508,12 +493,33 @@ void CMStoreNS::deleteResourceByName(const std::string& name, ResourceType type)
     flushCacheToDisk();
 }
 
+std::string CMStoreNS::resolveUUIDFromNameUnlocked(const std::string& name, ResourceType type) const
+{
+    auto optUUID = m_cache.getUUIDByNameType(name, type);
+    if (!optUUID.has_value())
+    {
+        throw std::runtime_error(
+            fmt::format("Resource with name '{}' and type '{}' does not exist", name, resourceTypeToString(type)));
+    }
+    return optUUID.value();
+}
+
+std::tuple<std::string, ResourceType> CMStoreNS::resolveNameFromUUIDUnlocked(const std::string& uuid) const
+{
+    auto opt = m_cache.getNameTypeByUUID(uuid);
+    if (!opt)
+    {
+        throw std::runtime_error(fmt::format("Resource with UUID '{}' does not exist", uuid));
+    }
+    return *opt;
+}
+
 void CMStoreNS::deleteResourceByUUID(const std::string& uuid)
 {
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock
 
     // Resolve name-type from UUID
-    auto [name, type] = resolveNameFromUUID(uuid);
+    auto [name, type] = resolveNameFromUUIDUnlocked(uuid);
 
     // Generate the file path
     auto resourcePath = getResourcePaths(name, type);

@@ -87,6 +87,23 @@ private:
      */
     std::filesystem::path getResourcePaths(const std::string& name, ResourceType type) const;
 
+    /**
+     * @brief Resolve the name and type of a resource from its UUID without locking
+     * @param uuid UUID of the resource
+     * @return std::tuple<std::string, ResourceType> Name and type of the resource
+     * @throw std::runtime_error if the UUID does not exist
+     */
+    std::tuple<std::string, ResourceType> resolveNameFromUUIDUnlocked(const std::string& uuid) const;
+
+    /**
+     * @brief Resolve the UUID of a resource from its name and type without locking
+     * @param name Name of the resource
+     * @param type Type of the resource
+     * @return std::string UUID of the resource
+     * @throw std::runtime_error if the name/type does not exist
+     */
+    std::string resolveUUIDFromNameUnlocked(const std::string& name, ResourceType type) const;
+
 public:
     /**
      * @brief Construct a new CMStoreNS

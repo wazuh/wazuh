@@ -19,7 +19,7 @@ namespace api::cmcrud::handlers
 namespace eContent = ::com::wazuh::api::engine::content;
 namespace eEngine = ::com::wazuh::api::engine;
 
-// Mensajes de error (HTTP layer)
+// Error messages
 constexpr auto MESSAGE_SPACE_REQUIRED = "Field /space cannot be empty";
 constexpr auto MESSAGE_YML_REQUIRED = "Field /ymlContent cannot be empty";
 constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
