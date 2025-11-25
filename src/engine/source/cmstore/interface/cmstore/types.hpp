@@ -24,7 +24,8 @@ enum class ResourceType : uint8_t
     RULE = 3,
     FILTER = 4,
     INTEGRATION = 5,
-    KVDB = 6
+    KVDB = 6,
+    POLICY = 7
 };
 
 constexpr std::string_view RESOURCE_TYPE_UNDEFINED_STR = "undefined";

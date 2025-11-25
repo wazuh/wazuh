@@ -426,7 +426,20 @@ struct CTIStorageDB::Impl
      */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
 
+    /**
+     * @brief Resolves a UUID from an asset name and type.
+     * @param name The asset name
+     * @param assetType "integration", "decoder", "policy", or "kvdb"
+     * @return UUID string of the asset
+     */
+    std::string resolveUUIDFromName(const base::Name& name, const std::string& assetType) const;
 
+    /**
+     * @brief Resolves an asset name from its UUID and type.
+     * @param uuid UUID of the asset
+     * @param assetType "policy", "integration", "decoder", or "kvdb"
+     * @return Name string of the asset
+     */
     std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
 
     /**
@@ -1043,6 +1056,11 @@ std::string CTIStorageDB::resolveNameFromUUID(const std::string& uuid, const std
     return m_pImpl->resolveNameFromUUID(uuid, assetType);
 }
 
+std::string CTIStorageDB::resolveUUIDFromName(const base::Name& name, const std::string& assetType) const
+{
+    return m_pImpl->resolveUUIDFromName(name, assetType);
+}
+
 std::vector<std::string> CTIStorageDB::getKVDBList() const
 {
     return m_pImpl->getKVDBList();
@@ -1311,6 +1329,31 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
         throw std::runtime_error("Failed to resolve name from UUID: " + std::string(e.what()));
     }
 }
+
+std::string CTIStorageDB::Impl::resolveUUIDFromName(const base::Name& name, const std::string& type) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    auto namePrefixIt = CTIStorageDB::getAssetTypeToNamePrefix().find(type);
+    if (namePrefixIt == CTIStorageDB::getAssetTypeToNamePrefix().end())
+    {
+        throw std::invalid_argument("No prefix configuration for asset type: " + type);
+    }
+
+    // Query the name index directly to get the UUID
+    // The name index stores: "name:integration:Title" -> "uuid-value"
+    // Use toStr() to get the simple title without namespace prefix
+    std::string nameKey = namePrefixIt->second + name.toStr();
+    auto uuidOpt = getMetadata(nameKey);
+
+    if (!uuidOpt)
+    {
+        throw std::runtime_error(fmt::format("Asset '{}' of type '{}' not found", name.toStr(), type));
+    }
+
+    return *uuidOpt;
+}
+
 
 std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
 {
