@@ -10,7 +10,6 @@ from wazuh.core import common
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.common import get_installation_uid
-from wazuh.core.cti import cti
 
 """
 Wazuh HIDS Python package
@@ -65,9 +64,6 @@ class Wazuh:
         return False
 
     def to_dict(self):
-
-        cti_auth_token_status = cti.get_auth_token_status()
-
         return {'path': self.path,
                 'version': self.version,
                 'type': self.type,
