@@ -189,7 +189,7 @@ private:
         std::string signedUrl = json.at("access_token").get<std::string>();
         uint64_t expiresIn = json.at("expires_in").get<uint64_t>();
 
-        logInfo(WM_CONTENTUPDATER, "CTISignedUrlProvider: Signed URL obtained, expires in %llu seconds", expiresIn);
+        logDebug2(WM_CONTENTUPDATER, "CTISignedUrlProvider: Signed URL obtained, expires in %llu seconds", expiresIn);
 
         // Cache the signed URL if caching is enabled
         if (m_cacheEnabled)

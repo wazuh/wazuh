@@ -89,7 +89,7 @@ private:
             {
                 logDebug1(WM_CONTENTUPDATER, "FactoryDownloader: Creating CTICredentialsProvider");
                 credentialsProvider = std::make_shared<CTICredentialsProvider>(HTTPRequest::instance(), oauthConfig);
-                logInfo(WM_CONTENTUPDATER, "FactoryDownloader: CTICredentialsProvider created successfully");
+                logDebug2(WM_CONTENTUPDATER, "FactoryDownloader: CTICredentialsProvider created successfully");
             }
             else
             {
@@ -109,7 +109,7 @@ private:
             {
                 logDebug1(WM_CONTENTUPDATER, "FactoryDownloader: Creating CTIProductsProvider");
                 productsProvider = std::make_shared<CTIProductsProvider>(HTTPRequest::instance(), oauthConfig);
-                logInfo(WM_CONTENTUPDATER, "FactoryDownloader: CTIProductsProvider created successfully");
+                logDebug2(WM_CONTENTUPDATER, "FactoryDownloader: CTIProductsProvider created successfully");
             }
             else
             {
@@ -123,7 +123,7 @@ private:
             {
                 logDebug1(WM_CONTENTUPDATER, "FactoryDownloader: Creating CTISignedUrlProvider");
                 signedUrlProvider = std::make_shared<CTISignedUrlProvider>(HTTPRequest::instance(), oauthConfig);
-                logInfo(WM_CONTENTUPDATER, "FactoryDownloader: CTISignedUrlProvider created successfully");
+                logDebug2(WM_CONTENTUPDATER, "FactoryDownloader: CTISignedUrlProvider created successfully");
             }
             else
             {
@@ -136,14 +136,14 @@ private:
             {
                 if (productsProvider)
                 {
-                    logInfo(WM_CONTENTUPDATER,
-                            "FactoryDownloader: Complete OAuth flow enabled (3 providers: credentials + products + "
-                            "signed URL)");
+                    logDebug1(WM_CONTENTUPDATER,
+                              "FactoryDownloader: Complete OAuth flow enabled (3 providers: credentials + products + "
+                              "signed URL)");
                 }
                 else
                 {
-                    logInfo(WM_CONTENTUPDATER,
-                            "FactoryDownloader: Basic OAuth flow enabled (2 providers: credentials + signed URL)");
+                    logDebug1(WM_CONTENTUPDATER,
+                              "FactoryDownloader: Basic OAuth flow enabled (2 providers: credentials + signed URL)");
                 }
             }
             else
