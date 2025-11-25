@@ -171,7 +171,24 @@ public:
      */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
 
+    /**
+     * @brief Resolve a UUID from an asset name and type.
+     *
+     * @param name Asset name/title.
+     * @param type One of: "policy", "integration", "decoder", "kvdb".
+     * @return UUID string of the asset.
+     * @throw std::runtime_error if not found or on read error.
+     */
+    std::string resolveUUIDFromName(const base::Name& name, const std::string& type) const;
 
+    /**
+     * @brief Resolve an asset name and type from its UUID.
+     *
+     * @param uuid UUID of the asset.
+     * @param assetType One of: "policy", "integration", "decoder", "kvdb".
+     * @return std::string Name of the asset.
+     * @throw std::runtime_error if not found or on read error.
+     */
     std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
 
     /**
