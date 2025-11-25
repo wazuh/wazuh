@@ -9,7 +9,8 @@ from time import strftime
 from wazuh.core import common
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.core.cti import get_cti_client, CTIAuthTokenStatus
+from wazuh.core.common import get_installation_uid
+from wazuh.core.cti import cti
 
 """
 Wazuh HIDS Python package
@@ -52,7 +53,6 @@ class Wazuh:
         self.openssl_support = 'N/A'
         self.tz_offset = None
         self.tz_name = None
-        self.cti_auth_token_status = CTIAuthTokenStatus.PENDING
 
         self._initialize()
 
@@ -66,6 +66,8 @@ class Wazuh:
 
     def to_dict(self):
 
+        cti_auth_token_status = cti.get_auth_token_status()
+
         return {'path': self.path,
                 'version': self.version,
                 'type': self.type,
@@ -73,10 +75,6 @@ class Wazuh:
                 'openssl_support': self.openssl_support,
                 'tz_offset': self.tz_offset,
                 'tz_name': self.tz_name,
-                'wazuh_cti_auth': {
-                    'status': self.cti_auth_token_status.short_desc,
-                    'description': self.cti_auth_token_status.long_desc
-                    }
                 }
 
     def _initialize(self):
@@ -98,13 +96,6 @@ class Wazuh:
         except Exception:
             self.tz_offset = None
             self.tz_name = None
-
-        # CTI auth_token status
-        try:
-            with get_cti_client as cti_client:
-                self.cti_auth_token_status = cti_client.get_auth_token_status()
-        except Exception:
-            self.cti_auth_token_status = CTIAuthTokenStatus.PENDING
 
         return self.to_dict()
 
