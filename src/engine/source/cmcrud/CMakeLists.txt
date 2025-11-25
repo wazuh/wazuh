@@ -28,7 +28,6 @@ target_link_libraries(cmcrud_cmcrud
         builder::ibuilder
     PRIVATE
         yml
-        # Add other dependencies here if needed
 )
 
 add_library(cmcrud::cmcrud ALIAS cmcrud_cmcrud)
@@ -49,8 +48,8 @@ add_library(cmcrud::mocks ALIAS cmcrud_mocks)
 
 # Unit tests
 add_executable(cmcrud_utest
-    ${UNIT_SRC_DIR}/service_test.cpp
-    ${UNIT_SRC_DIR}/validator_test.cpp
+    ${UNIT_SRC_DIR}/cmcrudservice_test.cpp
+    ${UNIT_SRC_DIR}/cmcontentvalidator_test.cpp
 )
 target_link_libraries(cmcrud_utest
     PRIVATE
@@ -59,6 +58,7 @@ target_link_libraries(cmcrud_utest
         cmcrud::cmcrud
         cmcrud::mocks
         cmstore::mocks
+        builder::mocks
 )
 target_include_directories(cmcrud_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(cmcrud_utest)
@@ -72,7 +72,9 @@ target_link_libraries(cmcrud_ctest
         GTest::gtest_main
         GTest::gmock
         cmcrud::cmcrud
+        cmcrud::mocks
         cmstore::mocks
+        builder::mocks
 )
 gtest_discover_tests(cmcrud_ctest)
 
