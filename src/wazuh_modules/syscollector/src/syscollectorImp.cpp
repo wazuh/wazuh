@@ -219,7 +219,8 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 
     if (indexIt != INDEX_MAP.end())
     {
-        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
+        std::string hashId = calculateHashId(aux, table);     
+        m_persistDiffFunction(hashId, OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -306,6 +307,7 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
+    , m_vdHasModifyOrDelete { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -1289,6 +1291,110 @@ void Syscollector::scanBrowserExtensions()
     }
 }
 
+void Syscollector::vdContextEvaluator()
+{
+    m_logFunction(LOG_INFO, "Starting VD context evaluation");
+    
+    if (!m_spSyncProtocolVD)
+    {
+        m_logFunction(LOG_ERROR, "VD sync protocol not initialized");
+        return;
+    }
+    
+    m_logFunction(LOG_INFO, "Retrieving all VD events to process DataContext events");
+    
+    try 
+    {
+        // Get all stored VD events WITHOUT changing their state (read-only)
+        auto allVdEvents = m_spSyncProtocolVD->getAllEvents();
+        
+        m_logFunction(LOG_INFO, "Retrieved " + std::to_string(allVdEvents.size()) + " VD events from sync database (read-only)");
+        
+        // Process only DataContext events for VD context evaluation
+        size_t dataContextCount = 0;
+        size_t dataValueCount = 0;
+        
+        for (const auto& event : allVdEvents) 
+        {
+            try 
+            {
+                if (event.is_data_context)
+                {
+                    //Store some ID to a List to delete them later
+                    //m_vdDataContextIds.push_back(event.id);
+                    // This is a DataContext event - process it for VD context evaluation
+                    m_logFunction(LOG_DEBUG, "Processing VD DataContext event: id=" + event.id + 
+                                ", operation=" + std::to_string(static_cast<int>(event.operation)) + 
+                                ", index=" + event.index);
+                    
+                    dataValueCount++;
+                } 
+                else 
+                {
+                    //Inside here analyze what kind of event is this, what OS, and decide if we add contentext or not
+                    // This is a DataValue event - count it but don't process
+                    m_logFunction(LOG_DEBUG, "Found VD DataValue event: id=" + event.id + 
+                                ", operation=" + std::to_string(static_cast<int>(event.operation)) + 
+                                ", index=" + event.index);
+                    // Parse the JSON data from the DataContext event
+                    if (!event.data.empty()) 
+                    {
+                        nlohmann::json eventJson = nlohmann::json::parse(event.data);
+                       
+                        
+                        m_logFunction(LOG_DEBUG_VERBOSE, "VD DataContext event data: " + eventJson.dump());
+                        
+                        // Analyze DataContext based on event type
+                        dataContextCount++;
+                        
+                    }
+                    
+                }
+                
+            } 
+            catch (const nlohmann::json::exception& e) 
+            {
+                m_logFunction(LOG_ERROR, "Failed to parse VD event data: " + std::string(e.what()));
+            }
+        }
+        
+        m_logFunction(LOG_INFO, "Processed " + std::to_string(dataContextCount) + " VD DataContext events and found " + 
+                     std::to_string(dataValueCount) + " DataValue events");
+        m_logFunction(LOG_INFO, "All events remain in database for normal sync operation");
+        
+    } 
+    catch (const std::exception& e) 
+    {
+        m_logFunction(LOG_ERROR, "Error getting VD events: " + std::string(e.what()));
+    }
+    
+    m_logFunction(LOG_DEBUG, "VD context evaluation completed - events processed without state changes");
+}
+
+void Syscollector::analyzeDataContextEvent(const PersistedData& event, const nlohmann::json& eventData)
+{
+    m_logFunction(LOG_DEBUG, "Analyzing DataContext event for index: " + event.index);
+    
+    try 
+    {
+        // Log the DataContext event information for VD analysis
+        m_logFunction(LOG_INFO, "DataContext Analysis - Event ID: " + event.id + 
+                     ", Operation: " + std::to_string(static_cast<int>(event.operation)) + 
+                     ", Index: " + event.index);
+        
+        m_logFunction(LOG_DEBUG_VERBOSE, "DataContext event data: " + eventData.dump());
+        
+        // TODO: Implement actual VD analysis based on event.index and eventData
+        // This should integrate with Wazuh's vulnerability detection system
+        
+    }
+    catch (const std::exception& e) 
+    {
+        m_logFunction(LOG_ERROR, "Error analyzing DataContext event: " + std::string(e.what()));
+    }
+}
+
+
 void Syscollector::scan()
 {
     if (m_paused)
@@ -1301,7 +1407,6 @@ void Syscollector::scan()
     ScanGuard scanGuard(m_scanning, m_pauseCv);
 
     m_logFunction(LOG_INFO, "Starting evaluation.");
-    TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
     TRY_CATCH_TASK(scanNetwork);
     TRY_CATCH_TASK(scanPackages);
@@ -1709,6 +1814,19 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
     }
     else if (m_spSyncProtocol)
     {
+        // Track if we see any MODIFY or DELETE operations for VD tables
+        // This helps determine if it's first scan (all CREATE) or delta scan (has MODIFY/DELETE)
+        if (operation == Operation::MODIFY || operation == Operation::DELETE_)
+        {
+            m_vdHasModifyOrDelete = true;
+        }
+
+        // VD tables go only to VD sync protocol
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version);
+    }
+    else if (m_spSyncProtocol)
+    {
+        // Non-VD tables go only to non-VD sync protocol
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
 }
@@ -1727,7 +1845,7 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
         return true;
     }
 
-    return false;
+    return result;
 }
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
@@ -1771,11 +1889,19 @@ bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 
 void Syscollector::deleteDatabase()
 {
+    // Delete non-VD sync database
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->deleteDatabase();
     }
 
+    // Delete VD sync database
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->deleteDatabase();
+    }
+
+    // Delete local inventory database
     if (m_spDBSync)
     {
         m_spDBSync->closeAndDeleteDatabase();

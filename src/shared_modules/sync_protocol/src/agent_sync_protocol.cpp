@@ -458,6 +458,38 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     clearSyncState();
     return success;
 }
+void AgentSyncProtocol::enableDataContext()
+{
+    if (m_persistentQueue)
+    {
+        m_persistentQueue->enableDataContext();
+        m_logger(LOG_INFO, "DataContext support enabled for module: " + m_moduleName);
+    }
+    else
+    {
+        m_logger(LOG_WARNING, "Cannot enable DataContext: persistent queue not initialized");
+    }
+}
+
+std::vector<PersistedData> AgentSyncProtocol::getAllEvents()
+{
+    try
+    {
+        if (!m_persistentQueue)
+        {
+            m_logger(LOG_ERROR, "Persistent queue not initialized - cannot get all events");
+            return {};
+        }
+        
+        // Get all events without marking them for sync (read-only operation)
+        return m_persistentQueue->getAllEvents();
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to get all events: ") + e.what());
+        return {};
+    }
+}
 
 bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,

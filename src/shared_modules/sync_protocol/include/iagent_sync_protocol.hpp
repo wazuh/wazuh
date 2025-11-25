@@ -92,6 +92,31 @@ class IAgentSyncProtocol
         virtual bool sendDataContextMessages(uint64_t session,
                                             const std::vector<PersistedData>& data) = 0;
 
+        /// @brief Sends DataContext messages with contextual data.
+        ///
+        /// This method builds and sends DataContext messages containing contextual information
+        /// (e.g., OS data) that helps the manager process vulnerability detection without re-indexing.
+        /// DataContext messages are sent after DataValue messages during synchronization.
+        /// @param session The current sync session ID
+        /// @param data Vector of persisted data items marked as DataContext type
+        /// @param maxEps Maximum events per second (0 = unlimited)
+        /// @return true if DataContext messages were sent successfully, false otherwise
+        virtual bool sendDataContextMessages(uint64_t session,
+                                             const std::vector<PersistedData>& data,
+                                             size_t maxEps) = 0;
+
+        /// @brief Enables DataContext support for this sync protocol instance.
+        /// This method adds the is_data_context column to the database schema,
+        /// allowing the protocol to store and differentiate DataContext messages from DataValue messages.
+        /// Should be called after initialization for VD (Vulnerability Detection) sync protocols only.
+        virtual void enableDataContext() = 0;
+
+        /// @brief Gets all events from the database without marking them for sync (read-only).
+        /// This method retrieves all pending events from the persistent queue without changing their state.
+        /// Unlike fetchAndMarkForSync(), this is a read-only operation that doesn't affect synchronization.
+        /// @return Vector of all pending events in the database
+        virtual std::vector<PersistedData> getAllEvents() = 0;
+
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;

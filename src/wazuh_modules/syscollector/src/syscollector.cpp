@@ -123,6 +123,7 @@ void syscollector_init_sync(const char* moduleName, const char* syncDbPath, cons
                             unsigned int retries, size_t maxEps)
 {
     if (moduleName && syncDbPath && syncDbPathVD && mqFuncs)
+    if (moduleName && syncDbPath && syncDbPathVD && mqFuncs)
     {
         try
         {

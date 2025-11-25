@@ -22,6 +22,7 @@
 
 #define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
 #define SYS_SYNC_PROTOCOL_VD_DB_PATH "queue/syscollector/db/syscollector_vd_sync.db"
+#define SYS_SYNC_PROTOCOL_VD_DB_PATH "queue/syscollector/db/syscollector_vd_sync.db"
 #define SYS_SYNC_RETRIES 3
 
 // Global flag to stop sync module

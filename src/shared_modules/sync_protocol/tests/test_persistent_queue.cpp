@@ -26,6 +26,7 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
         MOCK_METHOD(void, resetAllSyncing, (), (override));
         MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
+        MOCK_METHOD(void, addDataContextColumn, (), (override));
 };
 
 TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
@@ -43,7 +44,8 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenLoggerIsNull)
     // Pass null logger function
     LoggerFunc nullLogger = nullptr;
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         PersistentQueue queue(":memory:", nullLogger, mockStorage);
     }, std::invalid_argument);
 }
@@ -58,7 +60,8 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenResetAllSyncingFails)
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         PersistentQueue queue(":memory:", testLogger, mockStorage);
     }, std::runtime_error);
 }
@@ -100,7 +103,8 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
     // Capture the log message
     std::string capturedLogMessage;
     modules_log_level_t capturedLogLevel;
-    LoggerFunc testLogger = [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string& message) {
+    LoggerFunc testLogger = [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string & message)
+    {
         capturedLogLevel = level;
         capturedLogMessage = message;
     };

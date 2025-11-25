@@ -139,6 +139,10 @@ class EXPORTED Syscollector final
         void scanServices();
         void scanBrowserExtensions();
         void scan();
+        void scanVDTables();
+        void vdContextEvaluator();
+        void analyzeDataContextEvent(const PersistedData& event, const nlohmann::json& eventData);
+        void scanNonVDTables();
         void syncLoop(std::unique_lock<std::mutex>& lock);
         bool pause();
         void resume();
@@ -182,6 +186,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        bool                                                                     m_vdHasModifyOrDelete;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
