@@ -1,5 +1,7 @@
 #include <stdexcept>
 
+#include <fmt/format.h>
+
 #include <cmcrud/cmcontentvalidator.hpp>
 
 namespace cm::crud
