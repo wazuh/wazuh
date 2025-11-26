@@ -139,10 +139,9 @@ class EXPORTED Syscollector final
         void scanServices();
         void scanBrowserExtensions();
         void scan();
-        void scanVDTables();
         void vdContextEvaluator();
         void analyzeDataContextEvent(const PersistedData& event, const nlohmann::json& eventData);
-        void scanNonVDTables();
+        bool shouldGenerateVulnerabilityContext(const PersistedData& event, const nlohmann::json& eventData);
         void syncLoop(std::unique_lock<std::mutex>& lock);
         bool pause();
         void resume();
