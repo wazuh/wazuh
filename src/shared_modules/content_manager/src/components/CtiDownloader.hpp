@@ -230,9 +230,7 @@ protected:
         }
         catch (const std::exception& e)
         {
-            logWarn(WM_CONTENTUPDATER,
-                    "CtiDownloader: Failed to obtain signed URL: %s. Falling back to original URL",
-                    e.what());
+            logWarn(WM_CONTENTUPDATER, "CtiDownloader: %s. Falling back to default URL", e.what());
             return originalUrl;
         }
     }

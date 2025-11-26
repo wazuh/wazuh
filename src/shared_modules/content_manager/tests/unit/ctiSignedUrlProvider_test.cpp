@@ -311,11 +311,12 @@ TEST_F(CTISignedUrlProviderTest, ConfigValidationMissingTokenExchange)
 }
 
 /**
- * @brief Test configuration validation - missing consoleUrl
+ * @brief Test configuration validation - missing console.url
  */
 TEST_F(CTISignedUrlProviderTest, ConfigValidationMissingConsoleUrl)
 {
     nlohmann::json badConfig = R"({
+        "console": {},
         "tokenExchange": {
             "tokenEndpoint": "/api/v1/instances/token/exchange"
         }

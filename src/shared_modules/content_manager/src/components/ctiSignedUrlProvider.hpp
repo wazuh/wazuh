@@ -208,19 +208,26 @@ public:
         : m_urlRequest(urlRequest)
     {
         // Parse configuration
+        if (!config.contains("console"))
+        {
+            throw std::runtime_error("CTISignedUrlProvider: Missing 'console' configuration");
+        }
+
+        const auto& consoleConfig = config.at("console");
+
+        if (!consoleConfig.contains("url"))
+        {
+            throw std::runtime_error("CTISignedUrlProvider: Missing 'console.url' configuration");
+        }
+
+        m_consoleUrl = consoleConfig.at("url").get<std::string>();
+
         if (!config.contains("tokenExchange"))
         {
             throw std::runtime_error("CTISignedUrlProvider: Missing 'tokenExchange' configuration");
         }
 
         const auto& tokenExConfig = config.at("tokenExchange");
-
-        if (!tokenExConfig.contains("consoleUrl"))
-        {
-            throw std::runtime_error("CTISignedUrlProvider: Missing 'tokenExchange.consoleUrl' configuration");
-        }
-
-        m_consoleUrl = tokenExConfig.at("consoleUrl").get<std::string>();
         m_tokenEndpoint = tokenExConfig.value("tokenEndpoint", "/api/v1/instances/token/exchange");
         m_cacheEnabled = tokenExConfig.value("cacheSignedUrls", true);
 

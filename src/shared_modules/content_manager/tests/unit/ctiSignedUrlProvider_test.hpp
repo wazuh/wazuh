@@ -92,9 +92,11 @@ protected:
 
         // Default configuration
         m_config = R"({
+            "console": {
+                "url": "https://console.wazuh.com"
+            },
             "tokenExchange": {
                 "enabled": true,
-                "consoleUrl": "https://console.wazuh.com",
                 "tokenEndpoint": "/api/v1/instances/token/exchange",
                 "cacheSignedUrls": true
             }

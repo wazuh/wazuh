@@ -45,7 +45,6 @@ nlohmann::json contentManagerConfigToNlohmann(const ContentManagerConfig& config
 
     nlohmann::json tokenExchange;
     tokenExchange["enabled"] = config.oauth.tokenExchange.enabled;
-    tokenExchange["consoleUrl"] = config.oauth.console.url;
     tokenExchange["tokenEndpoint"] = config.oauth.tokenExchange.tokenEndpoint;
     tokenExchange["cacheSignedUrls"] = config.oauth.tokenExchange.cacheSignedUrls;
     oauth["tokenExchange"] = std::move(tokenExchange);

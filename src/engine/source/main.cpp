@@ -561,19 +561,14 @@ int main(int argc, char* argv[])
                 }
                 else
                 {
-                    const auto jsonCnf = base::libwazuhshared::getJsonIndexerCnf();
-                    auto indexerConfig = json::Json(jsonCnf.c_str());
-                    if (indexerConfig.exists("/hosts") && indexerConfig.isArray("/hosts"))
+                    auto indexerConfig = json::Json(base::libwazuhshared::getJsonIndexerCnf().c_str());
+                    if (auto hostsArray = indexerConfig.getArray("/hosts"); hostsArray.has_value())
                     {
-                        auto hostsArray = indexerConfig.getArray("/hosts");
-                        if (hostsArray.has_value())
+                        for (const auto& host : hostsArray.value())
                         {
-                            for (const auto& host : hostsArray.value())
+                            if (host.isString())
                             {
-                                if (host.isString())
-                                {
-                                    indexerHosts.push_back(host.getString().value());
-                                }
+                                indexerHosts.push_back(host.getString().value());
                             }
                         }
                     }
@@ -582,11 +577,6 @@ int main(int argc, char* argv[])
                 if (!indexerHosts.empty())
                 {
                     ctiCfg.oauth.indexer.url = indexerHosts[0];
-                }
-                else
-                {
-                    LOG_WARNING(
-                        "No indexer hosts configured, CTI Store OAuth will be disabled.");
                 }
             }
             catch (const std::exception& e)
