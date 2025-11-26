@@ -18,8 +18,6 @@ enum class AssetType : std::uint8_t
 {
     DECODER,
     INTEGRATION,
-    KVDB,
-    POLICY,
     ERROR_TYPE
 };
 
