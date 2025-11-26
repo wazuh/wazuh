@@ -515,6 +515,167 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_Success_ReturnsAsset)
     json::Json asset = storeCTI->getAssetByUUID("uuid-decoder-2");
 }
 
+TEST_F(CMStoreCTITest, GetAssetByName_MissingPayloadDocument_ThrowsException)
+{
+    // Create asset document WITHOUT /payload/document section
+    json::Json malformedDoc;
+    malformedDoc.setObject();
+    malformedDoc.setString("uuid-bad-asset", "/name");
+    malformedDoc.setString("decoder", "/type");
+    // Missing /payload/document!
+
+    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed/asset/0")))
+        .WillOnce(Return(malformedDoc));
+
+    EXPECT_THROW(
+        {
+            try
+            {
+                storeCTI->getAssetByName(base::Name("malformed/asset/0"));
+            }
+            catch (const std::runtime_error& e)
+            {
+                EXPECT_THAT(e.what(), testing::HasSubstr("missing /payload/document section"));
+                throw;
+            }
+        },
+        std::runtime_error
+    );
+}
+
+TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
+{
+    // Create full asset document with envelope
+    json::Json fullDoc;
+    fullDoc.setObject();
+    fullDoc.setString("uuid-decoder-3", "/name");
+    fullDoc.setInt(100, "/offset");
+    fullDoc.setInt(1, "/version");
+    fullDoc.setString("2025-11-26T10:00:00Z", "/inserted_at");
+    fullDoc.setString("create", "/type");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+
+    json::Json document;
+    document.setObject();
+    document.setString("decoder/test-extract/0", "/name");
+    document.setString("test-metadata", "/metadata");
+    document.setString("test-value", "/test_field");
+
+    payload.set("/document", document);
+    fullDoc.set("/payload", payload);
+
+    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test-extract/0")))
+        .WillOnce(Return(fullDoc));
+
+    json::Json result = storeCTI->getAssetByName(base::Name("decoder/test-extract/0"));
+
+    // Verify result contains ONLY the /payload/document section
+    EXPECT_TRUE(result.exists("/name"));
+    EXPECT_TRUE(result.exists("/metadata"));
+    EXPECT_TRUE(result.exists("/test_field"));
+
+    // Verify envelope fields are NOT present
+    EXPECT_FALSE(result.exists("/offset"));
+    EXPECT_FALSE(result.exists("/version"));
+    EXPECT_FALSE(result.exists("/inserted_at"));
+
+    // Verify values match the document section
+    auto nameOpt = result.getString("/name");
+    EXPECT_TRUE(nameOpt.has_value());
+    EXPECT_EQ(nameOpt.value(), "decoder/test-extract/0");
+
+    auto metadataOpt = result.getString("/metadata");
+    EXPECT_TRUE(metadataOpt.has_value());
+    EXPECT_EQ(metadataOpt.value(), "test-metadata");
+
+    auto testFieldOpt = result.getString("/test_field");
+    EXPECT_TRUE(testFieldOpt.has_value());
+    EXPECT_EQ(testFieldOpt.value(), "test-value");
+}
+
+TEST_F(CMStoreCTITest, GetAssetByUUID_MissingPayloadDocument_ThrowsException)
+{
+    // Create asset document WITHOUT /payload/document section
+    json::Json malformedDoc;
+    malformedDoc.setObject();
+    malformedDoc.setString("uuid-bad-asset-2", "/name");
+    malformedDoc.setString("decoder", "/type");
+    // Missing /payload/document!
+
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-bad-asset-2"))
+        .WillOnce(Return("malformed/asset/0"));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed/asset/0")))
+        .WillOnce(Return(malformedDoc));
+
+    EXPECT_THROW(
+        {
+            try
+            {
+                storeCTI->getAssetByUUID("uuid-bad-asset-2");
+            }
+            catch (const std::runtime_error& e)
+            {
+                EXPECT_THAT(e.what(), testing::HasSubstr("missing /payload/document section"));
+                throw;
+            }
+        },
+        std::runtime_error
+    );
+}
+
+TEST_F(CMStoreCTITest, GetAssetByUUID_ReturnsOnlyPayloadDocument)
+{
+    // Create full asset document with envelope
+    json::Json fullDoc;
+    fullDoc.setObject();
+    fullDoc.setString("uuid-decoder-4", "/name");
+    fullDoc.setInt(200, "/offset");
+    fullDoc.setInt(2, "/version");
+    fullDoc.setString("2025-11-26T11:00:00Z", "/inserted_at");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+
+    json::Json document;
+    document.setObject();
+    document.setString("decoder/test-uuid-extract/0", "/name");
+    document.setString("uuid-test-metadata", "/metadata");
+    document.setString("uuid-test-value", "/custom_field");
+
+    payload.set("/document", document);
+    fullDoc.set("/payload", payload);
+
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-decoder-4"))
+        .WillOnce(Return("decoder/test-uuid-extract/0"));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test-uuid-extract/0")))
+        .WillOnce(Return(fullDoc));
+
+    json::Json result = storeCTI->getAssetByUUID("uuid-decoder-4");
+
+    // Verify result contains ONLY the /payload/document section
+    EXPECT_TRUE(result.exists("/name"));
+    EXPECT_TRUE(result.exists("/metadata"));
+    EXPECT_TRUE(result.exists("/custom_field"));
+
+    // Verify envelope fields are NOT present
+    EXPECT_FALSE(result.exists("/offset"));
+    EXPECT_FALSE(result.exists("/version"));
+    EXPECT_FALSE(result.exists("/inserted_at"));
+
+    // Verify values match the document section
+    auto nameOpt = result.getString("/name");
+    EXPECT_TRUE(nameOpt.has_value());
+    EXPECT_EQ(nameOpt.value(), "decoder/test-uuid-extract/0");
+
+    auto customFieldOpt = result.getString("/custom_field");
+    EXPECT_TRUE(customFieldOpt.has_value());
+    EXPECT_EQ(customFieldOpt.value(), "uuid-test-value");
+}
+
 /*****************************************************************************
  * Asset Existence Tests
  *****************************************************************************/

@@ -417,7 +417,13 @@ json::Json CMStoreCTI::getAssetByName(const base::Name& name) const
     {
         // Get raw asset document from CTI Store (only decoders supported)
         json::Json rawDoc = reader->getAsset(name);
-        return rawDoc;
+        auto documentOpt = rawDoc.getJson("/payload/document");
+        if (!documentOpt.has_value())
+        {
+            throw std::runtime_error("Asset document missing /payload/document section");
+        }
+
+        return *documentOpt;
     }
     catch (const std::exception& e)
     {
