@@ -3,10 +3,6 @@
       indexer:
         allow: ALLOWED
   sections:
-    - section: indexer
-      elements:
-        - enabled:
-            value: yes
     - section: remote
       elements:
         - connection:

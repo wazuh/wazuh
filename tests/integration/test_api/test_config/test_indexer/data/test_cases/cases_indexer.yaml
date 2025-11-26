@@ -5,7 +5,6 @@
   metadata:
     expected_code: 200
     expected_error_code: 1
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
@@ -21,7 +20,6 @@
   metadata:
     expected_code: 200
     expected_error_code: 0
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
@@ -44,7 +42,6 @@
   metadata:
     expected_code: 200
     expected_error_code: 1
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
@@ -60,7 +57,6 @@
   metadata:
     expected_code: 200
     expected_error_code: 0
-    expected_indexer_enabled: no
     request_body: >
       <ossec_config>
         <remote>
@@ -83,7 +79,6 @@
   metadata:
     expected_code: 200
     expected_error_code: 1
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
@@ -99,7 +94,6 @@
   metadata:
     expected_code: 200
     expected_error_code: 0
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
