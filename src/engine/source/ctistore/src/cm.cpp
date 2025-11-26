@@ -205,36 +205,23 @@ std::pair<std::string, cti::store::AssetType> ContentManager::resolveNameAndType
         throw std::runtime_error("Storage not initialized");
     }
 
-    static const std::array<std::pair<std::string, cti::store::AssetType>, 2> types = {{{"integration", cti::store::AssetType::INTEGRATION}, {"decoder", cti::store::AssetType::DECODER}}};
-
-    for (const auto& t : types)
+    try
     {
-        try
+        auto [name, typeStr] = m_storage->resolveNameAndTypeFromUUID(uuid);
+        cti::store::AssetType aType = cti::store::AssetType::ERROR_TYPE;
+        if (typeStr == "integration")
         {
-            auto names = m_storage->getAssetList(t.first);
-            for (const auto& nm : names)
-            {
-                try
-                {
-                    auto resolvedUuid = m_storage->resolveUUIDFromName(nm, t.first);
-                    if (resolvedUuid == uuid)
-                    {
-                        return {nm.fullName(), t.second};
-                    }
-                }
-                catch (const std::exception&)
-                {
-                    // ignore and continue with next name
-                }
-            }
-        }
-        catch (const std::exception&)
+            aType = cti::store::AssetType::INTEGRATION;
+        }       else if (typeStr == "decoder")
         {
-            continue;
+            aType = cti::store::AssetType::DECODER;
         }
+        return std::make_pair(name, aType);
     }
-
-    throw std::runtime_error(fmt::format("Asset with UUID '{}' not found", uuid));
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Asset with UUID '{}' not found: {}", uuid, e.what()));
+    }
 }
 
 std::string ContentManager::resolveUUIDFromName(const base::Name& name, const std::string& type) const
