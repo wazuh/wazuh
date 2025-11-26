@@ -7,11 +7,12 @@
 
 #include <base/logging.hpp>
 
+#include <cmstore/categories.hpp>
 #include <cmstore/cmstore.hpp>
 
 #include "fileutils.hpp"
-#include "storens.hpp"
 #include "storecti.hpp"
+#include "storens.hpp"
 
 namespace cm::store
 {
@@ -71,6 +72,9 @@ CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMRea
 
     // Load CTI Store, read-only namespace
     m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID);
+
+    // Load Categories from file
+    cm::store::categories::loadMappingFromFile();
 }
 
 void CMStore::loadAllNamespacesFromDisk()

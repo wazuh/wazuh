@@ -47,20 +47,20 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     }
 
     auto indexName = value.getString().value();
-    std::optional<std::unordered_map<std::string_view, std::string_view>> categoryToIndexMap = std::nullopt;
-    // Verify index name starts with wazuh- and contains only lowecase alphanumeric characters, hyphens and dots
+    std::optional<std::unordered_map<std::string, std::string>> categoryToIndexMap = std::nullopt;
+    // Verify index name, can be auto or part of the valid indexes map
     if (indexName == "auto")
     {
-        // Get category-to-index map from cm::store
         categoryToIndexMap = cm::store::categories::getMapping();
-        // runtime_error if not possible -> right now this check doesn't make any sens
+        if (categoryToIndexMap.value().empty())
+        {
+            throw std::runtime_error("Error loading categories mapping file. Cannot use 'auto' index.");
+        }
     }
-    else if (!std::regex_match(indexName, std::regex("wazuh-[a-z0-9.-]+")))
+    else if (!cm::store::categories::isValidIndex(indexName))
     {
-        throw std::runtime_error(
-            fmt::format("Invalid index name '{}'. If not using 'auto' index name must start with 'wazuh-' and contain "
-                        "only lowercase alphanumeric characters, hyphens and dots",
-                        indexName));
+        throw std::runtime_error(fmt::format(
+            "Invalid index name '{}'. If not using 'auto' index name must be one of the valid indexes.", indexName));
     }
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
@@ -97,16 +97,15 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                     RETURN_FAILURE(runState, event, failureTrace3);
                 }
 
-                std::string_view categoryKey{categoryIntegration.value()};
-                if (categoryToIndexMap.value().find(categoryKey) != categoryToIndexMap.value().end())
+                const auto& categoryKey = categoryIntegration.value();
+                if (auto it = categoryToIndexMap.value().find(categoryKey); it != categoryToIndexMap.value().end())
                 {
-                    finalIndexName = categoryToIndexMap.value().at(categoryKey);
+                    finalIndexName = it->second;
                 }
                 else
                 {
                     RETURN_FAILURE(runState, event, failureTrace2);
                 }
-
             }
             // check if present in map, if not throw 3
             wic->index(finalIndexName, event->str());
