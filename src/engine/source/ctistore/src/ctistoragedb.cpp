@@ -443,6 +443,15 @@ struct CTIStorageDB::Impl
     std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
 
     /**
+     * @brief Resolves an asset name and type from its UUID in O(1) time.
+     *
+     * Checks each column family to find which one contains the UUID.
+     * @param uuid UUID of the asset
+     * @return std::pair<std::string, std::string> with name and type
+     */
+    std::pair<std::string, std::string> resolveNameAndTypeFromUUID(const std::string& uuid) const;
+
+    /**
      * @brief Lists all KVDB names.
      * @return Vector of KVDB name strings
      */
@@ -875,6 +884,7 @@ void CTIStorageDB::Impl::storeWithIndex(const json::Json& doc,
 
     batch.Put(getColumnFamily(cf), primaryKey, docJson);
 
+    // Create name→UUID index
     if (!name.empty())
     {
         batch.Put(getColumnFamily(ColumnFamily::METADATA), namePrefix + name, id);
@@ -1059,6 +1069,11 @@ std::string CTIStorageDB::resolveNameFromUUID(const std::string& uuid, const std
 std::string CTIStorageDB::resolveUUIDFromName(const base::Name& name, const std::string& assetType) const
 {
     return m_pImpl->resolveUUIDFromName(name, assetType);
+}
+
+std::pair<std::string, std::string> CTIStorageDB::resolveNameAndTypeFromUUID(const std::string& uuid) const
+{
+    return m_pImpl->resolveNameAndTypeFromUUID(uuid);
 }
 
 std::vector<std::string> CTIStorageDB::getKVDBList() const
@@ -1352,6 +1367,52 @@ std::string CTIStorageDB::Impl::resolveUUIDFromName(const base::Name& name, cons
     }
 
     return *uuidOpt;
+}
+
+std::pair<std::string, std::string> CTIStorageDB::Impl::resolveNameAndTypeFromUUID(const std::string& uuid) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    // Define column families to check with their type names and key prefixes
+    // Since UUIDs are unique across all column families, we only need to check each one
+    static const std::array<std::tuple<CTIStorageDB::ColumnFamily, std::string_view, std::string_view>, 4> columnFamilies = {{
+        {CTIStorageDB::ColumnFamily::INTEGRATION, constants::INTEGRATION_TYPE, constants::INTEGRATION_PREFIX},
+        {CTIStorageDB::ColumnFamily::DECODER, constants::DECODER_TYPE, constants::DECODER_PREFIX},
+        {CTIStorageDB::ColumnFamily::KVDB, constants::KVDB_TYPE, constants::KVDB_PREFIX},
+        {CTIStorageDB::ColumnFamily::POLICY, constants::POLICY_TYPE, constants::POLICY_PREFIX}
+    }};
+
+    // Check each column family for the UUID
+    for (const auto& [cf, type, prefix] : columnFamilies)
+    {
+        std::string key = std::string(prefix) + uuid;
+        std::string value;
+
+        auto status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(cf), key, &value);
+
+        if (status.ok())
+        {
+            // Found the document, extract the name from it
+            try
+            {
+                json::Json doc(value.c_str());
+                std::string name = extractNameFromJson(doc);
+                return {name, std::string(type)};
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format("Failed to parse document for UUID '{}': {}", uuid, e.what()));
+            }
+        }
+        else if (!status.IsNotFound())
+        {
+            // Some other error occurred (not just "not found")
+            throw std::runtime_error(fmt::format("Database error while looking up UUID '{}': {}", uuid, status.ToString()));
+        }
+    }
+
+    // UUID not found in any column family
+    throw std::runtime_error(fmt::format("Asset with UUID '{}' not found", uuid));
 }
 
 

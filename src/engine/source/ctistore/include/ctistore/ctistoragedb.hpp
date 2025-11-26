@@ -192,6 +192,20 @@ public:
     std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
 
     /**
+     * @brief Resolve asset name and type from its UUID in O(1) time.
+     *
+     * Checks each column family (integration, decoder, kvdb, policy) to find the asset
+     * with the given UUID. Since there are only 4 column families and UUIDs are unique,
+     * this is an O(1) operation with a small constant factor.
+     *
+     * @param uuid UUID of the asset to resolve.
+     * @return std::pair<std::string, std::string> pair with the asset name (first)
+     *         and the asset type string (second): "integration", "decoder", "kvdb", or "policy".
+     * @throw std::runtime_error if the UUID is not found or on read error.
+     */
+    std::pair<std::string, std::string> resolveNameAndTypeFromUUID(const std::string& uuid) const;
+
+    /**
      * @brief List all KVDB names.
      *
      * @return Vector with registered KVDB names.
