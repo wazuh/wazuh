@@ -543,7 +543,7 @@ TEST_F(AgentSyncProtocolRouterTest, GetAllEventsHandlesQueueException)
 
     protocol = std::make_unique<AgentSyncProtocol>(
                    "test_module",
-                   ":memory:",
+                   std::nullopt,  // No dbPath, use only mockQueue
                    dummyMqFuncs,
                    testLogger,
                    std::chrono::seconds(syncEndDelay),
