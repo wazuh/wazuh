@@ -884,7 +884,6 @@ void CTIStorageDB::Impl::storeWithIndex(const json::Json& doc,
 
     batch.Put(getColumnFamily(cf), primaryKey, docJson);
 
-    // Create name→UUID index
     if (!name.empty())
     {
         batch.Put(getColumnFamily(ColumnFamily::METADATA), namePrefix + name, id);

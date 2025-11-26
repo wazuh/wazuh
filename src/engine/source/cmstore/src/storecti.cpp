@@ -111,7 +111,6 @@ std::tuple<std::string, ResourceType> CMStoreCTI::resolveNameFromUUID(const std:
         {
             case cti::store::AssetType::DECODER: rType = ResourceType::DECODER; break;
             case cti::store::AssetType::INTEGRATION: rType = ResourceType::INTEGRATION; break;
-            case cti::store::AssetType::KVDB: rType = ResourceType::KVDB; break;
             default: rType = ResourceType::UNDEFINED; break;
         }
         return std::make_tuple(name, rType);
@@ -279,61 +278,30 @@ dataType::Integration CMStoreCTI::getIntegrationByName(const std::string& name) 
         // Get raw integration document from CTI Store
         json::Json rawDoc = reader->getAsset(base::Name(name));
 
-        // Extract UUID from /name field (this is the UUID in CTI Store format)
-        auto uuidOpt = rawDoc.getString("/name");
-        if (!uuidOpt.has_value())
-        {
-            throw std::runtime_error("Integration document missing /name (UUID) field");
-        }
-
-        // Extract the document section
+        // Extract the /payload/document section which contains the integration data
         auto documentOpt = rawDoc.getJson("/payload/document");
         if (!documentOpt.has_value())
         {
             throw std::runtime_error("Integration document missing /payload/document section");
         }
 
-        // Build Integration JSON in expected format
-        json::Json integrationJson;
-        integrationJson.setObject();
+        json::Json document = *documentOpt;
 
-        // Required fields
-        integrationJson.setString(*uuidOpt, "/id");
-
-        auto titleOpt = documentOpt->getString("/title");
-        if (titleOpt.has_value())
+        // Check if /id exists in the document
+        auto idOpt = document.getString("/id");
+        if (!idOpt.has_value())
         {
-            integrationJson.setString(*titleOpt, "/title");
-        }
-        else
-        {
-            integrationJson.setString(name, "/title"); // fallback to name
+            // Fallback: extract UUID from /name field (root level) and add it to document
+            auto uuidOpt = rawDoc.getString("/name");
+            if (!uuidOpt.has_value())
+            {
+                throw std::runtime_error("Integration document missing both /payload/document/id and /name (UUID) fields");
+            }
+            document.setString(*uuidOpt, "/id");
         }
 
-        // Add default values for required fields not in CTI Store
-        integrationJson.setBool(true, "/enable_decoders");
-        integrationJson.setString("ossec", "/category");
-
-        // Optional arrays
-        integrationJson.setArray("/decoders");
-        integrationJson.setArray("/kvdbs");
-
-        // Copy decoders array if it exists
-        if (auto decodersOpt = documentOpt->getArray("/decoders"); decodersOpt.has_value())
-        {
-            // Set /decoders as array and assign json values
-            integrationJson.set("/decoders", documentOpt->getJson("/decoders").value());
-        }
-
-        // Copy kvdbs array if it exists
-        if (auto kvdbsOpt = documentOpt->getArray("/kvdbs"); kvdbsOpt.has_value())
-        {
-            // Set /kvdbs as array and assign json values
-            integrationJson.set("/kvdbs", documentOpt->getJson("/kvdbs").value());
-        }
-
-        // Convert to Integration data type
-        return dataType::Integration::fromJson(integrationJson);
+        // Pass the document to Integration::fromJson
+        return dataType::Integration::fromJson(document);
     }
     catch (const std::exception& e)
     {
@@ -449,11 +417,7 @@ json::Json CMStoreCTI::getAssetByName(const base::Name& name) const
     {
         // Get raw asset document from CTI Store (only decoders supported)
         json::Json rawDoc = reader->getAsset(name);
-
-        // Adapt the document using CTIAssetAdapter (for decoder)
-        json::Json adaptedDoc = cti::store::CTIAssetAdapter::adaptAsset(rawDoc, "decoder", reader);
-
-        return adaptedDoc;
+        return rawDoc;
     }
     catch (const std::exception& e)
     {
