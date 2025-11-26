@@ -834,6 +834,15 @@ InstallCommon()
         fi
     fi
 
+    if [ -f build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libvulnerability_scanner.so
+        fi
+    fi
+
     if [ ${NUNAME} = 'Darwin' ]
     then
         if [ -f wazuh_modules/sca/build/lib/libsca.dylib ]
