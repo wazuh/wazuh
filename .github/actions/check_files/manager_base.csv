@@ -100,7 +100,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,,
-/var/ossec/lib/libfim_recovery.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libindexer_connector.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libjemalloc.so.2,root,wazuh,750,file,-rwxr-x---,,

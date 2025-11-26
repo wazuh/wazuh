@@ -726,7 +726,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libfim_recovery.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/modern.bpf.o
