@@ -15,7 +15,6 @@
  * and converts them to a JSON string format.
  *
  * Supported configuration paths:
- * - indexer.enabled: Enable/disable indexer functionality
  * - indexer.hosts: Array of indexer host addresses
  * - indexer.ssl: SSL/TLS configuration section
  * - indexer.ssl.certificate_authorities: Array of CA certificates
