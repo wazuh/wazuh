@@ -23,7 +23,9 @@ namespace
 {
 
 // Helper function to create a valid integration JSON document (CTI Store format)
-json::Json createIntegrationJson(const std::string& uuid, const std::string& title)
+json::Json createIntegrationJson(const std::string& uuid, const std::string& title,
+                                 const std::string& category = "ossec",
+                                 bool enable_decoders = true)
 {
     json::Json doc;
     doc.setString(uuid, "/name");  // UUID is stored in /name field in CTI Store
@@ -36,6 +38,10 @@ json::Json createIntegrationJson(const std::string& uuid, const std::string& tit
     document.setString(title, "/title");  // Only title in document section
     document.setArray("/decoders");
     document.setArray("/kvdbs");
+
+    // Category and enable_decoders fields
+    document.setString(category, "/category");
+    document.setBool(enable_decoders, "/enable_decoders");
 
     payload.set("/document", document);
     doc.set("/payload", payload);
@@ -305,7 +311,7 @@ TEST_F(CMStoreCTITest, GetPolicy_EmptyPolicyList_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByName_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("uuid-int-1", "windows");
+    json::Json integrationDoc = createIntegrationJson("uuid-int-1", "windows", "test-category", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
         .WillOnce(Return(integrationDoc));
@@ -314,6 +320,8 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_Success_ReturnsIntegration)
 
     EXPECT_EQ(integration.getUUID(), "uuid-int-1");
     EXPECT_EQ(integration.getName(), "windows");
+    EXPECT_EQ(integration.getCategory(), "test-category");
+    EXPECT_TRUE(integration.isEnabled());
 }
 
 TEST_F(CMStoreCTITest, GetIntegrationByName_NotFound_ThrowsException)
@@ -326,7 +334,7 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_NotFound_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByUUID_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("uuid-int-2", "linux");
+    json::Json integrationDoc = createIntegrationJson("uuid-int-2", "linux", "linux-category", true);
 
     EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-int-2"))
         .WillOnce(Return("linux"));
@@ -337,6 +345,8 @@ TEST_F(CMStoreCTITest, GetIntegrationByUUID_Success_ReturnsIntegration)
 
     EXPECT_EQ(integration.getUUID(), "uuid-int-2");
     EXPECT_EQ(integration.getName(), "linux");
+    EXPECT_EQ(integration.getCategory(), "linux-category");
+    EXPECT_TRUE(integration.isEnabled());
 }
 
 TEST_F(CMStoreCTITest, GetIntegrationByUUID_NotFound_ThrowsException)
@@ -374,6 +384,20 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_MissingDocument_ThrowsException)
         .WillOnce(Return(malformedDoc));
 
     EXPECT_THROW(storeCTI->getIntegrationByName("windows"), std::runtime_error);
+}
+
+TEST_F(CMStoreCTITest, GetIntegrationByName_EnableDecodersFalse)
+{
+    // Create integration document with enable_decoders = false
+    json::Json integrationDoc = createIntegrationJson("uuid-disabled", "disabled", "disabled-category", false);
+
+    EXPECT_CALL(*mockReader, getAsset(base::Name("disabled")))
+        .WillOnce(Return(integrationDoc));
+
+    dataType::Integration integration = storeCTI->getIntegrationByName("disabled");
+
+    EXPECT_EQ(integration.getCategory(), "disabled-category");
+    EXPECT_FALSE(integration.isEnabled());
 }
 
 /*****************************************************************************

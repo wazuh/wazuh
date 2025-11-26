@@ -27,7 +27,9 @@ json::Json createCompleteIntegrationDoc(
     const std::string& uuid,
     const std::string& title,
     const std::vector<std::string>& decoderUUIDs = {},
-    const std::vector<std::string>& kvdbUUIDs = {})
+    const std::vector<std::string>& kvdbUUIDs = {},
+    const std::string& category = "ossec",
+    bool enable_decoders = true)
 {
     // CTI Store format: UUID is in /name, document only has title, decoders, kvdbs
     json::Json doc;
@@ -54,6 +56,10 @@ json::Json createCompleteIntegrationDoc(
     {
         document.setString(kvdbUUIDs[i], std::string("/kvdbs/") + std::to_string(i));
     }
+
+    // Category and enable_decoders fields
+    document.setString(category, "/category");
+    document.setBool(enable_decoders, "/enable_decoders");
 
     payload.set("/document", document);
     doc.set("/payload", payload);
@@ -207,7 +213,7 @@ TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByNameThenResolveUUID
     std::vector<std::string> decoderUUIDs = {"dec-uuid-1", "dec-uuid-2"};
     std::vector<std::string> kvdbUUIDs = {"kvdb-uuid-1"};
     json::Json integrationDoc = createCompleteIntegrationDoc(
-        "int-uuid-windows", "windows", decoderUUIDs, kvdbUUIDs);
+        "int-uuid-windows", "windows", decoderUUIDs, kvdbUUIDs, "test-category", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
         .WillOnce(Return(integrationDoc));
@@ -222,11 +228,14 @@ TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByNameThenResolveUUID
     EXPECT_EQ(uuid, "int-uuid-windows");
     EXPECT_EQ(integration.getName(), "windows");
     EXPECT_EQ(integration.getDecodersByUUID().size(), 2);
+    // Verify category and enable_decoders propagated
+    EXPECT_EQ(integration.getCategory(), "test-category");
+    EXPECT_TRUE(integration.isEnabled());
 }
 
 TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByUUIDChain)
 {
-    json::Json integrationDoc = createCompleteIntegrationDoc("int-uuid-linux", "linux");
+    json::Json integrationDoc = createCompleteIntegrationDoc("int-uuid-linux", "linux", {}, {}, "linux-category", true);
 
     EXPECT_CALL(*mockReader, resolveNameFromUUID("int-uuid-linux"))
         .WillOnce(Return("linux"));
@@ -237,6 +246,27 @@ TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByUUIDChain)
 
     EXPECT_EQ(integration.getUUID(), "int-uuid-linux");
     EXPECT_EQ(integration.getName(), "linux");
+
+    // Verify fields propagated from document
+    EXPECT_EQ(integration.getCategory(), "linux-category");
+    EXPECT_TRUE(integration.isEnabled());
+}
+
+TEST_F(CMStoreCTIComponentTest, Integration_EnableDecodersFlagFalse)
+{
+    // Create integration with decoders but enable_decoders = false
+    std::vector<std::string> decoderUUIDs = {"dec-uuid-1"};
+    json::Json integrationDoc = createCompleteIntegrationDoc(
+        "int-uuid-disabled", "disabled_integration", decoderUUIDs, {}, "disabled-category", false);
+
+    EXPECT_CALL(*mockReader, getAsset(base::Name("disabled_integration")))
+        .WillOnce(Return(integrationDoc));
+
+    dataType::Integration integration = storeCTI->getIntegrationByName("disabled_integration");
+
+    EXPECT_EQ(integration.getCategory(), "disabled-category");
+    EXPECT_FALSE(integration.isEnabled());
+    EXPECT_EQ(integration.getDecodersByUUID().size(), 1);
 }
 
 /*****************************************************************************
@@ -431,7 +461,7 @@ TEST_F(CMStoreCTIComponentTest, NamespaceIsolation_DifferentNamespaces)
 TEST_F(CMStoreCTIComponentTest, ConcurrentAccess_MultipleReadsFromSameStore)
 {
     // Setup mock for multiple calls
-    json::Json integrationDoc = createCompleteIntegrationDoc("int-uuid", "windows");
+    json::Json integrationDoc = createCompleteIntegrationDoc("int-uuid", "windows", {}, {}, "concurrent-category", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
         .Times(3)
