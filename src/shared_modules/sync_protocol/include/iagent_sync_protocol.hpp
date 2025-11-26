@@ -90,8 +90,8 @@ class IAgentSyncProtocol
         /// @param data Vector of PersistedData to send as DataContext messages
         /// @return true if all messages were sent successfully, false otherwise
         virtual bool sendDataContextMessages(uint64_t session,
-                                            const std::vector<PersistedData>& data) = 0;
-                                            
+                                             const std::vector<PersistedData>& data) = 0;
+
         /// @brief Enables DataContext support for this sync protocol instance.
         /// This method adds the is_data_context column to the database schema,
         /// allowing the protocol to store and differentiate DataContext messages from DataValue messages.

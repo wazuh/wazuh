@@ -30,22 +30,22 @@ class MetadataProviderTest : public ::testing::Test
             metadata_provider_reset();
         }
 
-    // Helper to create sample metadata
-    agent_metadata_t createSampleMetadata()
-    {
-        agent_metadata_t metadata{};
-        std::strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
-        std::strncpy(metadata.agent_name, "test_agent", sizeof(metadata.agent_name) - 1);
-        std::strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
-        std::strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
-        std::strncpy(metadata.hostname, "test_host", sizeof(metadata.hostname) - 1);
-        std::strncpy(metadata.os_name, "Ubuntu", sizeof(metadata.os_name) - 1);
-        std::strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
-        std::strncpy(metadata.os_version, "22.04", sizeof(metadata.os_version) - 1);
-        metadata.groups = nullptr;
-        metadata.groups_count = 0;
-        return metadata;
-    }
+        // Helper to create sample metadata
+        agent_metadata_t createSampleMetadata()
+        {
+            agent_metadata_t metadata{};
+            std::strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+            std::strncpy(metadata.agent_name, "test_agent", sizeof(metadata.agent_name) - 1);
+            std::strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+            std::strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+            std::strncpy(metadata.hostname, "test_host", sizeof(metadata.hostname) - 1);
+            std::strncpy(metadata.os_name, "Ubuntu", sizeof(metadata.os_name) - 1);
+            std::strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+            std::strncpy(metadata.os_version, "22.04", sizeof(metadata.os_version) - 1);
+            metadata.groups = nullptr;
+            metadata.groups_count = 0;
+            return metadata;
+        }
 };
 
 // Test update with valid metadata

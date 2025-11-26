@@ -264,7 +264,7 @@ TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)
 }
 TEST(PersistentQueueTest, GetAllEventsReturnsAllMessages)
 {
-    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();  
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     // Create simple test data with correct PersistedData structure
     std::vector<PersistedData> fakeEvents =
@@ -283,7 +283,7 @@ TEST(PersistentQueueTest, GetAllEventsReturnsAllMessages)
     auto events = queue.getAllEvents();
 
     ASSERT_EQ(events.size(), 3);
-    
+
     // Verify first event
     EXPECT_EQ(events[0].seq, 1);
     EXPECT_EQ(events[0].id, "event1");
@@ -292,7 +292,7 @@ TEST(PersistentQueueTest, GetAllEventsReturnsAllMessages)
     EXPECT_EQ(events[0].version, 100);
     EXPECT_FALSE(events[0].is_data_context);
     EXPECT_EQ(events[0].data, "{\"key\":\"value1\"}");
-    
+
     // Verify second event
     EXPECT_EQ(events[1].seq, 2);
     EXPECT_EQ(events[1].id, "event2");
@@ -301,7 +301,7 @@ TEST(PersistentQueueTest, GetAllEventsReturnsAllMessages)
     EXPECT_EQ(events[1].version, 200);
     EXPECT_TRUE(events[1].is_data_context);
     EXPECT_EQ(events[1].data, "{\"key\":\"value2\"}");
-    
+
     // Verify third event
     EXPECT_EQ(events[2].seq, 3);
     EXPECT_EQ(events[2].id, "event3");
@@ -317,7 +317,7 @@ TEST(PersistentQueueTest, GetAllEventsReturnsEmptyWhenNoEvents)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     EXPECT_CALL(*mockStorage, getAllEvents())
-    .WillOnce(testing::Return(std::vector<PersistedData>{}));
+    .WillOnce(testing::Return(std::vector<PersistedData> {}));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);

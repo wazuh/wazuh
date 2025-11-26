@@ -213,6 +213,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         {
             // Then send DataContext messages if any exist
             bool dataContextSuccess = true;
+
             if (!dataContextItems.empty())
             {
                 dataContextSuccess = sendDataContextMessages(m_syncState.session, dataContextItems);
@@ -480,7 +481,7 @@ std::vector<PersistedData> AgentSyncProtocol::getAllEvents()
             m_logger(LOG_ERROR, "Persistent queue not initialized - cannot get all events");
             return {};
         }
-        
+
         // Get all events without marking them for sync (read-only operation)
         return m_persistentQueue->getAllEvents();
     }

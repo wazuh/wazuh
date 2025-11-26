@@ -73,7 +73,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::sendDataContextMessages
         bool sendDataContextMessages(uint64_t session,
                                      const std::vector<PersistedData>& data) override;
-                                     
+
         /// @copydoc IAgentSyncProtocol::enableDataContext
         void enableDataContext() override;
 
