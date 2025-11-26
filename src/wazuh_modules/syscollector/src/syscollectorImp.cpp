@@ -1297,7 +1297,7 @@ void Syscollector::vdContextEvaluator()
 
     if (!m_spSyncProtocolVD)
     {
-        m_logFunction(LOG_ERROR, "VD sync protocol not initialized");
+        m_logFunction(LOG_DEBUG, "VD sync protocol not initialized - VD features disabled or unavailable in this environment");
         return;
     }
 
@@ -1452,6 +1452,7 @@ void Syscollector::scan()
     ScanGuard scanGuard(m_scanning, m_pauseCv);
 
     m_logFunction(LOG_INFO, "Starting evaluation.");
+    TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
     TRY_CATCH_TASK(scanNetwork);
     TRY_CATCH_TASK(scanPackages);
