@@ -35,6 +35,7 @@ public:
     MOCK_METHOD(void, resetSyncingItems, (), (override));
     MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
     MOCK_METHOD(void, deleteDatabase, (), (override));
+    MOCK_METHOD(void, enableDataContext, (), (override));
     MOCK_METHOD(std::vector<PersistedData>, getAllEvents, (), (override));
 };
 
