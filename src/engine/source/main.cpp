@@ -551,6 +551,40 @@ int main(int argc, char* argv[])
             cti::store::ContentManagerConfig ctiCfg;
             ctiCfg.basePath = baseCtiPath;
 
+            try
+            {
+                std::vector<std::string> indexerHosts;
+
+                if (isRunningStandAlone)
+                {
+                    indexerHosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
+                }
+                else
+                {
+                    auto indexerConfig = json::Json(base::libwazuhshared::getJsonIndexerCnf().c_str());
+                    if (auto hostsArray = indexerConfig.getArray("/hosts"); hostsArray.has_value())
+                    {
+                        for (const auto& host : hostsArray.value())
+                        {
+                            if (host.isString())
+                            {
+                                indexerHosts.push_back(host.getString().value());
+                            }
+                        }
+                    }
+                }
+
+                if (!indexerHosts.empty())
+                {
+                    ctiCfg.oauth.indexer.url = indexerHosts[0];
+                }
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("Could not retrieve indexer configuration for CTI Store: '{}'. OAuth will be disabled.",
+                            e.what());
+            }
+
             auto deployCallback = [cmsync](const std::shared_ptr<cti::store::ICMReader>& cmstore)
             {
                 cmsync->deploy(cmstore);
