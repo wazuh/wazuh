@@ -91,20 +91,7 @@ class IAgentSyncProtocol
         /// @return true if all messages were sent successfully, false otherwise
         virtual bool sendDataContextMessages(uint64_t session,
                                             const std::vector<PersistedData>& data) = 0;
-
-        /// @brief Sends DataContext messages with contextual data.
-        ///
-        /// This method builds and sends DataContext messages containing contextual information
-        /// (e.g., OS data) that helps the manager process vulnerability detection without re-indexing.
-        /// DataContext messages are sent after DataValue messages during synchronization.
-        /// @param session The current sync session ID
-        /// @param data Vector of persisted data items marked as DataContext type
-        /// @param maxEps Maximum events per second (0 = unlimited)
-        /// @return true if DataContext messages were sent successfully, false otherwise
-        virtual bool sendDataContextMessages(uint64_t session,
-                                             const std::vector<PersistedData>& data,
-                                             size_t maxEps) = 0;
-
+                                            
         /// @brief Enables DataContext support for this sync protocol instance.
         /// This method adds the is_data_context column to the database schema,
         /// allowing the protocol to store and differentiate DataContext messages from DataValue messages.
