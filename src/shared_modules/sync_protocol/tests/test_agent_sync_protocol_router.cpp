@@ -35,6 +35,7 @@ public:
     MOCK_METHOD(void, resetSyncingItems, (), (override));
     MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
     MOCK_METHOD(void, deleteDatabase, (), (override));
+    MOCK_METHOD(std::vector<PersistedData>, getAllEvents, (), (override));
 };
 
 class AgentSyncProtocolRouterTest : public ::testing::Test
@@ -461,5 +462,99 @@ TEST_F(AgentSyncProtocolRouterTest, DeleteDatabaseCallsQueue)
         .Times(1);
 
     EXPECT_NO_THROW(protocol->deleteDatabase());
+}
+
+// Test getAllEvents delegates to underlying queue
+TEST_F(AgentSyncProtocolRouterTest, GetAllEventsCallsQueue)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions dummyMqFuncs = {nullptr, nullptr};
+    LoggerFunc testLogger = createTestLogger();
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        dummyMqFuncs,
+        testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Prepare test data
+    std::vector<PersistedData> testEvents =
+    {
+        {1, "event1", "idx1", "{\"data\":\"test1\"}", Operation::CREATE, 100, false},
+        {2, "event2", "idx2", "{\"data\":\"test2\"}", Operation::MODIFY, 200, true}
+    };
+
+    EXPECT_CALL(*mockQueue, getAllEvents())
+        .WillOnce(Return(testEvents));
+
+    auto events = protocol->getAllEvents();
+
+    ASSERT_EQ(events.size(), 2);
+    EXPECT_EQ(events[0].id, "event1");
+    EXPECT_EQ(events[0].data, "{\"data\":\"test1\"}");
+    EXPECT_FALSE(events[0].is_data_context);
+    
+    EXPECT_EQ(events[1].id, "event2");
+    EXPECT_EQ(events[1].data, "{\"data\":\"test2\"}");
+    EXPECT_TRUE(events[1].is_data_context);
+}
+
+// Test getAllEvents returns empty when queue is empty
+TEST_F(AgentSyncProtocolRouterTest, GetAllEventsReturnsEmptyWhenQueueEmpty)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions dummyMqFuncs = {nullptr, nullptr};
+    LoggerFunc testLogger = createTestLogger();
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        dummyMqFuncs,
+        testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    EXPECT_CALL(*mockQueue, getAllEvents())
+        .WillOnce(Return(std::vector<PersistedData>{}));
+
+    auto events = protocol->getAllEvents();
+
+    EXPECT_TRUE(events.empty());
+}
+
+// Test getAllEvents exception handling
+TEST_F(AgentSyncProtocolRouterTest, GetAllEventsHandlesQueueException)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions dummyMqFuncs = {nullptr, nullptr};
+    LoggerFunc testLogger = createTestLogger();
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        dummyMqFuncs,
+        testLogger,
+        std::chrono::seconds(syncEndDelay),
+        std::chrono::seconds(min_timeout),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    EXPECT_CALL(*mockQueue, getAllEvents())
+        .WillOnce(::testing::Throw(std::runtime_error("Queue database error")));
+
+    // AgentSyncProtocol should propagate the exception
+    EXPECT_THROW(protocol->getAllEvents(), std::exception);
 }
 
