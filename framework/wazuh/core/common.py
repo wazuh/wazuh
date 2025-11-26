@@ -242,6 +242,7 @@ MAXIMUM_DATABASE_LIMIT = 100000
 # ================================================ Wazuh path - Config =================================================
 WAZUH_SERVER_YML = WAZUH_ETC / 'wazuh-server.yml'
 WAZUH_INDEXER_CA_BUNDLE = WAZUH_ETC / 'certs' / 'root-ca-merged.pem'
+CLIENT_KEYSTORE = WAZUH_ETC / 'client.keystore'
 
 # ================================================= Wazuh path - Misc ==================================================
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
