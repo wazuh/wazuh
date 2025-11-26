@@ -112,7 +112,6 @@ std::tuple<std::string, ResourceType> CMStoreCTI::resolveNameFromUUID(const std:
             case cti::store::AssetType::DECODER: rType = ResourceType::DECODER; break;
             case cti::store::AssetType::INTEGRATION: rType = ResourceType::INTEGRATION; break;
             case cti::store::AssetType::KVDB: rType = ResourceType::KVDB; break;
-            case cti::store::AssetType::POLICY: rType = ResourceType::POLICY; break;
             default: rType = ResourceType::UNDEFINED; break;
         }
         return std::make_tuple(name, rType);
