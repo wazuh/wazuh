@@ -69,7 +69,7 @@
             "operation": "delete",
             "payload": {
                 "_index": "wazuh-states-inventory-packages",
-                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c349",
+                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c350",
                 "_score": 2,
                 "_source": {
                     "agent": {
@@ -123,5 +123,72 @@
             }
         }
     ],
-    "data_context": []
+    "data_context": [
+        {
+            "operation": "upsert",
+            "payload": {
+                "_index": "wazuh-states-inventory-system",
+                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c351",
+                "_score": 2,
+                "_source": {
+                    "agent": {
+                        "id": "001",
+                        "name": "ubuntu22",
+                        "version": "v5.0.0",
+                        "groups": [
+                            "default"
+                        ],
+                        "host": {
+                            "architecture": "aarch64",
+                            "hostname": "ubuntu22",
+                            "os": {
+                                "name": "Ubuntu",
+                                "platform": "ubuntu",
+                                "type": "linux",
+                                "version": "22.04.5 LTS (Jammy Jellyfish)"
+                            }
+                        }
+                    },
+                    "wazuh": {
+                        "cluster": {
+                            "name": "wazuh"
+                        }
+                    },
+                    "checksum": {
+                        "hash": {
+                        "sha1": "996d7206f3c607c7aa377702d65c1b53a80d2a84"
+                        }
+                    },
+                    "host": {
+                        "architecture": "aarch64",
+                        "hostname": "ubuntu24",
+                        "os": {
+                            "build": null,
+                            "codename": "noble",
+                            "distribution": {
+                                "release": null
+                            },
+                            "full": null,
+                            "kernel": {
+                                "name": "Linux",
+                                "release": "6.8.0-71-generic",
+                                "version": "#71-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 16:44:45 UTC 2025"
+                            },
+                            "major": "24",
+                            "minor": "04",
+                            "name": "Ubuntu",
+                            "patch": "2",
+                            "platform": "ubuntu",
+                            "type": "linux",
+                            "version": "24.04.2 LTS (Noble Numbat)"
+                        }
+                    },
+                    "state": {
+                        "document_version": 1,
+                        "modified_at": "2025-11-27T11:57:48.873Z"
+                    }
+                }
+            }
+        }
+    ]
 }
