@@ -31,9 +31,4 @@ def configure(subparsers):
     parser_upsert = subparsers.add_parser(
         'policy-delete', help='Delete a policy.')
 
-    parser_upsert.add_argument('-c', '--content', type=str, default='',
-                               help='Content of the policy, can be passed as argument or '
-                               'redirected from a file using the "|" operator or the "<" '
-                               'operator.')
-
     parser_upsert.set_defaults(func=run)

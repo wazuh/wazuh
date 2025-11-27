@@ -320,7 +320,7 @@ class SessionPost final :
 
   enum : int {
     kNameFieldNumber = 1,
-    kPolicyFieldNumber = 2,
+    kNamespaceIdFieldNumber = 2,
     kDescriptionFieldNumber = 4,
     kLifetimeFieldNumber = 3,
   };
@@ -338,18 +338,18 @@ class SessionPost final :
   std::string* _internal_mutable_name();
   public:
 
-  // string policy = 2;
-  void clear_policy();
-  const std::string& policy() const;
+  // string namespaceId = 2;
+  void clear_namespaceid();
+  const std::string& namespaceid() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_policy(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_policy();
-  PROTOBUF_NODISCARD std::string* release_policy();
-  void set_allocated_policy(std::string* policy);
+  void set_namespaceid(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_namespaceid();
+  PROTOBUF_NODISCARD std::string* release_namespaceid();
+  void set_allocated_namespaceid(std::string* namespaceid);
   private:
-  const std::string& _internal_policy() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy(const std::string& value);
-  std::string* _internal_mutable_policy();
+  const std::string& _internal_namespaceid() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_namespaceid(const std::string& value);
+  std::string* _internal_mutable_namespaceid();
   public:
 
   // optional string description = 4;
@@ -390,7 +390,7 @@ class SessionPost final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespaceid_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t lifetime_;
   };
@@ -521,10 +521,10 @@ class Session final :
 
   enum : int {
     kNameFieldNumber = 1,
-    kPolicyFieldNumber = 2,
+    kNamespaceIdFieldNumber = 2,
     kDescriptionFieldNumber = 4,
     kLifetimeFieldNumber = 3,
-    kPolicySyncFieldNumber = 6,
+    kNamespaceSyncFieldNumber = 6,
     kEntryStatusFieldNumber = 7,
     kLastUseFieldNumber = 8,
   };
@@ -542,18 +542,18 @@ class Session final :
   std::string* _internal_mutable_name();
   public:
 
-  // string policy = 2;
-  void clear_policy();
-  const std::string& policy() const;
+  // string namespaceId = 2;
+  void clear_namespaceid();
+  const std::string& namespaceid() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_policy(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_policy();
-  PROTOBUF_NODISCARD std::string* release_policy();
-  void set_allocated_policy(std::string* policy);
+  void set_namespaceid(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_namespaceid();
+  PROTOBUF_NODISCARD std::string* release_namespaceid();
+  void set_allocated_namespaceid(std::string* namespaceid);
   private:
-  const std::string& _internal_policy() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy(const std::string& value);
-  std::string* _internal_mutable_policy();
+  const std::string& _internal_namespaceid() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_namespaceid(const std::string& value);
+  std::string* _internal_mutable_namespaceid();
   public:
 
   // optional string description = 4;
@@ -583,13 +583,13 @@ class Session final :
   void _internal_set_lifetime(uint32_t value);
   public:
 
-  // .com.wazuh.api.engine.tester.Sync policy_sync = 6;
-  void clear_policy_sync();
-  ::com::wazuh::api::engine::tester::Sync policy_sync() const;
-  void set_policy_sync(::com::wazuh::api::engine::tester::Sync value);
+  // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
+  void clear_namespace_sync();
+  ::com::wazuh::api::engine::tester::Sync namespace_sync() const;
+  void set_namespace_sync(::com::wazuh::api::engine::tester::Sync value);
   private:
-  ::com::wazuh::api::engine::tester::Sync _internal_policy_sync() const;
-  void _internal_set_policy_sync(::com::wazuh::api::engine::tester::Sync value);
+  ::com::wazuh::api::engine::tester::Sync _internal_namespace_sync() const;
+  void _internal_set_namespace_sync(::com::wazuh::api::engine::tester::Sync value);
   public:
 
   // .com.wazuh.api.engine.tester.State entry_status = 7;
@@ -621,10 +621,10 @@ class Session final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespaceid_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t lifetime_;
-    int policy_sync_;
+    int namespace_sync_;
     int entry_status_;
     uint32_t last_use_;
   };
@@ -2591,54 +2591,54 @@ inline void SessionPost::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.SessionPost.name)
 }
 
-// string policy = 2;
-inline void SessionPost::clear_policy() {
-  _impl_.policy_.ClearToEmpty();
+// string namespaceId = 2;
+inline void SessionPost::clear_namespaceid() {
+  _impl_.namespaceid_.ClearToEmpty();
 }
-inline const std::string& SessionPost::policy() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.SessionPost.policy)
-  return _internal_policy();
+inline const std::string& SessionPost::namespaceid() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.SessionPost.namespaceId)
+  return _internal_namespaceid();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void SessionPost::set_policy(ArgT0&& arg0, ArgT... args) {
+void SessionPost::set_namespaceid(ArgT0&& arg0, ArgT... args) {
  
- _impl_.policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.SessionPost.policy)
+ _impl_.namespaceid_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.SessionPost.namespaceId)
 }
-inline std::string* SessionPost::mutable_policy() {
-  std::string* _s = _internal_mutable_policy();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.SessionPost.policy)
+inline std::string* SessionPost::mutable_namespaceid() {
+  std::string* _s = _internal_mutable_namespaceid();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.SessionPost.namespaceId)
   return _s;
 }
-inline const std::string& SessionPost::_internal_policy() const {
-  return _impl_.policy_.Get();
+inline const std::string& SessionPost::_internal_namespaceid() const {
+  return _impl_.namespaceid_.Get();
 }
-inline void SessionPost::_internal_set_policy(const std::string& value) {
+inline void SessionPost::_internal_set_namespaceid(const std::string& value) {
   
-  _impl_.policy_.Set(value, GetArenaForAllocation());
+  _impl_.namespaceid_.Set(value, GetArenaForAllocation());
 }
-inline std::string* SessionPost::_internal_mutable_policy() {
+inline std::string* SessionPost::_internal_mutable_namespaceid() {
   
-  return _impl_.policy_.Mutable(GetArenaForAllocation());
+  return _impl_.namespaceid_.Mutable(GetArenaForAllocation());
 }
-inline std::string* SessionPost::release_policy() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.SessionPost.policy)
-  return _impl_.policy_.Release();
+inline std::string* SessionPost::release_namespaceid() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.SessionPost.namespaceId)
+  return _impl_.namespaceid_.Release();
 }
-inline void SessionPost::set_allocated_policy(std::string* policy) {
-  if (policy != nullptr) {
+inline void SessionPost::set_allocated_namespaceid(std::string* namespaceid) {
+  if (namespaceid != nullptr) {
     
   } else {
     
   }
-  _impl_.policy_.SetAllocated(policy, GetArenaForAllocation());
+  _impl_.namespaceid_.SetAllocated(namespaceid, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.policy_.IsDefault()) {
-    _impl_.policy_.Set("", GetArenaForAllocation());
+  if (_impl_.namespaceid_.IsDefault()) {
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.SessionPost.policy)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.SessionPost.namespaceId)
 }
 
 // uint32 lifetime = 3;
@@ -2783,54 +2783,54 @@ inline void Session::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Session.name)
 }
 
-// string policy = 2;
-inline void Session::clear_policy() {
-  _impl_.policy_.ClearToEmpty();
+// string namespaceId = 2;
+inline void Session::clear_namespaceid() {
+  _impl_.namespaceid_.ClearToEmpty();
 }
-inline const std::string& Session::policy() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Session.policy)
-  return _internal_policy();
+inline const std::string& Session::namespaceid() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Session.namespaceId)
+  return _internal_namespaceid();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void Session::set_policy(ArgT0&& arg0, ArgT... args) {
+void Session::set_namespaceid(ArgT0&& arg0, ArgT... args) {
  
- _impl_.policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.policy)
+ _impl_.namespaceid_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.namespaceId)
 }
-inline std::string* Session::mutable_policy() {
-  std::string* _s = _internal_mutable_policy();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Session.policy)
+inline std::string* Session::mutable_namespaceid() {
+  std::string* _s = _internal_mutable_namespaceid();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Session.namespaceId)
   return _s;
 }
-inline const std::string& Session::_internal_policy() const {
-  return _impl_.policy_.Get();
+inline const std::string& Session::_internal_namespaceid() const {
+  return _impl_.namespaceid_.Get();
 }
-inline void Session::_internal_set_policy(const std::string& value) {
+inline void Session::_internal_set_namespaceid(const std::string& value) {
   
-  _impl_.policy_.Set(value, GetArenaForAllocation());
+  _impl_.namespaceid_.Set(value, GetArenaForAllocation());
 }
-inline std::string* Session::_internal_mutable_policy() {
+inline std::string* Session::_internal_mutable_namespaceid() {
   
-  return _impl_.policy_.Mutable(GetArenaForAllocation());
+  return _impl_.namespaceid_.Mutable(GetArenaForAllocation());
 }
-inline std::string* Session::release_policy() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.Session.policy)
-  return _impl_.policy_.Release();
+inline std::string* Session::release_namespaceid() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.Session.namespaceId)
+  return _impl_.namespaceid_.Release();
 }
-inline void Session::set_allocated_policy(std::string* policy) {
-  if (policy != nullptr) {
+inline void Session::set_allocated_namespaceid(std::string* namespaceid) {
+  if (namespaceid != nullptr) {
     
   } else {
     
   }
-  _impl_.policy_.SetAllocated(policy, GetArenaForAllocation());
+  _impl_.namespaceid_.SetAllocated(namespaceid, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.policy_.IsDefault()) {
-    _impl_.policy_.Set("", GetArenaForAllocation());
+  if (_impl_.namespaceid_.IsDefault()) {
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Session.policy)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Session.namespaceId)
 }
 
 // uint32 lifetime = 3;
@@ -2921,24 +2921,24 @@ inline void Session::set_allocated_description(std::string* description) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Session.description)
 }
 
-// .com.wazuh.api.engine.tester.Sync policy_sync = 6;
-inline void Session::clear_policy_sync() {
-  _impl_.policy_sync_ = 0;
+// .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
+inline void Session::clear_namespace_sync() {
+  _impl_.namespace_sync_ = 0;
 }
-inline ::com::wazuh::api::engine::tester::Sync Session::_internal_policy_sync() const {
-  return static_cast< ::com::wazuh::api::engine::tester::Sync >(_impl_.policy_sync_);
+inline ::com::wazuh::api::engine::tester::Sync Session::_internal_namespace_sync() const {
+  return static_cast< ::com::wazuh::api::engine::tester::Sync >(_impl_.namespace_sync_);
 }
-inline ::com::wazuh::api::engine::tester::Sync Session::policy_sync() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Session.policy_sync)
-  return _internal_policy_sync();
+inline ::com::wazuh::api::engine::tester::Sync Session::namespace_sync() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Session.namespace_sync)
+  return _internal_namespace_sync();
 }
-inline void Session::_internal_set_policy_sync(::com::wazuh::api::engine::tester::Sync value) {
+inline void Session::_internal_set_namespace_sync(::com::wazuh::api::engine::tester::Sync value) {
   
-  _impl_.policy_sync_ = value;
+  _impl_.namespace_sync_ = value;
 }
-inline void Session::set_policy_sync(::com::wazuh::api::engine::tester::Sync value) {
-  _internal_set_policy_sync(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.policy_sync)
+inline void Session::set_namespace_sync(::com::wazuh::api::engine::tester::Sync value) {
+  _internal_set_namespace_sync(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.namespace_sync)
 }
 
 // .com.wazuh.api.engine.tester.State entry_status = 7;

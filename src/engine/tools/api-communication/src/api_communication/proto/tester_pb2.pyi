@@ -59,22 +59,22 @@ class RunPost_Response(_message.Message):
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., result: _Optional[_Union[Result, _Mapping]] = ...) -> None: ...
 
 class Session(_message.Message):
-    __slots__ = ["description", "entry_status", "last_use", "lifetime", "name", "policy", "policy_sync"]
+    __slots__ = ["description", "entry_status", "last_use", "lifetime", "name", "namespaceId", "namespace_sync"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     ENTRY_STATUS_FIELD_NUMBER: _ClassVar[int]
     LAST_USE_FIELD_NUMBER: _ClassVar[int]
     LIFETIME_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACE_SYNC_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
-    POLICY_FIELD_NUMBER: _ClassVar[int]
-    POLICY_SYNC_FIELD_NUMBER: _ClassVar[int]
     description: str
     entry_status: State
     last_use: int
     lifetime: int
     name: str
-    policy: str
-    policy_sync: Sync
-    def __init__(self, name: _Optional[str] = ..., policy: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ..., policy_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., last_use: _Optional[int] = ...) -> None: ...
+    namespaceId: str
+    namespace_sync: Sync
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ..., namespace_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., last_use: _Optional[int] = ...) -> None: ...
 
 class SessionDelete_Request(_message.Message):
     __slots__ = ["name"]
@@ -99,16 +99,16 @@ class SessionGet_Response(_message.Message):
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., session: _Optional[_Union[Session, _Mapping]] = ...) -> None: ...
 
 class SessionPost(_message.Message):
-    __slots__ = ["description", "lifetime", "name", "policy"]
+    __slots__ = ["description", "lifetime", "name", "namespaceId"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     LIFETIME_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
-    POLICY_FIELD_NUMBER: _ClassVar[int]
     description: str
     lifetime: int
     name: str
-    policy: str
-    def __init__(self, name: _Optional[str] = ..., policy: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
+    namespaceId: str
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
 
 class SessionPost_Request(_message.Message):
     __slots__ = ["session"]
