@@ -212,14 +212,12 @@ jobs:
           sudo dpkg -i "$PACKAGE_FILE" || sudo apt-get -f install -y
 
           # Replace https://0.0.0.0:9200 with http://0.0.0.0:9200 in /var/ossec/etc/ossec.conf
-          sudo sed -i 's/https:\/\/0\.0\.0\.0:9200/localhost:9200/g' /var/ossec/etc/ossec.conf
+          sudo sed -i 's/https:\/\/0\.0\.0\.0:9200/http:\/\/localhost:9200/g' /var/ossec/etc/ossec.conf
 
-          # Remove SSL certificate lines from ossec.conf
-          echo "[>] Removing SSL certificate lines from ossec.conf..."
-          sudo sed -i '/<certificate>\/var\/ossec\/etc\/certs\/server.pem<\/certificate>/d' /var/ossec/etc/ossec.conf
-          sudo sed -i '/<key>\/var\/ossec\/etc\/certs\/server-key.pem<\/key>/d' /var/ossec/etc/ossec.conf
-          sudo sed -i '/<ca>\/var\/ossec\/etc\/certs\/root-ca.pem<\/ca>/d' /var/ossec/etc/ossec.conf
-          echo "[+] SSL certificate lines removed from ossec.conf"
+          sudo mkdir -p /var/ossec/etc/certs
+          sudo touch /var/ossec/etc/certs/root-ca.pem
+          sudo touch /var/ossec/etc/certs/server.pem
+          sudo touch /var/ossec/etc/certs/server-key.pem
 
           # Print ossec.conf content for verification
           echo "[>] Current ossec.conf content:"

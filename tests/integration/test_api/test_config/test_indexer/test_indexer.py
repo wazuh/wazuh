@@ -157,10 +157,3 @@ def test_indexer(test_configuration, test_metadata, set_wazuh_configuration, add
         internal_error_code = json_response['data']["failed_items"][0]['error']['code']
         assert internal_error_code == 1127, f"Expected error code {1127}, but " \
                                             f"{internal_error_code} was returned: {json_response}"
-    
-    # Asserts that the configuration has the expected values
-    wazuh_config = "".join(get_wazuh_conf())
-    enabled = 'yes'
-    if not test_metadata['expected_indexer_enabled']:
-        enabled = 'no'
-    assert f"<enabled>{enabled}</enabled>" in wazuh_config

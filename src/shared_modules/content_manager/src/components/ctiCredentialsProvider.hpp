@@ -129,7 +129,7 @@ private:
 
             m_credentials.accessToken = std::move(newCreds.accessToken);
 
-            logInfo(WM_CONTENTUPDATER, "CTICredentialsProvider: Access token refreshed successfully");
+            logDebug2(WM_CONTENTUPDATER, "CTICredentialsProvider: Access token refreshed successfully");
         }
         catch (const std::exception& e)
         {
@@ -171,11 +171,11 @@ public:
         m_pollInterval = indexerConfig.value("pollInterval", 60);
         m_retryAttempts = indexerConfig.value("retryAttempts", 3);
 
-        logInfo(WM_CONTENTUPDATER,
-                "CTICredentialsProvider initialized (URL: %s, endpoint: %s, poll: %us)",
-                m_indexerUrl.c_str(),
-                m_credentialsEndpoint.c_str(),
-                m_pollInterval);
+        logDebug1(WM_CONTENTUPDATER,
+                  "CTICredentialsProvider initialized (URL: %s, endpoint: %s, poll: %us)",
+                  m_indexerUrl.c_str(),
+                  m_credentialsEndpoint.c_str(),
+                  m_pollInterval);
     }
 
     /**
@@ -266,25 +266,25 @@ public:
                 creds.accessToken = json.at("access_token").get<std::string>();
                 std::string tokenType = json.at("token_type").get<std::string>();
 
-                logInfo(WM_CONTENTUPDATER,
-                        "Credentials fetched successfully from Indexer (token_type: %s)",
-                        tokenType.c_str());
+                logDebug1(WM_CONTENTUPDATER,
+                          "Credentials fetched successfully from Indexer (token_type: %s)",
+                          tokenType.c_str());
 
                 return creds;
             }
             catch (const std::exception& e)
             {
-                logWarn(WM_CONTENTUPDATER,
-                        "Failed to fetch credentials from Indexer: %s (attempt %u/%u)",
-                        e.what(),
-                        attempt,
-                        m_retryAttempts);
+                logDebug1(WM_CONTENTUPDATER,
+                          "Failed to fetch credentials from Indexer: %s (attempt %u/%u)",
+                          e.what(),
+                          attempt,
+                          m_retryAttempts);
 
                 // Exponential backoff before retry
                 if (attempt < m_retryAttempts)
                 {
                     uint32_t backoffTime = 2 * attempt; // 2, 4, 6 seconds
-                    logDebug1(WM_CONTENTUPDATER, "Retrying in %u seconds...", backoffTime);
+                    logDebug2(WM_CONTENTUPDATER, "Retrying in %u seconds...", backoffTime);
                     std::this_thread::sleep_for(std::chrono::seconds(backoffTime));
                 }
             }
@@ -355,12 +355,12 @@ public:
             return;
         }
 
-        logInfo(WM_CONTENTUPDATER, "CTICredentialsProvider: Stopping auto-refresh thread...");
+        logDebug2(WM_CONTENTUPDATER, "CTICredentialsProvider: Stopping auto-refresh thread...");
 
         m_stopRefresh = true;
         m_refreshThread.join();
 
-        logInfo(WM_CONTENTUPDATER, "CTICredentialsProvider: Auto-refresh thread stopped");
+        logDebug2(WM_CONTENTUPDATER, "CTICredentialsProvider: Auto-refresh thread stopped");
     }
 };
 

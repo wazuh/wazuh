@@ -1859,6 +1859,10 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
     }
     else if (m_spSyncProtocol)
     {
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version);
+    }
+    else if (m_spSyncProtocol)
+    {
         // Track if we see any MODIFY or DELETE operations for VD tables
         // This helps determine if it's first scan (all CREATE) or delta scan (has MODIFY/DELETE)
         if (operation == Operation::MODIFY || operation == Operation::DELETE_)

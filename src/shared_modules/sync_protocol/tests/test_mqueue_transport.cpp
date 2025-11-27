@@ -53,7 +53,7 @@ class MQueueTransportTest : public ::testing::Test
         static bool shouldThrowException;
 
         // Mock MQ_Functions
-        static int mockMqStart(const char* path, short type, short n)
+        static int mockMqStart([[maybe_unused]] const char* path, [[maybe_unused]] short type, [[maybe_unused]] short n)
         {
             mqStartCalls++;
 
@@ -65,13 +65,13 @@ class MQueueTransportTest : public ::testing::Test
             return mqStartReturnValue;
         }
 
-        static int mockMqSendBinary(int queue, const void* buffer, size_t size, const char* module, char mq_type)
+        static int mockMqSendBinary([[maybe_unused]] int queue, [[maybe_unused]] const void* buffer, [[maybe_unused]] size_t size, [[maybe_unused]] const char* module, [[maybe_unused]] char mq_type)
         {
             mqSendCalls++;
             return mqSendReturnValue;
         }
 
-        static void mockLogger(modules_log_level_t level, const std::string& msg)
+        static void mockLogger([[maybe_unused]] modules_log_level_t level, const std::string& msg)
         {
             logMessages.push_back(msg);
         }
@@ -259,7 +259,7 @@ TEST_F(MQueueTransportTest, SendMessageSucceedsAfterQueueReinit)
     MQ_Functions customMqFuncs
     {
         mockMqStart,
-        [](int queue, const void* buffer, size_t size, const char* module, char mq_type) -> int
+        [](int, const void*, size_t, const char*, char) -> int
         {
             mqSendCalls++;
             static int count = 0;
@@ -320,7 +320,7 @@ TEST_F(MQueueTransportTest, SendMessageFailsWhenQueueReinitFails)
     MQ_Functions customMqFuncs
     {
         mockMqStart,
-        [](int queue, const void* buffer, size_t size, const char* module, char mq_type) -> int
+        [](int, const void*, size_t, const char*, char) -> int
         {
             mqSendCalls++;
             static int count = 0;
@@ -348,3 +348,23 @@ TEST_F(MQueueTransportTest, SendMessageFailsWhenQueueReinitFails)
     EXPECT_TRUE(logMessages[1].find("SendMSG failed to send message after retry") != std::string::npos);
 }
 
+
+// Test to cover ISyncMessageTransport D0 destructor (delete through base pointer)
+TEST(InterfaceDestructorTest, ISyncMessageTransportDeletingDestructor)
+{
+    // Create concrete implementation through base interface pointer
+    ISyncMessageTransport* transport = nullptr;
+
+    MQ_Functions mockMq{
+        [](const char*, short, short) { return 1; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Create MQueueTransport through base interface pointer
+    transport = new MQueueTransport("test_module", mockMq, testLogger);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete transport;
+}

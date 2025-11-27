@@ -28,6 +28,30 @@ nlohmann::json contentManagerConfigToNlohmann(const ContentManagerConfig& config
     cfg["databasePath"] = config.databasePath;
     cfg["assetStorePath"] = config.assetStorePath;
     cfg["offset"] = config.offset;
+
+    // OAuth configuration
+    nlohmann::json oauth;
+    nlohmann::json indexer;
+    indexer["url"] = config.oauth.indexer.url;
+    indexer["credentialsEndpoint"] = config.oauth.indexer.credentialsEndpoint;
+    oauth["indexer"] = std::move(indexer);
+
+    nlohmann::json console;
+    console["url"] = config.oauth.console.url;
+    console["instancesEndpoint"] = config.oauth.console.instancesEndpoint;
+    console["timeout"] = config.oauth.console.timeout;
+    console["productType"] = config.oauth.console.productType;
+    oauth["console"] = std::move(console);
+
+    nlohmann::json tokenExchange;
+    tokenExchange["enabled"] = config.oauth.tokenExchange.enabled;
+    tokenExchange["tokenEndpoint"] = config.oauth.tokenExchange.tokenEndpoint;
+    tokenExchange["cacheSignedUrls"] = config.oauth.tokenExchange.cacheSignedUrls;
+    oauth["tokenExchange"] = std::move(tokenExchange);
+
+    oauth["enableProductsProvider"] = config.oauth.enableProductsProvider;
+    cfg["oauth"] = std::move(oauth);
+
     j["configData"] = std::move(cfg);
     return j;
 }
@@ -99,6 +123,61 @@ void ContentManagerConfig::fromJson(const json::Json& config)
         if (config.exists("/configData/offset"))
         {
             offset = config.getInt("/configData/offset").value_or(offset);
+        }
+
+        // OAuth configuration
+        if (config.exists("/configData/oauth"))
+        {
+            if (config.exists("/configData/oauth/indexer/url"))
+            {
+                oauth.indexer.url = config.getString("/configData/oauth/indexer/url").value_or(oauth.indexer.url);
+            }
+            if (config.exists("/configData/oauth/indexer/credentialsEndpoint"))
+            {
+                oauth.indexer.credentialsEndpoint = config.getString("/configData/oauth/indexer/credentialsEndpoint")
+                                                        .value_or(oauth.indexer.credentialsEndpoint);
+            }
+            if (config.exists("/configData/oauth/console/url"))
+            {
+                oauth.console.url = config.getString("/configData/oauth/console/url").value_or(oauth.console.url);
+            }
+            if (config.exists("/configData/oauth/console/instancesEndpoint"))
+            {
+                oauth.console.instancesEndpoint = config.getString("/configData/oauth/console/instancesEndpoint")
+                                                      .value_or(oauth.console.instancesEndpoint);
+            }
+            if (config.exists("/configData/oauth/console/timeout"))
+            {
+                oauth.console.timeout =
+                    config.getInt("/configData/oauth/console/timeout").value_or(oauth.console.timeout);
+            }
+            if (config.exists("/configData/oauth/console/productType"))
+            {
+                oauth.console.productType =
+                    config.getString("/configData/oauth/console/productType").value_or(oauth.console.productType);
+            }
+            if (config.exists("/configData/oauth/enableProductsProvider"))
+            {
+                oauth.enableProductsProvider =
+                    config.getBool("/configData/oauth/enableProductsProvider").value_or(oauth.enableProductsProvider);
+            }
+
+            // TokenExchange configuration
+            if (config.exists("/configData/oauth/tokenExchange/enabled"))
+            {
+                oauth.tokenExchange.enabled =
+                    config.getBool("/configData/oauth/tokenExchange/enabled").value_or(oauth.tokenExchange.enabled);
+            }
+            if (config.exists("/configData/oauth/tokenExchange/tokenEndpoint"))
+            {
+                oauth.tokenExchange.tokenEndpoint = config.getString("/configData/oauth/tokenExchange/tokenEndpoint")
+                                                        .value_or(oauth.tokenExchange.tokenEndpoint);
+            }
+            if (config.exists("/configData/oauth/tokenExchange/cacheSignedUrls"))
+            {
+                oauth.tokenExchange.cacheSignedUrls = config.getBool("/configData/oauth/tokenExchange/cacheSignedUrls")
+                                                          .value_or(oauth.tokenExchange.cacheSignedUrls);
+            }
         }
     }
 }
@@ -184,6 +263,25 @@ void ContentManagerConfig::validate() const
         throw std::runtime_error("ContentManagerConfig: unsupported contentSource: " + contentSource);
     }
 
+    // Optional OAuth validation - OAuth is enabled when indexer and console URLs are present
+    if (!oauth.indexer.url.empty() || !oauth.console.url.empty())
+    {
+        // If any OAuth URL is set, validate complete configuration
+        if (oauth.indexer.url.empty())
+        {
+            throw std::runtime_error("ContentManagerConfig: oauth.indexer.url required when OAuth is enabled");
+        }
+        if (oauth.console.url.empty())
+        {
+            throw std::runtime_error("ContentManagerConfig: oauth.console.url required when OAuth is enabled");
+        }
+        if (oauth.console.productType.empty())
+        {
+            throw std::runtime_error(
+                "ContentManagerConfig: oauth.console.productType cannot be empty when OAuth is enabled");
+        }
+    }
+
     if (compressionType.empty())
     {
         throw std::runtime_error("ContentManagerConfig: compressionType cannot be empty");
@@ -255,9 +353,24 @@ bool ContentDownloader::start()
         // Validate config before proceeding to register creation.
         m_config.validate();
 
+        // Convert config to JSON format for ContentRegister
+        // OAuth configuration (if present) will be passed to ContentRegister which handles OAuth providers internally
         auto nlohmannConfig = contentManagerConfigToNlohmann(m_config);
 
+        // Log OAuth status if configured
+        const bool oauthEnabled = !m_config.oauth.indexer.url.empty() && !m_config.oauth.console.url.empty();
+        if (oauthEnabled)
+        {
+            LOG_INFO("OAuth authentication enabled for CTI Store (productType: {})",
+                     m_config.oauth.console.productType);
+        }
+        else
+        {
+            LOG_DEBUG("OAuth authentication not configured, using traditional mode");
+        }
+
         // Initialize ContentRegister with the file processing callback
+        // ContentRegister will create OAuth providers internally if oauth config is present
         m_contentRegister =
             std::make_unique<ContentRegister>(m_config.topicName, nlohmannConfig, m_fileProcessingCallback);
 

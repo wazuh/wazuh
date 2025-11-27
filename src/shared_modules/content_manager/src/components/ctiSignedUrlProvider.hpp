@@ -39,7 +39,7 @@ struct SignedUrlCacheEntry
  *
  * This class handles:
  * - Exchanging access_token for resource-specific signed URLs
- * - Caching signed URLs with expiration tracking (5 minutes)
+ * - Caching signed URLs with expiration tracking based on server response
  * - Thread-safe cache operations
  * - Automatic cache entry cleanup
  *
@@ -72,7 +72,6 @@ private:
     std::string m_consoleUrl;                                              ///< CTI Console base URL
     std::string m_tokenEndpoint;                                           ///< Token exchange endpoint path
     bool m_cacheEnabled;                                                   ///< Enable/disable URL caching
-    uint32_t m_signedUrlLifetime;                                          ///< Cache lifetime (seconds)
     std::unordered_map<std::string, SignedUrlCacheEntry> m_signedUrlCache; ///< Signed URL cache
     mutable std::mutex m_cacheMutex;                                       ///< Mutex for thread-safe cache access
 
@@ -190,7 +189,7 @@ private:
         std::string signedUrl = json.at("access_token").get<std::string>();
         uint64_t expiresIn = json.at("expires_in").get<uint64_t>();
 
-        logInfo(WM_CONTENTUPDATER, "CTISignedUrlProvider: Signed URL obtained, expires in %llu seconds", expiresIn);
+        logDebug2(WM_CONTENTUPDATER, "CTISignedUrlProvider: Signed URL obtained, expires in %llu seconds", expiresIn);
 
         // Cache the signed URL if caching is enabled
         if (m_cacheEnabled)
@@ -209,29 +208,34 @@ public:
         : m_urlRequest(urlRequest)
     {
         // Parse configuration
+        if (!config.contains("console"))
+        {
+            throw std::runtime_error("CTISignedUrlProvider: Missing 'console' configuration");
+        }
+
+        const auto& consoleConfig = config.at("console");
+
+        if (!consoleConfig.contains("url"))
+        {
+            throw std::runtime_error("CTISignedUrlProvider: Missing 'console.url' configuration");
+        }
+
+        m_consoleUrl = consoleConfig.at("url").get<std::string>();
+
         if (!config.contains("tokenExchange"))
         {
             throw std::runtime_error("CTISignedUrlProvider: Missing 'tokenExchange' configuration");
         }
 
         const auto& tokenExConfig = config.at("tokenExchange");
-
-        if (!tokenExConfig.contains("consoleUrl"))
-        {
-            throw std::runtime_error("CTISignedUrlProvider: Missing 'tokenExchange.consoleUrl' configuration");
-        }
-
-        m_consoleUrl = tokenExConfig.at("consoleUrl").get<std::string>();
         m_tokenEndpoint = tokenExConfig.value("tokenEndpoint", "/api/v1/instances/token/exchange");
         m_cacheEnabled = tokenExConfig.value("cacheSignedUrls", true);
-        m_signedUrlLifetime = tokenExConfig.value("signedUrlLifetime", 300);
 
         logDebug1(WM_CONTENTUPDATER,
-                  "CTISignedUrlProvider initialized (Console: %s, endpoint: %s, cache: %s, lifetime: %us)",
+                  "CTISignedUrlProvider initialized (Console: %s, endpoint: %s, cache: %s)",
                   m_consoleUrl.c_str(),
                   m_tokenEndpoint.c_str(),
-                  m_cacheEnabled ? "enabled" : "disabled",
-                  m_signedUrlLifetime);
+                  m_cacheEnabled ? "enabled" : "disabled");
     }
 
     /**

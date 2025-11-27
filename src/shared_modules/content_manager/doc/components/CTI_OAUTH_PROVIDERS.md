@@ -139,8 +139,7 @@ nlohmann::json config = {
     {"tokenExchange", {
         {"consoleUrl", "https://console.wazuh.com"},
         {"tokenEndpoint", "/api/v1/instances/token/exchange"},  // Optional, default shown
-        {"cacheSignedUrls", true},                               // Optional, default shown
-        {"signedUrlLifetime", 300}                               // Optional, seconds, default shown
+        {"cacheSignedUrls", true}                               // Optional, default shown
     }}
 };
 
@@ -316,9 +315,10 @@ The complete OAuth flow for CTI content download now includes the new subscripti
   - Never persisted to disk
   - Thread-safe access
 
-- **Signed URLs**: Valid for 5 minutes by default
+- **Signed URLs**: Lifetime determined by Console (typically 5 minutes)
   - Cached to reduce token exchange overhead
   - Automatically refreshed when expired
+  - Expiration based on `expires_in` field from token exchange response
   - Cache can be disabled if needed
 
 ### Transport Security

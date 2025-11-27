@@ -281,11 +281,11 @@ public:
         m_timeout = consoleConfig.value("timeout", 5000);
         m_productType = consoleConfig.value("productType", "catalog:consumer");
 
-        logInfo(WM_CONTENTUPDATER,
-                "CTIProductsProvider initialized (URL: %s, endpoint: %s, productType: %s)",
-                m_consoleUrl.c_str(),
-                m_instancesEndpoint.c_str(),
-                m_productType.c_str());
+        logDebug1(WM_CONTENTUPDATER,
+                  "CTIProductsProvider initialized (URL: %s, endpoint: %s, productType: %s)",
+                  m_consoleUrl.c_str(),
+                  m_instancesEndpoint.c_str(),
+                  m_productType.c_str());
     }
 
     /**

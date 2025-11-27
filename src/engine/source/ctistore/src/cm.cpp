@@ -56,7 +56,7 @@ ContentManager::ContentManager(const ContentManagerConfig& config, ContentDeploy
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("Failed initializing CTIStorageDB: {}", e.what());
+        LOG_ERROR("Failed initializing CTI Store: {}", e.what());
         throw; // propagate - storage is mandatory for manager operation now
     }
 

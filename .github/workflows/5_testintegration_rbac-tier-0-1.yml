@@ -36,6 +36,11 @@ jobs:
         run: |
           make deps -C src TARGET=server -j2
           make -C src TARGET=server -j2
+
+          sudo mkdir -p /var/ossec/etc/certs
+          sudo touch /var/ossec/etc/certs/root-ca.pem
+          sudo touch /var/ossec/etc/certs/server.pem
+          sudo touch /var/ossec/etc/certs/server-key.pem
       # Install wazuh server for linux.
       - name: Install wazuh server for linux
         run: |
@@ -67,6 +72,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
+
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
