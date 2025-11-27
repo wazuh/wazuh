@@ -11,9 +11,6 @@
 namespace cm::store::categories
 {
 
-///< Env var to define categories file path
-constexpr auto ENV_CM_CATEGORIES_FILE = "WAZUH_CM_CATEGORIES_FILE";
-
 inline std::unordered_map<std::string, std::string> indexByCategories;
 
 /**
@@ -38,11 +35,9 @@ static std::string categoryToIndex(const std::string& category)
  * @brief Load the mapping from the categories file.
  * @throws std::runtime_error on IO or parse errors.
  */
-static void loadMappingFromFile()
+static void loadMappingFromFile(std::string_view categoriesFilePath)
 {
-    auto categoriesFilePathEnv = std::getenv(ENV_CM_CATEGORIES_FILE);
-    std::filesystem::path categoriesPath =
-        categoriesFilePathEnv ? categoriesFilePathEnv : "/var/ossec/etc/categories.json";
+    std::filesystem::path categoriesPath(categoriesFilePath);
 
     std::ifstream file(categoriesPath);
     if (!file.is_open())

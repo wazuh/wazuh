@@ -28,7 +28,9 @@ const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
 
 CMStore::~CMStore() = default;
 
-CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMReader>& ctiReader)
+CMStore::CMStore(std::string_view path,
+                 const std::shared_ptr<cti::store::ICMReader>& ctiReader,
+                 std::string_view categoriesFilePath)
     : m_baseStoragePath(path)
     , m_namespaces()
     , m_mutex()
@@ -74,7 +76,7 @@ CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMRea
     m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID);
 
     // Load Categories from file
-    cm::store::categories::loadMappingFromFile();
+    cm::store::categories::loadMappingFromFile(categoriesFilePath);
 }
 
 void CMStore::loadAllNamespacesFromDisk()
