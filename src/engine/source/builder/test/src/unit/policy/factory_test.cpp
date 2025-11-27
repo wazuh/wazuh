@@ -464,6 +464,11 @@ INSTANTIATE_TEST_SUITE_P(
             AT::DECODER, "decoder/parent1", "output/asset")(AT::DECODER, "decoder/parent2", "decoder/parent3")(
             AT::DECODER, "decoder/parent3", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
             AT::OUTPUT, "output/asset", "output/Input"))),
+        // Decoders forming cycles (self-loop, two-node, multi-node)
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/self", "decoder/self"))),
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/a", "decoder/b")(AT::DECODER, "decoder/b", "decoder/a"))),
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/root", "decoder/Input")(AT::DECODER, "decoder/a", "decoder/b")(
+            AT::DECODER, "decoder/b", "decoder/c")(AT::DECODER, "decoder/c", "decoder/a"))),
         // SUCCESS cases
         BuildT(SUCCESS()),
         BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/Input"))),

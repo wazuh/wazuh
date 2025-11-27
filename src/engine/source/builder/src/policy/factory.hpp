@@ -292,6 +292,15 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
                                        const std::unordered_map<base::Name, Asset>& filters);
 
 /**
+ * @brief Validates that the provided subgraph does not contain cycles.
+ *
+ * @param subgraph Graph to validate.
+ *
+ * @throw std::runtime_error If a cycle is detected.
+ */
+void validateAcyclic(const Graph<base::Name, Asset>& subgraph);
+
+/**
  * @brief Build the policy graph from the built assets and the relations defined in the policy data.
  *
  * @param assets Assets of the policy.
