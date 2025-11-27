@@ -141,7 +141,7 @@ class EXPORTED Syscollector final
         void scan();
         void vdContextEvaluator();
         void analyzeDataContextEvent(const PersistedData& event, const nlohmann::json& eventData);
-        bool shouldGenerateVulnerabilityContext(const PersistedData& event, const nlohmann::json& eventData);
+        bool isContextRequired(const PersistedData& event, const nlohmann::json& eventData);
         void syncLoop(std::unique_lock<std::mutex>& lock);
         bool pause();
         void resume();

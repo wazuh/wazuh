@@ -1344,9 +1344,8 @@ void Syscollector::vdContextEvaluator()
                         m_logFunction(LOG_DEBUG_VERBOSE, "VD DataValue event data: " + eventData.dump());
 
                         // Determine if this DataValue event needs VD context
-                        bool needsVulnerabilityContext = shouldGenerateVulnerabilityContext(event, eventData);
 
-                        if (needsVulnerabilityContext)
+                        if (isContextRequired(event, eventData))
                         {
                             m_logFunction(LOG_INFO, "VD DataValue event requires vulnerability context: " + event.id);
                             // TODO: Generate and persist DataContext event for this DataValue
@@ -1409,7 +1408,7 @@ void Syscollector::analyzeDataContextEvent(const PersistedData& event, const nlo
     }
 }
 
-bool Syscollector::shouldGenerateVulnerabilityContext(const PersistedData& event, const nlohmann::json& eventData)
+bool Syscollector::isContextRequired(const PersistedData& event, const nlohmann::json& eventData)
 {
     m_logFunction(LOG_DEBUG, "Evaluating VD context need for event: " + event.id + ", index: " + event.index);
 
