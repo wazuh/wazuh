@@ -10,11 +10,11 @@
 #include <cmstore/icmstore.hpp>
 #include <cmstore/types.hpp>
 
-#include <kvdb/ikvdbhandler.hpp>
-#include <kvdb/ikvdbmanager.hpp>
-#include <kvdb/kvdbHandler.hpp>
+#include <kvdbstore/ikvdbhandler.hpp>
+#include <kvdbstore/ikvdbmanager.hpp>
+#include <kvdbstore/kvdbHandler.hpp>
 
-namespace kvdbStore
+namespace kvdbstore
 {
 
 using DBMap = std::unordered_map<std::string /*dbName*/, std::weak_ptr<const KVMap>>;
@@ -40,6 +40,6 @@ private:
     Registry m_registry;
 };
 
-} // namespace kvdbStore
+} // namespace kvdbstore
 
 #endif // _KVDB_STORE_MANAGER_H

@@ -1,4 +1,4 @@
-#include <kvdb/kvdbManager.hpp>
+#include <kvdbstore/kvdbManager.hpp>
 
 #include <mutex>
 #include <shared_mutex>
@@ -8,9 +8,9 @@
 
 #include <base/json.hpp>
 
-#include <kvdb/kvdbHandler.hpp>
+#include <kvdbstore/kvdbHandler.hpp>
 
-namespace kvdbStore
+namespace kvdbstore
 {
 
 std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const cm::store::ICMStoreNSReader& nsReader,
@@ -79,4 +79,4 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const cm::store::ICMSt
     return std::make_shared<KVDBHandler>(std::move(cmap));
 }
 
-} // namespace kvdbStore
+} // namespace kvdbstore

@@ -8,13 +8,13 @@
 
 #include <cmstore/icmstore.hpp>
 
-#include <kvdb/ikvdbhandler.hpp>
-#include <kvdb/ikvdbmanager.hpp>
+#include <kvdbstore/ikvdbhandler.hpp>
+#include <kvdbstore/ikvdbmanager.hpp>
 
-namespace kvdbStore::mocks
+namespace kvdbstore::mocks
 {
 
-class MockKVDBManager : public kvdbStore::IKVDBManager
+class MockIKVDBManager : public kvdbstore::IKVDBManager
 {
 public:
     MOCK_METHOD(std::shared_ptr<IKVDBHandler>,
@@ -23,6 +23,6 @@ public:
                 (override));
 };
 
-} // namespace kvdbStore::mocks
+} // namespace kvdbstore::mocks
 
 #endif // _MOCKS_KVDBSTORE_KVDB_MANAGER_HPP

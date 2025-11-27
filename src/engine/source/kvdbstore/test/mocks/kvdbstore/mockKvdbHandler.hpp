@@ -6,18 +6,18 @@
 #include <gmock/gmock.h>
 
 #include <base/json.hpp>
-#include <kvdb/ikvdbhandler.hpp>
+#include <kvdbstore/ikvdbhandler.hpp>
 
-namespace kvdbStore::mocks
+namespace kvdbstore::mocks
 {
 
-class MockKVDBHandler : public kvdbStore::IKVDBHandler
+class MockIKVDBHandler : public kvdbstore::IKVDBHandler
 {
 public:
     MOCK_METHOD(const json::Json&, get, (const std::string& key), (const, override));
     MOCK_METHOD(bool, contains, (const std::string& key), (const, noexcept, override));
 };
 
-} // namespace kvdbStore::mocks
+} // namespace kvdbstore::mocks
 
 #endif // _MOCKS_KVDBSTORE_KVDB_HANDLER_HPP
