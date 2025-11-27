@@ -8,17 +8,17 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
-#include <kvdb/kvdbHandler.hpp>
+#include <kvdbstore/kvdbHandler.hpp>
 
 // Basic get() and contains() functionality
 TEST(KVDB_Handler_Unit, GetAndContainsBasic)
 {
-    auto map = std::make_shared<kvdbStore::KVMap>();
+    auto map = std::make_shared<kvdbstore::KVMap>();
     map->emplace("s", json::Json {"\"str\""});
     map->emplace("n", json::Json {"123"});
     map->emplace("o", json::Json {R"({"a":1})"});
 
-    kvdbStore::KVDBHandler h(map);
+    kvdbstore::KVDBHandler h(map);
 
     EXPECT_TRUE(h.contains("s"));
     EXPECT_TRUE(h.contains("n"));
@@ -40,11 +40,11 @@ TEST(KVDB_Handler_Unit, GetAndContainsBasic)
 // Views returned by different handlers over the same map point to the same data
 TEST(KVDB_Handler_Unit, ViewsAreStableWhileMapLives)
 {
-    auto map = std::make_shared<kvdbStore::KVMap>();
+    auto map = std::make_shared<kvdbstore::KVMap>();
     map->emplace("k", json::Json {"\"v\""});
 
-    kvdbStore::KVDBHandler h1(map);
-    kvdbStore::KVDBHandler h2(map);
+    kvdbstore::KVDBHandler h1(map);
+    kvdbstore::KVDBHandler h2(map);
 
     const json::Json& r1 = h1.get("k");
     const json::Json& r2 = h2.get("k");
@@ -56,8 +56,8 @@ TEST(KVDB_Handler_Unit, ViewsAreStableWhileMapLives)
 // Safe behavior with a null map
 TEST(KVDB_Handler_Unit, NullMapIsSafe)
 {
-    std::shared_ptr<kvdbStore::KVMap> nullMap; // nullptr
-    kvdbStore::KVDBHandler h(nullMap);
+    std::shared_ptr<kvdbstore::KVMap> nullMap; // nullptr
+    kvdbstore::KVDBHandler h(nullMap);
 
     EXPECT_FALSE(h.contains("k"));
     EXPECT_THROW((void)h.get("k"), std::logic_error);
@@ -66,10 +66,10 @@ TEST(KVDB_Handler_Unit, NullMapIsSafe)
 // Empty key and empty value are handled as regular entries
 TEST(KVDB_Handler_Unit, SupportsEmptyKeyAndEmptyValue)
 {
-    auto map = std::make_shared<kvdbStore::KVMap>();
+    auto map = std::make_shared<kvdbstore::KVMap>();
     map->emplace("", json::Json {"\"\""});
 
-    kvdbStore::KVDBHandler h(map);
+    kvdbstore::KVDBHandler h(map);
 
     EXPECT_TRUE(h.contains(""));
     const json::Json& v = h.get("");
@@ -79,9 +79,9 @@ TEST(KVDB_Handler_Unit, SupportsEmptyKeyAndEmptyValue)
 // Many concurrent readers on the same handler/key are safe
 TEST(KVDB_Handler_Unit, ConcurrentReadersAreSafe)
 {
-    auto map = std::make_shared<kvdbStore::KVMap>();
+    auto map = std::make_shared<kvdbstore::KVMap>();
     map->emplace("k", json::Json {"\"value\""});
-    kvdbStore::KVDBHandler h(map);
+    kvdbstore::KVDBHandler h(map);
 
     constexpr int kThreads = 8;
     constexpr int kItersPerThread = 2000;
@@ -115,11 +115,11 @@ TEST(KVDB_Handler_Unit, ConcurrentReadersAreSafe)
 // Large values are returned verbatim (pointer to the stored Json)
 TEST(KVDB_Handler_Unit, LargeValueIsReturnedVerbatim)
 {
-    auto map = std::make_shared<kvdbStore::KVMap>();
+    auto map = std::make_shared<kvdbstore::KVMap>();
     std::string big(20000, 'x');
     const std::string json_text = "\"" + big + "\"";
     map->emplace("big", json::Json {json_text.c_str()});
-    kvdbStore::KVDBHandler h(map);
+    kvdbstore::KVDBHandler h(map);
 
     const json::Json& r = h.get("big");
     EXPECT_EQ(std::addressof(r), &map->at("big")); // same instance, no copy
