@@ -1,0 +1,36 @@
+{
+    "type": "VDSync",
+    "agent": {
+        "id": "001"
+    },
+    "packages": [
+        {
+            "package": {
+                "architecture": "amd64",
+                "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
+                "description": "Grafana",
+                "name": "grafana",
+                "size": 334,
+                "format": "deb",
+                "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+                "multiarch": "foreign",
+                "groups": "utils",
+                "version": "8.5.5"
+            },
+            "vendor": "contact@grafana.com",
+            "id": "001_pkg_grafana"
+        }
+    ],
+    "hotfixes": [],
+    "os": {
+        "architecture": "x86_64",
+        "hostname": "test_vm",
+        "codename": "jammy",
+        "major_version": "22",
+        "minor_version": "04",
+        "name": "Ubuntu",
+        "platform": "ubuntu",
+        "version": "22.04.3 LTS (Jammy Jellyfish)",
+        "kernel_release": "6.5.0-18-generic"
+    }
+}
