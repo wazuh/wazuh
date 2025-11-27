@@ -5,7 +5,7 @@
     },
     "indexer": {
         "hosts": [
-            "https://ChangeMe:9200"
+            "https://127.0.0.1:9200"
         ],
         "ssl": {
             "certificate_authorities": [
