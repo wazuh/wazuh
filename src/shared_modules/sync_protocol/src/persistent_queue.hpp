@@ -72,9 +72,6 @@ class PersistentQueue : public IPersistentQueue
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
 
-        /// @copydoc IPersistentQueue::enableDataContext
-        void enableDataContext() override;
-
         /// @copydoc IPersistentQueue::getAllEvents
         std::vector<PersistedData> getAllEvents() override;
 

@@ -119,11 +119,6 @@ class IPersistentQueue
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
 
-        /// @brief Enables DataContext support by adding is_data_context column to the database.
-        /// This method should be called for VD (Vulnerability Detection) sync databases
-        /// to support storing both DataValue and DataContext messages.
-        virtual void enableDataContext() = 0;
-
         /// @brief Gets all events from the database without marking them for sync (read-only).
         /// This method retrieves all pending events from the persistent queue without changing their state.
         /// Unlike fetchAndMarkForSync(), this is a read-only operation that doesn't affect synchronization.

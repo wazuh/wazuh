@@ -38,7 +38,6 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, resetSyncingItems, (), (override));
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
-        MOCK_METHOD(void, enableDataContext, (), (override));
         MOCK_METHOD(std::vector<PersistedData>, getAllEvents, (), (override));
 
 };
@@ -4256,6 +4255,82 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckGenericError)
     EXPECT_TRUE(response);
 
     syncThread.join();
+}
+
+// Tests for getAllEvents method
+TEST_F(AgentSyncProtocolTest, GetAllEventsSuccessful)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    protocol = std::make_unique<AgentSyncProtocol>("test_module",
+                                                   std::nullopt,
+                                                   MQ_Functions{
+                                                       [](const char*, short, short) { return 1; },
+                                                       [](int, const void*, size_t, const char*, char) { return 0; }
+                                                   },
+                                                   [](modules_log_level_t, const std::string&) {},
+                                                   std::chrono::seconds(1),
+                                                   std::chrono::seconds(1000),
+                                                   retries,
+                                                   maxEps,
+                                                   mockQueue);
+
+    // Setup expected return data
+    std::vector<PersistedData> expectedEvents = {
+        {1, "id1", "index1", "data1", Operation::CREATE, 100},
+        {2, "id2", "index2", "data2", Operation::MODIFY, 101}
+    };
+
+    EXPECT_CALL(*mockQueue, getAllEvents())
+        .WillOnce(Return(expectedEvents));
+
+    auto result = protocol->getAllEvents();
+
+    EXPECT_EQ(result.size(), 2);
+    EXPECT_EQ(result[0].id, "id1");
+    EXPECT_EQ(result[1].id, "id2");
+}
+
+TEST_F(AgentSyncProtocolTest, GetAllEventsWithNullQueue)
+{
+    // Create protocol without persistent queue
+    protocol = std::make_unique<AgentSyncProtocol>("test_module",
+                                                   std::nullopt,
+                                                   MQ_Functions{
+                                                       [](const char*, short, short) { return 1; },
+                                                       [](int, const void*, size_t, const char*, char) { return 0; }
+                                                   },
+                                                   [](modules_log_level_t, const std::string&) {},
+                                                   std::chrono::seconds(1),
+                                                   std::chrono::seconds(1000),
+                                                   retries,
+                                                   maxEps,
+                                                   nullptr);
+
+    auto result = protocol->getAllEvents();
+
+    EXPECT_TRUE(result.empty());
+}
+
+TEST_F(AgentSyncProtocolTest, GetAllEventsHandlesException)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    protocol = std::make_unique<AgentSyncProtocol>("test_module",
+                                                   std::nullopt,
+                                                   MQ_Functions{
+                                                       [](const char*, short, short) { return 1; },
+                                                       [](int, const void*, size_t, const char*, char) { return 0; }
+                                                   },
+                                                   [](modules_log_level_t, const std::string&) {},
+                                                   std::chrono::seconds(1),
+                                                   std::chrono::seconds(1000),
+                                                   retries,
+                                                   maxEps,
+                                                   mockQueue);
+
+    EXPECT_CALL(*mockQueue, getAllEvents())
+        .WillOnce(testing::Throw(std::runtime_error("Queue error")));
+
+    EXPECT_THROW(protocol->getAllEvents(), std::runtime_error);
 }
 
 // Test to cover IAgentSyncProtocol D0 destructor (delete through base pointer)

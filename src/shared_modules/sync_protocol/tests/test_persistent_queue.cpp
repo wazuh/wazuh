@@ -263,6 +263,84 @@ TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)
     EXPECT_THROW(queue.resetSyncingItems(), std::exception);
 }
 
+TEST(PersistentQueueTest, GetAllEventsReturnsAllMessages)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();  
+
+    // Create simple test data with correct PersistedData structure
+    std::vector<PersistedData> fakeEvents =
+    {
+        {1, "event1", "idx1", "{\"key\":\"value1\"}", Operation::CREATE, 100, false},
+        {2, "event2", "idx2", "{\"key\":\"value2\"}", Operation::MODIFY, 200, true},
+        {3, "event3", "idx3", "{\"key\":\"value3\"}", Operation::DELETE_, 300, false}
+    };
+
+    EXPECT_CALL(*mockStorage, getAllEvents())
+    .WillOnce(testing::Return(fakeEvents));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    auto events = queue.getAllEvents();
+
+    ASSERT_EQ(events.size(), 3);
+    
+    // Verify first event
+    EXPECT_EQ(events[0].seq, 1);
+    EXPECT_EQ(events[0].id, "event1");
+    EXPECT_EQ(events[0].index, "idx1");
+    EXPECT_EQ(events[0].operation, Operation::CREATE);
+    EXPECT_EQ(events[0].version, 100);
+    EXPECT_FALSE(events[0].is_data_context);
+    EXPECT_EQ(events[0].data, "{\"key\":\"value1\"}");
+    
+    // Verify second event
+    EXPECT_EQ(events[1].seq, 2);
+    EXPECT_EQ(events[1].id, "event2");
+    EXPECT_EQ(events[1].index, "idx2");
+    EXPECT_EQ(events[1].operation, Operation::MODIFY);
+    EXPECT_EQ(events[1].version, 200);
+    EXPECT_TRUE(events[1].is_data_context);
+    EXPECT_EQ(events[1].data, "{\"key\":\"value2\"}");
+    
+    // Verify third event
+    EXPECT_EQ(events[2].seq, 3);
+    EXPECT_EQ(events[2].id, "event3");
+    EXPECT_EQ(events[2].index, "idx3");
+    EXPECT_EQ(events[2].operation, Operation::DELETE_);
+    EXPECT_EQ(events[2].version, 300);
+    EXPECT_FALSE(events[2].is_data_context);
+    EXPECT_EQ(events[2].data, "{\"key\":\"value3\"}");
+}
+
+TEST(PersistentQueueTest, GetAllEventsReturnsEmptyWhenNoEvents)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    EXPECT_CALL(*mockStorage, getAllEvents())
+    .WillOnce(testing::Return(std::vector<PersistedData>{}));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    auto events = queue.getAllEvents();
+
+    EXPECT_TRUE(events.empty());
+}
+
+TEST(PersistentQueueTest, GetAllEventsThrowsOnStorageError)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    EXPECT_CALL(*mockStorage, getAllEvents())
+    .WillOnce(testing::Throw(std::runtime_error("Database error")));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    EXPECT_THROW(queue.getAllEvents(), std::exception);
+}
+
 // Test to cover IPersistentQueue D0 destructor (delete through base pointer)
 TEST(InterfaceDestructorTest, IPersistentQueueDeletingDestructor)
 {
