@@ -414,16 +414,16 @@ Add to `.vscode/launch.json`:
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "(gdb) InventorySyncTestTool",
+      "name": "(gdb) InventorySync VD Test - Full Scan",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/src/build/wazuh_modules/inventory_sync/testtool/inventory_sync_testtool",
       "args": [
         "001",
-        "full",
-        "VDFirst",
+        "delta",
+        "VDSync",
         "--input",
-        "${workspaceFolder}/src/wazuh_modules/inventory_sync/testtool/test_data/INPUT_001.json",
+        "${workspaceFolder}/src/wazuh_modules/inventory_sync/testtool/test_data/INPUT_000.json",
         "--config",
         "${workspaceFolder}/src/wazuh_modules/inventory_sync/testtool/test_data/config.json",
         "--wait",
