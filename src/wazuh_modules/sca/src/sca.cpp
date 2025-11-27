@@ -67,6 +67,17 @@ void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, 
     g_sync_max_eps = maxEps;
 }
 
+/// @brief Sets the integrity check interval for the SCA module.
+///
+/// Configures the time interval between integrity checks. Set to 0 to disable
+/// integrity checks.
+///
+/// @param integrity_interval Interval in seconds between integrity checks (0 = disabled)
+void sca_set_integrity_interval(unsigned int integrity_interval)
+{
+    SCA::instance().setIntegrityInterval(std::chrono::seconds(integrity_interval));
+}
+
 /// @brief Starts the SCA module with the given configuration.
 ///
 /// Initializes, configures, and starts the SCA module execution using the
@@ -392,6 +403,14 @@ std::string SCA::query(const std::string& jsonQuery)
     response["error"] = MQ_ERR_MODULE_NOT_RUNNING;
     response["message"] = MQ_MSG_MODULE_NOT_RUNNING;
     return response.dump();
+}
+
+void SCA::setIntegrityInterval(std::chrono::seconds integrityInterval)
+{
+    if (m_sca)
+    {
+        m_sca->setIntegrityInterval(integrityInterval);
+    }
 }
 
 /// @brief C-style wrapper for SCA module synchronization.

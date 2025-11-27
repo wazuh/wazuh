@@ -118,6 +118,10 @@ class EXPORTED SCA final
         /// @return JSON-formatted response string
         std::string query(const std::string& jsonQuery);
 
+        /// @brief Sets the integrity check interval
+        /// @param integrityInterval Interval in seconds (0 = disabled)
+        void setIntegrityInterval(std::chrono::seconds integrityInterval);
+
     private:
         /// @brief Private constructor for singleton pattern.
         SCA();
