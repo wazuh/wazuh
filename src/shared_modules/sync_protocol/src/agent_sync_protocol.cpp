@@ -459,19 +459,6 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     clearSyncState();
     return success;
 }
-void AgentSyncProtocol::enableDataContext()
-{
-    if (m_persistentQueue)
-    {
-        m_persistentQueue->enableDataContext();
-        m_logger(LOG_INFO, "DataContext support enabled for module: " + m_moduleName);
-    }
-    else
-    {
-        m_logger(LOG_WARNING, "Cannot enable DataContext: persistent queue not initialized");
-    }
-}
-
 std::vector<PersistedData> AgentSyncProtocol::getAllEvents()
 {
     if (!m_persistentQueue)
