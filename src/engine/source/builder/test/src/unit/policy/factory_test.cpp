@@ -806,6 +806,88 @@ INSTANTIATE_TEST_SUITE_P(
             ));
 
 } // namespace buildexpressiontest
+
+namespace cycledetectiontest
+{
+using buildgraphtest::assetExpr;
+
+namespace
+{
+inline Asset makeAsset(const base::Name& name)
+{
+    return Asset {base::Name(name), assetExpr(name), std::vector<base::Name> {}};
+}
+
+inline Graph<base::Name, Asset> createGraph()
+{
+    const base::Name root("decoder/Input");
+    return Graph<base::Name, Asset> {root, makeAsset(root)};
+}
+
+inline void addNode(Graph<base::Name, Asset>& graph, const std::string& id)
+{
+    const base::Name name(id);
+    graph.addNode(name, makeAsset(name));
+}
+
+inline void addEdge(Graph<base::Name, Asset>& graph, const std::string& parent, const std::string& child)
+{
+    graph.addEdge(base::Name(parent), base::Name(child));
+}
+} // namespace
+
+TEST(ValidateAcyclicTest, DetectsReachableCycleWithExtraParents)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/a");
+    addNode(graph, "decoder/b");
+    addNode(graph, "decoder/c");
+    addNode(graph, "decoder/d");
+
+    addEdge(graph, "decoder/Input", "decoder/a");
+    addEdge(graph, "decoder/a", "decoder/b");
+    addEdge(graph, "decoder/b", "decoder/c");
+    addEdge(graph, "decoder/c", "decoder/a"); // cycle closes
+
+    addEdge(graph, "decoder/Input", "decoder/d");
+    addEdge(graph, "decoder/d", "decoder/b"); // additional incoming edge
+
+    EXPECT_THROW(factory::validateAcyclic(graph), std::runtime_error);
+}
+
+TEST(ValidateAcyclicTest, DetectsDisconnectedCycle)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/a");
+    addNode(graph, "decoder/b");
+    addNode(graph, "decoder/x");
+    addNode(graph, "decoder/y");
+
+    addEdge(graph, "decoder/Input", "decoder/a");
+    addEdge(graph, "decoder/a", "decoder/b");
+
+    addEdge(graph, "decoder/x", "decoder/y");
+    addEdge(graph, "decoder/y", "decoder/x");
+
+    EXPECT_THROW(factory::validateAcyclic(graph), std::runtime_error);
+}
+
+TEST(ValidateAcyclicTest, DetectsCycleThroughInjectedFilter)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/b");
+    addNode(graph, "filter/f");
+    addNode(graph, "decoder/c");
+
+    addEdge(graph, "decoder/Input", "decoder/b");
+    addEdge(graph, "decoder/b", "filter/f");
+    addEdge(graph, "filter/f", "decoder/c");
+    addEdge(graph, "decoder/c", "decoder/b");
+
+    EXPECT_THROW(factory::validateAcyclic(graph), std::runtime_error);
+}
+
+} // namespace cycledetectiontest
 namespace buildsubgraphtest
 {
 using buildgraphtest::assetExpr;
