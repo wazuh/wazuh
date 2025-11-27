@@ -137,6 +137,10 @@ class SecurityConfigurationAssessment
         /// @return JSON-formatted response string
         std::string query(const std::string& jsonQuery);
 
+        /// @brief Set the integrity check interval
+        /// @param integrityInterval Interval in seconds (0 = disabled)
+        void setIntegrityInterval(std::chrono::seconds integrityInterval);
+
     protected:
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
@@ -144,6 +148,39 @@ class SecurityConfigurationAssessment
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
+
+        /// @brief Integrity check interval in seconds (0 = disabled)
+        std::chrono::seconds m_integrityInterval = std::chrono::seconds(0);
+
+        /// @brief Calculate checksum-of-checksums for sca_check table
+        /// @return SHA1 checksum as hex string
+        std::string calculateTableChecksum();
+
+        /// @brief Get all records from sca_check table for recovery
+        /// @return Vector of JSON records
+        std::vector<nlohmann::json> getAllChecks();
+
+        /// @brief Check if integrity interval has elapsed
+        /// @param currentTime Current timestamp
+        /// @return true if check should run
+        bool integrityIntervalElapsed(int64_t currentTime);
+
+        /// @brief Get last integrity check timestamp from DB
+        /// @return Timestamp in seconds since epoch, 0 if never checked
+        int64_t getLastIntegrityCheckTime();
+
+        /// @brief Update last integrity check timestamp in DB
+        /// @param timestamp Current time
+        void updateLastIntegrityCheckTime(int64_t timestamp);
+
+        /// @brief Perform full recovery: load all checks and resync
+        /// @return true on success
+        bool performRecovery();
+
+        /// @brief Check with manager if full sync required via checksum
+        /// @param checksum Local checksum to validate
+        /// @return true if recovery needed
+        bool checkIfRecoveryRequired(const std::string& checksum);
 
         /// @brief SCA module name
         std::string m_name = "SCA";
