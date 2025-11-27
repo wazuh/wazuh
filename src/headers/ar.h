@@ -19,6 +19,7 @@
 #define SPECIFIC_AGENT  0000004
 #define AS_ONLY         0000010
 #define SPECIFIC_AGENT_SIZED 0000040
+#define DESTINATION_AGENT 0000060 // TODO which number?
 
 /* We now also support non Active Response messages in here */
 #define NO_AR_MSG       0000020
@@ -27,6 +28,7 @@
 #define REMOTE_AGENT_C          'R'
 #define SPECIFIC_AGENT_C        'S'
 #define SPECIFIC_AGENT_SIZED_C  's'
+#define DESTINATION_AGENT_C     'D'
 #define NONE_C                  'N'
 #define NO_AR_C                 '!'
 
