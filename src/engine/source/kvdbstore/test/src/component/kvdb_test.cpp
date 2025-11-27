@@ -13,12 +13,12 @@
 #include <cmstore/mockcmstore.hpp>
 #include <cmstore/datakvdb.hpp>
 
-#include <kvdb/kvdbManager.hpp>
+#include <kvdbstore/kvdbManager.hpp>
 
 namespace
 {
 // Helper: run N parallel reads to the same (ns, db, key) and collect pointers.
-inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kvdbStore::KVDBManager& mgr,
+inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kvdbstore::KVDBManager& mgr,
                                                                               const cm::store::ICMStoreNSReader& ns,
                                                                               const std::string& db,
                                                                               const std::string& key,
@@ -55,7 +55,7 @@ inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kv
 // Build once and then serve from the cache: no refetch, same pointer.
 TEST(KVDB_Component, BuildOnceThenCache_NoRefetch_SamePointer)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> seed, again;
 
@@ -88,7 +88,7 @@ TEST(KVDB_Component, BuildOnceThenCache_NoRefetch_SamePointer)
 // After all handlers are released, a subsequent request rebuilds with new content.
 TEST(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> r1, r2;
 
@@ -120,7 +120,7 @@ TEST(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
 // Different namespaces and db names are fully isolated (distinct caches).
 TEST(KVDB_Component, CrossNamespaceAndDb_IsolatedCaches)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsA {"A"}, nsB {"B"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> a1, a2, b1;
 
@@ -165,7 +165,7 @@ TEST(KVDB_Component, CrossNamespaceAndDb_IsolatedCaches)
 // Concurrent cold race on the same (ns, db) eventually converges to a stable cache.
 TEST(KVDB_Component, ConcurrentColdRace_EventualConvergence)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> ns;
 
@@ -217,7 +217,7 @@ TEST(KVDB_Component, ConcurrentColdRace_EventualConvergence)
 // Non-object payloads are invalid and must throw during build.
 TEST(KVDB_Component, InvalidPayload_Throws)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> badStr, badArr;
 
@@ -241,7 +241,7 @@ TEST(KVDB_Component, InvalidPayload_Throws)
 // Mixed value types (object, array, number, boolean, string, null) are supported as values.
 TEST(KVDB_Component, NestedValues_AccessAndEquality)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> ns;
 

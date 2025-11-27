@@ -33,7 +33,8 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdbstore/ikvdbmanager.hpp>
+#include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <scheduler/scheduler.hpp>
@@ -222,7 +223,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
-    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<scheduler::Scheduler> scheduler;
@@ -306,16 +307,8 @@ int main(int argc, char* argv[])
 
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions {confManager.get<std::string>(conf::key::KVDB_PATH), "kvdb"};
-            kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions);
-            kvdbManager->initialize();
+            kvdbManager = std::make_shared<kvdbstore::KVDBManager>();
             LOG_INFO("KVDB initialized.");
-            exitHandler.add(
-                [kvdbManager, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    kvdbManager->finalize();
-                    LOG_INFO_L(functionName.c_str(), "KVDB terminated.");
-                });
         }
 
         // GEO
@@ -452,8 +445,7 @@ int main(int argc, char* argv[])
             builder::BuilderDeps builderDeps;
             builderDeps.logparDebugLvl = 0;
             builderDeps.logpar = logpar;
-            // builderDeps.kvdbScopeName = "builder";
-            // builderDeps.kvdbManager = kvdbManager;
+            builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
             builderDeps.iConnector = indexerConnector;

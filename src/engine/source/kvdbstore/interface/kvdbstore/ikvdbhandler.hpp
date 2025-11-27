@@ -6,7 +6,7 @@
 
 #include <base/json.hpp>
 
-namespace kvdbStore
+namespace kvdbstore
 {
 /**
  * @brief Read-only view over a single in-memory KVDB.
@@ -41,6 +41,6 @@ public:
     virtual bool contains(const std::string& key) const noexcept = 0;
 };
 
-} // namespace kvdbStore
+} // namespace kvdbstore
 
 #endif // _KVDB_IKVDBHANDLER_H
