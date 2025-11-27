@@ -137,32 +137,32 @@ class InventorySyncFacadeImpl final
                           dataClean->session());
             }
         }
-        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataContext)
-        {
-            const auto dataContext = syncMessage->content_as<Wazuh::SyncSchema::DataContext>();
-            if (!dataContext)
-            {
-                throw InventorySyncException("Invalid data context message");
-            }
+        // else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataContext)
+        // {
+        //     const auto dataContext = syncMessage->content_as<Wazuh::SyncSchema::DataContext>();
+        //     if (!dataContext)
+        //     {
+        //         throw InventorySyncException("Invalid data context message");
+        //     }
 
-            // Check if session exists.
-            std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
-            {
-                logDebug2(LOGGER_DEFAULT_TAG,
-                          "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
-                          dataContext->session());
-            }
-            else
-            {
-                // Handle DataContext - stores context in RocksDB and tracks seq number
-                it->second.handleDataContext(
-                    dataContext, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                logDebug2(LOGGER_DEFAULT_TAG,
-                          "InventorySyncFacade::start: DataContext handled for session %llu",
-                          dataContext->session());
-            }
-        }
+        //     // Check if session exists.
+        //     std::shared_lock lock(m_agentSessionsMutex);
+        //     if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
+        //     {
+        //         logDebug2(LOGGER_DEFAULT_TAG,
+        //                   "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
+        //                   dataContext->session());
+        //     }
+        //     else
+        //     {
+        //         // Handle DataContext - stores context in RocksDB and tracks seq number
+        //         it->second.handleDataContext(
+        //             dataContext, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
+        //         logDebug2(LOGGER_DEFAULT_TAG,
+        //                   "InventorySyncFacade::start: DataContext handled for session %llu",
+        //                   dataContext->session());
+        //     }
+        // }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
         {
             const auto startMsg = syncMessage->content_as<Wazuh::SyncSchema::Start>();
@@ -710,18 +710,16 @@ public:
                                                                      res.context->sessionId,
                                                                      res.context->moduleName);
                                 }
-                                else
-                                {
-                                    logInfo(LOGGER_DEFAULT_TAG,
-                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - full "
-                                            "resync required",
-                                            res.context->agentId.c_str(),
-                                            MAX_RETRIES);
-                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
-                                                                     res.context->agentId,
-                                                                     res.context->sessionId,
-                                                                     res.context->moduleName);
-                                }
+                                // else
+                                // {
+                                //     logInfo(LOGGER_DEFAULT_TAG,
+                                //             "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts -
+                                //             full " "resync required", res.context->agentId.c_str(), MAX_RETRIES);
+                                //     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
+                                //                                      res.context->agentId,
+                                //                                      res.context->sessionId,
+                                //                                      res.context->moduleName);
+                                // }
                             }
                         }
                         catch (const std::exception& e)
@@ -888,8 +886,8 @@ public:
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
                             logDebug2(LOGGER_DEFAULT_TAG,
-                                    "InventorySyncFacade: Running vulnerability scanner for agent %s...",
-                                    res.context->agentId.c_str());
+                                      "InventorySyncFacade: Running vulnerability scanner for agent %s...",
+                                      res.context->agentId.c_str());
 
                             // Run vulnerability scanner
                             try
@@ -899,9 +897,9 @@ public:
                             catch (const std::exception& e)
                             {
                                 logError(LOGGER_DEFAULT_TAG,
-                                        "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
-                                        res.context->agentId.c_str(),
-                                        e.what());
+                                         "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
+                                         res.context->agentId.c_str(),
+                                         e.what());
                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                  res.context->agentId,
                                                                  res.context->sessionId,
