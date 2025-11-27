@@ -5,6 +5,7 @@
 #include <string>
 
 #include <builder/iallowedFields.hpp>
+#include <cmstore/icmstore.hpp>
 #include <defs/idefinitions.hpp>
 #include <schemf/ivalidator.hpp>
 
@@ -144,6 +145,20 @@ public:
      * @param allowedFields
      */
     virtual void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) = 0;
+
+    /**
+     * @brief Get the store namespace reader object
+     *
+     * @return const cm::store::ICMStoreNSReader&
+     */
+    virtual const cm::store::ICMStoreNSReader& getStoreNSReader() const = 0;
+
+    /**
+     * @brief set the store namespace reader object
+     *
+     * @param nsReader
+     */
+    virtual void setStoreNSReader(const std::shared_ptr<cm::store::ICMStoreNSReader> nsReader) = 0;
 };
 
 } // namespace builder::builders

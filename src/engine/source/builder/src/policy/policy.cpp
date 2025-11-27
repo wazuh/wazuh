@@ -36,6 +36,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     buildCtx->runState().trace = trace;
     buildCtx->runState().sandbox = sandbox;
     buildCtx->setAllowedFields(allowedFields);
+    buildCtx->setStoreNSReader(cmStoreNsReader);
 
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
     auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder);

@@ -1,6 +1,6 @@
-#include <kvdb/kvdbHandler.hpp>
+#include <kvdbstore/kvdbHandler.hpp>
 
-namespace kvdbStore
+namespace kvdbstore
 {
 
 KVDBHandler::KVDBHandler(std::shared_ptr<const KVMap> map) noexcept
@@ -29,4 +29,4 @@ bool KVDBHandler::contains(const std::string& key) const noexcept
     return m_map && (m_map->find(key) != m_map->end());
 }
 
-} // namespace kvdbStore
+} // namespace kvdbstore

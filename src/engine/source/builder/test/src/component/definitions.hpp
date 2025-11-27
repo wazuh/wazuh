@@ -354,7 +354,6 @@ public:
 
         builderDeps.logpar =
             std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spMocks->m_spSchemf);
-        builderDeps.kvdbScopeName = "builder";
         builderDeps.kvdbManager = nullptr;
 
         auto emptyAllowedFields = std::make_shared<builder::AllowedFields>();

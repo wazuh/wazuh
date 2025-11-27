@@ -7,9 +7,9 @@
 #include <string_view>
 #include <unordered_map>
 
-#include <kvdb/ikvdbhandler.hpp>
+#include <kvdbstore/ikvdbhandler.hpp>
 
-namespace kvdbStore
+namespace kvdbstore
 {
 
 using KVMap = std::unordered_map<std::string, json::Json>;
@@ -34,6 +34,6 @@ private:
     std::shared_ptr<const KVMap> m_map;
 };
 
-} // namespace kvdbStore
+} // namespace kvdbstore
 
 #endif // _KVDB_HANDLER_H

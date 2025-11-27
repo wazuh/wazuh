@@ -13,12 +13,12 @@
 #include <cmstore/icmstore.hpp>
 #include <cmstore/mockcmstore.hpp>
 
-#include <kvdb/kvdbManager.hpp>
+#include <kvdbstore/kvdbManager.hpp>
 
 namespace
 {
 // Helper: run N parallel reads to the same (ns, db, key) and collect references.
-inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kvdbStore::KVDBManager& mgr,
+inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kvdbstore::KVDBManager& mgr,
                                                                               const cm::store::ICMStoreNSReader& ns,
                                                                               const std::string& db,
                                                                               const std::string& key,
@@ -53,7 +53,7 @@ inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kv
 
 TEST(KVDB_Manager_Unit, CacheHitDoesNotFetchAgain)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
 
     cm::store::NamespaceId nsId {"ns"};
     cm::store::MockICMStoreNSReader seed, again;
@@ -82,7 +82,7 @@ TEST(KVDB_Manager_Unit, CacheHitDoesNotFetchAgain)
 // Cache hit reuses the existing map (same underlying buffer) and does not rebuild.
 TEST(KVDB_Manager_Unit, CacheHitReusesExistingMap)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
 
     cm::store::NamespaceId nsId {"ns"};
     cm::store::MockICMStoreNSReader r1, r2;
@@ -109,7 +109,7 @@ TEST(KVDB_Manager_Unit, CacheHitReusesExistingMap)
 // After all handlers expire, the manager rebuilds with the new content.
 TEST(KVDB_Manager_Unit, RebuildsAfterAllHandlersExpire)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
 
     cm::store::NamespaceId nsId {"ns"};
     cm::store::MockICMStoreNSReader r1, r2;
@@ -138,7 +138,7 @@ TEST(KVDB_Manager_Unit, RebuildsAfterAllHandlersExpire)
 // Same namespace but different dbName entries must use different cached maps.
 TEST(KVDB_Manager_Unit, DifferentDbNamesUseDifferentCachedMaps)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
 
     cm::store::NamespaceId nsId {"ns"};
     cm::store::MockICMStoreNSReader r;
@@ -170,7 +170,7 @@ TEST(KVDB_Manager_Unit, DifferentDbNamesUseDifferentCachedMaps)
 // Parallel requests for the same namespace and dbName must return the same pointer.
 TEST(KVDB_Manager_Unit, ParallelWarm_NoRefetch_SamePointer)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> ns;
 
@@ -202,7 +202,7 @@ TEST(KVDB_Manager_Unit, ParallelWarm_NoRefetch_SamePointer)
 // Cold race where multiple threads request the same namespace and dbName
 TEST(KVDB_Manager_Unit, ParallelColdRace_EventualConvergence)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> ns;
 
@@ -256,7 +256,7 @@ TEST(KVDB_Manager_Unit, ParallelColdRace_EventualConvergence)
 // Parallel requests for the same namespace and dbName must share the cached map.
 TEST(KVDB_Manager_Unit, ParallelSameNsSameDb_SharedCachedMap)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
 
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> ns;
@@ -298,7 +298,7 @@ TEST(KVDB_Manager_Unit, ParallelSameNsSameDb_SharedCachedMap)
 // Parallel requests for different namespaces must be isolated.
 TEST(KVDB_Manager_Unit, ParallelTwoNamespaces_Isolated)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsA {"A"}, nsB {"B"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> rA, rB;
 
@@ -342,7 +342,7 @@ TEST(KVDB_Manager_Unit, ParallelTwoNamespaces_Isolated)
 // Same namespace but different dbName entries must be isolated.
 TEST(KVDB_Manager_Unit, ParallelSameNs_DifferentDb_Isolated)
 {
-    kvdbStore::KVDBManager mgr;
+    kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
     ::testing::NiceMock<cm::store::MockICMStoreNSReader> r;
 

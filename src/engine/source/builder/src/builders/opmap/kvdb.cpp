@@ -7,16 +7,15 @@
 
 #include <base/json.hpp>
 #include <base/utils/stringUtils.hpp>
-#include <kvdb/ikvdbhandler.hpp>
+#include <kvdbstore/ikvdbhandler.hpp>
 
 #include "syntax.hpp"
 
 namespace builder::builders
 {
-using namespace kvdbManager;
+using namespace kvdbstore;
 
 TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
-                    const std::string& kvdbScopeName,
                     const Reference& targetField,
                     const std::vector<OpArg>& opArgs,
                     const std::shared_ptr<const IBuildCtx>& buildCtx,
@@ -33,7 +32,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         throw std::runtime_error(fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
     }
 
-    // First argument is kvdb name
+    // First argument is KVDB name
     utils::assertValue(opArgs, 0);
     if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
     {
@@ -67,11 +66,18 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     }
 
     // Get KVDB handler
-    auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
+    const auto& nsReader = buildCtx->getStoreNSReader();
 
-    if (std::holds_alternative<base::Error>(resultHandler))
+    std::shared_ptr<IKVDBHandler> kvdbHandler;
+    try
     {
-        throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+        kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
+    }
+    catch (const std::exception& e)
+    {
+        const auto nsStr = nsReader.getNamespaceId().toStr();
+        throw std::runtime_error(fmt::format(
+            "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
     }
 
     // Validate the target field
@@ -99,7 +105,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto successTrace {fmt::format("{} -> Success", name)};
 
     const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
-    const auto failureTrace2 = [=]()
+    const auto failureTrace2 = [&]()
     {
         if (key->isReference())
         {
@@ -109,7 +115,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 
         return std::string("");
     }();
-    const auto failureTrace3 = [=]()
+    const auto failureTrace3 = [&]()
     {
         if (key->isReference())
         {
@@ -128,14 +134,32 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto failureTrace8 = fmt::format(
         "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
 
+    // Precompute values to capture explicitly
+    const auto runState = buildCtx->runState();
+    const auto targetJsonPath = targetField.jsonPath();
+    const auto targetDotPath = targetField.dotPath();
+    const auto allowedFieldsPtr = buildCtx->allowedFieldsPtr();
+
     // Return Op
-    return [=,
-            runState = buildCtx->runState(),
-            targetField = targetField.jsonPath(),
-            targetFieldDotPath = targetField.dotPath(),
-            allowedFields = buildCtx->allowedFieldsPtr(),
-            kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
-               base::Event event) -> TransformResult
+    return [key,
+            assetType,
+            validator,
+            successTrace,
+            failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            failureTrace4,
+            failureTrace5,
+            failureTrace6,
+            failureTrace7,
+            failureTrace8,
+            runState,
+            targetJsonPath,
+            targetDotPath,
+            allowedFieldsPtr,
+            kvdbHandler = std::move(kvdbHandler),
+            doMerge,
+            isRecursive](base::Event event) -> TransformResult
     {
         // Get DB key
         std::string resolvedKey;
@@ -161,22 +185,25 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         }
 
         // Get value from KVDB
-        auto resultValue = kvdbHandler->get(resolvedKey);
-
-        if (base::isError(resultValue))
+        const json::Json* valuePtr = nullptr;
+        try
+        {
+            valuePtr = &kvdbHandler->get(resolvedKey);
+        }
+        catch (const std::out_of_range&)
         {
             RETURN_FAILURE(runState, event, failureTrace4)
         }
 
         try
         {
-            json::Json value {base::getResponse<std::string>(resultValue).c_str()};
+            const auto& value = *valuePtr;
             if (validator != nullptr)
             {
                 auto res = validator(value);
                 if (base::isError(res))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace7 + res.value().message);
+                    RETURN_FAILURE(runState, event, failureTrace7 + res.value().message)
                 }
             }
             if (value.isObject())
@@ -184,7 +211,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                 auto fields = value.getFields().value();
                 for (const auto& field : fields)
                 {
-                    if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
+                    if (!allowedFieldsPtr->check(assetType, DotPath::append(targetDotPath, field)))
                     {
                         RETURN_FAILURE(runState, event, failureTrace8)
                     }
@@ -193,30 +220,26 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 
             if (doMerge)
             {
-                if (!event->exists(targetField))
+                if (!event->exists(targetJsonPath))
                 {
                     RETURN_FAILURE(runState, event, failureTrace1)
                 }
 
-                if (event->type(targetField) != value.type() || (!value.isObject() && !value.isArray()))
+                if (event->type(targetJsonPath) != value.type() || (!value.isObject() && !value.isArray()))
                 {
                     RETURN_FAILURE(runState, event, failureTrace5)
                 }
 
-                if (value.isObject())
-                {
-                    // Check that merging with target field does not fall outside allowed fields
-                }
-                event->merge(isRecursive ? json::RECURSIVE : json::NOT_RECURSIVE, value, targetField);
+                event->merge(isRecursive ? json::RECURSIVE : json::NOT_RECURSIVE, value, targetJsonPath);
             }
             else
             {
-                event->set(targetField, value);
+                event->set(targetJsonPath, value);
             }
         }
         catch (const std::runtime_error& e)
         {
-            RETURN_FAILURE(runState, event, failureTrace6)
+            RETURN_FAILURE(runState, event, failureTrace6 + e.what())
         }
 
         RETURN_SUCCESS(runState, event, successTrace)
@@ -224,41 +247,39 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 }
 
 // <field>: +kvdb_get/<DB>/<ref_key>
-TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager)
 {
-    return [kvdbManager, kvdbScopeName](const Reference& targetField,
-                                        const std::vector<OpArg>& opArgs,
-                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+    return [kvdbManager](const Reference& targetField,
+                         const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
-        return KVDBGet(kvdbManager, kvdbScopeName, targetField, opArgs, buildCtx, false);
+        return KVDBGet(kvdbManager, targetField, opArgs, buildCtx, false);
     };
 }
 
 // <field>: +kvdb_get_merge/<DB>/<ref_key>
-TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager)
 {
-    return [kvdbManager, kvdbScopeName](const Reference& targetField,
-                                        const std::vector<OpArg>& opArgs,
-                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+    return [kvdbManager](const Reference& targetField,
+                         const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
-        return KVDBGet(kvdbManager, kvdbScopeName, targetField, opArgs, buildCtx, true);
+        return KVDBGet(kvdbManager, targetField, opArgs, buildCtx, true);
     };
 }
 
 // <field>: +kvdb_get_merge_recursive/<DB>/<ref_key>
-TransformBuilder getOpBuilderKVDBGetMergeRecursive(std::shared_ptr<IKVDBManager> kvdbManager,
-                                                   const std::string& kvdbScopeName)
+TransformBuilder getOpBuilderKVDBGetMergeRecursive(std::shared_ptr<IKVDBManager> kvdbManager)
 {
-    return [kvdbManager, kvdbScopeName](const Reference& targetField,
-                                        const std::vector<OpArg>& opArgs,
-                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+    return [kvdbManager](const Reference& targetField,
+                         const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
-        return KVDBGet(kvdbManager, kvdbScopeName, targetField, opArgs, buildCtx, true, true);
+        return KVDBGet(kvdbManager, targetField, opArgs, buildCtx, true, true);
     };
 }
 
 FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
-                        const std::string& kvdbScopeName,
                         const Reference& targetField,
                         const std::vector<OpArg>& opArgs,
                         const std::shared_ptr<const IBuildCtx>& buildCtx,
@@ -272,7 +293,7 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
 
-    // First argument is kvdb name
+    // First argument is KVDB name
     utils::assertValue(opArgs, 0);
     if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
     {
@@ -281,10 +302,20 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     }
 
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
-    auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
-    if (base::isError(resultHandler))
+
+    // Get KVDB handler
+    const auto& nsReader = buildCtx->getStoreNSReader();
+
+    std::shared_ptr<IKVDBHandler> kvdbHandler;
+    try
     {
-        throw std::runtime_error(fmt::format("Error getting KVDB handler: {}", base::getError(resultHandler).message));
+        kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
+    }
+    catch (const std::exception& e)
+    {
+        const auto nsStr = nsReader.getNamespaceId().toStr();
+        throw std::runtime_error(fmt::format(
+            "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
     }
 
     // Trace messages
@@ -292,15 +323,13 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
     const auto failureTrace2 = fmt::format("{} -> Target field '{}' is not a string", name, targetField.dotPath());
-    const auto failureTrace3 = fmt::format("{} -> Error quering db: ", name);
     const auto failureTraceMatch = fmt::format("{} -> Key not found in DB", name);
     const auto failureTraceNotMatch = fmt::format("{} -> Key found in DB", name);
 
     return [=,
             runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
-            kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
-               base::ConstEvent event) -> FilterResult
+            kvdbHandler = std::move(kvdbHandler)](base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
@@ -313,13 +342,7 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
             RETURN_FAILURE(runState, false, failureTrace2)
         }
 
-        auto value = kvdbHandler->contains(key.value());
-        if (base::isError(value))
-        {
-            RETURN_FAILURE(runState, false, failureTrace3 + std::get<base::Error>(value).message)
-        }
-
-        auto found = base::getResponse<bool>(value);
+        const bool found = kvdbHandler->contains(key.value());
         if (shouldMatch)
         {
             if (!found)
@@ -340,38 +363,38 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
 }
 
 // <field>: +kvdb_match/<DB>
-FilterBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+FilterBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager)
 {
-    return [kvdbManager, kvdbScopeName](const Reference& targetField,
-                                        const std::vector<OpArg>& opArgs,
-                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+    return [kvdbManager](const Reference& targetField,
+                         const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
-        return existanceCheck(kvdbManager, kvdbScopeName, targetField, opArgs, buildCtx, true);
+        return existanceCheck(kvdbManager, targetField, opArgs, buildCtx, true);
     };
 }
 
 // <field>: +kvdb_not_match/<DB>
-FilterBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+FilterBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager)
 {
-    return [kvdbManager, kvdbScopeName](const Reference& targetField,
-                                        const std::vector<OpArg>& opArgs,
-                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+    return [kvdbManager](const Reference& targetField,
+                         const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
-        return existanceCheck(kvdbManager, kvdbScopeName, targetField, opArgs, buildCtx, false);
+        return existanceCheck(kvdbManager, targetField, opArgs, buildCtx, false);
     };
 }
 
 // <field>: kvdb_get_array(<db>, <key_array>)
-TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager)
 {
-    return [kvdbManager, kvdbScopeName](const Reference& targetField,
-                                        const std::vector<OpArg>& opArgs,
-                                        const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
+    return [kvdbManager](const Reference& targetField,
+                         const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
     {
         // Assert expected number of parameters
         utils::assertSize(opArgs, 2);
 
-        // Check Allowed fields
+        // Check allowed fields
         const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
         if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
         {
@@ -379,7 +402,7 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
         }
 
-        // First argument is kvdb name
+        // First argument is KVDB name
         utils::assertValue(opArgs, 0);
         if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
         {
@@ -429,11 +452,18 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }
 
         // Get KVDB handler
-        auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
-        if (std::holds_alternative<base::Error>(resultHandler))
+        const auto& nsReader = buildCtx->getStoreNSReader();
+
+        std::shared_ptr<IKVDBHandler> kvdbHandler;
+        try
         {
-            throw std::runtime_error(
-                fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+            kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
+        }
+        catch (const std::exception& e)
+        {
+            const auto nsStr = nsReader.getNamespaceId().toStr();
+            throw std::runtime_error(fmt::format(
+                "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
         }
 
         // Validate target field
@@ -475,7 +505,6 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }();
 
         const auto failureTrace3 = fmt::format("{} -> Could not get value from DB: ", name);
-        const auto failureTrace4 = fmt::format("{} -> Malformed JSON for value in DB: ", name);
         const auto failureTrace5 = fmt::format("{} -> Array of values from DB is not homogeneous", name);
         const auto failureTrace6 =
             fmt::format("{} -> Final array failed validation for '{}': ", name, targetField.dotPath());
@@ -484,8 +513,7 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         return [=,
                 runState = buildCtx->runState(),
                 targetField = targetField.jsonPath(),
-                kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
-                   base::Event event) -> TransformResult
+                kvdbHandler = std::move(kvdbHandler)](base::Event event) -> TransformResult
         {
             // Resolve array of keys
             std::vector<json::Json> keys;
@@ -494,20 +522,20 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 const auto& keyArrayRef = *std::static_pointer_cast<Reference>(keyArray);
                 if (!event->exists(keyArrayRef.jsonPath()))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace1);
+                    RETURN_FAILURE(runState, event, failureTrace1)
                 }
 
                 const auto value = event->getArray(keyArrayRef.jsonPath());
                 if (!value)
                 {
-                    RETURN_FAILURE(runState, event, failureTrace2);
+                    RETURN_FAILURE(runState, event, failureTrace2)
                 }
 
                 for (const auto& key : value.value())
                 {
                     if (!key.isString())
                     {
-                        RETURN_FAILURE(runState, event, failureTrace2);
+                        RETURN_FAILURE(runState, event, failureTrace2)
                     }
 
                     keys.emplace_back(key);
@@ -520,25 +548,22 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
 
             // Get values from KVDB
             bool first = true;
-            json::Json::Type type;
-            std::vector<json::Json> values;
+            json::Json::Type type {};
+            std::vector<const json::Json*> values;
+
             for (const auto& jKey : keys)
             {
-                auto resultValue = kvdbHandler->get(jKey.getString().value());
-                if (base::isError(resultValue))
-                {
-                    RETURN_FAILURE(runState, event, failureTrace3 + std::get<base::Error>(resultValue).message);
-                }
-
-                json::Json jValue;
+                const json::Json* valuePtr = nullptr;
                 try
                 {
-                    jValue = json::Json {std::get<std::string>(resultValue).c_str()};
+                    valuePtr = &kvdbHandler->get(jKey.getString().value());
                 }
-                catch (const std::runtime_error& e)
+                catch (const std::out_of_range& e)
                 {
-                    RETURN_FAILURE(runState, event, failureTrace4 + e.what());
+                    RETURN_FAILURE(runState, event, failureTrace3 + e.what())
                 }
+
+                const auto& jValue = *valuePtr;
 
                 if (first)
                 {
@@ -547,12 +572,11 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 }
                 else if (jValue.type() != type)
                 {
-                    RETURN_FAILURE(runState, event, failureTrace5);
+                    RETURN_FAILURE(runState, event, failureTrace5)
                 }
 
-                values.emplace_back(std::move(jValue));
+                values.emplace_back(valuePtr);
             }
-
             // Get target array
             auto targetArray = event->getJson(targetField)
                                    .value_or(
@@ -564,9 +588,9 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                                        }());
 
             // Append values to target field
-            for (auto& value : values)
+            for (const auto* value : values)
             {
-                targetArray.appendJson(value);
+                targetArray.appendJson(*value);
             }
 
             // Validate target array
@@ -575,7 +599,7 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 auto res = validator(targetArray);
                 if (base::isError(res))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace6 + res.value().message);
+                    RETURN_FAILURE(runState, event, failureTrace6 + res.value().message)
                 }
             }
 
@@ -588,76 +612,71 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
 
 namespace
 {
-// TODO Change this to use an vector instead of a map
-std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json::Json& jMap)
+auto getFnSearchMap(const json::Json& jMap)
 {
-    std::vector<std::optional<json::Json>> buildedMap(std::numeric_limits<uint64_t>::digits);
-    // Fill the map with empty values
-    std::fill(buildedMap.begin(), buildedMap.end(), std::nullopt);
+    std::vector<std::optional<json::Json>> map(std::numeric_limits<uint64_t>::digits);
+
+    if (!jMap.isObject())
     {
-        if (!jMap.isObject())
-        {
-            throw std::runtime_error(
-                fmt::format("Expected map 'object' as value from DB but got '{}'", jMap.typeName()));
-        }
-
-        auto jMapObj = jMap.getObject().value();
-        json::Json::Type mapValueType {};
-        bool isTypeSet = false;
-
-        if (jMapObj.empty())
-        {
-            throw std::runtime_error("Empty map value from DB");
-        }
-
-        for (auto& [key, value] : jMapObj)
-        {
-            uint64_t index = 0;
-            // Validate key
-            if (key.empty())
-            {
-                throw std::runtime_error("Found empty key on map value from DB");
-            }
-            if (key[0] == '-')
-            {
-                throw std::runtime_error("Found negative key on map value from DB");
-            }
-
-            try
-            {
-                index = std::stoul(key);
-            }
-            catch (const std::exception& e)
-            {
-                throw std::runtime_error(fmt::format("Could not convert key '{}' to number: {}", key, e.what()));
-            }
-            if (index >= std::numeric_limits<uint64_t>::digits)
-            {
-                throw std::runtime_error(fmt::format(
-                    "Malformed map Key '{}' out of range {}-{})", key, 0, std::numeric_limits<uint64_t>::digits));
-            }
-
-            // Validate value
-            if (!isTypeSet)
-            {
-                mapValueType = value.type();
-                isTypeSet = true;
-            }
-            else if (mapValueType != value.type())
-            {
-                throw std::runtime_error(fmt::format("Found heterogeneous values on the map value from DB"));
-            }
-
-            buildedMap[index] = std::move(value);
-        }
+        throw std::runtime_error(fmt::format("Expected map 'object' as value from DB but got '{}'", jMap.typeName()));
     }
 
-    // Function that get the value from the builded map, returns nullopt if not found
-    return [buildedMap](const uint64_t pos) -> std::optional<json::Json>
+    auto jMapObj = jMap.getObject().value();
+    json::Json::Type mapValueType {};
+    bool isTypeSet = false;
+
+    if (jMapObj.empty())
     {
-        if (pos < buildedMap.size())
+        throw std::runtime_error("Empty map value from DB");
+    }
+
+    for (auto& [key, value] : jMapObj)
+    {
+        uint64_t index = 0;
+
+        if (key.empty())
         {
-            return buildedMap[pos];
+            throw std::runtime_error("Found empty key on map value from DB");
+        }
+        if (key[0] == '-')
+        {
+            throw std::runtime_error("Found negative key on map value from DB");
+        }
+
+        try
+        {
+            index = std::stoul(key);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(fmt::format("Could not convert key '{}' to number: {}", key, e.what()));
+        }
+
+        if (index >= std::numeric_limits<uint64_t>::digits)
+        {
+            throw std::runtime_error(fmt::format(
+                "Malformed map Key '{}' out of range {}-{})", key, 0, std::numeric_limits<uint64_t>::digits));
+        }
+
+        if (!isTypeSet)
+        {
+            mapValueType = value.type();
+            isTypeSet = true;
+        }
+        else if (mapValueType != value.type())
+        {
+            throw std::runtime_error("Found heterogeneous values on the map value from DB");
+        }
+
+        map[index] = std::move(value);
+    }
+
+    // Move the lookup table into the closure instead of copying it.
+    return [map = std::move(map)](uint64_t pos) -> std::optional<json::Json>
+    {
+        if (pos < map.size())
+        {
+            return map[pos];
         }
         return std::nullopt;
     };
@@ -667,15 +686,14 @@ std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json
 TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                             std::shared_ptr<IKVDBManager> kvdbManager,
-                                             const std::string& kvdbScopeName)
+                                             std::shared_ptr<IKVDBManager> kvdbManager)
 {
     // Verify parameters size and types
     utils::assertSize(opArgs, 3);
     utils::assertValue(opArgs, 0, 1);
     utils::assertRef(opArgs, 2);
 
-    // Check Allowed fields
+    // Check allowed fields
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
     if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
     {
@@ -693,12 +711,12 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         throw std::runtime_error(fmt::format("Expected key map 'string' as second argument but got '{}'",
                                              std::static_pointer_cast<Value>(opArgs[1])->value().str()));
     }
+
     const auto dbName = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
     const auto keyMap = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
     const auto& maskRef = *std::static_pointer_cast<const Reference>(opArgs[2]);
 
     // Verify the schema fields
-
     if (buildCtx->validator().hasField(targetField.dotPath()))
     {
         if (!buildCtx->validator().isArray(targetField.dotPath()))
@@ -722,35 +740,39 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         }
     }
 
-    // Get the json map from KVDB
-    json::Json jMap {};
+    // Build the lookup function from the KVDB map
+    std::function<std::optional<json::Json>(uint64_t)> getValueFn;
     {
-        auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
-        if (std::holds_alternative<base::Error>(resultHandler))
-        {
-            throw std::runtime_error(
-                fmt::format("Could not get KVDB handler: {}.", std::get<base::Error>(resultHandler).message));
-        }
-        auto kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler);
+        const auto& nsReader = buildCtx->getStoreNSReader();
 
-        auto resultValue = kvdbHandler->get(keyMap);
-        if (std::holds_alternative<base::Error>(resultValue))
-        {
-            throw std::runtime_error(
-                fmt::format("Could not get map from KVDB: {}.", std::get<base::Error>(resultValue).message));
-        }
+        std::shared_ptr<IKVDBHandler> kvdbHandler;
         try
         {
-            jMap = json::Json {std::get<std::string>(resultValue).c_str()};
+            kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
+        }
+        catch (const std::exception& e)
+        {
+            const auto nsStr = nsReader.getNamespaceId().toStr();
+            throw std::runtime_error(fmt::format(
+                "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
+        }
+
+        try
+        {
+            // Do not copy-assign: just bind a const reference and let getFnSearchMap
+            // build its own internal structure.
+            const json::Json& jMap = kvdbHandler->get(keyMap);
+            getValueFn = getFnSearchMap(jMap);
+        }
+        catch (const std::out_of_range& e)
+        {
+            throw std::runtime_error(fmt::format("Could not get map from KVDB: {}", e.what()));
         }
         catch (const std::runtime_error& e)
         {
-            throw std::runtime_error(fmt::format("Malformed JSON value for key '{}' in DB: {}", keyMap, e.what()));
+            throw std::runtime_error(fmt::format("Malformed map value for key '{}' in DB: {}", keyMap, e.what()));
         }
     }
-
-    // Get the function to search in the map
-    auto getValueFn = getFnSearchMap(jMap);
 
     // Tracing
     const auto name = buildCtx->context().opName;
@@ -762,17 +784,15 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     const auto failureTrace4 =
         fmt::format("{} -> Reference '{}' values is out of range 0-0xFFFFFFFFFFFFFFFF", name, maskRef.dotPath());
 
-    // Get the function to get the value from the event
+    // Function that retrieves the mask from the event
     auto getMaskFn = [maskRef = maskRef.jsonPath(), failureTrace1, failureTrace2, failureTrace3, failureTrace4](
                          const base::Event& event) -> base::RespOrError<uint64_t>
     {
-        // Check if the mask exists
         if (!event->exists(maskRef))
         {
             return base::Error {failureTrace1};
         }
 
-        // If is a string, get the mask as hexa in range 0-0xFFFFFFFFFFFFFFFF
         const auto maskStr = event->getString(maskRef);
         if (!maskStr.has_value())
         {
@@ -798,22 +818,22 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     return
         [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
     {
-        // Get mask in hexa
+        // Get mask in hex
         uint64_t mask {};
         {
             auto resultMask = getMaskFn(event);
             if (base::isError(resultMask))
             {
-                RETURN_FAILURE(runState, event, base::getError(resultMask).message);
+                RETURN_FAILURE(runState, event, base::getError(resultMask).message)
             }
             mask = base::getResponse(resultMask);
         }
 
-        // iterate over the bits of the mask
+        // Iterate over the bits of the mask
         bool isResultEmpty {true};
         for (uint64_t bitPos = 0; bitPos < std::numeric_limits<uint64_t>::digits; bitPos++)
         {
-            auto flag = 0x1 << bitPos;
+            auto flag = 0x1ULL << bitPos;
             if (flag & mask)
             {
                 auto value = getValueFn(bitPos);
@@ -825,23 +845,23 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
                 }
             }
         }
+
         if (isResultEmpty)
         {
-            RETURN_FAILURE(runState, event, failureTrace4);
+            RETURN_FAILURE(runState, event, failureTrace4)
         }
 
         RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
-TransformBuilder getOpBuilderHelperKVDBDecodeBitmask(std::shared_ptr<IKVDBManager> kvdbManager,
-                                                     const std::string& kvdbScopeName)
+TransformBuilder getOpBuilderHelperKVDBDecodeBitmask(std::shared_ptr<IKVDBManager> kvdbManager)
 {
-    return [kvdbManager, kvdbScopeName](const Reference& targetField,
-                                        const std::vector<OpArg>& opArgs,
-                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+    return [kvdbManager](const Reference& targetField,
+                         const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
-        return OpBuilderHelperKVDBDecodeBitmask(targetField, opArgs, buildCtx, kvdbManager, kvdbScopeName);
+        return OpBuilderHelperKVDBDecodeBitmask(targetField, opArgs, buildCtx, kvdbManager);
     };
 }
 

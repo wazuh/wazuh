@@ -6,9 +6,9 @@
 
 #include <cmstore/icmstore.hpp>
 
-#include <kvdb/ikvdbhandler.hpp>
+#include <kvdbstore/ikvdbhandler.hpp>
 
-namespace kvdbStore
+namespace kvdbstore
 {
 /**
  * @brief Interface for namespace-scoped key-value database access.
@@ -43,6 +43,6 @@ public:
                                                          const std::string& dbName) = 0;
 };
 
-} // namespace kvdbStore
+} // namespace kvdbstore
 
 #endif // _KVDB_IKVDBMANAGER_H
