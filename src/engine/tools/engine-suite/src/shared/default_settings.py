@@ -6,14 +6,13 @@ class Constants:
 
     Attributes:
         SOCKET_PATH (str): Path to the Unix socket used to communicate with the engine API.
-        DEFAULT_POLICY (str): Default policy path used when none is explicitly provided.
+        DEFAULT_NAMESPACE (str): Default namespace path used when none is explicitly provided.
         DEFAULT_SESSION (str): Default session name.
-        DEFAULT_NS (str): Default namespace under which requests are made.
         DEFAULT_API_TIMEOUT (int): Default timeout (in microseconds) configured on the server
                                    for API requests.
     """
     SOCKET_PATH: str = '/var/ossec/queue/sockets/analysis'
-    DEFAULT_POLICY: str = 'policy/wazuh/0'
+    DEFAULT_NAMESPACE: str = 'testing'
     DEFAULT_SESSION: str = 'default'
     DEFAULT_NS: str = 'draft'
     DEFAULT_API_TIMEOUT: int = 1000000

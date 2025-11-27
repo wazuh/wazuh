@@ -3,12 +3,7 @@ from typing import Optional, Tuple
 from google.protobuf.message import Message
 
 # Import all proto messages to deduce component, resource and action
-import api_communication.proto.catalog_pb2 as catalog
-import api_communication.proto.graph_pb2 as graph
-import api_communication.proto.kvdb_pb2 as kvdb
 import api_communication.proto.crud_pb2 as crud
-import api_communication.proto.metrics_pb2 as metrics
-import api_communication.proto.policy_pb2 as policy
 import api_communication.proto.router_pb2 as router
 import api_communication.proto.tester_pb2 as tester
 import api_communication.proto.geo_pb2 as geo
@@ -24,20 +19,6 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
     Returns:
         Tuple[Optional[str], str]: Error string if any, endpoint string
     """
-
-    # Catalog
-    if isinstance(message, catalog.ResourcePost_Request):
-        return None, 'catalog/resource/post'
-    if isinstance(message, catalog.ResourceGet_Request):
-        return None, 'catalog/resource/get'
-    if isinstance(message, catalog.ResourcePut_Request):
-        return None, 'catalog/resource/put'
-    if isinstance(message, catalog.ResourceDelete_Request):
-        return None, 'catalog/resource/delete'
-    if isinstance(message, catalog.ResourceValidate_Request):
-        return None, 'catalog/resource/validate'
-    if isinstance(message, catalog.NamespacesGet_Request):
-        return None, 'catalog/namespaces/get'
 
     # Geo
     if isinstance(message, geo.DbPost_Request):
