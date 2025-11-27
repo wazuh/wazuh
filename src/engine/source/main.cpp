@@ -592,12 +592,8 @@ int main(int argc, char* argv[])
             api::geo::handlers::registerHandlers(geoManager, apiServer);
             LOG_DEBUG("Geo API registered.");
 
-            // KVDB
-            api::kvdb::handlers::registerHandlers(kvdbManager, apiServer);
-            LOG_DEBUG("KVDB API registered.");
-
             // Router
-            api::router::handlers::registerHandlers(orchestrator, apiServer);
+            api::router::handlers::registerHandlers(orchestrator, cmStore, apiServer);
             LOG_DEBUG("Router API registered.");
 
             // Tester

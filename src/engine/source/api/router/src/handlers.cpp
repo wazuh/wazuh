@@ -24,24 +24,40 @@ inline int64_t currentTime()
     return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
 }
 
-eRouter::Sync getHashSatus(const ::router::prod::Entry& entry)
+eRouter::Sync getHashStatus(const ::router::prod::Entry& entry, const std::weak_ptr<cm::store::ICMStore>& wStore)
 {
-    return eRouter::Sync::SYNC_UNKNOWN;
+    auto store = wStore.lock();
+    if (!store)
+    {
+        return eRouter::Sync::SYNC_UNKNOWN;
+    }
+
+    std::string hash;
+    try
+    {
+        auto nsId = store->getNSReader(entry.namespaceId());
+        hash = nsId->getPolicy().getHash();
+    }
+    catch(const std::exception& e)
+    {
+        return eRouter::Sync::ERROR;
+    }
+
+    return hash == entry.hash() ? eRouter::Sync::UPDATED : eRouter::Sync::OUTDATED;
 }
 
 /**
  * @brief Convert a router entry to a api entry
  *
  * @param entry to convert
- * @param wPolicyManager for hash comparison
  * @return eRouter::Entry
  */
-eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry)
+eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry, const std::weak_ptr<cm::store::ICMStore>& wStore)
 {
     eRouter::Entry eEntry;
     eEntry.set_name(entry.name());
     eEntry.set_filter(entry.filter().fullName());
-    eEntry.set_policy(entry.policy().toStr());
+    eEntry.set_namespaceid(entry.namespaceId().toStr());
     eEntry.set_priority(static_cast<uint32_t>(entry.priority()));
     if (entry.description().has_value())
     {
@@ -52,7 +68,7 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry)
                            : ::router::env::State::DISABLED == entry.status() ? eRouter::State::DISABLED
                                                                               : eRouter::State::STATE_UNKNOWN;
 
-    eEntry.set_policy_sync(getHashSatus(entry));
+    eEntry.set_namespace_sync(getHashStatus(entry,  wStore));
     eEntry.set_entry_status(state);
 
     // Calculate the uptime
@@ -94,11 +110,11 @@ adapter::RouteHandler routePost(const std::shared_ptr<::router::IRouterAPI>& rou
             return;
         }
 
-        auto policyName = tryGetProperty<ResponseType, cm::store::NamespaceId>(
-            true, [&protoRoute]() { return cm::store::NamespaceId(adapter::getRes(protoRoute).policy()); }, "policy", "name");
-        if (adapter::isError(policyName))
+        auto namespaceId = tryGetProperty<ResponseType, cm::store::NamespaceId>(
+            true, [&protoRoute]() { return cm::store::NamespaceId(adapter::getRes(protoRoute).namespaceid()); }, "namespace", "id");
+        if (adapter::isError(namespaceId))
         {
-            res = adapter::getErrorResp(policyName);
+            res = adapter::getErrorResp(namespaceId);
             return;
         }
 
@@ -112,7 +128,7 @@ adapter::RouteHandler routePost(const std::shared_ptr<::router::IRouterAPI>& rou
 
         // Add the route
         ::router::prod::EntryPost entryPost(protoReq.route().name(),
-                                            adapter::getRes(policyName),
+                                            adapter::getRes(namespaceId),
                                             adapter::getRes(filterName),
                                             protoReq.route().priority());
 
@@ -173,9 +189,9 @@ adapter::RouteHandler routeDelete(const std::shared_ptr<::router::IRouterAPI>& r
     };
 }
 
-adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router)
+adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router, const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router)](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -198,7 +214,7 @@ adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& rout
         }
 
         ResponseType eResponse;
-        eResponse.mutable_route()->CopyFrom(eRouteEntryFromEntry(base::getResponse(error)));
+        eResponse.mutable_route()->CopyFrom(eRouteEntryFromEntry(base::getResponse(error), wStore));
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };
@@ -282,9 +298,9 @@ adapter::RouteHandler routePatchPriority(const std::shared_ptr<::router::IRouter
     };
 }
 
-adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router)
+adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router, const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router)](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;
@@ -304,7 +320,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& rout
         auto eTable = eResponse.mutable_table(); // Create the empty table
         for (const auto& entry : entries)
         {
-            eTable->Add(eRouteEntryFromEntry(entry));
+            eTable->Add(eRouteEntryFromEntry(entry, wStore));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
