@@ -10,6 +10,7 @@
 #include "mockRegistry.hpp"
 
 #include <builder/mockAllowedFields.hpp>
+#include <cmstore/mockcmstore.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
 
@@ -39,6 +40,7 @@ struct BuildersMocks
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
     std::shared_ptr<MockAllowedFields> allowedFields;
+    std::shared_ptr<cm::store::MockICMStoreNSReader> nsReader;
     Context context;
 };
 
@@ -56,14 +58,17 @@ protected:
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
         mocks->allowedFields = std::make_shared<MockAllowedFields>();
+        mocks->nsReader = std::make_shared<cm::store::MockICMStoreNSReader>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
         ON_CALL(*mocks->ctx, allowedFields()).WillByDefault(testing::ReturnRef(*(mocks->allowedFields)));
+        ON_CALL(*mocks->ctx, getStoreNSReader()).WillByDefault(testing::ReturnRef(*(mocks->nsReader)));
 
         ON_CALL(*mocks->allowedFields, check(testing::_, testing::_)).WillByDefault(testing::Return(true));
         ON_CALL(*mocks->ctx, allowedFieldsPtr()).WillByDefault(testing::Return(mocks->allowedFields));
+        ON_CALL(*mocks->ctx, validatorPtr()).WillByDefault(testing::Return(mocks->validator));
 
         mocks->context.policyName = "policy/name/0";
         mocks->context.assetName = "asset/name/0";
