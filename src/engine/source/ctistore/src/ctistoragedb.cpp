@@ -1322,15 +1322,29 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
     {
         json::Json doc = getByIdOrName(uuid, cfIt->second, keyPrefixIt->second, namePrefixIt->second);
 
-        // Try /document/title first (integrations, policies)
-        auto title = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_TITLE);
+        // Try /payload/document/title first (integrations, policies)
+        auto title = doc.getString(constants::JSON_DOCUMENT_TITLE);
         if (title && !title->empty())
         {
             return *title;
         }
 
-        // Try /document/name (decoders)
+        // Fallback: Try unwrapped /document/title (for backward compatibility)
+        title = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_TITLE);
+        if (title && !title->empty())
+        {
+            return *title;
+        }
+
+        // Try /payload/document/name (decoders)
         auto name = doc.getString(constants::JSON_DOCUMENT_NAME);
+        if (name && !name->empty())
+        {
+            return *name;
+        }
+
+        // Fallback: Try unwrapped /document/name (for backward compatibility)
+        name = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_NAME);
         if (name && !name->empty())
         {
             return *name;
