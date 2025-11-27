@@ -21,7 +21,7 @@
  *   "type": "policy",
  *   "title": "Development 0.0.1",
  *   "default_parent": "decoder/integration/0", --> Should be mandatory
- *   "root_decoder": "decoder/wazuh-core-message/0", --> Should be mandatory
+ *   "root_decoder": "decoder/core-wazuh-message/0", --> Should be mandatory
  *   "integrations":
  *   [
  *     "42e28392-4f5e-473d-89e8-c9030e6fedc2", --> Intration UUIDs

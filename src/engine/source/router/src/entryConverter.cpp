@@ -7,7 +7,7 @@ namespace router
 
 EntryConverter::EntryConverter(const test::Entry& entry)
     : m_name {entry.name()}
-    , m_policy {entry.policy()}
+    , m_namespace {entry.namespaceId()}
     , m_description {entry.description()}
     , m_lifetime {entry.lifetime()}
     , m_lastUse {entry.lastUse()}
@@ -16,7 +16,7 @@ EntryConverter::EntryConverter(const test::Entry& entry)
 
 EntryConverter::EntryConverter(const prod::Entry& entry)
     : m_name {entry.name()}
-    , m_policy {entry.policy()}
+    , m_namespace {entry.namespaceId()}
     , m_description {entry.description()}
     , m_filter {entry.filter()}
     , m_priority {entry.priority()}
@@ -26,14 +26,14 @@ EntryConverter::EntryConverter(const prod::Entry& entry)
 EntryConverter::EntryConverter(const json::Json& jEntry)
 {
     auto name = jEntry.getString(NAME_PATH);
-    auto policy = jEntry.getString(POLICY_PATH);
-    if (!name || !policy)
+    auto namespaceId = jEntry.getString(NAMESPACE_PATH);
+    if (!name || !namespaceId)
     {
-        throw std::runtime_error {"Cannot load the entry: name or policy is missing"};
+        throw std::runtime_error {"Cannot load the entry: name or namespace is missing"};
     }
 
     m_name = name.value();
-    m_policy = policy.value();
+    m_namespace = namespaceId.value();
     m_description = jEntry.getString(DESCRIPTION_PATH);
     m_lifetime = jEntry.getInt64(LIFETIME_PATH);
     m_lastUse = jEntry.getInt64(LAST_USE_PATH);
@@ -45,9 +45,9 @@ const std::string& EntryConverter::name() const
 {
     return m_name;
 }
-const std::string& EntryConverter::policy() const
+const std::string& EntryConverter::namespaceId() const
 {
-    return m_policy;
+    return m_namespace;
 }
 const std::optional<std::string>& EntryConverter::description() const
 {
@@ -67,7 +67,7 @@ EntryConverter::operator json::Json() const
     json::Json jEntry {};
 
     jEntry.setString(m_name, NAME_PATH);
-    jEntry.setString(m_policy, POLICY_PATH);
+    jEntry.setString(m_namespace, NAMESPACE_PATH);
 
     if (m_description)
     {
@@ -104,7 +104,7 @@ EntryConverter::operator test::EntryPost() const
         throw std::runtime_error {"Cannot load the entry: lifetime is missing"};
     }
 
-    const auto& namespaceId = cm::store::NamespaceId(m_policy);
+    const auto& namespaceId = cm::store::NamespaceId(m_namespace);
     auto entryPost = test::EntryPost(m_name, namespaceId, m_lifetime.value());
     if (m_description)
     {
@@ -125,7 +125,7 @@ EntryConverter::operator prod::EntryPost() const
         throw std::runtime_error {"Cannot load the entry: priority is missing"};
     }
 
-    const auto& namespaceId = cm::store::NamespaceId(m_policy);
+    const auto& namespaceId = cm::store::NamespaceId(m_namespace);
     auto entryPost = prod::EntryPost(m_name, namespaceId, m_filter.value(), m_priority.value());
     if (m_description)
     {
