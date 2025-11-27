@@ -10,3 +10,32 @@ This folder contains the development environment for the Wazuh 4.x versions. It 
 - **wazuh-worker2**: Worker node #2.
 - **nginx-lb**: NGINX load balancer to distribute agent connections among nodes.
 - **wazuh-agent**: Agent.
+
+### Working with docker environment
+The following commands runs a cluster:
+1. Run `docker compose build`
+2. Run `docker compose up`
+
+If a single docker is needed, it is possible to run:
+1. Move to the dockefile location for instance:
+ `cd wazuh-manager`
+2. Run `docker build -t dev-wazuh-manager --target server ./wazuh-manager`
+3. Define .env with the necessary environment variables
+4. Run docker:
+```
+docker run -d \
+--name wazuh-master \
+--hostname wazuh-master \
+-p 55000:55000 \
+-v ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts \
+-v ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts \
+-v ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh \
+-v ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api \
+dev-wazuh-manager \
+/scripts/entrypoint.sh wazuh-master master-node master
+```
+
+### Troubleshooting
+- Use option **-no-cache** when you have building issues.
+
+`docker compose build --no-cache`
