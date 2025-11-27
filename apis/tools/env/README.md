@@ -3,7 +3,7 @@
 > [!Warning]
 > This is a testing environment, do not use in production.
 
-This folder contains the development environment for the Wazuh 5.0 version. It includes the following components:
+This folder contains the development environment for the Wazuh 6.0 version. It includes the following components:
 
 - **wazuh-manager**: Manager node.
 - **wazuh-indexer**: Indexer node to persist agents information, their events, orders, etc.
@@ -64,8 +64,8 @@ total 7920
 drwxr-xr-x 2 wazuh wazuh    4096 Dec  4 23:37 .
 drwxr-xr-x 7 wazuh wazuh    4096 Dec  4 23:38 ..
 -rw-r--r-- 1 wazuh wazuh     331 Dec  4 23:37 Dockerfile
--rw-r--r-- 1 wazuh wazuh 8055100 Dec  4 23:37 wazuh-indexer-command-manager-5.0.0.0.zip
--rw-r--r-- 1 wazuh wazuh   37072 Dec  4 23:37 wazuh-indexer-setup-5.0.0.0.zip
+-rw-r--r-- 1 wazuh wazuh 8055100 Dec  4 23:37 wazuh-indexer-command-manager-6.0.0.0.zip
+-rw-r--r-- 1 wazuh wazuh   37072 Dec  4 23:37 wazuh-indexer-setup-6.0.0.0.zip
 ```
 
 ### Start services
