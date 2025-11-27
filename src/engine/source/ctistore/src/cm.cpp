@@ -166,7 +166,7 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
         throw std::runtime_error("Storage not initialized");
     }
 
-    static const std::array<std::string, 2> types {"integration", "decoder"};
+    static const std::array<std::string, 3> types {"integration", "decoder", "kvdb"};
     std::optional<std::string> errorMsg = std::nullopt;
 
     for (const auto& t : types)
