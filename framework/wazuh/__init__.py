@@ -64,6 +64,7 @@ class Wazuh:
         return False
 
     def to_dict(self):
+
         return {'path': self.path,
                 'version': self.version,
                 'type': self.type,

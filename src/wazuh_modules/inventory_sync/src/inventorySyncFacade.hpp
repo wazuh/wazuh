@@ -14,6 +14,8 @@
 
 #include "agentSession.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
+#include "hashHelper.h"
+#include "inventorySyncQueryBuilder.hpp"
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
@@ -261,6 +263,77 @@ class InventorySyncFacadeImpl final
         {
             throw InventorySyncException("Invalid message type");
         }
+    }
+
+    std::string calculateChecksumOfChecksums(const std::string& index, const std::string& agentId)
+    {
+        std::string concatenatedChecksums;
+        std::string searchAfter;
+        constexpr size_t BATCH_SIZE = 1000;
+        size_t totalDocs = 0;
+
+        logDebug2(
+            LOGGER_DEFAULT_TAG, "Querying indexer for checksums: agent=%s, index=%s", agentId.c_str(), index.c_str());
+
+        while (true)
+        {
+            nlohmann::json searchQuery;
+            searchQuery["query"]["term"]["agent.id"] = agentId;
+            searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
+            searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
+            searchQuery["size"] = BATCH_SIZE;
+
+            if (!searchAfter.empty())
+            {
+                searchQuery["search_after"] = nlohmann::json::array({searchAfter});
+            }
+
+            logDebug2(LOGGER_DEFAULT_TAG, "Search query: %s", searchQuery.dump().c_str());
+
+            auto searchResult = m_indexerConnector->executeSearchQuery(index, searchQuery);
+
+            logDebug2(LOGGER_DEFAULT_TAG, "Search result: %s", searchResult.dump().c_str());
+
+            if (!searchResult.contains("hits") || !searchResult["hits"].contains("hits") ||
+                searchResult["hits"]["hits"].empty())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG, "No more results, breaking pagination loop");
+                break;
+            }
+
+            const auto& hits = searchResult["hits"]["hits"];
+            for (const auto& hit : hits)
+            {
+                if (hit.contains("_source") && hit["_source"].contains("checksum") &&
+                    hit["_source"]["checksum"].contains("hash") && hit["_source"]["checksum"]["hash"].contains("sha1"))
+                {
+                    concatenatedChecksums += hit["_source"]["checksum"]["hash"]["sha1"].template get<std::string>();
+                }
+
+                if (hit.contains("sort") && !hit["sort"].empty())
+                {
+                    searchAfter = hit["sort"][0].template get<std::string>();
+                }
+            }
+
+            totalDocs += hits.size();
+
+            if (hits.size() < BATCH_SIZE)
+            {
+                break;
+            }
+        }
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Retrieved %zu documents for checksum calculation", totalDocs);
+
+        Utils::HashData hash(Utils::HashType::Sha1);
+        hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
+        const std::vector<unsigned char> hashResult = hash.hash();
+        std::string finalChecksum = Utils::asciiToHex(hashResult);
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Calculated checksum of checksums: %s", finalChecksum.c_str());
+
+        return finalChecksum;
     }
 
 public:
@@ -1157,6 +1230,11 @@ private:
     std::unique_ptr<TRouterSubscriber> m_inventorySubscription;
     std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
     std::thread m_sessionTimeoutThread;
+
+    // Agent locking mechanism for metadata/groups updates
+    std::unordered_set<std::string> m_blockedAgents; ///< Set of locked agent IDs
+    mutable std::shared_mutex m_blockedAgentsMutex;  ///< Mutex for blocked agents set
+    std::atomic<bool> m_allAgentsLocked {false};     ///< Global lock for all agents
 };
 
 using InventorySyncFacade = InventorySyncFacadeImpl<AgentSession,
