@@ -34,8 +34,6 @@ class ApiConnector:
             request.name = self.session_name
             request.event = event
 
-            request.namespaces.extend(self.config['namespaces'])
-
             if (self.config['full_verbose'] == True):
                 request.trace_level = api_tester.TraceLevel.ALL
             elif (self.config['verbose'] == True):
@@ -84,7 +82,7 @@ class ApiConnector:
                 session  = api_tester.SessionPost()
                 self.session_name = self.get_session_name()
                 session.name = self.session_name
-                session.policy = self.config['policy']
+                session.namespaceId = self.config['namespaceId']
                 session.lifetime = ApiConfig.Lifespan.value
                 session.description = ApiConfig.Description.value
 

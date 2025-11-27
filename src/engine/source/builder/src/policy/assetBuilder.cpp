@@ -282,6 +282,16 @@ Asset AssetBuilder::operator()(const json::Json& document) const
         }
     }
 
+    // Get UUID
+    const auto it =
+        std::find_if(objDoc.begin(),
+                     objDoc.end(),
+                     [target = syntax::asset::ID_KEY](const auto& elem) { return std::get<0>(elem) == target; });
+    if (it != objDoc.end())
+    {
+        objDoc.erase(it);
+    }
+
     // Get parents (optional)
     std::vector<base::Name> parents;
     {

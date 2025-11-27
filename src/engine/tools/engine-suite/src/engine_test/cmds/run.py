@@ -31,12 +31,10 @@ def configure(subparsers):
                         type=str, default=DefaultSettings.SOCKET_PATH, dest='api-socket')
     parser.add_argument('--output', help=f'Output file where the events will be stored, if empty events wont be saved',
                         type=pathlib.Path, dest='output_file')
-    parser.add_argument('-n', '--namespaces', nargs='+', help=f'List of namespaces to include',
-                        default=DefaultSettings.DEFAULT_NS, dest='namespaces')
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-p', '--policy', help=f'Policy where to run the test. A temporary test session will be created and deleted when the command is completed.',
-                       default=DefaultSettings.DEFAULT_POLICY, dest='policy')
+    group.add_argument('-n', '--namespace', help=f'Namespace where to run the test. A temporary test session will be created and deleted when the command is completed.',
+                       default=DefaultSettings.DEFAULT_NAMESPACE, dest='namespaceId')
     group.add_argument('-s', '--session-name', help=f'Session where to run the test', dest='session_name')
 
     group_debug = parser.add_mutually_exclusive_group()

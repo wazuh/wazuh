@@ -3,7 +3,6 @@
 
 #include <api/event/handlers.hpp>
 #include <api/geo/handlers.hpp>
-#include <api/kvdb/handlers.hpp>
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
 

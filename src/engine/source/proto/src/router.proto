@@ -14,16 +14,16 @@ enum State
 enum Sync
 {
     SYNC_UNKNOWN = 0; ///< Unset state
-    UPDATED = 1;      ///< Policy is updated
-    OUTDATED = 2;     ///< Policy is outdated respect to the store
-    ERROR = 3;        ///< Error, can't get the policy status
+    UPDATED = 1;      ///< Namespace is updated
+    OUTDATED = 2;     ///< Namespace is outdated respect to the store
+    ERROR = 3;        ///< Error, can't get the namespace status
 }
 
 /* Client representation of a post route */
 message EntryPost
 {
     string name = 1;                 // Name of the route
-    string policy = 2;               // Policy to end of the route
+    string namespaceId = 2;          // Namespace to end of the route
     string filter = 3;               // Filter to apply to the route
     uint32 priority = 4;             // Priority of the route
     optional string description = 5; // Description of the route
@@ -32,14 +32,14 @@ message EntryPost
 message Entry
 {
     string name = 1;                 // Name of the route
-    string policy = 2;               // Policy to end of the route
+    string namespaceId = 2;          // Namespace to end of the route
     string filter = 3;               // Filter to apply to the route
     uint32 priority = 4;             // Priority of the route
     optional string description = 5; // Description of the route
 
-    Sync policy_sync = 6;   // Status of the policy [updated|updated|error]
-    State entry_status = 7; // Status of the entry [INACTIVE|ACTIVE]
-    uint32 uptime = 8;      // Last update of the route
+    Sync namespace_sync = 6; // Status of the namespace [updated|updated|error]
+    State entry_status = 7;  // Status of the entry [INACTIVE|ACTIVE]
+    uint32 uptime = 8;       // Last update of the route
 }
 
 /***************************************************

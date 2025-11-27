@@ -26,7 +26,7 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost, bool ignoreFai
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
+        auto uniqueEnv = m_envBuilder->create(entry.namespaceId(), entry.filter());
         entry.hash(uniqueEnv->hash());
         entry.environment() = std::move(uniqueEnv);
     }
@@ -82,7 +82,7 @@ base::OptError Router::rebuildEntry(const std::string& name)
     auto& entry = m_table.get(name);
     try
     {
-        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
+        auto uniqueEnv = m_envBuilder->create(entry.namespaceId(), entry.filter());
         entry.environment() = std::move(uniqueEnv);
         entry.lastUpdate(getStartTime());
         entry.hash(entry.environment()->hash());
