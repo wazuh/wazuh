@@ -67,6 +67,11 @@ class UserGroupsProviderTest : public ::testing::Test
 
         void SetUp() override
         {
+            // Reset all static caches before each test
+            UserGroupsProvider::resetCache();
+            UsersHelper::resetCache();
+            GroupsHelper::resetCache();
+
             winapiWrapper = std::make_shared<MockWindowsApiWrapper>();
             usersHelper = std::make_shared<MockUsersHelper>();
             groupsHelper = std::make_shared<MockGroupsHelper>();
