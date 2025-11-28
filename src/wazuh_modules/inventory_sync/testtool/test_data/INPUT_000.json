@@ -3,34 +3,125 @@
     "agent": {
         "id": "001"
     },
-    "packages": [
+    "data_values": [
         {
-            "package": {
-                "architecture": "amd64",
-                "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
-                "description": "Grafana",
-                "name": "grafana",
-                "size": 334,
-                "format": "deb",
-                "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
-                "multiarch": "foreign",
-                "groups": "utils",
-                "version": "8.5.5"
-            },
-            "vendor": "contact@grafana.com",
-            "id": "001_pkg_grafana"
+            "operation": "upsert",
+            "payload": {
+                "_index": "wazuh-states-inventory-packages",
+                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c349",
+                "_score": 2,
+                "_source": {
+                    "agent": {
+                        "id": "001",
+                        "name": "ubuntu22",
+                        "version": "v5.0.0",
+                        "groups": [
+                            "default"
+                        ],
+                        "host": {
+                            "architecture": "aarch64",
+                            "hostname": "ubuntu22",
+                            "os": {
+                                "name": "Ubuntu",
+                                "platform": "ubuntu",
+                                "type": "linux",
+                                "version": "22.04.5 LTS (Jammy Jellyfish)"
+                            }
+                        }
+                    },
+                    "wazuh": {
+                        "cluster": {
+                            "name": "wazuh"
+                        }
+                    },
+                    "checksum": {
+                        "hash": {
+                            "sha1": "c665573c916b60392f615c71742948813a60bbf5"
+                        }
+                    },
+                    "package": {
+                        "category": "misc",
+                        "installed": null,
+                        "path": null,
+                        "priority": "optional",
+                        "source": null,
+                        "type": "deb",
+                        "vendor": "contact@grafana.com",
+                        "version": "8.5.5",
+                        "architecture": "amd64",
+                        "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
+                        "description": "Grafana",
+                        "name": "grafana",
+                        "size": 334,
+                        "format": "deb",
+                        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+                        "multiarch": "foreign",
+                        "groups": "utils"
+                    },
+                    "state": {
+                        "document_version": 1,
+                        "modified_at": "2025-11-27T12:31:07.733Z"
+                    }
+                }
+            }
+        },
+        {
+            "operation": "delete",
+            "payload": {
+                "_index": "wazuh-states-inventory-packages",
+                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c349",
+                "_score": 2,
+                "_source": {
+                    "agent": {
+                        "id": "001",
+                        "name": "ubuntu22",
+                        "version": "v5.0.0",
+                        "groups": [
+                            "default"
+                        ],
+                        "host": {
+                            "architecture": "aarch64",
+                            "hostname": "ubuntu22",
+                            "os": {
+                                "name": "Ubuntu",
+                                "platform": "ubuntu",
+                                "type": "linux",
+                                "version": "22.04.5 LTS (Jammy Jellyfish)"
+                            }
+                        }
+                    },
+                    "wazuh": {
+                        "cluster": {
+                            "name": "wazuh"
+                        }
+                    },
+                    "checksum": {
+                        "hash": {
+                            "sha1": "82771c9b43f0434021653ebaa811e26e0ebaed5d"
+                        }
+                    },
+                    "package": {
+                        "architecture": "all",
+                        "category": "oldlibs",
+                        "description": "transitional package for https support",
+                        "installed": null,
+                        "multiarch": "foreign",
+                        "name": "apt-transport-https",
+                        "path": null,
+                        "priority": "optional",
+                        "size": 169984,
+                        "source": "apt",
+                        "type": "deb",
+                        "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+                        "version": "2.4.14"
+                    },
+                    "state": {
+                        "document_version": 1,
+                        "modified_at": "2025-11-27T12:31:07.733Z"
+                    }
+                }
+            }
         }
     ],
-    "hotfixes": [],
-    "os": {
-        "architecture": "x86_64",
-        "hostname": "test_vm",
-        "codename": "jammy",
-        "major_version": "22",
-        "minor_version": "04",
-        "name": "Ubuntu",
-        "platform": "ubuntu",
-        "version": "22.04.3 LTS (Jammy Jellyfish)",
-        "kernel_release": "6.5.0-18-generic"
-    }
+    "data_context": []
 }
