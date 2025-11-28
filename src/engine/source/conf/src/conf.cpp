@@ -41,6 +41,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Content Manager
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "etc/ruleset").c_str());
+    addUnit<std::string>(key::CM_CATEGORIES_FILE, "WAZUH_CM_CATEGORIES_FILE", (wazuhRoot / "etc/categories.json").c_str());
 
     // CTI Store module
     addUnit<std::string>(key::CTI_PATH, "WAZUH_CTI_PATH", (wazuhRoot / "engine/cti/").c_str());

@@ -1,43 +1,103 @@
 #ifndef _CMSTORE_ICMSTORE_CATEGORIES
 #define _CMSTORE_ICMSTORE_CATEGORIES
 
+#include <filesystem>
+#include <fstream>
+#include <memory>
 #include <string_view>
 #include <unordered_map>
+
+#include <base/json.hpp>
 namespace cm::store::categories
 {
 
-/**
- * @brief Available Categories and their Indexes
- *
- * This map defines the available categories and their corresponding indexes
- * in the CMStore system. Any integration or asset should belong to one of these categories.
- */
-inline const std::unordered_map<std::string_view, std::string_view> AVAILABLE_CATEGORIES_AND_INDEXES = {
-    {"UNDEFINED_1", "wazuh-events-v5-access-management"},
-    {"Applications", "wazuh-events-v5-applications"},
-    {"Cloud Services", "wazuh-events-v5-cloud-services"},
-    {"Network Activity", "wazuh-events-v5-network-activity"},
-    {"Security", "wazuh-events-v5-security"},
-    {"System Activity", "wazuh-events-v5-system-activity"},
-    {"UNDEFINED_2", "wazuh-events-v5-other"}};
+inline std::unordered_map<std::string, std::string> indexByCategories;
 
 /**
- * @brief Get all available categories and their indexes in the namespace
- * @return const std::vector<std::tuple<std::string_view, std::string_view>>& Vector of tuples with (Category, Index)
+ * @brief Convert category name to index name
+ * @param category Category name to convert
+ * @return Converted index name following the rule "wazuh-events-v5-" + category.toLowerCase().replace(" ", "-")
  */
-static const std::unordered_map<std::string_view, std::string_view>& getMapping()
+static std::string categoryToIndex(const std::string& category)
 {
-    return AVAILABLE_CATEGORIES_AND_INDEXES;
+    std::string index = "wazuh-events-v5-";
+    std::string lowerCategory = category;
+    std::transform(lowerCategory.begin(),
+                   lowerCategory.end(),
+                   lowerCategory.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    std::replace(lowerCategory.begin(), lowerCategory.end(), ' ', '-');
+    index += lowerCategory;
+    return index;
 }
 
 /**
- * @brief Check if a category exists
- * @param category Category name to check (key sensitive)
- * @return true if the category exists, false otherwise
+ * @brief Load the mapping from the categories file.
+ * @throws std::runtime_error on IO or parse errors.
  */
-static bool exists(std::string_view category)
+static void loadMappingFromFile(std::string_view categoriesFilePath)
 {
-    return AVAILABLE_CATEGORIES_AND_INDEXES.find(category) != AVAILABLE_CATEGORIES_AND_INDEXES.end();
+    std::filesystem::path categoriesPath(categoriesFilePath);
+
+    std::ifstream file(categoriesPath);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Failed to open file: " + categoriesPath.string());
+    }
+
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (file.fail())
+    {
+        throw std::runtime_error("Failed to read content from file: " + categoriesPath.string());
+    }
+
+    auto categoriesJson = json::Json(content.c_str());
+
+    if (!categoriesJson.isArray())
+    {
+        throw std::runtime_error("Categories file must contain a JSON array");
+    }
+
+    indexByCategories.clear();
+    auto categories = categoriesJson.getArray().value();
+    for (const auto& category : categories)
+    {
+        auto sCategory = category.getString().value();
+        indexByCategories[sCategory] = categoryToIndex(sCategory);
+    }
+}
+
+/**
+ * @brief Get full mapping.
+ */
+static const std::unordered_map<std::string, std::string>& getMapping()
+{
+    return indexByCategories;
+}
+
+/**
+ * @brief Check if a category exists.
+ */
+static bool exists(const std::string& category)
+{
+    return indexByCategories.find(category) != indexByCategories.end();
+}
+
+/**
+ * @brief Check if an index exist.
+ */
+static bool isValidIndex(const std::string& index)
+{
+    for (const auto& [_, idx] : indexByCategories)
+    {
+        if (idx == index)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace cm::store::categories

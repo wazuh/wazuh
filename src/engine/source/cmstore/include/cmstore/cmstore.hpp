@@ -37,7 +37,9 @@ public:
      * @brief Create a CMStore instance at the given path
      * @param path the base path for all namespaces, should exist and be a directory
      */
-    CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMReader>& ctiReader);
+    CMStore(std::string_view path,
+            const std::shared_ptr<cti::store::ICMReader>& ctiReader,
+            std::string_view categoriesFilePaths);
     ~CMStore();
 
     /** @copydoc ICMStore::getNSReader */

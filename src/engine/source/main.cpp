@@ -297,8 +297,9 @@ int main(int argc, char* argv[])
 
         // Content Manager
         {
-            cmStore =
-                std::make_shared<cm::store::CMStore>(confManager.get<std::string>(conf::key::CM_RULESET_PATH), nullptr);
+            cmStore = std::make_shared<cm::store::CMStore>(confManager.get<std::string>(conf::key::CM_RULESET_PATH),
+                                                           nullptr,
+                                                           confManager.get<std::string>(conf::key::CM_CATEGORIES_FILE));
             LOG_INFO("Content Manager initialized.");
         }
 
