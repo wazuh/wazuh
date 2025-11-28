@@ -207,6 +207,7 @@ std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std
 {
     // Check cache first - avoid repeated API calls for the same user
     auto it = s_userGroupsCache.find(username);
+
     if (it != s_userGroupsCache.end())
     {
         return it->second;
@@ -214,10 +215,12 @@ std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std
 
     // Rate limiting: track API calls and pause every BATCH_SIZE calls
     std::size_t api_call_count = 0;
+
     if (api_call_count > 0 && api_call_count % BATCH_SIZE == 0)
     {
         std::this_thread::sleep_for(BATCH_DELAY);
     }
+
     ++api_call_count;
 
     std::wstring wUsername = Utils::EncodingWindowsHelper::stringToWStringUTF8(username);
@@ -267,4 +270,10 @@ void UserGroupsProvider::updateCacheTimestamp()
 {
     s_cacheTimestamp = std::chrono::steady_clock::now();
     s_cacheValid = true;
+}
+
+void UserGroupsProvider::resetCache()
+{
+    s_userGroupsCache.clear();
+    s_cacheValid = false;
 }

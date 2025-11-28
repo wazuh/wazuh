@@ -128,3 +128,9 @@ void GroupsHelper::updateCacheTimestamp()
     s_cacheTimestamp = std::chrono::steady_clock::now();
     s_cacheValid = true;
 }
+
+void GroupsHelper::resetCache()
+{
+    s_cachedGroups.clear();
+    s_cacheValid = false;
+}

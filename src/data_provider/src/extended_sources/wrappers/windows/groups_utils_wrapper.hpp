@@ -57,4 +57,6 @@ class GroupsHelper : public IGroupsHelper
         /// @return Vector of Group objects representing local groups.
         std::vector<Group> processLocalGroups() override;
 
+        /// @brief Resets the cache.
+        static void resetCache();
 };

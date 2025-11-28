@@ -412,12 +412,12 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
             DWORD domain_name_length = DNLEN;
             SID_NAME_USE e_use;
             auto lookupRet = m_winapiWrapper->LookupAccountSidWWrapper(nullptr,
-                                                                        sid,
-                                                                        account_name,
-                                                                        &account_name_length,
-                                                                        domain_name,
-                                                                        &domain_name_length,
-                                                                        &e_use);
+                                                                       sid,
+                                                                       account_name,
+                                                                       &account_name_length,
+                                                                       domain_name,
+                                                                       &domain_name_length,
+                                                                       &e_use);
 
             m_winapiWrapper->FreeSidWrapper(sid);
 
@@ -583,4 +583,11 @@ void UsersHelper::updateCacheTimestamp()
 {
     s_cacheTimestamp = std::chrono::steady_clock::now();
     s_cacheValid = true;
+}
+
+void UsersHelper::resetCache()
+{
+    s_cachedLocalUsers.clear();
+    s_cachedRoamingUsers.clear();
+    s_cacheValid = false;
 }

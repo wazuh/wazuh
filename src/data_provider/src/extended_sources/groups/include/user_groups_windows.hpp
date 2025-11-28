@@ -61,6 +61,9 @@ class UserGroupsProvider
         /// If `gids` contains multiple GIDs, the result is an object where each key is a GID and the value is an array of usernames.
         nlohmann::json getUserNamesByGid(const std::set<std::uint32_t>& gids = {});
 
+        /// @brief Resets the cache
+        static void resetCache();
+
     private:
         std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
         std::shared_ptr<IUsersHelper> m_usersHelper;

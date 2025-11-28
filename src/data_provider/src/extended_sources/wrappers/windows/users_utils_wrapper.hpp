@@ -274,4 +274,7 @@ class UsersHelper : public IUsersHelper
         /// @param sid Pointer to the SID.
         /// @return RID as a DWORD.
         DWORD getRidFromSid(PSID sid);
+
+        /// @brief Resets the cache.
+        static void resetCache();
 };
