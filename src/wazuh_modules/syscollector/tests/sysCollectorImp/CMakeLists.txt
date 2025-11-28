@@ -8,8 +8,11 @@ endif()
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/external/googletest/lib)
 
 include_directories(${SRC_FOLDER}/data_provider/tests/mocks/)
+include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
+include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)

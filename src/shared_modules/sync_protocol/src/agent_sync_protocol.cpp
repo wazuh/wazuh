@@ -459,6 +459,25 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     clearSyncState();
     return success;
 }
+std::vector<PersistedData> AgentSyncProtocol::getAllEvents()
+{
+    if (!m_persistentQueue)
+    {
+        m_logger(LOG_ERROR, "Persistent queue not initialized - cannot get all events");
+        return {};
+    }
+
+    try
+    {
+        // Get all events without marking them for sync (read-only operation)
+        return m_persistentQueue->getAllEvents();
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to get all events: ") + e.what());
+        throw; // Re-throw the exception so tests can catch it
+    }
+}
 
 bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,

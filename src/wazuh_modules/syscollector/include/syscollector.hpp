@@ -83,6 +83,7 @@ class EXPORTED Syscollector final
         bool notifyDataClean(const std::vector<std::string>& indices);
         void deleteDatabase();
         std::string query(const std::string& jsonQuery);
+        void vdContextEvaluator();
     private:
         Syscollector();
         ~Syscollector() = default;
@@ -182,6 +183,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        bool                                                                     m_vdHasModifyOrDelete;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;

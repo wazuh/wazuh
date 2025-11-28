@@ -2893,3 +2893,88 @@ TEST_F(SyscollectorImpTest, querySetVersionInvalidParameterType)
 
     Syscollector::instance().destroy();
 }
+
+TEST_F(SyscollectorImpTest, VdContextEvaluatorWithoutSyncProtocol)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Initialize without VD sync protocol (VD disabled)
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Test vdContextEvaluator when VD sync protocol is not initialized
+    // Should exit early with a debug log message
+    EXPECT_NO_THROW(Syscollector::instance().vdContextEvaluator());
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, VdContextEvaluatorWithSyncProtocol)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Initialize with VD enabled (by setting last parameter to true)
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, true);
+
+    // Test vdContextEvaluator when VD sync protocol is initialized
+    // Should attempt to retrieve and process VD events
+    EXPECT_NO_THROW(Syscollector::instance().vdContextEvaluator());
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, VdContextEvaluatorMultipleCalls)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, true);
+
+    // Test multiple calls to vdContextEvaluator
+    // Should handle multiple invocations safely
+    EXPECT_NO_THROW(Syscollector::instance().vdContextEvaluator());
+    EXPECT_NO_THROW(Syscollector::instance().vdContextEvaluator());
+    EXPECT_NO_THROW(Syscollector::instance().vdContextEvaluator());
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, VdContextEvaluatorAfterDestroy)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, true);
+
+    // First destroy the instance
+    Syscollector::instance().destroy();
+
+    // Then test calling vdContextEvaluator after destroy
+    // Should handle gracefully without crashing
+    EXPECT_NO_THROW(Syscollector::instance().vdContextEvaluator());
+}

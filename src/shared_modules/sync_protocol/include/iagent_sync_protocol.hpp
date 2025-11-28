@@ -92,6 +92,12 @@ class IAgentSyncProtocol
         virtual bool sendDataContextMessages(uint64_t session,
                                              const std::vector<PersistedData>& data) = 0;
 
+        /// @brief Gets all events from the database without marking them for sync (read-only).
+        /// This method retrieves all pending events from the persistent queue without changing their state.
+        /// Unlike fetchAndMarkForSync(), this is a read-only operation that doesn't affect synchronization.
+        /// @return Vector of all pending events in the database
+        virtual std::vector<PersistedData> getAllEvents() = 0;
+
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;

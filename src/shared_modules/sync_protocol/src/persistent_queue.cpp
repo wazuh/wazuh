@@ -124,3 +124,17 @@ void PersistentQueue::deleteDatabase()
         throw;
     }
 }
+
+std::vector<PersistedData> PersistentQueue::getAllEvents()
+{
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_storage->getAllEvents();
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error getting all events: ") + ex.what());
+        throw;
+    }
+}

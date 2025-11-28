@@ -74,6 +74,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool sendDataContextMessages(uint64_t session,
                                      const std::vector<PersistedData>& data) override;
 
+        /// @copydoc IAgentSyncProtocol::getAllEvents
+        std::vector<PersistedData> getAllEvents() override;
+
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
 
