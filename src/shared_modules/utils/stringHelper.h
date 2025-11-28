@@ -13,6 +13,7 @@
 #define _STRING_HELPER_H
 
 #include <algorithm>
+#include <cstdint>
 #include <iomanip>
 #include <memory>
 #include <regex>
