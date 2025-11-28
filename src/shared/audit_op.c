@@ -97,8 +97,17 @@ int audit_print_reply(struct audit_reply *rep) {
     int perm = 0;
     char perms[5] = {0};
     unsigned int i, offset = 0;
+    static int never_task_warned = 0;
 
     if (rep->type == AUDIT_LIST_RULES) {
+        // Check for never,task rule
+        if (!never_task_warned &&
+            rep->ruledata->action == AUDIT_NEVER &&
+            (rep->ruledata->flags & AUDIT_FILTER_TASK)) {
+            mwarn("Audit rule 'never,task' detected. FIM whodata may not work. See documentation.");
+            never_task_warned = 1;
+        }
+
         for (i = 0; i < rep->ruledata->field_count; i++) {
             int field = rep->ruledata->fields[i] & ~AUDIT_OPERATORS;
 
