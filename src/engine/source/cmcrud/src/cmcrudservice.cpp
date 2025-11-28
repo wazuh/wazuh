@@ -1,0 +1,371 @@
+#include <fmt/format.h>
+
+#include <cmstore/types.hpp>
+#include <yml/yml.hpp>
+
+#include <cmcrud/cmcrudservice.hpp>
+
+namespace
+{
+
+json::Json yamlToJson(std::string_view document)
+{
+    rapidjson::Document doc = yml::Converter::loadYMLfromString(std::string {document});
+    return json::Json {std::move(doc)};
+}
+
+std::string jsonToYaml(const json::Json& jsonDoc)
+{
+    rapidjson::Document doc;
+    doc.Parse(jsonDoc.str().c_str());
+
+    auto ymlNode = yml::Converter::jsonToYaml(doc);
+    YAML::Emitter ymlEmitter;
+    ymlEmitter << ymlNode;
+    return ymlEmitter.c_str();
+}
+
+cm::store::dataType::Policy policyFromDocument(std::string_view policyDocument)
+{
+    return cm::store::dataType::Policy::fromJson(yamlToJson(policyDocument));
+}
+
+cm::store::dataType::Integration integrationFromDocument(std::string_view integrationDocument)
+{
+    return cm::store::dataType::Integration::fromJson(yamlToJson(integrationDocument));
+}
+
+cm::store::dataType::KVDB kvdbFromDocument(std::string_view kvdbDocument)
+{
+    return cm::store::dataType::KVDB::fromJson(yamlToJson(kvdbDocument));
+}
+
+base::Name assetNameFromJson(const json::Json& jsonDoc)
+{
+    auto optName = jsonDoc.getString("/name");
+    if (!optName.has_value() || optName->empty())
+    {
+        throw std::runtime_error("Missing or empty asset name at JSON path '/name'");
+    }
+    return base::Name {optName.value()};
+}
+} // namespace
+
+namespace cm::crud
+{
+
+CrudService::CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator)
+    : m_store(std::move(store))
+    , m_validator(std::move(validator))
+{
+    if (!m_store)
+    {
+        throw std::invalid_argument("CrudService: store pointer cannot be null");
+    }
+    if (!m_validator)
+    {
+        throw std::invalid_argument("CrudService: validator pointer cannot be null");
+    }
+}
+
+std::vector<cm::store::NamespaceId> CrudService::listNamespaces() const
+{
+    return m_store->getNamespaces();
+}
+
+void CrudService::createNamespace(std::string_view nsName)
+{
+    try
+    {
+        // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
+        cm::store::NamespaceId nsId {nsName};
+        m_store->createNamespace(nsId);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to create namespace '{}': {}", nsName, e.what()));
+    }
+}
+
+void CrudService::deleteNamespace(std::string_view nsName)
+{
+    try
+    {
+        // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
+        cm::store::NamespaceId nsId {nsName};
+        m_store->deleteNamespace(nsId);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to delete namespace '{}': {}", nsName, e.what()));
+    }
+}
+
+void CrudService::upsertPolicy(std::string_view nsName, std::string_view policyDocument)
+{
+    try
+    {
+        const auto nsId = cm::store::NamespaceId {nsName};
+        auto ns = getNamespaceStore(nsId);
+
+        auto policy = policyFromDocument(policyDocument);
+
+        std::shared_ptr<cm::store::ICMStoreNSReader> nsReader = ns;
+        validatePolicy(nsReader, policy);
+
+        ns->upsertPolicy(policy);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to upsert policy in namespace '{}': {}", nsName, e.what()));
+    }
+}
+
+void CrudService::deletePolicy(std::string_view nsName)
+{
+    try
+    {
+        const auto nsId = cm::store::NamespaceId {nsName};
+        auto ns = getNamespaceStore(nsId);
+        ns->deletePolicy();
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to delete policy in namespace '{}': {}", nsName, e.what()));
+    }
+}
+
+std::vector<ResourceSummary> CrudService::listResources(std::string_view nsName, cm::store::ResourceType type) const
+{
+    try
+    {
+        const auto nsId = cm::store::NamespaceId {nsName};
+        auto nsReader = getNamespaceStoreView(nsId);
+
+        std::vector<ResourceSummary> result;
+        const auto collection = nsReader->getCollection(type);
+
+        result.reserve(collection.size());
+
+        for (const auto& [uuid, name] : collection)
+        {
+            ResourceSummary summary;
+            summary.uuid = uuid;
+            summary.name = name;
+            summary.hash = nsReader->resolveHashFromUUID(uuid);
+
+            result.emplace_back(std::move(summary));
+        }
+        return result;
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to list resources of type '{}' in namespace '{}': {}",
+                                             cm::store::resourceTypeToString(type),
+                                             nsName,
+                                             e.what()));
+    }
+}
+
+std::string CrudService::getResourceByUUID(std::string_view nsName, const std::string& uuid) const
+{
+    try
+    {
+        auto nsId = cm::store::NamespaceId {nsName};
+        auto nsView = getNamespaceStoreView(nsId);
+
+        // Resolve name and type from UUID
+        const auto [name, type] = nsView->resolveNameFromUUID(uuid);
+
+        switch (type)
+        {
+            case cm::store::ResourceType::INTEGRATION:
+            {
+                auto integ = nsView->getIntegrationByUUID(uuid);
+                return jsonToYaml(integ.toJson());
+            }
+
+            case cm::store::ResourceType::KVDB:
+            {
+                auto kvdb = nsView->getKVDBByUUID(uuid);
+                return jsonToYaml(kvdb.toJson());
+            }
+
+            case cm::store::ResourceType::DECODER:
+            case cm::store::ResourceType::OUTPUT:
+            case cm::store::ResourceType::RULE:
+            case cm::store::ResourceType::FILTER:
+            {
+                auto assetJson = nsView->getAssetByUUID(uuid);
+                return jsonToYaml(assetJson);
+            }
+
+            default: throw std::runtime_error("Unsupported resource type for getResourceByUUID");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to get resource with UUID '{}' in namespace '{}': {}", uuid, nsName, e.what()));
+    }
+}
+
+void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceType type, std::string_view document)
+{
+    try
+    {
+        const auto nsId = cm::store::NamespaceId {nsName};
+        auto ns = getNamespaceStore(nsId);
+        auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(ns);
+
+        const std::string yml {document};
+
+        switch (type)
+        {
+            case cm::store::ResourceType::INTEGRATION:
+            {
+                auto integ = integrationFromDocument(document);
+                validateIntegration(nsReader, integ);
+
+                const std::string& uuid = integ.getUUID();
+                const std::string& name = integ.getName();
+
+                if (!uuid.empty() && nsReader->assetExistsByUUID(uuid))
+                {
+                    ns->updateResourceByUUID(uuid, yml);
+                }
+                else
+                {
+                    ns->createResource(name, type, yml);
+                }
+                break;
+            }
+
+            case cm::store::ResourceType::KVDB:
+            {
+                auto kvdb = kvdbFromDocument(document);
+                // No validation for KVDBs currently
+                const std::string& uuid = kvdb.getUUID();
+                const std::string& name = kvdb.getName();
+
+                if (!uuid.empty() && nsReader->assetExistsByUUID(uuid))
+                {
+                    ns->updateResourceByUUID(uuid, yml);
+                }
+                else
+                {
+                    ns->createResource(name, type, yml);
+                }
+                break;
+            }
+
+            case cm::store::ResourceType::DECODER:
+            case cm::store::ResourceType::OUTPUT:
+            case cm::store::ResourceType::RULE:
+            case cm::store::ResourceType::FILTER:
+            {
+                json::Json assetJson = yamlToJson(document);
+                auto name = assetNameFromJson(assetJson);
+                validateAsset(nsReader, assetJson);
+
+                const std::string nameStr = name.toStr();
+
+                if (nsReader->assetExistsByName(name))
+                {
+                    ns->updateResourceByName(nameStr, type, yml);
+                }
+                else
+                {
+                    ns->createResource(nameStr, type, yml);
+                }
+                break;
+            }
+
+            default: throw std::runtime_error("Unsupported resource type in upsertResource");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to upsert resource of type '{}' in namespace '{}': {}",
+                                             cm::store::resourceTypeToString(type),
+                                             nsName,
+                                             e.what()));
+    }
+}
+
+void CrudService::deleteResourceByUUID(std::string_view nsName, const std::string& uuid)
+{
+    try
+    {
+        cm::store::NamespaceId nsId {nsName};
+        auto ns = getNamespaceStore(nsId);
+
+        ns->deleteResourceByUUID(uuid);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to delete resource with UUID '{}' in namespace '{}': {}", uuid, nsName, e.what()));
+    }
+}
+
+std::shared_ptr<cm::store::ICMStoreNSReader>
+CrudService::getNamespaceStoreView(const cm::store::NamespaceId& nsId) const
+{
+    auto ns = m_store->getNSReader(nsId);
+    if (!ns)
+    {
+        throw std::runtime_error(fmt::format("Namespace '{}' does not exist", nsId.toStr()));
+    }
+    return ns;
+}
+
+std::shared_ptr<cm::store::ICMstoreNS> CrudService::getNamespaceStore(const cm::store::NamespaceId& nsId) const
+{
+    auto ns = m_store->getNS(nsId);
+    if (!ns)
+    {
+        throw std::runtime_error(fmt::format("Namespace '{}' does not exist", nsId.toStr()));
+    }
+    return ns;
+}
+
+void CrudService::validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                 const cm::store::dataType::Policy& policy) const
+{
+    base::OptError err = m_validator->softPolicyValidate(nsReader, policy);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format(
+            "Policy validation failed in namespace '{}': {}", nsReader->getNamespaceId().toStr(), e.message));
+    }
+}
+
+void CrudService::validateIntegration(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                      const cm::store::dataType::Integration& integration) const
+{
+    base::OptError err = m_validator->softIntegrationValidate(nsReader, integration);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format("Integration validation failed for '{}' in namespace '{}': {}",
+                                             integration.getName(),
+                                             nsReader->getNamespaceId().toStr(),
+                                             e.message));
+    }
+}
+
+void CrudService::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                const json::Json& asset) const
+{
+    base::OptError err = m_validator->validateAsset(nsReader, asset);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format(
+            "Asset validation failed in namespace '{}': {}", nsReader->getNamespaceId().toStr(), e.message));
+    }
+}
+
+} // namespace cm::crud

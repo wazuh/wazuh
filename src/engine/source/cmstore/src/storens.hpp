@@ -15,8 +15,8 @@ namespace cm::store
 
 namespace pathns
 {
-constexpr std::string_view JSON_ID_PATH = "/id";           ///< Universal path for UUID field in JSON/YML objects
-constexpr std::string_view YML_PAIR_FMT = "id: {}\n";      ///< YML pair format for UUID field
+constexpr std::string_view JSON_ID_PATH = "/id";      ///< Universal path for UUID field in JSON/YML objects
+constexpr std::string_view YML_PAIR_FMT = "id: {}\n"; ///< YML pair format for UUID field
 // Files and extensions
 constexpr std::string_view CACHE_NS_FILE = "cache_ns.json";
 constexpr std::string_view ASSET_EXTENSION = ".yml";
@@ -87,6 +87,23 @@ private:
      */
     std::filesystem::path getResourcePaths(const std::string& name, ResourceType type) const;
 
+    /**
+     * @brief Resolve the name and type of a resource from its UUID without locking
+     * @param uuid UUID of the resource
+     * @return std::tuple<std::string, ResourceType> Name and type of the resource
+     * @throw std::runtime_error if the UUID does not exist
+     */
+    std::tuple<std::string, ResourceType> resolveNameFromUUIDUnlocked(const std::string& uuid) const;
+
+    /**
+     * @brief Resolve the UUID of a resource from its name and type without locking
+     * @param name Name of the resource
+     * @param type Type of the resource
+     * @return std::string UUID of the resource
+     * @throw std::runtime_error if the name/type does not exist
+     */
+    std::string resolveUUIDFromNameUnlocked(const std::string& name, ResourceType type) const;
+
 public:
     /**
      * @brief Construct a new CMStoreNS
@@ -133,6 +150,8 @@ public:
     std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const override;
     /** @copydoc ICMStoreNSReader::resolveNameFromUUID */
     std::tuple<std::string, ResourceType> resolveNameFromUUID(const std::string& uuid) const override;
+    /** @copydoc ICMStoreNSReader::resolveHashFromUUID */
+    std::string resolveHashFromUUID(const std::string& uuid) const override;
     /** @copydoc ICMStoreNSReader::resolveUUIDFromName */
     std::string resolveUUIDFromName(const std::string& name, ResourceType type) const override;
 

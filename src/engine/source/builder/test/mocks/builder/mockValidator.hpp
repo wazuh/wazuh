@@ -28,10 +28,10 @@ public:
                 (const, override));
     MOCK_METHOD(base::OptError,
                 validateAsset,
-                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, , const base::Name& name),
+                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, const json::Json& assetJson),
                 (const, override));
     MOCK_METHOD(base::OptError,
-                validatePolicy,
+                softPolicyValidate,
                 (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                  const cm::store::dataType::Policy& policy),
                 (const, override));
