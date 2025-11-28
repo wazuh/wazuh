@@ -841,15 +841,14 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
     try
     {
         // Use AgentSyncProtocol::requiresFullSync
+        // Note: returns true only if manager explicitly reports checksum mismatch
+        // Returns false for: success (checksums match) OR communication errors
+        // The sync protocol logs detailed messages for each case
         bool needsRecovery = m_spSyncProtocol->requiresFullSync(SCA_SYNC_INDEX, checksum);
 
         if (needsRecovery)
         {
             LoggingHelper::getInstance().log(LOG_INFO, "Checksum mismatch detected, full recovery required");
-        }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Checksum valid, no recovery needed");
         }
 
         return needsRecovery;
