@@ -713,8 +713,8 @@ public:
                                 else
                                 {
                                     logInfo(LOGGER_DEFAULT_TAG,
-                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - full "
-                                            "resync required",
+                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - "
+                                            "full resync required",
                                             res.context->agentId.c_str(),
                                             MAX_RETRIES);
                                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
@@ -888,8 +888,8 @@ public:
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
                             logDebug2(LOGGER_DEFAULT_TAG,
-                                    "InventorySyncFacade: Running vulnerability scanner for agent %s...",
-                                    res.context->agentId.c_str());
+                                      "InventorySyncFacade: Running vulnerability scanner for agent %s...",
+                                      res.context->agentId.c_str());
 
                             // Run vulnerability scanner
                             try
@@ -899,9 +899,9 @@ public:
                             catch (const std::exception& e)
                             {
                                 logError(LOGGER_DEFAULT_TAG,
-                                        "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
-                                        res.context->agentId.c_str(),
-                                        e.what());
+                                         "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
+                                         res.context->agentId.c_str(),
+                                         e.what());
                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                  res.context->agentId,
                                                                  res.context->sessionId,
