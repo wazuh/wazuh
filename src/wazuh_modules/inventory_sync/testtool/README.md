@@ -94,14 +94,13 @@ The test tool requires valid SSL certificates for secure communication with the 
 ```json
 {
   "indexer": {
-    "enabled": "yes",
     "hosts": ["https://ChangeMe:9200"],
     "ssl": {
       "certificate_authorities": [
-        "/home/vboxuser/wazuh/src/wazuh_modules/inventory_sync/testtool/test_data/root-ca.pem"
+        "/var/ossec/etc/certs/root-ca.pem"
       ],
-      "certificate": "/home/vboxuser/wazuh/src/wazuh_modules/inventory_sync/testtool/test_data/admin.pem",
-      "key": "/home/vboxuser/wazuh/src/wazuh_modules/inventory_sync/testtool/test_data/admin-key.pem"
+      "certificate": "/var/ossec/etc/certs/server.pem",
+      "key": "/var/ossec/etc/certs/server-key.pem"
     }
   }
 }
@@ -111,7 +110,6 @@ The test tool requires valid SSL certificates for secure communication with the 
 
 | Parameter                             | Required | Description                                        |
 | ------------------------------------- | -------- | -------------------------------------------------- |
-| `indexer.enabled`                     | Yes      | Enable or disable the indexer connection           |
 | `indexer.hosts`                       | Yes      | List of indexer host URLs (with protocol and port) |
 | `indexer.ssl.certificate_authorities` | Yes      | Paths to CA certificates for SSL verification      |
 | `indexer.ssl.certificate`             | Yes      | Path to client certificate for mutual TLS auth     |
