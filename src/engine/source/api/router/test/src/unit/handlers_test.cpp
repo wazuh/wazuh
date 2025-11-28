@@ -35,7 +35,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
-                protoReq.mutable_route()->set_policy("policy");
+                protoReq.mutable_route()->set_namespaceid("policy");
                 protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 return createRequest<eEngine::router::RoutePost_Request>(protoReq);
@@ -54,7 +54,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
-                protoReq.mutable_route()->set_policy("policy");
+                protoReq.mutable_route()->set_namespaceid("policy");
                 protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 return createRequest<eEngine::router::RoutePost_Request>(protoReq);
@@ -109,7 +109,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: "); },
+            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid namespace id: Invalid namespace ID: "); },
             [](auto&) {}),
         // Invalid filter
         HandlerT(
@@ -126,7 +126,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: policy/name/0"); },
+            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid namespace id: Invalid namespace ID: "); },
             [](auto&) {}),
         // Invalid priority (default 0)
         HandlerT(
@@ -134,7 +134,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
-                jsonReq.setString("testing", "/route/policy");
+                jsonReq.setString("testing", "/route/namespaceId");
                 jsonReq.setString("filter/name/0", "/route/filter");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -164,7 +164,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
-                protoReq.mutable_route()->set_policy("policy");
+                protoReq.mutable_route()->set_namespaceid("policy");
                 protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 protoReq.mutable_route()->set_description("description");

@@ -14,7 +14,7 @@ def run(args):
     # Get the params
     api_socket: str = args['api_socket']
     name: str = args['name']
-    policy: str = args['policy']
+    namespaceId: str = args['namespaceId']
 
     # Create API client
     client = APIClient(api_socket)
@@ -22,7 +22,7 @@ def run(args):
     # Create the request
     request = etester.SessionPost_Request()
     request.session.name = name
-    request.session.policy = policy
+    request.session.namespaceId = namespaceId
     if args['description']:
         request.session.description = args['description']
 
@@ -44,6 +44,6 @@ def configure(subparsers):
         'add', help='Add a new session for testing')
     parser.add_argument(
         'name', type=str, help='Name of the session to add')
-    parser.add_argument('policy', type=str, help='Policy to use for the session')
+    parser.add_argument('namespaceId', type=str, help='Namespace to use for the session')
     parser.add_argument('description', type=str, help='Description of the session, optional', default=None, nargs='?')
     parser.set_defaults(func=run)

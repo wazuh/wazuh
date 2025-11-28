@@ -35,7 +35,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::tester::SessionPost_Request protoReq;
                 protoReq.mutable_session()->set_name("name");
-                protoReq.mutable_session()->set_policy("policy");
+                protoReq.mutable_session()->set_namespaceid("policy");
                 protoReq.mutable_session()->set_lifetime(10);
                 protoReq.mutable_session()->set_description("some_description");
                 return createRequest<eEngine::tester::SessionPost_Request>(protoReq);
@@ -55,7 +55,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::tester::SessionPost_Request protoReq;
                 protoReq.mutable_session()->set_name("name");
-                protoReq.mutable_session()->set_policy("policy");
+                protoReq.mutable_session()->set_namespaceid("policy");
                 protoReq.mutable_session()->set_lifetime(10);
                 return createRequest<eEngine::tester::SessionPost_Request>(protoReq);
             },
@@ -133,7 +133,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::tester::SessionPost_Request protoReq;
                 protoReq.mutable_session()->set_name("name");
-                protoReq.mutable_session()->set_policy("policy");
+                protoReq.mutable_session()->set_namespaceid("policy");
                 protoReq.mutable_session()->set_lifetime(10);
                 protoReq.mutable_session()->set_description("description");
                 return createRequest<eEngine::tester::SessionPost_Request>(protoReq);
