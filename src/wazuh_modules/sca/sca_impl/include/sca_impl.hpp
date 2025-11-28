@@ -83,8 +83,9 @@ class SecurityConfigurationAssessment
         /// @param timeout Timeout for synchronization responses
         /// @param retries Number of retries for synchronization
         /// @param maxEps Maximum events per second
+        /// @param integrityInterval Interval in seconds between integrity checks (0 = disabled)
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
-                              size_t maxEps);
+                              size_t maxEps, std::chrono::seconds integrityInterval);
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode
@@ -136,10 +137,6 @@ class SecurityConfigurationAssessment
         /// @param jsonQuery JSON-formatted query command string
         /// @return JSON-formatted response string
         std::string query(const std::string& jsonQuery);
-
-        /// @brief Set the integrity check interval
-        /// @param integrityInterval Interval in seconds (0 = disabled)
-        void setIntegrityInterval(std::chrono::seconds integrityInterval);
 
     protected:
         /// @brief List of policies

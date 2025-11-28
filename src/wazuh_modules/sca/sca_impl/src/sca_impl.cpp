@@ -275,7 +275,7 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
 
 // Sync protocol methods implementation
 void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps, std::chrono::seconds integrityInterval)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -286,6 +286,10 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
     {
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Set integrity interval
+        m_integrityInterval = integrityInterval;
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA integrity interval set to " + std::to_string(integrityInterval.count()) + " seconds");
     }
     catch (const std::exception& ex)
     {
@@ -744,12 +748,6 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 }
 
 // Recovery methods implementation
-void SecurityConfigurationAssessment::setIntegrityInterval(std::chrono::seconds integrityInterval)
-{
-    m_integrityInterval = integrityInterval;
-    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA integrity interval set to " + std::to_string(integrityInterval.count()) + " seconds");
-}
-
 std::string SecurityConfigurationAssessment::calculateTableChecksum()
 {
     if (!m_dBSync)
