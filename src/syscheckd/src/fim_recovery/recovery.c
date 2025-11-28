@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdint.h>
 #include <cJSON.h>
 
 #include "shared.h"
@@ -11,74 +12,67 @@
 #include "db.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "../os_crypto/sha1/sha1_op.h"
-
+#include "../file/file.h"
 #ifdef WIN32
 #include "utf8_winapi_wrapper.h"
+#include "../registry/registry.h"
 #endif
 
 /**
- * @brief Build stateful event for a file from JSON string
+ * @brief Build stateful event for a file from cJSON object
  * @param path File path
- * @param file_json_str JSON string containing file attributes
+ * @param file_data cJSON object containing file attributes
  * @param sha1_hash SHA1 hash of the file
  * @param document_version Version number of the document
- * @return Stateful event as a JSON string (must be freed by caller), NULL on error
+ * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-static char* buildFileStatefulEventFromJSONString(const char* path, const char* file_json_str, const char* sha1_hash, uint64_t document_version) {
-    // Parse input JSON
-    cJSON* file_attributes = cJSON_Parse(file_json_str);
-    if (file_attributes == NULL) {
-        merror("Error parsing JSON for file: %s", path);
+static cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version) {
+    if (!path || !file_data || !sha1_hash) {
+        merror("Invalid parameters to buildFileStatefulEvent");
         return NULL;
     }
 
-    // Patch inode: convert from number to string (same as file.c:fim_db_file_update)
-    cJSON* inode_item = cJSON_GetObjectItem(file_attributes, "inode");
-    if (inode_item != NULL && cJSON_IsNumber(inode_item)) {
-        uint64_t inode_value = (uint64_t)cJSON_GetNumberValue(inode_item);
-        char inode_str[32];
-        snprintf(inode_str, sizeof(inode_str), "%lu", (unsigned long)inode_value);
-        cJSON_DeleteItemFromObject(file_attributes, "inode");
-        cJSON_AddStringToObject(file_attributes, "inode", inode_str);
-    }
+    cJSON* inode_item = cJSON_GetObjectItem(file_data, "inode");
+    if (inode_item && cJSON_IsNumber(inode_item)) {
 
-    cJSON* result = build_stateful_event_file(path, sha1_hash, document_version, file_attributes, NULL);
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%lu", (unsigned long)cJSON_GetNumberValue(inode_item));
+
+        // Turn this cJSON number item into a string item
+        inode_item->type = cJSON_String;
+        inode_item->valuestring = strdup(buf);
+    }
+    // Call the actual builder
+    cJSON* result = build_stateful_event_file(path, sha1_hash, document_version, file_data, NULL);
 
     return result;
 }
 
 #ifdef WIN32
 /**
- * @brief Build stateful event for a registry key from JSON string
+ * @brief Build stateful event for a registry key from cJSON object
  * @param path Registry key path
- * @param key_json_str JSON string containing registry key attributes
+ * @param key_data cJSON object containing registry key attributes
  * @param sha1_hash SHA1 hash of the key
  * @param document_version Version number of the document
  * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
- * @return Stateful event as a JSON string (must be freed by caller), NULL on error
+ * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-static char* buildRegistryKeyStatefulEventFromJSONString(const char* path, const char* key_json_str, const char* sha1_hash, uint64_t document_version, int arch) {
-    // Parse input JSON
-    cJSON* file_attributes = cJSON_Parse(file_json_str);
-    if (file_attributes == NULL) {
-        merror("Error parsing JSON for file: %s", path);
-        return NULL;
-    }
-    cJSON* result = build_stateful_event_file(path, sha1_hash, document_version, file_attributes, NULL);
-    return result;
+static cJSON* buildRegistryKeyStatefulEvent(const char* path, cJSON* key_data, const char* sha1_hash, uint64_t document_version, int arch) {
+    return build_stateful_event_registry_key(path, sha1_hash, document_version, arch, key_data, NULL);
 }
 
 /**
- * @brief Build stateful event for a registry value from JSON string
+ * @brief Build stateful event for a registry value from cJSON object
  * @param path Registry value path
- * @param value_json_str JSON string containing registry value attributes
+ * @param value_data cJSON object containing registry value attributes
  * @param sha1_hash SHA1 hash of the value
  * @param document_version Version number of the document
  * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
- * @return Stateful event as a JSON string (must be freed by caller), NULL on error
+ * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-static char* buildRegistryValueStatefulEventFromJSONString(const char* path, const char* value_json_str, const char* sha1_hash, uint64_t document_version, int arch) {
-    
+static cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* value_data, const char* sha1_hash, uint64_t document_version, int arch) {
+    return build_stateful_event_registry_value(path, value, sha1_hash, document_version, arch, value_data, NULL);
 }
 #endif // WIN32
 
@@ -99,48 +93,61 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     for (int i = 0; i < item_count; i++) {
         cJSON* item = cJSON_GetArrayItem(items, i);
 
-        // Extract common fields
-        cJSON* path_obj = cJSON_GetObjectItem(item, "path");
-        cJSON* checksum_obj = cJSON_GetObjectItem(item, "checksum");
-        cJSON* version_obj = cJSON_GetObjectItem(item, "version");
+        // Create a working copy to avoid any corruption of the items array
+        cJSON* item_copy = cJSON_Duplicate(item, 1);
+        if (!item_copy) {
+            merror("Failed to duplicate item at index %d", i);
+            continue;
+        }
+
+        // Extract common fields from the copy
+        cJSON* path_obj = cJSON_GetObjectItem(item_copy, "path");
+        cJSON* checksum_obj = cJSON_GetObjectItem(item_copy, "checksum");
+        cJSON* version_obj = cJSON_GetObjectItem(item_copy, "version");
 
         const char* path = cJSON_GetStringValue(path_obj);
         const char* checksum = cJSON_GetStringValue(checksum_obj);
         uint64_t document_version = (uint64_t)cJSON_GetNumberValue(version_obj);
+        //static uint64_t document_version = 10; // TODO: test only
+        document_version++; // TODO: test only
 
         // Calculate ID and index based on table type
         char* id_str = NULL;
         const char* index = NULL;
-        int arch = 0;
 
+#ifdef WIN32
+        int arch = 0;
+        char* value = NULL;
+#endif
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
             id_str = strdup(path);
             index = FIM_FILES_SYNC_INDEX;
         }
 #ifdef WIN32
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
-            cJSON* arch_obj = cJSON_GetObjectItem(item, "architecture");
+            cJSON* arch_obj = cJSON_GetObjectItem(item_copy, "architecture");
             const char* arch_str = cJSON_GetStringValue(arch_obj);
             arch = (strcmp(arch_str, "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
 
             // Build id as "arch:path"
             size_t id_len = snprintf(NULL, 0, "%d:%s", arch, path) + 1;
-            id_str = malloc(id_len);
+            os_calloc(id_len, sizeof(char), id_str);
             snprintf(id_str, id_len, "%d:%s", arch, path);
             index = FIM_REGISTRY_KEYS_SYNC_INDEX;
         }
         else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
-            cJSON* arch_obj = cJSON_GetObjectItem(item, "architecture");
-            cJSON* value_obj = cJSON_GetObjectItem(item, "value");
+            cJSON* arch_obj = cJSON_GetObjectItem(item_copy, "architecture");
+            cJSON* value_obj = cJSON_GetObjectItem(item_copy, "value");
             const char* arch_str = cJSON_GetStringValue(arch_obj);
-            const char* value = cJSON_GetStringValue(value_obj);
+            value = cJSON_GetStringValue(value_obj);
             arch = (strcmp(arch_str, "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
 
             // Build id as "path:arch:value"
             size_t id_len = snprintf(NULL, 0, "%s:%d:%s", path, arch, value) + 1;
-            id_str = malloc(id_len);
+            os_calloc(id_len, sizeof(char), id_str);
             snprintf(id_str, id_len, "%s:%d:%s", path, arch, value);
             index = FIM_REGISTRY_VALUES_SYNC_INDEX;
+            minfo("value: %s", value);
         }
 #endif // WIN32
 
@@ -148,29 +155,33 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         os_sha1 hashed_id;
         OS_SHA1_Str(id_str, -1, hashed_id);
 
-        // Build stateful event
-        char* item_str = cJSON_PrintUnformatted(item);
-        char* stateful_event_str = NULL;
+        // Build stateful event using the copy
+        cJSON* stateful_event = NULL;
 
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-            stateful_event_str = buildFileStatefulEventFromJSONString(path, item_str, checksum, document_version);
+            stateful_event = buildFileStatefulEvent(path, item_copy, checksum, document_version);
         }
 #ifdef WIN32
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
-            stateful_event_str = buildRegistryKeyStatefulEventFromJSONString(path, item_str, checksum, document_version, arch);
+            stateful_event = buildRegistryKeyStatefulEvent(path, item_copy, checksum, document_version, arch);
         }
         else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
-            stateful_event_str = buildRegistryValueStatefulEventFromJSONString(path, item_str, checksum, document_version, arch);
+            stateful_event = buildRegistryValueStatefulEvent(path, value, item_copy, checksum, document_version, arch);
         }
 #endif // WIN32
-
-        if (stateful_event_str) {
-            asp_persist_diff_in_memory(handle, hashed_id, CREATE, index, stateful_event_str, document_version);
-            free(stateful_event_str);
+        if (stateful_event) {
+            char* stateful_event_str = cJSON_PrintUnformatted(stateful_event);
+            minfo("fullentry %s", stateful_event_str);
+            if (stateful_event_str) {
+                asp_persist_diff_in_memory(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
+                os_free(stateful_event_str);
+            }
+            cJSON_Delete(stateful_event);
         }
 
-        free(item_str);
-        free(id_str);
+        // Clean up the working copy
+        cJSON_Delete(item_copy);
+        os_free(id_str);
     }
 
     minfo("Persisted %d recovery items in memory", item_count);
@@ -188,7 +199,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     }
 
     if (success) {
-        minfo("Recovery completed successfully, in-memory data cleared");
+        minfo("Recovery completed successfully");
     } else {
         minfo("Recovery synchronization failed, will retry later");
     }
@@ -222,7 +233,7 @@ bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtoco
 #endif // WIN32
 
     bool needs_full_sync = asp_requires_full_sync(handle, index, final_checksum);
-    free(final_checksum);
+    os_free(final_checksum);
 
     if (needs_full_sync) {
         minfo("Checksum mismatch detected for table %s, full sync required", table_name);
