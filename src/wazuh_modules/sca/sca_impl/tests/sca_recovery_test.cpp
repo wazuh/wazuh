@@ -26,7 +26,7 @@
  * @brief Test fixture for SCA recovery functionality
  *
  * Tests the recovery flow operations through public APIs:
- * - setIntegrityInterval configuration
+ * - initSyncProtocol with integrity interval configuration
  * - check_integrity query command
  * - Response validation
  *
@@ -63,25 +63,45 @@ class SCARecoveryTest : public ::testing::Test
             m_mockFileSystem.reset();
         }
 
+        // Helper method to initialize sync protocol with specific integrity interval
+        void initSyncProtocolWithInterval(std::chrono::seconds integrityInterval)
+        {
+            // Mock MQ_Functions for sync protocol initialization
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            try
+            {
+                m_sca->initSyncProtocol("test_module", "test_sync.db", mqFuncs,
+                                       std::chrono::seconds(1), std::chrono::seconds(30),
+                                       3, 10, integrityInterval);
+            }
+            catch (const std::exception&)
+            {
+                // Ignore initialization errors in tests - we just need the interval set
+            }
+        }
+
         std::shared_ptr<MockDBSync> m_mockDBSync;
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
         std::shared_ptr<SecurityConfigurationAssessment> m_sca;
         std::string m_logOutput;
 };
 
-// Test: setIntegrityInterval stores the value correctly
+// Test: initSyncProtocol with integrity interval stores the value correctly
 TEST_F(SCARecoveryTest, SetIntegrityIntervalStoresValue)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(3600));
+    initSyncProtocolWithInterval(std::chrono::seconds(3600));
 
     // Verify it was set by checking log output
     EXPECT_TRUE(m_logOutput.find("3600") != std::string::npos);
 }
 
-// Test: setIntegrityInterval with zero disables checks
+// Test: initSyncProtocol with zero integrity interval disables checks
 TEST_F(SCARecoveryTest, SetIntegrityIntervalZeroDisables)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(0));
+    initSyncProtocolWithInterval(std::chrono::seconds(0));
 
     // Verify it was set
     EXPECT_TRUE(m_logOutput.find("0 seconds") != std::string::npos);
@@ -90,7 +110,7 @@ TEST_F(SCARecoveryTest, SetIntegrityIntervalZeroDisables)
 // Test: query check_integrity when interval not elapsed
 TEST_F(SCARecoveryTest, QueryCheckIntegrityIntervalNotElapsed)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(3600));
+    initSyncProtocolWithInterval(std::chrono::seconds(3600));
 
     // Mock getLastIntegrityCheckTime to return recent timestamp (1 minute ago)
     // This will be called by integrityIntervalElapsed
@@ -117,7 +137,7 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityIntervalNotElapsed)
 // Test: query check_integrity when interval elapsed (first check)
 TEST_F(SCARecoveryTest, QueryCheckIntegrityFirstCheck)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(3600));
+    initSyncProtocolWithInterval(std::chrono::seconds(3600));
 
     // Mock getLastIntegrityCheckTime to return 0 (first check)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
@@ -143,7 +163,7 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityFirstCheck)
 // Test: query check_integrity with disabled interval (0)
 TEST_F(SCARecoveryTest, QueryCheckIntegrityDisabled)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(0));  // Disabled
+    initSyncProtocolWithInterval(std::chrono::seconds(0));  // Disabled
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -234,7 +254,7 @@ TEST_F(SCARecoveryTest, QueryGetVersionCommand)
 // Test: check_integrity with empty checksum (error case)
 TEST_F(SCARecoveryTest, QueryCheckIntegrityEmptyChecksum)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(3600));
+    initSyncProtocolWithInterval(std::chrono::seconds(3600));
 
     int64_t oldTime = Utils::getSecondsFromEpoch() - 7200;  // 2 hours ago
 
@@ -273,7 +293,7 @@ TEST_F(SCARecoveryTest, IntegrityIntervalConfiguration)
     for (int interval : intervals)
     {
         m_logOutput.clear();
-        m_sca->setIntegrityInterval(std::chrono::seconds(interval));
+        initSyncProtocolWithInterval(std::chrono::seconds(interval));
 
         // Verify logged correctly
         EXPECT_TRUE(m_logOutput.find(std::to_string(interval)) != std::string::npos);
@@ -283,7 +303,7 @@ TEST_F(SCARecoveryTest, IntegrityIntervalConfiguration)
 // Test: Recovery methods work together (integration test via query)
 TEST_F(SCARecoveryTest, QueryCheckIntegrityIntegrationFlow)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(60));  // 1 minute for testing
+    initSyncProtocolWithInterval(std::chrono::seconds(60));  // 1 minute for testing
 
     // Simulate old last check time (2 minutes ago) to trigger check
     int64_t oldTime = Utils::getSecondsFromEpoch() - 120;
@@ -333,7 +353,7 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityIntegrationFlow)
 // Test: Verify JSON response structure for check_integrity
 TEST_F(SCARecoveryTest, CheckIntegrityResponseStructure)
 {
-    m_sca->setIntegrityInterval(std::chrono::seconds(0));  // Disabled for simple test
+    initSyncProtocolWithInterval(std::chrono::seconds(0));  // Disabled for simple test
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
