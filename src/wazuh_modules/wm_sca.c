@@ -105,7 +105,6 @@ sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_log_function_func sca_set_log_function_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
 sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
-sca_set_integrity_interval_func sca_set_integrity_interval_ptr = NULL;
 
 // Sync protocol function pointers
 sca_sync_module_func sca_sync_module_ptr = NULL;
@@ -185,7 +184,7 @@ static void wm_handle_sca_disable_and_notify_data_clean()
         if (sca_set_sync_parameters_ptr)
         {
             MQ_Functions mq_funcs = {.start = wm_sca_startmq, .send_binary = wm_sca_send_binary_msg};
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps, sca_integrity_interval);
         }
 
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
@@ -257,7 +256,6 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
         sca_set_sync_parameters_ptr = so_get_function_sym(sca_module, "sca_set_sync_parameters");
-        sca_set_integrity_interval_ptr = so_get_function_sym(sca_module, "sca_set_integrity_interval");
 
         // Get sync protocol function pointers
         sca_sync_module_ptr = so_get_function_sym(sca_module, "sca_sync_module");
@@ -300,12 +298,7 @@ void * wm_sca_main(wm_sca_t * data) {
                 .start = wm_sca_startmq,
                 .send_binary = wm_sca_send_binary_msg
             };
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
-        }
-
-        // Set the integrity check interval
-        if (sca_set_integrity_interval_ptr) {
-            sca_set_integrity_interval_ptr(sca_integrity_interval);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps, sca_integrity_interval);
         }
 
         // Set the yaml to cjson function
