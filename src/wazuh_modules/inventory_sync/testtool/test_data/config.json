@@ -1,20 +1,18 @@
 {
     "vulnerability-detection": {
         "enabled": "yes",
-        "index-status": "yes",
         "cti-url": "RemoveMeIfYouWantUpdateOffsetshttps://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_4.8.0"
     },
     "indexer": {
-        "enabled": "yes",
         "hosts": [
             "https://ChangeMe:9200"
         ],
         "ssl": {
             "certificate_authorities": [
-                "wazuh/src/wazuh_modules/inventory_sync/testtool/test_data/root-ca.pem"
+                "/var/ossec/etc/certs/root-ca.pem"
             ],
-            "certificate": "wazuh/src/wazuh_modules/inventory_sync/testtool/test_data/admin.pem",
-            "key": "wazuh/src/wazuh_modules/inventory_sync/testtool/test_data/admin-key.pem"
+            "certificate": "/var/ossec/etc/certs/server.pem",
+            "key": "/var/ossec/etc/certs/server-key.pem"
         }
     },
     "clusterName": "cluster01",
