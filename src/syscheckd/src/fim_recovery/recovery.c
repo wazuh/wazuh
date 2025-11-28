@@ -26,7 +26,7 @@
  * @param document_version Version number of the document
  * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-static cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version) {
+cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version) {
     if (!path || !file_data || !sha1_hash) {
         merror("Invalid parameters to buildFileStatefulEvent");
         return NULL;
@@ -58,7 +58,7 @@ static cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const c
  * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
  * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-static cJSON* buildRegistryKeyStatefulEvent(const char* path, cJSON* key_data, const char* sha1_hash, uint64_t document_version, int arch) {
+cJSON* buildRegistryKeyStatefulEvent(const char* path, cJSON* key_data, const char* sha1_hash, uint64_t document_version, int arch) {
     return build_stateful_event_registry_key(path, sha1_hash, document_version, arch, key_data, NULL);
 }
 
@@ -71,7 +71,7 @@ static cJSON* buildRegistryKeyStatefulEvent(const char* path, cJSON* key_data, c
  * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
  * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-static cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* value_data, const char* sha1_hash, uint64_t document_version, int arch) {
+cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* value_data, const char* sha1_hash, uint64_t document_version, int arch) {
     return build_stateful_event_registry_value(path, value, sha1_hash, document_version, arch, value_data, NULL);
 }
 #endif // WIN32
@@ -171,7 +171,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
 #endif // WIN32
         if (stateful_event) {
             char* stateful_event_str = cJSON_PrintUnformatted(stateful_event);
-            minfo("fullentry %s", stateful_event_str);
+            minfo("fullentry %s", stateful_event_str); // TODO: remove
             if (stateful_event_str) {
                 asp_persist_diff_in_memory(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
                 os_free(stateful_event_str);
