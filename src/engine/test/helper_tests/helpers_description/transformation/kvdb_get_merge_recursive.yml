@@ -3,13 +3,20 @@ name: kvdb_get_merge_recursive
 
 metadata:
   description: |
-    Gets the value of a given key in the DB named db-name and, if successful, merges this value with what the field had before.
-    The merge process is recursive, meaning that for object or array types, the new value is deeply integrated with the existing value in the field.
-    Key value type can be string, number, object, array, or null, and it must match the previous value type held by the field.
+    Gets the value of a given key in the DB named "db_name" and, if successful,
+    recursively merges this value into the current value of the target field.
+    - Both values must share the same top-level JSON type (object or array).
+    - For objects: the merge is deep. Nested objects are merged recursively,
+      and scalar/array leaves from the KVDB value override the existing ones.
+    - For arrays: elements from the KVDB value are appended to the existing array
+      (implementation-defined ordering, but never clears the original array).
+    If the DB or key does not exist, or if the types are incompatible, the helper
+    evaluates to false and the target field is left unchanged.
     This helper function is typically used in the map stage.
 
   keywords:
     - kvdb
+    - merge
     - recursive
 
 helper_type: transformation
@@ -19,18 +26,17 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  db-name:
-    type: string  # Accept only object
+  db_name:
+    type: string              # DB logical name
     generate: string
-    source: value # Includes only values
+    source: value             # DB name is always a literal
   key:
-    type: string  # Accept only string
+    type: string              # Key inside the DB
     generate: string
-    source: both # Includes values or references (their names start with $)
+    source: both              # literal or reference ($ref)
 
-# Database not exists
 skipped:
-  - success_cases # key indicate by target_field not found
+  - success_cases
 
 target_field:
   type:
@@ -38,10 +44,126 @@ target_field:
     - array
 
 test:
+  # Database does not exist -> no-op (helper returns false)
   - arguments:
-      db-name: testing
-      key: key
-    target_field: Type mismatch between target field and value when merging
+      db_name: non-existing-db
+      key: "0x0"
+    target_field:
+      kerberos:
+        status: "INITIAL"
     should_pass: false
-    expected: false
-    description: Failure kvdb get merge
+    expected:
+      kerberos:
+        status: "INITIAL"
+    description: No-op when the KVDB does not exist
+
+  # Database exists but key does not exist -> no-op (helper returns false)
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      key: "0x99"
+    target_field:
+      kerberos:
+        status: "INITIAL"
+    should_pass: false
+    expected:
+      kerberos:
+        status: "INITIAL"
+    description: No-op when the key does not exist in the KVDB
+
+  # Type mismatch: target object vs KVDB string -> no-op
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      key: "0x0"
+    target_field:
+      kerberos:
+        status: "INITIAL"
+    should_pass: false
+    expected:
+      kerberos:
+        status: "INITIAL"
+    description: No-op when KVDB value is a string and target field is an object
+
+  # Type mismatch: target array vs KVDB string -> no-op
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      key: "0x1"
+    target_field:
+      - "KDC_ERR_OLD"
+    should_pass: false
+    expected:
+      - "KDC_ERR_OLD"
+    description: No-op when KVDB value is a string and target field is an array
+
+  # Same type-mismatch scenario but resolving the key via reference
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      key:
+        source: reference
+        value: "kerberos_code"
+    target_field:
+      kerberos:
+        status: "INITIAL"
+    should_pass: false
+    expected:
+      kerberos:
+        status: "INITIAL"
+    description: No-op when KVDB value is a string and target field is an object, using a referenced key
+
+  # Recursive merge of objects: KVDB "access_mask" overrides and extends the target object
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      key: "access_mask"
+    target_field:
+      "0": "LOCAL_OVERRIDE"
+      "99": "LOCAL_CUSTOM"
+    should_pass: true
+    expected:
+      "0": "Create Child"                         # overridden by KVDB
+      "1": "Delete Child"
+      "2": "List Contents"
+      "3": "SELF"
+      "4": "Read Property"
+      "5": "Write Property"
+      "6": "Delete Tree"
+      "7": "List Object"
+      "8": "Control Access"
+      "16": "DELETE"
+      "17": "READ_CONTROL"
+      "18": "WRITE_DAC"
+      "19": "WRITE_OWNER"
+      "20": "SYNCHRONIZE"
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY"
+      "31": "ADS_RIGHT_GENERIC_READ"
+      "30": "ADS_RIGHT_GENERIC_WRITE"
+      "29": "ADS_RIGHT_GENERIC_EXECUTE"
+      "28": "ADS_RIGHT_GENERIC_ALL"
+      "99": "LOCAL_CUSTOM"                        # preserved from target
+    description: Recursively merges object from KVDB into target object, overriding shared keys and preserving local-only keys
+
+  # Recursive merge of arrays: append KVDB array to existing array
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      key: "bitmask_test_values"
+    target_field:
+      - -1
+    should_pass: true
+    expected:
+      - -1
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 16
+      - 17
+      - 18
+      - 19
+      - 20
+      - 24
+      - 28
+      - 29
+      - 30
+      - 31
+    description: Recursively merges array from KVDB into target array, appending elements without clearing existing ones

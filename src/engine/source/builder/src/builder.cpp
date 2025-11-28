@@ -191,6 +191,8 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
         buildCtx->setRegistry(m_registry);
         buildCtx->setValidator(m_schema);
         buildCtx->setAllowedFields(m_allowedFields);
+        buildCtx->setStoreNSReader(nsReader);
+
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
         auto asset = (*assetBuilder)(assetJson);
 
