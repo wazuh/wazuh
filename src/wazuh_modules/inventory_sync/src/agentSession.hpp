@@ -111,6 +111,7 @@ public:
         auto globalVersion = data->global_version();
 
         auto agentIdString = std::string(agentId.data(), agentId.size());
+
         if (agentIdString.length() < 3)
         {
             agentIdString.insert(0, 3 - agentIdString.length(), '0');
@@ -118,6 +119,7 @@ public:
 
         // Extract groups
         std::vector<std::string> groups;
+
         if (data->groups())
         {
             for (const auto* group : *data->groups())
@@ -131,6 +133,7 @@ public:
 
         // Extract indices
         std::vector<std::string> indices;
+
         if (data->index())
         {
             for (const auto* index : *data->index())
@@ -180,8 +183,26 @@ public:
                   m_context->agentId.c_str(),
                   m_context->sessionId);
 
+        // TODO: Remove this log once stable
+        logInfo(LOGGER_DEFAULT_TAG,
+                "[SYNC_FLOW] Manager->Agent: Sending StartAck with Status_Ok | AgentID: %s | Session: %llu | Module: "
+                "%s | Mode: %s | Option: %s",
+                m_context->agentId.c_str(),
+                m_context->sessionId,
+                m_context->moduleName.c_str(),
+                m_context->mode == Wazuh::SyncSchema::Mode_ModuleFull ? "FULL" : "DELTA",
+                m_context->option == Wazuh::SyncSchema::Option_VDFirst   ? "VDFIRST"
+                : m_context->option == Wazuh::SyncSchema::Option_VDSync  ? "VDSYNC"
+                : m_context->option == Wazuh::SyncSchema::Option_VDClean ? "VDCLEAN"
+                                                                         : "SYNC");
+
         responseDispatcher.sendStartAck(
             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
+
+        // TODO: Remove this log once stable
+        logInfo(LOGGER_DEFAULT_TAG,
+                "[SYNC_FLOW] Manager->Agent: StartAck sent successfully for session %llu",
+                m_context->sessionId);
     }
 
     /// Deleted copy constructor and assignment operator (C.12 compliant).
@@ -393,41 +414,10 @@ public:
             return;
         }
 
-        // Check if this is a VD sync (VDFIRST, VDSYNC, or VDCLEAN)
-        const bool isVDSync = (m_context->option == Wazuh::SyncSchema::Option_VDFirst ||
-                               m_context->option == Wazuh::SyncSchema::Option_VDSync ||
-                               m_context->option == Wazuh::SyncSchema::Option_VDClean);
-
         if (m_gapSet->empty())
         {
             logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %llu", m_context->sessionId);
-
-            if (isVDSync)
-            {
-                // For VD sync, skip indexer processing and send immediate EndAck
-                logInfo(
-                    LOGGER_DEFAULT_TAG,
-                    "Manager->Agent: Skipping indexer processing for VD sync | AgentID: %s | Module: %s | Option: %d",
-                    m_context->agentId.c_str(),
-                    m_context->moduleName.c_str(),
-                    static_cast<int>(m_context->option));
-
-                responseDispatcher.sendEndAck(
-                    Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
-
-                logInfo(LOGGER_DEFAULT_TAG,
-                        "Manager->Agent: Sending immediate EndAck for VD sync | AgentID: %s | Module: %s | Option: %d "
-                        "| SessionID: %llu",
-                        m_context->agentId.c_str(),
-                        m_context->moduleName.c_str(),
-                        static_cast<int>(m_context->option),
-                        m_context->sessionId);
-            }
-            else
-            {
-                // For non-VD sync, use normal indexer queue processing
-                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
-            }
+            m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             m_endEnqueued = true;
         }
         else
