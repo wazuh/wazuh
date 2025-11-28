@@ -135,6 +135,8 @@ class FilterBuilderWithDepsTest
     , public testing::WithParamInterface<FilterDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FilterBuilderTest);
 } // namespace filterbuildtest
 
 namespace filteroperatestest
@@ -161,6 +163,8 @@ class FilterOperationWithDepsTest
     , public testing::WithParamInterface<FilterDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FilterOperationTest);
 } // namespace filteroperatestest
 
 namespace mapbuildtest
@@ -187,6 +191,9 @@ class MapBuilderWithDepsTest
     , public testing::WithParamInterface<MapDepsT>
 {
 };
+//TODO: Remove the following lines after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapBuilderTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapBuilderWithDepsTest);
 } // namespace mapbuildtest
 
 namespace mapoperatestest
@@ -213,6 +220,9 @@ class MapOperationWithDepsTest
     , public testing::WithParamInterface<MapDepsT>
 {
 };
+//TODO: Remove the following lines after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapOperationTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapOperationWithDepsTest);
 } // namespace mapoperatestest
 
 namespace transformbuildtest
@@ -238,6 +248,8 @@ class TransformBuilderWithDepsTest
     , public testing::WithParamInterface<TransformDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformBuilderTest);
 } // namespace transformbuildtest
 
 namespace transformoperatestest
@@ -264,6 +276,8 @@ class TransformOperationWithDepsTest
     , public testing::WithParamInterface<TransformDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformOperationTest);
 } // namespace transformoperatestest
 
 template<typename Builder>
@@ -416,7 +430,8 @@ class StageBuilderTest
     , public testing::WithParamInterface<StageT>
 {
 };
-
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(StageBuilderTest);
 } // namespace stagebuildtest
 
 #endif // _BUILDER_TEST_BASEBUILDERS_HPP

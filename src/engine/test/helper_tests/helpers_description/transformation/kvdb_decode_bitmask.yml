@@ -3,29 +3,38 @@ name: kvdb_decode_bitmask
 
 metadata:
   description: |
-    Decodes values based on a bitmask using a reference table constructed at compile time.
-    This table is generated from a object json stored in KVDB
-    - Compile Time:
-        The function searches the db_name database for the value corresponding to table_name.
-        table_name should contain a JSON object with up to 32 keys ranging from "0" to "31".
-        These keys represent positions in a 32-bit binary number, with the least significant bit (LSB) positioned on the right.
-        The values associated with these keys provide descriptions for each bit position or flag and must all be of the same JSON type.
-        Using this information, a reference table is constructed.
+    Decodes a hexadecimal bitmask into an array of values using a reference
+    table stored in a KVDB.
 
-    - Execution Time:
-        The function retrieves the value of $maskRef, which is a string containing a hexadecimal value.
-        This hexadecimal value is decomposed and acts as a mask.
-        For each bit set to 1 in this mask, the function looks up the reference table to fetch the corresponding value or description.
-        If a value doesn't exist in the table for a particular bit, that bit is skipped.
-        An array containing all the values corresponding to the activated bits in the mask is returned.
+    Compile time:
+      - The function looks up "table_name" in the KVDB "db_name".
+      - The value associated with "table_name" must be a JSON object whose
+        keys are strings "0".."31", each representing a bit position in a
+        32-bit mask (0 is the least significant bit).
+      - All values in this object must share the same JSON type. This object
+        is used to build an internal lookup table.
 
+    Execution time:
+      - The function reads the "mask" argument (either a literal string or a
+        reference to a field) that must contain a hexadecimal value
+        (for example: "21", "0A").
+      - For each bit set to 1 in the mask, the helper looks up that bit
+        position in the reference table:
+          * If a value exists for that bit, it is appended to the result array.
+          * If no value exists for that bit, it is skipped.
+      - The final result is an array containing all values corresponding to
+        the active bits.
 
-    - Special Notes:
-        It's not mandatory for the table to have all bit values. If a bit's value is missing, it is simply skipped.
-        If the resulting array is empty, the function fails, and it neither creates nor overwrites the value of field.
+    Special notes:
+      - The reference table does not need to define all bit positions.
+      - If the resulting array is empty (no matching bits or mask = 0), the
+        operation fails and the target field is left unchanged.
+      - If the DB or the table entry does not exist, the operation fails and
+        the target field is left unchanged.
 
   keywords:
     - kvdb
+    - bitmask
 
 helper_type: transformation
 
@@ -35,41 +44,148 @@ is_variadic: false
 # Arguments expected by the helper function
 arguments:
   db_name:
-    type: string  # Accept only object
+    type: string
     generate: string
-    source: value # Includes only values
+    source: value
   table_name:
-    type: string  # Accept only object
+    type: string
     generate: string
-    source: value # Includes only values
+    source: value
   mask:
-    type: string  # Accept only string
+    type: string
     generate: hexadecimal
-    source: reference # Includes only references (their names start with $)
+    source: reference
 
-# Database not exists
+# Database or table not existing
 skipped:
   - success_cases
   - different_target_field_type
 
 target_field:
-  type: string
-  generate: string
+  type: array
+  generate: all
 
 test:
+  # DB does not exist -> operation fails, target remains unchanged
   - arguments:
-      db_name: testing
-      table_name: test_bitmask
-      mask: "33"
-    target_field: "any_value"
-    should_pass: true
-    expected: ["some_data"]
-    description: Success decode bitmask
-  - arguments:
-      db_name: testing
-      table_name: test_bitmask
-      mask: "99"
-    target_field: any_value
+      db_name:
+        source: value
+        value: "non-existing-db"
+      table_name:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "1"
+    target_field: []
     should_pass: false
-    expected: any_value
-    description: Failure decode bitmask. Values is out of range 0-0xFFFFFFFFFFFFFFFF
+    expected: []
+    description: Fails when the KVDB does not exist, leaving the target array unchanged
+
+  # Table does not exist in existing DB -> operation fails, target remains unchanged
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table_name:
+        source: value
+        value: "non_existing_table"
+      mask:
+        source: reference
+        value: "1"
+    target_field: []
+    should_pass: false
+    expected: []
+    description: Fails when the table entry does not exist in the KVDB
+
+  # Single bit 0 set -> "Create Child"
+  # mask = 0x1 -> bit position 0
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table_name:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "1"
+    target_field: []
+    should_pass: true
+    expected: [Create Child]
+    description: Decodes a mask with bit 0 set into the corresponding access_mask value
+
+  # Bits 0 and 4 set -> ["Create Child", "Read Property"]
+  # mask = 0x11 -> bits 0 and 4
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table_name:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "11"
+    target_field: []
+    should_pass: true
+    expected:
+      - Create Child
+      - Read Property
+    description: Decodes a mask with multiple active bits, preserving bit order
+
+  # Bits 8 and 12 set -> only bit 8 is present in the table
+  # mask = 0x1100 -> bits 8 and 12; only "8" exists in access_mask
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table_name:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "1100"
+    target_field: []
+    should_pass: true
+    expected: [Control Access]
+    description: Skips bit positions that are not present in the access_mask table
+
+  # Append behavior: existing array + decoded value for bit 16
+  # mask = 0x10000 -> bit 16 -> "DELETE"
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table_name:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "10000"
+    target_field:
+      - Base
+    should_pass: true
+    expected:
+      - Base
+      - DELETE
+    description: Appends decoded access_mask values to an existing array
+
+  # Mask with no mapped bits at all -> failure, target remains unchanged
+  # mask = 0x8000 -> bit 15, which is not present in access_mask
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table_name:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "8000"
+    target_field:
+      - Base
+    should_pass: false
+    expected:
+      - Base
+    description: Fails when no bits in the mask have entries in the access_mask table, leaving target unchanged
