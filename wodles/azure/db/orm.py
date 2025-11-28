@@ -366,4 +366,4 @@ def create_pk(**kwargs: Any) -> str:
     concatenated = "|".join(f"{k}={v}" for k, v in sorted_items)
 
     # Compute the MD5 hash
-    return md5(concatenated.encode("utf-8")).hexdigest()
+    return md5(concatenated.encode("utf-8")).hexdigest()  # nosec B303: MD5 used only for deterministic PK, not for security
