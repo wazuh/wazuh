@@ -683,6 +683,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
+%attr(644, root, root) %{_localstatedir}/etc/categories.json
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh, wazuh) %{_localstatedir}/etc/shared/agent-template.conf

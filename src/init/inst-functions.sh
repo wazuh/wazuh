@@ -1010,6 +1010,23 @@ InstallCommon()
 
 }
 
+reformatCategoriesFile()
+{
+    local output_dir="$1"
+    local input_file="external/categories/logtypes.json"
+    local output_file="${output_dir}/categories.json"
+
+    categories=$(grep -o '"category": *"[^"]*"' "$input_file" | sed 's/.*: *"\([^"]*\)".*/\1/' | sort -u)
+    printf "[\n" > "$output_file"
+    echo "$categories" | while IFS= read -r category; do
+        printf "  \"%s\"%s\n" "$category" "," >> "$output_file"
+    done
+    sed -i '$ s/,$//' "$output_file"
+    printf "]\n" >> "$output_file"
+
+    # TODO: If ok delete later?
+    echo "Categories JSON generated at: $output_file"
+}
 
 generateSchemaFiles()
 {
@@ -1093,6 +1110,9 @@ InstallLocal()
     ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
 
     ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR}
+
+    # TODO: what could be the better directory for this file?
+    reformatCategoriesFile ${INSTALLDIR}/etc/
 
     generateSchemaFiles
 

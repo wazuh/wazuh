@@ -49,6 +49,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/etc/shared/default/agent.conf,wazuh,wazuh,660,file,-rw-rw----,,
 /var/ossec/etc/sslmanager.cert,root,root,640,file,-rw-r-----,,
 /var/ossec/etc/sslmanager.key,root,root,640,file,-rw-r-----,,
+/var/ossec/etc/categories.json,root,root,644,file,-rw-r--r--,,
 /var/ossec/framework/scripts/__init__.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/scripts/agent_groups.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/scripts/agent_upgrade.py,root,wazuh,640,file,-rw-r-----,,
