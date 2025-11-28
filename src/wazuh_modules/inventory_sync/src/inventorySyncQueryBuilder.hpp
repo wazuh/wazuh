@@ -232,6 +232,61 @@ namespace InventorySyncQueryBuilder
 
         return updateQuery;
     }
+
+    /// @brief Build GET query for CVE/vulnerability data by package
+    /// @param agentId Agent ID to match
+    /// @param packageName Package name to match
+    /// @param packageVersion Package version to match
+    /// @param size Maximum number of results to return
+    /// @param searchAfter Optional search_after value for pagination [_id]
+    /// @return JSON search query body with bool query and sort
+    inline nlohmann::json buildCveGetQuery(const std::string& agentId,
+                                           const std::string& packageName,
+                                           const std::string& packageVersion,
+                                           int size,
+                                           const std::string& searchAfter = "")
+    {
+        nlohmann::json query;
+
+        query["size"] = size;
+        query["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        query["query"]["bool"]["must"][1]["term"]["package.name"] = packageName;
+        query["query"]["bool"]["must"][2]["term"]["package.version"] = packageVersion;
+        query["sort"][0]["_id"]["order"] = "asc";
+
+        // Add search_after for pagination if provided
+        if (!searchAfter.empty())
+        {
+            query["search_after"] = nlohmann::json::array({searchAfter});
+        }
+
+        return query;
+    }
+
+    /// @brief Build GET query for system inventory context data
+    /// @param agentId Agent ID to match
+    /// @param size Maximum number of results to return
+    /// @param searchAfter Optional search_after value for pagination [_id]
+    /// @return JSON search query body with term query and source filtering
+    inline nlohmann::json
+    buildContextGetQuery(const std::string& agentId, int size, const std::string& searchAfter = "")
+    {
+        nlohmann::json query;
+
+        query["_source"]["excludes"] = nlohmann::json::array({"wazuh*"});
+        query["query"]["term"]["agent.id"] = agentId;
+        query["size"] = size;
+        query["sort"][0]["_id"]["order"] = "asc";
+
+        // Add search_after for pagination if provided
+        if (!searchAfter.empty())
+        {
+            query["search_after"] = nlohmann::json::array({searchAfter});
+        }
+
+        return query;
+    }
+
 } // namespace InventorySyncQueryBuilder
 
 #endif // _INVENTORY_SYNC_QUERY_BUILDER_HPP

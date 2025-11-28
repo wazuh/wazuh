@@ -446,7 +446,6 @@ public:
         m_clusterName = Utils::toLowerCase(configuration.at("clusterName").get_ref<const std::string&>());
 
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
-
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
             {
@@ -963,8 +962,8 @@ public:
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
                             logDebug2(LOGGER_DEFAULT_TAG,
-                                    "InventorySyncFacade: Running vulnerability scanner for agent %s...",
-                                    res.context->agentId.c_str());
+                                      "InventorySyncFacade: Running vulnerability scanner for agent %s...",
+                                      res.context->agentId.c_str());
 
                             // Run vulnerability scanner
                             try
@@ -974,9 +973,9 @@ public:
                             catch (const std::exception& e)
                             {
                                 logError(LOGGER_DEFAULT_TAG,
-                                        "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
-                                        res.context->agentId.c_str(),
-                                        e.what());
+                                         "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
+                                         res.context->agentId.c_str(),
+                                         e.what());
                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                  res.context->agentId,
                                                                  res.context->sessionId,

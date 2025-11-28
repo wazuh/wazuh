@@ -664,6 +664,52 @@ public:
         return resultJson;
     }
 
+    void executeSearchQueryWithPagination(const std::string& index,
+                                         const nlohmann::json& query,
+                                         std::function<void(const nlohmann::json&)> onResponse = nullptr)
+    {
+        nlohmann::json currentQuery = query;
+        std::string searchAfter;
+        while (true)
+        {
+            nlohmann::json searchResult = executeSearchQuery(index, currentQuery);
+
+            // Always call the callback, even for empty pages, to notify the caller of each page's result (including empty pages).
+            if (onResponse)
+            {
+                onResponse(searchResult);
+            }
+
+            // If first page and empty, still break after callback
+            if (!searchResult.contains("hits") || !searchResult["hits"].contains("hits") ||
+                searchResult["hits"]["hits"].empty())
+            {
+                logDebug2(IC_NAME, "No more results, breaking pagination loop");
+                break;
+            }
+
+            const auto& hits = searchResult["hits"]["hits"];
+            const auto& lastHit = hits[hits.size() - 1];
+            if (lastHit.contains("sort") && !lastHit["sort"].empty())
+            {
+                searchAfter = lastHit["sort"][0].template get<std::string>();
+            }
+            else
+            {
+                break;
+            }
+
+            // If we got less results than requested, this is the last page
+            if (currentQuery.contains("size") && hits.size() < currentQuery["size"].template get<size_t>())
+            {
+                break;
+            }
+
+            // Update query for next page
+            currentQuery["search_after"] = nlohmann::json::array({searchAfter});
+        }
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
