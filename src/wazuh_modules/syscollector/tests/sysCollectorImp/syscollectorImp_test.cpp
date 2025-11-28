@@ -142,6 +142,57 @@ void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }
 
+// Log capturing structure for testing
+struct LogEntry
+{
+    modules_log_level_t level;
+    std::string message;
+};
+
+class LogCapture
+{
+    public:
+        std::vector<LogEntry> logs;
+
+        void clear()
+        {
+            logs.clear();
+        }
+
+        void capture(modules_log_level_t level, const std::string& message)
+        {
+            logs.push_back({level, message});
+        }
+
+        bool contains(modules_log_level_t level, const std::string& substring) const
+        {
+            for (const auto& entry : logs)
+            {
+                if (entry.level == level && entry.message.find(substring) != std::string::npos)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        size_t count(modules_log_level_t level) const
+        {
+            size_t cnt = 0;
+
+            for (const auto& entry : logs)
+            {
+                if (entry.level == level)
+                {
+                    cnt++;
+                }
+            }
+
+            return cnt;
+        }
+};
+
 // Expected results for persist callback - shared across all tests
 static const auto expectedPersistHW
 {
@@ -2890,6 +2941,535 @@ TEST_F(SyscollectorImpTest, querySetVersionInvalidParameterType)
 
     // Verify error
     EXPECT_EQ(responseJson["error"], MQ_ERR_INVALID_PARAMS);
+
+    Syscollector::instance().destroy();
+}
+
+// ========================================
+// Tests for DataClean on collector disable functionality
+// ========================================
+
+TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanNoDisabledCollectors)
+{
+    // Test case: All collectors enabled, no data to clean
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Setup log capturing
+    LogCapture logCapture;
+    auto captureLogFunction = [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    };
+
+    // Initialize with all collectors enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  captureLogFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  true,   // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  true,   // packages
+                                  true,   // ports
+                                  true,   // portsAll
+                                  true,   // processes
+                                  true,   // hotfixes
+                                  true,   // groups
+                                  true,   // users
+                                  true,   // services
+                                  true,   // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Verify no "Disabled collectors with data detected" log (all collectors enabled)
+    EXPECT_FALSE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+
+    // Call notifyDisableCollectorsDataClean - should return true (no data to clean)
+    EXPECT_TRUE(Syscollector::instance().notifyDisableCollectorsDataClean());
+
+    // Verify log message for no disabled collectors
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors with data to notify for cleanup"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollectorsNoData)
+{
+    // Test case: Some collectors disabled but no data in database
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Setup log capturing
+    LogCapture logCapture;
+    auto captureLogFunction = [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    };
+
+    // Initialize with packages and processes collectors disabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  captureLogFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  true,   // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  false,  // packages - DISABLED
+                                  true,   // ports
+                                  true,   // portsAll
+                                  false,  // processes - DISABLED
+                                  true,   // hotfixes
+                                  true,   // groups
+                                  true,   // users
+                                  true,   // services
+                                  true,   // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Verify no "Disabled collectors with data detected" log (no data in tables)
+    EXPECT_FALSE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+
+    // Call notifyDisableCollectorsDataClean - should return true (no data in tables)
+    EXPECT_TRUE(Syscollector::instance().notifyDisableCollectorsDataClean());
+
+    // Verify log message for no disabled collectors with data
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors with data to notify for cleanup"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollectorsAndData)
+{
+    // Test case: Disabled collectors with data in database
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // First, initialize with all collectors enabled and populate data
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HOTFIXES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  true,   // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  true,   // packages
+                                  true,   // ports
+                                  true,   // portsAll
+                                  true,   // processes
+                                  true,   // hotfixes
+                                  true,   // groups
+                                  true,   // users
+                                  true,   // services
+                                  true,   // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Trigger a scan to populate database
+    Syscollector::instance().start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Syscollector::instance().destroy();
+
+    // Setup log capturing for second initialization
+    LogCapture logCapture;
+    auto captureLogFunction = [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    };
+
+    // Re-initialize with packages and processes disabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  captureLogFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,  // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  false,  // packages - DISABLED
+                                  true,   // ports
+                                  true,   // portsAll
+                                  false,  // processes - DISABLED
+                                  true,   // hotfixes
+                                  true,   // groups
+                                  true,   // users
+                                  true,   // services
+                                  true,   // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Verify "Disabled collectors with data detected" log (packages and processes have data)
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "packages"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "processes"));
+
+    // Note: notifyDisableCollectorsDataClean requires sync protocol to be initialized
+    // Without sync protocol, it should return false
+    // This tests the error handling path
+    EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
+
+    // Verify error log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataNoDisabledCollectors)
+{
+    // Test case: No disabled collectors, nothing to delete
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Setup log capturing
+    LogCapture logCapture;
+    auto captureLogFunction = [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    };
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  captureLogFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  true,   // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  true,   // packages
+                                  true,   // ports
+                                  true,   // portsAll
+                                  true,   // processes
+                                  true,   // hotfixes
+                                  true,   // groups
+                                  true,   // users
+                                  true,   // services
+                                  true,   // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Call deleteDisableCollectorsData - should not throw and handle empty case gracefully
+    EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
+
+    // Verify log message for no disabled collectors
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors data to delete"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataWithDisabledCollectorsAndData)
+{
+    // Test case: Delete data for disabled collectors
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // First, populate database with all collectors enabled
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HOTFIXES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+    });
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  true,   // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  true,   // packages
+                                  true,   // ports
+                                  true,   // portsAll
+                                  true,   // processes
+                                  true,   // hotfixes
+                                  false,  // groups
+                                  false,  // users
+                                  false,  // services
+                                  false,  // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Trigger scan to populate
+    Syscollector::instance().start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Syscollector::instance().destroy();
+
+    // Setup log capturing for second initialization
+    LogCapture logCapture;
+    auto captureLogFunction = [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    };
+
+    // Re-initialize with packages disabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  captureLogFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,  // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  false,  // packages - DISABLED
+                                  true,   // ports
+                                  true,   // portsAll
+                                  true,   // processes
+                                  true,   // hotfixes
+                                  false,  // groups
+                                  false,  // users
+                                  false,  // services
+                                  false,  // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Verify "Disabled collectors with data detected" log (packages has data)
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "packages"));
+
+    // Call deleteDisableCollectorsData - should clear tables for disabled collectors
+    EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
+
+    // Verify log messages for deletion
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Deleting data for disabled collectors"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table sys_programs"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, allCollectorsDisabled)
+{
+    // Test case: All collectors disabled - should detect it during initialization
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // First populate with data
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  true,   // scanOnStart
+                                  true,   // hardware
+                                  true,   // os
+                                  true,   // network
+                                  true,   // packages
+                                  true,   // ports
+                                  true,   // portsAll
+                                  false,  // processes
+                                  false,  // hotfixes
+                                  false,  // groups
+                                  false,  // users
+                                  false,  // services
+                                  false,  // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    Syscollector::instance().start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Syscollector::instance().destroy();
+
+    // Setup log capturing for second initialization
+    LogCapture logCapture;
+    auto captureLogFunction = [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    };
+
+    // Re-initialize with ALL collectors disabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  captureLogFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,  // scanOnStart
+                                  false,  // hardware - DISABLED
+                                  false,  // os - DISABLED
+                                  false,  // network - DISABLED
+                                  false,  // packages - DISABLED
+                                  false,  // ports - DISABLED
+                                  false,  // portsAll - DISABLED
+                                  false,  // processes - DISABLED
+                                  false,  // hotfixes - DISABLED
+                                  false,  // groups - DISABLED
+                                  false,  // users - DISABLED
+                                  false,  // services - DISABLED
+                                  false,  // browser_extensions - DISABLED
+                                  false); // notifyOnFirstScan
+
+    // Verify "Disabled collectors with data detected" log mentions all collectors with data
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    // Should contain hardware, os, network (3 indices), packages, ports
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "hardware"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "os"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "packages"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "ports"));
+
+    // The populateDisabledCollectorsIndexes() should have detected all disabled collectors with data
+    // We can verify this by calling notifyDisableCollectorsDataClean (will fail without sync protocol)
+    EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
+
+    // Verify error log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
+{
+    // Test case: Network collector disabled - should detect 3 indices (interfaces, protocols, networks)
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Populate with network data
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  true,   // scanOnStart
+                                  false,  // hardware
+                                  false,  // os
+                                  true,   // network - ENABLED
+                                  false,  // packages
+                                  false,  // ports
+                                  false,  // portsAll
+                                  false,  // processes
+                                  false,  // hotfixes
+                                  false,  // groups
+                                  false,  // users
+                                  false,  // services
+                                  false,  // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    Syscollector::instance().start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Syscollector::instance().destroy();
+
+    // Setup log capturing for second initialization
+    LogCapture logCapture;
+    auto captureLogFunction = [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    };
+
+    // Re-initialize with network disabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  captureLogFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,  // scanOnStart
+                                  false,  // hardware
+                                  false,  // os
+                                  false,  // network - DISABLED (should trigger 3 indices cleanup)
+                                  false,  // packages
+                                  false,  // ports
+                                  false,  // portsAll
+                                  false,  // processes
+                                  false,  // hotfixes
+                                  false,  // groups
+                                  false,  // users
+                                  false,  // services
+                                  false,  // browser_extensions
+                                  false); // notifyOnFirstScan
+
+    // Verify "Disabled collectors with data detected" log contains network-related indices
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    // Network collector produces 3 indices
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "network_iface") ||
+                logCapture.contains(LOG_INFO, "network_protocol") ||
+                logCapture.contains(LOG_INFO, "network_address"));
+
+    // Should have detected network collector disabled with 3 indices
+    // Verify by attempting notification (will fail without sync protocol but tests the detection)
+    EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
+
+    // Verify error log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+
+    // Cleanup should work even without sync protocol
+    EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
+
+    // Verify log messages for deletion of 3 network tables
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Deleting data for disabled collectors"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table sys_netiface"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table sys_netproto"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table sys_netaddr"));
 
     Syscollector::instance().destroy();
 }
