@@ -4356,3 +4356,74 @@ TEST(InterfaceDestructorTest, IAgentSyncProtocolDeletingDestructor)
     // Delete through base pointer - this calls D0 destructor
     delete protocol;
 }
+
+TEST_F(AgentSyncProtocolTest, SendDataContextMessagesEmptyData)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0; // Success
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    std::vector<PersistedData> emptyData;
+    bool result = protocol->sendDataContextMessages(12345, emptyData);
+    EXPECT_TRUE(result);
+}
+
+TEST_F(AgentSyncProtocolTest, SendDataContextMessagesSingleItem)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0; // Success
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    std::vector<PersistedData> data;
+    PersistedData item;
+    item.seq = 1;
+    item.id = "test-id";
+    item.index = "test-index";
+    item.data = "{\"test\": \"data\"}";
+    data.push_back(item);
+    
+    bool result = protocol->sendDataContextMessages(12345, data);
+    EXPECT_TRUE(result);
+}
+
+TEST_F(AgentSyncProtocolTest, SendDataContextMessagesFailure)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return -1; // Failure
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    std::vector<PersistedData> data;
+    PersistedData item;
+    item.seq = 1;
+    item.id = "test-id";
+    item.index = "test-index";  
+    item.data = "{\"test\": \"data\"}";
+    data.push_back(item);
+    
+    bool result = protocol->sendDataContextMessages(12345, data);
+    EXPECT_FALSE(result);
+}
