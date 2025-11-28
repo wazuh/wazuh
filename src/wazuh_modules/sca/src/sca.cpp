@@ -58,7 +58,8 @@ void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_fu
 /// @param retries Default number of retries for synchronization operations
 /// @param maxEps Default maximum events per second for synchronization operations
 /// @param integrity_interval Interval in seconds between integrity checks (0 = disabled)
-void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t maxEps, unsigned int integrity_interval)
+void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t maxEps,
+                             unsigned int integrity_interval)
 {
     g_module_name = module_name;
     g_sync_db_path = sync_db_path;
@@ -232,7 +233,8 @@ void SCA::init()
         {
             m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
 
-            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions, std::chrono::seconds(g_sync_end_delay), std::chrono::seconds(g_sync_timeout), g_sync_retries, g_sync_max_eps, std::chrono::seconds(g_integrity_interval));
+            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions, std::chrono::seconds(g_sync_end_delay), std::chrono::seconds(g_sync_timeout), g_sync_retries, g_sync_max_eps,
+                                    std::chrono::seconds(g_integrity_interval));
 
             auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
             {
