@@ -54,7 +54,7 @@ base::Name assetNameFromJson(const json::Json& jsonDoc)
 namespace cm::crud
 {
 
-CrudService::CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<IContentValidator> validator)
+CrudService::CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator)
     : m_store(std::move(store))
     , m_validator(std::move(validator))
 {
@@ -111,7 +111,7 @@ void CrudService::upsertPolicy(std::string_view nsName, std::string_view policyD
         auto policy = policyFromDocument(policyDocument);
 
         std::shared_ptr<cm::store::ICMStoreNSReader> nsReader = ns;
-        m_validator->validatePolicy(nsReader, policy);
+        validatePolicy(nsReader, policy);
 
         ns->upsertPolicy(policy);
     }
@@ -225,7 +225,7 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
             case cm::store::ResourceType::INTEGRATION:
             {
                 auto integ = integrationFromDocument(document);
-                m_validator->validateIntegration(nsReader, integ);
+                validateIntegration(nsReader, integ);
 
                 const std::string& uuid = integ.getUUID();
                 const std::string& name = integ.getName();
@@ -244,8 +244,7 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
             case cm::store::ResourceType::KVDB:
             {
                 auto kvdb = kvdbFromDocument(document);
-                m_validator->validateKVDB(nsReader, kvdb);
-
+                // No validation for KVDBs currently
                 const std::string& uuid = kvdb.getUUID();
                 const std::string& name = kvdb.getName();
 
@@ -267,7 +266,7 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
             {
                 json::Json assetJson = yamlToJson(document);
                 auto name = assetNameFromJson(assetJson);
-                m_validator->validateAsset(nsReader, assetJson);
+                validateAsset(nsReader, assetJson);
 
                 const std::string nameStr = name.toStr();
 
@@ -329,6 +328,44 @@ std::shared_ptr<cm::store::ICMstoreNS> CrudService::getNamespaceStore(const cm::
         throw std::runtime_error(fmt::format("Namespace '{}' does not exist", nsId.toStr()));
     }
     return ns;
+}
+
+void CrudService::validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                 const cm::store::dataType::Policy& policy) const
+{
+    base::OptError err = m_validator->softPolicyValidate(nsReader, policy);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format(
+            "Policy validation failed in namespace '{}': {}", nsReader->getNamespaceId().toStr(), e.message));
+    }
+}
+
+void CrudService::validateIntegration(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                      const cm::store::dataType::Integration& integration) const
+{
+    base::OptError err = m_validator->softIntegrationValidate(nsReader, integration);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format("Integration validation failed for '{}' in namespace '{}': {}",
+                                             integration.getName(),
+                                             nsReader->getNamespaceId().toStr(),
+                                             e.message));
+    }
+}
+
+void CrudService::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                const json::Json& asset) const
+{
+    base::OptError err = m_validator->validateAsset(nsReader, asset);
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format(
+            "Asset validation failed in namespace '{}': {}", nsReader->getNamespaceId().toStr(), e.message));
+    }
 }
 
 } // namespace cm::crud

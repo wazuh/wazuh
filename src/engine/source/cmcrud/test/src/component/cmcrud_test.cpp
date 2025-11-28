@@ -6,7 +6,6 @@
 #include <builder/mockValidator.hpp>
 #include <cmstore/mockcmstore.hpp>
 
-#include <cmcrud/cmcontentvalidator.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 
 using ::testing::_;
@@ -21,7 +20,6 @@ namespace cm::crud::test
 {
 
 using builder::mocks::MockValidator;
-using cm::crud::ContentValidator;
 using cm::crud::CrudService;
 using cm::store::MockICMstore;
 using cm::store::MockICMstoreNS;
@@ -90,21 +88,19 @@ normalize:
 )";
 
 // ---------------------------------------------------------------------
-// Helper: build a CrudService + ContentValidator + MockValidator stack
+// Helper: build a CrudService + MockValidator stack
 // ---------------------------------------------------------------------
 
 struct CmCrudStack
 {
     std::shared_ptr<NiceMock<MockValidator>> builderValidator;
     std::shared_ptr<NiceMock<MockICMstore>> store;
-    std::shared_ptr<ContentValidator> contentValidator;
     CrudService service;
 
     CmCrudStack()
         : builderValidator(std::make_shared<NiceMock<MockValidator>>())
         , store(std::make_shared<NiceMock<MockICMstore>>())
-        , contentValidator(std::make_shared<ContentValidator>(builderValidator))
-        , service(store, contentValidator)
+        , service(store, builderValidator)
     {
     }
 };
@@ -125,7 +121,7 @@ TEST(CrudService_Component, UpsertPolicy_Success_EndToEnd)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // Builder validator is invoked via ContentValidator
+    // Builder validator is invoked by CrudService
     EXPECT_CALL(*stack.builderValidator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     // Once policy is validated, it must be written to the namespace
@@ -135,7 +131,7 @@ TEST(CrudService_Component, UpsertPolicy_Success_EndToEnd)
 }
 
 // ---------------------------------------------------------------------
-// Policy: builder error propagates through ContentValidator and CrudService
+// Policy: builder error propagates through CrudService
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
@@ -150,7 +146,6 @@ TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // ContentValidator will ask for the namespace id when building the error message
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
     base::OptError builderErr = base::Error {"policy failed at builder"};
@@ -189,7 +184,7 @@ TEST(CrudService_Component, UpsertIntegration_Success_EndToEnd)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // Builder validation goes through ContentValidator
+    // Builder validation goes through CrudService
     EXPECT_CALL(*stack.builderValidator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     // Integration YAML has a UUID; if it does not exist, we must create it
@@ -217,7 +212,6 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // Namespace id used by ContentValidator to enrich the error
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
     base::OptError builderErr = base::Error {"integration failed at builder"};
@@ -245,7 +239,7 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
 }
 
 // ---------------------------------------------------------------------
-// KVDB: success path (ContentValidator currently does no validation)
+// KVDB: success path (no builder validation, only storage behaviour)
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
@@ -259,8 +253,9 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // ContentValidator::validateKVDB is a no-op, builder is not called here.
-    // We only need to check the storage behavior: create when UUID does not exist.
+    EXPECT_CALL(*stack.builderValidator, softPolicyValidate(_, _)).Times(0);
+    EXPECT_CALL(*stack.builderValidator, softIntegrationValidate(_, _)).Times(0);
+    EXPECT_CALL(*stack.builderValidator, validateAsset(_, _)).Times(0);
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(false));
 
@@ -271,7 +266,7 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
 }
 
 // ---------------------------------------------------------------------
-// Decoder asset: builder error is propagated through ContentValidator + CrudService
+// Decoder asset: builder error is propagated through CrudService
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Component, UpsertDecoder_BuilderAssetErrorIsPropagated)

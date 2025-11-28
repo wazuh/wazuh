@@ -1,23 +1,26 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <base/error.hpp>
 #include <base/json.hpp>
+#include <builder/mockValidator.hpp>
 #include <cmstore/mockcmstore.hpp>
 
 #include <cmcrud/cmcrudservice.hpp>
-#include <cmcrud/mockcmcrud.hpp>
 
 using ::testing::_;
+using ::testing::HasSubstr;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::Throw;
 using ::testing::Truly;
 
 namespace cm::crud::test
 {
 
+using builder::mocks::MockValidator;
 using cm::crud::CrudService;
-using cm::crud::MockContentValidator;
 using cm::store::MockICMstore;
 using cm::store::MockICMstoreNS;
 using cm::store::MockICMStoreNSReader;
@@ -95,7 +98,7 @@ normalize:
 TEST(CrudService_Unit, Construction_NullStoreThrows)
 {
     std::shared_ptr<cm::store::ICMStore> nullStore;
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
 
     EXPECT_THROW(CrudService service(nullStore, validator), std::invalid_argument);
 }
@@ -103,9 +106,9 @@ TEST(CrudService_Unit, Construction_NullStoreThrows)
 TEST(CrudService_Unit, Construction_NullValidatorThrows)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    std::shared_ptr<IContentValidator> nullValidator;
 
-    EXPECT_THROW(CrudService service(store, nullValidator), std::invalid_argument);
+    // Passing nullptr for the builder validator must throw
+    EXPECT_THROW(CrudService service(store, nullptr), std::invalid_argument);
 }
 
 // ---------------------------------------------------------------------
@@ -115,7 +118,7 @@ TEST(CrudService_Unit, Construction_NullValidatorThrows)
 TEST(CrudService_Unit, ListNamespaces_ForwardsToStore)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     std::vector<NamespaceId> expected;
@@ -137,7 +140,7 @@ TEST(CrudService_Unit, ListNamespaces_ForwardsToStore)
 TEST(CrudService_Unit, CreateNamespace_Success)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -153,7 +156,7 @@ TEST(CrudService_Unit, CreateNamespace_Success)
 TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -167,8 +170,9 @@ TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("Failed to create namespace 'dev'"));
-        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("low-level error"));
+        const std::string msg {e.what()};
+        EXPECT_THAT(msg, HasSubstr("Failed to create namespace 'dev'"));
+        EXPECT_THAT(msg, HasSubstr("low-level error"));
     }
 }
 
@@ -179,7 +183,7 @@ TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
 TEST(CrudService_Unit, DeleteNamespace_Success)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -193,7 +197,7 @@ TEST(CrudService_Unit, DeleteNamespace_Success)
 TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -207,8 +211,9 @@ TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("Failed to delete namespace 'dev'"));
-        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("low-level error"));
+        const std::string msg {e.what()};
+        EXPECT_THAT(msg, HasSubstr("Failed to delete namespace 'dev'"));
+        EXPECT_THAT(msg, HasSubstr("low-level error"));
     }
 }
 
@@ -219,7 +224,7 @@ TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
 TEST(CrudService_Unit, UpsertPolicy_Success)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -229,7 +234,8 @@ TEST(CrudService_Unit, UpsertPolicy_Success)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*validator, validatePolicy(_, _)).Times(1);
+    // Builder validation succeeds
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
@@ -239,17 +245,23 @@ TEST(CrudService_Unit, UpsertPolicy_Success)
 TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
+    NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*validator, validatePolicy(_, _)).Times(1).WillOnce(Throw(std::runtime_error {"validation error"}));
+    // Used by the validation error message
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
+
+    base::OptError builderErr = base::Error {"policy failed at builder"};
+
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(builderErr));
 
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
 
@@ -260,8 +272,10 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("Failed to upsert policy in namespace 'dev'"));
-        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("validation error"));
+        const std::string msg {e.what()};
+        EXPECT_THAT(msg, HasSubstr("Failed to upsert policy in namespace 'dev'"));
+        EXPECT_THAT(msg, HasSubstr("Policy validation failed in namespace 'dev'"));
+        EXPECT_THAT(msg, HasSubstr("policy failed at builder"));
     }
 }
 
@@ -272,7 +286,7 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
 TEST(CrudService_Unit, DeletePolicy_Success)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -294,7 +308,7 @@ TEST(CrudService_Unit, DeletePolicy_Success)
 TEST(CrudService_Unit, ListResources_Success)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -328,7 +342,7 @@ TEST(CrudService_Unit, ListResources_Success)
 TEST(CrudService_Unit, ListResources_MissingNamespaceThrows)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -347,29 +361,20 @@ TEST(CrudService_Unit, ListResources_MissingNamespaceThrows)
 
 TEST(CrudService_Unit, GetResourceByUUID_Integration)
 {
-    using ::testing::_;
-    using ::testing::HasSubstr;
-    using ::testing::NiceMock;
-    using ::testing::Return;
-
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
     const std::string uuid {"5c1df6b6-1458-4b2e-9001-96f67a8b12c8"};
 
     auto nsReader = std::make_shared<NiceMock<MockICMStoreNSReader>>();
-    cm::store::NamespaceId nsId {nsName};
 
-    // Relaxed stub for namespace reader: we don't care about the exact matcher here
     ON_CALL(*store, getNSReader(_)).WillByDefault(Return(nsReader));
 
-    // When resolving the UUID, pretend it is an integration called "windows"
     ON_CALL(*nsReader, resolveNameFromUUID(uuid))
         .WillByDefault(Return(std::make_tuple(std::string {"windows"}, ResourceType::INTEGRATION)));
 
-    // Build an Integration object from JSON with the same shape as the example
     json::Json integrationJson {R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -399,7 +404,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -432,8 +437,8 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     const std::string yaml = service.getResourceByUUID(nsName, uuid);
 
-    EXPECT_THAT(yaml, ::testing::HasSubstr("windows_kerberos_status_code_to_code_name"));
-    EXPECT_THAT(yaml, ::testing::HasSubstr("82e215c4-988a-4f64-8d15-b98b2fc03a4f"));
+    EXPECT_THAT(yaml, HasSubstr("windows_kerberos_status_code_to_code_name"));
+    EXPECT_THAT(yaml, HasSubstr("82e215c4-988a-4f64-8d15-b98b2fc03a4f"));
 }
 
 // ---------------------------------------------------------------------
@@ -443,7 +448,7 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -470,8 +475,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     const std::string yaml = service.getResourceByUUID(nsName, uuid);
 
-    EXPECT_THAT(yaml, ::testing::HasSubstr("decoder/syslog/0"));
-    EXPECT_THAT(yaml, ::testing::HasSubstr("3f086ce2-32a4-42b0-be7e-40dcfb9c6160"));
+    EXPECT_THAT(yaml, HasSubstr("decoder/syslog/0"));
+    EXPECT_THAT(yaml, HasSubstr("3f086ce2-32a4-42b0-be7e-40dcfb9c6160"));
 }
 
 // ---------------------------------------------------------------------
@@ -481,7 +486,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -491,7 +496,7 @@ TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*validator, validateIntegration(_, _)).Times(1);
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).Times(1).WillOnce(Return(false));
 
@@ -504,7 +509,7 @@ TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
 TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -514,7 +519,7 @@ TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*validator, validateIntegration(_, _)).Times(1);
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).Times(1).WillOnce(Return(true));
 
@@ -531,7 +536,7 @@ TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
 TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -541,8 +546,7 @@ TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*validator, validateKVDB(_, _)).Times(1);
-
+    // Currently no builder validation for KVDB: only storage behavior is tested.
     EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(false));
 
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
@@ -554,7 +558,7 @@ TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
 TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -563,8 +567,6 @@ TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
     EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
-
-    EXPECT_CALL(*validator, validateKVDB(_, _)).Times(1);
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(true));
 
@@ -581,7 +583,7 @@ TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
 TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -591,7 +593,7 @@ TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1);
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByName(_)).Times(1).WillOnce(Return(false));
 
@@ -604,7 +606,7 @@ TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
 TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};
@@ -614,7 +616,7 @@ TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1);
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByName(_)).Times(1).WillOnce(Return(true));
 
@@ -631,7 +633,7 @@ TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
 TEST(CrudService_Unit, DeleteResourceByUUID_Success)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockContentValidator>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
     const std::string nsName {"dev"};

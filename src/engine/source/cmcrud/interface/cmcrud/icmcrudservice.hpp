@@ -30,7 +30,7 @@ struct ResourceSummary
  *  - Resolving namespaces using cm::store::ICMStore.
  *  - Parsing resource documents (typically YAML) into the corresponding
  *    data types (Policy, Integration, KVDB, assets).
- *  - Delegating structural checks to an IContentValidator before mutating
+ *  - Delegating structural checks to an builder::IValidator before mutating
  *    the underlying store.
  *  - Applying the cm::store mutations on success.
  *
