@@ -1316,60 +1316,28 @@ void Syscollector::vdContextEvaluator()
 
         for (const auto& event : allVdEvents)
         {
-            try
+
+            if (event.is_data_context)
             {
-                if (event.is_data_context)
-                {
-                    //Store some ID to a List to delete them later
-                    //m_vdDataContextIds.push_back(event.id);
-                    // This is a DataContext event - process it for VD context evaluation
-                    m_logFunction(LOG_DEBUG, "Processing VD DataContext event: id=" + event.id +
-                                  ", operation=" + std::to_string(static_cast<int>(event.operation)) +
-                                  ", index=" + event.index);
+                //Store some ID to a List to delete them later
+                //m_vdDataContextIds.push_back(event.id);
+                // This is a DataContext event - process it for VD context evaluation
+                m_logFunction(LOG_DEBUG, "Processing VD DataContext event: id=" + event.id +
+                              ", operation=" + std::to_string(static_cast<int>(event.operation)) +
+                              ", index=" + event.index);
 
-                    dataContextCount++;
-                }
-                else
-                {
-                    //Inside here analyze what kind of event is this, what OS, and decide if we add context or not
-                    // This is a DataValue event - analyze for potential VD context generation
-                    m_logFunction(LOG_DEBUG, "Analyzing VD DataValue event: id=" + event.id +
-                                  ", operation=" + std::to_string(static_cast<int>(event.operation)) +
-                                  ", index=" + event.index);
-
-                    // Parse and analyze the DataValue event for VD context decisions
-                    try
-                    {
-                        nlohmann::json eventData = nlohmann::json::parse(event.data);
-                        m_logFunction(LOG_DEBUG_VERBOSE, "VD DataValue event data: " + eventData.dump());
-
-                        // Determine if this DataValue event needs VD context
-
-                        if (isContextRequired(event, eventData))
-                        {
-                            m_logFunction(LOG_INFO, "VD DataValue event requires vulnerability context: " + event.id);
-                            // TODO: Generate and persist DataContext event for this DataValue
-                            // generateVulnerabilityContext(event, eventData);
-                        }
-                        else
-                        {
-                            m_logFunction(LOG_DEBUG, "VD DataValue event does not require context: " + event.id);
-                        }
-
-                    }
-                    catch (const nlohmann::json::exception& e)
-                    {
-                        m_logFunction(LOG_ERROR, "Failed to parse VD DataValue event " + event.id + ": " + std::string(e.what()));
-                    }
-
-                    dataValueCount++;
-                }
-
+                dataContextCount++;
             }
-            catch (const nlohmann::json::exception& e)
+            else
             {
-                m_logFunction(LOG_ERROR, "Failed to parse VD event data: " + std::string(e.what()));
+                //Inside here analyze what kind of event is this, what OS, and decide if we add context or not
+                // This is a DataValue event - analyze for potential VD context generation
+                m_logFunction(LOG_DEBUG, "Analyzing VD DataValue event: id=" + event.id +
+                              ", operation=" + std::to_string(static_cast<int>(event.operation)) +
+                              ", index=" + event.index);
+                dataValueCount++;
             }
+
         }
 
         m_logFunction(LOG_INFO, "Processed " + std::to_string(dataContextCount) + " VD DataContext events and found " +
@@ -1383,61 +1351,6 @@ void Syscollector::vdContextEvaluator()
     }
 
     m_logFunction(LOG_DEBUG, "VD context evaluation completed - events processed without state changes");
-}
-
-void Syscollector::analyzeDataContextEvent(const PersistedData& event, const nlohmann::json& eventData)
-{
-    m_logFunction(LOG_DEBUG, "Analyzing DataContext event for index: " + event.index);
-
-    try
-    {
-        // Log the DataContext event information for VD analysis
-        m_logFunction(LOG_INFO, "DataContext Analysis - Event ID: " + event.id +
-                      ", Operation: " + std::to_string(static_cast<int>(event.operation)) +
-                      ", Index: " + event.index);
-
-        m_logFunction(LOG_DEBUG_VERBOSE, "DataContext event data: " + eventData.dump());
-
-        // TODO: Implement actual VD analysis based on event.index and eventData
-        // This should integrate with Wazuh's vulnerability detection system
-
-    }
-    catch (const std::exception& e)
-    {
-        m_logFunction(LOG_ERROR, "Error analyzing DataContext event: " + std::string(e.what()));
-    }
-}
-
-bool Syscollector::isContextRequired(const PersistedData& event, const nlohmann::json& eventData)
-{
-    m_logFunction(LOG_DEBUG, "Evaluating VD context need for event: " + event.id + ", index: " + event.index);
-
-    try
-    {
-        // VD context is primarily needed for packages, OS info, and hotfixes
-        if (event.index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
-        {
-            //return evaluatePackageForVulnerabilityContext(eventData);
-        }
-        else if (event.index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
-        {
-            //return evaluateSystemForVulnerabilityContext(eventData);
-        }
-        else if (event.index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
-        {
-            //return evaluateHotfixForVulnerabilityContext(eventData);
-        }
-
-        // Other indices (processes, ports, etc.) typically don't need VD context
-        m_logFunction(LOG_DEBUG, "Index " + event.index + " does not require VD context evaluation");
-        return false;
-
-    }
-    catch (const std::exception& e)
-    {
-        m_logFunction(LOG_ERROR, "Error evaluating VD context need: " + std::string(e.what()));
-        return false;
-    }
 }
 void Syscollector::scan()
 {
@@ -1462,6 +1375,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanUsers);
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
+    TRY_CATCH_TASK(vdContextEvaluator);
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
