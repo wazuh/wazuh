@@ -12,10 +12,17 @@
 #include "encodingWindowsHelper.h"
 
 #include <iostream>
+#include <thread>
 
-UsersHelper::UsersHelper(
-    std::shared_ptr<IWindowsApiWrapper> winapiWrapper)
-    : m_winapiWrapper(std::move(winapiWrapper)) {}
+thread_local std::vector<User> UsersHelper::s_cachedLocalUsers;
+thread_local std::vector<User> UsersHelper::s_cachedRoamingUsers;
+thread_local std::chrono::steady_clock::time_point UsersHelper::s_cacheTimestamp;
+thread_local bool UsersHelper::s_cacheValid = false;
+
+UsersHelper::UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper)
+    : m_winapiWrapper(std::move(winapiWrapper))
+{
+}
 
 UsersHelper::UsersHelper()
     : m_winapiWrapper(std::make_shared<WindowsApiWrapper>()) {}
@@ -247,6 +254,30 @@ std::string UsersHelper::getUserShell(const std::string& sid)
 // walk of the Roaming Profiles key in the registry.
 std::vector<User> UsersHelper::processLocalAccounts(std::set<std::string>& processed_sids)
 {
+    // Ensure both local and roaming users are loaded together
+    loadUsers(processed_sids);
+
+    // Update processed_sids with cached local users
+    for (const auto& user : s_cachedLocalUsers)
+    {
+        processed_sids.insert(user.sid);
+    }
+
+    return s_cachedLocalUsers;
+}
+
+// Internal method to load both local and roaming users together
+void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
+{
+    // Validate cache before processing
+    validateCache();
+
+    // If cache is still valid, nothing to do
+    if (s_cacheValid)
+    {
+        return;
+    }
+
     // Enumerate the users by only the usernames (level 0 struct) and then
     // get the desired level of info for each (level 4 struct includes SIDs).
 
@@ -320,28 +351,31 @@ std::vector<User> UsersHelper::processLocalAccounts(std::set<std::string>& proce
             new_user.type = "local";
             new_user.sid = std::move(sid_string);
 
-            users.push_back(new_user);
+            users.push_back(std::move(new_user));
+
+            // Rate limiting: pause every BATCH_SIZE users
+            if (users.size() % BATCH_SIZE == 0)
+            {
+                std::this_thread::sleep_for(BATCH_DELAY);
+            }
         }
 
     }
     while (ret == ERROR_MORE_DATA);
 
-    return users;
-}
+    // Cache local users
+    s_cachedLocalUsers = users;
 
-// Enumerate the users from the profiles key in the Registry, matching only
-// the UIDs/RIDs (if any) and skipping any SIDs of local-only users that
-// were already processed in the earlier API-based enumeration.
-std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& processed_sids)
-{
-
-    std::vector<User> users;
+    // Now load roaming profiles in the same cache cycle
+    std::vector<User> roamingUsers;
 
     auto opt_roaming_profile_sids = getRoamingProfileSids();
 
     if (!opt_roaming_profile_sids.has_value())
     {
-        return users;
+        // No roaming profiles, just mark cache as valid
+        updateCacheTimestamp();
+        return;
     }
 
     for (const auto& profile_sid : *opt_roaming_profile_sids)
@@ -360,9 +394,9 @@ std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& pro
                         : "special";
 
         PSID sid;
-        auto ret = m_winapiWrapper->ConvertStringSidToSidAWrapper(profile_sid.c_str(), &sid);
+        auto sidRet = m_winapiWrapper->ConvertStringSidToSidAWrapper(profile_sid.c_str(), &sid);
 
-        if (ret == FALSE)
+        if (sidRet == FALSE)
         {
             // std::cout << "Converting SIDstring to SID failed with " << GetLastError();
             continue;
@@ -377,17 +411,17 @@ std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& pro
             DWORD account_name_length = UNLEN;
             DWORD domain_name_length = DNLEN;
             SID_NAME_USE e_use;
-            ret = m_winapiWrapper->LookupAccountSidWWrapper(nullptr,
-                                                            sid,
-                                                            account_name,
-                                                            &account_name_length,
-                                                            domain_name,
-                                                            &domain_name_length,
-                                                            &e_use);
+            auto lookupRet = m_winapiWrapper->LookupAccountSidWWrapper(nullptr,
+                                                                        sid,
+                                                                        account_name,
+                                                                        &account_name_length,
+                                                                        domain_name,
+                                                                        &domain_name_length,
+                                                                        &e_use);
 
             m_winapiWrapper->FreeSidWrapper(sid);
 
-            if (ret != FALSE)
+            if (lookupRet != FALSE)
             {
                 new_user.username = Utils::EncodingWindowsHelper::wstringToStringUTF8(account_name);
                 /* NOTE: This still keeps the old behavior where if getting the gid
@@ -404,22 +438,45 @@ std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& pro
             // NetUserGetInfo returns an error, as it will for some system accounts.
             DWORD basic_user_info_level = 2;
             user_info_2_ptr user_info_lvl2;
-            ret = m_winapiWrapper->NetUserGetInfoWrapper(
-                      nullptr,
-                      account_name,
-                      basic_user_info_level,
-                      reinterpret_cast<LPBYTE*>(user_info_lvl2.get_new_ptr()));
+            auto infoRet = m_winapiWrapper->NetUserGetInfoWrapper(
+                               nullptr,
+                               account_name,
+                               basic_user_info_level,
+                               reinterpret_cast<LPBYTE*>(user_info_lvl2.get_new_ptr()));
 
-            if (ret == NERR_Success && user_info_lvl2 != nullptr)
+            if (infoRet == NERR_Success && user_info_lvl2 != nullptr)
             {
                 new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl2->usri2_comment);
             }
 
-            users.push_back(new_user);
+            roamingUsers.push_back(std::move(new_user));
+
+            // Rate limiting: pause every BATCH_SIZE users
+            if (roamingUsers.size() % BATCH_SIZE == 0)
+            {
+                std::this_thread::sleep_for(BATCH_DELAY);
+            }
         }
+
+        processed_sids.insert(profile_sid);
     }
 
-    return users;
+    // Cache roaming users
+    s_cachedRoamingUsers = roamingUsers;
+
+    // Mark cache as valid and update timestamp
+    updateCacheTimestamp();
+}
+
+// Enumerate the users from the profiles key in the Registry, matching only
+// the UIDs/RIDs (if any) and skipping any SIDs of local-only users that
+// were already processed in the earlier API-based enumeration.
+std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& processed_sids)
+{
+    // Ensure both local and roaming users are loaded together
+    loadUsers(processed_sids);
+
+    return s_cachedRoamingUsers;
 }
 
 std::unique_ptr<BYTE[]> UsersHelper::getSidFromAccountName(const std::wstring& accountNameInput)
@@ -507,4 +564,23 @@ DWORD UsersHelper::getRidFromSid(PSID sid)
     DWORD index_of_rid = static_cast<DWORD>(*count_ptr - 1);
     DWORD* rid_ptr = m_winapiWrapper->GetSidSubAuthorityWrapper(sid, index_of_rid);
     return *rid_ptr;
+}
+
+void UsersHelper::validateCache()
+{
+    auto now = std::chrono::steady_clock::now();
+
+    if (s_cacheValid && (now - s_cacheTimestamp) >= s_cacheTimeout)
+    {
+        // Cache expired, clear it
+        s_cachedLocalUsers.clear();
+        s_cachedRoamingUsers.clear();
+        s_cacheValid = false;
+    }
+}
+
+void UsersHelper::updateCacheTimestamp()
+{
+    s_cacheTimestamp = std::chrono::steady_clock::now();
+    s_cacheValid = true;
 }

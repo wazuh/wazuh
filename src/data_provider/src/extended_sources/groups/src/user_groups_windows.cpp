@@ -8,12 +8,17 @@
  */
 
 #include <iostream>
+#include <thread>
 
 #include "user_groups_windows.hpp"
 #include "iusers_utils_wrapper.hpp"
 #include "users_utils_wrapper.hpp"
 #include "windows_api_wrapper.hpp"
 #include "encodingWindowsHelper.h"
+
+thread_local std::unordered_map<std::string, std::vector<std::string>> UserGroupsProvider::s_userGroupsCache;
+thread_local std::chrono::steady_clock::time_point UserGroupsProvider::s_cacheTimestamp;
+thread_local bool UserGroupsProvider::s_cacheValid = false;
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IWindowsApiWrapper> winapiWrapper,
                                        std::shared_ptr<IUsersHelper> usersHelper,
@@ -33,6 +38,8 @@ UserGroupsProvider::UserGroupsProvider()
 
 nlohmann::json UserGroupsProvider::collect(const std::set<std::uint32_t>& uids)
 {
+    // Validate cache before starting collection
+    validateCache();
 
     nlohmann::json results;
 
@@ -44,11 +51,17 @@ nlohmann::json UserGroupsProvider::collect(const std::set<std::uint32_t>& uids)
         processLocalUserGroups(user, groups, results);
     }
 
+    // Update cache timestamp after successful collection
+    updateCacheTimestamp();
+
     return results;
 }
 
 nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<std::uint32_t>& uids)
 {
+    // Validate cache before processing
+    validateCache();
+
     auto localUsers = getLocalUsers(uids);
     auto groups = getLocalGroups();
 
@@ -72,11 +85,17 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<std::uint32
         }
     }
 
+    // Update cache timestamp after successful operation
+    updateCacheTimestamp();
+
     return result;
 }
 
 nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<std::uint32_t>& gids)
 {
+    // Validate cache before processing
+    validateCache();
+
     const bool singleGid = gids.size() == 1;
     auto localUsers = getLocalUsers({});
     auto groups = getLocalGroups();
@@ -105,6 +124,9 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<std::uint32_
             }
         }
     }
+
+    // Update cache timestamp after successful operation
+    updateCacheTimestamp();
 
     if (singleGid)
     {
@@ -183,6 +205,21 @@ std::vector<Group> UserGroupsProvider::getLocalGroups()
 
 std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std::string& username)
 {
+    // Check cache first - avoid repeated API calls for the same user
+    auto it = s_userGroupsCache.find(username);
+    if (it != s_userGroupsCache.end())
+    {
+        return it->second;
+    }
+
+    // Rate limiting: track API calls and pause every BATCH_SIZE calls
+    std::size_t api_call_count = 0;
+    if (api_call_count > 0 && api_call_count % BATCH_SIZE == 0)
+    {
+        std::this_thread::sleep_for(BATCH_DELAY);
+    }
+    ++api_call_count;
+
     std::wstring wUsername = Utils::EncodingWindowsHelper::stringToWStringUTF8(username);
     DWORD groupInfoLevel = 0;
     DWORD numGroups = 0;
@@ -208,5 +245,26 @@ std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std
         }
     }
 
+    // Cache the result for this scan
+    s_userGroupsCache[username] = groupNames;
+
     return groupNames;
+}
+
+void UserGroupsProvider::validateCache()
+{
+    auto now = std::chrono::steady_clock::now();
+
+    if (s_cacheValid && (now - s_cacheTimestamp) >= s_cacheTimeout)
+    {
+        // Cache expired, clear it
+        s_userGroupsCache.clear();
+        s_cacheValid = false;
+    }
+}
+
+void UserGroupsProvider::updateCacheTimestamp()
+{
+    s_cacheTimestamp = std::chrono::steady_clock::now();
+    s_cacheValid = true;
 }
