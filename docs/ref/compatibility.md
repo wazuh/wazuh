@@ -22,6 +22,6 @@ Below is a list of versions supported in this version (5.X.X):
   - Oracle Linux: 6 and later
   - SUSE / SLES: 15
   - Ubuntu: 18.04 and later
-- macOS: 13 or later
+- macOS: 14 or later
 - Windows: 7 and later
 - Windows Server: 2008 R2 and later
