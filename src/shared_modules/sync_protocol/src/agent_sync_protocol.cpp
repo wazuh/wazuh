@@ -192,9 +192,34 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, option))
     {
-        if (sendDataMessages(m_syncState.session, dataToSync))
+        // Separate DataValue and DataContext items
+        std::vector<PersistedData> dataValueItems;
+        std::vector<PersistedData> dataContextItems;
+
+        for (const auto& item : dataToSync)
         {
-            if (sendEndAndWaitAck(m_syncState.session, dataToSync))
+            if (item.is_data_context)
+            {
+                dataContextItems.push_back(item);
+            }
+            else
+            {
+                dataValueItems.push_back(item);
+            }
+        }
+
+        // Send DataValue messages first
+        if (sendDataMessages(m_syncState.session, dataValueItems))
+        {
+            // Then send DataContext messages if any exist
+            bool dataContextSuccess = true;
+
+            if (!dataContextItems.empty())
+            {
+                dataContextSuccess = sendDataContextMessages(m_syncState.session, dataContextItems);
+            }
+
+            if (dataContextSuccess && sendEndAndWaitAck(m_syncState.session, dataToSync))
             {
                 success = true;
             }
@@ -680,6 +705,56 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("Exception when sending Data messages: ") + e.what());
+    }
+
+    return false;
+}
+
+bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
+                                                const std::vector<PersistedData>& data)
+{
+    try
+    {
+        for (const auto& item : data)
+        {
+            // Check if stop was requested
+            if (shouldStop())
+            {
+                m_logger(LOG_INFO, "Stop requested, aborting DataContext message sending");
+                return false;
+            }
+
+            flatbuffers::FlatBufferBuilder builder;
+            auto idStr = builder.CreateString(item.id);
+            auto idxStr = builder.CreateString(item.index);
+            auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+
+            Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
+            dataContextBuilder.add_seq(item.seq);
+            dataContextBuilder.add_session(session);
+            dataContextBuilder.add_id(idStr);
+            dataContextBuilder.add_index(idxStr);
+            dataContextBuilder.add_data(dataVec);
+            auto dataContextOffset = dataContextBuilder.Finish();
+
+            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataContext, dataContextOffset.Union());
+            builder.Finish(message);
+
+            const uint8_t* buffer_ptr = builder.GetBufferPointer();
+            const size_t buffer_size = builder.GetSize();
+            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+            if (!sendFlatBufferMessageAsString(messageVector))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when sending DataContext messages: ") + e.what());
     }
 
     return false;

@@ -15,6 +15,7 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 #include <iostream>
+#include <fstream>
 #include <stack>
 #include <chrono>
 #include <thread>
@@ -1591,7 +1592,8 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
+                                    std::chrono::seconds timeout,
                                     unsigned int retries,
                                     size_t maxEps)
 {
@@ -1602,8 +1604,13 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
     try
     {
+        // Initialize regular sync protocol
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Initialize VD sync protocol
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD);
     }
     catch (const std::exception& ex)
     {
@@ -1625,32 +1632,82 @@ bool Syscollector::syncModule(Mode mode)
         return false;
     }
 
+    m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
+
+    // RAII guard ensures m_syncing is set to false even if function exits early
+    ScanGuard syncGuard(m_syncing, m_pauseCv);
+
+    bool success = true;
+
+    // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
-        m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
-
-        // RAII guard ensures m_syncing is set to false even if function exits early
-        ScanGuard syncGuard(m_syncing, m_pauseCv);
-        bool result = m_spSyncProtocol->synchronizeModule(mode);
-
-        if (result)
-        {
-            m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
-        }
-        else
-        {
-            m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
-        }
-
-        return result;
+        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
     }
 
-    return false;
+    // Sync VD data with appropriate option based on first scan status
+    if (m_spSyncProtocolVD)
+    {
+        // Check if first VD scan has been completed
+        const std::string vdFlagFile = "queue/syscollector/db/.vd_first_sync_done";
+        std::ifstream flagCheck(vdFlagFile);
+        bool firstSyncDone = flagCheck.good();
+        flagCheck.close();
+
+        // Use VDFIRST for first scan, VDSYNC for subsequent syncs
+        Option vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
+
+        bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+
+        // Create flag file after successful first sync
+        if (vdSuccess && !firstSyncDone)
+        {
+            m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + vdFlagFile);
+            std::ofstream flagFile(vdFlagFile);
+
+            if (flagFile.is_open())
+            {
+                flagFile << "1";
+                flagFile.close();
+                m_logFunction(LOG_INFO, "VD first sync completed, flag file created");
+            }
+            else
+            {
+                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + vdFlagFile);
+            }
+        }
+        else if (!vdSuccess)
+        {
+            m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
+        }
+
+        success = vdSuccess && success;
+    }
+
+    if (success)
+    {
+        m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
+    }
+    else
+    {
+        m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
+    }
+
+    return success;
 }
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
-    if (m_spSyncProtocol)
+    // VD tables: system (os), packages, hotfixes
+    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+    if (isVDTable && m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version);
+    }
+    else if (m_spSyncProtocol)
     {
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
     }
@@ -1658,9 +1715,16 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
-    if (m_spSyncProtocol)
+    // Try regular sync protocol first
+    if (m_spSyncProtocol && m_spSyncProtocol->parseResponseBuffer(data, length))
     {
-        return m_spSyncProtocol->parseResponseBuffer(data, length);
+        return true;
+    }
+
+    // If regular protocol didn't handle it, try VD sync protocol
+    if (m_spSyncProtocolVD && m_spSyncProtocolVD->parseResponseBuffer(data, length))
+    {
+        return true;
     }
 
     return false;
@@ -1668,12 +1732,41 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 {
-    if (m_spSyncProtocol)
+    // Separate VD and non-VD indices
+    std::vector<std::string> vdIndices;
+    std::vector<std::string> nonVdIndices;
+
+    for (const auto& index : indices)
     {
-        return m_spSyncProtocol->notifyDataClean(indices);
+        bool isVDIndex = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                          index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                          index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+        if (isVDIndex)
+        {
+            vdIndices.push_back(index);
+        }
+        else
+        {
+            nonVdIndices.push_back(index);
+        }
     }
 
-    return false;
+    bool success = true;
+
+    // Clean non-VD data with regular SYNC option
+    if (!nonVdIndices.empty() && m_spSyncProtocol)
+    {
+        success = m_spSyncProtocol->notifyDataClean(nonVdIndices, Option::SYNC);
+    }
+
+    // Clean VD data with VDCLEAN option
+    if (!vdIndices.empty() && m_spSyncProtocolVD)
+    {
+        success = m_spSyncProtocolVD->notifyDataClean(vdIndices, Option::VDCLEAN) && success;
+    }
+
+    return success;
 }
 
 void Syscollector::deleteDatabase()

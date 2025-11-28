@@ -69,6 +69,9 @@ struct PersistedData
 
     /// @brief Version of the data.
     uint64_t version;
+
+    /// @brief Flag indicating if this is DataContext (true) or DataValue (false).
+    bool is_data_context = false;
 };
 
 /// @brief Interface for persistent message queues.
@@ -88,11 +91,15 @@ class IPersistentQueue
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (CREATE, MODIFY, DELETE).
         /// @param version Version of the data.
+        /// @param isDataContext Flag to mark data as DataContext (true) or DataValue (false).
+        ///                      DataContext messages are used for vulnerability detection data
+        ///                      that requires special handling on the manager side. Default is false.
         virtual void submit(const std::string& id,
                             const std::string& index,
                             const std::string& data,
                             Operation operation,
-                            uint64_t version) = 0;
+                            uint64_t version,
+                            bool isDataContext = false) = 0;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @return A vector of messages now marked as SYNCING.

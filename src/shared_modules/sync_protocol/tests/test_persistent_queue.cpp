@@ -43,7 +43,8 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenLoggerIsNull)
     // Pass null logger function
     LoggerFunc nullLogger = nullptr;
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         PersistentQueue queue(":memory:", nullLogger, mockStorage);
     }, std::invalid_argument);
 }
@@ -58,7 +59,8 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenResetAllSyncingFails)
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         PersistentQueue queue(":memory:", testLogger, mockStorage);
     }, std::runtime_error);
 }
@@ -100,7 +102,8 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
     // Capture the log message
     std::string capturedLogMessage;
     modules_log_level_t capturedLogLevel;
-    LoggerFunc testLogger = [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string& message) {
+    LoggerFunc testLogger = [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string & message)
+    {
         capturedLogLevel = level;
         capturedLogMessage = message;
     };
@@ -256,4 +259,20 @@ TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
     EXPECT_THROW(queue.resetSyncingItems(), std::exception);
+}
+
+// Test to cover IPersistentQueue D0 destructor (delete through base pointer)
+TEST(InterfaceDestructorTest, IPersistentQueueDeletingDestructor)
+{
+    // Create concrete implementation through base interface pointer
+    IPersistentQueue* queue = nullptr;
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Create PersistentQueue through base interface pointer
+    queue = new PersistentQueue(":memory:", testLogger, mockStorage);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete queue;
 }
