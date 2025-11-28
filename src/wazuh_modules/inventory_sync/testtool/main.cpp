@@ -45,21 +45,41 @@ struct TestConfig
 };
 
 /**
- * @brief Struct to hold agent test data
+ * @brief Struct to hold agent test data in the new format
  */
-
 struct AgentTestData
 {
-    nlohmann::json os;       ///< OS data
-    nlohmann::json packages; ///< Packages data
-    nlohmann::json hotfixes; ///< Hotfixes data
-    std::string scanType;    ///< Scan type
-    std::string agentId;     ///< Agent identifier
+    std::string scanType;                     ///< Scan type (VDFirst, VDSync, VDClean)
+    std::string agentId;                      ///< Agent identifier
+    std::vector<nlohmann::json> dataValues;   ///< Array of data_values
+    std::vector<nlohmann::json> dataContexts; ///< Array of data_context
 
     /**
-     * @brief Load agent test data from JSON file
-     * @param filepath Path to JSON file
-     * @return AgentTestData struct with loaded data
+     * @brief Load agent test data from JSON file (new format)
+     *
+     * Expected format:
+     * {
+     *   "type": "VDSync",
+     *   "agent": {"id": "001"},
+     *   "data_values": [
+     *     {
+     *       "operation": "upsert|delete",
+     *       "payload": {
+     *         "_index": "wazuh-states-inventory-packages",
+     *         "_id": "...",
+     *         "_source": { ... actual package/os/hotfix data ... }
+     *       }
+     *     }
+     *   ],
+     *   "data_context": [
+     *     {
+     *       "payload": {
+     *         "_index": "wazuh-states-inventory-packages",
+     *         "_source": { ... }
+     *       }
+     *     }
+     *   ]
+     * }
      */
     static AgentTestData loadFromFile(const std::string& filepath)
     {
@@ -78,12 +98,21 @@ struct AgentTestData
 
         nlohmann::json root = nlohmann::json::parse(file);
 
-        // Extract data from structured format
-        data.scanType = root.value("type", "TYPE_SCAN");
+        // Extract metadata
+        data.scanType = root.value("type", "VDSync");
         data.agentId = root.value("agent", nlohmann::json::object()).value("id", "000");
-        data.os = root.value("os", nlohmann::json::object());
-        data.packages = root.value("packages", nlohmann::json::array());
-        data.hotfixes = root.value("hotfixes", nlohmann::json::array());
+
+        // Extract data_values array
+        if (root.contains("data_values") && root["data_values"].is_array())
+        {
+            data.dataValues = root["data_values"].get<std::vector<nlohmann::json>>();
+        }
+
+        // Extract data_context array
+        if (root.contains("data_context") && root["data_context"].is_array())
+        {
+            data.dataContexts = root["data_context"].get<std::vector<nlohmann::json>>();
+        }
 
         return data;
     }
@@ -94,53 +123,16 @@ struct AgentTestData
  *
  * This test component simulates the Wazuh manager's alert-receiver socket.
  * It binds to a UNIX datagram socket and prints every alert message received.
- *
- * The class manages its own thread and socket lifetime:
- *  - `start()` spawns the receiver thread and binds the socket.
- *  - `stop()` requests thread termination.
- *  - `waitForStop()` joins the thread and cleans up the socket path.
- *
- * Thread-safety notes:
- *  - Only `m_shouldStop` is atomic; all other state is managed by the owner thread.
- *  - The receiver thread blocks on `recvfrom()` until data arrives or stop() is called.
  */
 class FakeReportServer
 {
 private:
-    /**
-     * @brief File descriptor of the UNIX datagram socket.
-     *
-     * Initialized in the constructor. Becomes -1 after cleanup.
-     */
     int m_socketServer = -1;
-
-    /**
-     * @brief Background thread responsible for blocking recvfrom() calls.
-     */
     std::thread m_serverThread;
-
-    /**
-     * @brief Stop flag controlling the lifetime of the receive loop.
-     *
-     * When set to true, the thread exits the loop and shutdown begins.
-     */
     std::atomic<bool> m_shouldStop {false};
-
-    /**
-     * @brief Filesystem path where the UNIX socket will be created.
-     *
-     * Removed and recreated at server startup; deleted on shutdown.
-     */
     std::string m_path;
 
 public:
-    /**
-     * @brief Constructs the fake report server and creates the UNIX socket.
-     *
-     * @param path Path of the AF_UNIX datagram socket to bind.
-     *
-     * @throws std::runtime_error if the socket cannot be created.
-     */
     explicit FakeReportServer(std::string path)
         : m_path(std::move(path))
     {
@@ -151,26 +143,12 @@ public:
         }
     }
 
-    /**
-     * @brief Destructor. Ensures clean shutdown, thread join, and socket removal.
-     */
     ~FakeReportServer()
     {
         stop();
         waitForStop();
     }
 
-    /**
-     * @brief Starts the receiving thread and binds the AF_UNIX socket.
-     *
-     * Removes any stale socket file at the target path.
-     * Spawns a thread that:
-     *   - binds to @ref m_path
-     *   - receives alert messages via recvfrom()
-     *   - prints them to stdout
-     *
-     * @throws std::runtime_error if binding fails.
-     */
     void start()
     {
         if (std::filesystem::exists(m_path))
@@ -212,25 +190,11 @@ public:
             });
     }
 
-    /**
-     * @brief Signals the server thread to stop receiving.
-     *
-     * Does not block; caller must invoke @ref waitForStop() to join.
-     */
     void stop()
     {
         m_shouldStop.store(true);
     }
 
-    /**
-     * @brief Joins the server thread and removes the UNIX socket.
-     *
-     * Safe to call multiple times.
-     * Performs:
-     *   - thread join
-     *   - socket close
-     *   - unlink of @ref m_path
-     */
     void waitForStop()
     {
         if (m_serverThread.joinable())
@@ -250,75 +214,26 @@ public:
         }
     }
 };
+
 /**
- * @brief Response server used in InventorySync/VD integration tests.
- *
- * This component emulates the Wazuh manager's response socket and receives:
- *  - StartAck
- *  - EndAck
- *  - ReqRet
- *
- * It binds an AF_UNIX datagram socket and listens asynchronously on a
- * dedicated thread. Incoming FlatBuffer messages are decoded and the
- * corresponding synchronization promises are fulfilled.
- *
- * Responsibilities:
- *  - Bind to a UNIX socket path.
- *  - Receive agent→manager responses triggered by ResponseDispatcherImpl.
- *  - Parse FlatBuffer messages and trigger synchronization events.
- *
- * Threading Model:
- *  - `start()` spawns the receiver thread and performs socket bind().
- *  - `stop()` signals termination (atomic flag + shutdown()).
- *  - `waitForStop()` joins the thread and cleans up the socket.
- *
- * Constraints:
- *  - Only one server instance may bind to a given socket path.
- *  - Socket file is removed and recreated on each start() call.
+ * @brief Response server for receiving StartAck/EndAck/ReqRet messages.
  */
 class ResponseServer
 {
 private:
-    /** @brief AF_UNIX datagram socket file descriptor. */
     int m_socketFd = -1;
-
-    /** @brief Worker thread responsible for running recvfrom() loop. */
     std::thread m_serverThread;
-
-    /** @brief Atomic stop flag used to terminate receive loop. */
     std::atomic<bool> m_shouldStop {false};
-
-    /** @brief Filesystem path to bind the UNIX socket. */
     std::string m_path;
 
-    /** @brief References updated when StartAck is received. */
     uint64_t& m_sessionId;
-
-    /** @brief Promises satisfied on StartAck and EndAck. */
     std::promise<void>& m_startAckPromise;
     std::promise<void>& m_endAckPromise;
-
-    /** @brief Flags indicating whether StartAck/EndAck were already received. */
     std::atomic<bool>& m_receivedStartAck;
     std::atomic<bool>& m_receivedEndAck;
-
-    /** @brief Enables verbose debug logging. */
     bool m_verbose;
 
 public:
-    /**
-     * @brief Construct a ResponseServer and allocate its socket.
-     *
-     * @param path UNIX domain socket path to bind.
-     * @param sessionId Reference updated when StartAck arrives.
-     * @param startAckPromise Promise signaled when StartAck is received.
-     * @param endAckPromise Promise signaled when EndAck is received.
-     * @param receivedStartAck Atomic flag set on StartAck.
-     * @param receivedEndAck Atomic flag set on EndAck.
-     * @param verbose Enables debug printing for message traffic.
-     *
-     * @throws std::runtime_error if socket creation fails.
-     */
     ResponseServer(std::string path,
                    uint64_t& sessionId,
                    std::promise<void>& startAckPromise,
@@ -341,23 +256,12 @@ public:
         }
     }
 
-    /**
-     * @brief Ensures orderly shutdown, thread termination, and socket cleanup.
-     */
     ~ResponseServer()
     {
         stop();
         waitForStop();
     }
 
-    /**
-     * @brief Bind the UNIX socket and start the asynchronous receive thread.
-     *
-     * Removes any leftover socket file at the given path, then binds and
-     * enters a recvfrom() loop on a dedicated thread.
-     *
-     * @throws std::runtime_error if bind() fails.
-     */
     void start()
     {
         if (std::filesystem::exists(m_path))
@@ -409,27 +313,15 @@ public:
             });
     }
 
-    /**
-     * @brief Signals the server thread to stop and shuts down the socket.
-     */
     void stop()
     {
         m_shouldStop.store(true);
-
         if (m_socketFd >= 0)
         {
             shutdown(m_socketFd, SHUT_RDWR);
         }
     }
 
-    /**
-     * @brief Joins the server thread and cleans up the socket file.
-     *
-     * Safe to call repeatedly. Ensures:
-     *  - thread has finished
-     *  - socket is closed
-     *  - filesystem entry is removed
-     */
     void waitForStop()
     {
         if (m_serverThread.joinable())
@@ -475,7 +367,6 @@ private:
     {
         std::string_view messageView(data, size);
 
-        // Find "_sync " marker
         size_t syncPos = messageView.find("_sync ");
         if (syncPos == std::string_view::npos)
         {
@@ -483,13 +374,11 @@ private:
             return;
         }
 
-        // Parse size from header
         size_t sizeEnd = messageView.rfind(' ', syncPos - 1);
         size_t sizeStart = messageView.rfind(' ', sizeEnd - 1);
         std::string sizeStr(messageView.substr(sizeStart + 1, sizeEnd - sizeStart - 1));
         size_t expectedFbSize = std::stoull(sizeStr);
 
-        // FlatBuffer starts after "_sync " (6 chars) plus the space = 7 chars total
         size_t fbStart = syncPos + 7;
 
         if (fbStart >= size)
@@ -581,90 +470,49 @@ private:
 };
 
 /**
- * @brief Utility class for constructing FlatBuffer-encoded InventorySync messages.
+ * @brief MessageBuilder for creating FlatBuffer messages from the new JSON format.
  *
- * This class provides static helper functions used by the InventorySync/VD
- * integration test tool to generate:
- *   - Start            (initial synchronization metadata)
- *   - DataValue        (per-element inventory payloads)
- *   - End              (finalization of agent batch)
- *
- * The resulting objects are complete, verified FlatBuffer messages
- * compatible with Wazuh::SyncSchema::Message.
- *
- * Design Notes:
- *  - Stateless: No internal storage; safe for concurrent use.
- *  - Each method constructs its own FlatBufferBuilder to ensure
- *    message lifetimes are independent.
- *  - All returned buffers contain an entire serialized Message.
+ * The new format stores complete Indexer documents in data_values/data_context,
+ * where each message contains the entire _source payload as raw JSON bytes.
  */
 class MessageBuilder
 {
 public:
     /**
-     * @brief Build a Start message containing agent metadata and inventory indices.
-     *
-     * The Start message is the first step of the sync cycle. It declares:
-     *   - The number of DataValue messages that will follow (`size`).
-     *   - Which inventory indices this sync operation will affect.
-     *   - Agent OS/platform metadata used by VD.
-     *   - The sync type (full, delta) and processing option (Sync, VDFirst, etc).
-     *
-     * @param agentId   Agent identifier string (usually numeric).
-     * @param mode      Sync mode (ModuleFull, ModuleDelta, etc).
-     * @param option    Sync option (VDFirst, VDSync, VDClean, Sync).
-     * @param size      Number of expected DataValue messages in this batch.
-     * @param indices   List of inventory indices to be synced
-     *                  (e.g., "wazuh-states-inventory-packages").
-     * @param osData    JSON dictionary containing agent OS metadata.
-     *
-     * Required OS fields (if missing, defaults are applied):
-     *   - hostname
-     *   - architecture
-     *   - name
-     *   - platform
-     *   - version
-     *
-     * @return Serialized FlatBuffer `Message` buffer containing Start.
+     * @brief Build Start message (unchanged from before).
      */
     static std::vector<uint8_t> buildStart(const std::string& agentId,
                                            Wazuh::SyncSchema::Mode mode,
                                            Wazuh::SyncSchema::Option option,
                                            uint64_t size,
-                                           const std::vector<std::string>& indices,
-                                           const nlohmann::json& osData)
+                                           const std::vector<std::string>& indices)
     {
         flatbuffers::FlatBufferBuilder builder;
 
-        // Module: always "syscollector" for inventory sync
         auto module = builder.CreateString("syscollector");
+        auto agentIdStr = builder.CreateString(agentId);
+        auto agentName = builder.CreateString("test-agent-" + agentId);
+        auto agentVersion = builder.CreateString("5.0.0");
 
-        // Inventory indices encoded as vector<string>
         std::vector<flatbuffers::Offset<flatbuffers::String>> indexVec;
-        indexVec.reserve(indices.size());
         for (const auto& idx : indices)
         {
             indexVec.push_back(builder.CreateString(idx));
         }
         auto indicesOffset = builder.CreateVector(indexVec);
 
-        // Agent metadata from JSON (with fallbacks)
-        auto agentIdStr = builder.CreateString(agentId);
-        auto agentName = builder.CreateString(osData.value("hostname", "test-agent-" + agentId));
-        auto agentVersion = builder.CreateString("5.0.0");
-        auto architecture = builder.CreateString(osData.value("architecture", "x86_64"));
-        auto hostname = builder.CreateString(osData.value("hostname", "test-host"));
-        auto osname = builder.CreateString(osData.value("name", "Ubuntu"));
+        // Default agent metadata
+        auto architecture = builder.CreateString("x86_64");
+        auto hostname = builder.CreateString("test-host");
+        auto osname = builder.CreateString("Ubuntu");
         auto ostype = builder.CreateString("linux");
-        auto osplatform = builder.CreateString(osData.value("platform", "ubuntu"));
-        auto osversion = builder.CreateString(osData.value("version", "22.04"));
+        auto osplatform = builder.CreateString("ubuntu");
+        auto osversion = builder.CreateString("22.04");
 
-        // Default group
         std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
         groups_vec.push_back(builder.CreateString("default"));
         auto groups = builder.CreateVector(groups_vec);
 
-        // Build Start object
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(module);
         startBuilder.add_mode(mode);
@@ -683,50 +531,39 @@ public:
         startBuilder.add_groups(groups);
 
         auto startOffset = startBuilder.Finish();
-
-        // Wrap into Message union
         auto message =
             Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_Start, startOffset.Union());
 
         builder.Finish(message);
 
-        // Return full serialized buffer
         return {builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize()};
     }
 
     /**
-     * @brief Build a DataValue message containing one inventory element.
+     * @brief Build DataValue message from payload JSON.
      *
-     * Represents a single package / hotfix / OS entry.
-     *
-     * The payload (`jsonData`) is stored as raw bytes in the FlatBuffer and
-     * is later decoded by the manager's inventory processing pipeline.
-     *
-     * @param session     Session ID provided in StartAck.
-     * @param seq         Sequence number for ordering within this batch.
-     * @param index       Inventory index (e.g. "wazuh-states-inventory-packages").
-     * @param id          Unique document identifier for this element.
-     * @param jsonData    JSON payload encoded as string.
-     * @param operation   Upsert | Delete.
-     *
-     * @return FlatBuffer-encoded Message containing DataValue.
+     * @param session Session ID from StartAck
+     * @param seq Sequence number
+     * @param payload Complete JSON payload with _index, _id, _source
+     * @param operation Upsert or Delete
      */
     static std::vector<uint8_t> buildDataValue(uint64_t session,
                                                uint64_t seq,
-                                               const std::string& index,
-                                               const std::string& id,
-                                               const std::string& jsonData,
+                                               const nlohmann::json& payload,
                                                Wazuh::SyncSchema::Operation operation)
     {
         flatbuffers::FlatBufferBuilder builder;
 
+        // Extract index and id from payload
+        std::string index = payload.value("_index", "");
+        std::string id = payload.value("_id", "");
+
+        // Serialize entire _source as JSON bytes
+        std::string sourceJson = payload.value("_source", nlohmann::json::object()).dump();
+
         auto indexStr = builder.CreateString(index);
         auto idStr = builder.CreateString(id);
-
-        // Store JSON raw bytes as vector<int8_t>.
-        // This is required because FlatBuffers does not store arbitrary-length strings
-        // in unions directly.
-        auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(jsonData.data()), jsonData.size());
+        auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
 
         Wazuh::SyncSchema::DataValueBuilder dataBuilder(builder);
         dataBuilder.add_session(session);
@@ -737,8 +574,6 @@ public:
         dataBuilder.add_data(dataVec);
 
         auto dataOffset = dataBuilder.Finish();
-
-        // Wrap into Message union
         auto message =
             Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_DataValue, dataOffset.Union());
         builder.Finish(message);
@@ -747,14 +582,44 @@ public:
     }
 
     /**
-     * @brief Build an End message signaling the end of the sync sequence.
+     * @brief Build DataContext message from payload JSON.
      *
-     * The End message must be sent once all DataValue messages are flushed.
-     * The manager responds with EndAck.
-     *
-     * @param session Session identifier (must match StartAck).
-     *
-     * @return Serialized FlatBuffer `Message` containing End.
+     * @param session Session ID from StartAck
+     * @param seq Sequence number
+     * @param payload Complete JSON payload with _index, _source
+     */
+    static std::vector<uint8_t> buildDataContext(uint64_t session, uint64_t seq, const nlohmann::json& payload)
+    {
+        flatbuffers::FlatBufferBuilder builder;
+
+        // Extract index and id from payload
+        std::string index = payload.value("_index", "");
+        std::string id = payload.value("_id", "");
+
+        // Serialize entire _source as JSON bytes
+        std::string sourceJson = payload.value("_source", nlohmann::json::object()).dump();
+
+        auto indexStr = builder.CreateString(index);
+        auto idStr = builder.CreateString(id);
+        auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
+
+        Wazuh::SyncSchema::DataContextBuilder dataBuilder(builder);
+        dataBuilder.add_session(session);
+        dataBuilder.add_seq(seq);
+        dataBuilder.add_index(indexStr);
+        dataBuilder.add_id(idStr);
+        dataBuilder.add_data(dataVec);
+
+        auto dataOffset = dataBuilder.Finish();
+        auto message =
+            Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_DataContext, dataOffset.Union());
+        builder.Finish(message);
+
+        return {builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize()};
+    }
+
+    /**
+     * @brief Build End message (unchanged).
      */
     static std::vector<uint8_t> buildEnd(uint64_t session)
     {
@@ -771,7 +636,7 @@ public:
     }
 };
 
-// Simple command line parser
+// Command line parser
 TestConfig parseArgs(int argc, char* argv[])
 {
     TestConfig config;
@@ -780,22 +645,7 @@ TestConfig parseArgs(int argc, char* argv[])
     {
         throw std::runtime_error(
             "Usage: " + std::string(argv[0]) +
-            " <agent_id> <mode> <option> [--input <file>] [--config <file>] [--wait <seconds>] [--verbose]\n"
-            "\n"
-            "Arguments:\n"
-            "  agent_id       Agent identifier (e.g., 001)\n"
-            "  mode           Sync mode: 'full' or 'delta'\n"
-            "  option         VD option: 'VDFirst', 'VDSync', 'VDClean', or 'Sync'\n"
-            "\n"
-            "Options:\n"
-            "  --input <file>   JSON file with agent data (os, packages, hotfixes)\n"
-            "  --config <file>  VD configuration file\n"
-            "  --wait <secs>    Seconds to wait after sending messages (default: 10)\n"
-            "  --verbose        Enable verbose logging\n"
-            "\n"
-            "Example:\n"
-            "  " +
-            std::string(argv[0]) + " 001 full VDFirst --input agent_001.json --config vd_config.json --verbose\n");
+            " <agent_id> <mode> <option> [--input <file>] [--config <file>] [--wait <seconds>] [--verbose]\n");
     }
 
     config.agentId = argv[1];
@@ -821,16 +671,12 @@ TestConfig parseArgs(int argc, char* argv[])
         {
             config.verbose = true;
         }
-        else
-        {
-            throw std::runtime_error("Unknown argument: " + arg);
-        }
     }
 
     return config;
 }
 
-// -- Main testtool -- //
+// Main
 int main(int argc, char* argv[])
 {
     try
@@ -840,29 +686,27 @@ int main(int argc, char* argv[])
         std::cout << "\n=== InventorySync + VD testtool ===" << std::endl;
         std::cout << "Mode: " << config.mode << "    Option: " << config.option << std::endl;
 
-        // Load agent test data
+        // Load test data (new format)
         AgentTestData testData;
         if (!config.inputFile.empty())
         {
             std::cout << "Loading test data from: " << config.inputFile << std::endl;
             testData = AgentTestData::loadFromFile(config.inputFile);
-            std::cout << "  OS: " << testData.os.value("name", "Unknown") << std::endl;
-            std::cout << "  Packages: " << testData.packages.size() << std::endl;
-            std::cout << "  Hotfixes: " << testData.hotfixes.size() << std::endl;
+            std::cout << "  Data values: " << testData.dataValues.size() << std::endl;
+            std::cout << "  Data contexts: " << testData.dataContexts.size() << std::endl;
         }
         else
         {
-            std::cout << "[ERROR] No input file specified" << std::endl;
             throw std::runtime_error("Input file is required");
         }
 
+        // Initialize modules
         auto& routerModule = RouterModule::instance();
         routerModule.start();
 
         auto routerProvider = RouterProvider(IS_TOPIC, true);
         routerProvider.start();
 
-        // Setup fake report server
         if (!std::filesystem::exists(DEFAULT_SOCKETS_PATH))
         {
             std::filesystem::create_directories(DEFAULT_SOCKETS_PATH);
@@ -870,7 +714,6 @@ int main(int argc, char* argv[])
         FakeReportServer fakeReportServer(DEFAULT_QUEUE_PATH);
         fakeReportServer.start();
 
-        // Setup response server
         uint64_t sessionId = 0;
         std::promise<void> startAckPromise;
         auto startAckFuture = startAckPromise.get_future();
@@ -885,7 +728,7 @@ int main(int argc, char* argv[])
         responseServer.start();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-        // Load VD config
+        // Load config
         nlohmann::json vdConfig;
         if (!config.configFile.empty())
         {
@@ -893,34 +736,31 @@ int main(int argc, char* argv[])
             vdConfig = nlohmann::json::parse(std::ifstream(config.configFile));
         }
 
-        // Initialize modules
         std::cout << "\n[INFO] Initializing modules..." << std::endl;
 
-        // Initialize InventorySync
         auto& inventorySync = InventorySync::instance();
         inventorySync.start(
-            [&config](const int,
-                      const std::string&,
-                      const std::string&,
-                      const int,
-                      const std::string&,
-                      const std::string& message,
-                      va_list args)
+            [](const int,
+               const std::string&,
+               const std::string&,
+               const int,
+               const std::string&,
+               const std::string& message,
+               va_list args)
             {
                 char buffer[MAX_LEN];
                 vsnprintf(buffer, sizeof(buffer), message.c_str(), args);
-                std::cout << "[TESTTOOL] " << buffer << std::endl;
+                std::cout << "[IS] " << buffer << std::endl;
             },
             vdConfig);
 
-        // Initialize VulnerabilityScanner
         auto& vulnerabilityScanner = VulnerabilityScannerFacade::instance();
         vulnerabilityScanner.start(
-            [&config](const int, const char*, const char*, const int, const char*, const char* message, va_list args)
+            [](const int, const char*, const char*, const int, const char*, const char* message, va_list args)
             {
                 char buffer[MAX_LEN];
                 vsnprintf(buffer, sizeof(buffer), message, args);
-                std::cout << "[TESTTOOL] " << buffer << std::endl;
+                std::cout << "[VD] " << buffer << std::endl;
             },
             vdConfig,
             false,
@@ -929,7 +769,7 @@ int main(int argc, char* argv[])
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        // Prepare sync parameters
+        // Parse sync mode/option
         Wazuh::SyncSchema::Mode mode =
             (config.mode == "full") ? Wazuh::SyncSchema::Mode_ModuleFull : Wazuh::SyncSchema::Mode_ModuleDelta;
 
@@ -951,35 +791,33 @@ int main(int argc, char* argv[])
             option = Wazuh::SyncSchema::Option_Sync;
         }
 
-        // Calculate total messages
-        uint64_t totalMessages = 0;
-        if (!testData.os.empty())
-        {
-            totalMessages++;
-        }
-        totalMessages += testData.packages.size();
-        totalMessages += testData.hotfixes.size();
+        // Calculate total messages and indices
+        uint64_t totalMessages = testData.dataValues.size() + testData.dataContexts.size();
 
-        // Build indices
-        std::vector<std::string> indices;
-        if (!testData.os.empty())
+        std::set<std::string> uniqueIndices;
+        for (const auto& dv : testData.dataValues)
         {
-            indices.emplace_back(OS_INDEX);
+            if (dv.contains("payload") && dv["payload"].contains("_index"))
+            {
+                uniqueIndices.insert(dv["payload"]["_index"].get<std::string>());
+            }
         }
-        if (!testData.packages.empty())
+        for (const auto& dc : testData.dataContexts)
         {
-            indices.emplace_back(PACKAGE_INDEX);
-        }
-        if (!testData.hotfixes.empty())
-        {
-            indices.emplace_back(HOTFIX_INDEX);
+            if (dc.contains("payload") && dc["payload"].contains("_index"))
+            {
+                uniqueIndices.insert(dc["payload"]["_index"].get<std::string>());
+            }
         }
 
-        std::cout << "\n[INFO] Sending " << totalMessages << " messages..." << std::endl;
+        std::vector<std::string> indices(uniqueIndices.begin(), uniqueIndices.end());
+
+        std::cout << "\n[INFO] Sending " << totalMessages << " messages across " << indices.size() << " indices..."
+                  << std::endl;
 
         // Send START
         std::cout << "[SEND] Start message" << std::endl;
-        auto startMsg = MessageBuilder::buildStart(config.agentId, mode, option, totalMessages, indices, testData.os);
+        auto startMsg = MessageBuilder::buildStart(config.agentId, mode, option, totalMessages, indices);
         routerProvider.send(std::vector<char>(startMsg.begin(), startMsg.end()));
 
         if (startAckFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
@@ -987,42 +825,40 @@ int main(int argc, char* argv[])
             throw std::runtime_error("Timeout waiting for StartAck");
         }
 
-        // Send DATA
+        // Send DataValue messages
         uint64_t seq = 0;
-
-        if (!testData.os.empty())
+        for (const auto& dataValue : testData.dataValues)
         {
-            std::cout << "[SEND] OS data (seq=" << seq << ")" << std::endl;
-            auto msg = MessageBuilder::buildDataValue(sessionId,
-                                                      seq++,
-                                                      "wazuh-states-inventory-system",
-                                                      config.agentId,
-                                                      testData.os.dump(),
-                                                      Wazuh::SyncSchema::Operation_Upsert);
+            std::string operation = dataValue.value("operation", "upsert");
+            auto op =
+                (operation == "delete") ? Wazuh::SyncSchema::Operation_Delete : Wazuh::SyncSchema::Operation_Upsert;
+
+            auto payload = dataValue.value("payload", nlohmann::json::object());
+            std::string pkgName = "unknown";
+            if (payload.contains("_source") && payload["_source"].contains("package"))
+            {
+                pkgName = payload["_source"]["package"].value("name", "unknown");
+            }
+
+            std::cout << "[SEND] DataValue (seq=" << seq << "): " << operation << " - " << pkgName << std::endl;
+
+            auto msg = MessageBuilder::buildDataValue(sessionId, seq++, payload, op);
             routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
         }
 
-        for (const auto& pkg : testData.packages)
+        // Send DataContext messages
+        for (const auto& dataContext : testData.dataContexts)
         {
-            std::cout << "[SEND] Package: " << pkg.value("name", "unknown") << " (seq=" << seq << ")" << std::endl;
-            auto msg = MessageBuilder::buildDataValue(sessionId,
-                                                      seq++,
-                                                      "wazuh-states-inventory-packages",
-                                                      config.agentId + "_pkg_" + std::to_string(seq),
-                                                      pkg.dump(),
-                                                      Wazuh::SyncSchema::Operation_Upsert);
-            routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
-        }
+            auto payload = dataContext.value("payload", nlohmann::json::object());
+            std::string pkgName = "unknown";
+            if (payload.contains("_source") && payload["_source"].contains("package"))
+            {
+                pkgName = payload["_source"]["package"].value("name", "unknown");
+            }
 
-        for (const auto& hotfix : testData.hotfixes)
-        {
-            std::cout << "[SEND] Hotfix (seq=" << seq << ")" << std::endl;
-            auto msg = MessageBuilder::buildDataValue(sessionId,
-                                                      seq++,
-                                                      "wazuh-states-inventory-hotfixes",
-                                                      config.agentId + "_hf_" + std::to_string(seq),
-                                                      hotfix.dump(),
-                                                      Wazuh::SyncSchema::Operation_Upsert);
+            std::cout << "[SEND] DataContext (seq=" << seq << "): " << pkgName << std::endl;
+
+            auto msg = MessageBuilder::buildDataContext(sessionId, seq++, payload);
             routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
         }
 
@@ -1031,7 +867,6 @@ int main(int argc, char* argv[])
         auto endMsg = MessageBuilder::buildEnd(sessionId);
         routerProvider.send(std::vector<char>(endMsg.begin(), endMsg.end()));
 
-        // Wait for processing
         std::cout << "\n[INFO] Waiting " << config.waitTime << " seconds for VD processing..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(config.waitTime));
 
@@ -1043,7 +878,7 @@ int main(int argc, char* argv[])
         routerProvider.stop();
         routerModule.stop();
 
-        std::cout << "[INFO] Completed successfully!\n" << std::endl;
+        std::cout << "[INFO] Test completed successfully!\n" << std::endl;
         return 0;
     }
     catch (const std::exception& e)
