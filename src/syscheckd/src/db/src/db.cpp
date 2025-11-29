@@ -537,6 +537,7 @@ cJSON* fim_db_get_every_element(const char* table_name)
         std::vector<nlohmann::json> items = DB::instance().getEveryElement(table_name);
 
         result_array = cJSON_CreateArray();
+
         if (!result_array)
         {
             FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON array");
@@ -548,6 +549,7 @@ cJSON* fim_db_get_every_element(const char* table_name)
             // Convert nlohmann::json to cJSON for C compatibility
             std::string json_str = item.dump();
             cJSON* c_json = cJSON_Parse(json_str.c_str());
+
             if (c_json)
             {
                 cJSON_AddItemToArray(result_array, c_json);
@@ -561,10 +563,12 @@ cJSON* fim_db_get_every_element(const char* table_name)
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
+
         if (result_array)
         {
             cJSON_Delete(result_array);
         }
+
         return NULL;
     }
 

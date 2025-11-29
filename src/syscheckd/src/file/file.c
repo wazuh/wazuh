@@ -268,11 +268,11 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
+    cJSON_Delete(stateful_event);
 
 end:
     os_free(diff);
     cJSON_Delete(stateless_event);
-    cJSON_Delete(stateful_event);
 }
 
 // Callback
