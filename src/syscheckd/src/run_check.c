@@ -597,28 +597,6 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 }
 #endif
 
-// Logging callback wrapper for FIM recovery functions
-static void fim_recovery_log_wrapper(modules_log_level_t level, const char* log) {
-    switch (level) {
-        case LOG_DEBUG:
-        case LOG_DEBUG_VERBOSE:
-            mdebug1("%s", log);
-            break;
-        case LOG_INFO:
-            minfo("%s", log);
-            break;
-        case LOG_WARNING:
-            mwarn("%s", log);
-            break;
-        case LOG_ERROR:
-            merror("%s", log);
-            break;
-        case LOG_ERROR_EXIT:
-            merror_exit("%s", log);
-            break;
-    }
-}
-
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
@@ -711,6 +689,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 atomic_int_set(&fim_flush_in_progress, 0);
             }
         } else {
+            // Lock FIM's scheduled and realtime scans during sync and recovery process
             w_mutex_lock(&syscheck.fim_scan_mutex);
             w_mutex_lock(&syscheck.fim_realtime_mutex);
             #ifdef WIN32
@@ -728,13 +707,14 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
                         minfo("Starting integrity validation process for %s", table_names[i]);
                         bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
-                                                                                           syscheck.sync_handle,
-                                                                                           fim_recovery_log_wrapper);
-                        if (full_sync_required) {
+                                                                                           syscheck.sync_handle);
+                        //if (full_sync_required) {
+                        if (1) {
+                            //w_rwlock_rdlock(&syscheck.directories_lock); // Lock the directories list since it will be traversed while persisting the table in memory
                             fim_recovery_persist_table_and_resync(table_names[i],
                                                                   syscheck.sync_handle,
-                                                                  NULL,
-                                                                  fim_recovery_log_wrapper);
+                                                                  NULL);
+                            //w_rwlock_unlock(&syscheck.directories_lock); // TODO: maybe move up
                         }
                         // Update the last sync time regardless of whether full sync was required
                         // This ensures the integrity check doesn't run again until integrity_interval has elapsed
@@ -749,7 +729,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             #endif
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
             w_mutex_unlock(&syscheck.fim_scan_mutex);
-
             minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         }
     }
