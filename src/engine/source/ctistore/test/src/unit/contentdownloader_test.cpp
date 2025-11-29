@@ -22,6 +22,8 @@ std::string makeIsolatedConfig(ContentManagerConfig& cfg, const std::string& tag
     cfg.outputFolder = base + "/content";
     cfg.databasePath = base + "/rocksdb";
     cfg.assetStorePath = base + "/assets";
+    // Disable OAuth for tests by clearing console URL
+    cfg.oauth.console.url.clear();
     return base;
 }
 } // namespace
@@ -41,6 +43,8 @@ protected:
         testConfig.interval = 60;
         testConfig.onDemand = true;
         testConfig.topicName = "test_cti_store";
+        // Disable OAuth for tests by clearing console URL
+        testConfig.oauth.console.url.clear();
     }
 
     void TearDown() override { std::filesystem::remove_all(testDir); }
@@ -118,12 +122,14 @@ TEST_F(ContentDownloaderTest, ToNlohmannConsistency)
 TEST(ContentManagerConfigValidationTest, ValidDefaultConfig)
 {
     ContentManagerConfig cfg; // defaults are valid
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     EXPECT_NO_THROW(cfg.validate());
 }
 
 TEST(ContentManagerConfigValidationTest, InvalidInterval)
 {
     ContentManagerConfig cfg;
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     cfg.interval = 0;
     EXPECT_THROW(cfg.validate(), std::runtime_error);
 }
@@ -131,6 +137,7 @@ TEST(ContentManagerConfigValidationTest, InvalidInterval)
 TEST(ContentManagerConfigValidationTest, InvalidURLForCTISource)
 {
     ContentManagerConfig cfg;
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     cfg.url = "ftp://invalid"; // not http/https
     EXPECT_THROW(cfg.validate(), std::runtime_error);
 }
@@ -138,6 +145,7 @@ TEST(ContentManagerConfigValidationTest, InvalidURLForCTISource)
 TEST(ContentManagerConfigValidationTest, OfflineAllowsMissingHTTP)
 {
     ContentManagerConfig cfg;
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     cfg.contentSource = "offline";
     cfg.url.clear(); // allowed
     EXPECT_NO_THROW(cfg.validate());
@@ -146,6 +154,7 @@ TEST(ContentManagerConfigValidationTest, OfflineAllowsMissingHTTP)
 TEST(ContentManagerConfigValidationTest, AcceptsNonRawCompressionType)
 {
     ContentManagerConfig cfg;
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     cfg.compressionType = "gzip"; // Should be accepted; content_manager handles decompression
     EXPECT_NO_THROW(cfg.validate());
 }
@@ -295,6 +304,7 @@ TEST_F(ContentDownloaderTest, RelativePathsResolvedAgainstBasePath)
 {
     auto baseRoot = testDir + "/root";
     ContentManagerConfig cfg;
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     cfg.basePath = baseRoot;
     cfg.outputFolder = "content";
     cfg.databasePath = "rocksdb";
@@ -318,6 +328,7 @@ TEST(ContentManagerTest, RelativePathsResolvedInConstructor)
     auto ts = std::to_string(std::time(nullptr));
     std::string baseRoot = std::string {"/tmp/cti_cm_rel_"} + ts + "/root";
     cti::store::ContentManagerConfig cfg;
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     cfg.basePath = baseRoot;
     cfg.outputFolder = "content"; // relative
     cfg.databasePath = "rocksdb"; // relative
@@ -345,6 +356,7 @@ TEST(ContentManagerTest, AssetStorePathOverridesDatabasePath)
 {
     auto ts = std::to_string(std::time(nullptr));
     ContentManagerConfig cfg;
+    cfg.oauth.console.url.clear(); // Disable OAuth for test
     cfg.basePath = std::string {"/tmp/cti_cm_asset_"} + ts;
     cfg.outputFolder = "content";
     cfg.databasePath = "offset_db";   // offsets

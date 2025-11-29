@@ -61,7 +61,6 @@ Update the indexer configuration in `/var/ossec/etc/ossec.conf` to specify the i
 
 ```xml
 <indexer>
-  <enabled>yes</enabled>
   <hosts>
     <host>https://127.0.0.1:9200</host>
   </hosts>

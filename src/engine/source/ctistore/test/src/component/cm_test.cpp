@@ -17,6 +17,8 @@ TEST(ContentManagerTest, init)
     cfg.outputFolder = (tmpBase / "content").string();
     cfg.databasePath = (tmpBase / "rocksdb").string();
     cfg.assetStorePath = (tmpBase / "assets").string();
+    // Disable OAuth for tests by clearing console URL
+    cfg.oauth.console.url.clear();
 
     std::unique_ptr<cti::store::ContentManager> cm;
     ASSERT_NO_THROW({ cm = std::make_unique<cti::store::ContentManager>(cfg); });

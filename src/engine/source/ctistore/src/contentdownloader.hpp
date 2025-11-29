@@ -61,10 +61,7 @@ public:
      * @brief Check if stop was requested
      * @return true if stop was requested
      */
-    bool shouldStop() const
-    {
-        return m_shouldStop.load();
-    }
+    bool shouldStop() const { return m_shouldStop.load(); }
 
     /**
      * @brief Update the download interval

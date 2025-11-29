@@ -126,9 +126,11 @@ protected:
      * **Without OAuth Providers**:
      * - Returns originalUrl unchanged
      *
+     * **Fallback on OAuth Failure**:
+     * - If OAuth authentication fails, falls back to original URL
+     *
      * @param originalUrl The CTI resource URL or product identifier
-     * @return std::string The effective URL to use (signed URL or original URL)
-     * @throws std::runtime_error If OAuth authentication fails
+     * @return std::string The effective URL to use (signed URL or original URL as fallback)
      */
     std::string getEffectiveUrl(const std::string& originalUrl) const
     {
@@ -159,9 +161,9 @@ protected:
                 // Get catalog products from subscription
                 auto catalogProducts = m_productsProvider->getCatalogProducts();
 
-                logInfo(WM_CONTENTUPDATER,
-                        "CtiDownloader: Found %zu catalog products in subscription",
-                        catalogProducts.size());
+                logDebug2(WM_CONTENTUPDATER,
+                          "CtiDownloader: Found %zu catalog products in subscription",
+                          catalogProducts.size());
 
                 // Try to find a matching product by extracting the product identifier from the URL and comparing for
                 // exact match
@@ -190,10 +192,10 @@ protected:
                     {
                         resourceUrl = product.resource;
                         foundProduct = true;
-                        logInfo(WM_CONTENTUPDATER,
-                                "CtiDownloader: Matched product '%s' for URL '%s'",
-                                product.identifier.c_str(),
-                                originalUrl.c_str());
+                        logDebug2(WM_CONTENTUPDATER,
+                                  "CtiDownloader: Matched product '%s' for URL '%s'",
+                                  product.identifier.c_str(),
+                                  originalUrl.c_str());
                         logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Using resource URL: %s", resourceUrl.c_str());
                         break;
                     }
@@ -221,15 +223,15 @@ protected:
             logDebug1(WM_CONTENTUPDATER, "CtiDownloader: Exchanging token for signed URL");
             auto signedUrl = m_signedUrlProvider->exchangeForSignedUrl(resourceUrl);
 
-            logInfo(WM_CONTENTUPDATER, "CtiDownloader: Signed URL obtained successfully");
+            logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Signed URL obtained successfully");
             logDebug2(WM_CONTENTUPDATER, "CtiDownloader: Signed URL: %s", signedUrl.c_str());
 
             return signedUrl;
         }
         catch (const std::exception& e)
         {
-            logError(WM_CONTENTUPDATER, "CtiDownloader: Failed to obtain signed URL: %s", e.what());
-            throw std::runtime_error("Failed to authenticate CTI request: " + std::string(e.what()));
+            logWarn(WM_CONTENTUPDATER, "CtiDownloader: %s. Falling back to default URL", e.what());
+            return originalUrl;
         }
     }
 
@@ -319,18 +321,8 @@ protected:
                                const std::string& queryParameters = "",
                                const std::string& outputFilepath = "") const
     {
-        // Get effective URL (transform to signed URL if OAuth is enabled)
-        std::string effectiveURL;
-        try
-        {
-            effectiveURL = getEffectiveUrl(URL);
-        }
-        catch (const std::exception& e)
-        {
-            // If OAuth authentication fails, propagate the error
-            logError(WM_CONTENTUPDATER, "CtiDownloader: Failed to authenticate request: %s", e.what());
-            throw;
-        }
+        // Get effective URL (transform to signed URL if OAuth is enabled, or use original URL as fallback)
+        const std::string effectiveURL = getEffectiveUrl(URL);
 
         // On download error routine.
         const auto onError {[](const std::string& message, const long statusCode, const std::string& responseBody)

@@ -515,7 +515,7 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     expect_popen("auditctl -v 2>/dev/null", "r", fp);
     expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 3.1.2");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -538,7 +538,7 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -547,19 +547,10 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    // Create plugin
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, 0);
+    // Move plugin
+    expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
+    expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
+    will_return(__wrap_OS_MoveFile, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
@@ -597,7 +588,7 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, -1);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     expect_string(__wrap_unlink, file, audit3_socket);
@@ -609,7 +600,7 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -619,9 +610,9 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     will_return(__wrap_fclose, 0);
 
     // Create plugin
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, 1);
+    expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
+    expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
+    will_return(__wrap_OS_MoveFile, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
@@ -647,7 +638,7 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     expect_popen("auditctl -v 2>/dev/null", "r", fp);
     expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.0");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -670,11 +661,11 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'tmp/af_wazuh.conf' due to [(0)-(Success)].");
 
     errno = 0;
 
@@ -686,7 +677,7 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
 
 
 void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) {
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -719,7 +710,7 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -728,7 +719,7 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'tmp/af_wazuh.conf' due to [(0)-(Success)].");
 
     errno = 0;
 
@@ -740,7 +731,7 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
 
 
 void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink(void **state) {
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -773,7 +764,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink(void **st
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -782,19 +773,10 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink(void **st
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    // Create plugin
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, 0);
+    // Move plugin
+    expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
+    expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
+    will_return(__wrap_OS_MoveFile, 0);
 
     // Do not restart
     syscheck.restart_audit = 0;
@@ -819,7 +801,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart(v
     expect_popen("auditctl -v 2>/dev/null", "r", fp);
     expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.3");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -842,7 +824,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart(v
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -851,19 +833,10 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart(v
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    // Create plugin
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, 0);
+    // Move plugin
+    expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
+    expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
+    will_return(__wrap_OS_MoveFile, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
@@ -889,7 +862,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_error(voi
     expect_popen("auditctl -v 2>/dev/null", "r", fp);
     expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.4");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -912,7 +885,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_error(voi
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -921,21 +894,12 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_error(voi
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    // Create plugin
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, -1);
-    errno = EEXIST;
+    // Move plugin (fails)
+    expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
+    expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
+    will_return(__wrap_OS_MoveFile, -1);
 
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1134): Unable to link from 'etc/af_wazuh.conf' to '/etc/audit/plugins.d/af_wazuh.conf' due to [(17)-(File exists)].");
+    expect_string(__wrap__merror, formatted_msg, "Failed to move 'tmp/af_wazuh.conf' to '/etc/audit/plugins.d/af_wazuh.conf'");
 
     int ret;
     ret = set_auditd_config();
@@ -955,7 +919,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_unlink_er
     expect_popen("auditctl -v 2>/dev/null", "r", fp);
     expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.5");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
@@ -978,7 +942,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_unlink_er
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -987,16 +951,12 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_unlink_er
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    // Create plugin
-    expect_string(__wrap_link, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_link, path2, audit3_socket);
-    will_return(__wrap_link, -1);
-    errno = EEXIST;
+    // Move plugin (fails)
+    expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
+    expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
+    will_return(__wrap_OS_MoveFile, -1);
 
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1123): Unable to delete file: '/etc/audit/plugins.d/af_wazuh.conf' due to [(17)-(File exists)].");
+    expect_string(__wrap__merror, formatted_msg, "Failed to move 'tmp/af_wazuh.conf' to '/etc/audit/plugins.d/af_wazuh.conf'");
 
     int ret;
     ret = set_auditd_config();

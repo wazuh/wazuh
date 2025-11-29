@@ -123,8 +123,7 @@ protected:
                 "enabled": true,
                 "consoleUrl": "https://console.wazuh.com",
                 "tokenEndpoint": "/api/v1/instances/token/exchange",
-                "cacheSignedUrls": true,
-                "signedUrlLifetime": 300
+                "cacheSignedUrls": true
             }
         })"_json;
 
