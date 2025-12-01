@@ -886,7 +886,7 @@ bool SecurityConfigurationAssessment::performRecovery()
         {
             if (!check.contains("id") || !check.contains("version"))
             {
-                LoggingHelper::getInstance().log(LOG_WARNING, "Skipping check with missing id or version field");
+                LoggingHelper::getInstance().log(LOG_ERROR, "Skipping check with missing id or version field");
                 continue;
             }
 
