@@ -26,6 +26,9 @@ from api.validator import api_config_schema, security_config_schema
 CACHE_DEPRECATED_MESSAGE = 'The `cache` API configuration option was deprecated in {release} and will be removed ' \
                            'in the next minor release.'
 
+# Fields that must preserve case sensitivity when converting to lowercase
+PRESERVE_CASE_SENSITIVITY_FIELDS = {'https.key', 'https.cert', 'https.ca'}
+
 default_security_configuration = {
     "auth_token_exp_timeout": 900,
     "rbac_mode": "white"
@@ -106,19 +109,28 @@ default_api_configuration = {
 }
 
 
-def dict_to_lowercase(mydict: Dict):
+def dict_to_lowercase(mydict: Dict, skip_keys: set = None, prefix: str = ""):
     """Turn all string values of a dictionary to lowercase. Also support nested dictionaries.
 
     Parameters
     ----------
     mydict : dict
         Dictionary with the values we want to convert.
+    skip_keys : set, optional
+        Set of keys to skip during the conversion.
+    prefix : str, optional
+        Prefix to add to the keys when checking skip_keys.
     """
+    skip_keys = skip_keys or set()
+
     for k, val in filter(lambda x: isinstance(x[1], str) or isinstance(x[1], dict), mydict.items()):
+        full_key = f"{prefix}.{k}" if prefix else k
+
         if isinstance(val, dict):
-            dict_to_lowercase(mydict[k])
+            dict_to_lowercase(mydict[k], skip_keys=skip_keys, prefix=full_key)
         else:
-            mydict[k] = val.lower()
+            if full_key not in skip_keys:
+                mydict[k] = val.lower()
 
 
 def append_wazuh_prefixes(dictionary: Dict, path_fields: Dict[Any, List[Tuple[str, str]]]) -> None:
@@ -316,8 +328,8 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
     if configuration is None:
         configuration = copy.deepcopy(default_conf)
     else:
-        # If any value is missing from user's configuration, add the default one:
-        dict_to_lowercase(configuration)
+        # Convert string values to lowercase except for specific fields
+        dict_to_lowercase(configuration, skip_keys=PRESERVE_CASE_SENSITIVITY_FIELDS)
 
         # Check if cache is enabled
         if configuration.get('cache', {}).get('enabled', {}):
