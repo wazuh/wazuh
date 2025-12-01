@@ -22,130 +22,132 @@
 namespace
 {
 
-/// @brief Convert comma-separated string to JSON array
-/// @param input Comma-separated string
-/// @return JSON array with trimmed values
-nlohmann::json stringToJsonArray(const std::string& input)
-{
-    nlohmann::json result = nlohmann::json::array();
-    std::istringstream stream(input);
-    std::string token;
-
-    while (std::getline(stream, token, ','))
+    /// @brief Convert comma-separated string to JSON array
+    /// @param input Comma-separated string
+    /// @return JSON array with trimmed values
+    nlohmann::json stringToJsonArray(const std::string& input)
     {
-        token = Utils::trim(token, " \t");
-        if (!token.empty())
+        nlohmann::json result = nlohmann::json::array();
+        std::istringstream stream(input);
+        std::string token;
+
+        while (std::getline(stream, token, ','))
         {
-            result.push_back(token);
+            token = Utils::trim(token, " \t");
+
+            if (!token.empty())
+            {
+                result.push_back(token);
+            }
+        }
+
+        return result;
+    }
+
+    /// @brief Normalize check data for stateful message format
+    /// @param check Check JSON object (modified in place)
+    void normalizeCheckForStateful(nlohmann::json& check)
+    {
+        if (check.contains("refs") && check["refs"].is_string())
+        {
+            check["references"] = stringToJsonArray(check["refs"].get<std::string>());
+            check.erase("refs");
+        }
+
+        if (check.contains("compliance") && check["compliance"].is_string())
+        {
+            check["compliance"] = stringToJsonArray(check["compliance"].get<std::string>());
+        }
+
+        if (check.contains("rules") && check["rules"].is_string())
+        {
+            check["rules"] = stringToJsonArray(check["rules"].get<std::string>());
+        }
+
+        if (check.contains("policy_id"))
+        {
+            check.erase("policy_id");
         }
     }
 
-    return result;
-}
-
-/// @brief Normalize check data for stateful message format
-/// @param check Check JSON object (modified in place)
-void normalizeCheckForStateful(nlohmann::json& check)
-{
-    if (check.contains("refs") && check["refs"].is_string())
+    /// @brief Normalize policy data for stateful message format
+    /// @param policy Policy JSON object (modified in place)
+    void normalizePolicyForStateful(nlohmann::json& policy)
     {
-        check["references"] = stringToJsonArray(check["refs"].get<std::string>());
-        check.erase("refs");
+        if (policy.contains("refs") && policy["refs"].is_string())
+        {
+            policy["references"] = stringToJsonArray(policy["refs"].get<std::string>());
+            policy.erase("refs");
+        }
     }
 
-    if (check.contains("compliance") && check["compliance"].is_string())
+    /// @brief Get policy data by ID from database
+    /// @param policyId Policy ID to look up
+    /// @param dbSync Database sync interface
+    /// @return Policy JSON object, empty if not found
+    nlohmann::json getPolicyById(const std::string& policyId, const std::shared_ptr<IDBSync>& dbSync)
     {
-        check["compliance"] = stringToJsonArray(check["compliance"].get<std::string>());
-    }
+        nlohmann::json policy;
 
-    if (check.contains("rules") && check["rules"].is_string())
-    {
-        check["rules"] = stringToJsonArray(check["rules"].get<std::string>());
-    }
+        if (!dbSync)
+        {
+            return policy;
+        }
 
-    if (check.contains("policy_id"))
-    {
-        check.erase("policy_id");
-    }
-}
+        const std::string filter = "WHERE id = '" + policyId + "'";
+        auto selectQuery = SelectQuery::builder()
+                           .table("sca_policy")
+                           .columnList({"id", "name", "description", "file", "refs"})
+                           .rowFilter(filter)
+                           .build();
 
-/// @brief Normalize policy data for stateful message format
-/// @param policy Policy JSON object (modified in place)
-void normalizePolicyForStateful(nlohmann::json& policy)
-{
-    if (policy.contains("refs") && policy["refs"].is_string())
-    {
-        policy["references"] = stringToJsonArray(policy["refs"].get<std::string>());
-        policy.erase("refs");
-    }
-}
+        const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED)
+            {
+                policy = resultData;
+            }
+        };
 
-/// @brief Get policy data by ID from database
-/// @param policyId Policy ID to look up
-/// @param dbSync Database sync interface
-/// @return Policy JSON object, empty if not found
-nlohmann::json getPolicyById(const std::string& policyId, const std::shared_ptr<IDBSync>& dbSync)
-{
-    nlohmann::json policy;
+        dbSync->selectRows(selectQuery.query(), callback);
 
-    if (!dbSync)
-    {
         return policy;
     }
 
-    const std::string filter = "WHERE id = '" + policyId + "'";
-    auto selectQuery = SelectQuery::builder()
-                       .table("sca_policy")
-                       .columnList({"id", "name", "description", "file", "refs"})
-                       .rowFilter(filter)
-                       .build();
-
-    const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
+    /// @brief Build stateful message in the format required by the indexer
+    /// @param check Check data from database
+    /// @param policy Policy data from database
+    /// @return Properly formatted stateful message JSON
+    nlohmann::json buildStatefulMessage(nlohmann::json check, nlohmann::json policy)
     {
-        if (returnTypeCallback == SELECTED)
+        uint64_t documentVersion = 0;
+
+        // Extract and restructure checksum
+        nlohmann::json checksumObj = nlohmann::json::object();
+
+        if (check.contains("checksum") && !check["checksum"].get<std::string>().empty())
         {
-            policy = resultData;
+            checksumObj = {{"hash", {{"sha1", check["checksum"]}}}};
+            check.erase("checksum");
         }
-    };
 
-    dbSync->selectRows(selectQuery.query(), callback);
+        // Build state object with modified_at and document_version
+        nlohmann::json state;
+        state["modified_at"] = Utils::getCurrentISO8601();
 
-    return policy;
-}
+        if (check.contains("version"))
+        {
+            documentVersion = check["version"].get<uint64_t>();
+            state["document_version"] = documentVersion;
+            check.erase("version");
+        }
 
-/// @brief Build stateful message in the format required by the indexer
-/// @param check Check data from database
-/// @param policy Policy data from database
-/// @return Properly formatted stateful message JSON
-nlohmann::json buildStatefulMessage(nlohmann::json check, nlohmann::json policy)
-{
-    uint64_t documentVersion = 0;
+        // Normalize the data
+        normalizeCheckForStateful(check);
+        normalizePolicyForStateful(policy);
 
-    // Extract and restructure checksum
-    nlohmann::json checksumObj = nlohmann::json::object();
-    if (check.contains("checksum") && !check["checksum"].get<std::string>().empty())
-    {
-        checksumObj = {{"hash", {{"sha1", check["checksum"]}}}};
-        check.erase("checksum");
+        return {{"checksum", checksumObj}, {"check", check}, {"policy", policy}, {"state", state}};
     }
-
-    // Build state object with modified_at and document_version
-    nlohmann::json state;
-    state["modified_at"] = Utils::getCurrentISO8601();
-
-    if (check.contains("version"))
-    {
-        documentVersion = check["version"].get<uint64_t>();
-        state["document_version"] = documentVersion;
-        check.erase("version");
-    }
-
-    // Normalize the data
-    normalizeCheckForStateful(check);
-    normalizePolicyForStateful(policy);
-
-    return {{"checksum", checksumObj}, {"check", check}, {"policy", policy}, {"state", state}};
-}
 
 } // anonymous namespace
 
@@ -1028,6 +1030,7 @@ bool SecurityConfigurationAssessment::performRecovery()
 
             // Get policy data for this check
             nlohmann::json policy = getPolicyById(policyId, m_dBSync);
+
             if (policy.empty())
             {
                 LoggingHelper::getInstance().log(LOG_WARNING, "Policy not found for check " + checkId + ", skipping");
