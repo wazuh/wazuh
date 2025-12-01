@@ -1,194 +1,125 @@
 {
-    "type": "VDSync",
-    "agent": {
-        "id": "001"
-    },
-    "data_values": [
-        {
-            "operation": "upsert",
-            "payload": {
-                "_index": "wazuh-states-inventory-packages",
-                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c349",
-                "_score": 2,
-                "_source": {
-                    "agent": {
-                        "id": "001",
-                        "name": "ubuntu22",
-                        "version": "v5.0.0",
-                        "groups": [
-                            "default"
-                        ],
-                        "host": {
-                            "architecture": "aarch64",
-                            "hostname": "ubuntu22",
-                            "os": {
-                                "name": "Ubuntu",
-                                "platform": "ubuntu",
-                                "type": "linux",
-                                "version": "22.04.5 LTS (Jammy Jellyfish)"
-                            }
-                        }
-                    },
-                    "wazuh": {
-                        "cluster": {
-                            "name": "wazuh"
-                        }
-                    },
-                    "checksum": {
-                        "hash": {
-                            "sha1": "c665573c916b60392f615c71742948813a60bbf5"
-                        }
-                    },
-                    "package": {
-                        "category": "misc",
-                        "installed": null,
-                        "path": null,
-                        "priority": "optional",
-                        "source": null,
-                        "type": "deb",
-                        "vendor": "contact@grafana.com",
-                        "version": "8.5.5",
-                        "architecture": "amd64",
-                        "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
-                        "description": "Grafana",
-                        "name": "grafana",
-                        "size": 334,
-                        "format": "deb",
-                        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
-                        "multiarch": "foreign",
-                        "groups": "utils"
-                    },
-                    "state": {
-                        "document_version": 1,
-                        "modified_at": "2025-11-27T12:31:07.733Z"
-                    }
-                }
-            }
-        },
-        {
-            "operation": "delete",
-            "payload": {
-                "_index": "wazuh-states-inventory-packages",
-                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c350",
-                "_score": 2,
-                "_source": {
-                    "agent": {
-                        "id": "001",
-                        "name": "ubuntu22",
-                        "version": "v5.0.0",
-                        "groups": [
-                            "default"
-                        ],
-                        "host": {
-                            "architecture": "aarch64",
-                            "hostname": "ubuntu22",
-                            "os": {
-                                "name": "Ubuntu",
-                                "platform": "ubuntu",
-                                "type": "linux",
-                                "version": "22.04.5 LTS (Jammy Jellyfish)"
-                            }
-                        }
-                    },
-                    "wazuh": {
-                        "cluster": {
-                            "name": "wazuh"
-                        }
-                    },
-                    "checksum": {
-                        "hash": {
-                            "sha1": "82771c9b43f0434021653ebaa811e26e0ebaed5d"
-                        }
-                    },
-                    "package": {
-                        "architecture": "all",
-                        "category": "oldlibs",
-                        "description": "transitional package for https support",
-                        "installed": null,
-                        "multiarch": "foreign",
-                        "name": "apt-transport-https",
-                        "path": null,
-                        "priority": "optional",
-                        "size": 169984,
-                        "source": "apt",
-                        "type": "deb",
-                        "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
-                        "version": "2.4.14"
-                    },
-                    "state": {
-                        "document_version": 1,
-                        "modified_at": "2025-11-27T12:31:07.733Z"
-                    }
-                }
-            }
-        }
+  "Start": {
+    "agentid": "001",
+    "mode": "delta",
+    "option": "VDSync",
+    "agentname": "ubuntu22",
+    "agentversion": "v5.0.0",
+    "architecture": "aarch64",
+    "hostname": "ubuntu22",
+    "osname": "Ubuntu",
+    "osplatform": "ubuntu",
+    "ostype": "linux",
+    "osversion": "22.04.5 LTS (Jammy Jellyfish)",
+    "groups": [
+      "default"
     ],
-    "data_context": [
-        {
-            "operation": "upsert",
-            "payload": {
-                "_index": "wazuh-states-inventory-system",
-                "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c351",
-                "_score": 2,
-                "_source": {
-                    "agent": {
-                        "id": "001",
-                        "name": "ubuntu22",
-                        "version": "v5.0.0",
-                        "groups": [
-                            "default"
-                        ],
-                        "host": {
-                            "architecture": "aarch64",
-                            "hostname": "ubuntu22",
-                            "os": {
-                                "name": "Ubuntu",
-                                "platform": "ubuntu",
-                                "type": "linux",
-                                "version": "22.04.5 LTS (Jammy Jellyfish)"
-                            }
-                        }
-                    },
-                    "wazuh": {
-                        "cluster": {
-                            "name": "wazuh"
-                        }
-                    },
-                    "checksum": {
-                        "hash": {
-                        "sha1": "996d7206f3c607c7aa377702d65c1b53a80d2a84"
-                        }
-                    },
-                    "host": {
-                        "architecture": "aarch64",
-                        "hostname": "ubuntu24",
-                        "os": {
-                            "build": null,
-                            "codename": "noble",
-                            "distribution": {
-                                "release": null
-                            },
-                            "full": null,
-                            "kernel": {
-                                "name": "Linux",
-                                "release": "6.8.0-71-generic",
-                                "version": "#71-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 16:44:45 UTC 2025"
-                            },
-                            "major": "24",
-                            "minor": "04",
-                            "name": "Ubuntu",
-                            "patch": "2",
-                            "platform": "ubuntu",
-                            "type": "linux",
-                            "version": "24.04.2 LTS (Noble Numbat)"
-                        }
-                    },
-                    "state": {
-                        "document_version": 1,
-                        "modified_at": "2025-11-27T11:57:48.873Z"
-                    }
-                }
-            }
+    "indices": [
+      "wazuh-states-inventory-packages"
+    ],
+    "size": 3
+  },
+  "data_values": [
+    {
+      "operation": "upsert",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "c665573c916b60392f615c71742948813a60bbf5"
+          }
+        },
+        "package": {
+          "category": "misc",
+          "installed": null,
+          "path": null,
+          "priority": "optional",
+          "source": null,
+          "type": "deb",
+          "vendor": "contact@grafana.com",
+          "version": "8.5.5",
+          "architecture": "amd64",
+          "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
+          "description": "Grafana",
+          "name": "grafana",
+          "size": 334,
+          "format": "deb",
+          "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+          "multiarch": "foreign",
+          "groups": "utils"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:31:07.733Z"
         }
-    ]
+      }
+    },
+    {
+      "operation": "delete",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "82771c9b43f0434021653ebaa811e26e0ebaed5d"
+          }
+        },
+        "package": {
+          "architecture": "all",
+          "category": "oldlibs",
+          "description": "transitional package for https support",
+          "installed": null,
+          "multiarch": "foreign",
+          "name": "apt-transport-https",
+          "path": null,
+          "priority": "optional",
+          "size": 169984,
+          "source": "apt",
+          "type": "deb",
+          "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+          "version": "2.4.14"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:31:07.733Z"
+        }
+      }
+    }
+  ],
+  "data_context": [
+    {
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "996d7206f3c607c7aa377702d65c1b53a80d2a84"
+          }
+        },
+        "host": {
+          "architecture": "aarch64",
+          "hostname": "ubuntu24",
+          "os": {
+            "build": null,
+            "codename": "noble",
+            "distribution": {
+              "release": null
+            },
+            "full": null,
+            "kernel": {
+              "name": "Linux",
+              "release": "6.8.0-71-generic",
+              "version": "#71-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 16:44:45 UTC 2025"
+            },
+            "major": "24",
+            "minor": "04",
+            "name": "Ubuntu",
+            "patch": "2",
+            "platform": "ubuntu",
+            "type": "linux",
+            "version": "24.04.2 LTS (Noble Numbat)"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T11:57:48.873Z"
+        }
+      }
+    }
+  ]
 }

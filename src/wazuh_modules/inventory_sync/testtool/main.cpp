@@ -19,26 +19,24 @@
 #include <fstream>
 #include <future>
 #include <iostream>
+#include <set>
 #include <thread>
 #include <vector>
 
 constexpr auto MAX_LEN = 65536;
-constexpr auto DEFAULT_QUEUE_PATH = "queue/sockets/queue";
 constexpr auto DEFAULT_SOCKETS_PATH = "queue/sockets";
-
-constexpr auto ARQUEUE = "queue/alerts/ar";
+constexpr auto DEFAULT_QUEUE_PATH = "queue/sockets/queue";
+constexpr auto DEFAULT_ARQUEUE_DIR = "queue/alerts";
+constexpr auto DEFAULT_ARQUEUE = "queue/alerts/ar";
 constexpr auto IS_TOPIC = "inventory-states";
-constexpr auto MIN_ARGS = 4;
+constexpr auto MIN_ARGS = 2;
 
 /**
  * @brief Struct to hold test configuration
  */
 struct TestConfig
 {
-    std::string agentId;
-    std::string mode;       ///< "full" or "delta"
-    std::string option;     ///< "VDFirst", "VDSync", "VDClean"
-    std::string inputFile;  ///< JSON file with agent data
+    std::string inputFile;  ///< JSON file with Start + data_values + data_context
     std::string configFile; ///< VD configuration file
     uint32_t waitTime = 30; ///< seconds to wait after sending messages
     bool verbose = false;   ///< verbose logging
@@ -49,8 +47,7 @@ struct TestConfig
  */
 struct AgentTestData
 {
-    std::string scanType;                     ///< Scan type (VDFirst, VDSync, VDClean)
-    std::string agentId;                      ///< Agent identifier
+    nlohmann::json start;                     ///< Start message description
     std::vector<nlohmann::json> dataValues;   ///< Array of data_values
     std::vector<nlohmann::json> dataContexts; ///< Array of data_context
 
@@ -59,23 +56,50 @@ struct AgentTestData
      *
      * Expected format:
      * {
-     *   "type": "VDSync",
-     *   "agent": {"id": "001"},
+     *   "Start": {
+     *     "agentid": "001",
+     *     "mode": "full|delta",    // optional, defaults to "delta"
+     *     "option": "VDFirst|VDSync|VDClean|Sync", // optional, defaults to "VDSync"
+     *
+     *     // Optional agent / OS metadata (defaults provided if omitted)
+     *     "agentname": "test-agent-001",
+     *     "agentversion": "5.0.0",
+     *     "architecture": "x86_64",
+     *     "hostname": "test-host",
+     *     "osname": "Ubuntu",
+     *     "osplatform": "ubuntu",
+     *     "ostype": "linux",
+     *     "osversion": "22.04",
+     *     "groups": ["default", "extra-group"],
+     *
+     *     // Optional; if omitted, indices and size are computed automatically
+     *     "indices": [
+     *       "wazuh-states-inventory-packages",
+     *       "wazuh-states-inventory-system",
+     *       "wazuh-states-inventory-hotfixes"
+     *     ],
+     *     "size": 5
+     *   },
      *   "data_values": [
      *     {
      *       "operation": "upsert|delete",
+     *       "index": "wazuh-states-inventory-packages", // optional, auto-detected if omitted
+     *       "id": "document-id-1",                       // optional
      *       "payload": {
-     *         "_index": "wazuh-states-inventory-packages",
-     *         "_id": "...",
-     *         "_source": { ... actual package/os/hotfix data ... }
+     *         "checksum": { ... },
+     *         "package": { ... },
+     *         "state": { ... }
      *       }
      *     }
      *   ],
      *   "data_context": [
      *     {
+     *       "index": "wazuh-states-inventory-system",    // optional, auto-detected if omitted
+     *       "id": "document-id-2",                       // optional
      *       "payload": {
-     *         "_index": "wazuh-states-inventory-packages",
-     *         "_source": { ... }
+     *         "checksum": { ... },
+     *         "host": { ... },
+     *         "state": { ... }
      *       }
      *     }
      *   ]
@@ -98,9 +122,13 @@ struct AgentTestData
 
         nlohmann::json root = nlohmann::json::parse(file);
 
-        // Extract metadata
-        data.scanType = root.value("type", "VDSync");
-        data.agentId = root.value("agent", nlohmann::json::object()).value("id", "000");
+        // Start is mandatory in the new format
+        if (!root.contains("Start") || !root["Start"].is_object())
+        {
+            throw std::runtime_error("Input JSON must contain a 'Start' object");
+        }
+
+        data.start = root["Start"];
 
         // Extract data_values array
         if (root.contains("data_values") && root["data_values"].is_array())
@@ -470,49 +498,173 @@ private:
 };
 
 /**
+ * @brief Helper to map string mode -> Wazuh::SyncSchema::Mode
+ */
+inline Wazuh::SyncSchema::Mode parseMode(const std::string& modeStr)
+{
+    if (modeStr == "full" || modeStr == "ModuleFull")
+    {
+        return Wazuh::SyncSchema::Mode_ModuleFull;
+    }
+    if (modeStr == "delta" || modeStr == "ModuleDelta")
+    {
+        return Wazuh::SyncSchema::Mode_ModuleDelta;
+    }
+    // Default to delta
+    return Wazuh::SyncSchema::Mode_ModuleDelta;
+}
+
+/**
+ * @brief Helper to map string option -> Wazuh::SyncSchema::Option
+ */
+inline Wazuh::SyncSchema::Option parseOption(const std::string& opt)
+{
+    if (opt == "VDFirst") return Wazuh::SyncSchema::Option_VDFirst;
+    if (opt == "VDSync") return Wazuh::SyncSchema::Option_VDSync;
+    if (opt == "VDClean") return Wazuh::SyncSchema::Option_VDClean;
+    if (opt == "Sync") return Wazuh::SyncSchema::Option_Sync;
+    return Wazuh::SyncSchema::Option_VDSync;
+}
+
+/**
+ * @brief Infer index from entry payload if not explicitly set.
+ *
+ * Rules:
+ *  - If entry["index"] exists → use it.
+ *  - Else if payload.package.hotfix → HOTFIX_INDEX
+ *  - Else if payload.package → PACKAGE_INDEX
+ *  - Else if payload.host → OS_INDEX
+ *  - Else → empty string (caller must handle)
+ */
+inline std::string inferIndex(const nlohmann::json& entry)
+{
+    if (entry.contains("index") && entry["index"].is_string())
+    {
+        return entry["index"].get<std::string>();
+    }
+
+    if (!entry.contains("payload") || !entry["payload"].is_object())
+    {
+        return {};
+    }
+
+    const auto& payload = entry["payload"];
+
+    if (payload.contains("package") && payload["package"].is_object())
+    {
+        const auto& pkg = payload["package"];
+        if (pkg.contains("hotfix"))
+        {
+            return std::string(HOTFIX_INDEX);
+        }
+
+        return std::string(PACKAGE_INDEX);
+    }
+
+    if (payload.contains("host"))
+    {
+        return std::string(OS_INDEX);
+    }
+
+    return {};
+}
+
+/**
  * @brief MessageBuilder for creating FlatBuffer messages from the new JSON format.
  *
- * The new format stores complete Indexer documents in data_values/data_context,
- * where each message contains the entire _source payload as raw JSON bytes.
+ * The new format stores complete inventory documents in data_values/data_context,
+ * where each message contains the entire payload as raw JSON bytes.
  */
 class MessageBuilder
 {
 public:
     /**
-     * @brief Build Start message (unchanged from before).
+     * @brief Build Start message from JSON description.
+     *
+     * @param startJson   "Start" object from the input file.
+     * @param defaultSize Number of messages (data_values + data_context) if size is not set in JSON.
+     * @param defaultIndices Indices inferred from data_values/data_context if not set in JSON.
      */
-    static std::vector<uint8_t> buildStart(const std::string& agentId,
-                                           Wazuh::SyncSchema::Mode mode,
-                                           Wazuh::SyncSchema::Option option,
-                                           uint64_t size,
-                                           const std::vector<std::string>& indices)
+    static std::vector<uint8_t> buildStart(const nlohmann::json& startJson,
+                                           uint64_t defaultSize,
+                                           const std::vector<std::string>& defaultIndices)
     {
         flatbuffers::FlatBufferBuilder builder;
 
-        auto module = builder.CreateString("syscollector");
+        // Module and basic fields
+        std::string moduleStr = startJson.value("module", std::string("syscollector"));
+        auto module = builder.CreateString(moduleStr);
+
+        std::string agentId = startJson.value("agentid", std::string("000"));
         auto agentIdStr = builder.CreateString(agentId);
-        auto agentName = builder.CreateString("test-agent-" + agentId);
-        auto agentVersion = builder.CreateString("5.0.0");
+
+        std::string agentNameStr = startJson.value("agentname", "test-agent-" + agentId);
+        auto agentName = builder.CreateString(agentNameStr);
+
+        std::string agentVersionStr = startJson.value("agentversion", std::string("5.0.0"));
+        auto agentVersion = builder.CreateString(agentVersionStr);
+
+        std::string modeStr = startJson.value("mode", std::string("delta"));
+        auto mode = parseMode(modeStr);
+
+        std::string optionStr = startJson.value("option", std::string("VDSync"));
+        auto option = parseOption(optionStr);
+
+        uint64_t size = startJson.value("size", defaultSize);
+
+        // Indices: either provided in Start or inferred from messages
+        std::vector<std::string> indices;
+        if (startJson.contains("indices") && startJson["indices"].is_array())
+        {
+            for (const auto& idx : startJson["indices"])
+            {
+                if (idx.is_string())
+                {
+                    indices.push_back(idx.get<std::string>());
+                }
+            }
+        }
+        else
+        {
+            indices = defaultIndices;
+        }
 
         std::vector<flatbuffers::Offset<flatbuffers::String>> indexVec;
+        indexVec.reserve(indices.size());
         for (const auto& idx : indices)
         {
             indexVec.push_back(builder.CreateString(idx));
         }
         auto indicesOffset = builder.CreateVector(indexVec);
 
-        // Default agent metadata
-        auto architecture = builder.CreateString("x86_64");
-        auto hostname = builder.CreateString("test-host");
-        auto osname = builder.CreateString("Ubuntu");
-        auto ostype = builder.CreateString("linux");
-        auto osplatform = builder.CreateString("ubuntu");
-        auto osversion = builder.CreateString("22.04");
+        // Agent / OS metadata (with defaults)
+        auto architecture =
+            builder.CreateString(startJson.value("architecture", std::string("x86_64")));
+        auto hostname     = builder.CreateString(startJson.value("hostname", std::string("test-host")));
+        auto osname       = builder.CreateString(startJson.value("osname", std::string("Ubuntu")));
+        auto ostype       = builder.CreateString(startJson.value("ostype", std::string("linux")));
+        auto osplatform   = builder.CreateString(startJson.value("osplatform", std::string("ubuntu")));
+        auto osversion    = builder.CreateString(startJson.value("osversion", std::string("22.04")));
 
-        std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
-        groups_vec.push_back(builder.CreateString("default"));
-        auto groups = builder.CreateVector(groups_vec);
+        // Groups
+        std::vector<flatbuffers::Offset<flatbuffers::String>> groupsVec;
+        if (startJson.contains("groups") && startJson["groups"].is_array())
+        {
+            for (const auto& g : startJson["groups"])
+            {
+                if (g.is_string())
+                {
+                    groupsVec.push_back(builder.CreateString(g.get<std::string>()));
+                }
+            }
+        }
+        else
+        {
+            groupsVec.push_back(builder.CreateString("default"));
+        }
+        auto groups = builder.CreateVector(groupsVec);
 
+        // Build Start
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(module);
         startBuilder.add_mode(mode);
@@ -542,28 +694,29 @@ public:
     /**
      * @brief Build DataValue message from payload JSON.
      *
-     * @param session Session ID from StartAck
-     * @param seq Sequence number
-     * @param payload Complete JSON payload with _index, _id, _source
+     * @param session   Session ID from StartAck
+     * @param seq       Sequence number
+     * @param payload   Complete JSON payload (checksum/package/host/state...)
+     * @param index     Index name (wazuh-states-inventory-packages/system/hotfixes)
+     * @param id        Document ID (may be empty)
      * @param operation Upsert or Delete
      */
     static std::vector<uint8_t> buildDataValue(uint64_t session,
                                                uint64_t seq,
                                                const nlohmann::json& payload,
+                                               const std::string& index,
+                                               const std::string& id,
                                                Wazuh::SyncSchema::Operation operation)
     {
         flatbuffers::FlatBufferBuilder builder;
 
-        // Extract index and id from payload
-        std::string index = payload.value("_index", "");
-        std::string id = payload.value("_id", "");
-
-        // Serialize entire _source as JSON bytes
-        std::string sourceJson = payload.value("_source", nlohmann::json::object()).dump();
+        std::string sourceJson = payload.dump();
 
         auto indexStr = builder.CreateString(index);
-        auto idStr = builder.CreateString(id);
-        auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
+        auto idStr    = builder.CreateString(id);
+        auto dataVec  = builder.CreateVector(
+            reinterpret_cast<const int8_t*>(sourceJson.data()),
+            sourceJson.size());
 
         Wazuh::SyncSchema::DataValueBuilder dataBuilder(builder);
         dataBuilder.add_session(session);
@@ -584,24 +737,27 @@ public:
     /**
      * @brief Build DataContext message from payload JSON.
      *
-     * @param session Session ID from StartAck
-     * @param seq Sequence number
-     * @param payload Complete JSON payload with _index, _source
+     * @param session   Session ID from StartAck
+     * @param seq       Sequence number
+     * @param payload   Complete JSON payload
+     * @param index     Index name
+     * @param id        Document ID (may be empty)
      */
-    static std::vector<uint8_t> buildDataContext(uint64_t session, uint64_t seq, const nlohmann::json& payload)
+    static std::vector<uint8_t> buildDataContext(uint64_t session,
+                                                 uint64_t seq,
+                                                 const nlohmann::json& payload,
+                                                 const std::string& index,
+                                                 const std::string& id)
     {
         flatbuffers::FlatBufferBuilder builder;
 
-        // Extract index and id from payload
-        std::string index = payload.value("_index", "");
-        std::string id = payload.value("_id", "");
-
-        // Serialize entire _source as JSON bytes
-        std::string sourceJson = payload.value("_source", nlohmann::json::object()).dump();
+        std::string sourceJson = payload.dump();
 
         auto indexStr = builder.CreateString(index);
-        auto idStr = builder.CreateString(id);
-        auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
+        auto idStr    = builder.CreateString(id);
+        auto dataVec  = builder.CreateVector(
+            reinterpret_cast<const int8_t*>(sourceJson.data()),
+            sourceJson.size());
 
         Wazuh::SyncSchema::DataContextBuilder dataBuilder(builder);
         dataBuilder.add_session(session);
@@ -619,7 +775,7 @@ public:
     }
 
     /**
-     * @brief Build End message (unchanged).
+     * @brief Build End message.
      */
     static std::vector<uint8_t> buildEnd(uint64_t session)
     {
@@ -645,21 +801,15 @@ TestConfig parseArgs(int argc, char* argv[])
     {
         throw std::runtime_error(
             "Usage: " + std::string(argv[0]) +
-            " <agent_id> <mode> <option> [--input <file>] [--config <file>] [--wait <seconds>] [--verbose]\n");
+            " <input.json> [--config <file>] [--wait <seconds>] [--verbose]\n");
     }
 
-    config.agentId = argv[1];
-    config.mode = argv[2];
-    config.option = argv[3];
+    config.inputFile = argv[1];
 
     for (int i = MIN_ARGS; i < argc; ++i)
     {
         std::string arg = argv[i];
-        if (arg == "--input" && i + 1 < argc)
-        {
-            config.inputFile = argv[++i];
-        }
-        else if (arg == "--config" && i + 1 < argc)
+        if (arg == "--config" && i + 1 < argc)
         {
             config.configFile = argv[++i];
         }
@@ -684,20 +834,22 @@ int main(int argc, char* argv[])
         auto config = parseArgs(argc, argv);
 
         std::cout << "\n=== InventorySync + VD testtool ===" << std::endl;
-        std::cout << "Mode: " << config.mode << "    Option: " << config.option << std::endl;
+        std::cout << "Input: " << config.inputFile << std::endl;
 
         // Load test data (new format)
         AgentTestData testData;
-        if (!config.inputFile.empty())
         {
             std::cout << "Loading test data from: " << config.inputFile << std::endl;
             testData = AgentTestData::loadFromFile(config.inputFile);
+
+            const auto agentId = testData.start.value("agentid", std::string("000"));
+            const auto modeStr = testData.start.value("mode", std::string("delta"));
+            const auto optStr  = testData.start.value("option", std::string("VDSync"));
+
+            std::cout << "  Agent ID: " << agentId << std::endl;
+            std::cout << "  Mode: " << modeStr << "    Option: " << optStr << std::endl;
             std::cout << "  Data values: " << testData.dataValues.size() << std::endl;
             std::cout << "  Data contexts: " << testData.dataContexts.size() << std::endl;
-        }
-        else
-        {
-            throw std::runtime_error("Input file is required");
         }
 
         // Initialize modules
@@ -710,6 +862,10 @@ int main(int argc, char* argv[])
         if (!std::filesystem::exists(DEFAULT_SOCKETS_PATH))
         {
             std::filesystem::create_directories(DEFAULT_SOCKETS_PATH);
+        }
+        if (!std::filesystem::exists(DEFAULT_ARQUEUE_DIR))
+        {
+            std::filesystem::create_directories(DEFAULT_ARQUEUE_DIR);
         }
         FakeReportServer fakeReportServer(DEFAULT_QUEUE_PATH);
         fakeReportServer.start();
@@ -724,7 +880,7 @@ int main(int argc, char* argv[])
         std::atomic<bool> receivedEndAck {false};
 
         ResponseServer responseServer(
-            ARQUEUE, sessionId, startAckPromise, endAckPromise, receivedStartAck, receivedEndAck, config.verbose);
+            DEFAULT_ARQUEUE, sessionId, startAckPromise, endAckPromise, receivedStartAck, receivedEndAck, config.verbose);
         responseServer.start();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -769,44 +925,25 @@ int main(int argc, char* argv[])
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        // Parse sync mode/option
-        Wazuh::SyncSchema::Mode mode =
-            (config.mode == "full") ? Wazuh::SyncSchema::Mode_ModuleFull : Wazuh::SyncSchema::Mode_ModuleDelta;
-
-        Wazuh::SyncSchema::Option option;
-        if (config.option == "VDFirst")
-        {
-            option = Wazuh::SyncSchema::Option_VDFirst;
-        }
-        else if (config.option == "VDSync")
-        {
-            option = Wazuh::SyncSchema::Option_VDSync;
-        }
-        else if (config.option == "VDClean")
-        {
-            option = Wazuh::SyncSchema::Option_VDClean;
-        }
-        else
-        {
-            option = Wazuh::SyncSchema::Option_Sync;
-        }
-
-        // Calculate total messages and indices
+        // Calculate total messages
         uint64_t totalMessages = testData.dataValues.size() + testData.dataContexts.size();
 
+        // Collect unique indices from data_values/data_context (auto-detection)
         std::set<std::string> uniqueIndices;
         for (const auto& dv : testData.dataValues)
         {
-            if (dv.contains("payload") && dv["payload"].contains("_index"))
+            const auto idx = inferIndex(dv);
+            if (!idx.empty())
             {
-                uniqueIndices.insert(dv["payload"]["_index"].get<std::string>());
+                uniqueIndices.insert(idx);
             }
         }
         for (const auto& dc : testData.dataContexts)
         {
-            if (dc.contains("payload") && dc["payload"].contains("_index"))
+            const auto idx = inferIndex(dc);
+            if (!idx.empty())
             {
-                uniqueIndices.insert(dc["payload"]["_index"].get<std::string>());
+                uniqueIndices.insert(idx);
             }
         }
 
@@ -817,7 +954,7 @@ int main(int argc, char* argv[])
 
         // Send START
         std::cout << "[SEND] Start message" << std::endl;
-        auto startMsg = MessageBuilder::buildStart(config.agentId, mode, option, totalMessages, indices);
+        auto startMsg = MessageBuilder::buildStart(testData.start, totalMessages, indices);
         routerProvider.send(std::vector<char>(startMsg.begin(), startMsg.end()));
 
         if (startAckFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
@@ -834,15 +971,25 @@ int main(int argc, char* argv[])
                 (operation == "delete") ? Wazuh::SyncSchema::Operation_Delete : Wazuh::SyncSchema::Operation_Upsert;
 
             auto payload = dataValue.value("payload", nlohmann::json::object());
-            std::string pkgName = "unknown";
-            if (payload.contains("_source") && payload["_source"].contains("package"))
+            std::string index = inferIndex(dataValue);
+            std::string id    = dataValue.value("id", std::string());
+
+            if (index.empty())
             {
-                pkgName = payload["_source"]["package"].value("name", "unknown");
+                std::cerr << "[WARN] DataValue without index could not be inferred, skipping" << std::endl;
+                continue;
             }
 
-            std::cout << "[SEND] DataValue (seq=" << seq << "): " << operation << " - " << pkgName << std::endl;
+            std::string pkgName = "unknown";
+            if (payload.contains("package") && payload["package"].is_object())
+            {
+                pkgName = payload["package"].value("name", "unknown");
+            }
 
-            auto msg = MessageBuilder::buildDataValue(sessionId, seq++, payload, op);
+            std::cout << "[SEND] DataValue (seq=" << seq << ", index=" << index << "): " << operation << " - "
+                      << pkgName << std::endl;
+
+            auto msg = MessageBuilder::buildDataValue(sessionId, seq++, payload, index, id, op);
             routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
         }
 
@@ -850,15 +997,24 @@ int main(int argc, char* argv[])
         for (const auto& dataContext : testData.dataContexts)
         {
             auto payload = dataContext.value("payload", nlohmann::json::object());
-            std::string pkgName = "unknown";
-            if (payload.contains("_source") && payload["_source"].contains("package"))
+            std::string index = inferIndex(dataContext);
+            std::string id    = dataContext.value("id", std::string());
+
+            if (index.empty())
             {
-                pkgName = payload["_source"]["package"].value("name", "unknown");
+                std::cerr << "[WARN] DataContext without index could not be inferred, skipping" << std::endl;
+                continue;
             }
 
-            std::cout << "[SEND] DataContext (seq=" << seq << "): " << pkgName << std::endl;
+            std::string pkgName = "unknown";
+            if (payload.contains("package") && payload["package"].is_object())
+            {
+                pkgName = payload["package"].value("name", "unknown");
+            }
 
-            auto msg = MessageBuilder::buildDataContext(sessionId, seq++, payload);
+            std::cout << "[SEND] DataContext (seq=" << seq << ", index=" << index << "): " << pkgName << std::endl;
+
+            auto msg = MessageBuilder::buildDataContext(sessionId, seq++, payload, index, id);
             routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
         }
 
