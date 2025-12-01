@@ -112,10 +112,10 @@ class InventorySyncFacadeImpl final
         std::string optionStr;
         switch (startMsg->option())
         {
-            case Wazuh::SyncSchema::Option::Sync:     optionStr = "Sync"; break;
-            case Wazuh::SyncSchema::Option::VDFirst:  optionStr = "VDFirst"; break;
-            case Wazuh::SyncSchema::Option::VDSync:   optionStr = "VDSync"; break;
-            case Wazuh::SyncSchema::Option::VDClean:  optionStr = "VDClean"; break;
+            case Wazuh::SyncSchema::Option_Sync:     optionStr = "Sync"; break;
+            case Wazuh::SyncSchema::Option_VDFirst:  optionStr = "VDFirst"; break;
+            case Wazuh::SyncSchema::Option_VDSync:   optionStr = "VDSync"; break;
+            case Wazuh::SyncSchema::Option_VDClean:  optionStr = "VDClean"; break;
             default: optionStr = "Unknown"; break;
         }
 
