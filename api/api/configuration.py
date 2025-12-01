@@ -106,7 +106,7 @@ default_api_configuration = {
 }
 
 
-def dict_to_lowercase(mydict: Dict):
+def dict_to_lowercase(mydict: Dict, skip_keys: set = None, prefix: str = ""):
     """Turn all string values of a dictionary to lowercase. Also support nested dictionaries.
 
     Parameters
@@ -114,11 +114,17 @@ def dict_to_lowercase(mydict: Dict):
     mydict : dict
         Dictionary with the values we want to convert.
     """
+    if skip_keys is None:
+        skip_keys = set()
+
     for k, val in filter(lambda x: isinstance(x[1], str) or isinstance(x[1], dict), mydict.items()):
+        full_key = f"{prefix}.{k}" if prefix else k
+
         if isinstance(val, dict):
-            dict_to_lowercase(mydict[k])
+            dict_to_lowercase(mydict[k], skip_keys=skip_keys, prefix=full_key)
         else:
-            mydict[k] = val.lower()
+            if full_key not in skip_keys:
+                mydict[k] = val.lower()
 
 
 def append_wazuh_prefixes(dictionary: Dict, path_fields: Dict[Any, List[Tuple[str, str]]]) -> None:
@@ -317,7 +323,8 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
         configuration = copy.deepcopy(default_conf)
     else:
         # If any value is missing from user's configuration, add the default one:
-        dict_to_lowercase(configuration)
+        skip_keys = {'https.key', 'https.cert', 'https.ca'}
+        dict_to_lowercase(configuration, skip_keys=skip_keys)
 
         # Check if cache is enabled
         if configuration.get('cache', {}).get('enabled', {}):
