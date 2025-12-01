@@ -26,6 +26,9 @@ from api.validator import api_config_schema, security_config_schema
 CACHE_DEPRECATED_MESSAGE = 'The `cache` API configuration option was deprecated in {release} and will be removed ' \
                            'in the next minor release.'
 
+# Fields that must preserve case sensitivity when converting to lowercase
+PRESERVE_CASE_SENSITIVITY_FIELDS = {'https.key', 'https.cert', 'https.ca'}
+
 default_security_configuration = {
     "auth_token_exp_timeout": 900,
     "rbac_mode": "white"
@@ -113,9 +116,12 @@ def dict_to_lowercase(mydict: Dict, skip_keys: set = None, prefix: str = ""):
     ----------
     mydict : dict
         Dictionary with the values we want to convert.
+    skip_keys : set, optional
+        Set of keys to skip during the conversion.
+    prefix : str, optional
+        Prefix to add to the keys when checking skip_keys.
     """
-    if skip_keys is None:
-        skip_keys = set()
+    skip_keys = skip_keys or set()
 
     for k, val in filter(lambda x: isinstance(x[1], str) or isinstance(x[1], dict), mydict.items()):
         full_key = f"{prefix}.{k}" if prefix else k
@@ -322,9 +328,8 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
     if configuration is None:
         configuration = copy.deepcopy(default_conf)
     else:
-        # If any value is missing from user's configuration, add the default one:
-        skip_keys = {'https.key', 'https.cert', 'https.ca'}
-        dict_to_lowercase(configuration, skip_keys=skip_keys)
+        # Convert string values to lowercase except for specific fields
+        dict_to_lowercase(configuration, skip_keys=PRESERVE_CASE_SENSITIVITY_FIELDS)
 
         # Check if cache is enabled
         if configuration.get('cache', {}).get('enabled', {}):
