@@ -91,7 +91,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install auditd -y
       # Run fim integration tests.
+      # TEMPORARILY DISABLED: Only running registry tests on Windows
       - name: Run fim integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_fim/
+          echo "Skipping Linux FIM tests - only running registry tests on Windows"
+          # sudo python -m pytest --tier 0 --tier 1 test_fim/

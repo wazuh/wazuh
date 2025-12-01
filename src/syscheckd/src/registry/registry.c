@@ -99,7 +99,7 @@ STATIC const char* get_registry_key(const char* path) {
     return path;
 }
 
-cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const cJSON* registry_stateful){
+cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, cJSON* registry_stateful){
     cJSON* stateful_event = cJSON_CreateObject();
     if (stateful_event == NULL) {
         return;
@@ -151,8 +151,7 @@ cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, co
 }
 
 
-// TODO: static?
-cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_registry_key *data){
+cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *data){
     const registry_t* config = fim_registry_configuration(path, arch);
     cJSON* registry_stateful = fim_registry_key_attributes_json(dbsync_event, data, config);
 
@@ -161,13 +160,12 @@ cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash
     return stateful_event;
 }
 
-cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_registry_value_data *data){
+cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *data){
     const registry_t* config = fim_registry_configuration(path, arch);
     cJSON* registry_stateful = fim_registry_value_attributes_json(dbsync_event, data, config);
 
     char *utf8_value = auto_to_utf8(value);
     cJSON_AddStringToObject(registry_stateful, "value", utf8_value ? utf8_value : value);
-    minfo("utf8 value %s", utf8_value); // TODO: remove
     os_free(utf8_value);
 
     cJSON* stateful_event = build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);

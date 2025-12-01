@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <cJSON.h>
 
+#include "debug_op.h"
 #include "shared.h"
 #include "recovery.h"
 #include "../../config/syscheck-config.h"
@@ -39,8 +40,11 @@ cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sh
         snprintf(buf, sizeof(buf), "%lu", (unsigned long)cJSON_GetNumberValue(inode_item));
 
         // Turn this cJSON number item into a string item
-        inode_item->type = cJSON_String;
-        inode_item->valuestring = strdup(buf);
+        char* inode_str = strdup(buf);
+        if (inode_str) {
+            inode_item->type = cJSON_String;
+            inode_item->valuestring = inode_str;
+        }
     }
     // Call the actual builder
     cJSON* result = build_stateful_event_file(path, sha1_hash, document_version, file_data, NULL);
@@ -108,8 +112,13 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         const char* path = cJSON_GetStringValue(path_obj);
         const char* checksum = cJSON_GetStringValue(checksum_obj);
         uint64_t document_version = (uint64_t)cJSON_GetNumberValue(version_obj);
-        //static uint64_t document_version = 10; // TODO: test only
-        document_version++; // TODO: test only
+
+        // Validate required fields
+        if (!path || !checksum) {
+            merror("Missing required fields in recovery item at index %d", i);
+            cJSON_Delete(item_copy);
+            continue;
+        }
 
         // Calculate ID and index based on table type
         char* id_str = NULL;
@@ -127,6 +136,11 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
             cJSON* arch_obj = cJSON_GetObjectItem(item_copy, "architecture");
             const char* arch_str = cJSON_GetStringValue(arch_obj);
+            if (!arch_str) {
+                merror("Missing architecture in registry key item at index %d", i);
+                cJSON_Delete(item_copy);
+                continue;
+            }
             arch = (strcmp(arch_str, "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
 
             // Build id as "arch:path"
@@ -140,6 +154,11 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             cJSON* value_obj = cJSON_GetObjectItem(item_copy, "value");
             const char* arch_str = cJSON_GetStringValue(arch_obj);
             value = cJSON_GetStringValue(value_obj);
+            if (!arch_str || !value) {
+                merror("Missing architecture or value in registry value item at index %d", i);
+                cJSON_Delete(item_copy);
+                continue;
+            }
             arch = (strcmp(arch_str, "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
 
             // Build id as "path:arch:value"
@@ -147,9 +166,14 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             os_calloc(id_len, sizeof(char), id_str);
             snprintf(id_str, id_len, "%s:%d:%s", path, arch, value);
             index = FIM_REGISTRY_VALUES_SYNC_INDEX;
-            minfo("value: %s", value);
         }
 #endif // WIN32
+        else {
+            merror("Invalid table name: %s", table_name);
+            cJSON_Delete(item_copy);
+            cJSON_Delete(items);
+            return;
+        }
 
         // Calculate SHA1 hash of id
         os_sha1 hashed_id;
@@ -171,7 +195,6 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
 #endif // WIN32
         if (stateful_event) {
             char* stateful_event_str = cJSON_PrintUnformatted(stateful_event);
-            minfo("fullentry %s", stateful_event_str); // TODO: remove
             if (stateful_event_str) {
                 asp_persist_diff_in_memory(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
                 os_free(stateful_event_str);
@@ -192,7 +215,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
 
     // Synchronize
     bool success;
-    if (test_callback) { // TODO: see if still needed
+    if (test_callback) {
         success = test_callback();
     } else {
         success = asp_sync_module(handle, MODE_FULL);

@@ -17,20 +17,21 @@
 #include <time.h>
 #include <stdint.h>
 
-#include "../../syscheckd/src/fim_recovery/recovery.h"
+#include "../../syscheckd/src/recovery/recovery.h"
 #include "../../syscheckd/src/db/include/db.h"
 #include "../../shared_modules/sync_protocol/include/agent_sync_protocol_c_interface.h"
 #include "../config/syscheck-config.h"
 #include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/posix/time_wrappers.h"
 
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name);
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 cJSON* __wrap_fim_db_get_every_element(const char* table_name);
 char* __wrap_fim_db_calculate_table_checksum(const char* table_name);
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *data);
-cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_file_data *data);
-cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_file_data *data);
+cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_file_data *data);
+cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_file_data *data);
 
 // Mock implementations
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
@@ -58,12 +59,12 @@ cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
     return mock_ptr_type(cJSON*);
 }
 
-cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_file_data *data) {
+cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_file_data *data) {
     check_expected_ptr(path);
     return mock_ptr_type(cJSON*);
 }
 
-cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_file_data *data) {
+cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, cJSON *dbsync_event, const fim_file_data *data) {
     check_expected_ptr(path);
     return mock_ptr_type(cJSON*);
 }
@@ -72,7 +73,10 @@ cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* 
 static void test_fim_recovery_integrity_interval_has_elapsed_first_time(void **state) {
     (void) state;
     const int64_t integrity_interval = 86400; // 24 hours in seconds
-    int64_t current_time = (int64_t)time(NULL);
+    int64_t current_time = 1000000; // Fixed test time
+
+    // Mock time() to return our test value
+    will_return(__wrap_time, current_time);
 
     // First call should get last_sync_time = 0
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIMDB_FILE_TABLE_NAME);
@@ -80,7 +84,7 @@ static void test_fim_recovery_integrity_interval_has_elapsed_first_time(void **s
 
     // Should update the last sync time to current time
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIMDB_FILE_TABLE_NAME);
-    expect_in_range(__wrap_fim_db_update_last_sync_time_value, timestamp, current_time - 5, current_time + 5);
+    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, current_time);
 
     bool result = fim_recovery_integrity_interval_has_elapsed(FIMDB_FILE_TABLE_NAME, integrity_interval);
 
@@ -92,7 +96,10 @@ static void test_fim_recovery_integrity_interval_has_elapsed_first_time(void **s
 static void test_fim_recovery_integrity_interval_has_elapsed_not_elapsed(void **state) {
     (void) state;
     const int64_t integrity_interval = 86400; // 24 hours in seconds
-    int64_t current_time = (int64_t)time(NULL);
+    int64_t current_time = 1000000; // Fixed test time
+
+    // Mock time() to return our test value
+    will_return(__wrap_time, current_time);
 
     // Last sync was just now (current time)
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIMDB_FILE_TABLE_NAME);
@@ -108,8 +115,11 @@ static void test_fim_recovery_integrity_interval_has_elapsed_not_elapsed(void **
 static void test_fim_recovery_integrity_interval_has_elapsed_elapsed(void **state) {
     (void) state;
     const int64_t integrity_interval = 86400; // 24 hours in seconds
-    int64_t current_time = (int64_t)time(NULL);
+    int64_t current_time = 1000000; // Fixed test time
     int64_t old_sync_time = current_time - (2 * integrity_interval); // 48 hours ago
+
+    // Mock time() to return our test value
+    will_return(__wrap_time, current_time);
 
     // Last sync was 48 hours ago
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIMDB_FILE_TABLE_NAME);

@@ -29,7 +29,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
-include_directories(${CMAKE_SOURCE_DIR}/src/fim_recovery/)
+include_directories(${CMAKE_SOURCE_DIR}/src/recovery/)
 
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
@@ -82,7 +82,7 @@ file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/file/*.c"
      "${CMAKE_SOURCE_DIR}/src/registry/*.c"
      "${CMAKE_SOURCE_DIR}/src/whodata/*.c"
-     "${CMAKE_SOURCE_DIR}/src/fim_recovery/*.c")
+     "${CMAKE_SOURCE_DIR}/src/recovery/*.c")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_library(wazuh-syscheckd STATIC ${SYSCHECKD_SRC})

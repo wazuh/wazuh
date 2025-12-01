@@ -460,6 +460,12 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_recovery SYSCHECK_O ${TEST_DEPS})
-target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS}")
+if(${TARGET} STREQUAL "winagent")
+  target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS} -Wl,--wrap=is_fim_shutdown \
+                                       -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck \
+                                       -Wl,--wrap=syscom_dispatch" fimdb)
+else()
+  target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS}")
+endif()
 
 add_test(NAME test_recovery COMMAND test_recovery)

@@ -97,8 +97,8 @@ void fim_calculate_dbsync_difference_value(const registry_t* configuration,
                                            cJSON* changed_attributes,
                                            cJSON* old_attributes);
 
-cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_registry_value_data *data);
-cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, const fim_registry_key *data);
+cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *data);
+cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *data);
 #endif
 
 #endif

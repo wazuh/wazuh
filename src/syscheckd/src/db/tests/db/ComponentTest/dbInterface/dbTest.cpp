@@ -188,3 +188,166 @@ TEST(DBTest, TestFimDBCloseAndDeleteWithoutInit)
 
     delete mockLog;
 }
+
+TEST_F(DBTestFixture, TestFimDBGetLastSyncTimeNewTable)
+{
+    EXPECT_NO_THROW({
+        // On first call, should return 0 (initialized by initializeTableMetadata)
+        auto lastSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(lastSyncTime, 0);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetLastSyncTimeNullParameter)
+{
+    EXPECT_NO_THROW({
+        auto lastSyncTime = fim_db_get_last_sync_time(nullptr);
+        ASSERT_EQ(lastSyncTime, 0);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBUpdateAndGetLastSyncTime)
+{
+    EXPECT_NO_THROW({
+        const int64_t testTimestamp = 1234567890;
+
+        // Update the last sync time
+        fim_db_update_last_sync_time_value(FIMDB_FILE_TABLE_NAME, testTimestamp);
+
+        // Verify it was updated
+        auto lastSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(lastSyncTime, testTimestamp);
+
+        // Update again with a different timestamp
+        const int64_t newTimestamp = 9876543210;
+        fim_db_update_last_sync_time_value(FIMDB_FILE_TABLE_NAME, newTimestamp);
+
+        lastSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(lastSyncTime, newTimestamp);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTimeValueNullParameter)
+{
+    EXPECT_NO_THROW({
+        // Should not crash, just log error
+        fim_db_update_last_sync_time_value(nullptr, 1234567890);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumEmptyTable)
+{
+    EXPECT_NO_THROW({
+        char* checksum = fim_db_calculate_table_checksum(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(checksum != nullptr);
+        // Empty table should produce SHA1 of empty string
+        ASSERT_STREQ(checksum, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+        free(checksum);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumWithEntries)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
+
+    EXPECT_NO_THROW({
+        // Insert a file entry
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Calculate checksum
+        char* checksum = fim_db_calculate_table_checksum(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(checksum != nullptr);
+
+        // Should produce a non-empty checksum different from empty table
+        ASSERT_STRNE(checksum, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+
+        // Verify checksum length (SHA1 is 40 hex characters)
+        ASSERT_EQ(strlen(checksum), 40);
+
+        free(checksum);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumNullParameter)
+{
+    EXPECT_NO_THROW({
+        char* checksum = fim_db_calculate_table_checksum(nullptr);
+        ASSERT_TRUE(checksum == nullptr);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetEveryElementEmptyTable)
+{
+    EXPECT_NO_THROW({
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(elements != nullptr);
+        ASSERT_TRUE(cJSON_IsArray(elements));
+        ASSERT_EQ(cJSON_GetArraySize(elements), 0);
+        cJSON_Delete(elements);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetEveryElementWithSingleEntry)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
+
+    EXPECT_NO_THROW({
+        // Insert a file entry
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Get all elements
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(elements != nullptr);
+        ASSERT_TRUE(cJSON_IsArray(elements));
+        ASSERT_EQ(cJSON_GetArraySize(elements), 1);
+
+        // Verify the entry contains expected fields
+        cJSON* firstEntry = cJSON_GetArrayItem(elements, 0);
+        ASSERT_TRUE(firstEntry != nullptr);
+        ASSERT_TRUE(cJSON_HasObjectItem(firstEntry, "path"));
+        ASSERT_TRUE(cJSON_HasObjectItem(firstEntry, "checksum"));
+        ASSERT_TRUE(cJSON_HasObjectItem(firstEntry, "inode"));
+        ASSERT_TRUE(cJSON_HasObjectItem(firstEntry, "device"));
+
+        // Verify path value
+        cJSON* path = cJSON_GetObjectItem(firstEntry, "path");
+        ASSERT_TRUE(path != nullptr);
+        ASSERT_TRUE(cJSON_IsString(path));
+        ASSERT_STREQ(cJSON_GetStringValue(path), "/etc/wgetrc");
+
+        cJSON_Delete(elements);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetEveryElementWithMultipleEntries)
+{
+    const auto fileFIMTest1 {std::make_unique<FileItem>(insertFileStatement)};
+
+    EXPECT_NO_THROW({
+        // Insert first entry
+        ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Insert second entry with different path
+        auto secondStatement = insertFileStatement;
+        secondStatement["path"] = "/etc/test.conf";
+        secondStatement["inode"] = 99999;
+        const auto fileFIMTest2 {std::make_unique<FileItem>(secondStatement)};
+        ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Get all elements
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(elements != nullptr);
+        ASSERT_TRUE(cJSON_IsArray(elements));
+        ASSERT_EQ(cJSON_GetArraySize(elements), 2);
+
+        cJSON_Delete(elements);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetEveryElementNullParameter)
+{
+    EXPECT_NO_THROW({
+        cJSON* elements = fim_db_get_every_element(nullptr);
+        ASSERT_TRUE(elements == nullptr);
+    });
+}
