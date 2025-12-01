@@ -80,6 +80,7 @@ class EXPORTED Syscollector final
         bool syncModule(Mode mode);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
+        bool parseResponseBufferVD(const uint8_t* data, size_t length);
         bool notifyDataClean(const std::vector<std::string>& indices);
         void deleteDatabase();
         std::string query(const std::string& jsonQuery);

@@ -1608,9 +1608,10 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
-        // Initialize VD sync protocol
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
-        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD);
+        // Initialize VD sync protocol with different module name to avoid routing conflicts
+        std::string vdModuleName = moduleName + "_vd";
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
     }
     catch (const std::exception& ex)
     {
@@ -1715,16 +1716,21 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
-    // Try regular sync protocol first
-    if (m_spSyncProtocol && m_spSyncProtocol->parseResponseBuffer(data, length))
+    // Route to regular (non-VD) sync protocol only
+    if (m_spSyncProtocol)
     {
-        return true;
+        return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    // If regular protocol didn't handle it, try VD sync protocol
-    if (m_spSyncProtocolVD && m_spSyncProtocolVD->parseResponseBuffer(data, length))
+    return false;
+}
+
+bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
+{
+    // Route to VD sync protocol only
+    if (m_spSyncProtocolVD)
     {
-        return true;
+        return m_spSyncProtocolVD->parseResponseBuffer(data, length);
     }
 
     return false;

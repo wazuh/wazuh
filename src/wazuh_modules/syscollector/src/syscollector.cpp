@@ -169,6 +169,16 @@ bool syscollector_parse_response(const unsigned char* data, size_t length)
     return false;
 }
 
+bool syscollector_parse_response_vd(const unsigned char* data, size_t length)
+{
+    if (data)
+    {
+        return Syscollector::instance().parseResponseBufferVD(data, length);
+    }
+
+    return false;
+}
+
 bool syscollector_notify_data_clean(const char** indices, size_t indices_count)
 {
     if (indices && indices_count > 0)

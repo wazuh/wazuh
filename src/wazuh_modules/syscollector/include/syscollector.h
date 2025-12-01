@@ -87,6 +87,7 @@ EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbP
 EXPORTED bool syscollector_sync_module(Mode_t mode);
 EXPORTED void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 EXPORTED bool syscollector_parse_response(const unsigned char* data, size_t length);
+EXPORTED bool syscollector_parse_response_vd(const unsigned char* data, size_t length);
 EXPORTED bool syscollector_notify_data_clean(const char** indices, size_t indices_count);
 EXPORTED void syscollector_delete_database();
 
@@ -129,6 +130,7 @@ typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* s
 typedef bool(*syscollector_sync_module_func)(Mode_t mode);
 typedef void(*syscollector_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 typedef bool(*syscollector_parse_response_func)(const unsigned char* data, size_t length);
+typedef bool(*syscollector_parse_response_vd_func)(const unsigned char* data, size_t length);
 typedef bool(*syscollector_notify_data_clean_func)(const char** indices, size_t indices_count);
 typedef void(*syscollector_delete_database_func)();
 
