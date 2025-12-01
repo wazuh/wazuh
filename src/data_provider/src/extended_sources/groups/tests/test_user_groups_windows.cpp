@@ -57,7 +57,7 @@ class MockGroupsHelper : public IGroupsHelper
         MOCK_METHOD(std::vector<Group>, processLocalGroups, (), (override));
 };
 
-class UserGroupsProviderTest : public ::testing::Test
+class UserGroupsProviderWindowsTest : public ::testing::Test
 {
     protected:
         std::shared_ptr<MockWindowsApiWrapper> winapiWrapper;
@@ -105,7 +105,7 @@ static auto ReturnGroups(const std::vector<std::wstring>& groupNames)
     };
 }
 
-TEST_F(UserGroupsProviderTest, CollectNoGroupsForUserReturnsEmpty)
+TEST_F(UserGroupsProviderWindowsTest, CollectNoGroupsForUserReturnsEmpty)
 {
     std::set<std::string> sids;
     User testUser
@@ -134,7 +134,7 @@ TEST_F(UserGroupsProviderTest, CollectNoGroupsForUserReturnsEmpty)
     EXPECT_TRUE(result.empty());
 }
 
-TEST_F(UserGroupsProviderTest, CollectUserWithValidGroupReturnsGroupInfo)
+TEST_F(UserGroupsProviderWindowsTest, CollectUserWithValidGroupReturnsGroupInfo)
 {
     std::set<std::string> sids;
     User testUser
@@ -186,7 +186,7 @@ TEST_F(UserGroupsProviderTest, CollectUserWithValidGroupReturnsGroupInfo)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectWithSpecificUidReturnsFilteredResults)
+TEST_F(UserGroupsProviderWindowsTest, CollectWithSpecificUidReturnsFilteredResults)
 {
     std::set<std::string> sids;
 
@@ -234,7 +234,7 @@ TEST_F(UserGroupsProviderTest, CollectWithSpecificUidReturnsFilteredResults)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectIgnoresSystemUsers)
+TEST_F(UserGroupsProviderWindowsTest, CollectIgnoresSystemUsers)
 {
     std::set<std::string> sids;
 
@@ -277,7 +277,7 @@ TEST_F(UserGroupsProviderTest, CollectIgnoresSystemUsers)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectHandlesNetUserGetLocalGroupsFailure)
+TEST_F(UserGroupsProviderWindowsTest, CollectHandlesNetUserGetLocalGroupsFailure)
 {
     std::set<std::string> sids;
 
@@ -321,7 +321,7 @@ TEST_F(UserGroupsProviderTest, CollectHandlesNetUserGetLocalGroupsFailure)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
+TEST_F(UserGroupsProviderWindowsTest, CollectHandlesGroupNotFound)
 {
     std::set<std::string> sids;
 
@@ -361,7 +361,7 @@ TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
     EXPECT_TRUE(result.empty());
 }
 
-TEST_F(UserGroupsProviderTest, GetGroupNamesByUidSingleUid)
+TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidSingleUid)
 {
     User testUser{};
     testUser.uid = 1000;
@@ -407,7 +407,7 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidSingleUid)
                 ::testing::UnorderedElementsAre("groupA", "groupB"));
 }
 
-TEST_F(UserGroupsProviderTest, GetGroupNamesByUidMultipleUids)
+TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidMultipleUids)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -477,7 +477,7 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidMultipleUids)
                 ::testing::UnorderedElementsAre("groupB", "groupC"));
 }
 
-TEST_F(UserGroupsProviderTest, GetGroupNamesByUidAllUsers)
+TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidAllUsers)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -548,7 +548,7 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidAllUsers)
                 ::testing::UnorderedElementsAre("groupB", "groupC"));
 }
 
-TEST_F(UserGroupsProviderTest, GetUserNamesByGidSingleGid)
+TEST_F(UserGroupsProviderWindowsTest, GetUserNamesByGidSingleGid)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -580,7 +580,7 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidSingleGid)
                 ::testing::UnorderedElementsAre("alice"));
 }
 
-TEST_F(UserGroupsProviderTest, GetUserNamesByGidMultipleGids)
+TEST_F(UserGroupsProviderWindowsTest, GetUserNamesByGidMultipleGids)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -615,7 +615,7 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidMultipleGids)
                 ::testing::UnorderedElementsAre("alice", "bob"));
 }
 
-TEST_F(UserGroupsProviderTest, GetUserNamesByGidAllGroups)
+TEST_F(UserGroupsProviderWindowsTest, GetUserNamesByGidAllGroups)
 {
     User user1{}, user2{};
     user1.uid = 1000;
