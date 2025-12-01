@@ -2128,3 +2128,94 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryEmptyResults)
     EXPECT_EQ(result["hits"]["total"]["value"], 0);
     EXPECT_EQ(result["hits"]["hits"].size(), 0);
 }
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationEmptyResults)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [](auto, const auto& postParams, auto)
+            {
+                std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }));
+
+    nlohmann::json query;
+    query["size"] = 1000;
+    query["query"]["term"]["package.name"] = "test-package";
+
+    // Execute with callback (required by new signature)
+    EXPECT_NO_THROW(connector.executeSearchQueryWithPagination("test-index", query, [](const nlohmann::json&) {}));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithCallbackTwoPages)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    int callbackCount = 0;
+    int postCallCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&postCallCount](auto, const auto& postParams, auto)
+            {
+                postCallCount++;
+                // First page with data, hits has an ID and sort field for pagination
+                // NOTE: Returns 1 hit.
+                std::string mockResponse =
+                    R"({"took":1,"hits":{"total":{"value":2},"hits":[{"_id":"1","sort":["1"]}]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }))
+        .WillOnce(Invoke(
+            [&postCallCount](auto, const auto& postParams, auto)
+            {
+                postCallCount++;
+                // Second page empty, hits is empty
+                std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }));
+
+    nlohmann::json query;
+    query["size"] = 1;
+    query["query"]["term"]["package.name"] = "test-package";
+    query["sort"][0]["_id"] = "asc";
+
+    auto callback = [&callbackCount](const nlohmann::json& response)
+    {
+        callbackCount++;
+    };
+
+    EXPECT_NO_THROW(connector.executeSearchQueryWithPagination("test-index", query, callback));
+
+    EXPECT_EQ(postCallCount, 2) << "Should have made 2 POST requests (2 pages)";
+    EXPECT_EQ(callbackCount, 2) << "Callback should have been invoked 2 times (first page + empty page)";
+}

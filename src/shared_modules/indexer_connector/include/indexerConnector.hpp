@@ -93,6 +93,23 @@ public:
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery);
 
     /**
+     * @brief Execute a search query with automatic pagination.
+     *
+     * This method performs a search query and automatically handles pagination using
+     * the 'search_after' mechanism of the indexer. It retrieves all results
+     * by making multiple search requests if necessary.
+     *
+     * @param index Index name to search.
+     * @param query JSON object containing the initial search query.
+     *              The query MUST include a "sort" field for pagination to work correctly.
+     * @param onResponse Callback function executed for each page of results.
+     *                   The function receives a JSON object with the response for one page.
+     */
+    void executeSearchQueryWithPagination(const std::string& index,
+                                          const nlohmann::json& query,
+                                          std::function<void(const nlohmann::json&)> onResponse);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.

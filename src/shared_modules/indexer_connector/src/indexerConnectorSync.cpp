@@ -51,6 +51,13 @@ public:
         return m_impl.executeSearchQuery(index, searchQuery);
     }
 
+    void executeSearchQueryWithPagination(const std::string& index,
+                                          const nlohmann::json& query,
+                                          std::function<void(const nlohmann::json&)> onResponse)
+    {
+        m_impl.executeSearchQueryWithPagination(index, query, onResponse);
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         m_impl.bulkDelete(id, index);
@@ -111,6 +118,14 @@ void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& 
 nlohmann::json IndexerConnectorSync::executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
 {
     return m_impl->executeSearchQuery(index, searchQuery);
+}
+
+void IndexerConnectorSync::executeSearchQueryWithPagination(
+    const std::string& index,
+    const nlohmann::json& query,
+    std::function<void(const nlohmann::json&)> onResponse)
+{
+    m_impl->executeSearchQueryWithPagination(index, query, onResponse);
 }
 
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)

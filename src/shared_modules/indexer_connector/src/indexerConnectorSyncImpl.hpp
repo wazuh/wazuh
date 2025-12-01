@@ -664,6 +664,73 @@ public:
         return resultJson;
     }
 
+    void executeSearchQueryWithPagination(const std::string& index,
+                                          const nlohmann::json& query,
+                                          std::function<void(const nlohmann::json&)> onResponse)
+    {
+        nlohmann::json currentQuery = query;
+        std::string searchAfter;
+        while (true)
+        {
+            nlohmann::json searchResult = executeSearchQuery(index, currentQuery);
+
+            // Always call the callback, even for empty pages, to notify the caller of each page's result (including
+            // empty pages).
+            onResponse(searchResult);
+
+            const auto itHits = searchResult.find("hits");
+            if (itHits == searchResult.end())
+            {
+                logDebug2(IC_NAME, "No 'hits' object in response, breaking pagination loop");
+                break;
+            }
+
+            const auto itInner = itHits->find("hits");
+            if (itInner == itHits->end() || !itInner->is_array() || itInner->empty())
+            {
+                logDebug2(IC_NAME, "No 'hits' array in response or it is empty, breaking pagination loop");
+                break;
+            }
+
+            const auto& hits = *itInner;
+            const auto& lastHit = hits.back();
+            const auto itSort = lastHit.find("sort");
+
+            if (itSort != lastHit.end() && itSort->is_array() && !itSort->empty())
+            {
+                const auto& first_sort_item = itSort->front();
+                if (first_sort_item.is_string())
+                {
+                    searchAfter = first_sort_item.get<std::string>();
+                }
+                else
+                {
+                    logDebug2(IC_NAME, "Pagination loop finished: 'sort' field's first element is not a string.");
+                    break;
+                }
+            }
+            else
+            {
+                logDebug2(IC_NAME,
+                          "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
+                          "empty.");
+                break;
+            }
+
+            // If we got less results than requested, this is the last page
+            if (currentQuery.contains("size") && hits.size() < currentQuery["size"].template get<size_t>())
+            {
+                logDebug2(IC_NAME, "Fewer results than page size, breaking pagination loop");
+                break;
+            }
+
+            // Update query for next page
+            auto& sa = currentQuery["search_after"];
+            sa = nlohmann::json::array();
+            sa.push_back(searchAfter);
+        }
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
