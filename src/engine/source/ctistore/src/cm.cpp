@@ -198,7 +198,7 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
         fmt::format("Asset with UUID '{}' not found: {}", uuid, errorMsg ? *errorMsg : "unknown error"));
 }
 
-std::pair<std::string, cti::store::AssetType> ContentManager::resolveNameAndTypeFromUUID(const std::string& uuid) const
+std::pair<std::string, std::string> ContentManager::resolveNameAndTypeFromUUID(const std::string& uuid) const
 {
     if (!m_storage || !m_storage->isOpen())
     {
@@ -208,15 +208,7 @@ std::pair<std::string, cti::store::AssetType> ContentManager::resolveNameAndType
     try
     {
         auto [name, typeStr] = m_storage->resolveNameAndTypeFromUUID(uuid);
-        cti::store::AssetType aType = cti::store::AssetType::ERROR_TYPE;
-        if (typeStr == "integration")
-        {
-            aType = cti::store::AssetType::INTEGRATION;
-        }       else if (typeStr == "decoder")
-        {
-            aType = cti::store::AssetType::DECODER;
-        }
-        return std::make_pair(name, aType);
+        return std::make_pair(name, typeStr);
     }
     catch (const std::exception& e)
     {

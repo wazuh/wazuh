@@ -205,7 +205,7 @@ TEST(ContentManagerTest, ResolveUUIDFromName_ConsistentResults)
     // Verify round-trip using resolveNameAndTypeFromUUID
     auto nameType = cm.resolveNameAndTypeFromUUID(uuid);
     EXPECT_EQ(nameType.first, "Consistent Test");
-    EXPECT_EQ(nameType.second, cti::store::AssetType::INTEGRATION);
+    EXPECT_EQ(nameType.second, "integration");
 
     std::filesystem::remove_all(base);
 }
@@ -237,7 +237,7 @@ TEST(ContentManagerTest, ResolveUUIDFromName_ConsistentResults)
 
     auto nameType = cm.resolveNameAndTypeFromUUID("integration-uuid-123");
     EXPECT_EQ(nameType.first, "Test Integration");
-    EXPECT_EQ(nameType.second, cti::store::AssetType::INTEGRATION);
+    EXPECT_EQ(nameType.second, "integration");
 
     std::filesystem::remove_all(base);
   }
@@ -265,7 +265,35 @@ TEST(ContentManagerTest, ResolveUUIDFromName_ConsistentResults)
 
     auto nameType = cm.resolveNameAndTypeFromUUID("decoder-uuid-456");
     EXPECT_EQ(nameType.first, "test_decoder");
-    EXPECT_EQ(nameType.second, cti::store::AssetType::DECODER);
+    EXPECT_EQ(nameType.second, "decoder");
+
+    std::filesystem::remove_all(base);
+  }
+
+  TEST(ContentManagerTest, ResolveNameAndTypeFromUUID_KVDB)
+  {
+    cti::store::ContentManagerConfig cfg;
+    auto base = makeIsolatedConfig(cfg, "cm_resolve_name_type_kvdb");
+    cfg.deleteDownloadedContent = false;
+
+    cti::store::ContentManager cm(cfg);
+
+    // Store a KVDB
+    std::filesystem::create_directories(cfg.outputFolder);
+    const std::string filePath = cfg.outputFolder + "/kvdb_name.json";
+    std::ofstream f(filePath);
+    ASSERT_TRUE(f.is_open());
+    f << R"({"name":"kvdb-uuid-789","offset":1,"version":1,"inserted_at":"2025-01-01T00:00:00Z","payload":{"type":"kvdb","document":{"id":"kvdb-uuid-789","title":"TestKVDB","content":{"k":"v"}}}})" 
+      << '\n';
+    f.close();
+
+    std::string message = std::string("{\"paths\":[\"") + filePath + "\"],\"type\":\"raw\",\"offset\":0}";
+    auto result = cm.testProcessMessage(message);
+    EXPECT_TRUE(std::get<2>(result));
+
+    auto nameType = cm.resolveNameAndTypeFromUUID("kvdb-uuid-789");
+    EXPECT_EQ(nameType.first, "TestKVDB");
+    EXPECT_EQ(nameType.second, "kvdb");
 
     std::filesystem::remove_all(base);
   }
