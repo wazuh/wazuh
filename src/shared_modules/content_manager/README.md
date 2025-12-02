@@ -28,7 +28,7 @@ The Content Manager supports optional OAuth 2.0 authentication for accessing pro
 
 - **Secure credential management** through Wazuh Indexer integration
 - **Subscription-based product discovery** with type filtering
-- **Token exchange** for HMAC-signed URLs with 5-minute lifetime
+- **Token exchange** for HMAC-signed URLs (lifetime determined by Console)
 - **Automatic token refresh** before expiration
 - **Backward compatibility** - OAuth is completely optional
 

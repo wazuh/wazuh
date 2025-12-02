@@ -11,7 +11,6 @@
             <node>wazuh-master</node>
         </nodes>
         <hidden>no</hidden>
-        <disabled>no</disabled>
     </cluster>
 
      <use_source_ip>no</use_source_ip>

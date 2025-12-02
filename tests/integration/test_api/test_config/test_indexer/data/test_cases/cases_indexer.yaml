@@ -5,16 +5,12 @@
   metadata:
     expected_code: 200
     expected_error_code: 1
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
           <connection>secure</connection>
           <port>1514</port>
         </remote>
-        <indexer>
-          <enabled>yes</enabled>
-        </indexer>
       </ossec_config>
 
 - name: UPLOAD_ONE_BLOCK_CONFIG_ALLOWED
@@ -24,16 +20,12 @@
   metadata:
     expected_code: 200
     expected_error_code: 0
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
           <connection>secure</connection>
           <port>1514</port>
         </remote>
-        <indexer>
-          <enabled>yes</enabled>
-        </indexer>
         <cluster>
           <key>9d273b53510fef702b54a92e9cffc82e</key>
           <bind_addr>127.0.0.1</bind_addr>
@@ -50,14 +42,7 @@
   metadata:
     expected_code: 200
     expected_error_code: 1
-    expected_indexer_enabled: yes
     request_body: >
-      <ossec_config>
-        <indexer>
-          <enabled>no</enabled>
-        </indexer>
-      </ossec_config>
-
       <ossec_config>
         <remote>
           <connection>secure</connection>
@@ -72,14 +57,7 @@
   metadata:
     expected_code: 200
     expected_error_code: 0
-    expected_indexer_enabled: no
     request_body: >
-      <ossec_config>
-        <indexer>
-          <enabled>no</enabled>
-        </indexer>
-      </ossec_config>
-
       <ossec_config>
         <remote>
           <connection>secure</connection>
@@ -101,19 +79,12 @@
   metadata:
     expected_code: 200
     expected_error_code: 1
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
           <connection>secure</connection>
           <port>1514</port>
         </remote>
-      </ossec_config>
-
-      <ossec_config>
-        <indexer>
-          <enabled>yes</enabled>
-        </indexer>
       </ossec_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_SECOND_BLOCK_ALLOWED
@@ -123,7 +94,6 @@
   metadata:
     expected_code: 200
     expected_error_code: 0
-    expected_indexer_enabled: yes
     request_body: >
       <ossec_config>
         <remote>
@@ -133,9 +103,6 @@
       </ossec_config>
 
       <ossec_config>
-        <indexer>
-          <enabled>yes</enabled>
-        </indexer>
         <cluster>
           <key>9d273b53510fef702b54a92e9cffc82e</key>
           <bind_addr>127.0.0.1</bind_addr>

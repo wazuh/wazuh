@@ -3225,20 +3225,6 @@ components:
         uuid:
           type: string
           nullable: true
-        wazuh_cti_auth:
-          type: object
-          properties:
-            status:
-              type: string
-              description: "Registration process status."
-              enum:
-              - pending
-              - polling
-              - denied
-              - available
-            details:
-              type: string
-              description: "Registration process details."
 
     WazuhManagerConfiguration:
       type: object
@@ -9051,9 +9037,6 @@ paths:
                       tz_offset: +0000
                       tz_name: UTC
                       uuid: c842f85c-c24b-4b39-9508-093ce53482e7
-                      wazuh_cti_auth:
-                          status: polling
-                          details: "Registration process is being carried out"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -9154,10 +9137,8 @@ paths:
                         interval: "12h"
                       vulnerability-detection:
                         enabled: yes
-                        index-status: yes
                         feed-update-interval: "60m"
                       indexer:
-                        enabled: yes
                         hosts:
                           - http://127.0.0.1:9200
                         ssl:

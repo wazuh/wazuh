@@ -15,7 +15,20 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed Windows remote upgrade installing to default directory instead of respecting existing custom installation path. ([#33171](https://github.com/wazuh/wazuh/pull/33171))
+- Fixed issue where the agent did not create missing directories when receiving remote configuration with nested paths. ([#33227](https://github.com/wazuh/wazuh/pull/33227))
+- Fixed auditd integration issue where af_wazuh.conf could not be correctly applied due to configuration conflicts. ([#33270](https://github.com/wazuh/wazuh/pull/33270))
 - Fixed agent post-install upgrade failures when shared group subfolders already exist. ([#33182](https://github.com/wazuh/wazuh/pull/33182))
+
+### Ruleset
+
+#### Added
+
+- Added SCA Policy for Microsoft Windows Server 2025. ([#32856](https://github.com/wazuh/wazuh/pull/32856))
+
+#### Changed
+
+- Fixed bug in multiple macOS SCA checks. ([#33202](https://github.com/wazuh/wazuh/pull/33202))
 
 ### Other
 
