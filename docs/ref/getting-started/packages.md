@@ -63,7 +63,6 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 |--|--|:--:|:--:|
 |macOS|15|✔️|✔️|
 |macOS|14|✔️|✔️|
-|macOS|13|✔️|✔️|
 
 ### Red Hat
 
