@@ -38,6 +38,7 @@ extern "C"
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <cJSON.h>
 #include "logging_helper.h"
 
 #ifdef __cplusplus
@@ -47,26 +48,20 @@ typedef bool (*SynchronizeModuleCallback)(void);
 typedef bool (*SynchronizeModuleCallback)(void);
 #endif
 
-// Logging callback type
-typedef void (*fim_recovery_log_callback_t)(modules_log_level_t level, const char* log);
-
 /**
  * @brief Persists a table's contents in memory and triggers a full resync
  * @param table_name The table to resync
  * @param handle Sync Protocol handle
- * @param test_callback Optional callback for testing synchronizeModule (pass NULL for production use)
- * @param log_callback Logging callback function (required, must not be NULL)
  */
-EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, SynchronizeModuleCallback test_callback, fim_recovery_log_callback_t log_callback);
+EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle);
 
 /**
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
  * @param table_name The table to check
  * @param handle Sync Protocol handle
- * @param log_callback Logging callback function (required, must not be NULL)
  * @returns true if a full sync is required, false if a delta sync is sufficient
  */
-EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle, fim_recovery_log_callback_t log_callback);
+EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle);
 
 /**
  * @brief Checks if integrity_interval has elapsed for a table
@@ -75,6 +70,41 @@ EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSy
  * @returns true if interval has elapsed, false otherwise
  */
 EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
+
+/**
+ * @brief Build stateful event for a file from cJSON object
+ * @param path File path
+ * @param file_data cJSON object containing file attributes
+ * @param sha1_hash SHA1 hash of the file
+ * @param document_version Version number of the document
+ * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
+ */
+EXPORTED cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version);
+
+#ifdef WIN32
+/**
+ * @brief Build stateful event for a registry key from cJSON object
+ * @param path Registry key path
+ * @param key_data cJSON object containing registry key attributes
+ * @param sha1_hash SHA1 hash of the key
+ * @param document_version Version number of the document
+ * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
+ * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
+ */
+EXPORTED cJSON* buildRegistryKeyStatefulEvent(const char* path, cJSON* key_data, const char* sha1_hash, uint64_t document_version, int arch);
+
+/**
+ * @brief Build stateful event for a registry value from cJSON object
+ * @param path Registry value path
+ * @param value Value name
+ * @param value_data cJSON object containing registry value attributes
+ * @param sha1_hash SHA1 hash of the value
+ * @param document_version Version number of the document
+ * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
+ * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
+ */
+EXPORTED cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* value_data, const char* sha1_hash, uint64_t document_version, int arch);
+#endif // WIN32
 
 #ifdef __cplusplus
 }

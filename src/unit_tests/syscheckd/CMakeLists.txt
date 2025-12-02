@@ -444,3 +444,28 @@ else()
 endif()
 
 add_test(NAME test_fim_scan COMMAND test_fim_scan)
+
+# recovery.c tests
+add_executable(test_recovery test_recovery.c)
+
+target_compile_options(test_recovery PRIVATE "-Wall")
+
+set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_update_last_sync_time_value \
+                         -Wl,--wrap,fim_db_get_every_element -Wl,--wrap,fim_db_calculate_table_checksum \
+                         -Wl,--wrap,asp_clear_in_memory_data -Wl,--wrap,asp_persist_diff_in_memory \
+                         -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_requires_full_sync \
+                         -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 \
+                         -Wl,--wrap,build_stateful_event_file -Wl,--wrap,build_stateful_event_registry_key \
+                         -Wl,--wrap,build_stateful_event_registry_value \
+                         ${DEBUG_OP_WRAPPERS}")
+
+target_link_libraries(test_recovery SYSCHECK_O ${TEST_DEPS})
+if(${TARGET} STREQUAL "winagent")
+  target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS} -Wl,--wrap=is_fim_shutdown \
+                                       -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck \
+                                       -Wl,--wrap=syscom_dispatch" fimdb)
+else()
+  target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS} -Wl,--wrap,time")
+endif()
+
+add_test(NAME test_recovery COMMAND test_recovery)
