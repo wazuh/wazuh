@@ -52,6 +52,8 @@ public:
     bool assetExistsByName(const base::Name& name) const override;
     /** @copydoc ICMStoreNSReader::assetExistsByUUID */
     bool assetExistsByUUID(const std::string& uuid) const override;
+    /** @copydoc ICMStoreNSReader::getDefaultOutputs */
+    const std::vector<json::Json> getDefaultOutputs() const override;
 
     /*********************************** General Resource ************************************/
 

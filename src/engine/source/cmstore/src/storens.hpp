@@ -38,11 +38,12 @@ constexpr std::string_view INTEGRATIONS_DIR = "integrations";
 class CMStoreNS : public ICMstoreNS
 {
 private:
-    NamespaceId m_namespaceId;           ///< Namespace ID associated to this CMStoreNS
-    std::filesystem::path m_storagePath; ///< Path to the storage directory for this namespace
-    std::filesystem::path m_cachePath;   ///< Path to the cache file for this namespace
-    CacheNS m_cache;                     ///< Cache for UUID to name-type mappings
-    mutable std::shared_mutex m_mutex;   ///< Mutex for file and cache access
+    NamespaceId m_namespaceId;                  ///< Namespace ID associated to this CMStoreNS
+    std::filesystem::path m_storagePath;        ///< Path to the storage directory for this namespace
+    std::filesystem::path m_defaultOutputsPath; ///< Path to the default outputs directory for all namescapes
+    std::filesystem::path m_cachePath;          ///< Path to the cache file for this namespace
+    CacheNS m_cache;                            ///< Cache for UUID to name-type mappings
+    mutable std::shared_mutex m_mutex;          ///< Mutex for file and cache access
 
     /**
      * @brief Flush the current cache to disk
@@ -110,9 +111,10 @@ public:
      * @param nsId Namespace ID associated to this CMStoreNS
      * @param storagePath Path to the storage directory for this namespace
      */
-    CMStoreNS(NamespaceId nsId, std::filesystem::path storagePath)
+    CMStoreNS(NamespaceId nsId, std::filesystem::path storagePath, std::filesystem::path defaultOutputsPath)
         : m_namespaceId(std::move(nsId))
         , m_storagePath(std::move(storagePath))
+        , m_defaultOutputsPath(std::move(defaultOutputsPath))
         , m_cachePath(m_storagePath / pathns::CACHE_NS_FILE)
         , m_cache()
         , m_mutex()
@@ -159,6 +161,8 @@ public:
     bool assetExistsByName(const base::Name& name) const override;
     /** @copydoc ICMStoreNSReader::assetExistsByUUID */
     bool assetExistsByUUID(const std::string& uuid) const override;
+    /** @copydoc ICMStoreNSReader::getDefaultOutputs */
+    const std::vector<json::Json> getDefaultOutputs() const override;
 
     /*********************************** General Resource ************************************/
 

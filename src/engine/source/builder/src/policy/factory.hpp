@@ -45,7 +45,8 @@ using BuiltAssets = std::map<cm::store::ResourceType, SubgraphData>;
  */
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policyData,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
-                        const std::shared_ptr<IAssetBuilder>& assetBuilder);
+                        const std::shared_ptr<IAssetBuilder>& assetBuilder,
+                        const bool sandbox = false);
 
 /**
  * @brief This struct contains the policy graphs by type.

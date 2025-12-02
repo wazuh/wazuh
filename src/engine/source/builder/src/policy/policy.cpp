@@ -38,7 +38,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     buildCtx->setAllowedFields(allowedFields);
 
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
-    auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder);
+    auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder, sandbox);
 
     // Assign the assets
     for (const auto& [type, subgraph] : builtAssets)

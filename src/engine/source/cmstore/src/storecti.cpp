@@ -43,6 +43,11 @@ bool CMStoreCTI::assetExistsByUUID(const std::string& uuid) const
     return {};
 }
 
+const std::vector<json::Json> CMStoreCTI::getDefaultOutputs() const
+{
+    return {};
+}
+
 /*********************************** General Resource ************************************/
 
 std::string CMStoreCTI::createResource(const std::string& name, ResourceType type, const std::string& ymlContent)
