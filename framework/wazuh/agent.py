@@ -4,6 +4,7 @@
 
 import contextlib
 import hashlib
+import logging
 import operator
 from os import chmod, path, listdir
 from typing import Union
@@ -879,7 +880,7 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]}, post_proc_func=async_list_handler)
 async def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
-                           replace_list: list = None) -> AffectedItemsWazuhResult:
+                           replace_list: list = None, external_gte: int = None) -> AffectedItemsWazuhResult:
     """Assign a list of agents to a group.
 
     Parameters
@@ -892,6 +893,9 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
         Whether to append new group to current agent's group or replace it.
     replace_list : list
         List of Group names that can be replaced.
+    external_gte : int, optional
+        Minimum version threshold for synchronization (used for disconnected agents).
+        When set, this value is used as the external_gte parameter for group synchronization.
 
     Raises
     ------
@@ -933,7 +937,8 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
 
     for agent_id in agent_list:
         try:
-            await Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
+            await Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list,
+                                           external_gte=external_gte)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
@@ -1095,6 +1100,109 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
             result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=int)
+
+    return result
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"])
+async def disconnected_agent_group_sync(agent_list: list = None, group_list: list = None,
+                                        external_gte: int = None) -> AffectedItemsWazuhResult:
+    """Synchronize group configuration for disconnected agents using external_gte version.
+
+    This function is designed to synchronize agent groups for disconnected agents using the maximum
+    version from indexed documents (external_gte). This ensures that indexed data remains consistent
+    with the current group configuration, even when the agent is offline.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of disconnected agent IDs to synchronize.
+    group_list : list
+        Current group list for the agent(s).
+    external_gte : int
+        Minimum version threshold from Indexer. Documents with version >= external_gte will be updated.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Synchronization result with affected items and failed items.
+
+    Raises
+    ------
+    WazuhError
+        If required parameters are missing.
+    WazuhResourceNotFound
+        If agent does not exist.
+    """
+    logger = logging.getLogger('wazuh')
+
+    result = AffectedItemsWazuhResult(
+        all_msg='Group synchronization completed for all disconnected agents',
+        some_msg='Group synchronization completed for some disconnected agents',
+        none_msg='No disconnected agents were synchronized'
+    )
+
+    # Handle empty agent list
+    if not agent_list:
+        logger.debug("Empty agent list provided for disconnected agent group sync")
+        return result
+
+    # Validate required parameters
+    if not group_list or external_gte is None:
+        raise WazuhError(1001,
+                         extra_message="Missing required parameters: group_list, external_gte")
+
+    system_agents = get_agents_info()
+
+    # Validate that all agents exist
+    invalid_agents = []
+    for agent_id in agent_list:
+        if agent_id == '000':
+            result.add_failed_item(id_='000', error=WazuhError(1703))
+            invalid_agents.append(agent_id)
+        elif agent_id not in system_agents:
+            result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+            invalid_agents.append(agent_id)
+
+    # Remove invalid agents from processing list
+    valid_agents = [a for a in agent_list if a not in invalid_agents]
+
+    if not valid_agents:
+        result.total_affected_items = 0
+        return result
+
+    # Synchronize groups for valid disconnected agents
+    logger.info(f"Starting group synchronization for {len(valid_agents)} disconnected agents "
+                f"with external_gte={external_gte}")
+
+    for agent_id in valid_agents:
+        try:
+            # Use assign_agents_to_group with external_gte parameter
+            await assign_agents_to_group(
+                agent_list=[agent_id],
+                group_list=group_list,
+                replace=True,
+                external_gte=external_gte
+            )
+            result.affected_items.append(agent_id)
+            logger.debug(f"Successfully synchronized agent {agent_id} with groups {group_list}")
+
+        except WazuhException as e:
+            logger.error(f"Error synchronizing agent {agent_id}: {str(e)}")
+            result.add_failed_item(id_=agent_id, error=e)
+        except Exception as e:
+            logger.error(f"Unexpected error synchronizing agent {agent_id}: {str(e)}",
+                         exc_info=True)
+            result.add_failed_item(
+                id_=agent_id,
+                error=WazuhInternalError(1000, extra_message=str(e))
+            )
+
+    result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=int)
+
+    logger.info(f"Group synchronization completed: {len(result.affected_items)} succeeded, "
+                f"{len(result.failed_items)} failed")
 
     return result
 
