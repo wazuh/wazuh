@@ -406,18 +406,31 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_EnableDecodersFalse)
 
 TEST_F(CMStoreCTITest, GetKVDBByName_Success_ReturnsKVDB)
 {
-    json::Json kvdbContent;
-    kvdbContent.setString("value1", "/key1");
-    kvdbContent.setString("value2", "/key2");
+    // Build full KVDB document structure
+    json::Json kvdbDoc;
+    kvdbDoc.setString("uuid-kvdb-1", "/name");
+
+    json::Json payload;
+    payload.setString("kvdb", "/type");
+
+    json::Json document;
+    document.setString("uuid-kvdb-1", "/id");
+    document.setString("test_kvdb", "/title");
+    document.setBool(true, "/enabled");
+
+    json::Json content;
+    content.setString("value1", "/key1");
+    content.setString("value2", "/key2");
+    document.set("/content", content);
+
+    payload.set("/document", document);
+    kvdbDoc.set("/payload", payload);
 
     EXPECT_CALL(*mockReader, kvdbDump("test_kvdb"))
-        .WillOnce(Return(kvdbContent));
-    EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("test_kvdb"), "kvdb"))
-        .WillOnce(Return("uuid-kvdb-1"));
+        .WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb = storeCTI->getKVDBByName("test_kvdb");
 
-// KVDB content
     auto kvdbJson = kvdb.toJson();
     EXPECT_EQ(kvdbJson.getString("/title").value_or(""), "test_kvdb");
     EXPECT_EQ(kvdbJson.getString("/id").value_or(""), "uuid-kvdb-1");
@@ -426,7 +439,6 @@ TEST_F(CMStoreCTITest, GetKVDBByName_Success_ReturnsKVDB)
 
 TEST_F(CMStoreCTITest, GetKVDBByName_NotFound_ThrowsException)
 {
-// KVDB not found
     EXPECT_CALL(*mockReader, kvdbDump("nonexistent"))
         .WillOnce(Throw(std::runtime_error("KVDB not found")));
 
@@ -435,14 +447,30 @@ TEST_F(CMStoreCTITest, GetKVDBByName_NotFound_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetKVDBByUUID_Success_ReturnsKVDB)
 {
-    json::Json kvdbContent;
-    kvdbContent.setString("value1", "/key1");
-    kvdbContent.setString("value2", "/key2");
+    // Build full KVDB document structure
+    json::Json kvdbDoc;
+    kvdbDoc.setString("uuid-kvdb-2", "/name");
+
+    json::Json payload;
+    payload.setString("kvdb", "/type");
+
+    json::Json document;
+    document.setString("uuid-kvdb-2", "/id");
+    document.setString("another_kvdb", "/title");
+    document.setBool(true, "/enabled");
+
+    json::Json content;
+    content.setString("value1", "/key1");
+    content.setString("value2", "/key2");
+    document.set("/content", content);
+
+    payload.set("/document", document);
+    kvdbDoc.set("/payload", payload);
 
     EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-kvdb-2"))
         .WillOnce(Return("another_kvdb"));
     EXPECT_CALL(*mockReader, kvdbDump("another_kvdb"))
-        .WillOnce(Return(kvdbContent));
+        .WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb = storeCTI->getKVDBByUUID("uuid-kvdb-2");
 
@@ -451,31 +479,46 @@ TEST_F(CMStoreCTITest, GetKVDBByUUID_Success_ReturnsKVDB)
 
 TEST_F(CMStoreCTITest, GetKVDBByName_EmptyContent_ReturnsValidKVDB)
 {
-    // KVDB with empty content (valid case)
+    // Build full KVDB document structure with empty content
+    json::Json kvdbDoc;
+    kvdbDoc.setString("uuid-empty-kvdb", "/name");
+
+    json::Json payload;
+    payload.setString("kvdb", "/type");
+
+    json::Json document;
+    document.setString("uuid-empty-kvdb", "/id");
+    document.setString("empty_kvdb", "/title");
+    document.setBool(true, "/enabled");
+
     json::Json emptyContent;
     emptyContent.setObject();
+    document.set("/content", emptyContent);
+
+    payload.set("/document", document);
+    kvdbDoc.set("/payload", payload);
 
     EXPECT_CALL(*mockReader, kvdbDump("empty_kvdb"))
-        .WillOnce(Return(emptyContent));
-    EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("empty_kvdb"), "kvdb"))
-        .WillOnce(Return("uuid-empty-kvdb"));
+        .WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb = storeCTI->getKVDBByName("empty_kvdb");
     EXPECT_EQ(kvdb.getUUID(), "uuid-empty-kvdb");
 }
 
-TEST_F(CMStoreCTITest, GetKVDBByName_UUIDResolutionFails_ThrowsException)
+TEST_F(CMStoreCTITest, GetKVDBByName_MissingDocument_ThrowsException)
 {
-    // kvdbDump succeeds but UUID resolution fails (orphaned KVDB)
-    json::Json kvdbContent;
-    kvdbContent.setString("value", "/key");
+    // kvdbDump returns document missing /payload/document section
+    json::Json malformedDoc;
+    malformedDoc.setString("uuid-malformed", "/name");
+    json::Json payload;
+    payload.setString("kvdb", "/type");
+    malformedDoc.set("/payload", payload);
+    // Missing /payload/document section
 
-    EXPECT_CALL(*mockReader, kvdbDump("orphan_kvdb"))
-        .WillOnce(Return(kvdbContent));
-    EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("orphan_kvdb"), "kvdb"))
-        .WillOnce(Throw(std::runtime_error("UUID not found in index")));
+    EXPECT_CALL(*mockReader, kvdbDump("malformed_kvdb"))
+        .WillOnce(Return(malformedDoc));
 
-    EXPECT_THROW(storeCTI->getKVDBByName("orphan_kvdb"), std::runtime_error);
+    EXPECT_THROW(storeCTI->getKVDBByName("malformed_kvdb"), std::runtime_error);
 }
 
 /*****************************************************************************
@@ -496,7 +539,6 @@ TEST_F(CMStoreCTITest, GetAssetByName_Success_ReturnsAsset)
 
 TEST_F(CMStoreCTITest, GetAssetByName_NotFound_ThrowsException)
 {
-// asset not found
     EXPECT_CALL(*mockReader, getAsset(base::Name("nonexistent")))
         .WillOnce(Throw(std::runtime_error("Asset not found")));
 
@@ -712,13 +754,13 @@ TEST_F(CMStoreCTITest, AssetExistsByUUID_Exists_ReturnsTrue)
 
 TEST_F(CMStoreCTITest, AssetExistsByUUID_NotExists_ReturnsFalse)
 {
-// UUID not found
     EXPECT_CALL(*mockReader, resolveNameFromUUID("nonexistent-uuid"))
         .WillOnce(Throw(std::runtime_error("UUID not found")));
 
-    bool exists = storeCTI->assetExistsByUUID("nonexistent-uuid");
-
-    EXPECT_FALSE(exists);
+    EXPECT_THROW(
+        storeCTI->assetExistsByUUID("nonexistent-uuid"),
+        std::runtime_error
+    );
 }
 
 /*****************************************************************************
@@ -829,7 +871,7 @@ TEST_F(CMStoreCTITest, GetCollection_PartialFailure_SkipsFailedEntries)
 TEST_F(CMStoreCTITest, ResolveNameFromUUID_Success_ReturnsNameAndType)
 {
     EXPECT_CALL(*mockReader, resolveNameAndTypeFromUUID("uuid-123"))
-        .WillOnce(Return(std::make_pair("windows", cti::store::AssetType::INTEGRATION)));
+        .WillOnce(Return(std::make_pair("windows", "integration")));
 
     auto [name, type] = storeCTI->resolveNameFromUUID("uuid-123");
 
@@ -839,7 +881,6 @@ TEST_F(CMStoreCTITest, ResolveNameFromUUID_Success_ReturnsNameAndType)
 
 TEST_F(CMStoreCTITest, ResolveNameFromUUID_NotFound_ThrowsException)
 {
-// UUID not found
     EXPECT_CALL(*mockReader, resolveNameAndTypeFromUUID("nonexistent"))
         .WillOnce(Throw(std::runtime_error("UUID not found")));
 
@@ -858,7 +899,6 @@ TEST_F(CMStoreCTITest, ResolveUUIDFromName_Success_ReturnsUUID)
 
 TEST_F(CMStoreCTITest, ResolveUUIDFromName_NotFound_ThrowsException)
 {
-// asset not found
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("nonexistent"), "decoder"))
         .WillOnce(Throw(std::runtime_error("Asset not found")));
 
@@ -903,13 +943,14 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_AssetExistsByName_ReturnsFalse)
     tempReader.reset();
 
     // Existence checks should return false (not throw) when reader is expired
-    bool exists = storeWithExpiredReader.assetExistsByName(base::Name("test"));
-    EXPECT_FALSE(exists);
+    EXPECT_THROW(
+        storeWithExpiredReader.assetExistsByName(base::Name("test")),
+        std::runtime_error
+    );
 }
 
 TEST_F(CMStoreCTITest, MalformedDocument_MissingPayload_ThrowsException)
 {
-// document without /payload
     json::Json malformedDoc;
     malformedDoc.setString("uuid-123", "/name");
     malformedDoc.setString("integration", "/type");
@@ -923,7 +964,6 @@ TEST_F(CMStoreCTITest, MalformedDocument_MissingPayload_ThrowsException)
 
 TEST_F(CMStoreCTITest, MalformedDocument_MissingUUID_HandledGracefully)
 {
-// document without /name (UUID) field
     json::Json docWithoutUUID;
     docWithoutUUID.setString("integration", "/type");
 

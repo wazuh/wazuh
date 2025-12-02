@@ -2560,3 +2560,175 @@ TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_UpdateAsset)
     EXPECT_EQ(name2, "Updated Name");
     EXPECT_EQ(type2, "integration");
 }
+
+// ============================
+// updateAsset Metadata Alias Tests
+// ============================
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_Integration)
+{
+    // Store an integration with original title
+    auto integration = createSampleIntegration("integration-uuid-123", "Original Integration");
+    m_storage->storeIntegration(integration);
+
+    // Verify initial state
+    EXPECT_NO_THROW(m_storage->getAsset(base::Name("Original Integration"), "integration"));
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Original Integration"), "integration");
+    EXPECT_EQ(uuid, "integration-uuid-123");
+
+    // Update the integration title (payload/document/title) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/title", "/path");
+    op.setString("Renamed Integration", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("integration-uuid-123", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the document was updated
+    auto updatedDoc = m_storage->getAsset(base::Name("integration-uuid-123"), "integration");
+    auto newTitle = updatedDoc.getString("/payload/document/title");
+    EXPECT_TRUE(newTitle.has_value());
+    EXPECT_EQ(*newTitle, "Renamed Integration");
+
+    // Old name should no longer resolve to UUID
+    EXPECT_THROW({
+        m_storage->resolveUUIDFromName(base::Name("Original Integration"), "integration");
+    }, std::runtime_error);
+
+    // New name should resolve to UUID
+    std::string newUuid = m_storage->resolveUUIDFromName(base::Name("Renamed Integration"), "integration");
+    EXPECT_EQ(newUuid, "integration-uuid-123");
+
+    // Should be able to retrieve by new name
+    EXPECT_NO_THROW(m_storage->getAsset(base::Name("Renamed Integration"), "integration"));
+
+    // Should not be able to retrieve by old name
+    EXPECT_THROW({
+        m_storage->getAsset(base::Name("Original Integration"), "integration");
+    }, std::runtime_error);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_Decoder)
+{
+    // Store a decoder with original name
+    auto decoder = createSampleDecoder("decoder-uuid-456", "original_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Verify initial state
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("original_decoder"), "decoder");
+    EXPECT_EQ(uuid, "decoder-uuid-456");
+
+    // Update the decoder name (payload/document/name) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/name", "/path");
+    op.setString("renamed_decoder", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("decoder-uuid-456", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify document was updated
+    auto updatedDoc = m_storage->getAsset(base::Name("decoder-uuid-456"), "decoder");
+    auto newName = updatedDoc.getString("/payload/document/name");
+    EXPECT_TRUE(newName.has_value());
+    EXPECT_EQ(*newName, "renamed_decoder");
+
+    // Old name should not resolve
+    EXPECT_THROW({
+        m_storage->resolveUUIDFromName(base::Name("original_decoder"), "decoder");
+    }, std::runtime_error);
+
+    // New name should resolve
+    std::string newUuid = m_storage->resolveUUIDFromName(base::Name("renamed_decoder"), "decoder");
+    EXPECT_EQ(newUuid, "decoder-uuid-456");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_Policy)
+{
+    // Store a policy with original title
+    auto policy = createSamplePolicy("policy-uuid-789", 1);
+    m_storage->storePolicy(policy);
+
+    // Verify initial state
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Wazuh 5.0"), "policy");
+    EXPECT_EQ(uuid, "policy-uuid-789");
+
+    // Update the policy title (payload/document/title) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/title", "/path");
+    op.setString("Wazuh 6.0", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("policy-uuid-789", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify document was updated
+    auto updatedDoc = m_storage->getPolicy(base::Name("policy-uuid-789"));
+    auto newTitle = updatedDoc.getString("/payload/document/title");
+    EXPECT_TRUE(newTitle.has_value());
+    EXPECT_EQ(*newTitle, "Wazuh 6.0");
+
+    // Old title should not resolve
+    EXPECT_THROW({
+        m_storage->resolveUUIDFromName(base::Name("Wazuh 5.0"), "policy");
+    }, std::runtime_error);
+
+    // New title should resolve
+    std::string newUuid = m_storage->resolveUUIDFromName(base::Name("Wazuh 6.0"), "policy");
+    EXPECT_EQ(newUuid, "policy-uuid-789");
+
+    // Policy list should show new title
+    auto policyList = m_storage->getPolicyList();
+    EXPECT_EQ(policyList.size(), 1);
+    EXPECT_EQ(policyList[0].fullName(), "Wazuh 6.0");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_KVDB)
+{
+    // Store a KVDB with original title
+    auto kvdb = createSampleKVDB("kvdb-uuid-999", "Original KVDB");
+    m_storage->storeKVDB(kvdb);
+
+    // Verify initial state
+    EXPECT_TRUE(m_storage->kvdbExists("Original KVDB"));
+
+    // Update the KVDB title (payload/document/title) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/title", "/path");
+    op.setString("Renamed KVDB", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("kvdb-uuid-999", operations);
+    EXPECT_TRUE(updated);
+
+    // Old name should not exist
+    EXPECT_FALSE(m_storage->kvdbExists("Original KVDB"));
+
+    // New name should exist
+    EXPECT_TRUE(m_storage->kvdbExists("Renamed KVDB"));
+
+    // kvdbDump by new name should work
+    EXPECT_NO_THROW(m_storage->kvdbDump("Renamed KVDB"));
+
+    // kvdbDump by old name should fail
+    EXPECT_THROW({
+        m_storage->kvdbDump("Original KVDB");
+    }, std::runtime_error);
+}
