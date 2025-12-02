@@ -119,6 +119,8 @@ void* wm_database_main(wm_database *data) {
     // the agent addition and removal from the database will be held by authd
     // in the master.
 #ifndef LOCAL
+    // Wait for inventory_sync to subscribe to router before sending deletion messages
+    sleep(5);
     wm_sync_agents();
 #endif
 
