@@ -985,7 +985,7 @@ async def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock,
     """
     agent_groups_mock.return_value = ['default']
     # Run the method with different options
-    result = await Agent.add_group_to_agent(group_id, agent_id, replace, replace_list)
+    result = await Agent.add_group_to_agent(group_id, agent_id, replace, replace_list, external_gte=None)
     assert result == f'Agent {agent_id} assigned to {group_id}', 'Result is not the expected one'
     set_agent_group_mock.assert_called_once_with(agent_id, group_id, override=replace)
 

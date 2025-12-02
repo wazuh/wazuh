@@ -1,90 +1,150 @@
 services:
-    wazuh-base:
-        build:
-            context: ./wazuh-base
-            args:
-                WAZUH_BRANCH: ${WAZUH_BRANCH}
-        image: dev-wazuh-base
+  wazuh-base:
+    build:
+      context: ./wazuh-base
+      args:
+        WAZUH_BRANCH: ${WAZUH_BRANCH}
+    image: dev-wazuh-base
 
-    wazuh-master:
-        build:
-            context: ./wazuh-manager
-            target: server
-        image: dev-wazuh-manager
-        hostname: wazuh-master
-        volumes:
-            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
-            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
-            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
-        ports:
-            - "55050:55000"
-        entrypoint:
-            - /scripts/entrypoint.sh
-            - wazuh-master
-            - master-node
-            - master
-        depends_on:
-            - wazuh-base
+  wazuh-master:
+    build:
+      context: ./wazuh-manager
+      target: server
+    image: dev-wazuh-manager
+    hostname: wazuh-master
+    volumes:
+      - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+      - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
+      - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+    ports:
+      - "55050:55000"
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - master-node
+      - master
+    depends_on:
+      - wazuh-base
+    environment:
+      - OPENDISTRO_SECURITY_ENABLED=false
+      - INDEXER_URL=https://wazuh-indexer:55000
+      - INDEXER_USERNAME=admin
+      - INDEXER_PASSWORD=admin
 
-    wazuh-worker1:
-        image: dev-wazuh-manager
-        hostname: wazuh-worker1
-        volumes:
-            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
-            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
-            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
-        depends_on:
-            - wazuh-master
-        ports:
-            - "55051:55000"
-        entrypoint:
-            - /scripts/entrypoint.sh
-            - wazuh-master
-            - worker1
-            - worker
+  wazuh-worker1:
+    image: dev-wazuh-manager
+    hostname: wazuh-worker1
+    volumes:
+      - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+      - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
+      - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+    depends_on:
+      - wazuh-master
+    ports:
+      - "55051:55000"
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - worker1
+      - worker
+    environment:
+      - OPENDISTRO_SECURITY_ENABLED=false
+      - INDEXER_URL=https://wazuh-indexer:55000
 
-    wazuh-worker2:
-        image: dev-wazuh-manager
-        hostname: wazuh-worker2
-        volumes:
-            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
-            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
-            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
-        depends_on:
-            - wazuh-master
-        ports:
-            - "55052:55000"
-        entrypoint:
-            - /scripts/entrypoint.sh
-            - wazuh-master
-            - worker2
-            - worker
+  wazuh-worker2:
+    image: dev-wazuh-manager
+    hostname: wazuh-worker2
+    volumes:
+      - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+      - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
+      - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+    depends_on:
+      - wazuh-master
+    ports:
+      - "55052:55000"
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - worker2
+      - worker
+    environment:
+      - OPENDISTRO_SECURITY_ENABLED=false
+      - INDEXER_URL=https://wazuh-indexer:55000
 
-    nginx-lb:
-        build:
-            context: ./nginx-lb
-        image: dev-nginx-lb
-        restart: on-failure:5
-        entrypoint:
-            - /scripts/entrypoint.sh
-        depends_on:
-            - wazuh-master
-            - wazuh-worker1
-            - wazuh-worker2
+  nginx-lb:
+    build:
+      context: ./nginx-lb
+    image: dev-nginx-lb
+    restart: "on-failure:5"
+    entrypoint:
+      - /scripts/entrypoint.sh
+    depends_on:
+      - wazuh-master
+      - wazuh-worker1
+      - wazuh-worker2
 
-    wazuh-agent:
-        build:
-            context: ./wazuh-agent
-        image: dev-wazuh-agent
-        entrypoint:
-            - /scripts/entrypoint.sh
-            - nginx-lb
-            - ${WAZUH_VERSION}
-        depends_on:
-            - wazuh-master
-            - wazuh-worker1
-            - wazuh-worker2
-            - nginx-lb
+  wazuh-agent:
+    build:
+      context: ./wazuh-agent
+    image: dev-wazuh-agent
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - ${WAZUH_VERSION}
+    depends_on:
+      - wazuh-master
+      - wazuh-worker1
+      - wazuh-worker2
+      - nginx-lb
+
+  wazuh-indexer:
+    build:
+      context: ./wazuh-indexer
+    image: dev-wazuh-indexer
+    hostname: wazuh-indexer
+    ports:
+      - "55053:55000"
+    environment:
+      - node.name=wazuh-indexer
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - network.host=0.0.0.0
+      - http.port=55000
+      - http.host=0.0.0.0
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.blocks.create_index=false
+      - action.auto_create_index=true
+      - plugins.security.allow_default_init_securityindex=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - plugins.security.ssl.http.enabled=false
+      - plugins.security.ssl.transport.enabled=false
+      - SKIP_INDEXER_DOWNLOAD=${SKIP_INDEXER_DOWNLOAD:-}
+      - GH_TOKEN=${GH_TOKEN}
+    volumes:
+      - wazuh-indexer-data:/usr/share/opensearch/data
+      - wazuh-indexer-certs:/usr/share/opensearch/certs
+    depends_on:
+      - wazuh-base
+
+  wazuh-dashboard:
+    build:
+      context: ./wazuh-dashboard
+    image: dev-wazuh-dashboard
+    hostname: wazuh-dashboard
+    volumes:
+      - ./wazuh-dashboard/config.yml:/etc/wazuh-dashboard/opensearch_dashboards_custom.yml
+      - ./certs/root-ca.pem:/etc/wazuh-dashboard/certs/root-ca.pem
+      - ./certs/wazuh-worker1.pem:/etc/wazuh-dashboard/certs/dashboard.pem
+      - ./certs/wazuh-worker1-key.pem:/etc/wazuh-dashboard/certs/dashboard-key.pem
+    ports:
+      - "4040:443"
+    depends_on:
+      - wazuh-indexer
+
+volumes:
+  wazuh-indexer-data:
+  wazuh-indexer-certs:
+ 

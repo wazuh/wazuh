@@ -911,7 +911,8 @@ class Agent:
         return data
 
     @staticmethod
-    async def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None) -> str:
+    async def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None,
+                                 external_gte: int = None) -> str:
         """Add an existing group to an agent.
 
         Parameters
@@ -924,6 +925,8 @@ class Agent:
             Whether to append new group to current agent's group or replace it.
         replace_list: list
             List of group names that can be replaced.
+        external_gte: int, optional
+            Minimum version threshold for synchronization (used for disconnected agents).
 
         Raises
         ------
@@ -961,7 +964,7 @@ class Agent:
             raise WazuhError(1737)
 
         # Update group
-        Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
+        Agent.set_agent_group_relationship(agent_id, group_id, override=replace, external_gte=external_gte)
 
         return f"Agent {agent_id} assigned to {group_id}"
 
@@ -1048,7 +1051,8 @@ class Agent:
             return await wdb_client.get_agent_groups(agent_id)
 
     @staticmethod
-    def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False):
+    def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False,
+                                     external_gte: int = None):
         """Set a relationship between an agent and a group.
 
         Parameters
@@ -1062,14 +1066,22 @@ class Agent:
         override : bool
             Set the relationship with the override mode. This option only works if remove is False. If both override and
             remove are False, the mode used is append.
+        external_gte : int, optional
+            Minimum version threshold for synchronization (used for disconnected agents).
+            When set, this value is added to the command for proper version tracking.
         """
         if remove:
             mode = 'remove'
         else:
             mode = 'append' if not override else 'override'
 
-        command = f'global set-agent-groups {{"mode":"{mode}","sync_status":"syncreq","data":[{{"id":{agent_id},' \
-                  f'"groups":["{group_id}"]}}]}}'
+        # Build the command with optional external_gte parameter
+        command = f'global set-agent-groups {{"mode":"{mode}","sync_status":"syncreq"'
+
+        if external_gte is not None:
+            command += f',"external_gte":{external_gte}'
+
+        command += f',"data":[{{"id":{agent_id},"groups":["{group_id}"]}}]}}'
 
         wdb = WazuhDBConnection()
         try:
