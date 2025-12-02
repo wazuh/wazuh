@@ -522,6 +522,122 @@ void fim_db_close_and_delete_database()
     // LCOV_EXCL_STOP
 }
 
+cJSON* fim_db_get_every_element(const char* table_name)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return NULL;
+    }
+
+    cJSON* result_array = NULL;
+
+    try
+    {
+        std::vector<nlohmann::json> items = DB::instance().getEveryElement(table_name);
+
+        result_array = cJSON_CreateArray();
+
+        if (!result_array)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON array");
+            return NULL;
+        }
+
+        for (const auto& item : items)
+        {
+            // Convert nlohmann::json to cJSON for C compatibility
+            std::string json_str = item.dump();
+            cJSON* c_json = cJSON_Parse(json_str.c_str());
+
+            if (c_json)
+            {
+                cJSON_AddItemToArray(result_array, c_json);
+            }
+            else
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, "Failed to parse JSON item");
+            }
+        }
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+
+        if (result_array)
+        {
+            cJSON_Delete(result_array);
+        }
+
+        return NULL;
+    }
+
+    return result_array;
+}
+
+char* fim_db_calculate_table_checksum(const char* table_name)
+{
+    char* result = NULL;
+
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return NULL;
+    }
+
+    try
+    {
+        std::string checksum = DB::instance().calculateTableChecksum(table_name);
+        result = strdup(checksum.c_str());
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    return result;
+}
+
+int64_t fim_db_get_last_sync_time(const char* table_name)
+{
+    int64_t result = 0;
+
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return 0;
+    }
+
+    try
+    {
+        result = DB::instance().getLastSyncTime(table_name);
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    return result;
+}
+
+void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return;
+    }
+
+    try
+    {
+        DB::instance().updateLastSyncTime(table_name, timestamp);
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
