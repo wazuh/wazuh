@@ -142,6 +142,9 @@ class SecurityConfigurationAssessment
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
 
+        /// @brief Sync protocol for module synchronization
+        std::shared_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -178,6 +181,15 @@ class SecurityConfigurationAssessment
         /// @param checksum Local checksum to validate
         /// @return true if recovery needed
         bool checkIfRecoveryRequired(const std::string& checksum);
+
+        /// @brief Check if DB has data (policies or checks)
+        /// @return true if DB contains any policies or checks
+        bool hasDataInDatabase();
+
+        /// @brief Handle case when all policies are removed from config
+        /// Sends DataClean, clears DB, syncs, and signals exit
+        /// @return true if DataClean was sent and handled successfully
+        bool handleAllPoliciesRemoved();
 
         /// @brief SCA module name
         std::string m_name = "SCA";
@@ -239,9 +251,9 @@ class SecurityConfigurationAssessment
         /// @brief YAML to JSON conversion function
         YamlToJsonFunc m_yamlToJsonFunc;
 
+        /// @brief Flag indicating module should exit after DataClean (all policies removed)
+        std::atomic<bool> m_exitAfterDataClean {false};
+
         /// @brief Static/global function pointer to wm_exec
         static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);
-
-        /// @brief Path to the sync protocol
-        std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 };
