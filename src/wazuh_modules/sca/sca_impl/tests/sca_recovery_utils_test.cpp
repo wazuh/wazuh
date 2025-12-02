@@ -22,6 +22,37 @@ class SCARecoveryUtilsTest : public ::testing::Test
         void TearDown() override {}
 };
 
+// Tests for escapeSqlString
+TEST_F(SCARecoveryUtilsTest, EscapeSqlStringNoQuotes)
+{
+    auto result = sca::recovery::escapeSqlString("normal_string");
+    EXPECT_EQ(result, "normal_string");
+}
+
+TEST_F(SCARecoveryUtilsTest, EscapeSqlStringSingleQuote)
+{
+    auto result = sca::recovery::escapeSqlString("test'value");
+    EXPECT_EQ(result, "test''value");
+}
+
+TEST_F(SCARecoveryUtilsTest, EscapeSqlStringMultipleQuotes)
+{
+    auto result = sca::recovery::escapeSqlString("test'value'with'quotes");
+    EXPECT_EQ(result, "test''value''with''quotes");
+}
+
+TEST_F(SCARecoveryUtilsTest, EscapeSqlStringEmptyString)
+{
+    auto result = sca::recovery::escapeSqlString("");
+    EXPECT_EQ(result, "");
+}
+
+TEST_F(SCARecoveryUtilsTest, EscapeSqlStringOnlyQuote)
+{
+    auto result = sca::recovery::escapeSqlString("'");
+    EXPECT_EQ(result, "''");
+}
+
 // Tests for stringToJsonArray
 TEST_F(SCARecoveryUtilsTest, StringToJsonArrayEmptyString)
 {

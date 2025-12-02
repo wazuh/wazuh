@@ -84,6 +84,15 @@ namespace sca
             }
         }
 
+        /// @brief Escape single quotes in a string for SQL safety
+        /// @param input String to escape
+        /// @return Escaped string with single quotes doubled
+        inline std::string escapeSqlString(std::string input)
+        {
+            Utils::replaceAll(input, "'", "''");
+            return input;
+        }
+
         /// @brief Get policy data by ID from database
         /// @param policyId Policy ID to look up
         /// @param dbSync Database sync interface
@@ -97,7 +106,8 @@ namespace sca
                 return policy;
             }
 
-            const std::string filter = "WHERE id = '" + policyId + "'";
+            const std::string escapedPolicyId = escapeSqlString(policyId);
+            const std::string filter = "WHERE id = '" + escapedPolicyId + "'";
             auto selectQuery = SelectQuery::builder()
                                .table("sca_policy")
                                .columnList({"id", "name", "description", "file", "refs"})
