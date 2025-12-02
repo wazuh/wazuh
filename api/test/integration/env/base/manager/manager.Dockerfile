@@ -24,6 +24,10 @@ ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
+RUN mkdir -p /var/ossec/etc/certs && \
+    touch /var/ossec/etc/certs/root-ca.pem && \
+    touch /var/ossec/etc/certs/server.pem && \
+    touch /var/ossec/etc/certs/server-key.pem
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
 # HEALTHCHECK
