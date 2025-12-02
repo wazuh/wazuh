@@ -1953,7 +1953,54 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
     // but we need to handle it directly here to maintain the lock)
     const std::string updatedDoc = jsonData.dump();
     rocksdb::WriteOptions wo;
-    status = m_db->Put(wo, getColumnFamily(cf), primaryKey, updatedDoc);
+
+    // Store updated document
+    rocksdb::WriteBatch batch;
+    batch.Put(getColumnFamily(cf), primaryKey, updatedDoc);
+
+    // Update metadata for name/title changes
+    std::string oldName;
+    std::string newName;
+    try
+    {
+        json::Json oldDoc(docValue.c_str());
+        oldName = extractNameFromJson(oldDoc);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to extract old name for metadata alias update: {}", e.what());
+    }
+
+    try
+    {
+        newName = extractNameFromJson(doc);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to extract new name for metadata alias update: {}", e.what());
+    }
+
+    // Update metadata alias if name changed
+    if (!oldName.empty() && !newName.empty() && oldName != newName)
+    {
+        auto namePrefixIt = CTIStorageDB::getAssetTypeToNamePrefix().find(assetType);
+        if (namePrefixIt != CTIStorageDB::getAssetTypeToNamePrefix().end())
+        {
+            const std::string& namePrefix = namePrefixIt->second;
+
+            // Delete old alias
+            batch.Delete(getColumnFamily(ColumnFamily::METADATA), namePrefix + oldName);
+
+            // Create new alias
+            batch.Put(getColumnFamily(ColumnFamily::METADATA), namePrefix + newName, resourceId);
+
+            LOG_DEBUG("Refreshing metadata alias for resource '{}': '{}' -> '{}'",
+                     resourceId, oldName, newName);
+        }
+    }
+
+    // Execute atomic batch
+    status = m_db->Write(wo, &batch);
 
     if (!status.ok())
     {

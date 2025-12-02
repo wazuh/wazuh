@@ -339,11 +339,10 @@ TEST_F(CMStoreCTIComponentTest, AssetExistenceByUUID_ValidAndInvalidUUIDs)
         .WillOnce(Throw(std::runtime_error("UUID not found")));
 
     // Check
-    bool existsValid = storeCTI->assetExistsByUUID("valid-uuid");
-    bool existsInvalid = storeCTI->assetExistsByUUID("invalid-uuid");
-
-    EXPECT_TRUE(existsValid);
-    EXPECT_FALSE(existsInvalid);
+    EXPECT_TRUE(storeCTI->assetExistsByUUID("valid-uuid"));
+    EXPECT_THROW(
+        storeCTI->assetExistsByUUID("invalid-uuid"),
+        std::runtime_error);
 }
 
 /*****************************************************************************
@@ -352,23 +351,36 @@ TEST_F(CMStoreCTIComponentTest, AssetExistenceByUUID_ValidAndInvalidUUIDs)
 
 TEST_F(CMStoreCTIComponentTest, KVDBOperations_GetByNameAndUUID)
 {
-    // Create KVDB content (kvdbDump returns just content, not full document)
-    json::Json kvdbContent;
-    kvdbContent.setString("KDC_ERR_NONE", "/0x0");
-    kvdbContent.setString("KDC_ERR_NAME_EXP", "/0x1");
-    kvdbContent.setString("KDC_ERR_SERVICE_EXP", "/0x2");
+    // Build full KVDB document structure
+    json::Json kvdbDoc;
+    kvdbDoc.setString("kvdb-uuid-1", "/name");
+
+    json::Json payload;
+    payload.setString("kvdb", "/type");
+
+    json::Json document;
+    document.setString("kvdb-uuid-1", "/id");
+    document.setString("kerberos_status_codes", "/title");
+    document.setBool(true, "/enabled");
+
+    json::Json content;
+    content.setString("KDC_ERR_NONE", "/0x0");
+    content.setString("KDC_ERR_NAME_EXP", "/0x1");
+    content.setString("KDC_ERR_SERVICE_EXP", "/0x2");
+    document.set("/content", content);
+
+    payload.set("/document", document);
+    kvdbDoc.set("/payload", payload);
 
     EXPECT_CALL(*mockReader, kvdbDump("kerberos_status_codes"))
-        .WillOnce(Return(kvdbContent));
-    EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("kerberos_status_codes"), "kvdb"))
-        .WillOnce(Return("kvdb-uuid-1"));
+        .WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb1 = storeCTI->getKVDBByName("kerberos_status_codes");
 
     EXPECT_CALL(*mockReader, resolveNameFromUUID("kvdb-uuid-1"))
         .WillOnce(Return("kerberos_status_codes"));
     EXPECT_CALL(*mockReader, kvdbDump("kerberos_status_codes"))
-        .WillOnce(Return(kvdbContent));
+        .WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb2 = storeCTI->getKVDBByUUID("kvdb-uuid-1");
 
@@ -575,7 +587,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_ConsistentResults)
         .WillOnce(Return("test-uuid-123"));
 
     EXPECT_CALL(*mockReader, resolveNameAndTypeFromUUID("test-uuid-123"))
-        .WillOnce(Return(std::make_pair("Test Integration", cti::store::AssetType::INTEGRATION)));
+        .WillOnce(Return(std::make_pair("Test Integration", "integration")));
 
     // Test Name -> UUID
     std::string uuid = storeCTI->resolveUUIDFromName("Test Integration", ResourceType::INTEGRATION);
@@ -584,7 +596,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_ConsistentResults)
     // Test UUID -> Name (round-trip verification)
     auto nameType = mockReader->resolveNameAndTypeFromUUID(uuid);
     EXPECT_EQ(nameType.first, "Test Integration");
-    EXPECT_EQ(nameType.second, cti::store::AssetType::INTEGRATION);
+    EXPECT_EQ(nameType.second, "integration");
 }
 
 TEST(CMStoreCTITest, ResolveUUIDFromName_MultipleCallsSameResource)

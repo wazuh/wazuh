@@ -104,15 +104,26 @@ std::tuple<std::string, ResourceType> CMStoreCTI::resolveNameFromUUID(const std:
 
     try
     {
-        // Prefer the combined resolver if available
-        auto [name, aType] = reader->resolveNameAndTypeFromUUID(uuid);
-        ResourceType rType = ResourceType::UNDEFINED;
-        switch (aType)
+        auto [name, type] = reader->resolveNameAndTypeFromUUID(uuid);
+        ResourceType rType;
+        if (type == "decoder")
         {
-            case cti::store::AssetType::DECODER: rType = ResourceType::DECODER; break;
-            case cti::store::AssetType::INTEGRATION: rType = ResourceType::INTEGRATION; break;
-            default: rType = ResourceType::UNDEFINED; break;
+            rType = ResourceType::DECODER;
         }
+        else if (type == "integration")
+        {
+            rType = ResourceType::INTEGRATION;
+        }
+        else if (type == "kvdb")
+        {
+            rType = ResourceType::KVDB;
+        }
+        else
+        {
+            // Note: CTI store does not currently support 'rule' or 'output' types
+            throw std::runtime_error(fmt::format("Unsupported resource type string: {}", type));
+        }
+
         return std::make_tuple(name, rType);
     }
     catch (const std::exception& e)
@@ -167,22 +178,29 @@ bool CMStoreCTI::assetExistsByName(const base::Name& name) const
 {
     if (m_reader.expired())
     {
-        return false;
+        throw std::runtime_error("CTI Store Reader is expired");
     }
 
     auto reader = m_reader.lock();
     try
     {
-        return reader->assetExists(name);
+        bool exists = reader->assetExists(name);
+        LOG_DEBUG("Asset '{}' exists? [{}]", name.toStr(), exists);
+
+        return exists;
     }
-    catch (...) { return false; }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Error checking existence of asset with name '{}': {}", name.toStr(), e.what());
+        throw;
+    }
 }
 
 bool CMStoreCTI::assetExistsByUUID(const std::string& uuid) const
 {
     if (m_reader.expired())
     {
-        return false;
+        throw std::runtime_error("CTI Store Reader is expired");
     }
 
     auto reader = m_reader.lock();
@@ -192,7 +210,11 @@ bool CMStoreCTI::assetExistsByUUID(const std::string& uuid) const
         reader->resolveNameFromUUID(uuid);
         return true;
     }
-    catch (...) { return false; }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Error checking existence of asset with name '{}': {}", uuid, e.what());
+        throw;
+    }
 }
 
 /*********************************** General Resource ************************************/
@@ -345,22 +367,33 @@ dataType::KVDB CMStoreCTI::getKVDBByName(const std::string& name) const
 
     try
     {
-        // Get KVDB content from CTI Store
-        json::Json kvdbContent = reader->kvdbDump(name);
+        // Get raw KVDB document from CTI Store
+        json::Json rawDoc = reader->kvdbDump(name);
 
-        // Resolve name to UUID
-        std::string uuid = resolveUUIDFromName(name, ResourceType::KVDB);
+        // Extract the /payload/document section which contains the KVDB data
+        auto documentOpt = rawDoc.getJson("/payload/document");
+        if (!documentOpt.has_value())
+        {
+            throw std::runtime_error("KVDB document missing /payload/document section");
+        }
 
-        // Build KVDB document in expected format
-        json::Json kvdbDoc;
-        kvdbDoc.setObject();
-        kvdbDoc.setString(uuid, "/id");
-        kvdbDoc.setString(name, "/title");
-        kvdbDoc.set("/content", kvdbContent);
-        kvdbDoc.setBool(true, "/enabled");
+        json::Json document = *documentOpt;
 
-        // Convert to KVDB data type
-        return dataType::KVDB::fromJson(kvdbDoc);
+        // Check if /id exists in the document
+        auto idOpt = document.getString("/id");
+        if (!idOpt.has_value())
+        {
+            // Fallback: extract UUID from /name field (root level) and add it to document
+            auto uuidOpt = rawDoc.getString("/name");
+            if (!uuidOpt.has_value())
+            {
+                throw std::runtime_error("KVDB document missing both /payload/document/id and /name (UUID) fields");
+            }
+            document.setString(*uuidOpt, "/id");
+        }
+
+        // Pass the document to KVDB::fromJson
+        return dataType::KVDB::fromJson(document);
     }
     catch (const std::exception& e)
     {
@@ -380,21 +413,10 @@ dataType::KVDB CMStoreCTI::getKVDBByUUID(const std::string& uuid) const
     try
     {
         // Resolve UUID to name first
-        auto name = reader->resolveNameFromUUID(uuid);
+        std::string name = reader->resolveNameFromUUID(uuid);
 
-        // Get KVDB content from CTI Store
-        json::Json kvdbContent = reader->kvdbDump(name);
-
-        // Build KVDB document in expected format
-        json::Json kvdbDoc;
-        kvdbDoc.setObject();
-        kvdbDoc.setString(uuid, "/id");
-        kvdbDoc.setString(name, "/title");
-        kvdbDoc.set("/content", kvdbContent);
-        kvdbDoc.setBool(true, "/enabled");
-
-        // Convert to KVDB data type
-        return dataType::KVDB::fromJson(kvdbDoc);
+        // Get by name
+        return getKVDBByName(name);
     }
     catch (const std::exception& e)
     {

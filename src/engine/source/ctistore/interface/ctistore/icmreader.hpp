@@ -85,14 +85,14 @@ public:
     virtual std::string resolveUUIDFromName(const base::Name& name, const std::string& type) const = 0;
 
     /**
-     * @brief Resolve asset name and its AssetType from its UUID
+     * @brief Resolve asset name and type from its UUID
      *
      * @param uuid UUID of the asset to resolve
-     * @return std::pair<std::string, AssetType> pair with the asset name (first)
-     *         and the asset type (second)
+     * @return std::pair<std::string, std::string> pair with the asset name (first)
+     *         and the asset type string (second): "decoder", "integration" or "kvdb"
      * @throw std::runtime_error on error (if the asset does not exist, unable to read the store, etc)
      */
-    virtual std::pair<std::string, AssetType> resolveNameAndTypeFromUUID(const std::string& uuid) const = 0;
+    virtual std::pair<std::string, std::string> resolveNameAndTypeFromUUID(const std::string& uuid) const = 0;
 
     // TODO: Analize if we need to add metadata functions
     // virtual XXX getMetadata() const = 0;
