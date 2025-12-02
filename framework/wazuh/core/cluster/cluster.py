@@ -282,38 +282,6 @@ def get_files_status(previous_status=None, get_hash=True):
     return final_items, result_logs
 
 
-def get_ruleset_status(previous_status):
-    """Get hash of custom ruleset files.
-
-    Parameters
-    ----------
-    previous_status : dict
-        Integrity information of local files.
-
-    Returns
-    -------
-    Dict
-        Relative path and hash of local ruleset files.
-    """
-    final_items = {}
-    cluster_items = get_cluster_items()
-    user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.USER_DECODERS_PATH,
-                                                                                    common.USER_RULES_PATH,
-                                                                                    common.USER_LISTS_PATH]]
-
-    for file_path, item in cluster_items['files'].items():
-        if file_path == "excluded_files" or file_path == "excluded_extensions" or file_path not in user_ruleset:
-            continue
-        try:
-            items, _ = walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                                cluster_items['files']['excluded_extensions'], file_path, previous_status, True)
-            final_items.update(items)
-        except Exception as e:
-            logger.warning(f"Error getting file status: {e}.")
-
-    return {file_path: file_data['hash'] for file_path, file_data in final_items.items()}
-
-
 def update_cluster_control(failed_file, ko_files, exists=True):
     """Move or remove files listed inside 'ko_files'.
 

@@ -269,7 +269,7 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
     Parameters
     ----------
     section : str
-        Filters by section (i.e. rules).
+        Filters by section
     field : str
         Filters by field in section (i.e. included).
     raw : bool

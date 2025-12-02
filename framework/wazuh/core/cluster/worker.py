@@ -118,53 +118,6 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
 
 
-class AsyncReloadRulesetFlag:
-    """
-    Asynchronous flag with locking to control ruleset reload operations in worker nodes.
-
-    This class provides an async context manager for safely setting and clearing a boolean flag
-    used to indicate when the ruleset should be reloaded.
-    """
-
-    def __init__(self):
-        """Initializes the asynchronous lock and the flag state."""
-        self._lock = asyncio.Lock()
-        self._flag = False
-
-    async def __aenter__(self):
-        """Acquire the lock asynchronously when entering the context.
-
-        Returns
-        -------
-        AsyncReloadRulesetFlag
-            The instance itself.
-        """
-        await self._lock.acquire()
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        """Release the lock when exiting the context."""
-        self._lock.release()
-
-    def set(self):
-        """Set the flag to True, indicating a reload is required."""
-        self._flag = True
-
-    def clear(self):
-        """Clear the flag, indicating no reload is required."""
-        self._flag = False
-
-    def is_set(self):
-        """Check if the flag is set.
-
-        Returns
-        -------
-        bool
-            True if the flag is set, False otherwise.
-        """
-        return self._flag
-
-
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     """
     Handle connection with the master node.
@@ -190,9 +143,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         # Flag to prevent a new Integrity check if Integrity sync is in progress.
         self.check_integrity_free = True
-
-        # Async flag used to indicate when the worker should reload the ruleset after the next sync
-        self.reload_ruleset_flag = AsyncReloadRulesetFlag()
 
         # Every task logger is configured to log using a tag describing the synchronization process. For example,
         # a log coming from the "Integrity" logger will look like this:
@@ -398,14 +348,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         integrity_logger.info(
             f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync not required.")
-
-        async with self.reload_ruleset_flag:
-            if self.reload_ruleset_flag.is_set():
-                response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                analysis.log_ruleset_reload_response(self.logger, response)
-
-                # Clear the flag
-                self.reload_ruleset_flag.clear()
 
     async def compare_agent_groups_checksums(self, master_checksum, logger):
         """Compare the checksum of the local database with the checksum of the master node to check if these differ.
@@ -735,14 +677,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                  ko_files, zip_path, self.cluster_items)
                 log_subprocess_execution(self.task_loggers['Integrity sync'], logs)
                 logger.debug("Updating local files: End.")
-
-            async with self.reload_ruleset_flag:
-                if self.reload_ruleset_flag.is_set():
-                    response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                    analysis.log_ruleset_reload_response(self.logger, response)
-
-                    # Clear the flag
-                    self.reload_ruleset_flag.clear()
 
             logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
         except Exception as e:

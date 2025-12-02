@@ -125,20 +125,6 @@ async def test_LocalServerHandler_get_health(event_loop):
 
 
 @pytest.mark.asyncio
-async def test_LocalServerHandler_get_ruleset_hashes(event_loop):
-    """Set the behavior of the get_ruleset_hashes function."""
-    class ServerMock:
-        def __init__(self):
-            self.node = MagicMock()
-
-    lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={})
-    with patch("wazuh.core.cluster.local_server.cluster.get_ruleset_status",
-               return_value={'test_path': 'hash'}) as get_ruleset_status_mock:
-        assert lsh.get_ruleset_hashes() == (b'ok', json.dumps({'test_path': 'hash'}).encode())
-        get_ruleset_status_mock.assert_called_once()
-
-
-@pytest.mark.asyncio
 async def test_LocalServerHandler_send_file_request(event_loop):
     """Set the behavior of the send_file_request function."""
     lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={})
@@ -427,9 +413,6 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
     with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
         lshw.process_request(command=b"sendasync", data=b"bye")
 
-    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
-        lshw.process_request(command=b"sendrreload", data=b"bye")
-
     server_mock.node.client = ClientMock()
     with patch.object(server_mock.node.client, "send_request", return_value='') as send_request_mock:
         results = lshw.process_request(command=b"dapi", data=b"bye")
@@ -448,76 +431,3 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
         assert results == (b"ok", b"Added request to sendsync requests queue")        
         await asyncio.sleep(0.1)
         send_request_mock.assert_awaited_once_with(b"sendsync", b"test1 bye")
-
-
-@pytest.mark.asyncio
-async def test_LocalServerHandlerWorker_set_reload_ruleset_flag(event_loop):
-    """Test that set_reload_ruleset_flag acquires the lock and sets the flag."""
-    class ReloadFlagMock:
-        def __init__(self):
-            self.lock_acquired = False
-            self.set_called = False
-        async def __aenter__(self):
-            self.lock_acquired = True
-            return self
-        async def __aexit__(self, exc_type, exc, tb):
-            self.lock_acquired = False
-        def set(self):
-            self.set_called = True
-
-    class ClientMock:
-        def __init__(self):
-            self.reload_ruleset_flag = ReloadFlagMock()
-
-    class NodeMock:
-        def __init__(self):
-            self.client = ClientMock()
-
-    class ServerMock:
-        def __init__(self):
-            self.node = NodeMock()
-
-    lshw = LocalServerHandlerWorker(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={})
-
-    await lshw.set_reload_ruleset_flag()
-    reload_flag = lshw.server.node.client.reload_ruleset_flag
-    assert reload_flag.lock_acquired is False  # Should be released after context
-    assert reload_flag.set_called is True
-
-
-@pytest.mark.asyncio
-async def test_AsyncReloadRulesetFlag_initial_state():
-    """Test AsyncReloadRulesetFlag initial state is not set."""
-    from wazuh.core.cluster.worker import AsyncReloadRulesetFlag
-    flag = AsyncReloadRulesetFlag()
-    assert not flag.is_set()
-
-@pytest.mark.asyncio
-async def test_AsyncReloadRulesetFlag_set():
-    """Test AsyncReloadRulesetFlag set() method."""
-    from wazuh.core.cluster.worker import AsyncReloadRulesetFlag
-    flag = AsyncReloadRulesetFlag()
-    flag.set()
-    assert flag.is_set()
-
-@pytest.mark.asyncio
-async def test_AsyncReloadRulesetFlag_clear():
-    """Test AsyncReloadRulesetFlag clear() method."""
-    from wazuh.core.cluster.worker import AsyncReloadRulesetFlag
-    flag = AsyncReloadRulesetFlag()
-    flag.set()
-    flag.clear()
-    assert not flag.is_set()
-
-@pytest.mark.asyncio
-async def test_AsyncReloadRulesetFlag_async_context_manager():
-    """Test AsyncReloadRulesetFlag async context manager acquires and releases lock."""
-    from wazuh.core.cluster.worker import AsyncReloadRulesetFlag
-    flag = AsyncReloadRulesetFlag()
-    async with flag as ctx:
-        assert ctx is flag
-        flag.set()
-        assert flag.is_set()
-    # After context, flag should still be set (lock is released, not flag)
-    assert flag.is_set()
-
