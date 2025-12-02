@@ -178,10 +178,26 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         dataToSync[i].seq = i;
     }
 
+    // Separate DataValue and DataContext items
+    std::vector<PersistedData> dataValueItems;
+    std::vector<PersistedData> dataContextItems;
+
+    for (const auto& item : dataToSync)
+    {
+        if (item.is_data_context)
+        {
+            dataContextItems.push_back(item);
+        }
+        else
+        {
+            dataValueItems.push_back(item);
+        }
+    }
+
     // Extract unique indices from dataToSync
     std::set<std::string> uniqueIndicesSet;
 
-    for (const auto& item : dataToSync)
+    for (const auto& item : dataValueItems)
     {
         uniqueIndicesSet.insert(item.index);
     }
@@ -192,22 +208,6 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, option))
     {
-        // Separate DataValue and DataContext items
-        std::vector<PersistedData> dataValueItems;
-        std::vector<PersistedData> dataContextItems;
-
-        for (const auto& item : dataToSync)
-        {
-            if (item.is_data_context)
-            {
-                dataContextItems.push_back(item);
-            }
-            else
-            {
-                dataValueItems.push_back(item);
-            }
-        }
-
         // Send DataValue messages first
         if (sendDataMessages(m_syncState.session, dataValueItems))
         {
