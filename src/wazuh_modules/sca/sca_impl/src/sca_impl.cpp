@@ -91,6 +91,43 @@ void SecurityConfigurationAssessment::Run()
 
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
 
+    // Check for all-policies-removed case before starting scan loop
+    // This handles the case where policies were removed between restarts
+    bool hasEnabledPolicies = false;
+
+    for (const auto& policy : m_policiesData)
+    {
+        if (policy.isEnabled)
+        {
+            hasEnabledPolicies = true;
+            break;
+        }
+    }
+
+    if (!hasEnabledPolicies && hasDataInDatabase())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "No enabled policies in configuration but database has data. "
+                                         "Handling policy removal.");
+
+        if (handleAllPoliciesRemoved())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "All policies removed - DataClean completed. SCA module exiting.");
+            return;
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "Failed to complete DataClean process. Will retry on next run.");
+        }
+    }
+    else if (!hasEnabledPolicies)
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "No enabled policies configured. SCA module has nothing to scan.");
+        return;
+    }
+
     bool firstScan = true;
 
     while (m_keepRunning)
@@ -138,6 +175,33 @@ void SecurityConfigurationAssessment::Run()
             m_yamlToJsonFunc
         );
         // *INDENT-ON*
+
+        // Check for all-policies-removed case after loading
+        // This handles runtime policy removal (during existing scan loop)
+        if (m_policies.empty() && hasDataInDatabase())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "All policies removed during runtime. Initiating DataClean process.");
+
+            // Mark scan as complete before DataClean
+            m_scanInProgress.store(false);
+            {
+                std::lock_guard<std::mutex> lock(m_pauseMutex);
+                m_pauseCv.notify_all();
+            }
+
+            if (handleAllPoliciesRemoved())
+            {
+                LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                 "All policies removed - DataClean completed. SCA module exiting.");
+                return;
+            }
+            else
+            {
+                LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                 "Failed to complete DataClean process. Will retry on next run.");
+            }
+        }
 
         // Check again after policy loading in case stop was called during load
         if (!m_keepRunning)
@@ -284,7 +348,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
         // Set integrity interval
@@ -1057,6 +1121,142 @@ bool SecurityConfigurationAssessment::integrityIntervalElapsed(int64_t currentTi
     }
 
     return intervalElapsed;
+}
+
+bool SecurityConfigurationAssessment::hasDataInDatabase()
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot check database contents");
+        return false;
+    }
+
+    try
+    {
+        int policyCount = 0;
+        int checkCount = 0;
+
+        // Count policies
+        auto policyQuery = SelectQuery::builder()
+                           .table("sca_policy")
+                           .columnList({"COUNT(*) AS count"})
+                           .build();
+
+        const auto policyCallback = [&policyCount](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("count"))
+            {
+                if (resultData["count"].is_number())
+                {
+                    policyCount = resultData["count"].get<int>();
+                }
+            }
+        };
+
+        m_dBSync->selectRows(policyQuery.query(), policyCallback);
+
+        // Count checks
+        auto checkQuery = SelectQuery::builder()
+                          .table("sca_check")
+                          .columnList({"COUNT(*) AS count"})
+                          .build();
+
+        const auto checkCallback = [&checkCount](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("count"))
+            {
+                if (resultData["count"].is_number())
+                {
+                    checkCount = resultData["count"].get<int>();
+                }
+            }
+        };
+
+        m_dBSync->selectRows(checkQuery.query(), checkCallback);
+
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Database contains " + std::to_string(policyCount) + " policies and " +
+                                         std::to_string(checkCount) + " checks");
+
+        return (policyCount > 0 || checkCount > 0);
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error checking database contents: " + std::string(err.what()));
+        return false;
+    }
+}
+
+bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
+{
+    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                     "All SCA policies removed from configuration. Initiating DataClean process.");
+
+    if (!m_spSyncProtocol)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+                                         "Sync protocol not initialized, cannot send DataClean notification");
+        return false;
+    }
+
+    // Send DataClean notification to manager
+    std::vector<std::string> indices = {SCA_SYNC_INDEX};
+    bool dataCleanSent = m_spSyncProtocol->notifyDataClean(indices);
+
+    if (dataCleanSent)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "DataClean notification sent successfully for SCA index");
+
+        // Clear local database tables
+        try
+        {
+            // Delete all checks first (foreign key reference to policies)
+            const auto deleteChecksCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+            DBSyncTxn checkTxn {m_dBSync->handle(), nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, deleteChecksCallback};
+
+            if (checkTxn.handle() != nullptr)
+            {
+                // Sync with empty data to trigger deletions
+                nlohmann::json emptyInput;
+                emptyInput["table"] = "sca_check";
+                emptyInput["data"] = nlohmann::json::array();
+
+                checkTxn.syncTxnRow(emptyInput);
+                checkTxn.getDeletedRows(deleteChecksCallback);
+            }
+
+            // Delete all policies
+            const auto deletePoliciesCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+            DBSyncTxn policyTxn {m_dBSync->handle(), nlohmann::json {"sca_policy"}, 0, DBSYNC_QUEUE_SIZE, deletePoliciesCallback};
+
+            if (policyTxn.handle() != nullptr)
+            {
+                nlohmann::json emptyInput;
+                emptyInput["table"] = "sca_policy";
+                emptyInput["data"] = nlohmann::json::array();
+
+                policyTxn.syncTxnRow(emptyInput);
+                policyTxn.getDeletedRows(deletePoliciesCallback);
+            }
+
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Local SCA database tables cleared");
+        }
+        catch (const std::exception& err)
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "Error clearing database tables: " + std::string(err.what()));
+        }
+
+        // Set flag to exit after DataClean
+        m_exitAfterDataClean.store(true);
+        return true;
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to send DataClean notification");
+        return false;
+    }
 }
 
 // LCOV_EXCL_STOP
