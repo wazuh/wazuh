@@ -97,17 +97,17 @@ stages:
             - id: '000'
               version: 'Wazuh v{wazuh_version:s}'
             - id: '008'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '007'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '006'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '005'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '010'
-              version: 'Wazuh v3.9.2'
+              version: 'Wazuh v4.9.2'
             - id: '009'
-              version: 'Wazuh v3.9.2'
+              version: 'Wazuh v4.9.2'
             - id: '012'
             - id: '011'
           failed_items: []
@@ -130,17 +130,17 @@ stages:
             - id: '011'
             - id: '012'
             - id: '009'
-              version: 'Wazuh v3.9.2'
+              version: 'Wazuh v4.9.2'
             - id: '010'
-              version: 'Wazuh v3.9.2'
+              version: 'Wazuh v4.9.2'
             - id: '005'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '006'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '007'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '008'
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
             - id: '000'
               version: 'Wazuh v{wazuh_version:s}'
             - id: '001'
@@ -433,7 +433,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        version: 'Wazuh v3.9.2'
+        version: 'Wazuh v4.9.2'
     response: &old_wazuh_agents_response
       status_code: 200
       json:
@@ -451,7 +451,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        version: 'Wazuh 3.9.2'
+        version: 'Wazuh 4.9.2'
     response:
       <<: *old_wazuh_agents_response
 
@@ -460,7 +460,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        version: 'v3.9.2'
+        version: 'v4.9.2'
     response:
       <<: *old_wazuh_agents_response
 
@@ -469,7 +469,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        version: '3.9.2'
+        version: '4.9.2'
     response:
       <<: *old_wazuh_agents_response
 
@@ -3343,9 +3343,9 @@ stages:
         error: 0
         data:
           affected_items:
-            - version: 'Wazuh v3.13.2'
-            - version: 'Wazuh v3.13.2'
-            - version: 'Wazuh v3.13.2'
+            - version: 'Wazuh v4.14.1'
+            - version: 'Wazuh v4.14.1'
+            - version: 'Wazuh v4.14.1'
             - version: 'Wazuh v{wazuh_version:s}'
           failed_items: []
           total_affected_items: 4
@@ -4282,7 +4282,7 @@ stages:
             - id: '005'
               status: active
               name: wazuh-agent5
-              version: 'Wazuh v3.13.2'
+              version: 'Wazuh v4.14.1'
               status_code: 0
               group:
                 - default
