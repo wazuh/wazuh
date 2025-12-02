@@ -372,7 +372,7 @@ def _get_denied(original: dict, allowed: list, target_param: str, res_id: int, r
         return {res.split(':')[2] for res in resources} if resources is not None else {}
 
 
-async def async_list_handler(result: asyncio.coroutine, **kwargs):
+async def async_list_handler(result, **kwargs):
     """This function makes list_handler async."""
     result = await result
     return list_handler(result, **kwargs)
