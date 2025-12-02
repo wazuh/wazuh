@@ -192,6 +192,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_browserExtensions;
         unsigned int                                                             m_dataCleanRetries;
         bool                                                                     m_allCollectorsDisabled;
+        bool                                                                     m_vdSyncEnabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
