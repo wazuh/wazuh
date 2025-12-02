@@ -27,7 +27,7 @@ namespace sca
 
         /// @brief Convert comma-separated string to JSON array
         /// @param input Comma-separated string
-        /// @return JSON array with trimmed values
+        /// @return JSON array with trimmed values (all whitespace removed from both ends)
         inline nlohmann::json stringToJsonArray(const std::string& input)
         {
             nlohmann::json result = nlohmann::json::array();
@@ -36,7 +36,8 @@ namespace sca
 
             while (std::getline(stream, token, ','))
             {
-                token = Utils::trim(token, " \t");
+                // Trim all whitespace characters including \n, \r, \t, \v, \f, and spaces
+                token = Utils::trim(token, " \t\n\r\v\f");
 
                 if (!token.empty())
                 {

@@ -98,6 +98,56 @@ TEST_F(SCARecoveryUtilsTest, StringToJsonArrayWithEmptyTokens)
     EXPECT_EQ(result[1], "value3");
 }
 
+TEST_F(SCARecoveryUtilsTest, StringToJsonArrayWithNewlines)
+{
+    auto result = sca::recovery::stringToJsonArray("value1\n,value2\n,value3");
+    EXPECT_TRUE(result.is_array());
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0], "value1");
+    EXPECT_EQ(result[1], "value2");
+    EXPECT_EQ(result[2], "value3");
+}
+
+TEST_F(SCARecoveryUtilsTest, StringToJsonArrayWithCarriageReturns)
+{
+    auto result = sca::recovery::stringToJsonArray("value1\r,value2\r,value3\r");
+    EXPECT_TRUE(result.is_array());
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0], "value1");
+    EXPECT_EQ(result[1], "value2");
+    EXPECT_EQ(result[2], "value3");
+}
+
+TEST_F(SCARecoveryUtilsTest, StringToJsonArrayWithMixedWhitespace)
+{
+    auto result = sca::recovery::stringToJsonArray(" \t\n\rvalue1\r\n\t ,  \nvalue2\v\f  , value3  ");
+    EXPECT_TRUE(result.is_array());
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0], "value1");
+    EXPECT_EQ(result[1], "value2");
+    EXPECT_EQ(result[2], "value3");
+}
+
+TEST_F(SCARecoveryUtilsTest, StringToJsonArrayWithOnlyWhitespaceTokens)
+{
+    auto result = sca::recovery::stringToJsonArray("value1, \t\n\r ,value2");
+    EXPECT_TRUE(result.is_array());
+    EXPECT_EQ(result.size(), 2);
+    EXPECT_EQ(result[0], "value1");
+    EXPECT_EQ(result[1], "value2");
+}
+
+TEST_F(SCARecoveryUtilsTest, StringToJsonArrayWithCRLF)
+{
+    // Windows-style line endings
+    auto result = sca::recovery::stringToJsonArray("value1\r\n,value2\r\n,value3");
+    EXPECT_TRUE(result.is_array());
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0], "value1");
+    EXPECT_EQ(result[1], "value2");
+    EXPECT_EQ(result[2], "value3");
+}
+
 // Tests for normalizeCheckForStateful
 TEST_F(SCARecoveryUtilsTest, NormalizeCheckConvertRefs)
 {
