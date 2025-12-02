@@ -26,6 +26,11 @@ services:
             - master
         depends_on:
             - wazuh-base
+        environment:
+            - OPENDISTRO_SECURITY_ENABLED=false
+            - INDEXER_URL=https://wazuh-indexer:55000
+            - INDEXER_USERNAME=admin
+            - INDEXER_PASSWORD=admin
 
     wazuh-worker1:
         image: dev-wazuh-manager
@@ -44,6 +49,9 @@ services:
             - wazuh-master
             - worker1
             - worker
+        environment:
+            - OPENDISTRO_SECURITY_ENABLED=false
+            - INDEXER_URL=https://wazuh-indexer:55000
 
     wazuh-worker2:
         image: dev-wazuh-manager
@@ -62,6 +70,9 @@ services:
             - wazuh-master
             - worker2
             - worker
+        environment:
+            - OPENDISTRO_SECURITY_ENABLED=false
+            - INDEXER_URL=https://wazuh-indexer:55000
 
     nginx-lb:
         build:
@@ -88,3 +99,38 @@ services:
             - wazuh-worker1
             - wazuh-worker2
             - nginx-lb
+
+    wazuh-indexer:
+        build:
+            context: ./wazuh-indexer
+        image: dev-wazuh-indexer
+        hostname: wazuh-indexer
+        ports:
+            - "55053:55000"
+        environment:
+            - node.name=wazuh-indexer
+            - discovery.type=single-node
+        # cluster.initial_master_nodes removed, discovery.type=single-node is enabled
+            - DISABLE_SECURITY_PLUGIN=true
+            - network.host=0.0.0.0
+            - http.port=55000
+            - http.host=0.0.0.0
+            - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+            - cluster.blocks.create_index=false
+            - action.auto_create_index=true
+            - plugins.security.allow_default_init_securityindex=true
+            - DISABLE_INSTALL_DEMO_CONFIG=true
+            - plugins.security.ssl.http.enabled=false
+            - plugins.security.ssl.transport.enabled=false
+            - SKIP_INDEXER_DOWNLOAD=${SKIP_INDEXER_DOWNLOAD:-}
+            - GH_TOKEN=${GH_TOKEN}
+
+        volumes:
+            - wazuh-indexer-data:/usr/share/opensearch/data
+            - wazuh-indexer-certs:/usr/share/opensearch/certs
+        depends_on:
+            - wazuh-base
+
+volumes:
+    wazuh-indexer-data:
+    wazuh-indexer-certs:
