@@ -183,6 +183,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        bool                                                                     m_vdSyncEnabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;

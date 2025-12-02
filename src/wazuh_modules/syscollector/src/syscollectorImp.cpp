@@ -306,6 +306,7 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
+    , m_vdSyncEnabled { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -1602,6 +1603,22 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         this->m_logFunction(level, msg);
     };
 
+    // Determine if VD sync should be enabled based on configuration
+    // VD-relevant data includes: packages, OS, and hotfixes (Windows only)
+    m_vdSyncEnabled = m_packages || m_os;
+#ifdef _WIN32
+    m_vdSyncEnabled = m_vdSyncEnabled || m_hotfixes;
+#endif
+
+    if (m_vdSyncEnabled)
+    {
+        m_logFunction(LOG_INFO, "VD sync enabled (packages, OS, or hotfixes scanning is enabled)");
+    }
+    else
+    {
+        m_logFunction(LOG_INFO, "VD sync disabled (packages, OS, and hotfixes scanning are all disabled)");
+    }
+
     try
     {
         // Initialize regular sync protocol
@@ -1649,14 +1666,25 @@ bool Syscollector::syncModule(Mode mode)
     // Sync VD data with appropriate option based on first scan status
     if (m_spSyncProtocolVD)
     {
-        // Check if first VD scan has been completed
-        const std::string vdFlagFile = "queue/syscollector/db/.vd_first_sync_done";
-        std::ifstream flagCheck(vdFlagFile);
-        bool firstSyncDone = flagCheck.good();
-        flagCheck.close();
+        Option vdOption;
 
-        // Use VDFIRST for first scan, VDSYNC for subsequent syncs
-        Option vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
+        if (!m_vdSyncEnabled)
+        {
+            // If both packages and OS are disabled, use regular SYNC option
+            vdOption = Option::SYNC;
+            m_logFunction(LOG_DEBUG, "Using SYNC option (VD scanning disabled)");
+        }
+        else
+        {
+            // Check if first VD scan has been completed
+            const std::string vdFlagFile = "queue/syscollector/db/.vd_first_sync_done";
+            std::ifstream flagCheck(vdFlagFile);
+            bool firstSyncDone = flagCheck.good();
+            flagCheck.close();
+
+            // Use VDFIRST for first scan, VDSYNC for subsequent syncs
+            vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
+        }
 
         bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
