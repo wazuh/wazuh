@@ -82,6 +82,10 @@ add_executable(sca_recovery_unit_test sca_recovery_test.cpp)
 target_link_libraries(sca_recovery_unit_test PRIVATE SCAImpl)
 add_test(NAME SCARecoveryTest COMMAND sca_recovery_unit_test)
 
+add_executable(sca_recovery_utils_unit_test sca_recovery_utils_test.cpp)
+target_link_libraries(sca_recovery_utils_unit_test PRIVATE SCAImpl)
+add_test(NAME SCARecoveryUtilsTest COMMAND sca_recovery_utils_unit_test)
+
 if(WIN32)
     add_executable(registry_rule_evaluator_unit_test registry_rule_evaluator_test.cpp)
     target_link_libraries(registry_rule_evaluator_unit_test PRIVATE SCAImpl)
