@@ -13,7 +13,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict, Callable, List
 from uuid import uuid4
 
 from wazuh.core import cluster as metadata, common, exception, utils
@@ -22,8 +22,10 @@ from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.indexer.base import BaseIndex
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
+from wazuh.core.indexer.disconnected_agents import DisconnectedAgentGroupSyncTask
 
 DEFAULT_DATE: str = 'n/a'
 
@@ -1020,7 +1022,16 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
+        # Initialize disconnected agent group sync task
+        logger_sync_task = self.setup_task_logger('Disconnected agent group sync')
+        self.disconnected_agent_group_sync_task = DisconnectedAgentGroupSyncTask(
+            manager=self,
+            logger=logger_sync_task,
+            cluster_items=self.cluster_items,
+            indexer_client=None  # Will be set when Indexer client is available
+        )
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update, 
+                          self.disconnected_agent_group_sync_task.run])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
