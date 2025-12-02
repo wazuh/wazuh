@@ -67,7 +67,7 @@ public:
     std::string resolveNameFromUUID(const std::string& uuid) const override;
 
     /** @copydoc ICMReader::resolveNameAndTypeFromUUID */
-    std::pair<std::string, cti::store::AssetType> resolveNameAndTypeFromUUID(const std::string& uuid) const override;
+    std::pair<std::string, std::string> resolveNameAndTypeFromUUID(const std::string& uuid) const override;
 
     /** @copydoc ICMReader::resolveUUIDFromName */
     std::string resolveUUIDFromName(const base::Name& name, const std::string& type) const override;
