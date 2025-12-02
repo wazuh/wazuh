@@ -21,7 +21,8 @@ namespace builder::policy::factory
 
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
-                        const std::shared_ptr<IAssetBuilder>& assetBuilder)
+                        const std::shared_ptr<IAssetBuilder>& assetBuilder,
+                        const bool sandbox)
 {
     BuiltAssets builtAssets;
 
@@ -72,6 +73,25 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             }
 
             decodersData.assets.emplace(asset.name(), std::move(asset));
+        }
+    }
+
+    // Only available for produccion
+    if (!sandbox)
+    {
+        const auto defaultOutputs = cmStoreNsReader->getDefaultOutputs();
+        auto& outputsData = builtAssets[cm::store::ResourceType::OUTPUT];
+
+        for (const auto& output : defaultOutputs)
+        {
+            Asset asset = (*assetBuilder)(output);
+
+            if (outputsData.assets.find(asset.name()) == outputsData.assets.end())
+            {
+                outputsData.orderedAssets.push_back(asset.name());
+            }
+
+            outputsData.assets.emplace(asset.name(), std::move(asset));
         }
     }
 

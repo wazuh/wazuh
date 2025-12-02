@@ -139,6 +139,13 @@ public:
      */
     virtual json::Json getAssetByUUID(const std::string& uuid) const = 0;
 
+    /**
+     * @brief Get the Default Outputs Integration object
+     *
+     * @return dataType::Integration
+     */
+    virtual const std::vector<json::Json> getDefaultOutputs() const = 0;
+
     /*********************************** Resources ***************************************/
 
     /**
