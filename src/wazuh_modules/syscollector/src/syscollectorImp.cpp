@@ -1610,15 +1610,6 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     m_vdSyncEnabled = m_vdSyncEnabled || m_hotfixes;
 #endif
 
-    if (m_vdSyncEnabled)
-    {
-        m_logFunction(LOG_INFO, "VD sync enabled (packages, OS, or hotfixes scanning is enabled)");
-    }
-    else
-    {
-        m_logFunction(LOG_INFO, "VD sync disabled (packages, OS, and hotfixes scanning are all disabled)");
-    }
-
     try
     {
         // Initialize regular sync protocol
@@ -1629,6 +1620,46 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         std::string vdModuleName = moduleName + "_vd";
         m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
+
+        // Clean VD data for disabled indices
+        std::vector<std::string> indicesToClean;
+
+        if (!m_packages)
+        {
+            indicesToClean.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+            m_logFunction(LOG_INFO, "Packages scanning disabled, will clean packages data");
+        }
+
+        if (!m_os)
+        {
+            indicesToClean.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+            m_logFunction(LOG_INFO, "OS scanning disabled, will clean system data");
+        }
+
+#ifdef _WIN32
+
+        if (!m_hotfixes)
+        {
+            indicesToClean.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+            m_logFunction(LOG_INFO, "Hotfixes scanning disabled, will clean hotfixes data");
+        }
+
+#endif
+
+        // Notify data clean for disabled VD indices
+        if (!indicesToClean.empty() && m_spSyncProtocolVD)
+        {
+            m_logFunction(LOG_INFO, "Notifying data clean for disabled VD indices");
+
+            if (m_spSyncProtocolVD->notifyDataClean(indicesToClean, Option::VDCLEAN))
+            {
+                m_logFunction(LOG_INFO, "Data clean notification sent successfully for disabled VD indices");
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Failed to send data clean notification for disabled VD indices");
+            }
+        }
     }
     catch (const std::exception& ex)
     {
@@ -1667,6 +1698,8 @@ bool Syscollector::syncModule(Mode mode)
     if (m_spSyncProtocolVD)
     {
         Option vdOption;
+        const std::string vdFlagFile = "queue/syscollector/db/.vd_first_sync_done";
+        bool firstSyncDone = false;
 
         if (!m_vdSyncEnabled)
         {
@@ -1677,9 +1710,8 @@ bool Syscollector::syncModule(Mode mode)
         else
         {
             // Check if first VD scan has been completed
-            const std::string vdFlagFile = "queue/syscollector/db/.vd_first_sync_done";
             std::ifstream flagCheck(vdFlagFile);
-            bool firstSyncDone = flagCheck.good();
+            firstSyncDone = flagCheck.good();
             flagCheck.close();
 
             // Use VDFIRST for first scan, VDSYNC for subsequent syncs
