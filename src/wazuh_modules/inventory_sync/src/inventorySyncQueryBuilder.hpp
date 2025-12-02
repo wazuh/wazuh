@@ -232,6 +232,58 @@ namespace InventorySyncQueryBuilder
 
         return updateQuery;
     }
+
+    /// @brief Build GET query for CVE/vulnerability data by package
+    /// @param agentId Agent ID to match
+    /// @param packageName Package name to match
+    /// @param packageVersion Package version to match
+    /// @param size Maximum number of results to return
+    /// @param searchAfter Optional search_after value for pagination [_id]
+    /// @return JSON search query body with bool query and sort
+    inline nlohmann::json buildCveGetQuery(const std::string& agentId,
+                                           const std::string& packageName,
+                                           const std::string& packageVersion,
+                                           std::size_t size,
+                                           const std::string& searchAfter = "")
+    {
+        nlohmann::json query = {{"size", size},
+                                {"query",
+                                 {{"bool",
+                                   {{"must",
+                                     {{{"term", {{"agent.id", agentId}}}},
+                                      {{"term", {{"package.name", packageName}}}},
+                                      {{"term", {{"package.version", packageVersion}}}}}}}}}},
+                                {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+
+        if (!searchAfter.empty())
+        {
+            query["search_after"] = {searchAfter};
+        }
+
+        return query;
+    }
+
+    /// @brief Build GET query for system inventory context data
+    /// @param agentId Agent ID to match
+    /// @param size Maximum number of results to return
+    /// @param searchAfter Optional search_after value for pagination [_id]
+    /// @return JSON search query body with term query and source filtering
+    inline nlohmann::json
+    buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
+    {
+        nlohmann::json query = {{"_source", {{"excludes", {"wazuh*"}}}},
+                                {"query", {{"term", {{"agent.id", agentId}}}}},
+                                {"size", size},
+                                {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+
+        if (!searchAfter.empty())
+        {
+            query["search_after"] = {searchAfter};
+        }
+
+        return query;
+    }
+
 } // namespace InventorySyncQueryBuilder
 
 #endif // _INVENTORY_SYNC_QUERY_BUILDER_HPP
