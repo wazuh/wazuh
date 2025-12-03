@@ -340,9 +340,7 @@ TEST_F(CMStoreCTIComponentTest, AssetExistenceByUUID_ValidAndInvalidUUIDs)
 
     // Check
     EXPECT_TRUE(storeCTI->assetExistsByUUID("valid-uuid"));
-    EXPECT_THROW(
-        storeCTI->assetExistsByUUID("invalid-uuid"),
-        std::runtime_error);
+    EXPECT_FALSE(storeCTI->assetExistsByUUID("invalid-uuid"));
 }
 
 /*****************************************************************************
