@@ -190,7 +190,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/ruleset/sca/cis_win2025.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/sca_distro_independent_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/web_vulnerabilities.yml*,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/templates/vd_states_template.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/vd_states_update_mappings.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/tmp/vd_1.0.0_vd_4.13.0.tar.xz,wazuh,wazuh,640,file,-rw-r-----,,
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,,
