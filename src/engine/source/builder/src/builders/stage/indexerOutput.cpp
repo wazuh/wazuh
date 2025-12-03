@@ -9,6 +9,29 @@
 namespace builder::builders
 {
 
+namespace
+{
+
+// lowercase field conversion and spaces replacement with hyphens
+auto sanitizeField = [](const std::string& field, base::Event event) -> std::string
+{
+    auto fieldValue = event->getString(field);
+    if (fieldValue == std::nullopt)
+    {
+        throw std::runtime_error(
+            fmt::format("Field '{}' does not exist in the event", field));
+    }
+    auto fieldString = fieldValue.value();
+    std::transform(fieldString.begin(),
+                   fieldString.end(),
+                   fieldString.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    std::replace(fieldString.begin(), fieldString.end(), ' ', '-');
+    return fieldString;
+};
+
+} // namespace
+
 base::Expression indexerOutputBuilder(const json::Json& definition,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx,
                                       const std::weak_ptr<wiconnector::IWIndexerConnector>& iConnector)
@@ -46,17 +69,34 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     }
 
     auto indexName = value.getString().value();
-    // Verify index name starts with wazuh- and contains only lowecase alphanumeric characters, hyphens and dots
-    if (!std::regex_match(indexName, std::regex("wazuh-[a-z0-9.-]+")))
+
+    // Extract placeHolders and reformat json dot path from input string
+    std::vector<std::string> placeholderVec;
+    std::regex placeholder_regex(R"(\$\{([^}]+)\})");
+    auto words_begin = std::sregex_iterator(indexName.begin(), indexName.end(), placeholder_regex);
+    auto words_end = std::sregex_iterator();
+
+    for (std::sregex_iterator i = words_begin; i != words_end; ++i)
     {
-        throw std::runtime_error(fmt::format("Invalid index name '{}'. Index name must start with 'wazuh-' and contain "
-                                             "only lowercase alphanumeric characters, hyphens and dots",
-                                             indexName));
+        placeholderVec.push_back(json::Json::formatJsonPath((*i)[1].str()));
+    }
+
+    const auto prefix = "wazuh-events-v5";
+    if (placeholderVec.empty())
+    {
+        if (!base::utils::string::startsWith(indexName, prefix))
+        {
+            throw std::runtime_error(
+                fmt::format("Stage '{}' expects the index name to start with 'wazuh-events-v5-' but got '{}'",
+                            syntax::asset::INDEXER_OUTPUT_KEY,
+                            indexName));
+        }
     }
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
+    const auto failureTrace2 = fmt::format("{} -> Couldn't get field {} from event", name, "{}");
 
     // Get shared ptr
     auto wic = iConnector.lock();
@@ -67,10 +107,39 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
     return base::Term<base::EngineOp>::create(
         name,
-        [indexName, wic, successTrace, failureTrace, runState = buildCtx->runState()](
-            base::Event event) -> base::result::Result<base::Event>
+        [indexName,
+         placeholderVec,
+         wic,
+         successTrace,
+         failureTrace,
+         failureTrace2,
+         sanitizeField,
+         prefix,
+         runState = buildCtx->runState()](base::Event event) -> base::result::Result<base::Event>
         {
-            wic->index(indexName, event->str());
+            std::string finalIndexName;
+
+            for (auto& field : placeholderVec)
+            {
+                try
+                {
+                    finalIndexName += std::string("-") + sanitizeField(field, event);
+                }
+                catch(const std::exception& e)
+                {
+                    RETURN_FAILURE(runState, event, fmt::format(failureTrace2, field));
+                }
+            }
+
+            try
+            {
+                wic->index(finalIndexName.empty() ? indexName : prefix + finalIndexName, event->str());
+            }
+            catch (const std::exception& e)
+            {
+                RETURN_FAILURE(runState, event, failureTrace);
+            }
+
             RETURN_SUCCESS(runState, event, successTrace);
         });
 }
