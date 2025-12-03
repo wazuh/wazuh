@@ -104,6 +104,15 @@ class EXPORTED Syscollector final
 
         std::pair<nlohmann::json, uint64_t> ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
         nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
+
+        /**
+         * @brief Clears local database tables for specified indices
+         * @param indices Vector of index names to clear (e.g., "system", "packages", "hotfixes")
+         * @details This method deletes all rows from the corresponding DBSync tables in local.db
+         *          to ensure that when modules are re-enabled, DBSync can detect changes properly.
+         */
+        void clearLocalDBTables(const std::vector<std::string>& indices);
+        std::vector<std::string> getDisabledVDIndices() const;
         nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsPackageData(const nlohmann::json& originalData, bool createFields = true);
