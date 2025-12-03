@@ -15,7 +15,7 @@ from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from typing import Union
 
-from wazuh.core import cluster as metadata, common, exception, utils, analysis
+from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi

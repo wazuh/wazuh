@@ -80,7 +80,6 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data
         ("5-35", _ranges),
         # paths
         ("/var/ossec/etc/internal_options", _paths),
-        ("/var/ossec/etc/rules/local_rules.xml", _paths),
         ("scripts/active_response", _active_response_command),
         ("!scripts/active_response", _active_response_command),
         ("correct.wpk", _wpk_path),
@@ -133,7 +132,6 @@ def test_validation_check_exp_ok(exp, regex_name):
         ("param1,param2,param3", _query_param),
         # paths
         ("/var/ossec/etc/internal_options$", _paths),
-        ("/var/ossec/etc/rules/local_rules.xml()", _paths),
         ("!scripts/active_response()", _active_response_command),
         ("scripts\\active_response$", _active_response_command),
         ("incorrect.txt", _wpk_path),
@@ -183,28 +181,16 @@ def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path("/api/configuration/api.yaml")
     assert is_safe_path("c:\\api\\configuration\\api.yaml")
-    assert is_safe_path("etc/rules/local_rules.xml", relative=False)
     assert is_safe_path("etc/ossec.conf", relative=True)
-    assert is_safe_path("ruleset/decoders/decoder.xml", relative=False)
     assert not is_safe_path("/api/configuration/api.yaml", basedir="non-existent", relative=False)
-    assert not is_safe_path("etc/lists/../../../../../../var/ossec/api/scripts/wazuh_apid.py", relative=True)
-    assert not is_safe_path("../etc/rules/rule.xml", relative=False)
-    assert not is_safe_path("../etc/rules/rule.xml")
     assert not is_safe_path("/..")
     assert not is_safe_path("\\..")
-    assert not is_safe_path("..\\etc\\rules\\rule.xml")
-    assert not is_safe_path("../ruleset/decoders/decoder.xml./", relative=False)
-
 
 @pytest.mark.parametrize(
     "value, format",
     [
         ("test.33alphanumeric:", "alphanumeric"),
         ("cGVwZQ==", "base64"),
-        ("etc/lists/list_me", "delete_files_path"),
-        ("etc/decoders/dec35.xml", "edit_files_path"),
-        ("etc/decoders/test/dec35.xml", "edit_files_path"),
-        ("etc/decoders", "get_dirnames_path"),
         ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4", "hash"),
         ("file_test-33.xml", "names"),
         ("651403650840", "numbers"),
@@ -229,9 +215,6 @@ def test_is_safe_path():
         ("12345", "numbers_or_empty"),
         ("", "numbers_or_empty"),
         ("group_name.test", "group_names"),
-        ("cdb_test", "cdb_filename_path"),
-        ("local_rules.xml", "xml_filename_path"),
-        ("local_rules.xml,test_rule.xml", "xml_filename"),
     ],
 )
 def test_validation_json_ok(value, format):
@@ -271,12 +254,6 @@ def test_validation_json_ok(value, format):
         ("test_name test", "names_or_empty"),
         ("12345abc", "numbers_or_empty"),
         ("group_name.test ", "group_names"),
-        ("cdb_test../../test", "cdb_filename_path"),
-        ("cdb_test.test", "cdb_filename_path"),
-        ("local_rules../../.xml", "xml_filename_path"),
-        ("local_rules", "xml_filename_path"),
-        ("local_rules.xml,../test_rule.xml", "xml_filename"),
-        ("local_rules.xml,test_rule", "xml_filename"),
     ],
 )
 def test_validation_json_ko(value, format):

@@ -10,7 +10,6 @@ from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
 import wazuh.core.common as common
-import wazuh.analysis as analysis
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY

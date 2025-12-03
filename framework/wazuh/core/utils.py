@@ -1994,7 +1994,7 @@ def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
 
 
 def validate_wazuh_xml(content: str, config_file: bool = False):
-    """Validate Wazuh XML files (rules, decoders and ossec.conf)
+    """Validate Wazuh XML files (ossec.conf)
 
     Parameters
     ----------
@@ -2045,7 +2045,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
 
 
 def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):
-    """Upload files (rules, lists, decoders and ossec.conf).
+    """Upload files (ossec.conf).
 
     Parameters
     ----------

@@ -249,19 +249,6 @@ def test_get_files_status(mock_get_cluster_items):
         assert logs['warning']['etc/'] == ["Error getting file status: ."]
 
 
-@patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
-    'files': {
-        'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'], 'recursive': False, 'restart': False,
-                 'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'client keys file database'},
-        'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': False,
-                        'remove_subdirs_if_empty': True, 'extra_valid': False,
-                        'description': 'shared configuration files'},
-        'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'], 'recursive': True,
-                             'restart': False, 'remove_subdirs_if_empty': True, 'extra_valid': False,
-                             'description': 'shared configuration files'},
-        'excluded_files': ['ar.conf', 'ossec.conf'], 'excluded_extensions': ['~', '.tmp', '.lock', '.swp']}
-})
-
 @pytest.mark.parametrize('failed_item, exists, expected_result', [
     ('/test_file0', False, {'missing': {'/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
                             'extra': {'/test_file2': 'test'}}),

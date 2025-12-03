@@ -23,7 +23,7 @@ with patch('wazuh.common.wazuh_uid'):
             get_stats_node, get_stats_remoted_node, get_stats_weekly_node,
             get_status, get_status_node, put_restart, update_configuration,
             check_available_version)
-        from wazuh import cluster, common, manager, stats, analysis
+        from wazuh import cluster, common, manager, stats
         from wazuh.core.manager import query_update_check_service
         from wazuh.tests.util import RBAC_bypasser
 

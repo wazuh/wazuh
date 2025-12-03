@@ -283,7 +283,6 @@ get_rbac_actions:
           - GET /cluster/local/config
           - GET /cluster/nodes
           - GET /cluster/healthcheck
-          - GET /cluster/ruleset/synchronization
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
@@ -296,7 +295,6 @@ get_rbac_actions:
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
-          - PUT /cluster/analysisd/reload
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
       cluster:status:
