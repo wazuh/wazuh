@@ -40,7 +40,7 @@ class CMStoreNS : public ICMstoreNS
 private:
     NamespaceId m_namespaceId;                  ///< Namespace ID associated to this CMStoreNS
     std::filesystem::path m_storagePath;        ///< Path to the storage directory for this namespace
-    std::filesystem::path m_defaultOutputsPath; ///< Path to the default outputs directory for all namescapes
+    std::filesystem::path m_defaultOutputsPath; ///< Path to the default outputs directory for all namespaces
     std::filesystem::path m_cachePath;          ///< Path to the cache file for this namespace
     CacheNS m_cache;                            ///< Cache for UUID to name-type mappings
     mutable std::shared_mutex m_mutex;          ///< Mutex for file and cache access
