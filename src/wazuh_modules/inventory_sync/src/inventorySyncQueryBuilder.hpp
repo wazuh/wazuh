@@ -234,26 +234,44 @@ namespace InventorySyncQueryBuilder
     }
 
     /// @brief Build GET query for CVE/vulnerability data by package
-    /// @param agentId Agent ID to match
-    /// @param packageName Package name to match
+    /// @details
+    ///   Used when looking up existing CVEs for a specific deleted package.
+    ///   The query returns only:
+    ///     - _id               (detectionId)
+    ///     - vulnerability.id  (cveId)
+    ///
+    /// @param agentId        Agent ID to match
+    /// @param packageName    Package name to match
     /// @param packageVersion Package version to match
-    /// @param size Maximum number of results to return
-    /// @param searchAfter Optional search_after value for pagination [_id]
+    /// @param packagePath    Package path/location to match (package.path)
+    /// @param packageType    Package type/format to match (package.type)
+    /// @param size           Maximum number of results to return
+    /// @param searchAfter    Optional search_after value for pagination [_id]
     /// @return JSON search query body with bool query and sort
     inline nlohmann::json buildCveGetQuery(const std::string& agentId,
                                            const std::string& packageName,
                                            const std::string& packageVersion,
+                                           const std::string& packagePath,
+                                           const std::string& packageType,
                                            std::size_t size,
                                            const std::string& searchAfter = "")
     {
-        nlohmann::json query = {{"size", size},
-                                {"query",
-                                 {{"bool",
-                                   {{"must",
-                                     {{{"term", {{"agent.id", agentId}}}},
-                                      {{"term", {{"package.name", packageName}}}},
-                                      {{"term", {{"package.version", packageVersion}}}}}}}}}},
+        nlohmann::json query = {// Only fetch vulnerability.id; _id is part of hit metadata
+                                {"_source", nlohmann::json::array({"vulnerability.id"})},
+
+                                {"size", size},
+
+                                {"query", {{"bool", {{"must", nlohmann::json::array()}}}}},
+
                                 {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+
+        auto& must = query["query"]["bool"]["must"];
+
+        must.push_back({{"term", {{"agent.id", agentId}}}});
+        must.push_back({{"term", {{"package.name", packageName}}}});
+        must.push_back({{"term", {{"package.version", packageVersion}}}});
+        must.push_back({{"term", {{"package.path", packagePath}}}});
+        must.push_back({{"term", {{"package.type", packageType}}}});
 
         if (!searchAfter.empty())
         {
@@ -263,15 +281,25 @@ namespace InventorySyncQueryBuilder
         return query;
     }
 
-    /// @brief Build GET query for system inventory context data
-    /// @param agentId Agent ID to match
-    /// @param size Maximum number of results to return
+    /// @brief Build GET query for agent vulnerabilities (full context)
+    /// @details
+    ///   Used by VD full-scan reconciliation to fetch all vulnerability documents
+    ///   for a given agent from the wazuh-states-vulnerabilities index.
+    ///
+    ///   The query:
+    ///   - Filters by agent.id
+    ///   - Sorts by _id ascending (for search_after pagination)
+    ///   - Restricts _source to vulnerability.id only
+    ///
+    /// @param agentId     Agent ID to match
+    /// @param size        Maximum number of results to return
     /// @param searchAfter Optional search_after value for pagination [_id]
-    /// @return JSON search query body with term query and source filtering
+    /// @return JSON search query body
     inline nlohmann::json
     buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
     {
-        nlohmann::json query = {{"_source", {{"excludes", {"wazuh*"}}}},
+        nlohmann::json query = {// Only need vulnerability.id in _source; _id comes from hit metadata
+                                {"_source", nlohmann::json::array({"vulnerability.id"})},
                                 {"query", {{"term", {{"agent.id", agentId}}}}},
                                 {"size", size},
                                 {"sort", {{{"_id", {{"order", "asc"}}}}}}};

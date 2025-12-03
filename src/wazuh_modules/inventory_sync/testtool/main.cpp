@@ -187,9 +187,7 @@ public:
         m_serverThread = std::thread(
             [this]()
             {
-                struct sockaddr_un serverAddr
-                {
-                };
+                sockaddr_un serverAddr {};
                 serverAddr.sun_family = AF_UNIX;
                 std::snprintf(serverAddr.sun_path, sizeof(serverAddr.sun_path), "%s", m_path.c_str());
 
@@ -199,9 +197,7 @@ public:
                 }
 
                 char buffer[MAX_LEN];
-                struct sockaddr_un clientAddr
-                {
-                };
+                sockaddr_un clientAddr {};
                 socklen_t clientSize = sizeof(clientAddr);
 
                 while (!m_shouldStop.load())
@@ -300,9 +296,7 @@ public:
         m_serverThread = std::thread(
             [this]()
             {
-                struct sockaddr_un serverAddr
-                {
-                };
+                sockaddr_un serverAddr {};
                 serverAddr.sun_family = AF_UNIX;
                 std::snprintf(serverAddr.sun_path, sizeof(serverAddr.sun_path), "%s", m_path.c_str());
 
@@ -315,9 +309,7 @@ public:
                 std::cout << "[INFO] Response server listening on " << m_path << std::endl;
 
                 char buffer[MAX_LEN];
-                struct sockaddr_un clientAddr
-                {
-                };
+                sockaddr_un clientAddr {};
                 socklen_t clientSize = sizeof(clientAddr);
 
                 while (!m_shouldStop.load())
@@ -519,10 +511,14 @@ inline Wazuh::SyncSchema::Mode parseMode(const std::string& modeStr)
  */
 inline Wazuh::SyncSchema::Option parseOption(const std::string& opt)
 {
-    if (opt == "VDFirst") return Wazuh::SyncSchema::Option_VDFirst;
-    if (opt == "VDSync") return Wazuh::SyncSchema::Option_VDSync;
-    if (opt == "VDClean") return Wazuh::SyncSchema::Option_VDClean;
-    if (opt == "Sync") return Wazuh::SyncSchema::Option_Sync;
+    if (opt == "VDFirst")
+        return Wazuh::SyncSchema::Option_VDFirst;
+    if (opt == "VDSync")
+        return Wazuh::SyncSchema::Option_VDSync;
+    if (opt == "VDClean")
+        return Wazuh::SyncSchema::Option_VDClean;
+    if (opt == "Sync")
+        return Wazuh::SyncSchema::Option_Sync;
     return Wazuh::SyncSchema::Option_VDSync;
 }
 
@@ -585,9 +581,8 @@ public:
      * @param defaultSize Number of messages (data_values + data_context) if size is not set in JSON.
      * @param defaultIndices Indices inferred from data_values/data_context if not set in JSON.
      */
-    static std::vector<uint8_t> buildStart(const nlohmann::json& startJson,
-                                           uint64_t defaultSize,
-                                           const std::vector<std::string>& defaultIndices)
+    static std::vector<uint8_t>
+    buildStart(const nlohmann::json& startJson, uint64_t defaultSize, const std::vector<std::string>& defaultIndices)
     {
         flatbuffers::FlatBufferBuilder builder;
 
@@ -638,13 +633,12 @@ public:
         auto indicesOffset = builder.CreateVector(indexVec);
 
         // Agent / OS metadata (with defaults)
-        auto architecture =
-            builder.CreateString(startJson.value("architecture", std::string("x86_64")));
-        auto hostname     = builder.CreateString(startJson.value("hostname", std::string("test-host")));
-        auto osname       = builder.CreateString(startJson.value("osname", std::string("Ubuntu")));
-        auto ostype       = builder.CreateString(startJson.value("ostype", std::string("linux")));
-        auto osplatform   = builder.CreateString(startJson.value("osplatform", std::string("ubuntu")));
-        auto osversion    = builder.CreateString(startJson.value("osversion", std::string("22.04")));
+        auto architecture = builder.CreateString(startJson.value("architecture", std::string("x86_64")));
+        auto hostname = builder.CreateString(startJson.value("hostname", std::string("test-host")));
+        auto osname = builder.CreateString(startJson.value("osname", std::string("Ubuntu")));
+        auto ostype = builder.CreateString(startJson.value("ostype", std::string("linux")));
+        auto osplatform = builder.CreateString(startJson.value("osplatform", std::string("ubuntu")));
+        auto osversion = builder.CreateString(startJson.value("osversion", std::string("22.04")));
 
         // Groups
         std::vector<flatbuffers::Offset<flatbuffers::String>> groupsVec;
@@ -713,10 +707,8 @@ public:
         std::string sourceJson = payload.dump();
 
         auto indexStr = builder.CreateString(index);
-        auto idStr    = builder.CreateString(id);
-        auto dataVec  = builder.CreateVector(
-            reinterpret_cast<const int8_t*>(sourceJson.data()),
-            sourceJson.size());
+        auto idStr = builder.CreateString(id);
+        auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
 
         Wazuh::SyncSchema::DataValueBuilder dataBuilder(builder);
         dataBuilder.add_session(session);
@@ -743,21 +735,16 @@ public:
      * @param index     Index name
      * @param id        Document ID (may be empty)
      */
-    static std::vector<uint8_t> buildDataContext(uint64_t session,
-                                                 uint64_t seq,
-                                                 const nlohmann::json& payload,
-                                                 const std::string& index,
-                                                 const std::string& id)
+    static std::vector<uint8_t> buildDataContext(
+        uint64_t session, uint64_t seq, const nlohmann::json& payload, const std::string& index, const std::string& id)
     {
         flatbuffers::FlatBufferBuilder builder;
 
         std::string sourceJson = payload.dump();
 
         auto indexStr = builder.CreateString(index);
-        auto idStr    = builder.CreateString(id);
-        auto dataVec  = builder.CreateVector(
-            reinterpret_cast<const int8_t*>(sourceJson.data()),
-            sourceJson.size());
+        auto idStr = builder.CreateString(id);
+        auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
 
         Wazuh::SyncSchema::DataContextBuilder dataBuilder(builder);
         dataBuilder.add_session(session);
@@ -799,9 +786,8 @@ TestConfig parseArgs(int argc, char* argv[])
 
     if (argc < MIN_ARGS)
     {
-        throw std::runtime_error(
-            "Usage: " + std::string(argv[0]) +
-            " <input.json> [--config <file>] [--wait <seconds>] [--verbose]\n");
+        throw std::runtime_error("Usage: " + std::string(argv[0]) +
+                                 " <input.json> [--config <file>] [--wait <seconds>] [--verbose]\n");
     }
 
     config.inputFile = argv[1];
@@ -844,7 +830,7 @@ int main(int argc, char* argv[])
 
             const auto agentId = testData.start.value("agentid", std::string("000"));
             const auto modeStr = testData.start.value("mode", std::string("delta"));
-            const auto optStr  = testData.start.value("option", std::string("VDSync"));
+            const auto optStr = testData.start.value("option", std::string("VDSync"));
 
             std::cout << "  Agent ID: " << agentId << std::endl;
             std::cout << "  Mode: " << modeStr << "    Option: " << optStr << std::endl;
@@ -879,8 +865,13 @@ int main(int argc, char* argv[])
         auto endAckFuture = endAckPromise.get_future();
         std::atomic<bool> receivedEndAck {false};
 
-        ResponseServer responseServer(
-            DEFAULT_ARQUEUE, sessionId, startAckPromise, endAckPromise, receivedStartAck, receivedEndAck, config.verbose);
+        ResponseServer responseServer(DEFAULT_ARQUEUE,
+                                      sessionId,
+                                      startAckPromise,
+                                      endAckPromise,
+                                      receivedStartAck,
+                                      receivedEndAck,
+                                      config.verbose);
         responseServer.start();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -972,7 +963,7 @@ int main(int argc, char* argv[])
 
             auto payload = dataValue.value("payload", nlohmann::json::object());
             std::string index = inferIndex(dataValue);
-            std::string id    = dataValue.value("id", std::string());
+            std::string id = dataValue.value("id", std::string());
 
             if (index.empty())
             {
@@ -998,7 +989,7 @@ int main(int argc, char* argv[])
         {
             auto payload = dataContext.value("payload", nlohmann::json::object());
             std::string index = inferIndex(dataContext);
-            std::string id    = dataContext.value("id", std::string());
+            std::string id = dataContext.value("id", std::string());
 
             if (index.empty())
             {

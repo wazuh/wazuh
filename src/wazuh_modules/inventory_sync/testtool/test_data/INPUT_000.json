@@ -21,6 +21,7 @@
   },
   "data_values": [
     {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "operation": "upsert",
       "payload": {
         "checksum": {
@@ -43,7 +44,6 @@
           "name": "zlib1g",
           "size": 512,
           "format": "deb",
-          "item_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "multiarch": "foreign",
           "groups": "compression"
         },
@@ -54,6 +54,7 @@
       }
     },
     {
+      "id": "ffffffffffffffffffffffffffffffffffffffff",
       "operation": "upsert",
       "payload": {
         "checksum": {
@@ -76,7 +77,6 @@
           "name": "zlib1g",
           "size": 512,
           "format": "deb",
-          "item_id": "ffffffffffffffffffffffffffffffffffffffff",
           "multiarch": "foreign",
           "groups": "compression",
           "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*"
@@ -88,6 +88,7 @@
       }
     },
     {
+      "id": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
       "operation": "delete",
       "payload": {
         "checksum": {
@@ -98,7 +99,7 @@
         "package": {
           "category": "doc",
           "installed": null,
-          "path": null,
+          "path": "/usr/share/doc/zlib1g-doc",
           "priority": "optional",
           "source": "zlib",
           "type": "deb",
@@ -110,7 +111,6 @@
           "name": "zlib1g-doc",
           "size": 256,
           "format": "deb",
-          "item_id": "cccccccccccccccccccccccccccccccccccccccc",
           "multiarch": "foreign",
           "groups": "compression"
         },
@@ -133,7 +133,6 @@
           "architecture": "aarch64",
           "hostname": "ubuntu24",
           "os": {
-            "item_id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "build": null,
             "codename": "noble",
             "distribution": {
