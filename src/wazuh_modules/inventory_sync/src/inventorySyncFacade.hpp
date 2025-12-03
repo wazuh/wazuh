@@ -97,41 +97,40 @@ class InventorySyncFacadeImpl final
 
         j["type"] = "Start";
 
-        const auto module    = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view {};
-        const auto hostname  = startMsg->hostname() ? startMsg->hostname()->string_view() : std::string_view {};
-        const auto osname    = startMsg->osname() ? startMsg->osname()->string_view() : std::string_view {};
+        const auto module = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view {};
+        const auto hostname = startMsg->hostname() ? startMsg->hostname()->string_view() : std::string_view {};
+        const auto osname = startMsg->osname() ? startMsg->osname()->string_view() : std::string_view {};
         const auto osplatform = startMsg->osplatform() ? startMsg->osplatform()->string_view() : std::string_view {};
-        const auto ostype    = startMsg->ostype() ? startMsg->ostype()->string_view() : std::string_view {};
+        const auto ostype = startMsg->ostype() ? startMsg->ostype()->string_view() : std::string_view {};
         const auto osversion = startMsg->osversion() ? startMsg->osversion()->string_view() : std::string_view {};
-        const auto agentversion = startMsg->agentversion() ? startMsg->agentversion()->string_view()
-                                                            : std::string_view {};
+        const auto agentversion =
+            startMsg->agentversion() ? startMsg->agentversion()->string_view() : std::string_view {};
         const auto agentname = startMsg->agentname() ? startMsg->agentname()->string_view() : std::string_view {};
-        const auto agentid   = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view {};
-        const auto arch      = startMsg->architecture() ? startMsg->architecture()->string_view()
-                                                        : std::string_view {};
+        const auto agentid = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view {};
+        const auto arch = startMsg->architecture() ? startMsg->architecture()->string_view() : std::string_view {};
         std::string optionStr;
         switch (startMsg->option())
         {
-            case Wazuh::SyncSchema::Option_Sync:     optionStr = "Sync"; break;
-            case Wazuh::SyncSchema::Option_VDFirst:  optionStr = "VDFirst"; break;
-            case Wazuh::SyncSchema::Option_VDSync:   optionStr = "VDSync"; break;
-            case Wazuh::SyncSchema::Option_VDClean:  optionStr = "VDClean"; break;
+            case Wazuh::SyncSchema::Option_Sync: optionStr = "Sync"; break;
+            case Wazuh::SyncSchema::Option_VDFirst: optionStr = "VDFirst"; break;
+            case Wazuh::SyncSchema::Option_VDSync: optionStr = "VDSync"; break;
+            case Wazuh::SyncSchema::Option_VDClean: optionStr = "VDClean"; break;
             default: optionStr = "Unknown"; break;
         }
 
-        j["option"]         = optionStr;
-        j["module"]         = module;
-        j["mode"]           = static_cast<int>(startMsg->mode());
-        j["size"]           = startMsg->size();
-        j["architecture"]   = arch;
-        j["hostname"]       = hostname;
-        j["osname"]         = osname;
-        j["osplatform"]     = osplatform;
-        j["ostype"]         = ostype;
-        j["osversion"]      = osversion;
-        j["agentversion"]   = agentversion;
-        j["agentname"]      = agentname;
-        j["agentid"]        = agentid;
+        j["option"] = optionStr;
+        j["module"] = module;
+        j["mode"] = static_cast<int>(startMsg->mode());
+        j["size"] = startMsg->size();
+        j["architecture"] = arch;
+        j["hostname"] = hostname;
+        j["osname"] = osname;
+        j["osplatform"] = osplatform;
+        j["ostype"] = ostype;
+        j["osversion"] = osversion;
+        j["agentversion"] = agentversion;
+        j["agentname"] = agentname;
+        j["agentid"] = agentid;
         j["global_version"] = startMsg->global_version();
 
         // index: [string]
@@ -175,15 +174,15 @@ class InventorySyncFacadeImpl final
         }
 
         nlohmann::json j;
-        j["type"]     = "DataValue";
-        j["seq"]      = data->seq();
-        j["session"]  = data->session();
+        j["type"] = "DataValue";
+        j["seq"] = data->seq();
+        j["session"] = data->session();
         j["operation"] = static_cast<int>(data->operation());
 
-        const auto id    = data->id() ? data->id()->string_view() : std::string_view {};
+        const auto id = data->id() ? data->id()->string_view() : std::string_view {};
         const auto index = data->index() ? data->index()->string_view() : std::string_view {};
 
-        j["id"]    = id;
+        j["id"] = id;
         j["index"] = index;
         j["version"] = data->version();
 
@@ -219,14 +218,14 @@ class InventorySyncFacadeImpl final
         }
 
         nlohmann::json j;
-        j["type"]    = "DataContext";
-        j["seq"]     = dataContext->seq();
+        j["type"] = "DataContext";
+        j["seq"] = dataContext->seq();
         j["session"] = dataContext->session();
 
-        const auto id    = dataContext->id() ? dataContext->id()->string_view() : std::string_view {};
+        const auto id = dataContext->id() ? dataContext->id()->string_view() : std::string_view {};
         const auto index = dataContext->index() ? dataContext->index()->string_view() : std::string_view {};
 
-        j["id"]    = id;
+        j["id"] = id;
         j["index"] = index;
 
         if (auto bytes = dataContext->data())
