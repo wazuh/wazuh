@@ -78,7 +78,6 @@ class ResourceHandler:
         # Template files mapping
         template_files = {
             'fields.template': 'fields.template.json',
-            'mappings.template': 'mappings.template.json',
             'logpar_types': 'logpar_types.json'
         }
 

@@ -5,8 +5,10 @@ name: 4.X - wazuh-template for Elasticsearch test
 
 on:
   push:
+    branches:
+      - '[0-4].[0-9]+.[0-9]+'
     paths:
-      - "extensions/elasticsearch/7.x/**"
+      - 'extensions/elasticsearch/7.x/**'
 
 jobs:
   wazuh-template-elasticsearch:
