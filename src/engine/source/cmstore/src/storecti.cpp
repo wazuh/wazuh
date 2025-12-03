@@ -192,7 +192,7 @@ bool CMStoreCTI::assetExistsByName(const base::Name& name) const
     catch (const std::exception& e)
     {
         LOG_WARNING("Error checking existence of asset with name '{}': {}", name.toStr(), e.what());
-        throw;
+        return false;
     }
 }
 
@@ -213,7 +213,7 @@ bool CMStoreCTI::assetExistsByUUID(const std::string& uuid) const
     catch (const std::exception& e)
     {
         LOG_WARNING("Error checking existence of asset with name '{}': {}", uuid, e.what());
-        throw;
+        return false;
     }
 }
 

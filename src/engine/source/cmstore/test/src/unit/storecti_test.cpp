@@ -757,10 +757,7 @@ TEST_F(CMStoreCTITest, AssetExistsByUUID_NotExists_ReturnsFalse)
     EXPECT_CALL(*mockReader, resolveNameFromUUID("nonexistent-uuid"))
         .WillOnce(Throw(std::runtime_error("UUID not found")));
 
-    EXPECT_THROW(
-        storeCTI->assetExistsByUUID("nonexistent-uuid"),
-        std::runtime_error
-    );
+    EXPECT_FALSE(storeCTI->assetExistsByUUID("nonexistent-uuid"));
 }
 
 /*****************************************************************************
