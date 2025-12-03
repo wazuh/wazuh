@@ -312,14 +312,6 @@ class WazuhException(Exception):
         2016: {'message': 'Invalid unix socket path'},
         2017: {'message': 'Could not retrieve agents synchronization information from wazuh-db'},
 
-        # Engine API client
-        2800: {'message': 'The engine client connection timeout has been exceeded'},
-        2801: {'message': 'Invalid request URL scheme'},
-        2802: {'message': 'Invalid unix socket path'},
-        2803: {'message': 'Error sending request to the engine'},
-        2804: {'message': 'Unexpected error sending request to the engine'},
-        2805: {'message': 'Error parsing response from the engine'},
-
         # External services
         2100: {'message': 'Error in CTI service request'},
 
@@ -480,21 +472,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
         6005: {'message': 'Maximum number of requests per minute reached'},
-
-        # Engine
-        9001: {'message': 'Asset syntax error: '
-        '            The provided {resource_type} asset data does not match the required format: {cause}.',
-              'remediation': 'Please check the resouce data and ensure it meets the required format'},
-        9002: {'message': 'Engine error: Unable to validate the {resource_type}: {cause}.',
-               'remediation': 'Please check the resouce data and ensure it meets the required format.'},
-        9003: {'message': 'Engine error: Unable to get the {resource_type}: {cause}',
-               'remediation': 'Check the resouce ID and confirm it is present in the system.'},
-        9004: {'message': 'Engine error: Unable to create the {resource_type}: {cause}.',
-                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
-        9005: {'message': 'Engine error: Unable to update the {resource_type}: {cause}.',
-                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
-        9006: {'message': 'Engine error: Unable to delete the {resource_type}: {cause}.',
-                'remediation': 'Check the resouce ID and confirm it is present in the system.'},
     }
 
     # Reserve agent upgrade custom errors
@@ -691,14 +668,6 @@ class WazuhHAPHelperError(WazuhClusterError):
     """
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
-
-
-class WazuhEngineError(WazuhInternalError):
-    """
-    This type of exception is raised inside the engine client.
-    """
-    _default_type = "about:blank"
-    _default_title = "Wazuh Engine Error"
 
 
 class WazuhError(WazuhException):
