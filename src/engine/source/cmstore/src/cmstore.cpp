@@ -84,7 +84,7 @@ CMStore::CMStore(std::string_view path,
     loadAllNamespacesFromDisk();
 
     // Load CTI Store, read-only namespace
-    m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID);
+    m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID, m_defaultOutputsPath);
 }
 
 void CMStore::loadAllNamespacesFromDisk()
