@@ -19,6 +19,7 @@
 thread_local std::unordered_map<std::string, std::vector<std::string>> UserGroupsProvider::s_userGroupsCache;
 thread_local std::chrono::steady_clock::time_point UserGroupsProvider::s_cacheTimestamp;
 thread_local bool UserGroupsProvider::s_cacheValid = false;
+thread_local std::size_t UserGroupsProvider::s_apiCallCount = 0;
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IWindowsApiWrapper> winapiWrapper,
                                        std::shared_ptr<IUsersHelper> usersHelper,
@@ -213,15 +214,13 @@ std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std
         return it->second;
     }
 
-    // Rate limiting: track API calls and pause every BATCH_SIZE calls
-    std::size_t api_call_count = 0;
-
-    if (api_call_count > 0 && api_call_count % BATCH_SIZE == 0)
+    // Rate limiting: pause every BATCH_SIZE API calls
+    if (s_apiCallCount > 0 && s_apiCallCount % BATCH_SIZE == 0)
     {
         std::this_thread::sleep_for(BATCH_DELAY);
     }
 
-    ++api_call_count;
+    ++s_apiCallCount;
 
     std::wstring wUsername = Utils::EncodingWindowsHelper::stringToWStringUTF8(username);
     DWORD groupInfoLevel = 0;
@@ -263,6 +262,7 @@ void UserGroupsProvider::validateCache()
         // Cache expired, clear it
         s_userGroupsCache.clear();
         s_cacheValid = false;
+        s_apiCallCount = 0;
     }
 }
 
@@ -276,4 +276,5 @@ void UserGroupsProvider::resetCache()
 {
     s_userGroupsCache.clear();
     s_cacheValid = false;
+    s_apiCallCount = 0;
 }

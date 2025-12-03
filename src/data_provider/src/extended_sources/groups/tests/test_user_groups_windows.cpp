@@ -649,3 +649,117 @@ TEST_F(UserGroupsProviderWindowsTest, GetUserNamesByGidAllGroups)
     EXPECT_THAT(result["201"].get<std::vector<std::string>>(),
                 ::testing::UnorderedElementsAre("alice", "bob"));
 }
+
+TEST_F(UserGroupsProviderWindowsTest, RateLimitingAppliesAfterBatchSize)
+{
+    // Test that rate limiting delays occur after BATCH_SIZE (100) API calls
+    User user{};
+    std::vector<User> users;
+
+    // Create 105 users to test rate limiting at 100th call
+    for (int i = 0; i < 105; ++i)
+    {
+        User u{};
+        u.uid = 1000 + i;
+        u.username = "user" + std::to_string(i);
+        users.push_back(u);
+    }
+
+    Group group{};
+    group.gid = 200;
+    group.groupname = "testgroup";
+    std::vector<Group> groups = { group };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(groups));
+
+    // Expect NetUserGetLocalGroupsWrapper to be called for each user (105 times)
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::_, 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .Times(105)
+    .WillRepeatedly(ReturnGroups({ L"testgroup" }));
+
+    auto start = std::chrono::steady_clock::now();
+    auto result = provider->getUserNamesByGid({});
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    // After 100 calls, a 250ms delay should have occurred at least once (at call 100)
+    // Total expected delay: at least 250ms
+    EXPECT_GE(duration.count(), 250);
+
+    // Verify results are correct
+    EXPECT_EQ(result["200"].get<std::vector<std::string>>().size(), 105u);
+}
+
+TEST_F(UserGroupsProviderWindowsTest, RateLimitingResetOnCacheExpiration)
+{
+    // Test that rate limiting counter resets when cache expires
+    User user1{};
+    user1.uid = 1000;
+    user1.username = "testuser";
+    std::vector<User> users = { user1 };
+
+    Group group{};
+    group.gid = 200;
+    group.groupname = "testgroup";
+    std::vector<Group> groups = { group };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .Times(2)
+    .WillRepeatedly(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .Times(2)
+    .WillRepeatedly(::testing::Return(groups));
+
+    // First call - should make API call (cache miss)
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"testuser"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"testgroup" }));
+
+    auto result1 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result1["200"].get<std::vector<std::string>>().size(), 1u);
+
+    // Reset cache to simulate expiration
+    UserGroupsProvider::resetCache();
+
+    // Second call after reset - should make API call again and counter should be reset
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"testuser"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"testgroup" }));
+
+    auto result2 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result2["200"].get<std::vector<std::string>>().size(), 1u);
+}
+
+TEST_F(UserGroupsProviderWindowsTest, CachePreventsDuplicateApiCallsWithinValidPeriod)
+{
+    // Test that cached results prevent duplicate API calls
+    User user1{};
+    user1.uid = 1000;
+    user1.username = "cacheduser";
+    std::vector<User> users = { user1 };
+
+    Group group{};
+    group.gid = 200;
+    group.groupname = "testgroup";
+    std::vector<Group> groups = { group };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .Times(2)
+    .WillRepeatedly(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .Times(2)
+    .WillRepeatedly(::testing::Return(groups));
+
+    // First call - should make API call (cache miss)
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"cacheduser"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"testgroup" }));
+
+    auto result1 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result1["200"].get<std::vector<std::string>>().size(), 1u);
+
+    // Second call within cache validity - should NOT make API call (cache hit)
+    // NetUserGetLocalGroupsWrapper should NOT be called again
+    auto result2 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result2["200"].get<std::vector<std::string>>().size(), 1u);
+}

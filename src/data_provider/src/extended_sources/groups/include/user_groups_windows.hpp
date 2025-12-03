@@ -78,6 +78,9 @@ class UserGroupsProvider
         static thread_local bool s_cacheValid;
         static constexpr std::chrono::seconds s_cacheTimeout{60};
 
+        /// @brief Thread-local counter for rate limiting API calls
+        static thread_local std::size_t s_apiCallCount;
+
         /// @brief Rate limiting constants (only applied during cache refresh)
         static constexpr std::uint32_t BATCH_SIZE = 100;
         static constexpr std::chrono::milliseconds BATCH_DELAY{250};
