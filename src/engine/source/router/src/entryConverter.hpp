@@ -23,7 +23,7 @@ public:
     explicit EntryConverter(const json::Json& jEntry); ///< Converts from json::Json to EntryConverter
 
     const std::string& name() const;                       ///< Returns the name of the entry
-    const std::string& policy() const;                     ///< Returns the policy of the entry
+    const std::string& namespaceId() const;                ///< Returns the namespace of the entry
     const std::optional<std::string>& description() const; ///< Returns the description of the entry
     const std::optional<int64_t>& lifetime() const;        ///< Returns the lifetime of the entry
     const std::optional<int64_t>& lastUse() const;         ///< Returns the lastUse of the entry
@@ -41,7 +41,7 @@ public:
 
 private:
     std::string m_name;
-    std::string m_policy;
+    std::string m_namespace;
     std::optional<std::string> m_description;
     std::optional<int64_t> m_lifetime;
     std::optional<int64_t> m_lastUse;
@@ -49,7 +49,7 @@ private:
     std::optional<size_t> m_priority;
 
     static constexpr auto NAME_PATH = "/name";
-    static constexpr auto POLICY_PATH = "/policy";
+    static constexpr auto NAMESPACE_PATH = "/namespace";
     static constexpr auto DESCRIPTION_PATH = "/description";
     static constexpr auto LIFETIME_PATH = "/lifetime";
     static constexpr auto LAST_USE_PATH = "/lastUse";

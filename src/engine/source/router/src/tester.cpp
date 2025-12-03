@@ -69,7 +69,7 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost, bool ignoreFai
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        auto [controller, hash] = m_envBuilder->makeController(entry.policy());
+        auto [controller, hash] = m_envBuilder->makeController(entry.namespaceId());
         entry.controller() = controller;
         entry.hash(hash);
     }
@@ -122,7 +122,7 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     auto& entry = it->second;
     try
     {
-        auto [controller, hash] = m_envBuilder->makeController(entry.policy());
+        auto [controller, hash] = m_envBuilder->makeController(entry.namespaceId());
         entry.controller() = controller;
         entry.hash(hash);
     }
