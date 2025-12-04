@@ -78,7 +78,7 @@ Feature: Resource management via cmcrud resource handlers
   Scenario: Fail to create a decoder resource with an invalid name
     When I send a request to create a "decoder" resource with invalid name "invalid/name" in namespace "analytics"
     Then the resource request should fail
-    And the resource error message should be "Failed to upsert resource of type 'decoder' in namespace 'analytics': Asset type could not be determined from name: invalid/name"
+    And the resource error message should be "Failed to upsert resource of type 'decoder' in namespace 'analytics': Asset validation failed in namespace 'analytics': Stage parse is only supported for decoder assets"
 
   # ===================================================================
   #                       VALIDATION ERRORS (DELETE)

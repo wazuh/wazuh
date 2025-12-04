@@ -3,6 +3,7 @@
 #include <cmstore/types.hpp>
 #include <ctistore/adapter.hpp>
 
+#include "fileutils.hpp"
 #include "storecti.hpp"
 
 namespace cm::store
@@ -215,6 +216,46 @@ bool CMStoreCTI::assetExistsByUUID(const std::string& uuid) const
         LOG_WARNING("Error checking existence of asset with name '{}': {}", uuid, e.what());
         return false;
     }
+}
+
+const std::vector<json::Json> CMStoreCTI::getDefaultOutputs() const
+{
+    std::vector<json::Json> outputs;
+
+    for (const auto& entry : std::filesystem::directory_iterator(m_defaultOutputsPath))
+    {
+        if (!entry.is_regular_file())
+        {
+            continue;
+        }
+
+        const auto ext = entry.path().extension();
+        if (ext != ".yml" && ext != ".yaml")
+        {
+            continue;
+        }
+
+        std::ifstream in(entry.path());
+        if (!in)
+        {
+            throw std::runtime_error(fmt::format("Failed to open output file '{}'", entry.path().string()));
+        }
+
+        std::string ymlContent((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+
+        try
+        {
+            auto jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
+            outputs.emplace_back(std::move(jsonContent));
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("Failed to parse output file '{}': {}", entry.path().string(), e.what()));
+        }
+    }
+
+    return outputs;
 }
 
 /*********************************** General Resource ************************************/

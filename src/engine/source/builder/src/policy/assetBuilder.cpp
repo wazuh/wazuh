@@ -84,6 +84,9 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     auto newContext = m_buildCtx->clone();
     newContext->context().assetName = name.fullName();
 
+    // TODO: We should have resources with any name without indicating the asset type in the name
+    const bool isDecoder = !name.parts().empty() && name.parts()[0] == "decoder";
+
     // Get definitions (optional, may appear anywhere in the asset)
     auto definitionsPos = std::find_if(
         objDoc.begin(), objDoc.end(), [](auto tuple) { return std::get<0>(tuple) == syntax::asset::DEFINITIONS_KEY; });
@@ -131,6 +134,10 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
             // Parse stage syntax is different from other stages parse|<key>: <value>
             if (key.compare(0, keySize, syntax::asset::PARSE_KEY) == 0)
             {
+                if (!isDecoder)
+                {
+                    throw std::runtime_error("Stage parse is only supported for decoder assets");
+                }
                 // TODO fix this hack, we need to format the json as the old parse stage
 
                 bool meetsFormat = key.length() > keySize && key[keySize] == '|';
@@ -207,18 +214,21 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     const auto integrationName = newContext->context().integrationName;
     const auto integrationCategory = newContext->context().integrationCategory;
 
-    auto automapping =
-        base::Term<base::EngineOp>::create("Automapping",
-                                           [integrationCategory, integrationName, name](auto e)
-                                           {
+    if (isDecoder)
+    {
+        auto automapping =
+            base::Term<base::EngineOp>::create("Automapping",
+                                               [integrationCategory, integrationName, name](auto e)
                                                {
-                                                   e->setString(integrationCategory, syntax::asset::CATEGORY_PATH);
-                                                   e->setString(integrationName, syntax::asset::INTEGRATION_PATH);
-                                                   e->appendString(name.toStr(), syntax::asset::DECODERS_PATH);
-                                               }
-                                               return base::result::makeSuccess(e, "");
-                                           });
-    consequenceExpressions.emplace_back(std::move(automapping));
+                                                   {
+                                                       e->setString(integrationCategory, syntax::asset::CATEGORY_PATH);
+                                                       e->setString(integrationName, syntax::asset::INTEGRATION_PATH);
+                                                       e->appendString(name.parts()[1], syntax::asset::DECODERS_PATH);
+                                                   }
+                                                   return base::result::makeSuccess(e, "");
+                                               });
+        consequenceExpressions.emplace_back(std::move(automapping));
+    }
 
     // Delete variables from the event when asset is executed (TODO: Find a better way to manage variables)
     {

@@ -21,6 +21,7 @@ class CMStoreCTI : public ICMstoreNS
 {
 private:
     NamespaceId m_namespaceId;                     ///< Namespace ID associated to this CMStoreCTI
+    std::filesystem::path m_defaultOutputsPath;    ///< Path to the default outputs directory for all namespaces
     std::weak_ptr<cti::store::ICMReader> m_reader; ///< CTI Store Reader
 
 public:
@@ -28,8 +29,11 @@ public:
      * @brief Construct a new CMStoreCTI
      * @param nsId Namespace ID associated to this CMStoreCTI
      */
-    CMStoreCTI(std::shared_ptr<cti::store::ICMReader> reader, NamespaceId nsId)
+    CMStoreCTI(std::shared_ptr<cti::store::ICMReader> reader,
+               NamespaceId nsId,
+               std::filesystem::path defaultOutputsPath)
         : m_namespaceId(std::move(nsId))
+        , m_defaultOutputsPath(std::move(defaultOutputsPath))
         , m_reader(reader) {};
 
     ~CMStoreCTI() override = default; // TODO Dump cache to disk on destruction
@@ -52,6 +56,8 @@ public:
     bool assetExistsByName(const base::Name& name) const override;
     /** @copydoc ICMStoreNSReader::assetExistsByUUID */
     bool assetExistsByUUID(const std::string& uuid) const override;
+    /** @copydoc ICMStoreNSReader::getDefaultOutputs */
+    const std::vector<json::Json> getDefaultOutputs() const override;
 
     /*********************************** General Resource ************************************/
 

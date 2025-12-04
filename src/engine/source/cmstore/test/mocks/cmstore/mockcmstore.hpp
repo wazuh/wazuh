@@ -31,6 +31,7 @@ public:
     MOCK_METHOD(dataType::KVDB, getKVDBByUUID, (const std::string& uuid), (const, override));
     MOCK_METHOD(json::Json, getAssetByName, (const base::Name& name), (const, override));
     MOCK_METHOD(json::Json, getAssetByUUID, (const std::string& uuid), (const, override));
+    MOCK_METHOD((const std::vector<json::Json>), getDefaultOutputs, (), (const, override));
 };
 
 class MockICMstoreNS : public ICMstoreNS
@@ -57,6 +58,7 @@ public:
     MOCK_METHOD(dataType::KVDB, getKVDBByUUID, (const std::string& uuid), (const, override));
     MOCK_METHOD(json::Json, getAssetByName, (const base::Name& name), (const, override));
     MOCK_METHOD(json::Json, getAssetByUUID, (const std::string& uuid), (const, override));
+    MOCK_METHOD((const std::vector<json::Json>), getDefaultOutputs, (), (const, override));
 
     // ICMstoreNS methods
     MOCK_METHOD(std::string,

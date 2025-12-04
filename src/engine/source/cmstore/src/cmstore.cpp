@@ -10,8 +10,8 @@
 #include <cmstore/cmstore.hpp>
 
 #include "fileutils.hpp"
-#include "storens.hpp"
 #include "storecti.hpp"
+#include "storens.hpp"
 
 namespace cm::store
 {
@@ -27,8 +27,11 @@ const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
 
 CMStore::~CMStore() = default;
 
-CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMReader>& ctiReader)
+CMStore::CMStore(std::string_view path,
+                 std::string_view outputsPath,
+                 const std::shared_ptr<cti::store::ICMReader>& ctiReader)
     : m_baseStoragePath(path)
+    , m_defaultOutputsPath(outputsPath)
     , m_namespaces()
     , m_mutex()
 {
@@ -41,6 +44,17 @@ CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMRea
     {
         throw std::runtime_error("Base path must exist and be a directory: " + m_baseStoragePath.string());
     }
+
+    // Check if default outputs path exists, if path exist and is a directory
+    if (!m_defaultOutputsPath.is_absolute() || m_defaultOutputsPath.empty())
+    {
+        throw std::runtime_error("Default outputs path does not exist: " + m_defaultOutputsPath.string());
+    }
+    if (!std::filesystem::exists(m_defaultOutputsPath) || !std::filesystem::is_directory(m_defaultOutputsPath))
+    {
+        throw std::runtime_error("Default outputs path is not a directory: " + m_defaultOutputsPath.string());
+    }
+
     // Check if the base path is writable, avoiding check mode_t
     {
         // File test
@@ -70,7 +84,7 @@ CMStore::CMStore(std::string_view path, const std::shared_ptr<cti::store::ICMRea
     loadAllNamespacesFromDisk();
 
     // Load CTI Store, read-only namespace
-    m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID);
+    m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID, m_defaultOutputsPath);
 }
 
 void CMStore::loadAllNamespacesFromDisk()
@@ -98,7 +112,7 @@ void CMStore::loadAllNamespacesFromDisk()
         NamespaceId nsId(dirEntry.path().filename().string());
 
         // Load namespace
-        auto nsInstance = std::make_shared<CMStoreNS>(nsId, dirEntry.path());
+        auto nsInstance = std::make_shared<CMStoreNS>(nsId, dirEntry.path(), m_defaultOutputsPath);
         m_namespaces[nsId] = nsInstance;
     }
 }
@@ -149,7 +163,7 @@ std::shared_ptr<ICMstoreNS> CMStore::createNamespace(const NamespaceId& nsId)
         throw std::runtime_error("Failed to create cache file for namespace: " + cacheFilePath.string() + ": "
                                  + cacheFileErr.value());
     }
-    auto nsInstance = std::make_shared<CMStoreNS>(nsId, nsPath);
+    auto nsInstance = std::make_shared<CMStoreNS>(nsId, nsPath, m_defaultOutputsPath);
     m_namespaces[nsId] = nsInstance;
 
     return nsInstance;
