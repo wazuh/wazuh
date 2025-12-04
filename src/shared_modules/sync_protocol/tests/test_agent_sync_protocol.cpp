@@ -34,9 +34,11 @@ class MockPersistentQueue : public IPersistentQueue
                                    uint64_t version,
                                    bool isDataContext), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
         MOCK_METHOD(void, clearSyncedItems, (), (override));
         MOCK_METHOD(void, resetSyncingItems, (), (override));
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
+        MOCK_METHOD(void, clearAllDataContext, (), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
 
 };
@@ -4266,9 +4268,13 @@ TEST(InterfaceDestructorTest, IAgentSyncProtocolDeletingDestructor)
     auto mockQueue = std::make_shared<MockPersistentQueue>();
 
     // Create mock MQ functions
-    MQ_Functions mockMq{
+    MQ_Functions mockMq
+    {
         [](const char*, short, short) { return 1; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};

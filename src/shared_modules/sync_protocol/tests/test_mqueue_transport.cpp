@@ -355,9 +355,13 @@ TEST(InterfaceDestructorTest, ISyncMessageTransportDeletingDestructor)
     // Create concrete implementation through base interface pointer
     ISyncMessageTransport* transport = nullptr;
 
-    MQ_Functions mockMq{
+    MQ_Functions mockMq
+    {
         [](const char*, short, short) { return 1; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
