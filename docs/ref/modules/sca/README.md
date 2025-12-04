@@ -8,6 +8,8 @@ The module implements a **dual event system** that provides both real-time alert
 
 SCA persistence supports **stateful synchronization** for complete security check metadata including results and compliance mapping, while maintaining **stateless real-time alerts** for immediate threat detection.
 
+SCA includes **automatic recovery capabilities** to detect and resolve synchronization inconsistencies between agent and manager databases. Recovery is triggered automatically during a periodic synchronization cycle determined by the `integrity_interval` option.
+
 ## Configuration
 
 ```xml
