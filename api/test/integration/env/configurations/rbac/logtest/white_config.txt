@@ -1,5 +1,0 @@
-(This is already the default configuration, no need to add it)
-
-| Actions                  | Resources | Allow                         | Deny                 |
-|--------------------------|-----------|-------------------------------|----------------------|
-| logtest:run              | *:*       | *                             |                      |
