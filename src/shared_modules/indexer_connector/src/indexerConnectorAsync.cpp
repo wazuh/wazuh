@@ -48,6 +48,11 @@ public:
     {
         return m_impl.isAvailable();
     }
+
+    uint64_t getQueueSize() const
+    {
+        return m_impl.getQueueSize();
+    }
 };
 
 IndexerConnectorAsync::IndexerConnectorAsync(
@@ -78,6 +83,11 @@ void IndexerConnectorAsync::index(std::string_view index, std::string_view data)
 bool IndexerConnectorAsync::isAvailable() const
 {
     return m_impl->isAvailable();
+}
+
+uint64_t IndexerConnectorAsync::getQueueSize() const
+{
+    return m_impl->getQueueSize();
 }
 
 // LCOV_EXCL_STOP

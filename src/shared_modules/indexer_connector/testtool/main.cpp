@@ -241,6 +241,29 @@ int main(const int argc, const char* argv[])
                 std::cerr << "Flushing bulk operations...\n";
                 syncConnector->flush();
             }
+            else
+            {
+                // In async mode, wait until the queue is empty
+                std::cout << "Waiting for async queue to be empty...\n";
+                auto waitInterval = std::chrono::milliseconds(100);
+                auto retries = 1;
+                // Considering that 10s for 1k elements is way too much.
+                // We can use that value for a timeout logic.
+                auto timeout = (events.size() / 1000) * 10000;
+                auto cumulativeWait = 0;
+                while (asyncConnector->getQueueSize() > 0)
+                {
+                    std::this_thread::sleep_for(waitInterval * retries);
+                    cumulativeWait += waitInterval.count() * retries;
+                    if (cumulativeWait > timeout)
+                    {
+                        std::cerr << "Timeout waiting for async queue to be empty. Remaining size: "
+                                  << asyncConnector->getQueueSize() << "\n";
+                        break;
+                    }
+                    ++retries;
+                }
+            }
             std::cerr << "Done!\n";
         }
 
