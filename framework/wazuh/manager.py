@@ -357,7 +357,7 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
             raise WazuhError(1125)
 
         # Check if the configuration is valid
-        validate_wazuh_xml(new_conf, config_file=True)
+        validate_wazuh_xml(new_conf)
 
         # Create a backup of the current configuration before attempting to replace it
         try:

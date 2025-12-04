@@ -1993,15 +1993,13 @@ def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
     details[detail].update(attribs)
 
 
-def validate_wazuh_xml(content: str, config_file: bool = False):
+def validate_wazuh_xml(content: str):
     """Validate Wazuh XML files (ossec.conf)
 
     Parameters
     ----------
     content : str
         File content.
-    config_file : bool
-        Validate remote commands if True.
 
     Raises
     ------
@@ -2026,14 +2024,13 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
         final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
 
-        # Check if remote commands are allowed if it is a configuration file
-        if config_file:
-            check_remote_commands(final_xml)
-            check_agents_allow_higher_versions(final_xml)
-            with open(common.OSSEC_CONF, 'r') as f:
-                current_xml = f.read()
-            check_indexer(final_xml, current_xml)
-            check_wazuh_limits_unchanged(final_xml, current_xml)
+        # Check if remote commands are allowed
+        check_remote_commands(final_xml)
+        check_agents_allow_higher_versions(final_xml)
+        with open(common.OSSEC_CONF, 'r') as f:
+            current_xml = f.read()
+        check_indexer(final_xml, current_xml)
+        check_wazuh_limits_unchanged(final_xml, current_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
     except ExpatError:
