@@ -41,6 +41,7 @@ public:
         , m_logFilePath {paramValueOf(argc, argv, "-l", std::make_pair(false, ""))}
         , m_loopSyncCount {paramValueOf(argc, argv, "-L", std::make_pair(false, "0"))}
         , m_loopDelaySeconds {paramValueOf(argc, argv, "-D", std::make_pair(false, "0"))}
+        , m_asyncMode {paramValueOf(argc, argv, "-m", std::make_pair(false, "sync"))}
     {
     }
 
@@ -145,6 +146,15 @@ public:
     }
 
     /**
+     * @brief Gets the async mode flag.
+     * @return true if async mode is enabled, false for sync mode.
+     */
+    bool getAsyncMode() const
+    {
+        return m_asyncMode.compare("async") == 0;
+    }
+
+    /**
      * @brief Shows the help to the user.
      */
     static void showHelp()
@@ -156,17 +166,20 @@ public:
                   << "\t-e EVENTS_FILE\t\tSpecifies the events file to publish.\n"
                   << "\t-a AUTO_GENERATED\tAuto-generate random events (true/false).\n"
                   << "\t-n NUMBER_OF_EVENTS\tNumber of events to generate (requires -a true).\n"
+                  << "\t-m MODE\t\t\tIndexer mode: 'sync' or 'async' (default: sync).\n"
                   << "\t-t TEMPLATE_FILE\tTemplate file for auto-generation (deprecated, optional).\n"
-                  << "\t-L LOOP_COUNT\t\tNumber of times to call flush().\n"
-                  << "\t-D DELAY_SECONDS\tDelay in seconds between flush calls (default: 0).\n"
+                  << "\t-L LOOP_COUNT\t\tNumber of times to call flush() (sync mode only).\n"
+                  << "\t-D DELAY_SECONDS\tDelay in seconds between flush calls (default: 0) (sync mode only).\n"
                   << "\t-w WAIT_TIME\t\tWait time in seconds before closing (0 = wait for enter).\n"
                   << "\t-l LOG_FILE\t\tLog file path.\n"
                   << "\nExamples:"
-                  << "\n\t# Index events from file:\n"
+                  << "\n\t# Index events from file sync mode:\n"
                   << "\t./indexer_connector_tool -c config.json -e events.json\n"
-                  << "\n\t# Auto-generate and index 1000 random events:\n"
+                  << "\n\t# Index events from file async mode:\n"
+                  << "\t./indexer_connector_tool -c config.json -e events.json -m async\n"
+                  << "\n\t# Auto-generate and index 1000 random events (also available for async mode):\n"
                   << "\t./indexer_connector_tool -c config.json -e template.json -a true -n 1000\n"
-                  << "\n\t# Index events and run 30 flush cycles:\n"
+                  << "\n\t# Index events and run 30 flush cycles (sync mode):\n"
                   << "\t./indexer_connector_tool -c config.json -e events.json -L 30 -D 1\n\n";
     }
 
@@ -205,6 +218,7 @@ private:
     const std::string m_logFilePath;
     const std::string m_loopSyncCount;
     const std::string m_loopDelaySeconds;
+    const std::string m_asyncMode;
 };
 
 #endif // _CMD_ARGS_PARSER_HPP_

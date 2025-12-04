@@ -123,43 +123,58 @@ int main(const int argc, const char* argv[])
             }
         }
 
-        // --- Create IndexerConnectorSync ---
-        IndexerConnectorSync indexerConnector(
-            configuration,
-            [&logFile](const int logLevel,
-                       const char* tag,
-                       const char* file,
-                       const int line,
-                       const char* func,
-                       const char* message,
-                       va_list args)
+        // Logging function
+        auto loggingFunction = [&logFile](const int logLevel,
+                                          const char* tag,
+                                          const char* file,
+                                          const int line,
+                                          const char* func,
+                                          const char* message,
+                                          va_list args)
+        {
+            auto fileStr = std::string(file);
+            auto pos = fileStr.find_last_of('/');
+            std::string fileName;
+            if (pos != std::string::npos)
             {
-                auto fileStr = std::string(file);
-                auto pos = fileStr.find_last_of('/');
-                std::string fileName;
-                if (pos != std::string::npos)
-                {
-                    fileName = fileStr.substr(pos + 1);
-                }
-                else
-                {
-                    fileName = fileStr;
-                }
+                fileName = fileStr.substr(pos + 1);
+            }
+            else
+            {
+                fileName = fileStr;
+            }
 
-                char formattedStr[MAX_LEN] = {0};
-                vsnprintf(formattedStr, MAX_LEN, message, args);
+            char formattedStr[MAX_LEN] = {0};
+            vsnprintf(formattedStr, MAX_LEN, message, args);
 
-                if (logLevel != LOG_ERROR)
-                    std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
-                else
-                    std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+            if (logLevel != LOG_ERROR)
+                std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+            else
+                std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
 
-                if (logFile.is_open())
-                {
-                    logFile << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
-                    logFile.flush();
-                }
-            });
+            if (logFile.is_open())
+            {
+                logFile << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+                logFile.flush();
+            }
+        };
+
+        // Create IndexerConnector (sync or async)
+        const bool useAsync = cmdArgParser.getAsyncMode();
+        std::unique_ptr<IndexerConnectorSync> syncConnector;
+        std::unique_ptr<IndexerConnectorAsync> asyncConnector;
+
+        if (useAsync)
+        {
+            std::cout << "Using Indexer Connector ASYNC implementation.\n";
+            asyncConnector = std::make_unique<IndexerConnectorAsync>(configuration, loggingFunction);
+        }
+        else
+        {
+            std::cout << "Using Indexer Connector SYNC implementation.\n";
+            syncConnector = std::make_unique<IndexerConnectorSync>(configuration, loggingFunction);
+        }
+
         // Get index name from configuration
         std::string indexName = "wazuh-test";
         if (configuration.contains("index") && configuration["index"].is_string())
@@ -190,7 +205,15 @@ int main(const int argc, const char* argv[])
                 {
                     auto randomData = fillWithRandomData(templateData);
                     std::string docId = "doc-" + std::to_string(i);
-                    indexerConnector.bulkIndex(docId, indexName, randomData.dump());
+                    // The implementations have different indexing methods.
+                    if (useAsync)
+                    {
+                        asyncConnector->index(docId, indexName, randomData.dump());
+                    }
+                    else
+                    {
+                        syncConnector->bulkIndex(docId, indexName, randomData.dump());
+                    }
                 }
             }
             else
@@ -201,18 +224,28 @@ int main(const int argc, const char* argv[])
                 for (const auto& event : events)
                 {
                     std::string docId = "doc-" + std::to_string(idx++);
-                    indexerConnector.bulkIndex(docId, indexName, event.dump());
+                    if (useAsync)
+                    {
+                        asyncConnector->index(docId, indexName, event.dump());
+                    }
+                    else
+                    {
+                        syncConnector->bulkIndex(docId, indexName, event.dump());
+                    }
                 }
             }
 
-            // Flush to ensure all events are sent
-            std::cerr << "Flushing bulk operations...\n";
-            indexerConnector.flush();
+            // Flush to ensure all events are sent (sync mode)
+            if (!useAsync)
+            {
+                std::cerr << "Flushing bulk operations...\n";
+                syncConnector->flush();
+            }
             std::cerr << "Done!\n";
         }
 
-        // Run flush operations in a loop if specified
-        if (cmdArgParser.getLoopSyncCount() > 0)
+        // Run flush operations in a loop if specified (sync mode)
+        if (!useAsync && cmdArgParser.getLoopSyncCount() > 0)
         {
             const auto loopCount = cmdArgParser.getLoopSyncCount();
             const auto loopDelaySeconds = cmdArgParser.getLoopDelaySeconds();
@@ -223,13 +256,17 @@ int main(const int argc, const char* argv[])
             for (uint64_t i = 0; i < loopCount; ++i)
             {
                 std::cerr << "Flush call " << (i + 1) << "/" << loopCount << "\n";
-                indexerConnector.flush();
+                syncConnector->flush();
 
                 if (i < loopCount - 1) // Don't sleep after last iteration
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(loopDelaySeconds));
                 }
             }
+        }
+        else if (useAsync && cmdArgParser.getLoopSyncCount() > 0)
+        {
+            std::cerr << "Loop flush (-L) is not supported in async mode and will be ignored.\n";
         }
 
         // Wait or hold interactive mode
@@ -246,6 +283,7 @@ int main(const int argc, const char* argv[])
     catch (const std::exception& e)
     {
         std::cerr << e.what() << '\n';
+        CmdLineArgs::showHelp();
     }
 
     return 0;
