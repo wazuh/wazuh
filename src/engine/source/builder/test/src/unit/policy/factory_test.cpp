@@ -887,6 +887,23 @@ TEST(ValidateAcyclicTest, DetectsCycleThroughInjectedFilter)
     EXPECT_THROW(factory::validateAcyclic(graph), std::runtime_error);
 }
 
+TEST(ValidateAcyclicTest, AllowsDiamondShapeWithoutCycle)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/base");
+    addNode(graph, "decoder/a");
+    addNode(graph, "decoder/b");
+    addNode(graph, "decoder/c");
+
+    addEdge(graph, "decoder/Input", "decoder/base");
+    addEdge(graph, "decoder/base", "decoder/a");
+    addEdge(graph, "decoder/a", "decoder/b");
+    addEdge(graph, "decoder/b", "decoder/c");
+    addEdge(graph, "decoder/base", "decoder/c"); // multi-parent, sin ciclo
+
+    EXPECT_NO_THROW(factory::validateAcyclic(graph));
+}
+
 } // namespace cycledetectiontest
 namespace buildsubgraphtest
 {
