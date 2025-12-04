@@ -92,7 +92,7 @@ EXPORTED void syscollector_delete_database();
 /**
  * Notify DataClean for disabled collectors that have data in their tables.
  * Uses internal array populated during syscollector_init().
- * Logs which collectors are being notified.
+ * Logs which indices from disabled collectors with data are being notified.
  * @return true if notification was successful or no collectors needed cleanup, false on failure
  */
 EXPORTED bool syscollector_notify_disable_collectors_data_clean(void);
@@ -100,7 +100,7 @@ EXPORTED bool syscollector_notify_disable_collectors_data_clean(void);
 /**
  * Delete database tables for disabled collectors that have data.
  * Uses internal array populated during syscollector_init().
- * Logs which collectors are being deleted.
+ * Logs which indices from disabled collectors with data are being deleted.
  */
 EXPORTED void syscollector_delete_disable_collectors_data(void);
 

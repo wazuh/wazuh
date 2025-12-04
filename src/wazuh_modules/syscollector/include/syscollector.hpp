@@ -194,7 +194,7 @@ class EXPORTED Syscollector final
         std::mutex                                                               m_pauseMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
-        std::vector<std::string>                                                 m_disabledCollectorsIndices;
+        std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
 };
 
 
