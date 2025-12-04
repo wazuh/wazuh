@@ -119,7 +119,8 @@ void SecurityConfigurationAssessment::Run()
         else
         {
             LoggingHelper::getInstance().log(LOG_DEBUG,
-                                             "Failed to complete DataClean process. Will retry on next run.");
+                                             "Failed to complete DataClean process. SCA module exiting.");
+            return;
         }
     }
     else if (!hasEnabledPolicies)
