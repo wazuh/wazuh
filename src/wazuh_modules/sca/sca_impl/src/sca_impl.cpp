@@ -1209,44 +1209,49 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
         LoggingHelper::getInstance().log(LOG_INFO, "DataClean notification sent successfully for SCA index");
 
         // Clear local database tables
-        try
+        auto dbHandle = m_dBSync ? m_dBSync->handle() : nullptr;
+
+        if (dbHandle != nullptr)
         {
-            // Delete all checks first (foreign key reference to policies)
-            const auto deleteChecksCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-            DBSyncTxn checkTxn {m_dBSync->handle(), nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, deleteChecksCallback};
-
-            if (checkTxn.handle() != nullptr)
+            try
             {
-                // Sync with empty data to trigger deletions
-                nlohmann::json emptyInput;
-                emptyInput["table"] = "sca_check";
-                emptyInput["data"] = nlohmann::json::array();
+                // Delete all checks first (foreign key reference to policies)
+                const auto deleteChecksCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
-                checkTxn.syncTxnRow(emptyInput);
-                checkTxn.getDeletedRows(deleteChecksCallback);
+                DBSyncTxn checkTxn {dbHandle, nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, deleteChecksCallback};
+
+                if (checkTxn.handle() != nullptr)
+                {
+                    // Sync with empty data to trigger deletions
+                    nlohmann::json emptyInput;
+                    emptyInput["table"] = "sca_check";
+                    emptyInput["data"] = nlohmann::json::array();
+
+                    checkTxn.syncTxnRow(emptyInput);
+                    checkTxn.getDeletedRows(deleteChecksCallback);
+                }
+
+                // Delete all policies
+                const auto deletePoliciesCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+                DBSyncTxn policyTxn {dbHandle, nlohmann::json {"sca_policy"}, 0, DBSYNC_QUEUE_SIZE, deletePoliciesCallback};
+
+                if (policyTxn.handle() != nullptr)
+                {
+                    nlohmann::json emptyInput;
+                    emptyInput["table"] = "sca_policy";
+                    emptyInput["data"] = nlohmann::json::array();
+
+                    policyTxn.syncTxnRow(emptyInput);
+                    policyTxn.getDeletedRows(deletePoliciesCallback);
+                }
+
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Local SCA database tables cleared");
             }
-
-            // Delete all policies
-            const auto deletePoliciesCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-            DBSyncTxn policyTxn {m_dBSync->handle(), nlohmann::json {"sca_policy"}, 0, DBSYNC_QUEUE_SIZE, deletePoliciesCallback};
-
-            if (policyTxn.handle() != nullptr)
+            catch (const std::exception& err)
             {
-                nlohmann::json emptyInput;
-                emptyInput["table"] = "sca_policy";
-                emptyInput["data"] = nlohmann::json::array();
-
-                policyTxn.syncTxnRow(emptyInput);
-                policyTxn.getDeletedRows(deletePoliciesCallback);
+                LoggingHelper::getInstance().log(LOG_ERROR, "Error clearing database tables: " + std::string(err.what()));
             }
-
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Local SCA database tables cleared");
-        }
-        catch (const std::exception& err)
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Error clearing database tables: " + std::string(err.what()));
         }
 
         // Set flag to exit after DataClean
