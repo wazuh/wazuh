@@ -30,7 +30,7 @@ static unsigned int g_sync_end_delay = 1;
 static unsigned int g_sync_timeout = 30;
 static unsigned int g_sync_retries = 3;
 static size_t g_sync_max_eps = 10;
-static unsigned int g_integrity_interval = 3600;
+static unsigned int g_integrity_interval = 86400;
 
 /// @brief Sets the message pushing functions for SCA module.
 ///

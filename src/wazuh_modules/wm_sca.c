@@ -45,7 +45,7 @@ uint32_t sca_sync_interval = 300;                // Database synchronization int
 uint32_t sca_sync_end_delay = 1;                 // Database synchronization end message delay in seconds (default value)
 uint32_t sca_sync_response_timeout = 60;         // Database synchronization response timeout (default value)
 long sca_sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
-uint32_t sca_integrity_interval = 3600;          // Integrity check interval in seconds (default value, 0 = disabled)
+uint32_t sca_integrity_interval = 86400;         // Integrity check interval in seconds (default value, 0 = disabled)
 
 // Forward declarations
 static bool wm_sca_is_shutting_down(void);
