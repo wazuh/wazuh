@@ -69,6 +69,20 @@ std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
     }
 }
 
+std::vector<PersistedData> PersistentQueue::fetchPendingItems(bool onlyDataValues)
+{
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_storage->fetchPending(onlyDataValues);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error fetching pending items: ") + ex.what());
+        throw;
+    }
+}
+
 void PersistentQueue::clearSyncedItems()
 {
     try
@@ -107,6 +121,20 @@ void PersistentQueue::clearItemsByIndex(const std::string& index)
     catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueue: Error clearing items by index: ") + ex.what());
+        throw;
+    }
+}
+
+void PersistentQueue::clearAllDataContext()
+{
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->removeAllDataContext();
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error clearing DataContext items: ") + ex.what());
         throw;
     }
 }

@@ -33,6 +33,11 @@ class IPersistentQueueStorage
         /// @return A vector of messages now marked as SYNCING.
         virtual std::vector<PersistedData> fetchAndMarkForSync() = 0;
 
+        /// @brief Fetches pending items without marking them for sync.
+        /// @param onlyDataValues If true, only returns items with is_data_context=false
+        /// @return A vector of pending messages.
+        virtual std::vector<PersistedData> fetchPending(bool onlyDataValues = true) = 0;
+
         /// @brief Deletes all messages for a module currently marked as SYNCING.
         virtual void removeAllSynced() = 0;
 
@@ -42,6 +47,9 @@ class IPersistentQueueStorage
         /// @brief Deletes all messages belonging to a specific index.
         /// @param index The index for which all messages should be removed.
         virtual void removeByIndex(const std::string& index) = 0;
+
+        /// @brief Deletes all DataContext messages (where is_data_context = 1).
+        virtual void removeAllDataContext() = 0;
 
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
