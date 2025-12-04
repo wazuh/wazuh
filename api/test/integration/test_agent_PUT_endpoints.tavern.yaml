@@ -1015,7 +1015,7 @@ stages:
       params:
         agents_list: '007'
         use_http: true
-        upgrade_version: 4.0.0
+        upgrade_version: 5.0.0
     response:
       status_code: 200
       json:
@@ -1159,7 +1159,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: 'all'
-        upgrade_version: '4.0.0'
+        upgrade_version: '5.0.0'
         os.version: '18.04.6 LTS'
         q: registerIP=any;id<7;id>5
     response:
