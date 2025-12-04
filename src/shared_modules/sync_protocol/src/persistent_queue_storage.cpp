@@ -269,6 +269,55 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
     return result;
 }
 
+std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataValues)
+{
+    std::vector<PersistedData> result;
+
+    try
+    {
+        std::string selectQuery =
+            "SELECT rowid, id, idx, data, operation, is_data_context "
+            "FROM persistent_queue "
+            "WHERE sync_status = ?";
+
+        if (onlyDataValues)
+        {
+            selectQuery += " AND is_data_context = 0";
+        }
+
+        selectQuery += " ORDER BY rowid ASC;";
+
+        SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
+        selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
+
+        while (selectStmt.step() == SQLITE_ROW)
+        {
+            PersistedData data;
+            data.seq = selectStmt.value<uint64_t>(0);
+            data.id = selectStmt.value<std::string>(1);
+            data.index = selectStmt.value<std::string>(2);
+            data.data = selectStmt.value<std::string>(3);
+            data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+            data.is_data_context = selectStmt.value<int>(5) != 0;
+
+            result.emplace_back(std::move(data));
+        }
+
+        if (m_logger)
+        {
+            m_logger(LOG_DEBUG, "PersistentQueueStorage: Fetched " + std::to_string(result.size()) +
+                     " pending items (onlyDataValues=" + std::to_string(onlyDataValues) + ")");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Failed to fetch pending items: ") + e.what());
+        throw;
+    }
+
+    return result;
+}
+
 void PersistentQueueStorage::removeAllSynced()
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
@@ -359,6 +408,33 @@ void PersistentQueueStorage::removeByIndex(const std::string& index)
         throw;
     }
 
+    // LCOV_EXCL_STOP
+}
+
+void PersistentQueueStorage::removeAllDataContext()
+{
+    m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    try
+    {
+        const std::string query = "DELETE FROM persistent_queue WHERE is_data_context = 1;";
+        SQLite3Wrapper::Statement stmt(m_connection, query);
+        stmt.step();
+
+        m_connection.execute("COMMIT;");
+
+        if (m_logger)
+        {
+            m_logger(LOG_DEBUG, "PersistentQueueStorage: Removed all DataContext items");
+        }
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in removeAllDataContext: ") + ex.what());
+        m_connection.execute("ROLLBACK;");
+        throw;
+    }
     // LCOV_EXCL_STOP
 }
 
