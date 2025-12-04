@@ -446,7 +446,6 @@ def custom_daemons_handler(request: pytest.FixtureRequest) -> None:
         else:
             for daemon in daemons:
                 logger.debug(f"Stopping {daemon}")
-                # Restart daemon instead of starting due to legacy used fixture in the test suite.
                 services.control_service('stop', daemon=daemon)
 
     except ValueError as value_error:
@@ -458,6 +457,7 @@ def custom_daemons_handler(request: pytest.FixtureRequest) -> None:
         if not ignore_errors:
             raise called_process_error
 
+    # Ensures at least one entry in each syscollector table
     populate_syscollector_db()
 
     try:
@@ -467,7 +467,6 @@ def custom_daemons_handler(request: pytest.FixtureRequest) -> None:
         else:
             for daemon in daemons:
                 logger.debug(f"Starting {daemon}")
-                # Restart daemon instead of starting due to legacy used fixture in the test suite.
                 services.control_service('start', daemon=daemon)
 
     except ValueError as value_error:

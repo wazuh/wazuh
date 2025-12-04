@@ -3044,29 +3044,29 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanNoDisabledCollectors
                                   "",
                                   "",
                                   3600,
-                                  true,   // scanOnStart
+                                  true,
                                   true,   // hardware
                                   true,   // os
                                   true,   // network
                                   true,   // packages
                                   true,   // ports
-                                  true,   // portsAll
+                                  true,
                                   true,   // processes
                                   true,   // hotfixes
                                   true,   // groups
                                   true,   // users
                                   true,   // services
                                   true,   // browser_extensions
-                                  false); // notifyOnFirstScan
+                                  false);
 
     // Verify no "Disabled collectors with data detected" log (all collectors enabled)
-    EXPECT_FALSE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    EXPECT_FALSE(logCapture.contains(LOG_INFO, "Disabled collectors indices with data detected"));
 
     // Call notifyDisableCollectorsDataClean - should return true (no data to clean)
     EXPECT_TRUE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
     // Verify log message for no disabled collectors
-    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors with data to notify for cleanup"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors indices with data to notify for cleanup"));
 
     Syscollector::instance().destroy();
 }
@@ -3092,29 +3092,29 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
                                   "",
                                   "",
                                   3600,
-                                  true,   // scanOnStart
+                                  true,
                                   true,   // hardware
                                   true,   // os
                                   true,   // network
                                   false,  // packages - DISABLED
                                   true,   // ports
-                                  true,   // portsAll
+                                  true,
                                   false,  // processes - DISABLED
                                   true,   // hotfixes
                                   true,   // groups
                                   true,   // users
                                   true,   // services
                                   true,   // browser_extensions
-                                  false); // notifyOnFirstScan
+                                  false);
 
     // Verify no "Disabled collectors with data detected" log (no data in tables)
-    EXPECT_FALSE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    EXPECT_FALSE(logCapture.contains(LOG_INFO, "Disabled collectors indices with data detected"));
 
     // Call notifyDisableCollectorsDataClean - should return true (no data in tables)
     EXPECT_TRUE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
     // Verify log message for no disabled collectors with data
-    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors with data to notify for cleanup"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors indices with data to notify for cleanup"));
 
     Syscollector::instance().destroy();
 }
@@ -3143,23 +3143,23 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
                                   "",
                                   "",
                                   3600,
-                                  false,  // scanOnStart
+                                  false,
                                   true,   // hardware
                                   true,   // os
                                   true,   // network
                                   false,  // packages - DISABLED
                                   true,   // ports
-                                  true,   // portsAll
+                                  true,
                                   false,  // processes - DISABLED
                                   true,   // hotfixes
                                   true,   // groups
                                   true,   // users
                                   true,   // services
                                   true,   // browser_extensions
-                                  false); // notifyOnFirstScan
+                                  false);
 
     // Verify "Disabled collectors with data detected" log (packages and processes have data)
-    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors indices with data detected"));
     EXPECT_TRUE(logCapture.contains(LOG_INFO, "packages"));
     EXPECT_TRUE(logCapture.contains(LOG_INFO, "processes"));
 
@@ -3195,26 +3195,26 @@ TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataNoDisabledCollectors)
                                   "",
                                   "",
                                   3600,
-                                  true,   // scanOnStart
+                                  true,
                                   true,   // hardware
                                   true,   // os
                                   true,   // network
                                   true,   // packages
                                   true,   // ports
-                                  true,   // portsAll
+                                  true,
                                   true,   // processes
                                   true,   // hotfixes
                                   true,   // groups
                                   true,   // users
                                   true,   // services
                                   true,   // browser_extensions
-                                  false); // notifyOnFirstScan
+                                  false);
 
     // Call deleteDisableCollectorsData - should not throw and handle empty case gracefully
     EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
 
     // Verify log message for no disabled collectors
-    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors data to delete"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "No disabled collectors indices with data to delete"));
 
     Syscollector::instance().destroy();
 }
@@ -3243,37 +3243,37 @@ TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataWithDisabledCollectorsAnd
                                   "",
                                   "",
                                   3600,
-                                  false,  // scanOnStart
+                                  false,
                                   true,   // hardware
                                   true,   // os
                                   true,   // network
                                   false,  // packages - DISABLED
                                   true,   // ports
-                                  true,   // portsAll
+                                  true,
                                   true,   // processes
                                   false,  // hotfixes
                                   false,  // groups
                                   false,  // users
                                   false,  // services
                                   false,  // browser_extensions
-                                  false); // notifyOnFirstScan
+                                  false);
 
     // Verify "Disabled collectors with data detected" log (packages has data)
-    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors indices with data detected"));
     EXPECT_TRUE(logCapture.contains(LOG_INFO, "packages"));
 
     // Call deleteDisableCollectorsData - should clear tables for disabled collectors
     EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
 
     // Verify log messages for deletion
-    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Deleting data for disabled collectors"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Deleting data for disabled collectors indices"));
     EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table dbsync_packages"));
 
     Syscollector::instance().destroy();
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 }
 
-TEST_F(SyscollectorImpTest, allCollectorsDisabled)
+TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
 {
     // Test case: All collectors disabled - should detect it during initialization
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
@@ -3297,24 +3297,24 @@ TEST_F(SyscollectorImpTest, allCollectorsDisabled)
                                   "",
                                   "",
                                   3600,
-                                  false,  // scanOnStart
+                                  false,
                                   false,  // hardware - DISABLED
                                   false,  // os - DISABLED
                                   false,  // network - DISABLED
                                   false,  // packages - DISABLED
                                   false,  // ports - DISABLED
-                                  true,  // portsAll
+                                  true,
                                   false,  // processes - DISABLED
                                   false,  // hotfixes - DISABLED
                                   false,  // groups - DISABLED
                                   false,  // users - DISABLED
                                   false,  // services - DISABLED
                                   false,  // browser_extensions - DISABLED
-                                  false); // notifyOnFirstScan
+                                  false);
 
     // Verify "Disabled collectors with data detected" log mentions all collectors with data
-    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
-    // Should contain hardware, os, network (3 indices), packages, ports
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors indices with data detected"));
+    // Should contain hardware, os, network (3 indices), packages, ports and processes
     EXPECT_TRUE(logCapture.contains(LOG_INFO, "hardware"));
     EXPECT_TRUE(logCapture.contains(LOG_INFO, "system"));
     EXPECT_TRUE(logCapture.contains(LOG_INFO, "interfaces") ||
@@ -3359,23 +3359,23 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
                                   "",
                                   "",
                                   3600,
-                                  false,  // scanOnStart
+                                  false,
                                   true,  // hardware
                                   true,  // os
                                   false,  // network - DISABLED (should trigger 3 indices cleanup)
                                   true,  // packages
                                   true,  // ports
-                                  true,  // portsAll
+                                  true,
                                   true,  // processes
                                   false,  // hotfixes
                                   false,  // groups
                                   false,  // users
                                   false,  // services
                                   false,  // browser_extensions
-                                  false); // notifyOnFirstScan
+                                  false);
 
     // Verify "Disabled collectors with data detected" log contains network-related indices
-    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors with data detected"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Disabled collectors indices with data detected"));
     // Network collector produces 3 indices
     EXPECT_TRUE(logCapture.contains(LOG_INFO, "interfaces") ||
                 logCapture.contains(LOG_INFO, "protocols") ||
@@ -3392,7 +3392,7 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
 
     // Verify log messages for deletion of 3 network tables
-    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Deleting data for disabled collectors"));
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Deleting data for disabled collectors indices"));
     EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table dbsync_network_iface"));
     EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table dbsync_network_protocol"));
     EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table dbsync_network_address"));

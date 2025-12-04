@@ -225,6 +225,7 @@ def test_syscollector_all_scans_disabled(test_configuration, test_metadata, set_
         log_monitor.start(callback=callbacks.generate_callback(callback), timeout=5)
         assert not log_monitor.callback_result
 
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t3_configurations, t3_config_metadata), ids=t3_case_ids)
 def test_syscollector_invalid_configurations(test_configuration, test_metadata, set_wazuh_configuration,
                                              configure_local_internal_options, truncate_monitored_files,
@@ -475,19 +476,17 @@ def test_syscollector_all_collectors_disabled(test_configuration, test_metadata,
                                          configure_local_internal_options, truncate_monitored_files,
                                          custom_daemons_handler, db_verifier):
     '''
-    description: Check that when all collectors are disabled, DataClean notification is sent and module exits.
+    description: Check that when all collectors are disabled, DataClean notification is sent and no scan is triggered.
 
     test_phases:
         - setup:
-            - Clean Syscollector database.
+            - Ensures at least one entry on each collector table.
             - Set Syscollector configuration with all collectors disabled.
             - Configure modulesd in debug mode.
             - Truncate all the log files and json alerts files.
             - Restart the necessary daemons for each test case.
         - test:
-            - Check that DataClean notification is sent.
-            - Check that data is deleted for disabled collectors.
-            - Check that module exits with appropriate message.
+            - Check that DataClean notification is sent for disabled collectors with data.
             - Check that no scan is triggered.
         - teardown:
             - Restore Wazuh configuration.
@@ -515,24 +514,17 @@ def test_syscollector_all_collectors_disabled(test_configuration, test_metadata,
         - truncate_monitored_files:
             type: fixture
             brief: Truncate the log file before and after the test execution.
-        - clean_syscollector_db:
+        - custom_daemons_handler:
             type: fixture
-            brief: Clean the syscollector database before the test execution.
-        - populate_syscollector_db:
-            type: fixture
-            brief: Populate the syscollector database with dummy data.
-        - daemons_handler:
-            type: fixture
-            brief: Handler of Wazuh daemons for each test case.
+            brief: Handler of Wazuh daemons for each test case, also ensures one entry on each syscollector table.
         - db_verifier:
             type: fixture
             brief: Helper to print database table sizes.
 
     assertions:
+        - Check if disabled collectors with data are detected (all).
         - Check if DataClean notification is sent for disabled collectors with data.
-        - Check if data is deleted after successful DataClean notification.
-        - Check if module exits when all collectors are disabled.
-        - Check if no scan is triggered.
+        - Check that no scan is triggered when all collectors are disabled.
 
     input_description:
         - The `configuration_syscollector_scans_disabled.yaml` file provides the module configuration for this test.
@@ -574,12 +566,11 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
                                                   configure_local_internal_options, truncate_monitored_files,
                                                   custom_daemons_handler, db_verifier):
     '''
-    description: Check that when some collectors are disabled (but not all), DataClean notification is sent
-                 for disabled collectors with data, and enabled collectors continue scanning normally.
+    description: Check that when some collectors are disabled (but not all), DataClean notification is sent, and enabled collectors continue scanning normally.
 
     test_phases:
         - setup:
-            - Clean Syscollector database.
+            - Ensures at least one entry on each collector table.
             - Set Syscollector configuration with some collectors disabled.
             - Configure modulesd in debug mode.
             - Truncate all the log files and json alerts files.
@@ -587,8 +578,7 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
         - test:
             - Check that disabled collectors with data are detected.
             - Check that DataClean notification is sent for disabled collectors.
-            - Check that data is deleted for disabled collectors.
-            - Check that module continues running (does not exit).
+            - Check that the module continues running (does not exit).
             - Check that enabled collectors perform scans normally.
             - Check that disabled collectors do not perform scans.
         - teardown:
@@ -617,23 +607,17 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
         - truncate_monitored_files:
             type: fixture
             brief: Truncate the log file before and after the test execution.
-        - clean_syscollector_db:
+        - custom_daemons_handler:
             type: fixture
-            brief: Clean the syscollector database before the test execution.
-        - populate_syscollector_db:
-            type: fixture
-            brief: Populate the syscollector database with dummy data.
-        - daemons_handler:
-            type: fixture
-            brief: Handler of Wazuh daemons for each test case.
+            brief: Handler of Wazuh daemons for each test case, also ensures one entry on each syscollector table.
         - db_verifier:
             type: fixture
             brief: Helper to print database table sizes.
 
     assertions:
+        - Check if disabled collectors with data are detected.
         - Check if DataClean notification is sent for disabled collectors with data.
-        - Check if data is deleted after successful DataClean notification.
-        - Check if module continues running and enabled collectors scan normally.
+        - Check if the module continues running and enabled collectors scan normally.
         - Check if disabled collectors do not perform scans.
 
     input_description:

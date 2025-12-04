@@ -2123,81 +2123,81 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
 
 void Syscollector::populateDisabledCollectorsIndices()
 {
-    m_disabledCollectorsIndices.clear();
+    m_disabledCollectorsIndicesWithData.clear();
 
     if (!m_hardware && hasDataInTable(HW_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_HARDWARE);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HARDWARE);
     }
 
     if (!m_os && hasDataInTable(OS_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
     }
 
     if (!m_packages && hasDataInTable(PACKAGES_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
     }
 
     if (!m_hotfixes && hasDataInTable(HOTFIXES_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
     }
 
     if (!m_processes && hasDataInTable(PROCESSES_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PROCESSES);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PROCESSES);
     }
 
     if (!m_ports && hasDataInTable(PORTS_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PORTS);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PORTS);
     }
 
     if (!m_users && hasDataInTable(USERS_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_USERS);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_USERS);
     }
 
     if (!m_groups && hasDataInTable(GROUPS_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_GROUPS);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_GROUPS);
     }
 
     if (!m_services && hasDataInTable(SERVICES_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_SERVICES);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SERVICES);
     }
 
     if (!m_browserExtensions && hasDataInTable(BROWSER_EXTENSIONS_TABLE))
     {
-        m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS);
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS);
     }
 
     if (!m_network)
     {
         if (hasDataInTable(NET_IFACE_TABLE))
         {
-            m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_INTERFACES);
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_INTERFACES);
         }
 
         if (hasDataInTable(NET_PROTOCOL_TABLE))
         {
-            m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS);
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS);
         }
 
         if (hasDataInTable(NET_ADDRESS_TABLE))
         {
-            m_disabledCollectorsIndices.push_back(SYSCOLLECTOR_SYNC_INDEX_NETWORKS);
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_NETWORKS);
         }
     }
 
-    if (!m_disabledCollectorsIndices.empty() && m_logFunction)
+    if (!m_disabledCollectorsIndicesWithData.empty() && m_logFunction)
     {
         std::string indices;
 
-        for (const auto& idx : m_disabledCollectorsIndices)
+        for (const auto& idx : m_disabledCollectorsIndicesWithData)
         {
             if (!indices.empty())
             {
@@ -2207,17 +2207,17 @@ void Syscollector::populateDisabledCollectorsIndices()
             indices += idx;
         }
 
-        m_logFunction(LOG_INFO, "Disabled collectors with data detected: " + indices);
+        m_logFunction(LOG_INFO, "Disabled collectors indices with data detected: " + indices);
     }
 }
 
 bool Syscollector::notifyDisableCollectorsDataClean()
 {
-    if (m_disabledCollectorsIndices.empty())
+    if (m_disabledCollectorsIndicesWithData.empty())
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "No disabled collectors with data to notify for cleanup");
+            m_logFunction(LOG_DEBUG, "No disabled collectors indices with data to notify for cleanup");
         }
 
         return true;
@@ -2237,7 +2237,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
     {
         std::string indices;
 
-        for (const auto& idx : m_disabledCollectorsIndices)
+        for (const auto& idx : m_disabledCollectorsIndicesWithData)
         {
             if (!indices.empty())
             {
@@ -2247,19 +2247,19 @@ bool Syscollector::notifyDisableCollectorsDataClean()
             indices += idx;
         }
 
-        m_logFunction(LOG_INFO, "Notifying DataClean for disabled collectors: " + indices);
+        m_logFunction(LOG_INFO, "Notifying DataClean for disabled collectors indices: " + indices);
     }
 
-    return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndices);
+    return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData);
 }
 
 void Syscollector::deleteDisableCollectorsData()
 {
-    if (m_disabledCollectorsIndices.empty())
+    if (m_disabledCollectorsIndicesWithData.empty())
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "No disabled collectors data to delete");
+            m_logFunction(LOG_DEBUG, "No disabled collectors indices with data to delete");
         }
 
         return;
@@ -2269,7 +2269,7 @@ void Syscollector::deleteDisableCollectorsData()
     {
         std::string indices;
 
-        for (const auto& idx : m_disabledCollectorsIndices)
+        for (const auto& idx : m_disabledCollectorsIndicesWithData)
         {
             if (!indices.empty())
             {
@@ -2279,11 +2279,11 @@ void Syscollector::deleteDisableCollectorsData()
             indices += idx;
         }
 
-        m_logFunction(LOG_INFO, "Deleting data for disabled collectors: " + indices);
+        m_logFunction(LOG_INFO, "Deleting data for disabled collectors indices: " + indices);
     }
 
-    clearTablesForIndices(m_disabledCollectorsIndices);
-    m_disabledCollectorsIndices.clear();
+    clearTablesForIndices(m_disabledCollectorsIndicesWithData);
+    m_disabledCollectorsIndicesWithData.clear();
 }
 
 void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices)

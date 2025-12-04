@@ -285,7 +285,7 @@ static void wm_handle_all_disable_collectors_and_notify_data_clean(wm_sys_t *sys
                                sys->flags.netinfo,                // false
                                sys->flags.programinfo,            // false
                                sys->flags.portsinfo,              // false
-                               sys->flags.allports,               // false
+                               sys->flags.allports,
                                sys->flags.procinfo,               // false
                                sys->flags.hotfixinfo,             // false
                                sys->flags.groups,                 // false
