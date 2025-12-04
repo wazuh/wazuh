@@ -588,6 +588,12 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
     {
         check.erase("policy_id");
     }
+
+    // Remove internal field not part of indexer schema
+    if (check.contains("regex_type"))
+    {
+        check.erase("regex_type");
+    }
 }
 
 void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const

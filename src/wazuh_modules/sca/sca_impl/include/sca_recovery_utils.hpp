@@ -72,6 +72,12 @@ namespace sca
             {
                 check.erase("policy_id");
             }
+
+            // Remove internal field not part of indexer schema
+            if (check.contains("regex_type"))
+            {
+                check.erase("regex_type");
+            }
         }
 
         /// @brief Normalize policy data for stateful message format
