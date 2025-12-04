@@ -21,7 +21,8 @@ Currently, we host the following modules
 |wazuh-filebeat-0.1.tar.gz|From 3.9.x to 4.2.x included|
 |wazuh-filebeat-0.2.tar.gz|From 4.3.x to 4.6.x included|
 |wazuh-filebeat-0.3.tar.gz|4.7.x|
-|wazuh-filebeat-0.4.tar.gz|From 4.8.x to current|
+|wazuh-filebeat-0.4.tar.gz|From 4.8.x to 4.14.1|
+|wazuh-filebeat-0.5.tar.gz|From 4.14.2 to current|
 
 
 ## How-To update module tar.gz file
@@ -82,7 +83,7 @@ To add a new version of the module it is necessary to follow the following steps
 9. Create **tar.gz** file
 
 ```
-# tar -czvf wazuh-filebeat-0.4.tar.gz wazuh
+# tar -czvf wazuh-filebeat-0.5.tar.gz wazuh
 ```
 
 10. Check the user, group, and permissions of the created file
