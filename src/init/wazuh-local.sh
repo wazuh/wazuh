@@ -14,7 +14,7 @@ PLIST=${DIR}/bin/.process_list;
 
 # Installation info
 VERSION="v4.14.2"
-REVISION="alpha0"
+REVISION="rc1"
 TYPE="local"
 
 ###  Do not modify below here ###
