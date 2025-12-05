@@ -737,6 +737,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["005"]
+          restarted: False
       status_code: 200
       json:
         message: !anystr
@@ -1260,6 +1261,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["005"]
+          restarted: False
       status_code: 200
       json:
         error: 2
@@ -1315,6 +1317,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["005"]
+          restarted: False
       status_code: 200
 
   - name: Try to update group3 configuration (Denied)
