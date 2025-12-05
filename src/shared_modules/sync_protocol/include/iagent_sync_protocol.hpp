@@ -25,11 +25,13 @@ class IAgentSyncProtocol
         /// @param index Index where to send the difference
         /// @param data Difference data
         /// @param version Version of the data.
+        /// @param isDataContext Flag to mark data as DataContext (true) or DataValue (false).
         virtual void persistDifference(const std::string& id,
                                        Operation operation,
                                        const std::string& index,
                                        const std::string& data,
-                                       uint64_t version) = 0;
+                                       uint64_t version,
+                                       bool isDataContext = false) = 0;
 
         /// @brief Persist a difference to in-memory vector instead of database.
         /// This method is used for recovery scenarios where data should be kept in memory.
@@ -81,6 +83,25 @@ class IAgentSyncProtocol
         /// @param option Synchronization option.
         /// @return true if notification completed successfully and database was cleared, false otherwise
         virtual bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) = 0;
+
+        /// @brief Sends DataContext messages to the server for VD sync.
+        ///
+        /// This method sends DataContext flatbuffer messages for each data item in the vector.
+        /// DataContext messages are used for vulnerability detection data that bypasses the indexer.
+        /// @param session Session id for the current sync
+        /// @param data Vector of PersistedData to send as DataContext messages
+        /// @return true if all messages were sent successfully, false otherwise
+        virtual bool sendDataContextMessages(uint64_t session,
+                                             const std::vector<PersistedData>& data) = 0;
+
+        /// @brief Fetches pending DataValue items from the persistent queue without marking them.
+        /// @param onlyDataValues If true, only returns items with is_data_context=false
+        /// @return Vector of pending items
+        virtual std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) = 0;
+
+        /// @brief Clears all DataContext items from the persistent queue.
+        /// This should be called before adding new DataContext to prevent inconsistencies.
+        virtual void clearAllDataContext() = 0;
 
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.

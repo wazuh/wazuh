@@ -26,6 +26,7 @@ set(TEST_SOURCES
     test_persistent_queue_storage.cpp
     test_persistent_queue.cpp
     test_metadata_provider.cpp
+    test_agent_sync_protocol_datacontext.cpp
 )
 
 # Add Router-specific tests only for SERVER builds

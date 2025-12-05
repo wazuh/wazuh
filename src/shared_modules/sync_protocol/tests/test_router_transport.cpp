@@ -28,43 +28,43 @@ using ::testing::Return;
  */
 class RouterTransportTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        logMessages.clear();
-        callbackInvoked = false;
-        callbackData.clear();
-    }
+    protected:
+        void SetUp() override
+        {
+            logMessages.clear();
+            callbackInvoked = false;
+            callbackData.clear();
+        }
 
-    void TearDown() override
-    {
-        logMessages.clear();
-    }
+        void TearDown() override
+        {
+            logMessages.clear();
+        }
 
-    static std::vector<std::string> logMessages;
-    static bool callbackInvoked;
-    static std::vector<char> callbackData;
+        static std::vector<std::string> logMessages;
+        static bool callbackInvoked;
+        static std::vector<char> callbackData;
 
-    static void mockLogger(modules_log_level_t level, const std::string& msg)
-    {
-        logMessages.push_back(msg);
-    }
+        static void mockLogger([[maybe_unused]] modules_log_level_t level, const std::string& msg)
+        {
+            logMessages.push_back(msg);
+        }
 
-    static void responseCallback(const std::vector<char>& data)
-    {
-        callbackInvoked = true;
-        callbackData = data;
-    }
+        static void responseCallback(const std::vector<char>& data)
+        {
+            callbackInvoked = true;
+            callbackData = data;
+        }
 
-    LoggerFunc createMockLogger()
-    {
-        return mockLogger;
-    }
+        LoggerFunc createMockLogger()
+        {
+            return mockLogger;
+        }
 
-    std::function<void(const std::vector<char>&)> createResponseCallback()
-    {
-        return responseCallback;
-    }
+        std::function<void(const std::vector<char>&)> createResponseCallback()
+        {
+            return responseCallback;
+        }
 };
 
 // Initialize static members
@@ -102,6 +102,7 @@ TEST_F(RouterTransportTest, DestructorCallsShutdown)
 
     // No errors should be logged during normal shutdown
     bool hasShutdownError = false;
+
     for (const auto& msg : logMessages)
     {
         if (msg.find("Exception in RouterTransport shutdown") != std::string::npos)
@@ -109,6 +110,7 @@ TEST_F(RouterTransportTest, DestructorCallsShutdown)
             hasShutdownError = true;
         }
     }
+
     EXPECT_FALSE(hasShutdownError);
 }
 
@@ -129,17 +131,20 @@ TEST_F(RouterTransportTest, CheckStatusInitializesRouter)
     EXPECT_TRUE(logMessages.size() >= 2);  // Should log initialization messages
     bool hasProviderInitLog = false;
     bool hasSubscriberInitLog = false;
+
     for (const auto& msg : logMessages)
     {
         if (msg.find("RouterProvider started") != std::string::npos)
         {
             hasProviderInitLog = true;
         }
+
         if (msg.find("RouterSubscriber created") != std::string::npos)
         {
             hasSubscriberInitLog = true;
         }
     }
+
     EXPECT_TRUE(hasProviderInitLog);
     EXPECT_TRUE(hasSubscriberInitLog);
 }
@@ -242,6 +247,7 @@ TEST_F(RouterTransportTest, ShutdownCanBeCalledMultipleTimes)
 
     // Check no exception-related errors
     bool hasException = false;
+
     for (const auto& msg : logMessages)
     {
         if (msg.find("Exception") != std::string::npos)
@@ -321,3 +327,19 @@ TEST_F(RouterTransportTest, SendMessageAfterShutdown)
     EXPECT_FALSE(result);
 }
 
+
+// Test to cover ISyncMessageTransport D0 destructor (delete through base pointer) - Router variant
+TEST(InterfaceDestructorTest, ISyncMessageTransportDeletingDestructorRouter)
+{
+    // Create concrete implementation through base interface pointer
+    ISyncMessageTransport* transport = nullptr;
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    std::function<void(const std::vector<char>&)> callback = [](const std::vector<char>&) {};
+
+    // Create RouterTransport through base interface pointer
+    transport = new RouterTransport("test_module", testLogger, callback);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete transport;
+}

@@ -52,6 +52,7 @@
 #define SYNC_HEADER                     "_sync "
 #define FIM_SYNC_HEADER                 "fim" SYNC_HEADER
 #define SYSCOLECTOR_SYNC_HEADER         "syscollector" SYNC_HEADER
+#define SYSCOLECTOR_VD_SYNC_HEADER      "syscollector_vd" SYNC_HEADER
 #define SCA_SYNC_HEADER                 "sca" SYNC_HEADER
 #define AGENT_INFO_SYNC_HEADER          "agent-info" SYNC_HEADER
 

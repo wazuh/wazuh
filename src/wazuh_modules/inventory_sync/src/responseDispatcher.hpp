@@ -84,7 +84,8 @@ public:
 
         // Initialize Router providers for Agent 0 (local IPC) - one per module
         // Make sure to add every new module here
-        const std::vector<std::string> modules = {"syscollector", "sca", "fim", "agent-info"};
+        const std::vector<std::string> modules = {"syscollector", "syscollector_vd", "sca", "fim", "agent-info"};
+
         for (const auto& moduleName : modules)
         {
             try
@@ -116,12 +117,14 @@ public:
                           "ResponseDispatcher: Sending response to agent '%s', module '%s'",
                           data.agentId.c_str(),
                           data.moduleName.c_str());
+
                 // Check if this is Agent 0
                 if (data.agentId == AGENT_ZERO_ID)
                 {
                     // Agent 0: Send via Router (local IPC)
                     // Find the right provider for this module
                     RouterProvider* targetProvider = nullptr;
+
                     for (const auto& [moduleName, provider] : *routerProviders)
                     {
                         if (data.moduleName == moduleName)
@@ -240,6 +243,7 @@ public:
         responseMessage.agentId = agentId;
         responseMessage.moduleName = moduleName;
         std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> convertedRanges;
+
         for (const auto& [first, second] : ranges)
         {
             auto offset = Wazuh::SyncSchema::CreatePair(responseMessage.builder, first, second);

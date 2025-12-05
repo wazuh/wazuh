@@ -80,7 +80,8 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
                                           Operation operation,
                                           const std::string& index,
                                           const std::string& data,
-                                          uint64_t version)
+                                          uint64_t version,
+                                          bool isDataContext)
 {
     try
     {
@@ -89,7 +90,7 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
             throw std::runtime_error("persistDifference() requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
         }
 
-        m_persistentQueue->submit(id, index, data, operation, version);
+        m_persistentQueue->submit(id, index, data, operation, version, isDataContext);
     }
     catch (const std::exception& e)
     {
@@ -178,10 +179,26 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         dataToSync[i].seq = i;
     }
 
+    // Separate DataValue and DataContext items
+    std::vector<PersistedData> dataValueItems;
+    std::vector<PersistedData> dataContextItems;
+
+    for (const auto& item : dataToSync)
+    {
+        if (item.is_data_context)
+        {
+            dataContextItems.push_back(item);
+        }
+        else
+        {
+            dataValueItems.push_back(item);
+        }
+    }
+
     // Extract unique indices from dataToSync
     std::set<std::string> uniqueIndicesSet;
 
-    for (const auto& item : dataToSync)
+    for (const auto& item : dataValueItems)
     {
         uniqueIndicesSet.insert(item.index);
     }
@@ -192,9 +209,18 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, option))
     {
-        if (sendDataMessages(m_syncState.session, dataToSync))
+        // Send DataValue messages first
+        if (sendDataMessages(m_syncState.session, dataValueItems))
         {
-            if (sendEndAndWaitAck(m_syncState.session, dataToSync))
+            // Then send DataContext messages if any exist
+            bool dataContextSuccess = true;
+
+            if (!dataContextItems.empty())
+            {
+                dataContextSuccess = sendDataContextMessages(m_syncState.session, dataContextItems);
+            }
+
+            if (dataContextSuccess && sendEndAndWaitAck(m_syncState.session, dataToSync))
             {
                 success = true;
             }
@@ -685,6 +711,56 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
     return false;
 }
 
+bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
+                                                const std::vector<PersistedData>& data)
+{
+    try
+    {
+        for (const auto& item : data)
+        {
+            // Check if stop was requested
+            if (shouldStop())
+            {
+                m_logger(LOG_INFO, "Stop requested, aborting DataContext message sending");
+                return false;
+            }
+
+            flatbuffers::FlatBufferBuilder builder;
+            auto idStr = builder.CreateString(item.id);
+            auto idxStr = builder.CreateString(item.index);
+            auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+
+            Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
+            dataContextBuilder.add_seq(item.seq);
+            dataContextBuilder.add_session(session);
+            dataContextBuilder.add_id(idStr);
+            dataContextBuilder.add_index(idxStr);
+            dataContextBuilder.add_data(dataVec);
+            auto dataContextOffset = dataContextBuilder.Finish();
+
+            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataContext, dataContextOffset.Union());
+            builder.Finish(message);
+
+            const uint8_t* buffer_ptr = builder.GetBufferPointer();
+            const size_t buffer_size = builder.GetSize();
+            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+            if (!sendFlatBufferMessageAsString(messageVector))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when sending DataContext messages: ") + e.what());
+    }
+
+    return false;
+}
+
 bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
                                             const std::string& index,
                                             const std::string& checksum)
@@ -1132,6 +1208,41 @@ Wazuh::SyncSchema::Option AgentSyncProtocol::toProtocolOption(Option option) con
     }
 
     throw std::invalid_argument("Unknown Option value: " + std::to_string(static_cast<int>(option)));
+}
+
+std::vector<PersistedData> AgentSyncProtocol::fetchPendingItems(bool onlyDataValues)
+{
+    try
+    {
+        if (!m_persistentQueue)
+        {
+            throw std::runtime_error("fetchPendingItems() requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
+        }
+
+        return m_persistentQueue->fetchPendingItems(onlyDataValues);
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to fetch pending items: ") + e.what());
+        return std::vector<PersistedData>();
+    }
+}
+
+void AgentSyncProtocol::clearAllDataContext()
+{
+    try
+    {
+        if (!m_persistentQueue)
+        {
+            throw std::runtime_error("clearAllDataContext() requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
+        }
+
+        m_persistentQueue->clearAllDataContext();
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to clear DataContext items: ") + e.what());
+    }
 }
 
 void AgentSyncProtocol::deleteDatabase()

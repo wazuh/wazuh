@@ -56,7 +56,8 @@ void PersistentQueueStorage::createTableIfNotExists()
             "operation INTEGER NOT NULL,"
             "sync_status INTEGER NOT NULL DEFAULT 0,"
             "create_status INTEGER NOT NULL DEFAULT 0,"
-            "operation_syncing INTEGER NOT NULL DEFAULT 3);";
+            "operation_syncing INTEGER NOT NULL DEFAULT 3,"
+            "is_data_context INTEGER NOT NULL DEFAULT 0);";
 
         m_connection.execute(query);
     }
@@ -107,7 +108,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
 
         if (!oldDataFound)
         {
-            const std::string insertQuery = "INSERT INTO persistent_queue (id, idx, data, operation, create_status) VALUES (?, ?, ?, ?, ?);";
+            const std::string insertQuery = "INSERT INTO persistent_queue (id, idx, data, operation, create_status, is_data_context) VALUES (?, ?, ?, ?, ?, ?);";
             SQLite3Wrapper::Statement insertStmt(m_connection, insertQuery);
             insertStmt.bind(1, newData.id);
             insertStmt.bind(2, newData.index);
@@ -116,6 +117,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
             insertStmt.bind(5, (newData.operation == Operation::CREATE)
                             ? static_cast<int>(CreateStatus::NEW)
                             : static_cast<int>(CreateStatus::EXISTING));
+            insertStmt.bind(6, newData.is_data_context ? 1 : 0);
             insertStmt.step();
         }
         else
@@ -139,7 +141,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                                       ? CreateStatus::NEW_DELETED
                                       : oldCreateStatus;
 
-                    const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ? WHERE id = ?;";
+                    const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
                     SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
                     updateStmt.bind(1, newData.index);
                     updateStmt.bind(2, newData.data);
@@ -147,7 +149,8 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                     updateStmt.bind(4, static_cast<int>(newSyncStatus));
                     updateStmt.bind(5, static_cast<int>(newCreateStatus));
                     updateStmt.bind(6, static_cast<int>(newOperationSyncing));
-                    updateStmt.bind(7, newData.id);
+                    updateStmt.bind(7, newData.is_data_context ? 1 : 0);
+                    updateStmt.bind(8, newData.id);
                     updateStmt.step();
                 }
             }
@@ -157,7 +160,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                                   ? CreateStatus::NEW
                                   : oldCreateStatus;
 
-                const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ? WHERE id = ?;";
+                const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
                 SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
                 updateStmt.bind(1, newData.index);
                 updateStmt.bind(2, newData.data);
@@ -165,7 +168,8 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                 updateStmt.bind(4, static_cast<int>(newSyncStatus));
                 updateStmt.bind(5, static_cast<int>(newCreateStatus));
                 updateStmt.bind(6, static_cast<int>(newOperationSyncing));
-                updateStmt.bind(7, newData.id);
+                updateStmt.bind(7, newData.is_data_context ? 1 : 0);
+                updateStmt.bind(8, newData.id);
                 updateStmt.step();
             }
         }
@@ -193,7 +197,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
     try
     {
         std::string selectQuery =
-            "SELECT rowid, id, idx, data, operation "
+            "SELECT rowid, id, idx, data, operation, is_data_context "
             "FROM persistent_queue "
             "WHERE sync_status = ? "
             "ORDER BY rowid ASC;";
@@ -209,6 +213,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             data.index = selectStmt.value<std::string>(2);
             data.data = selectStmt.value<std::string>(3);
             data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+            data.is_data_context = selectStmt.value<int>(5) != 0;
 
             idsToUpdate.push_back(rowid);
             result.emplace_back(std::move(data));
@@ -260,6 +265,55 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
     }
 
     // LCOV_EXCL_STOP
+
+    return result;
+}
+
+std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataValues)
+{
+    std::vector<PersistedData> result;
+
+    try
+    {
+        std::string selectQuery =
+            "SELECT rowid, id, idx, data, operation, is_data_context "
+            "FROM persistent_queue "
+            "WHERE sync_status = ?";
+
+        if (onlyDataValues)
+        {
+            selectQuery += " AND is_data_context = 0";
+        }
+
+        selectQuery += " ORDER BY rowid ASC;";
+
+        SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
+        selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
+
+        while (selectStmt.step() == SQLITE_ROW)
+        {
+            PersistedData data;
+            data.seq = selectStmt.value<uint64_t>(0);
+            data.id = selectStmt.value<std::string>(1);
+            data.index = selectStmt.value<std::string>(2);
+            data.data = selectStmt.value<std::string>(3);
+            data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+            data.is_data_context = selectStmt.value<int>(5) != 0;
+
+            result.emplace_back(std::move(data));
+        }
+
+        if (m_logger)
+        {
+            m_logger(LOG_DEBUG, "PersistentQueueStorage: Fetched " + std::to_string(result.size()) +
+                     " pending items (onlyDataValues=" + std::to_string(onlyDataValues) + ")");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Failed to fetch pending items: ") + e.what());
+        throw;
+    }
 
     return result;
 }
@@ -350,6 +404,34 @@ void PersistentQueueStorage::removeByIndex(const std::string& index)
     catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in removeByIndex: ") + ex.what());
+        m_connection.execute("ROLLBACK;");
+        throw;
+    }
+
+    // LCOV_EXCL_STOP
+}
+
+void PersistentQueueStorage::removeAllDataContext()
+{
+    m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    try
+    {
+        const std::string query = "DELETE FROM persistent_queue WHERE is_data_context = 1;";
+        SQLite3Wrapper::Statement stmt(m_connection, query);
+        stmt.step();
+
+        m_connection.execute("COMMIT;");
+
+        if (m_logger)
+        {
+            m_logger(LOG_DEBUG, "PersistentQueueStorage: Removed all DataContext items");
+        }
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in removeAllDataContext: ") + ex.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
