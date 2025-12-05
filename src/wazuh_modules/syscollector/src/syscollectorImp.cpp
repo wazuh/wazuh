@@ -2293,6 +2293,13 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
         return;
     }
 
+    auto dbHandle = m_spDBSync->handle();
+
+    if (dbHandle == nullptr)
+    {
+        return;
+    }
+
     for (const auto& index : indices)
     {
         std::string tableName;
@@ -2310,18 +2317,28 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
         {
             try
             {
-                nlohmann::json deleteQuery =
+                // Callback for delete operations (no-op, we don't need to process deleted rows)
+                const auto deleteCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+                // Create transaction for this table - commits automatically on destruction
+                DBSyncTxn txn
                 {
-                    {"table", tableName},
-                    {
-                        "query", {
-                            {"data", nlohmann::json::array()},
-                            {"where_filter_opt", "1=1"}
-                        }
-                    }
+                    dbHandle,
+                    nlohmann::json {tableName},
+                    0,
+                    QUEUE_SIZE,
+                    deleteCallback
                 };
 
-                m_spDBSync->deleteRows(deleteQuery);
+                // Sync with empty data to mark all existing rows as deleted
+                nlohmann::json emptyInput;
+                emptyInput["table"] = tableName;
+                emptyInput["data"] = nlohmann::json::array();
+
+                txn.syncTxnRow(emptyInput);
+                txn.getDeletedRows(deleteCallback);
+
+                // Transaction commits here when txn goes out of scope
 
                 if (m_logFunction)
                 {
@@ -2334,42 +2351,6 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
                 {
                     m_logFunction(LOG_ERROR, "Error clearing table " + tableName + ": " + std::string(ex.what()));
                 }
-            }
-        }
-    }
-
-    // Force commit by temporarily resetting and recreating the DBSync connection
-    // The destructor of DBSync will commit the pending transaction
-    if (!indices.empty())
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG, "Committing database changes by resetting connection");
-        }
-
-        // Reset will trigger the DBSync destructor, which commits the transaction
-        m_spDBSync.reset();
-
-        // Recreate the DBSync connection
-        try
-        {
-            auto dbSync = std::make_unique<DBSync>(HostType::AGENT,
-                                                   DbEngineType::SQLITE3,
-                                                   SYSCOLLECTOR_DB_DISK_PATH,
-                                                   getCreateStatement(),
-                                                   DbManagement::PERSISTENT);
-            m_spDBSync = std::move(dbSync);
-
-            if (m_logFunction)
-            {
-                m_logFunction(LOG_DEBUG, "Database connection reset successfully");
-            }
-        }
-        catch (const std::exception& ex)
-        {
-            if (m_logFunction)
-            {
-                m_logFunction(LOG_ERROR, "Error recreating database connection: " + std::string(ex.what()));
             }
         }
     }
