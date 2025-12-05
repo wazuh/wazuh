@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
+#include <string_view>
 
 #include <fmt/format.h>
 
@@ -28,7 +29,8 @@ enum class VisitState : std::uint8_t
 void detectCycle(const Graph<base::Name, builder::policy::Asset>& graph,
                  const base::Name& node,
                  std::unordered_map<base::Name, VisitState>& states,
-                 std::vector<base::Name>& stack)
+                 std::vector<base::Name>& stack,
+                 std::string_view assetTypeLabel)
 {
     auto& currentState = states[node];
     if (currentState == VisitState::Visiting)
@@ -41,7 +43,8 @@ void detectCycle(const Graph<base::Name, builder::policy::Asset>& graph,
                 it, stack.end(), std::back_inserter(cycle), [](const base::Name& name) { return name.toStr(); });
         }
         cycle.emplace_back(node.toStr());
-        throw std::runtime_error(fmt::format("Circular decoder reference detected: {}", fmt::join(cycle, " -> ")));
+        throw std::runtime_error(
+            fmt::format("Circular {} reference detected: {}", assetTypeLabel, fmt::join(cycle, " -> ")));
     }
 
     if (currentState == VisitState::Visited)
@@ -56,7 +59,7 @@ void detectCycle(const Graph<base::Name, builder::policy::Asset>& graph,
     {
         for (const auto& child : graph.children(node))
         {
-            detectCycle(graph, child, states, stack);
+            detectCycle(graph, child, states, stack, assetTypeLabel);
         }
     }
 
@@ -494,7 +497,7 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
     return subgraph;
 }
 
-void validateAcyclic(const Graph<base::Name, Asset>& subgraph)
+void validateAcyclic(const Graph<base::Name, Asset>& subgraph, std::string_view assetTypeLabel)
 {
     std::unordered_map<base::Name, VisitState> states;
     std::vector<base::Name> stack;
@@ -505,7 +508,7 @@ void validateAcyclic(const Graph<base::Name, Asset>& subgraph)
         {
             continue;
         }
-        detectCycle(subgraph, name, states, stack);
+        detectCycle(subgraph, name, states, stack, assetTypeLabel);
     }
 }
 
@@ -533,9 +536,10 @@ PolicyGraph buildGraph(const BuiltAssets& assets, const PolicyData& data)
             continue;
         }
 
-        auto subgraphName = base::Name(PolicyData::assetTypeStr(assetType)) + GRAPH_INPUT_SUFFIX;
+        auto assetTypeLabel = PolicyData::assetTypeStr(assetType);
+        auto subgraphName = base::Name(assetTypeLabel) + GRAPH_INPUT_SUFFIX;
         auto subgraph = buildSubgraph(subgraphName, subgraphData, filtersData, assets.at(assetType), filtersAssets);
-        validateAcyclic(subgraph);
+        validateAcyclic(subgraph, assetTypeLabel);
         graph.subgraphs.emplace(assetType, std::move(subgraph));
     }
 
