@@ -1286,9 +1286,24 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
         return false;
     }
 
-    // Send DataClean notification to manager
+    // Send DataClean notification to manager with retry logic (similar to FIM)
     std::vector<std::string> indices = {SCA_SYNC_INDEX};
-    bool dataCleanSent = m_spSyncProtocol->notifyDataClean(indices);
+    bool dataCleanSent = false;
+
+    while (!dataCleanSent && m_keepRunning)
+    {
+        dataCleanSent = m_spSyncProtocol->notifyDataClean(indices);
+
+        if (!dataCleanSent && m_keepRunning)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "DataClean notification failed, retrying after scan interval...");
+
+            // Wait for scan interval before retrying, using cv for immediate wake-up on Stop()
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cv.wait_for(lock, m_scanInterval, [this] { return !m_keepRunning; });
+        }
+    }
 
     if (dataCleanSent)
     {
@@ -1304,7 +1319,8 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to send DataClean notification");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "DataClean notification aborted due to module shutdown");
         return false;
     }
 }

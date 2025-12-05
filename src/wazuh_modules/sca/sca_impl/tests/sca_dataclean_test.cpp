@@ -141,21 +141,46 @@ TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_TriggersDataClean)
     EXPECT_TRUE(m_logOutput.find("SCA module exiting") != std::string::npos);
 }
 
-// Test: All policies removed at startup with DataClean failure
-TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_DataCleanFailure)
+// Test: All policies removed at startup with DataClean failure triggers retry
+TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_DataCleanFailure_Retries)
 {
-    setupWithEmptyPoliciesAndDataInDB();
+    // Setup with short scan interval (1 second) for fast retry
+    m_sca->Setup(true, false, std::chrono::seconds(1), 30, false, {});
+    m_sca->setSyncProtocol(m_mockSyncProtocol);
 
-    // Expect notifyDataClean to fail
+    // Mock selectRows to return count > 0 for hasDataInDatabase()
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
+                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json data;
+        data["count"] = 5;
+        callback(SELECTED, data);
+    }))
+    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
+                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json data;
+        data["count"] = 5;
+        callback(SELECTED, data);
+    }));
+
+    // Expect notifyDataClean to fail on first call, retry will trigger,
+    // then second call stops the module to exit the retry loop
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(false));
+    .WillOnce(::testing::Return(false))  // First call fails
+    .WillOnce(::testing::Invoke([this](const std::vector<std::string>&, Option) -> bool
+    {
+        // Stop the module on retry to exit the loop
+        m_sca->Stop();
+        return false;
+    }));
 
-    // Run should detect failure and log warning
+    // Run should detect failure and enter retry loop, then exit when Stop() is called on retry
     m_sca->Run();
 
-    // Verify failure was logged
-    EXPECT_TRUE(m_logOutput.find("Failed to send DataClean notification") != std::string::npos ||
-                m_logOutput.find("Failed to complete DataClean process") != std::string::npos);
+    // Verify retry was attempted (debug log message)
+    EXPECT_TRUE(m_logOutput.find("DataClean notification failed, retrying") != std::string::npos);
 }
 
 // Test: No policies and no data in DB exits cleanly
