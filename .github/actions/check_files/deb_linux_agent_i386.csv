@@ -13,7 +13,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1256832,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2792476,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,273712,0.1
-/var/ossec/lib/libfim_recovery.so,root,wazuh,750,file,-rwxr-x---,73440,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,470148,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,47248,0.1
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904752,0.1
