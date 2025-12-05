@@ -38,6 +38,7 @@ constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
 constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
+constexpr auto WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
 
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
@@ -85,6 +86,35 @@ class InventorySyncFacadeImpl final
 
     void run(const std::vector<char>& dataRaw)
     {
+        // Check if message is JSON (starts with '{')
+        if (!dataRaw.empty() && dataRaw[0] == '{')
+        {
+            try
+            {
+                std::string jsonStr(dataRaw.data(), dataRaw.size());
+                auto jsonMsg = nlohmann::json::parse(jsonStr);
+
+                if (jsonMsg.contains("command") && jsonMsg["command"] == "delete_agent")
+                {
+                    if (jsonMsg.contains("agent_id") && jsonMsg["agent_id"].is_string())
+                    {
+                        std::string agentId = jsonMsg["agent_id"];
+                        deleteAgent(agentId);
+                    }
+                    else
+                    {
+                        logError(LOGGER_DEFAULT_TAG, "Invalid delete_agent message: missing agent_id");
+                    }
+                    return;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                logError(LOGGER_DEFAULT_TAG, "Failed to parse JSON message: %s", e.what());
+                return;
+            }
+        }
+
         auto syncMessage = Wazuh::SyncSchema::GetMessage(dataRaw.data());
 
         if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataValue)
@@ -376,15 +406,27 @@ public:
             {
                 try
                 {
-                    flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                    if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+                    // Check if it's a JSON message (starts with '{')
+                    if (!dataRaw.empty() && dataRaw[0] == '{')
                     {
-                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing message...");
+                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing JSON message...");
                         run(dataRaw);
                     }
                     else
                     {
-                        throw InventorySyncException("Invalid message buffer");
+                        // FlatBuffer message - verify before processing
+                        flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()),
+                                                       dataRaw.size());
+                        if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Processing FlatBuffer message...");
+                            run(dataRaw);
+                        }
+                        else
+                        {
+                            throw InventorySyncException("Invalid message buffer");
+                        }
                     }
                 }
                 catch (const std::exception& e)
@@ -1217,6 +1259,53 @@ public:
 
 private:
     InventorySyncFacadeImpl() = default;
+
+    void deleteAgent(const std::string& agentId)
+    {
+        if (agentId.empty())
+        {
+            logWarn(LOGGER_DEFAULT_TAG, "InventorySyncFacade::deleteAgent: Empty agent ID");
+            return;
+        }
+
+        if (!m_indexerConnector)
+        {
+            logError(LOGGER_DEFAULT_TAG, "InventorySyncFacade::deleteAgent: Indexer connector not initialized");
+            return;
+        }
+
+        if (!m_indexerConnector->isAvailable())
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "InventorySyncFacade::deleteAgent: Indexer not available, skipping deletion for agent '%s'",
+                    agentId.c_str());
+            return;
+        }
+
+        logInfo(LOGGER_DEFAULT_TAG,
+                "InventorySyncFacade::deleteAgent: Deleting data for agent '%s' from %s indexes",
+                agentId.c_str(),
+                WAZUH_STATES_INDEX_PATTERN);
+
+        try
+        {
+            // Delete all agent data from wazuh-states-* indexes using wildcard pattern
+            auto lock = m_indexerConnector->scopeLock();
+            m_indexerConnector->deleteByQuery(WAZUH_STATES_INDEX_PATTERN, agentId);
+
+            logInfo(LOGGER_DEFAULT_TAG,
+                    "InventorySyncFacade::deleteAgent: Successfully deleted data for agent '%s'",
+                    agentId.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            logError(LOGGER_DEFAULT_TAG,
+                     "InventorySyncFacade::deleteAgent: Failed to delete data for agent '%s': %s",
+                     agentId.c_str(),
+                     e.what());
+        }
+    }
+
     std::string m_clusterName;
     mutable std::shared_mutex m_agentSessionsMutex;
     std::mutex m_sessionTimeoutMutex;
