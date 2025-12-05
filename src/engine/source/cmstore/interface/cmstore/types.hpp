@@ -141,7 +141,7 @@ public:
     {
         if (!isValidName(m_namespace))
         {
-            throw std::runtime_error("Invalid namespace ID: " + m_namespace);
+            throw std::runtime_error(fmt::format("Invalid namespace ID: {}", m_namespace));
         }
     }
 

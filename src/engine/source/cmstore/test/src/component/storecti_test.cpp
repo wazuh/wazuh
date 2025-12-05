@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <memory>
 #include <string>
 
@@ -167,7 +168,7 @@ protected:
     void SetUp() override
     {
         mockReader = std::make_shared<cti::store::MockCMReader>();
-        storeCTI = std::make_unique<CMStoreCTI>(mockReader, testNamespaceId);
+        storeCTI = std::make_unique<CMStoreCTI>(mockReader, testNamespaceId, std::filesystem::path("/default/outputs/path"));
     }
 
     void TearDown() override
@@ -455,8 +456,8 @@ TEST_F(CMStoreCTIComponentTest, NamespaceIsolation_DifferentNamespaces)
 {
     // Create two stores with different namespaces
     auto mockReader2 = std::make_shared<cti::store::MockCMReader>();
-    CMStoreCTI store1(mockReader, NamespaceId("namespace_1"));
-    CMStoreCTI store2(mockReader2, NamespaceId("namespace_2"));
+    CMStoreCTI store1(mockReader, NamespaceId("namespace_1"), std::filesystem::path("/default/outputs/path"));
+    CMStoreCTI store2(mockReader2, NamespaceId("namespace_2"), std::filesystem::path("/default/outputs/path"));
 
     // Verify they have different namespace IDs
     EXPECT_EQ(store1.getNamespaceId().toStr(), "namespace_1");
@@ -490,7 +491,7 @@ TEST_F(CMStoreCTIComponentTest, ConcurrentAccess_MultipleReadsFromSameStore)
 TEST(CMStoreCTITest, ResolveUUIDFromName_Integration)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Mock the resolveUUIDFromName call
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("Test Integration"), "integration"))
@@ -505,7 +506,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_Integration)
 TEST(CMStoreCTITest, ResolveUUIDFromName_Decoder)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Mock the resolveUUIDFromName call
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("test_decoder"), "decoder"))
@@ -520,7 +521,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_Decoder)
 TEST(CMStoreCTITest, ResolveUUIDFromName_KVDB)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Mock the resolveUUIDFromName call
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("test_kvdb"), "kvdb"))
@@ -535,7 +536,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_KVDB)
 TEST(CMStoreCTITest, ResolveUUIDFromName_NotFound)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Mock the resolveUUIDFromName call to throw an exception
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("NonExistent"), "integration"))
@@ -551,7 +552,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_NotFound)
 TEST(CMStoreCTITest, ResolveUUIDFromName_UnsupportedType)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Try to resolve UUID with unsupported resource type (OUTPUT)
     EXPECT_THROW(
@@ -563,7 +564,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_UnsupportedType)
 TEST(CMStoreCTITest, ResolveUUIDFromName_ExpiredReader)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Reset the shared_ptr to simulate expired reader
     mockReader.reset();
@@ -578,7 +579,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_ExpiredReader)
 TEST(CMStoreCTITest, ResolveUUIDFromName_ConsistentResults)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Mock round-trip: Name -> UUID -> Name
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("Test Integration"), "integration"))
@@ -600,7 +601,7 @@ TEST(CMStoreCTITest, ResolveUUIDFromName_ConsistentResults)
 TEST(CMStoreCTITest, ResolveUUIDFromName_MultipleCallsSameResource)
 {
     auto mockReader = std::make_shared<cti::store::MockCMReader>();
-    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"));
+    auto storeCTI = std::make_shared<CMStoreCTI>(mockReader, NamespaceId("test_namespace"), std::filesystem::path("/default/outputs/path"));
 
     // Mock multiple calls to the same resource
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("windows"), "integration"))
