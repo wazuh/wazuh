@@ -185,6 +185,12 @@ EXPORTED void fim_db_teardown();
 EXPORTED void fim_db_close_and_delete_database();
 
 /**
+ * @brief Increase the version column for all entries in a table.
+ * @return 0 on success, -1 on error.
+ */
+EXPORTED int fim_db_increase_each_entry_version(const char* table_name);
+
+/**
  * @brief Update the last integrity check timestamp for a table.
  *
  * @param table_name Name of the table (e.g., "file_entry", "registry_key", "registry_data").

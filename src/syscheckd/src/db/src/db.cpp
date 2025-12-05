@@ -89,13 +89,13 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
 
 std::string DB::getConcatenatedChecksums(const std::string& tableName)
 {
-    std::string concatenatedChecksums;
+    std::vector<std::string> checksums;
 
-    auto callback {[&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    auto callback {[&checksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
     {
         if (ReturnTypeCallback::SELECTED == type)
         {
-            concatenatedChecksums += jsonResult.at("checksum").get<std::string>();
+            checksums.push_back(jsonResult.at("checksum").get<std::string>());
         }
     }};
 
@@ -108,6 +108,19 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
                       .build()};
 
     FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    std::string concatenatedChecksums;
+    size_t totalSize = 0;
+    for (const auto& checksum : checksums)
+    {
+        totalSize += checksum.length();
+    }
+    concatenatedChecksums.reserve(totalSize);
+
+    for (const auto& checksum : checksums)
+    {
+        concatenatedChecksums += checksum;
+    }
 
     return concatenatedChecksums;
 }
@@ -369,6 +382,64 @@ int DB::updateVersion(const std::string& tableName, int version)
     return retval;
 }
 
+int DB::increaseEachEntryVersion(const std::string& tableName)
+{
+    int retval {0};
+    std::vector<nlohmann::json> rows;
+    auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            rows.push_back(jsonResult);
+        }
+    }};
+
+    try
+    {
+        // Select all rows (only primary keys and version column)
+        auto selectQuery {SelectQuery::builder()
+                          .table(tableName)
+                          .columnList({"*"})  // Get all columns to properly identify rows
+                          .rowFilter("")
+                          .orderByOpt("")
+                          .distinctOpt(false)
+                          .build()};
+
+        FIMDB::instance().executeQuery(selectQuery.query(), callback);
+    }
+    catch (const std::exception& ex)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, std::string("Error selecting rows for version update: ") + ex.what());
+        return -1;
+    }
+
+    // Update version for each row
+    for (auto& row : rows)
+    {
+        row["version"] = row["version"].get<int>() + 1;
+
+        // Use syncRow to update the entry
+        auto updateCallback {[](ReturnTypeCallback, const nlohmann::json&) {}};
+
+        auto syncQuery {SyncRowQuery::builder()
+                        .table(tableName)
+                        .data(row)
+                        .build()};
+
+        try
+        {
+            FIMDB::instance().updateItem(syncQuery.query(), updateCallback);
+        }
+        catch (const std::exception& ex)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, std::string("Error updating version: ") + ex.what());
+            retval = -1;
+        }
+    }
+
+    return retval;
+}
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -522,6 +593,21 @@ void fim_db_close_and_delete_database()
     // LCOV_EXCL_STOP
 }
 
+int fim_db_increase_each_entry_version(const char* table_name)
+{
+    try
+    {
+        return DB::instance().increaseEachEntryVersion(table_name);
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+    return -1;
+
+    // LCOV_EXCL_STOP
+}
 cJSON* fim_db_get_every_element(const char* table_name)
 {
     if (!table_name)

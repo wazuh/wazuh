@@ -780,18 +780,21 @@ void fim_registry_get_checksum_key(fim_registry_key *data) {
 
     size = snprintf(0,
             0,
-            "%s:%s:%s:%s:%s:%lu",
+            "%s:%s:%s:%s:%s:%s:%lu:%d",
+            data->path ? data->path : "",
             data->permissions ? data->permissions : "",
             data->uid ? data->uid : "",
             data->owner ? data->owner : "",
             data->gid ? data->gid : "",
             data->group ? data->group : "",
-            data->mtime);
+            data->mtime,
+            data->architecture);
 
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
-            "%s:%s:%s:%s:%s:%lu:%d",
+            "%s:%s:%s:%s:%s:%s:%lu:%d",
+            data->path ? data->path : "",
             data->permissions ? data->permissions : "",
             data->uid ? data->uid : "",
             data->gid ? data->gid : "",
@@ -815,7 +818,10 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
 
     size = snprintf(0,
             0,
-            "%u:%llu:%s:%s:%s",
+            "%s:%s:%d:%u:%llu:%s:%s:%s",
+            data->path ? data->path : "",
+            data->value ? data->value : "",
+            data->architecture,
             data->type,
             data->size,
             data->hash_md5 ,
@@ -825,7 +831,10 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
-            "%u:%llu:%s:%s:%s",
+            "%s:%s:%d:%u:%llu:%s:%s:%s",
+            data->path ? data->path : "",
+            data->value ? data->value : "",
+            data->architecture,
             data->type,
             data->size,
             data->hash_md5 ,
