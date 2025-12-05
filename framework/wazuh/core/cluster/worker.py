@@ -12,7 +12,7 @@ import shutil
 from collections import defaultdict
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Tuple, Dict, Callable, List
+from typing import Tuple, Dict, Callable, List, Coroutine, Any
 from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils, analysis
@@ -913,7 +913,7 @@ class Worker(client.AbstractClientManager):
         self.dapi = dapi.APIRequestQueue(server=self)
         self.integrity_control = {}
 
-    def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
+    def add_tasks(self) -> List[Tuple[Coroutine[Any, Any, Any], Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.
 
         Returns

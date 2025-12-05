@@ -17,3 +17,4 @@ wazuh-clusterd-internal
 .idea
 
 wazuh/wazuh.json
+.venv/*
