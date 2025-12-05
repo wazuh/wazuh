@@ -45,7 +45,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                Operation operation,
                                const std::string& index,
                                const std::string& data,
-                               uint64_t version) override;
+                               uint64_t version,
+                               bool isDataContext = false) override;
 
         /// @copydoc IAgentSyncProtocol::persistDifferenceInMemory
         void persistDifferenceInMemory(const std::string& id,
@@ -73,6 +74,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::sendDataContextMessages
         bool sendDataContextMessages(uint64_t session,
                                      const std::vector<PersistedData>& data) override;
+
+        /// @copydoc IAgentSyncProtocol::fetchPendingItems
+        std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
+
+        /// @copydoc IAgentSyncProtocol::clearAllDataContext
+        void clearAllDataContext() override;
 
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;

@@ -78,7 +78,7 @@ class EXPORTED Syscollector final
                               std::chrono::seconds timeout, unsigned int retries,
                               size_t maxEps);
         bool syncModule(Mode mode);
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
         bool parseResponseBufferVD(const uint8_t* data, size_t length);
         bool notifyDataClean(const std::vector<std::string>& indices);
@@ -111,6 +111,36 @@ class EXPORTED Syscollector final
          */
         void clearLocalDBTables(const std::vector<std::string>& indices);
         std::vector<std::string> getDisabledVDIndices() const;
+
+        /**
+         * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
+         * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")
+         * @param excludeIds Set of hash IDs to exclude from results (items already in DataValue)
+         * @return Vector of JSON objects representing all rows in the table (excluding specified IDs)
+         */
+        std::vector<nlohmann::json> fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds);
+
+        /**
+         * @brief Determines which DataContext items to include based on platform-specific rules
+         * @param operation The operation type (CREATE, MODIFY, DELETE_)
+         * @param index The index being modified (system, packages, hotfixes)
+         * @return Vector of table names that should be included as DataContext
+         */
+        std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
+
+        /**
+         * @brief Checks if the first VD sync has been completed
+         * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
+         */
+        bool isVDFirstSyncDone() const;
+
+        /**
+         * @brief Processes VD DataContext after scan completes
+         * @details Queries the VD sync protocol database for pending DataValue items,
+         *          applies platform-specific rules to determine what DataContext to include,
+         *          and submits the DataContext items to the sync protocol
+         */
+        void processVDDataContext();
         nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsPackageData(const nlohmann::json& originalData, bool createFields = true);
