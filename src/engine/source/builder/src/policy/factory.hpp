@@ -3,6 +3,7 @@
 
 #include <map>
 #include <memory>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -290,6 +291,15 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
                                        const SubgraphData& filtersData,
                                        const std::unordered_map<base::Name, Asset>& assets,
                                        const std::unordered_map<base::Name, Asset>& filters);
+
+/**
+ * @brief Validates that the provided subgraph does not contain cycles.
+ *
+ * @param subgraph Graph to validate.
+ *
+ * @throw std::runtime_error If a cycle is detected.
+ */
+void validateAcyclic(const Graph<base::Name, Asset>& subgraph, std::string_view assetTypeLabel);
 
 /**
  * @brief Build the policy graph from the built assets and the relations defined in the policy data.
