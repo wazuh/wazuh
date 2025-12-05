@@ -1057,7 +1057,7 @@ $(EXTERNAL_CURL)Makefile:
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-ifneq (,$(filter ${uname_M},aarch64 ppc64le))
+ifneq (,$(filter ${uname_M},aarch64))
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --build=${uname_M}-unknown-linux-gnu --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-libpsl --without-brotli --without-nghttp2 --without-zstd
 else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-libpsl --without-brotli --without-nghttp2 --without-zstd
@@ -1264,14 +1264,10 @@ else
 ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
 	PRECOMPILED_ARCH := /arm32
 else
-ifeq (${cpu_arch},ppc64le)
-	PRECOMPILED_ARCH := /ppc64le
-else
 ifneq (,$(filter ${cpu_arch},ia64))
 	PRECOMPILED_ARCH := /ia64
 else
 	PRECOMPILED_ARCH := /${uname_P}
-endif
 endif
 endif
 endif

@@ -35,13 +35,11 @@ hosts at an operating system and application level. It provides the following ca
 log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring
 
 # Build debuginfo package
-%ifnarch ppc64le
 %package -n wazuh-agent-debuginfo
 Requires: wazuh-agent = %{_version}-%{_release}
 Summary: Debug information for package %{name}.
 %description -n wazuh-agent-debuginfo
 This package provides debug information for package %{name}.
-%endif
 
 %prep
 %setup -q
@@ -750,9 +748,7 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}/wodles
 %attr(750, root, wazuh) %{_localstatedir}/wodles/*
 
-%ifnarch ppc64le
 %files -n wazuh-agent-debuginfo -f debugfiles.list
-%endif
 
 %changelog
 * Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
