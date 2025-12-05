@@ -56,11 +56,6 @@ CONF_SECTIONS = MappingProxyType({
         'list_options': ['rootkit_files', 'rootkit_trojans', 'windows_audit', 'system_audit', 'windows_apps',
                          'windows_malware']
     },
-    'ruleset': {
-        'type': 'merge',
-        'list_options': ['include', 'rule', 'rule_dir', 'decoder', 'decoder_dir', 'list', 'rule_exclude',
-                         'decoder_exclude']
-    },
     'syscheck': {
         'type': 'merge',
         'list_options': ['directories', 'ignore', 'nodiff']
@@ -619,7 +614,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     Parameters
     ----------
     section : str
-        Filters by section (i.e. rules).
+        Filters by section
     field : str
         Filters by field in section (i.e. included).
     conf_file : str
@@ -673,13 +668,6 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
                 data = {section: [{field: item[field]} for item in data[section]]}
             else:
                 field_data = data[section][field]
-                if distinct and section == 'ruleset':
-                    if field in ('decoder_dir', 'rule_dir'):
-                        # Remove duplicates
-                        values = []
-                        [values.append(x) for x in field_data if x not in values]
-                        field_data = values
-
                 data = {section: {field: field_data}}
         except KeyError:
             raise WazuhError(1103)

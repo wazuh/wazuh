@@ -281,8 +281,8 @@ def save_logs(test_name: str):
     Save haproxy-lb log.
 
     Examples:
-    "test_{test_name}-{node/agent}-{log}" -> "test_decoder-worker1-api.log"
-    "test_{test_name}-{node/agent}-{log}" -> "test_decoder-agent4-ossec.log"
+    "test_{test_name}-{node/agent}-{log}" -> "test_cluster-worker1-api.log"
+    "test_{test_name}-{node/agent}-{log}" -> "test_cluster-agent4-ossec.log"
 
     Parameters
     ----------

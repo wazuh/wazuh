@@ -793,16 +793,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/tzdb
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production/decoders
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing/decoders
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production/integrations
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing/integrations
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb/production
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb/testing
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp

@@ -269,7 +269,7 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
     Parameters
     ----------
     section : str
-        Filters by section (i.e. rules).
+        Filters by section
     field : str
         Filters by field in section (i.e. included).
     raw : bool
@@ -357,7 +357,7 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
             raise WazuhError(1125)
 
         # Check if the configuration is valid
-        validate_wazuh_xml(new_conf, config_file=True)
+        validate_wazuh_xml(new_conf)
 
         # Create a backup of the current configuration before attempting to replace it
         try:

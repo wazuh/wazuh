@@ -15,19 +15,11 @@ from wazuh.core.exception import WazuhError
 
 _alphanumeric_param = re.compile(r'^[\w,\-.+\s:]+$')
 _symbols_alphanumeric_param = re.compile(r'^[\w,*<>!\-.+\s:/()\[\]\'\"|=~#]+$')
-_array_numbers = re.compile(r'^\d+(,\d+)*$')
-_array_names = re.compile(r'^[\w\-.%]+(,[\w\-.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
-_boolean = re.compile(r'^true$|^false$')
-_dates = re.compile(r'^\d{8}$')
-_empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
 _group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[A-Za-z0-9.\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:['
                      r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
-_ips = re.compile(
-    r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:/(?:[0-9]|[1-2]['
-    r'0-9]|3[0-2]))?$|^any$|^ANY$')
 _iso8601_date = re.compile(r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
 _iso8601_date_time = re.compile(
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.['
@@ -38,18 +30,12 @@ _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
-_cdb_filename_path = re.compile(r'^[\-\w]+$')
-_xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
-_xml_filename = re.compile(r'^[\w\-]+\.xml(,[\w\-]+\.xml)*$')
 _query_param = re.compile(r"^[\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+(?:[;,][\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}-[\d]{1,2}$')
-_get_dirnames_path = re.compile(r'^(((etc|ruleset)/(decoders|rules)[\w\-/]*)|(etc/lists[\w\-/]*))$')
 _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
-_type_format = re.compile(r'^xml$|^json$')
 _wpk_path = re.compile(r'^[\w\-.\\/:\s]*[^\/]\.wpk$')
-_yes_no_boolean = re.compile(r'^yes$|^no$')
 _active_response_command = re.compile(f"^!?{_paths.pattern.lstrip('^')}")
 
 security_config_schema = {
@@ -223,7 +209,7 @@ api_config_schema = {
 WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
         'agent': {"client", "buffer", "labels", "internal", "anti_tampering"},
-        'analysis': {"global", "active_response", "alerts", "command", "rules", "decoders", "internal", "rule_test"},
+        'analysis': {"global", "active_response", "alerts", "command", "internal"},
         'auth': {"auth"},
         'com': {"active-response", "logging", "internal", "cluster"},
         'logcollector': {"localfile", "socket", "internal"},
@@ -361,14 +347,6 @@ def format_base64(value):
     return check_exp(value, _base64)
 
 
-@Draft4Validator.FORMAT_CHECKER.checks("get_dirnames_path")
-def format_get_dirnames_path(relative_path):
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _get_dirnames_path)
-
-
 @Draft4Validator.FORMAT_CHECKER.checks("hash")
 def format_hash(value):
     return check_exp(value, _hashes)
@@ -387,21 +365,6 @@ def format_numbers(value):
 @Draft4Validator.FORMAT_CHECKER.checks("numbers_or_all")
 def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("cdb_filename_path")
-def format_cdb_filename_path(value):
-    return check_exp(value, _cdb_filename_path)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("xml_filename")
-def format_xml_filename(value):
-    return check_exp(value, _xml_filename)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("xml_filename_path")
-def format_xml_filename_path(value):
-    return check_exp(value, _xml_filename_path)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("path")

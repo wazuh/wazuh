@@ -118,55 +118,6 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
-        # Rule: 1200 - 1299
-        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1201: {'message': 'Error reading rule files',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
-               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
-               },
-        1203: {'message': 'Error in argument \'level\'',
-               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
-               },
-        1205: {'message': 'Requirement not valid',
-               'remediation': 'Please indicate one of the following values:'
-               },
-
-        1207: {'message': 'Error reading rule files, wrong permissions',
-               'remediation': 'Please, check your permissions over the file'
-               },
-        1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
-                          'be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-        },
-        1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the rules'
-        },
-        1211: {'message': 'Invalid relative directory. A \'rule_dir\' tag is declared in ossec.conf '
-                          'ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-               },
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -200,54 +151,6 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-        1413: {'message': 'Error reading rules file'},
-        1414: {'message': 'Error reading rules file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1415: {'message': 'Rules file not found',
-               'remediation': 'Please, use GET /rules/files to list all available rules'
-               },
-
-        # Decoders: 1500 - 1599
-        1500: {'message': 'Error reading decoders from ossec.conf',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/custom.html)'
-                              'to get more information on adding or modifying existing decoders'
-               },
-        1501: {'message': 'Error reading decoders file'
-               },
-        1502: {'message': 'Error reading decoders file',
-               'remediation': 'Please, make sure you have read permissions on the file'
-               },
-        1503: {'message': 'Decoders file not found',
-               'remediation': 'Please, use GET /decoders/files to list all available decoders'
-               },
-        1504: {'message': 'The decoder does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1505: {'message': 'Invalid relative directory. A \'decoder_dir\' '
-                          'tag must be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
-        1506: {'message': 'Uploading, updating or deleting default decoders is not allowed.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1507: {'message': 'Invalid relative directory. A \'decoder_dir\' tag is declared '
-                          'in ossec.conf ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
 
         # Syscheck/AR: 1600 - 1699
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
@@ -386,8 +289,6 @@ class WazuhException(Exception):
         1913: {'message': 'Error getting manager status, directory /proc is not found or permissions to see its status '
                           'are not granted',
                'remediation': 'Please, ensure /proc exists and permissions are granted'},
-        1914: {'message': 'Failed to reload ruleset',
-               'remediation': 'Check the Wazuh logs for details and verify the ruleset files and permissions.'},
 
         # Database:
         2000: {'message': 'No such database file'},
@@ -410,14 +311,6 @@ class WazuhException(Exception):
         2015: {'message': 'Invalid request URL scheme'},
         2016: {'message': 'Invalid unix socket path'},
         2017: {'message': 'Could not retrieve agents synchronization information from wazuh-db'},
-
-        # Engine API client
-        2800: {'message': 'The engine client connection timeout has been exceeded'},
-        2801: {'message': 'Invalid request URL scheme'},
-        2802: {'message': 'Invalid unix socket path'},
-        2803: {'message': 'Error sending request to the engine'},
-        2804: {'message': 'Unexpected error sending request to the engine'},
-        2805: {'message': 'Error parsing response from the engine'},
 
         # External services
         2100: {'message': 'Error in CTI service request'},
@@ -579,26 +472,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
         6005: {'message': 'Maximum number of requests per minute reached'},
-
-        # Logtest
-        7000: {'message': 'Error trying to get logtest response'},
-        7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'},
-
-        # Engine
-        9001: {'message': 'Asset syntax error: '
-        '            The provided {resource_type} asset data does not match the required format: {cause}.',
-              'remediation': 'Please check the resouce data and ensure it meets the required format'},
-        9002: {'message': 'Engine error: Unable to validate the {resource_type}: {cause}.',
-               'remediation': 'Please check the resouce data and ensure it meets the required format.'},
-        9003: {'message': 'Engine error: Unable to get the {resource_type}: {cause}',
-               'remediation': 'Check the resouce ID and confirm it is present in the system.'},
-        9004: {'message': 'Engine error: Unable to create the {resource_type}: {cause}.',
-                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
-        9005: {'message': 'Engine error: Unable to update the {resource_type}: {cause}.',
-                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
-        9006: {'message': 'Engine error: Unable to delete the {resource_type}: {cause}.',
-                'remediation': 'Check the resouce ID and confirm it is present in the system.'},
     }
 
     # Reserve agent upgrade custom errors
@@ -795,14 +668,6 @@ class WazuhHAPHelperError(WazuhClusterError):
     """
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
-
-
-class WazuhEngineError(WazuhInternalError):
-    """
-    This type of exception is raised inside the engine client.
-    """
-    _default_type = "about:blank"
-    _default_title = "Wazuh Engine Error"
 
 
 class WazuhError(WazuhException):

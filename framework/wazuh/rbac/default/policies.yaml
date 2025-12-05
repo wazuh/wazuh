@@ -117,85 +117,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  decoders_read:
-    description: Allow reading all decoders in the system.
-    policies:
-      resourceless:
-        actions:
-          - decoders:read
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  decoders_all:
-    description: Allow managing all decoders in the system.
-    policies:
-      resourceless:
-        actions:
-          - decoders:create
-          - decoders:read 
-          - decoders:update
-          - decoders:delete
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  kvdbs_read:
-    description: Allow reading KVDBs.
-    policies:
-      resourceless:
-          actions:
-          - kvdbs:read
-          resources:
-            - '*:*:*'
-          effect: allow
-
-  kvdbs_all:
-    description: Allow managing KVDBs (create, update, delete).
-    policies:
-      resourceless:
-        actions:
-          - kvdbs:create
-          - kvdbs:read
-          - kvdbs:update
-          - kvdbs:delete
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  mitre_read:
-    description: Allow read MITRE database information.
-    policies:
-      mitre:
-        actions:
-          - mitre:read
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  integrations_read:
-    description: Allow reading all integrations files in the system.
-    policies:
-      resourceless:
-        actions:
-          - integrations:read
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  integrations_all:
-    description: Allow managing all integrations files in the system.
-    policies:
-      resourceless:
-        actions:
-          - integrations:create
-          - integrations:read
-          - integrations:update
-          - integrations:delete
-        resources:
-          - '*:*:*'
-        effect: allow
-
   rootcheck_run:
     description: Allow run rootcheck.
     policies:
@@ -204,33 +125,6 @@ default_policies:
           - rootcheck:run
         resources:
           - agent:id:*
-        effect: allow
-
-  rules_read:
-    description: Allow reading all rule files in the system.
-    policies:
-      rules:
-        actions:
-          - rules:read
-        resources:
-          - rule:file:*
-        effect: allow
-
-  rules_all:
-    description: Allow managing all rule files in the system.
-    policies:
-      files:
-        actions:
-          - rules:read
-          - rules:delete
-        resources:
-          - rule:file:*
-        effect: allow
-      resourceless:
-        actions:
-          - rules:update
-        resources:
-          - '*:*:*'
         effect: allow
 
   syscheck_run:
@@ -281,16 +175,6 @@ default_policies:
           - cluster:read
         resources:
           - node:id:*
-        effect: allow
-
-  logtest_all:
-    description: Provide access to all logtest related functionalities.
-    policies:
-      logtest:
-        actions:
-          - logtest:run
-        resources:
-          - '*:*:*'
         effect: allow
 
   task_status:
