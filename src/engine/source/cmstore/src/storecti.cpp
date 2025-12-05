@@ -9,6 +9,7 @@
 namespace cm::store
 {
 
+const base::Name G_FILTER_NAME {"filter/allow-all/0"}; ///< Filter that allows all events
 /***********************************  General Methods ************************************/
 const NamespaceId& CMStoreCTI::getNamespaceId() const
 {
@@ -478,6 +479,14 @@ json::Json CMStoreCTI::getAssetByName(const base::Name& name) const
 
     try
     {
+        auto isFilter = (name.parts().front() == "filter") && (name.parts().size() == 3);
+        if (isFilter)
+        {
+            json::Json filter {};
+            filter.setString(G_FILTER_NAME.fullName(), "/name");
+            return filter;
+        }
+
         // Get raw asset document from CTI Store (only decoders supported)
         json::Json rawDoc = reader->getAsset(name);
         auto documentOpt = rawDoc.getJson("/payload/document");
@@ -486,7 +495,7 @@ json::Json CMStoreCTI::getAssetByName(const base::Name& name) const
             throw std::runtime_error("Asset document missing /payload/document section");
         }
 
-        return *documentOpt;
+        return adaptDecoder(*documentOpt);
     }
     catch (const std::exception& e)
     {

@@ -125,7 +125,7 @@ protected:
     void SetUp() override
     {
         mockReader = std::make_shared<cti::store::MockCMReader>();
-        storeCTI = std::make_unique<CMStoreCTI>(mockReader, testNamespaceId);
+        storeCTI = std::make_unique<CMStoreCTI>(mockReader, testNamespaceId, std::filesystem::temp_directory_path());
     }
 
     void TearDown() override
@@ -142,7 +142,7 @@ protected:
 TEST_F(CMStoreCTITest, Constructor_ValidReader_Success)
 {
     EXPECT_NO_THROW({
-        CMStoreCTI store(mockReader, NamespaceId("valid_namespace"));
+        CMStoreCTI store(mockReader, NamespaceId("valid_namespace"), std::filesystem::temp_directory_path());
     });
 }
 
@@ -150,7 +150,7 @@ TEST_F(CMStoreCTITest, Constructor_NullReader_Accepted)
 {
     // Null reader is accepted at construction time (weak_ptr behavior)
     EXPECT_NO_THROW({
-        CMStoreCTI store(nullptr, NamespaceId("null_namespace"));
+        CMStoreCTI store(nullptr, NamespaceId("null_namespace"), std::filesystem::temp_directory_path());
     });
 }
 
@@ -617,12 +617,12 @@ TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
     // Verify result contains ONLY the /payload/document section
     EXPECT_TRUE(result.exists("/name"));
     EXPECT_TRUE(result.exists("/metadata"));
-    EXPECT_TRUE(result.exists("/test_field"));
 
     // Verify envelope fields are NOT present
     EXPECT_FALSE(result.exists("/offset"));
     EXPECT_FALSE(result.exists("/version"));
     EXPECT_FALSE(result.exists("/inserted_at"));
+    EXPECT_FALSE(result.exists("/test_field"));
 
     // Verify values match the document section
     auto nameOpt = result.getString("/name");
@@ -632,10 +632,6 @@ TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
     auto metadataOpt = result.getString("/metadata");
     EXPECT_TRUE(metadataOpt.has_value());
     EXPECT_EQ(metadataOpt.value(), "test-metadata");
-
-    auto testFieldOpt = result.getString("/test_field");
-    EXPECT_TRUE(testFieldOpt.has_value());
-    EXPECT_EQ(testFieldOpt.value(), "test-value");
 }
 
 TEST_F(CMStoreCTITest, GetAssetByUUID_MissingPayloadDocument_ThrowsException)
@@ -701,21 +697,17 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_ReturnsOnlyPayloadDocument)
     // Verify result contains ONLY the /payload/document section
     EXPECT_TRUE(result.exists("/name"));
     EXPECT_TRUE(result.exists("/metadata"));
-    EXPECT_TRUE(result.exists("/custom_field"));
 
     // Verify envelope fields are NOT present
     EXPECT_FALSE(result.exists("/offset"));
     EXPECT_FALSE(result.exists("/version"));
     EXPECT_FALSE(result.exists("/inserted_at"));
+    EXPECT_FALSE(result.exists("/custom_field"));
 
     // Verify values match the document section
     auto nameOpt = result.getString("/name");
     EXPECT_TRUE(nameOpt.has_value());
     EXPECT_EQ(nameOpt.value(), "decoder/test-uuid-extract/0");
-
-    auto customFieldOpt = result.getString("/custom_field");
-    EXPECT_TRUE(customFieldOpt.has_value());
-    EXPECT_EQ(customFieldOpt.value(), "uuid-test-value");
 }
 
 /*****************************************************************************
@@ -910,7 +902,7 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_GetPolicy_ThrowsException)
 {
     // Create store with a reader that will be destroyed
     auto tempReader = std::make_shared<cti::store::MockCMReader>();
-    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"));
+    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"), std::filesystem::temp_directory_path());
 
     // Destroy the reader
     tempReader.reset();
@@ -922,7 +914,7 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_GetIntegrationByName_ThrowsException)
 {
     // Create store with a reader that will be destroyed
     auto tempReader = std::make_shared<cti::store::MockCMReader>();
-    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"));
+    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"), std::filesystem::temp_directory_path());
 
     // Destroy the reader
     tempReader.reset();
@@ -934,7 +926,7 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_AssetExistsByName_ReturnsFalse)
 {
     // Create store with a reader that will be destroyed
     auto tempReader = std::make_shared<cti::store::MockCMReader>();
-    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"));
+    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"), std::filesystem::temp_directory_path());
 
     // Destroy the reader
     tempReader.reset();
@@ -976,4 +968,3 @@ TEST_F(CMStoreCTITest, MalformedDocument_MissingUUID_HandledGracefully)
 
     EXPECT_THROW(storeCTI->resolveUUIDFromName("no-uuid", ResourceType::INTEGRATION), std::runtime_error);
 }
-

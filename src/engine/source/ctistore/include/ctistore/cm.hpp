@@ -1,6 +1,7 @@
 #ifndef _CTI_STORE_CM
 #define _CTI_STORE_CM
 
+#include <atomic>
 #include <memory>
 #include <shared_mutex>
 #include <utility>
@@ -37,7 +38,7 @@ public:
      * @param deployCallback Optional callback to notify when content is successfully deployed
      */
     explicit ContentManager(const ContentManagerConfig& config = ContentManagerConfig {},
-                            ContentDeployCallback deployCallback = nullptr);
+                            std::shared_ptr<std::atomic_bool> syncFlag = nullptr);
 
     /**
      * @brief Destructor
@@ -203,7 +204,7 @@ private:
     mutable std::shared_mutex m_mutex;
     ContentManagerConfig m_config;
     std::unique_ptr<CTIStorageDB> m_storage;
-    ContentDeployCallback m_deployCallback;
+    std::shared_ptr<std::atomic_bool> m_syncFlag;
 };
 
 } // namespace cti::store
