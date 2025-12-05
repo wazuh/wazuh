@@ -26,29 +26,6 @@ constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
 constexpr auto MESSAGE_TYPE_REQUIRED = "Field /type is required";
 constexpr auto MESSAGE_TYPE_UNSUPPORTED = "Unsupported value for /type";
 
-/**
- * Helper: map protobuf ContentType -> cm::store::ResourceType
- */
-namespace
-{
-inline cm::store::ResourceType toResourceType(eContent::ContentType type)
-{
-    using eT = eContent::ContentType;
-    using rT = cm::store::ResourceType;
-
-    switch (type)
-    {
-        case eT::CONTENT_TYPE_DECODER: return rT::DECODER;
-        case eT::CONTENT_TYPE_OUTPUT: return rT::OUTPUT;
-        case eT::CONTENT_TYPE_RULE: return rT::RULE;
-        case eT::CONTENT_TYPE_FILTER: return rT::FILTER;
-        case eT::CONTENT_TYPE_INTEGRATION: return rT::INTEGRATION;
-        case eT::CONTENT_TYPE_KVDB: return rT::KVDB;
-        default: return rT::UNDEFINED;
-    }
-}
-} // anonymous namespace
-
 /*********************************************
  * Namespace handlers
  *********************************************/
@@ -292,13 +269,13 @@ adapter::RouteHandler resourceList(std::shared_ptr<cm::crud::ICrudService> crud)
             return;
         }
 
-        if (protoReq.type() == eContent::CONTENT_TYPE_UNSPECIFIED)
+        if (protoReq.type().empty())
         {
             res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_REQUIRED);
             return;
         }
 
-        const auto rType = toResourceType(protoReq.type());
+        const auto rType = cm::store::resourceTypeFromString(protoReq.type());
         if (rType == cm::store::ResourceType::UNDEFINED)
         {
             res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_UNSUPPORTED);
@@ -309,7 +286,6 @@ adapter::RouteHandler resourceList(std::shared_ptr<cm::crud::ICrudService> crud)
 
         try
         {
-            // std::vector<cm::crud::ResourceSummary> listResources(ns, rType);
             const auto resources = service->listResources(protoReq.space(), rType);
 
             auto* out = eResponse.mutable_resources();
@@ -407,7 +383,7 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
-        if (protoReq.type() == eContent::CONTENT_TYPE_UNSPECIFIED)
+        if (protoReq.type().empty())
         {
             res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_REQUIRED);
             return;
@@ -419,7 +395,7 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
-        const auto rType = toResourceType(protoReq.type());
+        const auto rType = cm::store::resourceTypeFromString(protoReq.type());
         if (rType == cm::store::ResourceType::UNDEFINED)
         {
             res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_UNSUPPORTED);

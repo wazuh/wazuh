@@ -30,7 +30,6 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
-#include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "engine.pb.h"
 // @@protoc_insertion_point(includes)
@@ -117,36 +116,6 @@ namespace api {
 namespace engine {
 namespace content {
 
-enum ContentType : int {
-  CONTENT_TYPE_UNSPECIFIED = 0,
-  CONTENT_TYPE_DECODER = 1,
-  CONTENT_TYPE_OUTPUT = 2,
-  CONTENT_TYPE_RULE = 3,
-  CONTENT_TYPE_FILTER = 4,
-  CONTENT_TYPE_INTEGRATION = 5,
-  CONTENT_TYPE_KVDB = 6,
-  ContentType_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
-  ContentType_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
-};
-bool ContentType_IsValid(int value);
-constexpr ContentType ContentType_MIN = CONTENT_TYPE_UNSPECIFIED;
-constexpr ContentType ContentType_MAX = CONTENT_TYPE_KVDB;
-constexpr int ContentType_ARRAYSIZE = ContentType_MAX + 1;
-
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ContentType_descriptor();
-template<typename T>
-inline const std::string& ContentType_Name(T enum_t_value) {
-  static_assert(::std::is_same<T, ContentType>::value ||
-    ::std::is_integral<T>::value,
-    "Incorrect type passed to function ContentType_Name.");
-  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
-    ContentType_descriptor(), enum_t_value);
-}
-inline bool ContentType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ContentType* value) {
-  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ContentType>(
-    ContentType_descriptor(), name, value);
-}
 // ===================================================================
 
 class ResourceSummary final :
@@ -1426,13 +1395,18 @@ class resourceList_Request final :
   std::string* _internal_mutable_space();
   public:
 
-  // .com.wazuh.api.engine.content.ContentType type = 2;
+  // string type = 2;
   void clear_type();
-  ::com::wazuh::api::engine::content::ContentType type() const;
-  void set_type(::com::wazuh::api::engine::content::ContentType value);
+  const std::string& type() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_type(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_type();
+  PROTOBUF_NODISCARD std::string* release_type();
+  void set_allocated_type(std::string* type);
   private:
-  ::com::wazuh::api::engine::content::ContentType _internal_type() const;
-  void _internal_set_type(::com::wazuh::api::engine::content::ContentType value);
+  const std::string& _internal_type() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
+  std::string* _internal_mutable_type();
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.resourceList_Request)
@@ -1444,7 +1418,7 @@ class resourceList_Request final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
-    int type_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -2121,8 +2095,8 @@ class resourcePost_Request final :
 
   enum : int {
     kSpaceFieldNumber = 1,
-    kYmlContentFieldNumber = 3,
     kTypeFieldNumber = 2,
+    kYmlContentFieldNumber = 3,
   };
   // string space = 1;
   void clear_space();
@@ -2136,6 +2110,20 @@ class resourcePost_Request final :
   const std::string& _internal_space() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_space(const std::string& value);
   std::string* _internal_mutable_space();
+  public:
+
+  // string type = 2;
+  void clear_type();
+  const std::string& type() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_type(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_type();
+  PROTOBUF_NODISCARD std::string* release_type();
+  void set_allocated_type(std::string* type);
+  private:
+  const std::string& _internal_type() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
+  std::string* _internal_mutable_type();
   public:
 
   // string ymlContent = 3;
@@ -2152,15 +2140,6 @@ class resourcePost_Request final :
   std::string* _internal_mutable_ymlcontent();
   public:
 
-  // .com.wazuh.api.engine.content.ContentType type = 2;
-  void clear_type();
-  ::com::wazuh::api::engine::content::ContentType type() const;
-  void set_type(::com::wazuh::api::engine::content::ContentType value);
-  private:
-  ::com::wazuh::api::engine::content::ContentType _internal_type() const;
-  void _internal_set_type(::com::wazuh::api::engine::content::ContentType value);
-  public:
-
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.resourcePost_Request)
  private:
   class _Internal;
@@ -2170,8 +2149,8 @@ class resourcePost_Request final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr ymlcontent_;
-    int type_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -3052,24 +3031,54 @@ inline void resourceList_Request::set_allocated_space(std::string* space) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceList_Request.space)
 }
 
-// .com.wazuh.api.engine.content.ContentType type = 2;
+// string type = 2;
 inline void resourceList_Request::clear_type() {
-  _impl_.type_ = 0;
+  _impl_.type_.ClearToEmpty();
 }
-inline ::com::wazuh::api::engine::content::ContentType resourceList_Request::_internal_type() const {
-  return static_cast< ::com::wazuh::api::engine::content::ContentType >(_impl_.type_);
-}
-inline ::com::wazuh::api::engine::content::ContentType resourceList_Request::type() const {
+inline const std::string& resourceList_Request::type() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourceList_Request.type)
   return _internal_type();
 }
-inline void resourceList_Request::_internal_set_type(::com::wazuh::api::engine::content::ContentType value) {
-  
-  _impl_.type_ = value;
-}
-inline void resourceList_Request::set_type(::com::wazuh::api::engine::content::ContentType value) {
-  _internal_set_type(value);
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void resourceList_Request::set_type(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.type_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.resourceList_Request.type)
+}
+inline std::string* resourceList_Request::mutable_type() {
+  std::string* _s = _internal_mutable_type();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourceList_Request.type)
+  return _s;
+}
+inline const std::string& resourceList_Request::_internal_type() const {
+  return _impl_.type_.Get();
+}
+inline void resourceList_Request::_internal_set_type(const std::string& value) {
+  
+  _impl_.type_.Set(value, GetArenaForAllocation());
+}
+inline std::string* resourceList_Request::_internal_mutable_type() {
+  
+  return _impl_.type_.Mutable(GetArenaForAllocation());
+}
+inline std::string* resourceList_Request::release_type() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourceList_Request.type)
+  return _impl_.type_.Release();
+}
+inline void resourceList_Request::set_allocated_type(std::string* type) {
+  if (type != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.type_.SetAllocated(type, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.type_.IsDefault()) {
+    _impl_.type_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceList_Request.type)
 }
 
 // -------------------------------------------------------------------
@@ -3522,24 +3531,54 @@ inline void resourcePost_Request::set_allocated_space(std::string* space) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourcePost_Request.space)
 }
 
-// .com.wazuh.api.engine.content.ContentType type = 2;
+// string type = 2;
 inline void resourcePost_Request::clear_type() {
-  _impl_.type_ = 0;
+  _impl_.type_.ClearToEmpty();
 }
-inline ::com::wazuh::api::engine::content::ContentType resourcePost_Request::_internal_type() const {
-  return static_cast< ::com::wazuh::api::engine::content::ContentType >(_impl_.type_);
-}
-inline ::com::wazuh::api::engine::content::ContentType resourcePost_Request::type() const {
+inline const std::string& resourcePost_Request::type() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourcePost_Request.type)
   return _internal_type();
 }
-inline void resourcePost_Request::_internal_set_type(::com::wazuh::api::engine::content::ContentType value) {
-  
-  _impl_.type_ = value;
-}
-inline void resourcePost_Request::set_type(::com::wazuh::api::engine::content::ContentType value) {
-  _internal_set_type(value);
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void resourcePost_Request::set_type(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.type_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.resourcePost_Request.type)
+}
+inline std::string* resourcePost_Request::mutable_type() {
+  std::string* _s = _internal_mutable_type();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourcePost_Request.type)
+  return _s;
+}
+inline const std::string& resourcePost_Request::_internal_type() const {
+  return _impl_.type_.Get();
+}
+inline void resourcePost_Request::_internal_set_type(const std::string& value) {
+  
+  _impl_.type_.Set(value, GetArenaForAllocation());
+}
+inline std::string* resourcePost_Request::_internal_mutable_type() {
+  
+  return _impl_.type_.Mutable(GetArenaForAllocation());
+}
+inline std::string* resourcePost_Request::release_type() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourcePost_Request.type)
+  return _impl_.type_.Release();
+}
+inline void resourcePost_Request::set_allocated_type(std::string* type) {
+  if (type != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.type_.SetAllocated(type, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.type_.IsDefault()) {
+    _impl_.type_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourcePost_Request.type)
 }
 
 // string ymlContent = 3;
@@ -3731,16 +3770,6 @@ inline void resourceDelete_Request::set_allocated_uuid(std::string* uuid) {
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-
-PROTOBUF_NAMESPACE_OPEN
-
-template <> struct is_proto_enum< ::com::wazuh::api::engine::content::ContentType> : ::std::true_type {};
-template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::content::ContentType>() {
-  return ::com::wazuh::api::engine::content::ContentType_descriptor();
-}
-
-PROTOBUF_NAMESPACE_CLOSE
 
 // @@protoc_insertion_point(global_scope)
 

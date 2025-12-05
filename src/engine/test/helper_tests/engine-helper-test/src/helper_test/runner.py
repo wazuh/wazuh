@@ -620,7 +620,6 @@ def build_run_post_request(input_data: dict, level: api_tester.TraceLevel) -> ap
     request.name = SESSION_NAME
     request.trace_level = level
     request.event = f"{QUEUE}:{LOCATION}:{json.dumps(input_data, separators=(',', ':'))}"
-    request.namespaces.extend([NAMESPACE])
     return request
 
 

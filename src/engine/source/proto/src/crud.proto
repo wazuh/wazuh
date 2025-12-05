@@ -4,18 +4,6 @@ import "engine.proto";
 
 package com.wazuh.api.engine.content;
 
-/******************** Common types ********************/
-enum ContentType
-{
-    CONTENT_TYPE_UNSPECIFIED = 0;
-    CONTENT_TYPE_DECODER = 1;
-    CONTENT_TYPE_OUTPUT = 2;
-    CONTENT_TYPE_RULE = 3;
-    CONTENT_TYPE_FILTER = 4;
-    CONTENT_TYPE_INTEGRATION = 5;
-    CONTENT_TYPE_KVDB = 6;
-}
-
 /* Small summary of a catalog item */
 message ResourceSummary
 {
@@ -96,8 +84,8 @@ message policyDelete_Request
  **************************************************/
 message resourceList_Request
 {
-    string space = 1;     // Namespace name (draft, testing, custom, wazuh)
-    ContentType type = 2; // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    string space = 1; // Namespace name (draft, testing, custom, wazuh)
+    string type = 2;  // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
 }
 
 message resourceList_Response
@@ -133,7 +121,7 @@ message resourceGet_Response
 message resourcePost_Request
 {
     string space = 1;      // Namespace name (must be writable, e.g. draft)
-    ContentType type = 2;  // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    string type = 2;       // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
     string ymlContent = 3; // Raw YAML payload of the resource
 }
 // message resourcePost_Response -> Return a GenericStatus_Response
