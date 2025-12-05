@@ -24,8 +24,6 @@ constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
 // Helper to populate test DB manually
 void populateTestDb()
 {
-    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
-
     std::string sql;
     sql += OS_SQL_STATEMENT;
     sql += HW_SQL_STATEMENT;
@@ -171,9 +169,15 @@ const auto expected_dbsync_browser_extensions
     R"({"collector":"dbsync_browser_extensions","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"event":{"changed_fields":[],"type":"created"},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":null,"description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":1710489821000,"name":"uBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":["[\\\"activeTab\\\"","\\\"storage\\\"","\\\"tabs\\\"","\\\"webNavigation\\\"]"],"persistent":false,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2","visible":false},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"}},"module":"inventory"})"
 };
 
-void SyscollectorImpTest::SetUp() {};
+void SyscollectorImpTest::SetUp()
+{
+    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+};
 
-void SyscollectorImpTest::TearDown() {};
+void SyscollectorImpTest::TearDown()
+{
+    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+};
 
 using ::testing::_;
 using ::testing::Return;
@@ -3172,7 +3176,6 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
     EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
-    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 }
 
 TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataNoDisabledCollectors)
@@ -3270,7 +3273,6 @@ TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataWithDisabledCollectorsAnd
     EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table dbsync_packages"));
 
     Syscollector::instance().destroy();
-    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 }
 
 TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
@@ -3332,7 +3334,6 @@ TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
     EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
-    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 }
 
 TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
@@ -3398,5 +3399,4 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table dbsync_network_address"));
 
     Syscollector::instance().destroy();
-    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 }

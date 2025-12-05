@@ -210,14 +210,7 @@ bool syscollector_notify_disable_collectors_data_clean(void)
 
 void syscollector_delete_disable_collectors_data(void)
 {
-    try
-    {
-        Syscollector::instance().deleteDisableCollectorsData();
-    }
-    catch (...)
-    {
-        // Log error but don't throw - this is called from C code
-    }
+    Syscollector::instance().deleteDisableCollectorsData();
 }
 
 /// @brief Query handler for Syscollector module.
