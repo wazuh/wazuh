@@ -12,12 +12,12 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <sca_impl.hpp>
+#include "logging_helper.hpp"
+#include <mock_agent_sync_protocol.hpp>
 #include <mock_dbsync.hpp>
 #include <mock_filesystem_wrapper.hpp>
+#include <sca_impl.hpp>
 #include <sca_sca_mock.hpp>
-#include "logging_helper.hpp"
-#include "mock_agent_sync_protocol.hpp"
 
 #include <chrono>
 #include <memory>
