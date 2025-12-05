@@ -211,7 +211,7 @@ namespace Utils
         {
             return relativeStart < normalizedRelative.length()
                 ? normalizedRelative.substr(relativeStart)
-                : normalizedRelative;
+                : std::move(normalizedRelative);
         }
 
         // Join with a single separator
