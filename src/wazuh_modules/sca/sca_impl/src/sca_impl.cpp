@@ -558,6 +558,85 @@ int SecurityConfigurationAssessment::setVersion(int version)
     }
 }
 
+int SecurityConfigurationAssessment::increaseEachEntryVersion()
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot increase entry versions");
+        return -1;
+    }
+
+    try
+    {
+        // First, get ALL rows with ALL columns (like FIM does)
+        std::vector<nlohmann::json> rows;
+
+        auto selectQuery = SelectQuery::builder()
+                           .table("sca_check")
+                           .columnList({"*"}) // Get all columns to properly identify and update rows
+                           .build();
+
+        const auto selectCallback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED)
+            {
+                rows.push_back(resultData);
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), selectCallback);
+
+        if (rows.empty())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA increaseEachEntryVersion: no rows to update");
+            return 0;
+        }
+
+        // Use transaction-based approach to ensure changes are immediately reflected in DB
+        const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&)
+        {
+            // No action needed for transaction callback
+        };
+
+        DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, txnCallback};
+
+        if (txn.handle() != nullptr)
+        {
+            // Increment each row's version field by 1 (like FIM does)
+            for (auto& row : rows)
+            {
+                if (row.contains("version") && row["version"].is_number())
+                {
+                    row["version"] = row["version"].get<int>() + 1;
+                }
+                else
+                {
+                    row["version"] = 1; // Default to 1 if version is missing
+                }
+
+                nlohmann::json input;
+                input["table"] = "sca_check";
+                input["data"] = nlohmann::json::array({row});
+
+                txn.syncTxnRow(input);
+            }
+
+            // Call getDeletedRows to ensure changes are immediately reflected in the database
+            txn.getDeletedRows(txnCallback);
+        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "SCA increaseEachEntryVersion: incremented version for " +
+                                         std::to_string(rows.size()) + " checks");
+        return 0;
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error increasing entry versions: " + std::string(err.what()));
+        return -1;
+    }
+}
+
 void SecurityConfigurationAssessment::pause()
 {
     LoggingHelper::getInstance().log(LOG_INFO, "SCA pause requested");
@@ -931,7 +1010,16 @@ bool SecurityConfigurationAssessment::performRecovery()
 
     try
     {
-        // Get all checks from database
+        // Increase version for all entries before recovery sync
+        // This ensures our versions are higher than what's in the indexer
+        int increaseResult = increaseEachEntryVersion();
+        if (increaseResult == -1)
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to increase version for each entry in sca_check");
+            return false;
+        }
+
+        // Get all checks from database (now with incremented versions)
         auto checks = getAllChecks();
         LoggingHelper::getInstance().log(LOG_DEBUG, "Loaded " + std::to_string(checks.size()) + " checks for recovery");
 
