@@ -554,7 +554,8 @@ nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) cons
 
     while (std::getline(stream, token, ','))
     {
-        token = Utils::trim(token, " \t");
+        // Trim all whitespace characters including \n, \r, \t, \v, \f, and spaces
+        token = Utils::trim(token, " \t\n\r\v\f");
 
         if (!token.empty())
         {

@@ -84,6 +84,7 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
     const char *XML_DB_SYNC_END_DELAY = "sync_end_delay";
     const char *XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
+    const char *XML_DB_SYNC_INTEGRITY_INTERVAL = "integrity_interval";
 
     for (int i = 0; node[i]; ++i) {
         if (strcmp(node[i]->element, XML_DB_SYNC_ENABLED) == 0) {
@@ -127,6 +128,14 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
             } else {
                 sca->sync.sync_max_eps = value;
             }
+        } else if (strcmp(node[i]->element, XML_DB_SYNC_INTEGRITY_INTERVAL) == 0) {
+            long integrity_interval = w_parse_time(node[i]->content);
+
+            if (integrity_interval < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                sca->sync.integrity_interval = (uint32_t) integrity_interval;
+            }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
@@ -157,6 +166,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->sync.sync_end_delay = 1;
         sca->sync.sync_response_timeout = 60;
         sca->sync.sync_max_eps = 10;
+        sca->sync.integrity_interval = 86400;
     }
 
     sca = module->data;

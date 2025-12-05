@@ -35,6 +35,7 @@ This enables the SCA module with default settings:
     <interval>300</interval>
     <response_timeout>60</response_timeout>
     <max_eps>10</max_eps>
+    <integrity_interval>86400</integrity_interval>
   </synchronization>
 </sca>
 ```
@@ -67,6 +68,7 @@ This enables the SCA module with default settings:
 | `synchronization/interval` | time | `300s` | Database synchronization interval |
 | `synchronization/response_timeout` | time | `60s` | Synchronization response timeout |
 | `synchronization/max_eps` | number | `10` | Max events per second for sync |
+| `synchronization/integrity_interval` | time | `86400s` | Interval between integrity checks for recovery (0 = disabled) |
 
 ---
 

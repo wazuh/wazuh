@@ -123,6 +123,32 @@ INSERT INTO sca_check VALUES (
 
 ---
 
+### Metadata Table
+
+```sql
+CREATE TABLE IF NOT EXISTS sca_metadata (
+    key TEXT PRIMARY KEY,
+    value INTEGER
+);
+```
+
+This table stores module-level metadata for tracking operational state, such as the last integrity check timestamp.
+
+| Mandatory | Column  | Data Type | Description                                     |
+| :-------: | ------- | --------- | ----------------------------------------------- |
+|     ✔️    | `key`   | TEXT      | Unique identifier for the metadata entry        |
+|           | `value` | INTEGER   | Numeric value associated with the key           |
+
+**Current Keys:**
+- `last_integrity_check`: Unix timestamp (seconds since epoch) of the last integrity check
+
+**Example Data:**
+```sql
+INSERT INTO sca_metadata VALUES ('last_integrity_check', 1733316000);
+```
+
+---
+
 ## State Management
 
 ### Change Detection
