@@ -1013,6 +1013,7 @@ bool SecurityConfigurationAssessment::performRecovery()
         // Increase version for all entries before recovery sync
         // This ensures our versions are higher than what's in the indexer
         int increaseResult = increaseEachEntryVersion();
+
         if (increaseResult == -1)
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Failed to increase version for each entry in sca_check");
