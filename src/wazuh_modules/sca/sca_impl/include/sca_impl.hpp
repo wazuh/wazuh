@@ -123,8 +123,7 @@ class SecurityConfigurationAssessment
         /// @return 0 on success, -1 on error
         int setVersion(int version);
 
-        /// @brief Increase the version column for all entries in sca_check table
-        /// This is used before recovery sync to ensure versions are higher than indexer
+        /// @brief This is used before recovery sync to ensure versions are now lower than indexer
         /// @return 0 on success, -1 on error
         int increaseEachEntryVersion();
 
