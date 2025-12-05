@@ -235,6 +235,40 @@ Send data clean notification ────────► sca_notify_data_clean()
 
 ---
 
+## Policy Removal Cleanup Flow
+
+When all SCA policies are removed from configuration while the module remains enabled, the module detects this at startup or during runtime and initiates a cleanup process.
+
+### Behavior
+
+| Scenario | Action |
+|----------|--------|
+| **All policies removed** | DataClean sent to manager → DB tables cleared → module exits |
+| **Partial removal** | DBSync generates delete events → module continues with remaining policies |
+
+### Flow
+
+```
+Policy Loading
+      │
+      ▼
+No enabled policies found?
+      │
+      ├─► No  → Continue normal scanning
+      │
+      └─► Yes → Check if DB has existing data
+                │
+                ├─► No data  → Exit (nothing to clean)
+                │
+                └─► Has data → Send DataClean notification
+                              │
+                              ├─► Clear sca_policy table
+                              ├─► Clear sca_check table
+                              └─► Exit module
+```
+
+---
+
 ## Coordination Commands Architecture
 
 The coordination commands provide external control over SCA operations, allowing the agent-info to coordinate module behavior. SCA implements a **synchronous blocking model** using C++ threading primitives, similar to Syscollector.
