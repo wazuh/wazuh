@@ -32,7 +32,7 @@ using cm::store::ResourceType;
 static constexpr const char* kIntegrationYAML = R"(
 id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
 title: "windows"
-enable_decoders: true
+enabled: true
 category: "ossec"
 default_parent: "decoder/windows/0"
 decoders:
@@ -374,7 +374,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
-      "enable_decoders": true,
+      "enabled": true,
       "category": "ossec",
       "decoders": [
         "85853f26-5779-469b-86c4-c47ee7d400b4"

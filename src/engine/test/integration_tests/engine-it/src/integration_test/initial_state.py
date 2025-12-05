@@ -86,6 +86,7 @@ def build_tester_decoder_yaml(name: str, uuid: str, check_expr: str) -> str:
     return f"""\
 name: {name}
 id: {uuid}
+enabled: true
 
 check: {check_expr}
 
@@ -109,7 +110,7 @@ def build_integration_yaml(
       {
         "id": "...",
         "title": "...",
-        "enable_decoders": true,
+        "enabled": true,
         "category": "UNDEFINED_1",
         "default_parent": "...",
         "decoders": [ "<decoder_uuid>" ],
@@ -119,7 +120,7 @@ def build_integration_yaml(
     return f"""\
 id: {integ_uuid}
 title: {integ_title}
-enable_decoders: true
+enabled: true
 category: UNDEFINED_1
 default_parent: {default_parent}
 decoders:
@@ -174,14 +175,14 @@ def init_cm_resources(api_client: APIClient):
     wazuh_core_yaml = build_integration_yaml(
         integ_uuid=INTEG_WAZUH_CORE_UUID,
         integ_title="wazuh-core-test",
-        default_parent=DECODER_TEST_NAME,
+        default_parent=DECODER_TEST_UUID,
         decoder_uuid=DECODER_TEST_UUID,
     )
 
     other_core_yaml = build_integration_yaml(
         integ_uuid=INTEG_OTHER_WAZUH_CORE_UUID,
         integ_title="other-wazuh-core-test",
-        default_parent=DECODER_OTHER_NAME,
+        default_parent=DECODER_OTHER_UUID,
         decoder_uuid=DECODER_OTHER_UUID,
     )
 

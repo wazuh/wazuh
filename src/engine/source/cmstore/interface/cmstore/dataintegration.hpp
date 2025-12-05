@@ -37,7 +37,7 @@ namespace jsonintegration
 {
 constexpr std::string_view PATH_KEY_ID = "/id";
 constexpr std::string_view PATH_KEY_NAME = "/title";
-constexpr std::string_view PATH_KEY_ENABLED = "/enable_decoders";
+constexpr std::string_view PATH_KEY_ENABLED = "/enabled";
 constexpr std::string_view PATH_KEY_CATEGORY = "/category";
 constexpr std::string_view PATH_KEY_DEFAULT_PARENT = "/default_parent";
 constexpr std::string_view PATH_KEY_DECODERS = "/decoders";
@@ -51,7 +51,7 @@ private:
     std::string m_name;
     bool m_enabled;
     std::string m_category;
-    std::optional<base::Name> m_defaultParent;
+    std::optional<std::string> m_defaultParent;
     std::vector<std::string> m_kvdbsByUUID;
     std::vector<std::string> m_decodersByUUID;
 
@@ -61,7 +61,7 @@ private:
     {
         // Create a hash based on the name, category, decoders and kvdbs UUIDs
         std::string toHash = m_name + m_category + (m_enabled ? "1" : "0")
-                             + (m_defaultParent.has_value() ? m_defaultParent->toStr() : "");
+                             + (m_defaultParent.has_value() ? m_defaultParent.value() : "");
 
         auto len = toHash.length() + 1
                    + base::utils::generators::UUID_V4_LENGTH * (m_decodersByUUID.size() + m_kvdbsByUUID.size());
@@ -86,7 +86,7 @@ public:
                 std::string name,
                 bool enabled,
                 std::string category,
-                std::optional<base::Name> defaultParent,
+                std::optional<std::string> defaultParent,
                 std::vector<std::string> kvdbsByUUID,
                 std::vector<std::string> decodersByUUID)
         : m_uuid(std::move(uuid))
@@ -200,7 +200,7 @@ public:
 
         if (m_defaultParent.has_value())
         {
-            integrationJson.setString(m_defaultParent->toStr(), jsonintegration::PATH_KEY_DEFAULT_PARENT);
+            integrationJson.setString(m_defaultParent.value(), jsonintegration::PATH_KEY_DEFAULT_PARENT);
         }
 
         integrationJson.setBool(m_enabled, jsonintegration::PATH_KEY_ENABLED);
@@ -222,7 +222,7 @@ public:
 
     // getters
     const std::string& getCategory() const { return m_category; }
-    const std::optional<base::Name>& getDefaultParent() const { return m_defaultParent; }
+    const std::optional<std::string>& getDefaultParent() const { return m_defaultParent; }
     const std::vector<std::string>& getKVDBsByUUID() const { return m_kvdbsByUUID; }
     const std::vector<std::string>& getDecodersByUUID() const { return m_decodersByUUID; }
     const std::string& getHash() const { return m_hash; }

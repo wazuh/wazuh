@@ -304,7 +304,7 @@ def build_integration_yaml_for_policy(name: str,
       {
         "id": "...",
         "title": "...",
-        "enable_decoders": true,
+        "enabled": true,
         "category": "UNDEFINED_1",
         "default_parent": "...",
         "decoders": [ "<decoder_uuid>" ],
@@ -314,7 +314,7 @@ def build_integration_yaml_for_policy(name: str,
     return f"""\
 id: {integ_uuid}
 title: {name}
-enable_decoders: true
+enabled: true
 category: UNDEFINED_1
 default_parent: {default_parent}
 decoders:
@@ -420,7 +420,7 @@ def step_impl(context, space):
     integ_yaml = build_integration_yaml_for_policy(
         name=POLICY_INTEGRATION_NAME,
         integ_uuid=POLICY_INTEGRATION_UUID,
-        default_parent=POLICY_DEFAULT_PARENT_NAME,
+        default_parent=POLICY_DECODER_UUID,
         decoder_uuid=POLICY_DECODER_UUID,
     )
     err, resp = request_resource_upsert(space, "integration", integ_yaml)
@@ -635,8 +635,8 @@ def step_impl(context, space):
     and builds a full, valid policy YAML.
     """
     yml = build_full_valid_policy_yaml(
-        default_parent=POLICY_DEFAULT_PARENT_NAME,
-        root_decoder=POLICY_ROOT_DECODER_NAME,
+        default_parent=POLICY_DECODER_UUID,
+        root_decoder=POLICY_DECODER_UUID,
         integration_uuid=POLICY_INTEGRATION_UUID,
     )
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, yml)

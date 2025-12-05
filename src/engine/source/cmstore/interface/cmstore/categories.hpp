@@ -1,33 +1,28 @@
 #ifndef _CMSTORE_ICMSTORE_CATEGORIES
 #define _CMSTORE_ICMSTORE_CATEGORIES
 
+#include <algorithm>
 #include <string_view>
-#include <unordered_map>
+#include <vector>
 namespace cm::store::categories
 {
 
 /**
  * @brief Available Categories and their Indexes
  *
- * This map defines the available categories and their corresponding indexes
+ * This map defines the available categories
  * in the CMStore system. Any integration or asset should belong to one of these categories.
  */
-inline const std::unordered_map<std::string_view, std::string_view> AVAILABLE_CATEGORIES_AND_INDEXES = {
-    {"UNDEFINED_1", "wazuh-events-v5-access-management"},
-    {"Applications", "wazuh-events-v5-applications"},
-    {"Cloud Services", "wazuh-events-v5-cloud-services"},
-    {"Network Activity", "wazuh-events-v5-network-activity"},
-    {"Security", "wazuh-events-v5-security"},
-    {"System Activity", "wazuh-events-v5-system-activity"},
-    {"UNDEFINED_2", "wazuh-events-v5-other"}};
+inline const std::vector<std::string_view> AVAILABLE_CATEGORIES = {
+    "UNDEFINED_1", "Applications", "Cloud Services", "Network Activity", "Security", "System Activity", "UNDEFINED_2"};
 
 /**
  * @brief Get all available categories and their indexes in the namespace
- * @return const std::vector<std::tuple<std::string_view, std::string_view>>& Vector of tuples with (Category, Index)
+ * @return const std::vector<std::string_view>& Vector of Category
  */
-static const std::unordered_map<std::string_view, std::string_view>& getMapping()
+static const std::vector<std::string_view>& getAvailableCategories()
 {
-    return AVAILABLE_CATEGORIES_AND_INDEXES;
+    return AVAILABLE_CATEGORIES;
 }
 
 /**
@@ -37,7 +32,7 @@ static const std::unordered_map<std::string_view, std::string_view>& getMapping(
  */
 static bool exists(std::string_view category)
 {
-    return AVAILABLE_CATEGORIES_AND_INDEXES.find(category) != AVAILABLE_CATEGORIES_AND_INDEXES.end();
+    return std::find(AVAILABLE_CATEGORIES.begin(), AVAILABLE_CATEGORIES.end(), category) != AVAILABLE_CATEGORIES.end();
 }
 
 } // namespace cm::store::categories

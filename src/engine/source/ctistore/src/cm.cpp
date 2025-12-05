@@ -28,9 +28,9 @@ constexpr std::string_view assetTypeToString(cti::store::AssetType type) noexcep
 
 } // namespace
 
-ContentManager::ContentManager(const ContentManagerConfig& config, ContentDeployCallback deployCallback)
+ContentManager::ContentManager(const ContentManagerConfig& config, std::shared_ptr<std::atomic_bool> syncFlag)
     : m_config(config)
-    , m_deployCallback(deployCallback)
+    , m_syncFlag(syncFlag)
 {
     LOG_INFO("Initializing CTI Store ContentManager");
 
@@ -327,7 +327,12 @@ json::Json ContentManager::getPolicy(const base::Name& name) const
     }
     try
     {
-        return m_storage->getPolicy(name);
+        auto policy = m_storage->getPolicy(name);
+        policy.setString(resolveUUIDFromName(base::Name {"decoder/integrations/0"}, "decoder"),
+                         "/payload/document/default_parent");
+        policy.setString(resolveUUIDFromName(base::Name {"decoder/core-wazuh-message/0"}, "decoder"),
+                         "/payload/document/root_decoder");
+        return policy;
     }
     catch (const std::exception& e)
     {
@@ -879,7 +884,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 
             // Store result to return after releasing lock
             result = {currentOffset, hash, success};
-            callDeployCallback = success && m_deployCallback;
+            callDeployCallback = success && m_syncFlag;
         }
         catch (const std::exception& e)
         {
@@ -904,7 +909,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
             try
             {
                 LOG_DEBUG("CTI: notifying deploy callback");
-                m_deployCallback(shared_from_this());
+                m_syncFlag->store(true, std::memory_order_release);
             }
             catch (const std::exception& e)
             {

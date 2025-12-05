@@ -85,7 +85,6 @@ auto mergeTargetSchemaNotMergeableExpected(const std::string& ref, schemf::Type 
         EXPECT_CALL(*mocks.ctx, validator()).Times(AtLeast(1));
         EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(true));
         EXPECT_CALL(*mocks.validator, getType(DotPath(ref))).Times(AtLeast(1)).WillRepeatedly(testing::Return(type));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath(ref))).WillOnce(testing::Return(false));
 
         return None {};
     };

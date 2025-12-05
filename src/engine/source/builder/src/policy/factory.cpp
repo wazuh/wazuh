@@ -13,7 +13,6 @@
 namespace
 {
 auto constexpr GRAPH_INPUT_SUFFIX = "Input";
-const base::Name G_FILTER_NAME {"filter/allow-all/0"}; ///< Filter that allows all events
 } // namespace
 
 namespace builder::policy::factory
@@ -40,9 +39,15 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         for (const auto& decUUID : integration.getDecodersByUUID())
         {
             const auto decoder = cmStoreNsReader->getAssetByUUID(decUUID);
+            if (!decoder.getBool(json::Json::formatJsonPath(builder::syntax::asset::ENABLED_KEY)).value_or(false))
+            {
+                continue;
+            }
+
             Asset asset = (*assetBuilder)(decoder);
 
-            const auto isRootDefault = (asset.name() == policy.getRootDecoder());
+            const auto isRootDefault =
+                (asset.name() == std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder())));
 
             if (isRootDefault && !asset.parents().empty())
             {
@@ -63,7 +68,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                     defaultParentName = policy.getDefaultParent();
                 }
 
-                asset.parents().emplace_back(std::move(defaultParentName));
+                asset.parents().emplace_back(
+                    std::move(std::get<0>(cmStoreNsReader->resolveNameFromUUID(defaultParentName))));
             }
 
             auto& decodersData = builtAssets[cm::store::ResourceType::DECODER];
@@ -179,9 +185,8 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
 
     // 1) Get filters
     const auto itFilters = assets.find(cm::store::ResourceType::FILTER);
-    const auto filters = (itFilters == assets.end())
-        ? std::unordered_map<base::Name, Asset>{}
-        : itFilters->second.assets;
+    const auto filters =
+        (itFilters == assets.end()) ? std::unordered_map<base::Name, Asset> {} : itFilters->second.assets;
 
     // 2) Build subgraphs for each type (except Filter)
     for (const auto& [rtype, data] : assets)

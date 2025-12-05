@@ -168,12 +168,12 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
     // Default parent
     if (const auto& opt = integration.getDefaultParent(); opt.has_value())
     {
-        const base::Name& parentName = *opt;
-        if (!nsReader->assetExistsByName(parentName))
+        const auto& parentName = *opt;
+        if (!nsReader->assetExistsByUUID(parentName))
         {
             return base::Error {
                 fmt::format("Default parent '{}' does not exist as asset in namespace '{}' for integration '{}'.",
-                            parentName.toStr(),
+                            std::get<0>(nsReader->resolveNameFromUUID(parentName)),
                             namespaceId.toStr(),
                             integrationName)};
         }
@@ -228,18 +228,20 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
 
     // Default parent
     const auto& defaultParent = policy.getDefaultParent();
-    if (!nsReader->assetExistsByName(defaultParent))
+    if (!nsReader->assetExistsByUUID(defaultParent))
     {
-        return base::Error {fmt::format(
-            "Default parent '{}' does not exist as asset in policy '{}'.", defaultParent.toStr(), policyName)};
+        return base::Error {fmt::format("Default parent '{}' does not exist as asset in policy '{}'.",
+                                        std::get<0>(nsReader->resolveNameFromUUID(defaultParent)),
+                                        policyName)};
     }
 
     // Root decoder optional
     const auto& defaultDecoder = policy.getRootDecoder();
-    if (!nsReader->assetExistsByName(defaultDecoder))
+    if (!nsReader->assetExistsByUUID(defaultDecoder))
     {
-        return base::Error {fmt::format(
-            "Root decoder '{}' does not exist as asset in policy '{}'.", defaultDecoder.toStr(), policyName)};
+        return base::Error {fmt::format("Root decoder '{}' does not exist as asset in policy '{}'.",
+                                        std::get<0>(nsReader->resolveNameFromUUID(defaultDecoder)),
+                                        policyName)};
     }
 
     // Integrations

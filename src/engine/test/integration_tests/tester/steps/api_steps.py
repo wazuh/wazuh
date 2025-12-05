@@ -26,9 +26,6 @@ api_client = APIClient(SOCKET_PATH)
 
 POLICY_NS = "testing"
 
-DECODER_TEST_NAME = "decoder/test-message/0"
-DECODER_OTHER_NAME = "decoder/other-test-message/0"
-
 DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
 DECODER_OTHER_UUID = "594ea807-a037-408d-95b8-9a124ea333df"
 
@@ -122,8 +119,8 @@ def add_integration_to_policy(integration_name: str, policy_name: str):
     # We always leave the policy with both integrations
     integ_list = [INTEG_WAZUH_CORE_UUID, INTEG_OTHER_WAZUH_CORE_UUID]
     policy_yaml = build_policy_yaml(
-        default_parent=DECODER_TEST_NAME,
-        root_decoder=DECODER_TEST_NAME,
+        default_parent=DECODER_TEST_UUID,
+        root_decoder=DECODER_TEST_UUID,
         integration_uuids=integ_list,
     )
     cm_policy_upsert(POLICY_NS, policy_yaml)
@@ -193,12 +190,12 @@ def step_impl(context, policy_name: str, integration_name: str):
 
     if integration_name == "wazuh-core-test":
         integ_list = [INTEG_WAZUH_CORE_UUID]
-        default_parent = DECODER_TEST_NAME
-        root_decoder = DECODER_TEST_NAME
+        default_parent = DECODER_TEST_UUID
+        root_decoder = DECODER_TEST_UUID
     elif integration_name == "other-wazuh-core-test":
         integ_list = [INTEG_OTHER_WAZUH_CORE_UUID]
-        default_parent = DECODER_OTHER_NAME
-        root_decoder = DECODER_OTHER_NAME
+        default_parent = DECODER_OTHER_UUID
+        root_decoder = DECODER_OTHER_UUID
     else:
         raise AssertionError(f"Unsupported integration name: {integration_name}")
 

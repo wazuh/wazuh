@@ -28,9 +28,6 @@ POLICY_NS = "testing"
 # Resource names
 FILTER_ALLOW_ALL_NAME = "filter/allow-all/0"
 
-DECODER_TEST_NAME = "decoder/test-message/0"
-DECODER_OTHER_NAME = "decoder/other-test-message/0"
-
 # UUIDs (must match init.py and tester tests)
 DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
 DECODER_OTHER_UUID = "594ea807-a037-408d-95b8-9a124ea333df"
@@ -169,8 +166,8 @@ def setup_policy_with_integrations(initial_integration: str):
         raise AssertionError(f"Unsupported integration name: {initial_integration}")
 
     policy_yaml = build_policy_yaml(
-        default_parent=DECODER_TEST_NAME,
-        root_decoder=DECODER_TEST_NAME,
+        default_parent=DECODER_TEST_UUID,
+        root_decoder=DECODER_TEST_UUID,
         integration_uuids=integ_list,
     )
     cm_policy_upsert(POLICY_NS, policy_yaml)
@@ -188,8 +185,8 @@ def add_integration_to_policy(integration_name: str, policy_name: str):
 
     integ_list = [INTEG_WAZUH_CORE_UUID, INTEG_OTHER_WAZUH_CORE_UUID]
     policy_yaml = build_policy_yaml(
-        default_parent=DECODER_TEST_NAME,
-        root_decoder=DECODER_TEST_NAME,
+        default_parent=DECODER_TEST_UUID,
+        root_decoder=DECODER_TEST_UUID,
         integration_uuids=integ_list,
     )
     cm_policy_upsert(POLICY_NS, policy_yaml)

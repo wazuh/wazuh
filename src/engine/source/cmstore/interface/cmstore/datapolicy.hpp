@@ -20,8 +20,8 @@
  * {
  *   "type": "policy",
  *   "title": "Development 0.0.1",
- *   "default_parent": "decoder/integration/0", --> Should be mandatory
- *   "root_decoder": "decoder/core-wazuh-message/0", --> Should be mandatory
+ *   "default_parent": "2321h312-015f-27h2-1771-d88h2ns2h6s8", --> Should be mandatory
+ *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8", --> Should be mandatory
  *   "integrations":
  *   [
  *     "42e28392-4f5e-473d-89e8-c9030e6fedc2", --> Intration UUIDs
@@ -45,24 +45,18 @@ constexpr std::string_view PATH_KEY_ROOT_PARENT = "/root_decoder";
 
 } // namespace jsonpolicy
 
-namespace
-{
-const auto DEFAULT_ROOT_DECODER {"decoder/core-wazuh-message/0"};
-const base::Name ROOT_DECODER_NAME {DEFAULT_ROOT_DECODER};
-} // namespace
-
 class Policy
 {
 private:
     std::vector<std::string> m_integrationsUUIDs;
-    base::Name m_defaultParent;
-    base::Name m_rootDecoder {ROOT_DECODER_NAME};
+    std::string m_defaultParent;
+    std::string m_rootDecoder;
     std::string m_hash;
 
     void updateHash()
     {
         // Create a hash based on the integrations UUIDs and defaults decoders
-        std::string toHash = m_defaultParent.toStr() + m_rootDecoder.toStr();
+        std::string toHash = m_defaultParent + m_rootDecoder;
         toHash.reserve(toHash.length() + m_integrationsUUIDs.size() * base::utils::generators::UUID_V4_LENGTH);
         for (const auto& uuid : m_integrationsUUIDs)
         {
@@ -75,7 +69,7 @@ public:
     ~Policy() = default;
     Policy() = delete;
 
-    Policy(std::vector<std::string>&& uuids, base::Name defaultParent, base::Name rootDecoder)
+    Policy(std::vector<std::string>&& uuids, std::string defaultParent, std::string rootDecoder)
         : m_integrationsUUIDs(std::move(uuids))
         , m_defaultParent(std::move(defaultParent))
         , m_rootDecoder(std::move(rootDecoder))
@@ -115,20 +109,19 @@ public:
             integrations.push_back(integrationOpt.value());
         }
 
-        base::Name defaultParent {ROOT_DECODER_NAME};
-        base::Name rootDecoder {ROOT_DECODER_NAME};
+        std::string defaultParent;
+        std::string rootDecoder;
         try
         {
-
             if (auto defaultParentOpt = policyJson.getString(jsonpolicy::PATH_KEY_DEFAULT_PARENT);
                 defaultParentOpt.has_value())
             {
-                defaultParent = base::Name(defaultParentOpt.value());
+                defaultParent = defaultParentOpt.value();
             }
             if (auto rootDecoderOpt = policyJson.getString(jsonpolicy::PATH_KEY_ROOT_PARENT);
                 rootDecoderOpt.has_value())
             {
-                rootDecoder = base::Name(rootDecoderOpt.value());
+                rootDecoder = rootDecoderOpt.value();
             }
         }
         catch (const std::exception& e)
@@ -143,8 +136,8 @@ public:
     {
         json::Json policyJson;
 
-        policyJson.setString(m_defaultParent.toStr(), jsonpolicy::PATH_KEY_DEFAULT_PARENT);
-        policyJson.setString(m_rootDecoder.toStr(), jsonpolicy::PATH_KEY_ROOT_PARENT);
+        policyJson.setString(m_defaultParent, jsonpolicy::PATH_KEY_DEFAULT_PARENT);
+        policyJson.setString(m_rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT);
         policyJson.setArray(jsonpolicy::PATH_KEY_INTEGRATIONS);
         for (const auto& uuid : m_integrationsUUIDs)
         {
@@ -156,8 +149,8 @@ public:
 
     // Getters
     const std::vector<std::string>& getIntegrationsUUIDs() const { return m_integrationsUUIDs; }
-    const base::Name& getRootDecoder() const { return m_rootDecoder; }
-    const base::Name& getDefaultParent() const { return m_defaultParent; }
+    const std::string& getRootDecoder() const { return m_rootDecoder; }
+    const std::string& getDefaultParent() const { return m_defaultParent; }
     const std::string& getHash() const { return m_hash; }
 };
 
