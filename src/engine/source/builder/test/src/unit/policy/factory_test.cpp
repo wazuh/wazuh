@@ -852,7 +852,7 @@ TEST(ValidateAcyclicTest, DetectsReachableCycleWithExtraParents)
     addEdge(graph, "decoder/Input", "decoder/d");
     addEdge(graph, "decoder/d", "decoder/b"); // additional incoming edge
 
-    EXPECT_THROW(factory::validateAcyclic(graph), std::runtime_error);
+    EXPECT_THROW(factory::validateAcyclic(graph, "decoder"), std::runtime_error);
 }
 
 TEST(ValidateAcyclicTest, DetectsDisconnectedCycle)
@@ -869,7 +869,7 @@ TEST(ValidateAcyclicTest, DetectsDisconnectedCycle)
     addEdge(graph, "decoder/x", "decoder/y");
     addEdge(graph, "decoder/y", "decoder/x");
 
-    EXPECT_THROW(factory::validateAcyclic(graph), std::runtime_error);
+    EXPECT_THROW(factory::validateAcyclic(graph, "decoder"), std::runtime_error);
 }
 
 TEST(ValidateAcyclicTest, DetectsCycleThroughInjectedFilter)
@@ -884,7 +884,20 @@ TEST(ValidateAcyclicTest, DetectsCycleThroughInjectedFilter)
     addEdge(graph, "filter/f", "decoder/c");
     addEdge(graph, "decoder/c", "decoder/b");
 
-    EXPECT_THROW(factory::validateAcyclic(graph), std::runtime_error);
+    EXPECT_THROW(factory::validateAcyclic(graph, "decoder"), std::runtime_error);
+}
+
+TEST(ValidateAcyclicTest, DetectsFilterOnlyCycle)
+{
+    Graph<base::Name, Asset> graph {base::Name("filter/Input"), makeAsset(base::Name("filter/Input"))};
+    addNode(graph, "filter/a");
+    addNode(graph, "filter/b");
+
+    addEdge(graph, "filter/Input", "filter/a");
+    addEdge(graph, "filter/a", "filter/b");
+    addEdge(graph, "filter/b", "filter/a");
+
+    EXPECT_THROW(factory::validateAcyclic(graph, "filter"), std::runtime_error);
 }
 
 TEST(ValidateAcyclicTest, AllowsDiamondShapeWithoutCycle)
@@ -901,7 +914,7 @@ TEST(ValidateAcyclicTest, AllowsDiamondShapeWithoutCycle)
     addEdge(graph, "decoder/b", "decoder/c");
     addEdge(graph, "decoder/base", "decoder/c"); // multi-parent, sin ciclo
 
-    EXPECT_NO_THROW(factory::validateAcyclic(graph));
+    EXPECT_NO_THROW(factory::validateAcyclic(graph, "decoder"));
 }
 
 } // namespace cycledetectiontest
