@@ -132,6 +132,14 @@ class EXPORTED DB final
         int updateVersion(const std::string& tableName, int version);
 
         /**
+         * @brief increaseEachEntryVersion Increase the version column for all entries in a table.
+         *
+         * @param tableName Table name.
+         * @return 0 on success, -1 on error.
+         */
+        int increaseEachEntryVersion(const std::string& tableName);
+
+        /**
          * @brief updateFile Update/insert a file in the database.
          *
          * @param file File entry/data to update/insert.
