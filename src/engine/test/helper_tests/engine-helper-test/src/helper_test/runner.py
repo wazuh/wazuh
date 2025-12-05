@@ -368,6 +368,7 @@ def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
 
     asset["name"] = ASSET_NAME
     asset["id"] = HELPERS_DECODER_UUID
+    asset["enabled"] = True
 
     yml = yaml.safe_dump(asset, sort_keys=False)
 
@@ -439,9 +440,9 @@ def create_helpers_integration(api_client: APIClient):
     integration_yaml = f"""\
 id: {HELPERS_INTEG_UUID}
 title: helpers-test
-enable_decoders: true
+enabled: true
 category: UNDEFINED_1
-default_parent: {ASSET_NAME}
+default_parent: {HELPERS_DECODER_UUID}
 decoders:
   - "{HELPERS_DECODER_UUID}"
 kvdbs:
@@ -466,8 +467,8 @@ def create_policy(api_client: APIClient):
     policy_yaml = f"""\
 type: policy
 title: Helpers Testing Policy
-default_parent: {ASSET_NAME}
-root_decoder: {ASSET_NAME}
+default_parent: {HELPERS_DECODER_UUID}
+root_decoder: {HELPERS_DECODER_UUID}
 integrations:
   - "{HELPERS_INTEG_UUID}"
 """
@@ -620,7 +621,6 @@ def build_run_post_request(input_data: dict, level: api_tester.TraceLevel) -> ap
     request.name = SESSION_NAME
     request.trace_level = level
     request.event = f"{QUEUE}:{LOCATION}:{json.dumps(input_data, separators=(',', ':'))}"
-    request.namespaces.extend([NAMESPACE])
     return request
 
 

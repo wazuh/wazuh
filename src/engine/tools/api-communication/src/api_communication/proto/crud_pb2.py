@@ -14,15 +14,13 @@ _sym_db = _symbol_database.Default()
 import api_communication.proto.engine_pb2 as _engine_pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncrud.proto\x12\x1c\x63om.wazuh.api.engine.content\x1a\x0c\x65ngine.proto\"e\n\x0fResourceSummary\x12\x11\n\x04uuid\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x11\n\x04name\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x11\n\x04hash\x18\x03 \x01(\tH\x02\x88\x01\x01\x42\x07\n\x05_uuidB\x07\n\x05_nameB\x07\n\x05_hash\"\x16\n\x14namespaceGet_Request\"y\n\x15namespaceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0e\n\x06spaces\x18\x03 \x03(\tB\x08\n\x06_error\"&\n\x15namespacePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\"(\n\x17namespaceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"7\n\x12policyPost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x12\n\nymlContent\x18\x02 \x01(\t\"%\n\x14policyDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"^\n\x14resourceList_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x37\n\x04type\x18\x02 \x01(\x0e\x32).com.wazuh.api.engine.content.ContentType\"\xab\x01\n\x15resourceList_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12@\n\tresources\x18\x03 \x03(\x0b\x32-.com.wazuh.api.engine.content.ResourceSummaryB\x08\n\x06_error\"2\n\x13resourceGet_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x90\x01\n\x14resourceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x17\n\nymlContent\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x08\n\x06_errorB\r\n\x0b_ymlContent\"r\n\x14resourcePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x37\n\x04type\x18\x02 \x01(\x0e\x32).com.wazuh.api.engine.content.ContentType\x12\x12\n\nymlContent\x18\x03 \x01(\t\"5\n\x16resourceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t*\xc3\x01\n\x0b\x43ontentType\x12\x1c\n\x18\x43ONTENT_TYPE_UNSPECIFIED\x10\x00\x12\x18\n\x14\x43ONTENT_TYPE_DECODER\x10\x01\x12\x17\n\x13\x43ONTENT_TYPE_OUTPUT\x10\x02\x12\x15\n\x11\x43ONTENT_TYPE_RULE\x10\x03\x12\x17\n\x13\x43ONTENT_TYPE_FILTER\x10\x04\x12\x1c\n\x18\x43ONTENT_TYPE_INTEGRATION\x10\x05\x12\x15\n\x11\x43ONTENT_TYPE_KVDB\x10\x06\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncrud.proto\x12\x1c\x63om.wazuh.api.engine.content\x1a\x0c\x65ngine.proto\"e\n\x0fResourceSummary\x12\x11\n\x04uuid\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x11\n\x04name\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x11\n\x04hash\x18\x03 \x01(\tH\x02\x88\x01\x01\x42\x07\n\x05_uuidB\x07\n\x05_nameB\x07\n\x05_hash\"\x16\n\x14namespaceGet_Request\"y\n\x15namespaceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0e\n\x06spaces\x18\x03 \x03(\tB\x08\n\x06_error\"&\n\x15namespacePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\"(\n\x17namespaceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"7\n\x12policyPost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x12\n\nymlContent\x18\x02 \x01(\t\"%\n\x14policyDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"3\n\x14resourceList_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\"\xab\x01\n\x15resourceList_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12@\n\tresources\x18\x03 \x03(\x0b\x32-.com.wazuh.api.engine.content.ResourceSummaryB\x08\n\x06_error\"2\n\x13resourceGet_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x90\x01\n\x14resourceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x17\n\nymlContent\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x08\n\x06_errorB\r\n\x0b_ymlContent\"G\n\x14resourcePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x12\n\nymlContent\x18\x03 \x01(\t\"5\n\x16resourceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\tb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'crud_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _CONTENTTYPE._serialized_start=1127
-  _CONTENTTYPE._serialized_end=1322
   _RESOURCESUMMARY._serialized_start=58
   _RESOURCESUMMARY._serialized_end=159
   _NAMESPACEGET_REQUEST._serialized_start=161
@@ -38,15 +36,15 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _POLICYDELETE_REQUEST._serialized_start=447
   _POLICYDELETE_REQUEST._serialized_end=484
   _RESOURCELIST_REQUEST._serialized_start=486
-  _RESOURCELIST_REQUEST._serialized_end=580
-  _RESOURCELIST_RESPONSE._serialized_start=583
-  _RESOURCELIST_RESPONSE._serialized_end=754
-  _RESOURCEGET_REQUEST._serialized_start=756
-  _RESOURCEGET_REQUEST._serialized_end=806
-  _RESOURCEGET_RESPONSE._serialized_start=809
-  _RESOURCEGET_RESPONSE._serialized_end=953
-  _RESOURCEPOST_REQUEST._serialized_start=955
-  _RESOURCEPOST_REQUEST._serialized_end=1069
-  _RESOURCEDELETE_REQUEST._serialized_start=1071
-  _RESOURCEDELETE_REQUEST._serialized_end=1124
+  _RESOURCELIST_REQUEST._serialized_end=537
+  _RESOURCELIST_RESPONSE._serialized_start=540
+  _RESOURCELIST_RESPONSE._serialized_end=711
+  _RESOURCEGET_REQUEST._serialized_start=713
+  _RESOURCEGET_REQUEST._serialized_end=763
+  _RESOURCEGET_RESPONSE._serialized_start=766
+  _RESOURCEGET_RESPONSE._serialized_end=910
+  _RESOURCEPOST_REQUEST._serialized_start=912
+  _RESOURCEPOST_REQUEST._serialized_end=983
+  _RESOURCEDELETE_REQUEST._serialized_start=985
+  _RESOURCEDELETE_REQUEST._serialized_end=1038
 # @@protoc_insertion_point(module_scope)

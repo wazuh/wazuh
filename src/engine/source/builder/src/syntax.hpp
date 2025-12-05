@@ -28,6 +28,7 @@ namespace asset
 constexpr auto NAME_KEY = "name";                     ///< Key for the name field in an asset.
 constexpr auto METADATA_KEY = "metadata";             ///< Key for the metadata field in an asset.
 constexpr auto ID_KEY = "id";                         ///< Key for the id field in an asset.
+constexpr auto ENABLED_KEY = "enabled";               ///< Key for the enabled field in an asset.
 constexpr auto PARENTS_KEY = "parents";               ///< Key for the parents field in an asset.
 constexpr auto CHECK_KEY = "check";                   ///< Key for the check stage in an asset.
 constexpr auto PARSE_KEY = "parse";                   ///< Key for the parse stage in an asset.

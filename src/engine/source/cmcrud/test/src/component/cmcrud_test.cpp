@@ -49,7 +49,7 @@ integrations:
 static constexpr const char* kIntegrationYAML = R"(
 id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
 title: "windows"
-enable_decoders: true
+enabled: true
 category: "ossec"
 default_parent: "decoder/windows/0"
 decoders:

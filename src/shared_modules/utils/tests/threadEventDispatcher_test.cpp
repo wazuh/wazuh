@@ -168,7 +168,7 @@ TEST_F(ThreadEventDispatcherTest, CaptureWarningMsg)
                                      va_list args)
         {
             // Receives the exception message from the dispatch method.
-            if (logLevel == Log::LOGLEVEL_DEBUG)
+            if (logLevel == Log::LOGLEVEL_WARNING)
             {
                 // Format the message.
                 char buffer[4096];

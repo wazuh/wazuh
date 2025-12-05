@@ -47,7 +47,7 @@ static cm::store::dataType::Integration makeSampleIntegration()
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
-      "enable_decoders": true,
+      "enabled": true,
       "category": "ossec",
       "decoders": [
         "85853f26-5779-469b-86c4-c47ee7d400b4"
