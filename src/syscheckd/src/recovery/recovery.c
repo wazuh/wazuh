@@ -33,6 +33,7 @@ cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sh
         return NULL;
     }
 
+    // Patch the inode from int to string, like fim_db_file_update does in file.cpp
     cJSON* inode_item = cJSON_GetObjectItem(file_data, "inode");
     if (inode_item && cJSON_IsNumber(inode_item)) {
         char buf[32];

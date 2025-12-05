@@ -111,10 +111,12 @@ std::string DB::getConcatenatedChecksums(const std::string& tableName)
 
     std::string concatenatedChecksums;
     size_t totalSize = 0;
+
     for (const auto& checksum : checksums)
     {
         totalSize += checksum.length();
     }
+
     concatenatedChecksums.reserve(totalSize);
 
     for (const auto& checksum : checksums)
@@ -595,6 +597,12 @@ void fim_db_close_and_delete_database()
 
 int fim_db_increase_each_entry_version(const char* table_name)
 {
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return -1;
+    }
+
     try
     {
         return DB::instance().increaseEachEntryVersion(table_name);
@@ -604,6 +612,7 @@ int fim_db_increase_each_entry_version(const char* table_name)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+
     return -1;
 
     // LCOV_EXCL_STOP

@@ -135,7 +135,6 @@ cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, co
     cJSON* hash = cJSON_CreateObject();
     cJSON_AddItemToObject(checksum, "hash", hash);
 
-    // Add state modified_at and document_version fields for stateful event only
     cJSON* state = cJSON_CreateObject();
     cJSON_AddItemToObject(stateful_event, "state", state);
     cJSON_AddStringToObject(hash, "sha1", sha1_hash);
@@ -578,6 +577,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
     persist_syscheck_msg(registry_value_sha1, sync_operation, FIM_REGISTRY_VALUES_SYNC_INDEX, stateful_event, document_version);
+    cJSON_Delete(stateful_event);
 
 end:
     os_free(event_data->diff);
