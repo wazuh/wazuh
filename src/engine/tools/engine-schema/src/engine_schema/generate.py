@@ -121,6 +121,7 @@ def _yaml_dict_to_file(yml_files: dict, resource_handler: rs.ResourceHandler) ->
             os.unlink(temp_path)
         raise e
 
+
 def _merge_yaml_files_in_directory(directory_path: str, resource_handler: rs.ResourceHandler) -> str:
     """
     Merges all .yml files in a directory into a single temporary file.
@@ -136,6 +137,7 @@ def _merge_yaml_files_in_directory(directory_path: str, resource_handler: rs.Res
     print(f"Found {len(yml_files)} YAML files to merge: {[f.name for f in yml_files]}")
 
     return _yaml_dict_to_file(yml_files, resource_handler)
+
 
 def _merge_yaml_files_from_list(file_paths_str: str, resource_handler: rs.ResourceHandler) -> str:
     """
@@ -194,9 +196,6 @@ def generate(wcs_path: str, resource_handler: rs.ResourceHandler, allowed_fields
 
         print(f'Loading schema template...')
         fields_template = resource_handler.load_internal_file('fields.template')
-        print(f'Loading mappings template...')
-        mappings_template = resource_handler.load_internal_file(
-            'mappings.template')
         print(f'Loading logpar overrides template...')
         logpar_template = resource_handler.load_internal_file('logpar_types')
 
@@ -233,13 +232,10 @@ def generate(wcs_path: str, resource_handler: rs.ResourceHandler, allowed_fields
                                                      name='schema/fields-decoder/0')
         print('Success.')
 
-        # Get index mappings
-        print('Generating indexer mappings...')
+        # Build a clean properties mapping
+        print('Generating clean properties mapping...')
         jmappings = field_tree.get_jmapping()
-        mappings_template['template']['mappings']['properties'] = {
-            **mappings_template['template']['mappings'].get('properties', {}),
-            **jmappings
-        }
+        mappings_properties = {"properties": jmappings}
         print('Success.')
 
         # Get the logpar configuration file
@@ -247,7 +243,7 @@ def generate(wcs_path: str, resource_handler: rs.ResourceHandler, allowed_fields
         logpar_template["fields"] = field_tree.get_jlogpar()
         print('Success.')
 
-        return decoder_fields_schema, rule_fields_schema, mappings_template, logpar_template, engine_schema
+        return decoder_fields_schema, rule_fields_schema, mappings_properties, logpar_template, engine_schema
 
     finally:
         # Clean up temporary file if it was created
