@@ -3312,8 +3312,8 @@ checks:
     condition: all
     rules:
       - "not c:dpkg-query -s ufw -> r:install ok installed"
-      - 'c:systemctl is-enabled ufw -> r:enabled'
-      - "c:systemctl is-enabled ufw.service -> r:active"
+      - 'not c:systemctl is-enabled ufw -> r:enabled'
+      - "not c:systemctl is-enabled ufw.service -> r:active"
       - "c:dpkg-query -s iptables -> r:install ok installed"
 
   # 4.4.2.1 Ensure iptables default deny firewall policy. (Automated)
