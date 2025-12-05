@@ -179,29 +179,37 @@ void SecurityConfigurationAssessment::Run()
 
         // Check for all-policies-removed case after loading
         // This handles runtime policy removal (during existing scan loop)
-        if (m_policies.empty() && hasDataInDatabase())
+        if (m_policies.empty())
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG,
-                                             "All policies removed during runtime. Initiating DataClean process.");
-
-            // Mark scan as complete before DataClean
             m_scanInProgress.store(false);
             {
                 std::lock_guard<std::mutex> lock(m_pauseMutex);
                 m_pauseCv.notify_all();
             }
 
-            if (handleAllPoliciesRemoved())
+            if (hasDataInDatabase())
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG,
-                                                 "All policies removed - DataClean completed. SCA module exiting.");
-                return;
+                                                 "All policies removed during runtime. Initiating DataClean process.");
+
+                if (handleAllPoliciesRemoved())
+                {
+                    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                     "All policies removed - DataClean completed. SCA module exiting.");
+                }
+                else
+                {
+                    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                     "Failed to complete DataClean process. SCA module exiting.");
+                }
             }
             else
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG,
-                                                 "Failed to complete DataClean process. Will retry on next run.");
+                                                 "No policies configured and no data in database. SCA module exiting.");
             }
+
+            return;
         }
 
         // Check again after policy loading in case stop was called during load
