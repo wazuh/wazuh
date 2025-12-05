@@ -8,6 +8,7 @@
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
 
+#include <algorithm>
 #include <iostream>
 #include <thread>
 
@@ -91,40 +92,23 @@ void SecurityConfigurationAssessment::Run()
 
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
 
-    // Check for all-policies-removed case before starting scan loop
-    // This handles the case where policies were removed between restarts
-    bool hasEnabledPolicies = false;
-
-    for (const auto& policy : m_policiesData)
+    // Check for policies removed between agent restarts (before scan loop starts).
+    // This early check uses m_policiesData (raw config) since policies haven't been loaded yet.
+    bool hasEnabledPolicies =
+        std::any_of(m_policiesData.begin(), m_policiesData.end(), [](const auto & policy)
     {
-        if (policy.isEnabled)
-        {
-            hasEnabledPolicies = true;
-            break;
-        }
-    }
+        return policy.isEnabled;
+    });
 
-    if (!hasEnabledPolicies && hasDataInDatabase())
+    if (!hasEnabledPolicies)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG,
-                                         "No enabled policies in configuration but database has data. "
-                                         "Handling policy removal.");
-
-        if (handleAllPoliciesRemoved())
+        if (!handleNoPoliciesAvailable())
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG,
-                                             "All policies removed - DataClean completed. SCA module exiting.");
             return;
         }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG,
-                                             "Failed to complete DataClean process. SCA module exiting.");
-            return;
-        }
-    }
-    else if (!hasEnabledPolicies)
-    {
+
+        // If handleNoPoliciesAvailable returns true, it means no cleanup was needed - but we still exit
+        // since there's nothing to scan
         LoggingHelper::getInstance().log(LOG_DEBUG, "No enabled policies configured. SCA module has nothing to scan.");
         return;
     }
@@ -177,8 +161,8 @@ void SecurityConfigurationAssessment::Run()
         );
         // *INDENT-ON*
 
-        // Check for all-policies-removed case after loading
-        // This handles runtime policy removal (during existing scan loop)
+        // Check for policies removed at runtime (e.g., config change during scan loop).
+        // This uses m_policies (loaded objects) since LoadPolicies() may filter out invalid policies.
         if (m_policies.empty())
         {
             m_scanInProgress.store(false);
@@ -187,28 +171,7 @@ void SecurityConfigurationAssessment::Run()
                 m_pauseCv.notify_all();
             }
 
-            if (hasDataInDatabase())
-            {
-                LoggingHelper::getInstance().log(LOG_DEBUG,
-                                                 "All policies removed during runtime. Initiating DataClean process.");
-
-                if (handleAllPoliciesRemoved())
-                {
-                    LoggingHelper::getInstance().log(LOG_DEBUG,
-                                                     "All policies removed - DataClean completed. SCA module exiting.");
-                }
-                else
-                {
-                    LoggingHelper::getInstance().log(LOG_DEBUG,
-                                                     "Failed to complete DataClean process. SCA module exiting.");
-                }
-            }
-            else
-            {
-                LoggingHelper::getInstance().log(LOG_DEBUG,
-                                                 "No policies configured and no data in database. SCA module exiting.");
-            }
-
+            handleNoPoliciesAvailable();
             return;
         }
 
@@ -1283,6 +1246,32 @@ bool SecurityConfigurationAssessment::hasDataInDatabase()
         LoggingHelper::getInstance().log(LOG_ERROR, "Error checking database contents: " + std::string(err.what()));
         return false;
     }
+}
+
+bool SecurityConfigurationAssessment::handleNoPoliciesAvailable()
+{
+    if (hasDataInDatabase())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "No policies available but database has data. Initiating DataClean process.");
+
+        if (handleAllPoliciesRemoved())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "All policies removed - DataClean completed. SCA module exiting.");
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to complete DataClean process. SCA module exiting.");
+        }
+
+        // Cleanup was attempted (whether successful or not), caller should exit
+        return false;
+    }
+
+    // No data in database, nothing to clean up
+    LoggingHelper::getInstance().log(LOG_DEBUG, "No policies configured and no data in database.");
+    return true;
 }
 
 bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
