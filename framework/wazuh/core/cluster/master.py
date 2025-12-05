@@ -13,7 +13,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict, Callable, List
 from uuid import uuid4
 
 from wazuh.core import cluster as metadata, common, exception, utils
@@ -990,6 +990,238 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.name and cluster.clean_up(node_name=self.name)
 
 
+class DisconnectedAgentGroupSyncTask:
+    """
+    Task to periodically synchronize group configuration for disconnected agents.
+    
+    This task:
+    1. Identifies disconnected agents that have been offline for a minimum duration
+    2. Queries the Wazuh Indexer to obtain the maximum version across all documents
+    3. Uses that version as external_gte for group synchronization
+    4. Ensures indexed data remains consistent with current group configuration
+    """
+
+    def __init__(self, manager: 'Master', logger, cluster_items: dict, indexer_client=None):
+        """Initialize the disconnected agent group sync task.
+
+        Parameters
+        ----------
+        manager : Master
+            Reference to the Master server instance
+        logger : logging.Logger
+            Logger instance for the task
+        cluster_items : dict
+            Cluster configuration with intervals and parameters
+        indexer_client : AsyncOpenSearch, optional
+            OpenSearch/Elasticsearch client for querying the Indexer
+        """
+        self.manager = manager
+        self.logger = logger
+        self.cluster_items = cluster_items
+        self.indexer_client = indexer_client
+        
+        # Configuration parameters
+        master_interval = cluster_items.get('intervals', {}).get('master', {})
+        self.sync_interval = master_interval.get('sync_disconnected_agent_groups', 300)
+        self.batch_size = master_interval.get('sync_disconnected_agent_groups_batch_size', 100)
+        self.min_disconnection_time = master_interval.get('sync_disconnected_agent_groups_min_offline', 600)
+        self.enabled = cluster_items.get('disconnected_agent_sync', {}).get('enabled', True)
+
+    async def run(self):
+        """Main task loop for disconnected agent group synchronization."""
+        if not self.enabled:
+            self.logger.info("Disconnected agent group sync task is disabled")
+            return
+
+        self.logger.info(
+            f"Starting disconnected agent group synchronization task "
+            f"(interval: {self.sync_interval}s, batch_size: {self.batch_size})"
+        )
+
+        wdb_conn = AsyncWazuhDBConnection()
+
+        while True:
+            try:
+                # Get disconnected agents
+                disconnected_agents = await self._get_disconnected_agents(wdb_conn)
+
+                if not disconnected_agents:
+                    self.logger.debug("No disconnected agents found for synchronization")
+                    await asyncio.sleep(self.sync_interval)
+                    continue
+
+                self.logger.info(f"Found {len(disconnected_agents)} disconnected agents to synchronize")
+
+                # Process agents in batches
+                for batch in self._batch_agents(disconnected_agents):
+                    try:
+                        await self._sync_agent_batch(batch)
+                    except Exception as e:
+                        self.logger.error(f"Error syncing batch of agents: {e}", exc_info=True)
+
+            except Exception as e:
+                self.logger.error(f"Error in disconnected agent sync task: {e}", exc_info=True)
+            finally:
+                await asyncio.sleep(self.sync_interval)
+
+    async def _get_disconnected_agents(self, wdb_conn: AsyncWazuhDBConnection) -> list:
+        """Get list of disconnected agents from WazuhDB.
+
+        Parameters
+        ----------
+        wdb_conn : AsyncWazuhDBConnection
+            WazuhDB connection instance
+
+        Returns
+        -------
+        list
+            List of disconnected agents with their information
+        """
+        try:
+            # Query agents with disconnected status using get_agents_overview
+            from wazuh.core.agent import Agent
+            
+            agents_data = Agent.get_agents_overview(
+                filters={"status": ["disconnected"]},
+                limit=None,
+                get_data=True
+            )
+            
+            agents = agents_data.get('data', {}).get('affected_items', [])
+            
+            self.logger.debug(f"Retrieved {len(agents)} disconnected agents from WazuhDB")
+            return agents
+
+        except Exception as e:
+            self.logger.error(f"Error retrieving disconnected agents from WazuhDB: {e}")
+            return []
+
+    async def _get_max_version_from_indexer(self, agent_id: str) -> int:
+        """Query the Wazuh Indexer for maximum document version of an agent.
+
+        Parameters
+        ----------
+        agent_id : str
+            ID of the agent
+
+        Returns
+        -------
+        int
+            Maximum version found in all documents, or 0 if not found
+        """
+        if not self.indexer_client:
+            self.logger.warning("Indexer client not available, skipping version query")
+            return 0
+
+        # Indices to search
+        indices = [
+            "wazuh-states-fim-files",
+            "wazuh-states-fim-registry-keys",
+            "wazuh-states-sca-check",
+            "wazuh-states-inventory-*",
+            "wazuh-states-vulnerability-detector-*"
+        ]
+
+        # Build aggregation query
+        query = {
+            "size": 0,
+            "aggs": {
+                "max_version": {
+                    "max": {"field": "state.document_version"}
+                }
+            },
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"agent.id": agent_id}}
+                    ]
+                }
+            }
+        }
+
+        try:
+            result = await self.indexer_client.search(
+                index=",".join(indices),
+                body=query,
+                request_timeout=30
+            )
+
+            max_version = result.get('aggregations', {}).get('max_version', {}).get('value')
+            
+            if max_version is not None:
+                self.logger.debug(f"Max version for agent {agent_id}: {max_version}")
+                return max_version
+            else:
+                self.logger.debug(f"No documents found for agent {agent_id} in indexer")
+                return 0
+
+        except Exception as e:
+            self.logger.warning(f"Failed to query max version for agent {agent_id}: {e}")
+            return 0
+
+    def _batch_agents(self, agents: list):
+        """Generate batches of agents for processing.
+
+        Parameters
+        ----------
+        agents : list
+            List of agents
+
+        Yields
+        ------
+        list
+            Batches of agents with size <= self.batch_size
+        """
+        for i in range(0, len(agents), self.batch_size):
+            yield agents[i:i + self.batch_size]
+
+    async def _sync_agent_batch(self, agents: list):
+        """Synchronize a batch of disconnected agents.
+
+        Parameters
+        ----------
+        agents : list
+            List of agents to synchronize
+        """
+        from wazuh import agent as agent_module
+
+        for agent_info in agents:
+            try:
+                agent_id = agent_info.get('id')
+                groups = agent_info.get('group', [])
+
+                if not agent_id or not groups:
+                    self.logger.warning(f"Skipping agent with incomplete info: {agent_info}")
+                    continue
+
+                # Get maximum version from Indexer
+                external_gte = await self._get_max_version_from_indexer(agent_id)
+
+                self.logger.info(
+                    f"Synchronizing groups for agent {agent_id} "
+                    f"with external_gte={external_gte}, groups={groups}"
+                )
+
+                # Call disconnected_agent_group_sync function
+                try:
+                    result = await agent_module.disconnected_agent_group_sync(
+                        agent_list=[agent_id],
+                        group_list=groups if isinstance(groups, list) else [groups],
+                        external_gte=external_gte
+                    )
+
+                    self.logger.debug(
+                        f"Sync result for agent {agent_id}: "
+                        f"affected={len(result.affected_items)}, failed={len(result.failed_items)}"
+                    )
+
+                except Exception as e:
+                    self.logger.error(f"Error calling disconnected_agent_group_sync for agent {agent_id}: {e}")
+
+            except Exception as e:
+                self.logger.error(f"Error synchronizing agent {agent_info}: {e}", exc_info=True)
+
+
 class Master(server.AbstractServer):
     """
     Create the server. Handle multiple clients, DAPI and Send Sync requests.
@@ -1020,7 +1252,16 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
+        # Initialize disconnected agent group sync task
+        logger_sync_task = self.setup_task_logger('Disconnected agent group sync')
+        self.disconnected_agent_group_sync_task = DisconnectedAgentGroupSyncTask(
+            manager=self,
+            logger=logger_sync_task,
+            cluster_items=self.cluster_items,
+            indexer_client=None  # Will be set when Indexer client is available
+        )
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update, 
+                          self.disconnected_agent_group_sync_task.run])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
@@ -1146,3 +1387,20 @@ class Master(server.AbstractServer):
         """
         return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
                 'node': self.configuration['node_name']}
+
+    def get_non_connected_agents(self) -> List[int]:
+        """Get a list of agents that are not connected to any worker node.
+
+        Returns
+        -------
+        list
+            List of agent IDs.
+        """
+        query = "status:active AND node_name:''"
+        non_connected_agents = Agent.get_agents_overview(filters={"status": {"disconnected", "pending", "never_connected" }},
+                                                         limit=None,
+                                                         count=False,
+                                                         get_data=True,
+                                                         q=query)
+        return [agent['id'] for agent in non_connected_agents.get('items', [])]
+    
