@@ -4013,14 +4013,14 @@ check:
 
 ```
 
-field: kvdb_match(db-name)
+field: kvdb_match(db_name)
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| db-name | string | value | testing |
+| db_name | string | value | Any string |
 
 
 ## Target Field
@@ -4032,7 +4032,11 @@ field: kvdb_match(db-name)
 
 ## Description
 
-Checks if a given key exist in the DB named db-name. This helper function is typically used in the check stage.
+Checks whether the string stored in the target field is the name of an
+existing key in the KVDB given by "db_name".
+
+This helper is intended to be used in the check stage. It does not modify
+the event; it only decides whether the check block passes or fails.
 
 
 ## Keywords
@@ -4043,41 +4047,83 @@ Checks if a given key exist in the DB named db-name. This helper function is typ
 
 ### Example 1
 
-Key found in kvdb
+Fails when the KVDB cannot be loaded
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: kvdb_match('testing')
+  - target_field: kvdb_match('non-existing-db')
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "test"
+  "target_field": "0x0"
+}
+```
+
+*The check was performed with errors*
+
+### Example 2
+
+Check passes when the target field contains a key present in the KVDB
+
+#### Asset
+
+```yaml
+check:
+  - target_field: kvdb_match('windows_kerberos_status_code_to_code_name')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "0x0"
 }
 ```
 
 *The check was successful*
 
-### Example 2
+### Example 3
 
-Key not found in kvdb
+Check also passes for keys whose KVDB value is an array
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: kvdb_match('testing')
+  - target_field: kvdb_match('windows_kerberos_status_code_to_code_name')
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "k"
+  "target_field": "bitmask_test_values"
+}
+```
+
+*The check was successful*
+
+### Example 4
+
+Check fails when the target field contains a key that is not present in the KVDB
+
+#### Asset
+
+```yaml
+check:
+  - target_field: kvdb_match('windows_kerberos_status_code_to_code_name')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "0x99"
 }
 ```
 
@@ -4092,14 +4138,14 @@ check:
 
 ```
 
-field: kvdb_not_match(db-name)
+field: kvdb_not_match(db_name)
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| db-name | string | value | testing |
+| db_name | string | value | Any string |
 
 
 ## Target Field
@@ -4111,7 +4157,11 @@ field: kvdb_not_match(db-name)
 
 ## Description
 
-Checks if a given key does not exist in the DB named db-name. This helper function is typically used in the check stage.
+Checks whether the string stored in the target field is NOT the name of an
+existing key in the KVDB given by "db_name".
+
+This helper is intended to be used in the check stage. It does not modify
+the event; it only decides whether the check block passes or fails.
 
 
 ## Keywords
@@ -4122,20 +4172,20 @@ Checks if a given key does not exist in the DB named db-name. This helper functi
 
 ### Example 1
 
-Key found in kvdb
+Fails when the KVDB cannot be loaded
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: kvdb_not_match('testing')
+  - target_field: kvdb_not_match('non-existing-db')
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "test"
+  "target_field": "0x0"
 }
 ```
 
@@ -4143,20 +4193,62 @@ check:
 
 ### Example 2
 
-Key not found in kvdb
+Check fails when the target field contains a key present in the KVDB
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: kvdb_not_match('testing')
+  - target_field: kvdb_not_match('windows_kerberos_status_code_to_code_name')
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "k"
+  "target_field": "0x0"
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Check also fails for keys whose KVDB value is an array
+
+#### Asset
+
+```yaml
+check:
+  - target_field: kvdb_not_match('windows_kerberos_status_code_to_code_name')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "bitmask_test_values"
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Check passes when the target field contains a key that is not present in the KVDB
+
+#### Asset
+
+```yaml
+check:
+  - target_field: kvdb_not_match('windows_kerberos_status_code_to_code_name')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "0x99"
 }
 ```
 
@@ -13894,57 +13986,66 @@ field: kvdb_decode_bitmask(db_name, table_name, mask)
 
 | Type | Possible values |
 | ---- | --------------- |
-| string | Any string |
+| array | [number, string, boolean, object, array] |
 
 
 ## Description
 
-Decodes values based on a bitmask using a reference table constructed at compile time.
-This table is generated from a object json stored in KVDB
-- Compile Time:
-    The function searches the db_name database for the value corresponding to table_name.
-    table_name should contain a JSON object with up to 32 keys ranging from "0" to "31".
-    These keys represent positions in a 32-bit binary number, with the least significant bit (LSB) positioned on the right.
-    The values associated with these keys provide descriptions for each bit position or flag and must all be of the same JSON type.
-    Using this information, a reference table is constructed.
+Decodes a hexadecimal bitmask into an array of values using a reference
+table stored in a KVDB.
 
-- Execution Time:
-    The function retrieves the value of $maskRef, which is a string containing a hexadecimal value.
-    This hexadecimal value is decomposed and acts as a mask.
-    For each bit set to 1 in this mask, the function looks up the reference table to fetch the corresponding value or description.
-    If a value doesn't exist in the table for a particular bit, that bit is skipped.
-    An array containing all the values corresponding to the activated bits in the mask is returned.
+Compile time:
+  - The function looks up "table_name" in the KVDB "db_name".
+  - The value associated with "table_name" must be a JSON object whose
+    keys are strings "0".."31", each representing a bit position in a
+    32-bit mask (0 is the least significant bit).
+  - All values in this object must share the same JSON type. This object
+    is used to build an internal lookup table.
 
+Execution time:
+  - The function reads the "mask" argument (either a literal string or a
+    reference to a field) that must contain a hexadecimal value
+    (for example: "21", "0A").
+  - For each bit set to 1 in the mask, the helper looks up that bit
+    position in the reference table:
+      * If a value exists for that bit, it is appended to the result array.
+      * If no value exists for that bit, it is skipped.
+  - The final result is an array containing all values corresponding to
+    the active bits.
 
-- Special Notes:
-    It's not mandatory for the table to have all bit values. If a bit's value is missing, it is simply skipped.
-    If the resulting array is empty, the function fails, and it neither creates nor overwrites the value of field.
+Special notes:
+  - The reference table does not need to define all bit positions.
+  - If the resulting array is empty (no matching bits or mask = 0), the
+    operation fails and the target field is left unchanged.
+  - If the DB or the table entry does not exist, the operation fails and
+    the target field is left unchanged.
 
 
 ## Keywords
 
 - `kvdb` 
 
+- `bitmask` 
+
 ## Examples
 
 ### Example 1
 
-Success decode bitmask
+Fails when the KVDB does not exist, leaving the target array unchanged
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_decode_bitmask('testing', 'test_bitmask', $mask)
+      - target_field: kvdb_decode_bitmask('non-existing-db', 'access_mask', $mask)
 ```
 
 #### Input Event
 
 ```json
 {
-  "mask": "33",
-  "target_field": "any_value"
+  "mask": "1"
 }
 ```
 
@@ -13952,33 +14053,94 @@ normalize:
 
 ```json
 {
-  "mask": "33",
+  "mask": "1",
+  "target_field": []
+}
+```
+
+*The operation was performed with errors*
+
+### Example 2
+
+Fails when the table entry does not exist in the KVDB
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_decode_bitmask('windows_kerberos_status_code_to_code_name', 'non_existing_table', $mask)
+```
+
+#### Input Event
+
+```json
+{
+  "mask": "1"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "mask": "1",
+  "target_field": []
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Decodes a mask with bit 0 set into the corresponding access_mask value
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_decode_bitmask('windows_kerberos_status_code_to_code_name', 'access_mask', $mask)
+```
+
+#### Input Event
+
+```json
+{
+  "mask": "1"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "mask": "1",
   "target_field": [
-    "some_data"
+    "Create Child"
   ]
 }
 ```
 
 *The operation was successful*
 
-### Example 2
+### Example 4
 
-Failure decode bitmask. Values is out of range 0-0xFFFFFFFFFFFFFFFF
+Decodes a mask with multiple active bits, preserving bit order
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_decode_bitmask('testing', 'test_bitmask', $mask)
+      - target_field: kvdb_decode_bitmask('windows_kerberos_status_code_to_code_name', 'access_mask', $mask)
 ```
 
 #### Input Event
 
 ```json
 {
-  "mask": "99",
-  "target_field": "any_value"
+  "mask": "11"
 }
 ```
 
@@ -13986,8 +14148,117 @@ normalize:
 
 ```json
 {
-  "mask": "99",
-  "target_field": "any_value"
+  "mask": "11",
+  "target_field": [
+    "Create Child",
+    "Read Property"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Skips bit positions that are not present in the access_mask table
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_decode_bitmask('windows_kerberos_status_code_to_code_name', 'access_mask', $mask)
+```
+
+#### Input Event
+
+```json
+{
+  "mask": "1100"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "mask": "1100",
+  "target_field": [
+    "Control Access"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+Appends decoded access_mask values to an existing array
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_decode_bitmask('windows_kerberos_status_code_to_code_name', 'access_mask', $mask)
+```
+
+#### Input Event
+
+```json
+{
+  "mask": "10000",
+  "target_field": [
+    "Base"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "mask": "10000",
+  "target_field": [
+    "Base",
+    "DELETE"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Fails when no bits in the mask have entries in the access_mask table, leaving target unchanged
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_decode_bitmask('windows_kerberos_status_code_to_code_name', 'access_mask', $mask)
+```
+
+#### Input Event
+
+```json
+{
+  "mask": "8000",
+  "target_field": [
+    "Base"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "mask": "8000",
+  "target_field": [
+    "Base"
+  ]
 }
 ```
 
@@ -14002,14 +14273,14 @@ normalize:
 
 ```
 
-field: kvdb_get(db-name, key)
+field: kvdb_get(db_name, key)
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| db-name | string | value | Any string |
+| db_name | string | value | Any string |
 | key | string | value or reference | Any string |
 
 
@@ -14017,13 +14288,17 @@ field: kvdb_get(db-name, key)
 
 | Type | Possible values |
 | ---- | --------------- |
-| [object, array] | - |
+| [string, number, boolean, object, array] | - |
 
 
 ## Description
 
-Gets the value of a given key in the DB named db-name and if its successful it stores it in the given field.
-Key value type can be string, number, object, array or null. This helper function is typically used in the map stage
+Looks up the value of a given key in the KVDB named "db_name".
+If the key exists, its value (string, number, boolean, object, array or null)
+is stored in the target field.
+If either the database or the key do not exist, the operation is a no-op:
+it does not modify the target field and evaluates to false (but must not fail).
+This helper function is typically used in the map stage.
 
 
 ## Keywords
@@ -14034,21 +14309,21 @@ Key value type can be string, number, object, array or null. This helper functio
 
 ### Example 1
 
-Try get non exist key
+No-op when the KVDB does not exist
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('testing', 'NON-EXIST-KEY')
+      - target_field: kvdb_get('non-existing-db', '0x0')
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": true
+  "target_field": "keep-me"
 }
 ```
 
@@ -14056,7 +14331,7 @@ normalize:
 
 ```json
 {
-  "target_field": false
+  "target_field": "keep-me"
 }
 ```
 
@@ -14064,22 +14339,22 @@ normalize:
 
 ### Example 2
 
-Get an exist key
+No-op when the key does not exist in the KVDB
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('testing', $key)
+      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', $key)
 ```
 
 #### Input Event
 
 ```json
 {
-  "key": "test",
-  "target_field": true
+  "key": "0x99",
+  "target_field": "keep-me"
 }
 ```
 
@@ -14087,8 +14362,193 @@ normalize:
 
 ```json
 {
-  "key": "test",
-  "target_field": false
+  "key": "0x99",
+  "target_field": "keep-me"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Stores a string value from the KVDB into the target field
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', '0x0')
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": "KDC_ERR_NONE"
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Stores another string value from the KVDB into the target field
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "0x6"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "0x6",
+  "target_field": "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Resolves key from a reference before lookup
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "0x1"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "0x1",
+  "target_field": "KDC_ERR_NAME_EXP"
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+Stores an object value from the KVDB into the target field
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "access_mask"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "access_mask",
+  "target_field": {
+    "0": "Create Child",
+    "1": "Delete Child",
+    "2": "List Contents",
+    "3": "SELF",
+    "4": "Read Property",
+    "5": "Write Property",
+    "6": "Delete Tree",
+    "7": "List Object",
+    "8": "Control Access",
+    "16": "DELETE",
+    "17": "READ_CONTROL",
+    "18": "WRITE_DAC",
+    "19": "WRITE_OWNER",
+    "20": "SYNCHRONIZE",
+    "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+    "31": "ADS_RIGHT_GENERIC_READ",
+    "30": "ADS_RIGHT_GENERIC_WRITE",
+    "29": "ADS_RIGHT_GENERIC_EXECUTE",
+    "28": "ADS_RIGHT_GENERIC_ALL"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Stores an array value from the KVDB into the target field
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', 'bitmask_test_values')
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    16,
+    17,
+    18,
+    19,
+    20,
+    24,
+    28,
+    29,
+    30,
+    31
+  ]
 }
 ```
 
@@ -14123,33 +14583,44 @@ field: kvdb_get_array(db_name, array_key)
 
 ## Description
 
-Looks in the database for each key found in $array_ref, and appends the values to field.
-Best effort, if a key is not present in the DB, skip it.
+For each key in "array_key", looks up the value in the KVDB named "db_name"
+and appends any found values to the target array field.
+- "array_key" may be a literal array of strings or a reference to a field
+  that contains such an array of strings.
+- If some keys are not present in the DB, they are silently skipped
+  (best-effort behavior).
+- If the DB does not exist, or if the target field cannot be treated as
+  an array, the operation fails and the target field is left unchanged.
+This helper function is typically used in the map stage.
 
 
 ## Keywords
 
 - `kvdb` 
 
+- `array` 
+
 ## Examples
 
 ### Example 1
 
-Success kvdb get array
+No-op when the KVDB does not exist
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_array('testing', ['test'])
+      - target_field: kvdb_get_array('non-existing-db', ['0x0', '0x1'])
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": true
+  "target_field": [
+    "BASE"
+  ]
 }
 ```
 
@@ -14157,7 +14628,293 @@ normalize:
 
 ```json
 {
-  "target_field": false
+  "target_field": [
+    "BASE"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 2
+
+Appends values for each existing key in array_key
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', $array_key)
+```
+
+#### Input Event
+
+```json
+{
+  "array_key": [
+    "0x0",
+    "0x1"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "array_key": [
+    "0x0",
+    "0x1"
+  ],
+  "target_field": [
+    "KDC_ERR_NONE",
+    "KDC_ERR_NAME_EXP"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Skips keys that are not present in the KVDB
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', ['0x0', '0x99', '0x6'])
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "KDC_ERR_NONE",
+    "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+Appends KVDB values to an existing array
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', $array_key)
+```
+
+#### Input Event
+
+```json
+{
+  "array_key": [
+    "0x2"
+  ],
+  "target_field": [
+    "LOCAL_BASE"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "array_key": [
+    "0x2"
+  ],
+  "target_field": [
+    "LOCAL_BASE",
+    "KDC_ERR_SERVICE_EXP"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+No-op when none of the keys exist in the KVDB
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', ['0x99', '0x98'])
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "BASE"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    "BASE"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Appends values for keys provided by reference
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', $array_key)
+```
+
+#### Input Event
+
+```json
+{
+  "array_key": [
+    "0x0",
+    "0x1",
+    "0x6"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "array_key": [
+    "0x0",
+    "0x1",
+    "0x6"
+  ],
+  "target_field": [
+    "KDC_ERR_NONE",
+    "KDC_ERR_NAME_EXP",
+    "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Skips non-existing keys provided by reference
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', $array_key)
+```
+
+#### Input Event
+
+```json
+{
+  "array_key": [
+    "0x2",
+    "0x99",
+    "0x6"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "array_key": [
+    "0x2",
+    "0x99",
+    "0x6"
+  ],
+  "target_field": [
+    "KDC_ERR_SERVICE_EXP",
+    "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+Appends an array value from the KVDB as a single element in the target array
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', $array_key)
+```
+
+#### Input Event
+
+```json
+{
+  "array_key": [
+    "bitmask_test_values"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "array_key": [
+    "bitmask_test_values"
+  ],
+  "target_field": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ]
+  ]
 }
 ```
 
@@ -14172,14 +14929,14 @@ normalize:
 
 ```
 
-field: kvdb_get_merge(db-name, key)
+field: kvdb_get_merge(db_name, key)
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| db-name | string | value | Any string |
+| db_name | string | value | Any string |
 | key | string | value or reference | Any string |
 
 
@@ -14192,10 +14949,16 @@ field: kvdb_get_merge(db-name, key)
 
 ## Description
 
-Gets the value of a given key in the DB named db-name and if its successful it merge this
-value with what the field had before.
-Key value type can be string, number, object, array or null and it must match with the previous
-value type hold by field. This helper function is typically used in the map stage.
+Looks up the value of a given key in the KVDB named "db_name".
+If the key exists and the value type matches the current type of the target field,
+both values are merged:
+  - If both are objects, the result is a shallow merge where keys from the KVDB
+    overwrite keys from the target field on conflict.
+  - If both are arrays, the result is the concatenation of the target array with
+    the array obtained from the KVDB.
+If the database or key do not exist, or the types are incompatible,
+the operation is a no-op and evaluates to false (but must not fail).
+This helper function is typically used in the map stage.
 
 
 ## Keywords
@@ -14206,21 +14969,25 @@ value type hold by field. This helper function is typically used in the map stag
 
 ### Example 1
 
-Failure kvdb get merge
+No-op when the KVDB does not exist
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('testing', 'key')
+      - target_field: kvdb_get_merge('non-existing-db', '0x0')
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "Type mismatch between target field and value when merging"
+  "target_field": {
+    "merged": {
+      "status": "INITIAL"
+    }
+  }
 }
 ```
 
@@ -14228,11 +14995,266 @@ normalize:
 
 ```json
 {
-  "target_field": false
+  "target_field": {
+    "merged": {
+      "status": "INITIAL"
+    }
+  }
 }
 ```
 
 *The operation was performed with errors*
+
+### Example 2
+
+No-op when the key does not exist in the KVDB
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "0x99",
+  "target_field": {
+    "merged": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "0x99",
+  "target_field": {
+    "merged": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+No-op when KVDB value is a string and target field is an object
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', '0x0')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "status": "INITIAL"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "status": "INITIAL"
+  }
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+No-op when KVDB value is a string and target field is an array
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "0x1",
+  "target_field": [
+    "KDC_ERR_OLD"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "0x1",
+  "target_field": [
+    "KDC_ERR_OLD"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 5
+
+No-op when KVDB value is a string and target field is an object, using a referenced key
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "0x2",
+  "target_field": {
+    "status": "INITIAL"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "0x2",
+  "target_field": {
+    "status": "INITIAL"
+  }
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Recursively merges object from KVDB into target object, overriding shared keys and preserving local-only keys
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "access_mask",
+  "target_field": {
+    "0": "LOCAL_OVERRIDE",
+    "99": "LOCAL_CUSTOM"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "access_mask",
+  "target_field": {
+    "0": "Create Child",
+    "1": "Delete Child",
+    "2": "List Contents",
+    "3": "SELF",
+    "4": "Read Property",
+    "5": "Write Property",
+    "6": "Delete Tree",
+    "7": "List Object",
+    "8": "Control Access",
+    "16": "DELETE",
+    "17": "READ_CONTROL",
+    "18": "WRITE_DAC",
+    "19": "WRITE_OWNER",
+    "20": "SYNCHRONIZE",
+    "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+    "31": "ADS_RIGHT_GENERIC_READ",
+    "30": "ADS_RIGHT_GENERIC_WRITE",
+    "29": "ADS_RIGHT_GENERIC_EXECUTE",
+    "28": "ADS_RIGHT_GENERIC_ALL",
+    "99": "LOCAL_CUSTOM"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Recursively merges array from KVDB into target array, appending elements without clearing existing ones
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', 'bitmask_test_values')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    -1
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    16,
+    17,
+    18,
+    19,
+    20,
+    24,
+    28,
+    29,
+    30,
+    31
+  ]
+}
+```
+
+*The operation was successful*
 
 
 
@@ -14243,14 +15265,14 @@ normalize:
 
 ```
 
-field: kvdb_get_merge_recursive(db-name, key)
+field: kvdb_get_merge_recursive(db_name, key)
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| db-name | string | value | Any string |
+| db_name | string | value | Any string |
 | key | string | value or reference | Any string |
 
 
@@ -14263,9 +15285,15 @@ field: kvdb_get_merge_recursive(db-name, key)
 
 ## Description
 
-Gets the value of a given key in the DB named db-name and, if successful, merges this value with what the field had before.
-The merge process is recursive, meaning that for object or array types, the new value is deeply integrated with the existing value in the field.
-Key value type can be string, number, object, array, or null, and it must match the previous value type held by the field.
+Gets the value of a given key in the DB named "db_name" and, if successful,
+recursively merges this value into the current value of the target field.
+- Both values must share the same top-level JSON type (object or array).
+- For objects: the merge is deep. Nested objects are merged recursively,
+  and scalar/array leaves from the KVDB value override the existing ones.
+- For arrays: elements from the KVDB value are appended to the existing array
+  (implementation-defined ordering, but never clears the original array).
+If the DB or key does not exist, or if the types are incompatible, the helper
+evaluates to false and the target field is left unchanged.
 This helper function is typically used in the map stage.
 
 
@@ -14273,27 +15301,33 @@ This helper function is typically used in the map stage.
 
 - `kvdb` 
 
+- `merge` 
+
 - `recursive` 
 
 ## Examples
 
 ### Example 1
 
-Failure kvdb get merge
+No-op when the KVDB does not exist
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge_recursive('testing', 'key')
+      - target_field: kvdb_get_merge_recursive('non-existing-db', '0x0')
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "Type mismatch between target field and value when merging"
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
 }
 ```
 
@@ -14301,11 +15335,274 @@ normalize:
 
 ```json
 {
-  "target_field": false
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
 }
 ```
 
 *The operation was performed with errors*
+
+### Example 2
+
+No-op when the key does not exist in the KVDB
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge_recursive('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "0x99",
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "0x99",
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+No-op when KVDB value is a string and target field is an object
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge_recursive('windows_kerberos_status_code_to_code_name', '0x0')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+No-op when KVDB value is a string and target field is an array
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge_recursive('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "0x1",
+  "target_field": [
+    "KDC_ERR_OLD"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "0x1",
+  "target_field": [
+    "KDC_ERR_OLD"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 5
+
+No-op when KVDB value is a string and target field is an object, using a referenced key
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge_recursive('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "kerberos_code",
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "kerberos_code",
+  "target_field": {
+    "kerberos": {
+      "status": "INITIAL"
+    }
+  }
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Recursively merges object from KVDB into target object, overriding shared keys and preserving local-only keys
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge_recursive('windows_kerberos_status_code_to_code_name', $key)
+```
+
+#### Input Event
+
+```json
+{
+  "key": "access_mask",
+  "target_field": {
+    "0": "LOCAL_OVERRIDE",
+    "99": "LOCAL_CUSTOM"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "key": "access_mask",
+  "target_field": {
+    "0": "Create Child",
+    "1": "Delete Child",
+    "2": "List Contents",
+    "3": "SELF",
+    "4": "Read Property",
+    "5": "Write Property",
+    "6": "Delete Tree",
+    "7": "List Object",
+    "8": "Control Access",
+    "16": "DELETE",
+    "17": "READ_CONTROL",
+    "18": "WRITE_DAC",
+    "19": "WRITE_OWNER",
+    "20": "SYNCHRONIZE",
+    "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+    "31": "ADS_RIGHT_GENERIC_READ",
+    "30": "ADS_RIGHT_GENERIC_WRITE",
+    "29": "ADS_RIGHT_GENERIC_EXECUTE",
+    "28": "ADS_RIGHT_GENERIC_ALL",
+    "99": "LOCAL_CUSTOM"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Recursively merges array from KVDB into target array, appending elements without clearing existing ones
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: kvdb_get_merge_recursive('windows_kerberos_status_code_to_code_name', 'bitmask_test_values')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    -1
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": [
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    16,
+    17,
+    18,
+    19,
+    20,
+    24,
+    28,
+    29,
+    30,
+    31
+  ]
+}
+```
+
+*The operation was successful*
 
 
 

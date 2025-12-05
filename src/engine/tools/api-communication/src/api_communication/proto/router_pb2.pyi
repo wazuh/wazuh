@@ -15,38 +15,38 @@ SYNC_UNKNOWN: Sync
 UPDATED: Sync
 
 class Entry(_message.Message):
-    __slots__ = ["description", "entry_status", "filter", "name", "policy", "policy_sync", "priority", "uptime"]
+    __slots__ = ["description", "entry_status", "filter", "name", "namespaceId", "namespace_sync", "priority", "uptime"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     ENTRY_STATUS_FIELD_NUMBER: _ClassVar[int]
     FILTER_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACE_SYNC_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
-    POLICY_FIELD_NUMBER: _ClassVar[int]
-    POLICY_SYNC_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     UPTIME_FIELD_NUMBER: _ClassVar[int]
     description: str
     entry_status: State
     filter: str
     name: str
-    policy: str
-    policy_sync: Sync
+    namespaceId: str
+    namespace_sync: Sync
     priority: int
     uptime: int
-    def __init__(self, name: _Optional[str] = ..., policy: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ..., policy_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., uptime: _Optional[int] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ..., namespace_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., uptime: _Optional[int] = ...) -> None: ...
 
 class EntryPost(_message.Message):
-    __slots__ = ["description", "filter", "name", "policy", "priority"]
+    __slots__ = ["description", "filter", "name", "namespaceId", "priority"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     FILTER_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
-    POLICY_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     description: str
     filter: str
     name: str
-    policy: str
+    namespaceId: str
     priority: int
-    def __init__(self, name: _Optional[str] = ..., policy: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
 
 class EpsDisable_Request(_message.Message):
     __slots__ = []

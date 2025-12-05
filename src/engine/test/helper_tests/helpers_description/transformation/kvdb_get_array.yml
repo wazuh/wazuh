@@ -3,11 +3,19 @@ name: kvdb_get_array
 
 metadata:
   description: |
-    Looks in the database for each key found in $array_ref, and appends the values to field.
-    Best effort, if a key is not present in the DB, skip it.
+    For each key in "array_key", looks up the value in the KVDB named "db_name"
+    and appends any found values to the target array field.
+    - "array_key" may be a literal array of strings or a reference to a field
+      that contains such an array of strings.
+    - If some keys are not present in the DB, they are silently skipped
+      (best-effort behavior).
+    - If the DB does not exist, or if the target field cannot be treated as
+      an array, the operation fails and the target field is left unchanged.
+    This helper function is typically used in the map stage.
 
   keywords:
     - kvdb
+    - array
 
 helper_type: transformation
 
@@ -17,29 +25,99 @@ is_variadic: false
 # Arguments expected by the helper function
 arguments:
   db_name:
-    type: string  # Accept only object
+    type: string
     generate: string
-    source: value # Includes only values
+    source: value
   array_key:
-    type: array  # Accept only string
+    type: array
     generate: string
-    source: both # Includes values or references (their names start with $)
+    source: both
 
-# target_field type not comprobed
-# Database not exists
 skipped:
   - different_target_field_type
-  - success_cases # key indicate by target_field not found
+  - success_cases
 
 target_field:
   type: array
   generate: all
 
 test:
+  # Database does not exist -> no-op
   - arguments:
-      db_name: testing
-      array_key: [test]
-    target_field: true
+      db_name: non-existing-db
+      array_key: ["0x0", "0x1"]
+    target_field: [BASE]
+    should_pass: false
+    expected: [BASE]
+    description: No-op when the KVDB does not exist
+
+  # Append values for multiple existing keys
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      array_key: ["0x0", "0x1"]
+    target_field: []
     should_pass: true
-    expected: false
-    description: Success kvdb get array
+    expected: [KDC_ERR_NONE, KDC_ERR_NAME_EXP]
+    description: Appends values for each existing key in array_key
+
+  # Some keys do not exist, they are skipped
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      array_key: ["0x0", "0x99", "0x6"]
+    target_field: []
+    should_pass: false
+    expected: [KDC_ERR_NONE, KDC_ERR_C_PRINCIPAL_UNKNOWN]
+    description: Skips keys that are not present in the KVDB
+
+  # Append to a pre-populated array
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      array_key: ["0x2"]
+    target_field: [LOCAL_BASE]
+    should_pass: true
+    expected: [LOCAL_BASE, KDC_ERR_SERVICE_EXP]
+    description: Appends KVDB values to an existing array
+
+  # No keys found at all: no-op
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      array_key: ["0x99", "0x98"]
+    target_field: [BASE]
+    should_pass: false
+    expected: [BASE]
+    description: No-op when none of the keys exist in the KVDB
+
+  # Keys provided by reference
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      array_key:
+        source: reference
+        value: ["0x0", "0x1", "0x6"]
+    target_field: []
+    should_pass: true
+    expected: [KDC_ERR_NONE, KDC_ERR_NAME_EXP, KDC_ERR_C_PRINCIPAL_UNKNOWN]
+    description: Appends values for keys provided by reference
+
+  # Mixed existing and non-existing keys provided by reference
+  - arguments:
+      db_name:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      array_key:
+        source: reference
+        value: ["0x2", "0x99", "0x6"]
+    target_field: []
+    should_pass: false
+    expected: [KDC_ERR_SERVICE_EXP, KDC_ERR_C_PRINCIPAL_UNKNOWN]
+    description: Skips non-existing keys provided by reference
+
+  # Array value from KVDB: bitmask_test_values -> appended as a single element
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+      array_key: ["bitmask_test_values"]
+    target_field: []
+    should_pass: true
+    expected: [[0, 1, 2, 3, 4, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31]]
+    description: Appends an array value from the KVDB as a single element in the target array

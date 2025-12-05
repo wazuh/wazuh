@@ -25,6 +25,9 @@ public:
     MOCK_METHOD((const builder::IAllowedFields&), allowedFields, (), (const));
     MOCK_METHOD(void, setAllowedFields, (const std::shared_ptr<const builder::IAllowedFields>& allowedFields), ());
     MOCK_METHOD((std::shared_ptr<const builder::IAllowedFields>), allowedFieldsPtr, (), (const));
+    MOCK_METHOD((std::shared_ptr<cm::store::ICMStoreNSReader>), storeNSReaderPtr, (), (const));
+    MOCK_METHOD((const cm::store::ICMStoreNSReader&), getStoreNSReader, (), (const));
+    MOCK_METHOD(void, setStoreNSReader, (const std::shared_ptr<cm::store::ICMStoreNSReader> nsReader), ());
 };
 
 } // namespace builder::builders::mocks

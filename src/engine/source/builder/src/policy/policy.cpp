@@ -9,8 +9,8 @@
 namespace builder::policy
 {
 
-Policy::Policy(const store::Doc& doc,
-               const std::shared_ptr<store::IStoreReader>& store,
+Policy::Policy(const cm::store::NamespaceId& namespaceId,
+               const std::shared_ptr<cm::store::ICMStore>& cmStore,
                const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                const std::shared_ptr<builders::RegistryType>& registry,
                const std::shared_ptr<schemf::IValidator>& schema,
@@ -18,12 +18,12 @@ Policy::Policy(const store::Doc& doc,
                const bool trace,
                const bool sandbox)
 {
-    // Read the policy data
-    auto policyData = factory::readData(doc, store);
+    const auto& cmStoreNsReader = cmStore->getNSReader(namespaceId);
+    const auto& policyData = cmStoreNsReader->getPolicy();
 
     // Assign metadata
-    m_name = policyData.name();
-    m_hash = policyData.hash();
+    m_hash = policyData.getHash();
+    m_name = namespaceId.toStr();
 
     // Build the assets
     // We need to build the assets before the graph because the parents are defined in the assets
@@ -36,26 +36,27 @@ Policy::Policy(const store::Doc& doc,
     buildCtx->runState().trace = trace;
     buildCtx->runState().sandbox = sandbox;
     buildCtx->setAllowedFields(allowedFields);
+    buildCtx->setStoreNSReader(cmStoreNsReader);
 
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
-    auto builtAssets = factory::buildAssets(policyData, store, assetBuilder);
+    auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder, sandbox);
 
     // Assign the assets
-    for (const auto& [type, assets] : builtAssets)
+    for (const auto& [type, subgraph] : builtAssets)
     {
-        for (const auto& [name, asset] : assets)
+        for (const auto& asset : subgraph.orderedAssets)
         {
-            m_assets.insert(name);
+            m_assets.insert(asset);
         }
     }
 
     // Build the policy graph
     // Exposing this step here is only needed for gathering the graphivz string
-    auto policyGraph = factory::buildGraph(builtAssets, policyData);
+    auto policyGraph = factory::buildGraph(builtAssets);
     // TODO: Assign graphiv string
 
     // Build the expression
-    m_expression = factory::buildExpression(policyGraph, policyData);
+    m_expression = factory::buildExpression(policyGraph, m_name);
 }
 
 } // namespace builder::policy

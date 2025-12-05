@@ -5,6 +5,7 @@
 #include <string>
 
 #include <builder/iallowedFields.hpp>
+#include <cmstore/icmstore.hpp>
 #include <defs/idefinitions.hpp>
 #include <schemf/ivalidator.hpp>
 
@@ -31,10 +32,12 @@ struct RunState
  */
 struct Context
 {
-    std::string assetName;  // Name of the current asset being built
-    std::string policyName; // Name of the current policy being built
-    std::string stageName;  // Name of the current stage being built
-    std::string opName;     // Name of the current operation being built
+    std::string assetName;           // Name of the current asset being built
+    std::string integrationName;     // Name of the current integration being built
+    std::string integrationCategory; // Name of the current integration category being built
+    std::string policyName;          // Name of the current policy being built
+    std::string stageName;           // Name of the current stage being built
+    std::string opName;              // Name of the current operation being built
 };
 
 /**
@@ -142,6 +145,20 @@ public:
      * @param allowedFields
      */
     virtual void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) = 0;
+
+    /**
+     * @brief Get the store namespace reader object
+     *
+     * @return const cm::store::ICMStoreNSReader&
+     */
+    virtual const cm::store::ICMStoreNSReader& getStoreNSReader() const = 0;
+
+    /**
+     * @brief set the store namespace reader object
+     *
+     * @param nsReader
+     */
+    virtual void setStoreNSReader(const std::shared_ptr<cm::store::ICMStoreNSReader> nsReader) = 0;
 };
 
 } // namespace builder::builders

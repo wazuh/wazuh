@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <kvdb/mockKvdbManager.hpp>
+#include <kvdbstore/mockKvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/mockSchema.hpp>
 
@@ -121,8 +121,7 @@ TEST(RegistryTest, RegisterBuilders)
     fakeLogparDefs.setString("name", "/name");
     fakeLogparDefs.setObject("/fields");
     deps.logpar = std::make_shared<hlp::logpar::Logpar>(fakeLogparDefs, std::make_shared<schemf::mocks::MockSchema>());
-    deps.kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
-    deps.kvdbScopeName = "test";
+    deps.kvdbManager = std::make_shared<kvdbstore::mocks::MockIKVDBManager>();
     deps.logparDebugLvl = 0;
 
     ASSERT_NO_THROW(builder::detail::registerOpBuilders<builders::RegistryType>(metaRegistry, deps));

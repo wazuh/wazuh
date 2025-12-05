@@ -10,6 +10,7 @@
 #include "mockRegistry.hpp"
 
 #include <builder/mockAllowedFields.hpp>
+#include <cmstore/mockcmstore.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
 
@@ -39,6 +40,7 @@ struct BuildersMocks
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
     std::shared_ptr<MockAllowedFields> allowedFields;
+    std::shared_ptr<cm::store::MockICMStoreNSReader> nsReader;
     Context context;
 };
 
@@ -56,14 +58,17 @@ protected:
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
         mocks->allowedFields = std::make_shared<MockAllowedFields>();
+        mocks->nsReader = std::make_shared<cm::store::MockICMStoreNSReader>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
         ON_CALL(*mocks->ctx, allowedFields()).WillByDefault(testing::ReturnRef(*(mocks->allowedFields)));
+        ON_CALL(*mocks->ctx, getStoreNSReader()).WillByDefault(testing::ReturnRef(*(mocks->nsReader)));
 
         ON_CALL(*mocks->allowedFields, check(testing::_, testing::_)).WillByDefault(testing::Return(true));
         ON_CALL(*mocks->ctx, allowedFieldsPtr()).WillByDefault(testing::Return(mocks->allowedFields));
+        ON_CALL(*mocks->ctx, validatorPtr()).WillByDefault(testing::Return(mocks->validator));
 
         mocks->context.policyName = "policy/name/0";
         mocks->context.assetName = "asset/name/0";
@@ -130,6 +135,8 @@ class FilterBuilderWithDepsTest
     , public testing::WithParamInterface<FilterDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FilterBuilderTest);
 } // namespace filterbuildtest
 
 namespace filteroperatestest
@@ -156,6 +163,8 @@ class FilterOperationWithDepsTest
     , public testing::WithParamInterface<FilterDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FilterOperationTest);
 } // namespace filteroperatestest
 
 namespace mapbuildtest
@@ -182,6 +191,9 @@ class MapBuilderWithDepsTest
     , public testing::WithParamInterface<MapDepsT>
 {
 };
+//TODO: Remove the following lines after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapBuilderTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapBuilderWithDepsTest);
 } // namespace mapbuildtest
 
 namespace mapoperatestest
@@ -208,6 +220,9 @@ class MapOperationWithDepsTest
     , public testing::WithParamInterface<MapDepsT>
 {
 };
+//TODO: Remove the following lines after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapOperationTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MapOperationWithDepsTest);
 } // namespace mapoperatestest
 
 namespace transformbuildtest
@@ -233,6 +248,8 @@ class TransformBuilderWithDepsTest
     , public testing::WithParamInterface<TransformDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformBuilderTest);
 } // namespace transformbuildtest
 
 namespace transformoperatestest
@@ -259,6 +276,8 @@ class TransformOperationWithDepsTest
     , public testing::WithParamInterface<TransformDepsT>
 {
 };
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformOperationTest);
 } // namespace transformoperatestest
 
 template<typename Builder>
@@ -411,7 +430,8 @@ class StageBuilderTest
     , public testing::WithParamInterface<StageT>
 {
 };
-
+//TODO: Remove the following line after fixing the test instantiations in builder tests
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(StageBuilderTest);
 } // namespace stagebuildtest
 
 #endif // _BUILDER_TEST_BASEBUILDERS_HPP

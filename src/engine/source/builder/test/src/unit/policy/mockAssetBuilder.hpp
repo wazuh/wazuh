@@ -11,9 +11,10 @@ namespace builder::policy::mocks
 class MockAssetBuilder : public IAssetBuilder
 {
 public:
-    MOCK_METHOD(Asset, CallableOp, (const store::Doc& document), (const));
+    MOCK_METHOD(Asset, CallableOp, (const json::Json& document), (const));
+    MOCK_METHOD(builder::builders::Context&, getContext, (), (const));
 
-    virtual Asset operator()(const store::Doc& document) const override { return CallableOp(document); }
+    virtual Asset operator()(const json::Json& document) const override { return CallableOp(document); }
 };
 
 } // namespace builder::policy::mocks

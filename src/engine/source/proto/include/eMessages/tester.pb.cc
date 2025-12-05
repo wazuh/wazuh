@@ -30,7 +30,7 @@ PROTOBUF_CONSTEXPR SessionPost::SessionPost(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.namespaceid_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.lifetime_)*/0u} {}
 struct SessionPostDefaultTypeInternal {
@@ -47,10 +47,10 @@ PROTOBUF_CONSTEXPR Session::Session(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.namespaceid_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.lifetime_)*/0u
-  , /*decltype(_impl_.policy_sync_)*/0
+  , /*decltype(_impl_.namespace_sync_)*/0
   , /*decltype(_impl_.entry_status_)*/0
   , /*decltype(_impl_.last_use_)*/0u} {}
 struct SessionDefaultTypeInternal {
@@ -237,7 +237,7 @@ const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::SessionPost, _impl_.name_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::SessionPost, _impl_.policy_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::SessionPost, _impl_.namespaceid_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::SessionPost, _impl_.lifetime_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::SessionPost, _impl_.description_),
   ~0u,
@@ -251,10 +251,10 @@ const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.name_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.policy_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.namespaceid_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.lifetime_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.description_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.policy_sync_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.namespace_sync_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.entry_status_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.last_use_),
   ~0u,
@@ -398,53 +398,53 @@ static const ::_pb::Message* const file_default_instances[] = {
 
 const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\014tester.proto\022\033com.wazuh.api.engine.tes"
-  "ter\032\014engine.proto\"g\n\013SessionPost\022\014\n\004name"
-  "\030\001 \001(\t\022\016\n\006policy\030\002 \001(\t\022\020\n\010lifetime\030\003 \001(\r"
-  "\022\030\n\013description\030\004 \001(\tH\000\210\001\001B\016\n\014_descripti"
-  "on\"\347\001\n\007Session\022\014\n\004name\030\001 \001(\t\022\016\n\006policy\030\002"
-  " \001(\t\022\020\n\010lifetime\030\003 \001(\r\022\030\n\013description\030\004 "
-  "\001(\tH\000\210\001\001\0226\n\013policy_sync\030\006 \001(\0162!.com.wazu"
-  "h.api.engine.tester.Sync\0228\n\014entry_status"
-  "\030\007 \001(\0162\".com.wazuh.api.engine.tester.Sta"
-  "te\022\020\n\010last_use\030\010 \001(\rB\016\n\014_description\"\234\001\n"
-  "\006Result\022\016\n\006output\030\001 \001(\t\022D\n\014asset_traces\030"
-  "\002 \003(\0132..com.wazuh.api.engine.tester.Resu"
-  "lt.AssetTrace\032<\n\nAssetTrace\022\r\n\005asset\030\001 \001"
-  "(\t\022\017\n\007success\030\002 \001(\010\022\016\n\006traces\030\003 \003(\t\"a\n\023S"
-  "essionPost_Request\022>\n\007session\030\001 \001(\0132(.co"
-  "m.wazuh.api.engine.tester.SessionPostH\000\210"
-  "\001\001B\n\n\010_session\"%\n\025SessionDelete_Request\022"
-  "\014\n\004name\030\001 \001(\t\"\"\n\022SessionGet_Request\022\014\n\004n"
-  "ame\030\001 \001(\t\"\257\001\n\023SessionGet_Response\0222\n\006sta"
-  "tus\030\001 \001(\0162\".com.wazuh.api.engine.ReturnS"
-  "tatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022:\n\007session\030\003 \001"
-  "(\0132$.com.wazuh.api.engine.tester.Session"
-  "H\001\210\001\001B\010\n\006_errorB\n\n\010_session\"%\n\025SessionRe"
-  "load_Request\022\014\n\004name\030\001 \001(\t\"\022\n\020TableGet_R"
-  "equest\"\235\001\n\021TableGet_Response\0222\n\006status\030\001"
-  " \001(\0162\".com.wazuh.api.engine.ReturnStatus"
-  "\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0226\n\010sessions\030\003 \003(\0132$"
-  ".com.wazuh.api.engine.tester.SessionB\010\n\006"
-  "_error\"\225\001\n\017RunPost_Request\022\014\n\004name\030\001 \001(\t"
-  "\022\r\n\005event\030\002 \001(\t\022<\n\013trace_level\030\005 \001(\0162\'.c"
-  "om.wazuh.api.engine.tester.TraceLevel\022\023\n"
-  "\013asset_trace\030\006 \003(\t\022\022\n\nnamespaces\030\007 \003(\t\"\251"
-  "\001\n\020RunPost_Response\0222\n\006status\030\001 \001(\0162\".co"
-  "m.wazuh.api.engine.ReturnStatus\022\022\n\005error"
-  "\030\002 \001(\tH\000\210\001\001\0228\n\006result\030\003 \001(\0132#.com.wazuh."
-  "api.engine.tester.ResultH\001\210\001\001B\010\n\006_errorB"
-  "\t\n\007_result*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014"
-  "\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYN"
-  "C_UNKNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t"
-  "\n\005ERROR\020\003*/\n\nTraceLevel\022\010\n\004NONE\020\000\022\016\n\nASS"
-  "ET_ONLY\020\001\022\007\n\003ALL\020\002b\006proto3"
+  "ter\032\014engine.proto\"l\n\013SessionPost\022\014\n\004name"
+  "\030\001 \001(\t\022\023\n\013namespaceId\030\002 \001(\t\022\020\n\010lifetime\030"
+  "\003 \001(\r\022\030\n\013description\030\004 \001(\tH\000\210\001\001B\016\n\014_desc"
+  "ription\"\357\001\n\007Session\022\014\n\004name\030\001 \001(\t\022\023\n\013nam"
+  "espaceId\030\002 \001(\t\022\020\n\010lifetime\030\003 \001(\r\022\030\n\013desc"
+  "ription\030\004 \001(\tH\000\210\001\001\0229\n\016namespace_sync\030\006 \001"
+  "(\0162!.com.wazuh.api.engine.tester.Sync\0228\n"
+  "\014entry_status\030\007 \001(\0162\".com.wazuh.api.engi"
+  "ne.tester.State\022\020\n\010last_use\030\010 \001(\rB\016\n\014_de"
+  "scription\"\234\001\n\006Result\022\016\n\006output\030\001 \001(\t\022D\n\014"
+  "asset_traces\030\002 \003(\0132..com.wazuh.api.engin"
+  "e.tester.Result.AssetTrace\032<\n\nAssetTrace"
+  "\022\r\n\005asset\030\001 \001(\t\022\017\n\007success\030\002 \001(\010\022\016\n\006trac"
+  "es\030\003 \003(\t\"a\n\023SessionPost_Request\022>\n\007sessi"
+  "on\030\001 \001(\0132(.com.wazuh.api.engine.tester.S"
+  "essionPostH\000\210\001\001B\n\n\010_session\"%\n\025SessionDe"
+  "lete_Request\022\014\n\004name\030\001 \001(\t\"\"\n\022SessionGet"
+  "_Request\022\014\n\004name\030\001 \001(\t\"\257\001\n\023SessionGet_Re"
+  "sponse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.e"
+  "ngine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022:"
+  "\n\007session\030\003 \001(\0132$.com.wazuh.api.engine.t"
+  "ester.SessionH\001\210\001\001B\010\n\006_errorB\n\n\010_session"
+  "\"%\n\025SessionReload_Request\022\014\n\004name\030\001 \001(\t\""
+  "\022\n\020TableGet_Request\"\235\001\n\021TableGet_Respons"
+  "e\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engine"
+  ".ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0226\n\010ses"
+  "sions\030\003 \003(\0132$.com.wazuh.api.engine.teste"
+  "r.SessionB\010\n\006_error\"\225\001\n\017RunPost_Request\022"
+  "\014\n\004name\030\001 \001(\t\022\r\n\005event\030\002 \001(\t\022<\n\013trace_le"
+  "vel\030\005 \001(\0162\'.com.wazuh.api.engine.tester."
+  "TraceLevel\022\023\n\013asset_trace\030\006 \003(\t\022\022\n\nnames"
+  "paces\030\007 \003(\t\"\251\001\n\020RunPost_Response\0222\n\006stat"
+  "us\030\001 \001(\0162\".com.wazuh.api.engine.ReturnSt"
+  "atus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0228\n\006result\030\003 \001(\013"
+  "2#.com.wazuh.api.engine.tester.ResultH\001\210"
+  "\001\001B\010\n\006_errorB\t\n\007_result*5\n\005State\022\021\n\rSTAT"
+  "E_UNKNOWN\020\000\022\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*>"
+  "\n\004Sync\022\020\n\014SYNC_UNKNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n"
+  "\010OUTDATED\020\002\022\t\n\005ERROR\020\003*/\n\nTraceLevel\022\010\n\004"
+  "NONE\020\000\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_tester_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_tester_2eproto = {
-    false, false, 1626, descriptor_table_protodef_tester_2eproto,
+    false, false, 1639, descriptor_table_protodef_tester_2eproto,
     "tester.proto",
     &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 1, 13,
     schemas, file_default_instances, TableStruct_tester_2eproto::offsets,
@@ -532,7 +532,7 @@ SessionPost::SessionPost(const SessionPost& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.policy_){}
+    , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.lifetime_){}};
 
@@ -545,12 +545,12 @@ SessionPost::SessionPost(const SessionPost& from)
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
-  _impl_.policy_.InitDefault();
+  _impl_.namespaceid_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.policy_.Set("", GetArenaForAllocation());
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_policy().empty()) {
-    _this->_impl_.policy_.Set(from._internal_policy(), 
+  if (!from._internal_namespaceid().empty()) {
+    _this->_impl_.namespaceid_.Set(from._internal_namespaceid(), 
       _this->GetArenaForAllocation());
   }
   _impl_.description_.InitDefault();
@@ -573,7 +573,7 @@ inline void SessionPost::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.policy_){}
+    , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.lifetime_){0u}
   };
@@ -581,9 +581,9 @@ inline void SessionPost::SharedCtor(
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.name_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.policy_.InitDefault();
+  _impl_.namespaceid_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.policy_.Set("", GetArenaForAllocation());
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.description_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -603,7 +603,7 @@ SessionPost::~SessionPost() {
 inline void SessionPost::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
-  _impl_.policy_.Destroy();
+  _impl_.namespaceid_.Destroy();
   _impl_.description_.Destroy();
 }
 
@@ -618,7 +618,7 @@ void SessionPost::Clear() {
   (void) cached_has_bits;
 
   _impl_.name_.ClearToEmpty();
-  _impl_.policy_.ClearToEmpty();
+  _impl_.namespaceid_.ClearToEmpty();
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     _impl_.description_.ClearNonDefaultToEmpty();
@@ -645,13 +645,13 @@ const char* SessionPost::_InternalParse(const char* ptr, ::_pbi::ParseContext* c
         } else
           goto handle_unusual;
         continue;
-      // string policy = 2;
+      // string namespaceId = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          auto str = _internal_mutable_policy();
+          auto str = _internal_mutable_namespaceid();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.SessionPost.policy"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.SessionPost.namespaceId"));
         } else
           goto handle_unusual;
         continue;
@@ -713,14 +713,14 @@ uint8_t* SessionPost::_InternalSerialize(
         1, this->_internal_name(), target);
   }
 
-  // string policy = 2;
-  if (!this->_internal_policy().empty()) {
+  // string namespaceId = 2;
+  if (!this->_internal_namespaceid().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_policy().data(), static_cast<int>(this->_internal_policy().length()),
+      this->_internal_namespaceid().data(), static_cast<int>(this->_internal_namespaceid().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.tester.SessionPost.policy");
+      "com.wazuh.api.engine.tester.SessionPost.namespaceId");
     target = stream->WriteStringMaybeAliased(
-        2, this->_internal_policy(), target);
+        2, this->_internal_namespaceid(), target);
   }
 
   // uint32 lifetime = 3;
@@ -762,11 +762,11 @@ size_t SessionPost::ByteSizeLong() const {
         this->_internal_name());
   }
 
-  // string policy = 2;
-  if (!this->_internal_policy().empty()) {
+  // string namespaceId = 2;
+  if (!this->_internal_namespaceid().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_policy());
+        this->_internal_namespaceid());
   }
 
   // optional string description = 4;
@@ -803,8 +803,8 @@ void SessionPost::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PR
   if (!from._internal_name().empty()) {
     _this->_internal_set_name(from._internal_name());
   }
-  if (!from._internal_policy().empty()) {
-    _this->_internal_set_policy(from._internal_policy());
+  if (!from._internal_namespaceid().empty()) {
+    _this->_internal_set_namespaceid(from._internal_namespaceid());
   }
   if (from._internal_has_description()) {
     _this->_internal_set_description(from._internal_description());
@@ -837,8 +837,8 @@ void SessionPost::InternalSwap(SessionPost* other) {
       &other->_impl_.name_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.policy_, lhs_arena,
-      &other->_impl_.policy_, rhs_arena
+      &_impl_.namespaceid_, lhs_arena,
+      &other->_impl_.namespaceid_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.description_, lhs_arena,
@@ -876,10 +876,10 @@ Session::Session(const Session& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.policy_){}
+    , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.lifetime_){}
-    , decltype(_impl_.policy_sync_){}
+    , decltype(_impl_.namespace_sync_){}
     , decltype(_impl_.entry_status_){}
     , decltype(_impl_.last_use_){}};
 
@@ -892,12 +892,12 @@ Session::Session(const Session& from)
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
-  _impl_.policy_.InitDefault();
+  _impl_.namespaceid_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.policy_.Set("", GetArenaForAllocation());
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_policy().empty()) {
-    _this->_impl_.policy_.Set(from._internal_policy(), 
+  if (!from._internal_namespaceid().empty()) {
+    _this->_impl_.namespaceid_.Set(from._internal_namespaceid(), 
       _this->GetArenaForAllocation());
   }
   _impl_.description_.InitDefault();
@@ -922,10 +922,10 @@ inline void Session::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.policy_){}
+    , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.lifetime_){0u}
-    , decltype(_impl_.policy_sync_){0}
+    , decltype(_impl_.namespace_sync_){0}
     , decltype(_impl_.entry_status_){0}
     , decltype(_impl_.last_use_){0u}
   };
@@ -933,9 +933,9 @@ inline void Session::SharedCtor(
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.name_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.policy_.InitDefault();
+  _impl_.namespaceid_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.policy_.Set("", GetArenaForAllocation());
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.description_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -955,7 +955,7 @@ Session::~Session() {
 inline void Session::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
-  _impl_.policy_.Destroy();
+  _impl_.namespaceid_.Destroy();
   _impl_.description_.Destroy();
 }
 
@@ -970,7 +970,7 @@ void Session::Clear() {
   (void) cached_has_bits;
 
   _impl_.name_.ClearToEmpty();
-  _impl_.policy_.ClearToEmpty();
+  _impl_.namespaceid_.ClearToEmpty();
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     _impl_.description_.ClearNonDefaultToEmpty();
@@ -999,13 +999,13 @@ const char* Session::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // string policy = 2;
+      // string namespaceId = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          auto str = _internal_mutable_policy();
+          auto str = _internal_mutable_namespaceid();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.Session.policy"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.Session.namespaceId"));
         } else
           goto handle_unusual;
         continue;
@@ -1027,12 +1027,12 @@ const char* Session::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // .com.wazuh.api.engine.tester.Sync policy_sync = 6;
+      // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
       case 6:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
           uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
-          _internal_set_policy_sync(static_cast<::com::wazuh::api::engine::tester::Sync>(val));
+          _internal_set_namespace_sync(static_cast<::com::wazuh::api::engine::tester::Sync>(val));
         } else
           goto handle_unusual;
         continue;
@@ -1093,14 +1093,14 @@ uint8_t* Session::_InternalSerialize(
         1, this->_internal_name(), target);
   }
 
-  // string policy = 2;
-  if (!this->_internal_policy().empty()) {
+  // string namespaceId = 2;
+  if (!this->_internal_namespaceid().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_policy().data(), static_cast<int>(this->_internal_policy().length()),
+      this->_internal_namespaceid().data(), static_cast<int>(this->_internal_namespaceid().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.tester.Session.policy");
+      "com.wazuh.api.engine.tester.Session.namespaceId");
     target = stream->WriteStringMaybeAliased(
-        2, this->_internal_policy(), target);
+        2, this->_internal_namespaceid(), target);
   }
 
   // uint32 lifetime = 3;
@@ -1119,11 +1119,11 @@ uint8_t* Session::_InternalSerialize(
         4, this->_internal_description(), target);
   }
 
-  // .com.wazuh.api.engine.tester.Sync policy_sync = 6;
-  if (this->_internal_policy_sync() != 0) {
+  // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
+  if (this->_internal_namespace_sync() != 0) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteEnumToArray(
-      6, this->_internal_policy_sync(), target);
+      6, this->_internal_namespace_sync(), target);
   }
 
   // .com.wazuh.api.engine.tester.State entry_status = 7;
@@ -1162,11 +1162,11 @@ size_t Session::ByteSizeLong() const {
         this->_internal_name());
   }
 
-  // string policy = 2;
-  if (!this->_internal_policy().empty()) {
+  // string namespaceId = 2;
+  if (!this->_internal_namespaceid().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_policy());
+        this->_internal_namespaceid());
   }
 
   // optional string description = 4;
@@ -1182,10 +1182,10 @@ size_t Session::ByteSizeLong() const {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifetime());
   }
 
-  // .com.wazuh.api.engine.tester.Sync policy_sync = 6;
-  if (this->_internal_policy_sync() != 0) {
+  // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
+  if (this->_internal_namespace_sync() != 0) {
     total_size += 1 +
-      ::_pbi::WireFormatLite::EnumSize(this->_internal_policy_sync());
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_namespace_sync());
   }
 
   // .com.wazuh.api.engine.tester.State entry_status = 7;
@@ -1220,8 +1220,8 @@ void Session::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOB
   if (!from._internal_name().empty()) {
     _this->_internal_set_name(from._internal_name());
   }
-  if (!from._internal_policy().empty()) {
-    _this->_internal_set_policy(from._internal_policy());
+  if (!from._internal_namespaceid().empty()) {
+    _this->_internal_set_namespaceid(from._internal_namespaceid());
   }
   if (from._internal_has_description()) {
     _this->_internal_set_description(from._internal_description());
@@ -1229,8 +1229,8 @@ void Session::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOB
   if (from._internal_lifetime() != 0) {
     _this->_internal_set_lifetime(from._internal_lifetime());
   }
-  if (from._internal_policy_sync() != 0) {
-    _this->_internal_set_policy_sync(from._internal_policy_sync());
+  if (from._internal_namespace_sync() != 0) {
+    _this->_internal_set_namespace_sync(from._internal_namespace_sync());
   }
   if (from._internal_entry_status() != 0) {
     _this->_internal_set_entry_status(from._internal_entry_status());
@@ -1263,8 +1263,8 @@ void Session::InternalSwap(Session* other) {
       &other->_impl_.name_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.policy_, lhs_arena,
-      &other->_impl_.policy_, rhs_arena
+      &_impl_.namespaceid_, lhs_arena,
+      &other->_impl_.namespaceid_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.description_, lhs_arena,

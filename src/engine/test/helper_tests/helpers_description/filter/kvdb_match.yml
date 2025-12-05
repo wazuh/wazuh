@@ -3,7 +3,11 @@ name: kvdb_match
 
 metadata:
   description: |
-    Checks if a given key exist in the DB named db-name. This helper function is typically used in the check stage.
+    Checks whether the string stored in the target field is the name of an
+    existing key in the KVDB given by "db_name".
+
+    This helper is intended to be used in the check stage. It does not modify
+    the event; it only decides whether the check block passes or fails.
 
   keywords:
     - kvdb
@@ -15,30 +19,45 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  db-name:
-    type: string  # Expected type is string
+  db_name:
+    type: string            # KVDB logical name
     generate: string
-    source: value # includes values
-    restrictions:
-      allowed:
-        - testing
+    source: value           # Always literal
 
-# Key not found in DB
+# Key not found in DB / other negative scenarios covered by explicit tests
 skipped:
   - success_cases
 
+# Field whose value will be used as the key to look up in the KVDB
 target_field:
   type: string
   generate: string
 
 test:
+  # KVDB cannot be loaded -> build-time error
   - arguments:
-      db-name: testing
-    target_field: test
-    should_pass: true
-    description: Key found in kvdb
-  - arguments:
-      db-name: testing
-    target_field: k
+      db_name: non-existing-db
+    target_field: "0x0"
     should_pass: false
-    description: Key not found in kvdb
+    description: Fails when the KVDB cannot be loaded
+
+  # Existing KVDB key ("0x0" -> "KDC_ERR_NONE")
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+    target_field: "0x0"
+    should_pass: true
+    description: Check passes when the target field contains a key present in the KVDB
+
+  # Existing KVDB key pointing to an array ("bitmask_test_values")
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+    target_field: "bitmask_test_values"
+    should_pass: true
+    description: Check also passes for keys whose KVDB value is an array
+
+  # Non-existent key -> check fails
+  - arguments:
+      db_name: windows_kerberos_status_code_to_code_name
+    target_field: "0x99"
+    should_pass: false
+    description: Check fails when the target field contains a key that is not present in the KVDB

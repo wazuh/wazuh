@@ -426,8 +426,30 @@ struct CTIStorageDB::Impl
      */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
 
+    /**
+     * @brief Resolves a UUID from an asset name and type.
+     * @param name The asset name
+     * @param assetType "integration", "decoder", "policy", or "kvdb"
+     * @return UUID string of the asset
+     */
+    std::string resolveUUIDFromName(const base::Name& name, const std::string& assetType) const;
 
+    /**
+     * @brief Resolves an asset name from its UUID and type.
+     * @param uuid UUID of the asset
+     * @param assetType "policy", "integration", "decoder", or "kvdb"
+     * @return Name string of the asset
+     */
     std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
+
+    /**
+     * @brief Resolves an asset name and type from its UUID in O(1) time.
+     *
+     * Checks each column family to find which one contains the UUID.
+     * @param uuid UUID of the asset
+     * @return std::pair<std::string, std::string> with name and type
+     */
+    std::pair<std::string, std::string> resolveNameAndTypeFromUUID(const std::string& uuid) const;
 
     /**
      * @brief Lists all KVDB names.
@@ -1043,6 +1065,16 @@ std::string CTIStorageDB::resolveNameFromUUID(const std::string& uuid, const std
     return m_pImpl->resolveNameFromUUID(uuid, assetType);
 }
 
+std::string CTIStorageDB::resolveUUIDFromName(const base::Name& name, const std::string& assetType) const
+{
+    return m_pImpl->resolveUUIDFromName(name, assetType);
+}
+
+std::pair<std::string, std::string> CTIStorageDB::resolveNameAndTypeFromUUID(const std::string& uuid) const
+{
+    return m_pImpl->resolveNameAndTypeFromUUID(uuid);
+}
+
 std::vector<std::string> CTIStorageDB::getKVDBList() const
 {
     return m_pImpl->getKVDBList();
@@ -1290,15 +1322,29 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
     {
         json::Json doc = getByIdOrName(uuid, cfIt->second, keyPrefixIt->second, namePrefixIt->second);
 
-        // Try /document/title first (integrations, policies)
-        auto title = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_TITLE);
+        // Try /payload/document/title first (integrations, policies)
+        auto title = doc.getString(constants::JSON_DOCUMENT_TITLE);
         if (title && !title->empty())
         {
             return *title;
         }
 
-        // Try /document/name (decoders)
+        // Fallback: Try unwrapped /document/title (for backward compatibility)
+        title = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_TITLE);
+        if (title && !title->empty())
+        {
+            return *title;
+        }
+
+        // Try /payload/document/name (decoders)
         auto name = doc.getString(constants::JSON_DOCUMENT_NAME);
+        if (name && !name->empty())
+        {
+            return *name;
+        }
+
+        // Fallback: Try unwrapped /document/name (for backward compatibility)
+        name = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_NAME);
         if (name && !name->empty())
         {
             return *name;
@@ -1311,6 +1357,77 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
         throw std::runtime_error("Failed to resolve name from UUID: " + std::string(e.what()));
     }
 }
+
+std::string CTIStorageDB::Impl::resolveUUIDFromName(const base::Name& name, const std::string& type) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    auto namePrefixIt = CTIStorageDB::getAssetTypeToNamePrefix().find(type);
+    if (namePrefixIt == CTIStorageDB::getAssetTypeToNamePrefix().end())
+    {
+        throw std::invalid_argument("No prefix configuration for asset type: " + type);
+    }
+
+    // Query the name index directly to get the UUID
+    // The name index stores: "name:integration:Title" -> "uuid-value"
+    // Use toStr() to get the simple title without namespace prefix
+    std::string nameKey = namePrefixIt->second + name.toStr();
+    auto uuidOpt = getMetadata(nameKey);
+
+    if (!uuidOpt)
+    {
+        throw std::runtime_error(fmt::format("Asset '{}' of type '{}' not found", name.toStr(), type));
+    }
+
+    return *uuidOpt;
+}
+
+std::pair<std::string, std::string> CTIStorageDB::Impl::resolveNameAndTypeFromUUID(const std::string& uuid) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    // Define column families to check with their type names and key prefixes
+    // Since UUIDs are unique across all column families, we only need to check each one
+    static const std::array<std::tuple<CTIStorageDB::ColumnFamily, std::string_view, std::string_view>, 4> columnFamilies = {{
+        {CTIStorageDB::ColumnFamily::INTEGRATION, constants::INTEGRATION_TYPE, constants::INTEGRATION_PREFIX},
+        {CTIStorageDB::ColumnFamily::DECODER, constants::DECODER_TYPE, constants::DECODER_PREFIX},
+        {CTIStorageDB::ColumnFamily::KVDB, constants::KVDB_TYPE, constants::KVDB_PREFIX},
+        {CTIStorageDB::ColumnFamily::POLICY, constants::POLICY_TYPE, constants::POLICY_PREFIX}
+    }};
+
+    // Check each column family for the UUID
+    for (const auto& [cf, type, prefix] : columnFamilies)
+    {
+        std::string key = std::string(prefix) + uuid;
+        std::string value;
+
+        auto status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(cf), key, &value);
+
+        if (status.ok())
+        {
+            // Found the document, extract the name from it
+            try
+            {
+                json::Json doc(value.c_str());
+                std::string name = extractNameFromJson(doc);
+                return {name, std::string(type)};
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format("Failed to parse document for UUID '{}': {}", uuid, e.what()));
+            }
+        }
+        else if (!status.IsNotFound())
+        {
+            // Some other error occurred (not just "not found")
+            throw std::runtime_error(fmt::format("Database error while looking up UUID '{}': {}", uuid, status.ToString()));
+        }
+    }
+
+    // UUID not found in any column family
+    throw std::runtime_error(fmt::format("Asset with UUID '{}' not found", uuid));
+}
+
 
 std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
 {
@@ -1836,7 +1953,54 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
     // but we need to handle it directly here to maintain the lock)
     const std::string updatedDoc = jsonData.dump();
     rocksdb::WriteOptions wo;
-    status = m_db->Put(wo, getColumnFamily(cf), primaryKey, updatedDoc);
+
+    // Store updated document
+    rocksdb::WriteBatch batch;
+    batch.Put(getColumnFamily(cf), primaryKey, updatedDoc);
+
+    // Update metadata for name/title changes
+    std::string oldName;
+    std::string newName;
+    try
+    {
+        json::Json oldDoc(docValue.c_str());
+        oldName = extractNameFromJson(oldDoc);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to extract old name for metadata alias update: {}", e.what());
+    }
+
+    try
+    {
+        newName = extractNameFromJson(doc);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to extract new name for metadata alias update: {}", e.what());
+    }
+
+    // Update metadata alias if name changed
+    if (!oldName.empty() && !newName.empty() && oldName != newName)
+    {
+        auto namePrefixIt = CTIStorageDB::getAssetTypeToNamePrefix().find(assetType);
+        if (namePrefixIt != CTIStorageDB::getAssetTypeToNamePrefix().end())
+        {
+            const std::string& namePrefix = namePrefixIt->second;
+
+            // Delete old alias
+            batch.Delete(getColumnFamily(ColumnFamily::METADATA), namePrefix + oldName);
+
+            // Create new alias
+            batch.Put(getColumnFamily(ColumnFamily::METADATA), namePrefix + newName, resourceId);
+
+            LOG_DEBUG("Refreshing metadata alias for resource '{}': '{}' -> '{}'",
+                     resourceId, oldName, newName);
+        }
+    }
+
+    // Execute atomic batch
+    status = m_db->Write(wo, &batch);
 
     if (!status.ok())
     {

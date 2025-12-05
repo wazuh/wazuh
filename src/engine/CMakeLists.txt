@@ -286,7 +286,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/parsec)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logpar)
-add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
+add_subdirectory(${ENGINE_SOURCE_DIR}/kvdbstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/yml)
 add_subdirectory(${ENGINE_SOURCE_DIR}/store)
@@ -304,8 +304,8 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/ctistore)
-add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 
 
 target_link_libraries(wazuh-engine
@@ -320,7 +320,7 @@ target_link_libraries(wazuh-engine
     store
     store::fileDriver
     api
-    kvdb
+    kvdbstore::kvdb
     eMessages
     # metrics # TODO: Comment until indexerconnector is unified with the old one
     geo
@@ -335,7 +335,8 @@ target_link_libraries(wazuh-engine
     queue
     archiver::archive
     ctistore::ctistore
-    cmsync::cmsync
+    cmstore::cmstore
+    cmcrud::cmcrud
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries

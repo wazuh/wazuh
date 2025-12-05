@@ -12,6 +12,8 @@
 #include "entryConverter.hpp"
 #include "epsCounter.hpp"
 #include "worker.hpp"
+#include "router.hpp"
+#include "tester.hpp"
 
 namespace router
 {
@@ -36,9 +38,9 @@ void validatePointer(const T& ptr, const std::string& name)
 } // namespace
 
 // Private
-base::OptError Orchestrator::forEachWorker(const WorkerOp& f)
+base::OptError Orchestrator::forEachRouterWorker(const WorkerOp<IRouter>& f)
 {
-    for (const auto& worker : m_workers)
+    for (const auto& worker : m_routerWorkers)
     {
         if (auto error = f(worker); error)
         {
@@ -48,34 +50,48 @@ base::OptError Orchestrator::forEachWorker(const WorkerOp& f)
     return std::nullopt;
 }
 
-/**************************************************************************
- * Manage configuration - Dump
- *************************************************************************/
-base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker>& worker)
+base::OptError Orchestrator::forTesterWorker(const WorkerOp<ITester>& f)
 {
-    for (const auto& entry : entries)
+    if (!m_testerWorker)
     {
-        auto err = worker->getTester()->addEntry(test::EntryPost(entry), true);
-        if (err)
-        {
-            return err;
-        }
-        worker->getTester()->updateLastUsed(entry.name(), entry.lastUse().value_or(0));
-        worker->getTester()->enableEntry(entry.name());
+        return base::Error {"Tester worker is not available"};
+    }
+
+    if (auto error = f(m_testerWorker); error)
+    {
+        return error;
     }
     return std::nullopt;
 }
 
-base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker>& worker)
+/**************************************************************************
+ * Manage configuration - Dump
+ *************************************************************************/
+base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker<ITester>>& worker)
 {
     for (const auto& entry : entries)
     {
-        auto err = worker->getRouter()->addEntry(prod::EntryPost(entry), true);
+        auto err = worker->get()->addEntry(test::EntryPost(entry), true);
         if (err)
         {
             return err;
         }
-        worker->getRouter()->enableEntry(entry.name());
+        worker->get()->updateLastUsed(entry.name(), entry.lastUse().value_or(0));
+        worker->get()->enableEntry(entry.name());
+    }
+    return std::nullopt;
+}
+
+base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker<IRouter>>& worker)
+{
+    for (const auto& entry : entries)
+    {
+        auto err = worker->get()->addEntry(prod::EntryPost(entry), true);
+        if (err)
+        {
+            return err;
+        }
+        worker->get()->enableEntry(entry.name());
     }
     return std::nullopt;
 }
@@ -95,13 +111,13 @@ void saveConfig(const std::weak_ptr<store::IStoreInternal>& wStore, const base::
 
 void Orchestrator::dumpTesters() const
 {
-    auto jDump = EntryConverter::toJsonArray(m_workers.front()->getTester()->getEntries());
+    auto jDump = EntryConverter::toJsonArray(m_testerWorker->get()->getEntries());
     saveConfig(m_wStore, m_storeTesterName, jDump);
 }
 
 void Orchestrator::dumpRouters() const
 {
-    auto jDump = EntryConverter::toJsonArray(m_workers.front()->getRouter()->getEntries());
+    auto jDump = EntryConverter::toJsonArray(m_routerWorkers.front()->get()->getEntries());
     saveConfig(m_wStore, m_storeRouterName, jDump);
 }
 
@@ -184,24 +200,27 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     return EntryConverter::fromJsonArray(json);
 }
 
-base::OptError Orchestrator::initWorker(const std::shared_ptr<IWorker>& worker,
-                                        const std::vector<EntryConverter>& routerEntries,
-                                        const std::vector<EntryConverter>& testerEntries)
+base::OptError Orchestrator::initRouterWorker(const std::shared_ptr<IWorker<IRouter>>& worker,
+                                              const std::vector<EntryConverter>& routerEntries)
 {
     auto error = loadRouterOnWoker(routerEntries, worker);
-    auto error2 = loadTesterOnWorker(testerEntries, worker);
 
-    if (error && error2)
-    {
-        return base::Error {error->message + ". " + error2->message};
-    }
-    else if (error)
+    if (error)
     {
         return error;
     }
-    else if (error2)
+
+    return std::nullopt;
+}
+
+base::OptError Orchestrator::initTesterWorker(const std::shared_ptr<IWorker<ITester>>& worker,
+                                              const std::vector<EntryConverter>& testerEntries)
+{
+    auto error = loadTesterOnWorker(testerEntries, worker);
+
+    if (error)
     {
-        return error2;
+        return error;
     }
 
     return std::nullopt;
@@ -225,33 +244,9 @@ void Orchestrator::Options::validate() const
     }
 }
 
-base::OptError Orchestrator::addWorker(std::shared_ptr<IWorker> worker)
-{
-    if (!worker)
-    {
-        return base::Error {"Worker cannot be empty"};
-    }
-
-    std::unique_lock lock {m_syncMutex};
-    m_workers.emplace_back(std::move(worker));
-
-    return std::nullopt;
-}
-
-base::OptError Orchestrator::removeWorker()
-{
-    std::unique_lock lock {m_syncMutex};
-    if (m_workers.size() == 1)
-    {
-        return base::Error {"Cannot remove the last worker"};
-    }
-
-    m_workers.pop_back();
-    return std::nullopt;
-}
-
 Orchestrator::Orchestrator(const Options& opt)
-    : m_workers()
+    : m_routerWorkers()
+    , m_testerWorker()
     , m_eventQueue(opt.m_prodQueue)
     , m_testQueue(opt.m_testQueue)
     , m_envBuilder()
@@ -286,26 +281,11 @@ Orchestrator::Orchestrator(const Options& opt)
         LOG_INFO("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
     }
 
-    // Create the workers
-    for (std::size_t i = 0; i < numThreads; ++i)
-    {
-        auto worker = std::make_shared<Worker>(m_envBuilder, m_eventQueue, m_testQueue);
-        auto error = initWorker(worker, routerEntries, testerEntries);
-        if (error)
-        {
-            LOG_ERROR("Router: Cannot load initial states from store: {}", error->message);
-        }
-        m_workers.emplace_back(std::move(worker));
-    }
-
     // Initialize the EpsCounter
     loadEpsCounter(m_wStore);
-}
 
-void Orchestrator::start()
-{
-    std::shared_lock lock {m_syncMutex};
-    IWorker::EpsLimit epsLimit = [epsCounter = m_epsCounter]() -> bool
+    // Create the workers
+    EpsLimit epsLimit = [epsCounter = m_epsCounter]() -> bool
     {
         if (epsCounter->isActive())
         {
@@ -313,28 +293,56 @@ void Orchestrator::start()
         }
         return false;
     };
-
-    for (const auto& worker : m_workers)
+    for (std::size_t i = 0; i < numThreads; ++i)
     {
-        worker->start(epsLimit);
+        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, epsLimit);
+        if (auto err = initRouterWorker(r, routerEntries))
+        {
+            LOG_ERROR("Router: Cannot load initial states from store: {}", err->message);
+        }
+        m_routerWorkers.emplace_back(std::move(r));
     }
+
+    {
+        auto t = std::make_shared<router::TesterWorker>(m_envBuilder, m_testQueue);
+        if (auto err = initTesterWorker(t, testerEntries))
+        {
+            LOG_ERROR("Tester: Cannot load initial states from store: {}", err->message);
+        }
+        m_testerWorker = std::move(t);
+    }
+}
+
+void Orchestrator::start()
+{
+    std::shared_lock lock {m_syncMutex};
+
+    for (const auto& routerWorker : m_routerWorkers)
+    {
+        routerWorker->start();
+    }
+
+    m_testerWorker->start();
 }
 
 void Orchestrator::stop()
 {
     std::shared_lock lock {m_syncMutex};
     dumpTesters(); // TODO: For save the last used time
-    for (const auto& worker : m_workers)
+    for (const auto& routerWorker : m_routerWorkers)
     {
-        worker->stop();
+        routerWorker->stop();
     }
+
+    m_testerWorker->stop();
 }
 
 void Orchestrator::cleanup()
 {
     this->stop();
     std::shared_lock lock {m_syncMutex};
-    m_workers.clear();
+    m_routerWorkers.clear();
+    m_testerWorker.reset();
     m_envBuilder.reset();
     m_eventQueue.reset();
     m_testQueue.reset();
@@ -356,14 +364,14 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachWorker([&entry](const auto& worker) { return worker->getRouter()->addEntry(entry); });
+    auto error = forEachRouterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry); });
 
     if (error)
     {
         return error;
     }
 
-    error = forEachWorker([&entry](const auto& worker) { return worker->getRouter()->enableEntry(entry.name()); });
+    error = forEachRouterWorker([&entry](const auto& worker) { return worker->get()->enableEntry(entry.name()); });
     if (error)
     {
         return error;
@@ -380,7 +388,7 @@ base::OptError Orchestrator::deleteEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    auto error = forEachWorker([&name](const auto& worker) { return worker->getRouter()->removeEntry(name); });
+    auto error = forEachRouterWorker([&name](const auto& worker) { return worker->get()->removeEntry(name); });
     if (error)
     {
         return error;
@@ -397,7 +405,7 @@ base::RespOrError<prod::Entry> Orchestrator::getEntry(const std::string& name) c
     }
 
     std::shared_lock lock {m_syncMutex};
-    return m_workers.front()->getRouter()->getEntry(name);
+    return m_routerWorkers.front()->get()->getEntry(name);
 }
 
 base::OptError Orchestrator::reloadEntry(const std::string& name)
@@ -408,13 +416,13 @@ base::OptError Orchestrator::reloadEntry(const std::string& name)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto err = forEachWorker([&name](const auto& worker) { return worker->getRouter()->rebuildEntry(name); });
+    auto err = forEachRouterWorker([&name](const auto& worker) { return worker->get()->rebuildEntry(name); });
     if (err)
     {
         return err;
     }
 
-    return forEachWorker([&name](const auto& worker) { return worker->getRouter()->enableEntry(name); });
+    return forEachRouterWorker([&name](const auto& worker) { return worker->get()->enableEntry(name); });
 }
 
 base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t priority)
@@ -425,8 +433,8 @@ base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachWorker([&name, priority](const auto& worker)
-                               { return worker->getRouter()->changePriority(name, priority); });
+    auto error = forEachRouterWorker([&name, priority](const auto& worker)
+                                     { return worker->get()->changePriority(name, priority); });
     if (error)
     {
         return error;
@@ -438,7 +446,7 @@ base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t
 std::list<prod::Entry> Orchestrator::getEntries() const
 {
     std::shared_lock lock {m_syncMutex};
-    return m_workers.front()->getRouter()->getEntries();
+    return m_routerWorkers.front()->get()->getEntries();
 }
 
 base::OptError Orchestrator::changeEpsSettings(uint eps, uint refreshInterval)
@@ -499,13 +507,13 @@ base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachWorker([&entry](const auto& worker) { return worker->getTester()->addEntry(entry); });
+    auto error = forTesterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry); });
     if (error)
     {
         return error;
     }
 
-    error = forEachWorker([&entry](const auto& worker) { return worker->getTester()->enableEntry(entry.name()); });
+    error = forTesterWorker([&entry](const auto& worker) { return worker->get()->enableEntry(entry.name()); });
     if (error)
     {
         return error;
@@ -523,7 +531,7 @@ base::OptError Orchestrator::deleteTestEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    auto error = forEachWorker([&name](const auto& worker) { return worker->getTester()->removeEntry(name); });
+    auto error = forTesterWorker([&name](const auto& worker) { return worker->get()->removeEntry(name); });
     if (error)
     {
         return error;
@@ -540,7 +548,7 @@ base::RespOrError<test::Entry> Orchestrator::getTestEntry(const std::string& nam
     }
 
     std::shared_lock lock {m_syncMutex};
-    return m_workers.front()->getTester()->getEntry(name);
+    return m_testerWorker->get()->getEntry(name);
 }
 
 base::OptError Orchestrator::reloadTestEntry(const std::string& name)
@@ -551,18 +559,18 @@ base::OptError Orchestrator::reloadTestEntry(const std::string& name)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachWorker([&name](const auto& worker) { return worker->getTester()->rebuildEntry(name); });
+    auto error = forTesterWorker([&name](const auto& worker) { return worker->get()->rebuildEntry(name); });
     if (error)
     {
         return error;
     }
-    return forEachWorker([&name](const auto& worker) { return worker->getTester()->enableEntry(name); });
+    return forTesterWorker([&name](const auto& worker) { return worker->get()->enableEntry(name); });
 }
 
 std::list<test::Entry> Orchestrator::getTestEntries() const
 {
     std::shared_lock lock {m_syncMutex};
-    return m_workers.front()->getTester()->getEntries();
+    return m_testerWorker->get()->getEntries();
 }
 
 std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Event&& event, const test::Options& opt)
@@ -595,7 +603,7 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
 
     {
         std::shared_lock lock {m_syncMutex};
-        m_workers.front()->getTester()->updateLastUsed(opt.environmentName());
+        m_testerWorker->get()->updateLastUsed(opt.environmentName());
     }
     return future;
 }
@@ -626,7 +634,7 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
 
     {
         std::shared_lock lock {m_syncMutex};
-        m_workers.front()->getTester()->updateLastUsed(opt.environmentName());
+        m_testerWorker->get()->updateLastUsed(opt.environmentName());
     }
 
     return std::nullopt;
@@ -640,7 +648,7 @@ base::RespOrError<std::unordered_set<std::string>> Orchestrator::getAssets(const
     }
 
     std::shared_lock lock {m_syncMutex};
-    return m_workers.front()->getTester()->getAssets(name);
+    return m_testerWorker->get()->getAssets(name);
 }
 
 } // namespace router

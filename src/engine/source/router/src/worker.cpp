@@ -6,7 +6,7 @@
 namespace router
 {
 
-void Worker::start(const EpsLimit& epsLimit)
+void RouterWorker::start()
 {
     if (m_isRunning)
     {
@@ -15,10 +15,61 @@ void Worker::start(const EpsLimit& epsLimit)
 
     m_isRunning = true;
     m_thread = std::thread(
-        [this, epsLimit, functionName = logging::getLambdaName(__FUNCTION__, "routerWorkerThread")]()
+        [this, functionName = logging::getLambdaName(__FUNCTION__, "routerWorkerThread")]()
         {
             std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} started", tID);
+
+            base::process::setThreadName("ORWorker-" + std::to_string(tID));
+
+            while (m_isRunning)
+            {
+                // Process production queue
+                if (!m_epsLimit())
+                {
+                    base::Event event {};
+                    if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
+                    {
+                        m_router->ingest(std::move(event));
+                    }
+                }
+                else
+                {
+                    // If EPS limit is reached, wait for a while before processing the next event
+                    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_EPS_TIMEOUT_MSEC));
+                }
+            }
+            LOG_DEBUG_L(functionName.c_str(), "Router Worker {} finished", tID);
+        });
+}
+
+void RouterWorker::stop()
+{
+    if (!m_isRunning)
+    {
+        return;
+    }
+
+    m_isRunning = false;
+    if (m_thread.joinable())
+    {
+        m_thread.join();
+    }
+}
+
+void TesterWorker::start()
+{
+    if (m_isRunning)
+    {
+        return;
+    }
+
+    m_isRunning = true;
+    m_thread = std::thread(
+        [this, functionName = logging::getLambdaName(__FUNCTION__, "testerWorkerThread")]()
+        {
+            std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
+            LOG_DEBUG_L(functionName.c_str(), "Tester Worker {} started", tID);
 
             base::process::setThreadName("ORWorker-" + std::to_string(tID));
 
@@ -39,27 +90,17 @@ void Worker::start(const EpsLimit& epsLimit)
                         LOG_ERROR_L(functionName.c_str(), "Error when executing API callback: ", e.what());
                     }
                 }
-
-                // Process production queue
-                if (!epsLimit())
-                {
-                    base::Event event {};
-                    if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
-                    {
-                        m_router->ingest(std::move(event));
-                    }
-                }
                 else
                 {
-                    // If EPS limit is reached, wait for a while before processing the next event
+                    // Wait for a while before processing the next event
                     std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_EPS_TIMEOUT_MSEC));
                 }
             }
-            LOG_DEBUG_L(functionName.c_str(), "Router Worker {} finished", tID);
+            LOG_DEBUG_L(functionName.c_str(), "Tester Worker {} finished", tID);
         });
 }
 
-void Worker::stop()
+void TesterWorker::stop()
 {
     if (!m_isRunning)
     {

@@ -15,7 +15,7 @@ metadata:
     - ""
 
 check:
-  - wazuh.decoders: array_contains_any("auditd","sysmon-linux","system-auth","windows-event","windows-powershell","windows-powershell-operational","windows-security","windows-sysmon")
+  - wazuh.integration.decoders: array_contains_any("auditd","sysmon-linux","system-auth","windows-event","windows-powershell","windows-powershell-operational","windows-security","windows-sysmon")
 
 outputs:
   - wazuh-indexer:

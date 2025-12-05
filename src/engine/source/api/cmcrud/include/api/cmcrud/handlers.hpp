@@ -1,0 +1,50 @@
+#ifndef _API_CMCRUD_HANDLERS_HPP
+#define _API_CMCRUD_HANDLERS_HPP
+
+#include <memory>
+
+#include <cmcrud/icmcrudservice.hpp>
+
+#include <api/adapter/adapter.hpp>
+
+namespace api::cmcrud::handlers
+{
+
+/*************** Namespace ***************/
+adapter::RouteHandler namespaceList(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler namespaceCreate(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler namespaceDelete(std::shared_ptr<cm::crud::ICrudService> crud);
+
+/*************** Policy ***************/
+adapter::RouteHandler policyUpsert(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler policyDelete(std::shared_ptr<cm::crud::ICrudService> crud);
+
+/*************** Resources ***************/
+adapter::RouteHandler resourceList(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> crud);
+
+/*************** Registration helper ***************/
+inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
+                             const std::shared_ptr<httpsrv::Server>& server)
+{
+    // Namespace
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/list", namespaceList(crud));
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/create", namespaceCreate(crud));
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/delete", namespaceDelete(crud));
+
+    // Policy
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/policy/upsert", policyUpsert(crud));
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/policy/delete", policyDelete(crud));
+
+    // Resources
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/list", resourceList(crud));
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/get", resourceGet(crud));
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/upsert", resourceUpsert(crud));
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/delete", resourceDelete(crud));
+}
+
+} // namespace api::cmcrud::handlers
+
+#endif // _API_CMCRUD_HANDLERS_HPP

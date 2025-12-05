@@ -7,6 +7,7 @@
 
 #include <bk/icontroller.hpp>
 #include <builder/ibuilder.hpp>
+#include <cmstore/types.hpp>
 
 #include "environment.hpp"
 
@@ -30,7 +31,7 @@ private:
      * @return base::Expression The constructed filter expression.
      * @throws std::runtime_error if the filter cannot be built.
      */
-    base::Expression getExpression(const base::Name& filterName)
+    base::Expression getExpression(const base::Name& filterName, const cm::store::NamespaceId& namespaceId)
     {
         // TODO: Remove this check when the Builder can identify if it is a filter or not
         if (filterName.parts().size() == 0 || filterName.parts()[0] != "filter")
@@ -44,7 +45,7 @@ private:
             throw std::runtime_error {"The builder is not available"};
         }
 
-        return builder->buildAsset(filterName);
+        return builder->buildAsset(filterName, namespaceId);
     }
 
 public:
@@ -80,13 +81,9 @@ public:
      * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to
      * base::Error
      */
-    auto makeController(const base::Name& policyName, const bool trace = true, const bool sandbox = true)
+    auto makeController(const cm::store::NamespaceId& namespaceId, const bool trace = true, const bool sandbox = true)
         -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {
-        if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
-        {
-            throw std::runtime_error {"The asset name is empty or it is not a policy"};
-        }
         // Build the policy and create the pipeline
         auto builder = m_builder.lock();
         if (builder == nullptr)
@@ -94,10 +91,10 @@ public:
             throw std::runtime_error {"The builder is not available"};
         }
 
-        auto policy = builder->buildPolicy(policyName, trace, sandbox);
+        auto policy = builder->buildPolicy(namespaceId, trace, sandbox);
         if (policy->assets().empty())
         {
-            throw std::runtime_error {fmt::format("Policy '{}' has no assets", policyName)};
+            throw std::runtime_error {fmt::format("Policy '{}' has no assets", namespaceId.toStr())};
         }
 
         std::unordered_set<std::string> assetNames;
@@ -118,7 +115,7 @@ public:
      * @return Environment The created environment.
      * @throws std::runtime_error if failed to create the environment. // TODO CHange to base::Error
      */
-    std::unique_ptr<Environment> create(const base::Name& policyName, const base::Name& filterName)
+    std::unique_ptr<Environment> create(const cm::store::NamespaceId& namespaceId, const base::Name& filterName)
     {
         std::shared_ptr<bk::IController> controller = nullptr;
         try
@@ -126,8 +123,8 @@ public:
             std::string hash {};
             auto trace {false};
             auto sandbox {false};
-            std::tie(controller, hash) = makeController(policyName, trace, sandbox);
-            auto expression = getExpression(filterName);
+            std::tie(controller, hash) = makeController(namespaceId, trace, sandbox);
+            auto expression = getExpression(filterName, namespaceId);
             return std::make_unique<Environment>(std::move(expression), std::move(controller), std::move(hash));
         }
         catch (const std::runtime_error& e)
@@ -137,7 +134,7 @@ public:
                 controller->stop();
             }
             throw std::runtime_error {fmt::format(
-                "Failed to create environment with policy '{}' and filter '{}': {}", policyName, filterName, e.what())};
+                "Failed to create environment with policy '{}' and filter '{}': {}", namespaceId.toStr(), filterName, e.what())};
         }
     }
 };

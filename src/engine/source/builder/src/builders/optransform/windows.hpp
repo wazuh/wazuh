@@ -1,7 +1,7 @@
 #ifndef _BUILDER_BUILDERS_WINDOWSHELPER_HPP
 #define _BUILDER_BUILDERS_WINDOWSHELPER_HPP
 
-#include <kvdb/ikvdbmanager.hpp>
+//#include <kvdb/ikvdbmanager.hpp>
 
 #include "builders/types.hpp"
 
@@ -26,8 +26,8 @@ constexpr auto DOM_SPC_SID_KEY = "domainSpecificSID";
  * @param schema schema
  * @return HelperBuilder
  */
-TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbManager::IKVDBManager>& kvdbManager,
-                                                    const std::string& kvdbScopeName);
+// TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbManager::IKVDBManager>& kvdbManager,
+//                                                     const std::string& kvdbScopeName);
 
 } // namespace builder::builders
 

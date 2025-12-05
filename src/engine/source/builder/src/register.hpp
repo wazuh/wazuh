@@ -346,28 +346,26 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
 
     // KVDB builders
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager, deps.kvdbScopeName)});
+        "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_merge",
         {schemf::STypeToken::create(schemf::Type::OBJECT),
-         builders::getOpBuilderKVDBGetMerge(deps.kvdbManager, deps.kvdbScopeName)});
+         builders::getOpBuilderKVDBGetMerge(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_merge_recursive",
         {schemf::STypeToken::create(schemf::Type::OBJECT),
-         builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager, deps.kvdbScopeName)});
+         builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_match",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager, deps.kvdbScopeName)});
+        "kvdb_match", {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_not_match",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager, deps.kvdbScopeName)});
+        {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_array",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager, deps.kvdbScopeName)});
+        {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_decode_bitmask",
-        {schemf::runtimeValidation(),
-         builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager, deps.kvdbScopeName)});
+        {schemf::runtimeValidation(), builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager)});
 
     // Windows builders
     // registry->template add<builders::OpBuilderEntry>(

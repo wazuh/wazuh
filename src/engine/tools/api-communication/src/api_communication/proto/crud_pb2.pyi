@@ -1,0 +1,122 @@
+import engine_pb2 as _engine_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+
+CONTENT_TYPE_DECODER: ContentType
+CONTENT_TYPE_FILTER: ContentType
+CONTENT_TYPE_INTEGRATION: ContentType
+CONTENT_TYPE_KVDB: ContentType
+CONTENT_TYPE_OUTPUT: ContentType
+CONTENT_TYPE_RULE: ContentType
+CONTENT_TYPE_UNSPECIFIED: ContentType
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class ResourceSummary(_message.Message):
+    __slots__ = ["hash", "name", "uuid"]
+    HASH_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    UUID_FIELD_NUMBER: _ClassVar[int]
+    hash: str
+    name: str
+    uuid: str
+    def __init__(self, uuid: _Optional[str] = ..., name: _Optional[str] = ..., hash: _Optional[str] = ...) -> None: ...
+
+class namespaceDelete_Request(_message.Message):
+    __slots__ = ["space"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    def __init__(self, space: _Optional[str] = ...) -> None: ...
+
+class namespaceGet_Request(_message.Message):
+    __slots__ = []
+    def __init__(self) -> None: ...
+
+class namespaceGet_Response(_message.Message):
+    __slots__ = ["error", "spaces", "status"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    SPACES_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    spaces: _containers.RepeatedScalarFieldContainer[str]
+    status: _engine_pb2.ReturnStatus
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., spaces: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class namespacePost_Request(_message.Message):
+    __slots__ = ["space"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    def __init__(self, space: _Optional[str] = ...) -> None: ...
+
+class policyDelete_Request(_message.Message):
+    __slots__ = ["space"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    def __init__(self, space: _Optional[str] = ...) -> None: ...
+
+class policyPost_Request(_message.Message):
+    __slots__ = ["space", "ymlContent"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    YMLCONTENT_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    ymlContent: str
+    def __init__(self, space: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
+
+class resourceDelete_Request(_message.Message):
+    __slots__ = ["space", "uuid"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    UUID_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    uuid: str
+    def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ...) -> None: ...
+
+class resourceGet_Request(_message.Message):
+    __slots__ = ["space", "uuid"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    UUID_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    uuid: str
+    def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ...) -> None: ...
+
+class resourceGet_Response(_message.Message):
+    __slots__ = ["error", "status", "ymlContent"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    YMLCONTENT_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    status: _engine_pb2.ReturnStatus
+    ymlContent: str
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
+
+class resourceList_Request(_message.Message):
+    __slots__ = ["space", "type"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    type: ContentType
+    def __init__(self, space: _Optional[str] = ..., type: _Optional[_Union[ContentType, str]] = ...) -> None: ...
+
+class resourceList_Response(_message.Message):
+    __slots__ = ["error", "resources", "status"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    RESOURCES_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    resources: _containers.RepeatedCompositeFieldContainer[ResourceSummary]
+    status: _engine_pb2.ReturnStatus
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., resources: _Optional[_Iterable[_Union[ResourceSummary, _Mapping]]] = ...) -> None: ...
+
+class resourcePost_Request(_message.Message):
+    __slots__ = ["space", "type", "ymlContent"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    YMLCONTENT_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    type: ContentType
+    ymlContent: str
+    def __init__(self, space: _Optional[str] = ..., type: _Optional[_Union[ContentType, str]] = ..., ymlContent: _Optional[str] = ...) -> None: ...
+
+class ContentType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = []
