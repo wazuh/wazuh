@@ -351,3 +351,116 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementNullParameter)
         ASSERT_TRUE(elements == nullptr);
     });
 }
+
+TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionEmptyTable)
+{
+    EXPECT_NO_THROW({
+        // Should succeed with empty table
+        int result = fim_db_increase_each_entry_version(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(result, 0);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionSingleEntry)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
+
+    EXPECT_NO_THROW({
+        // Insert a file entry with version 1
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Get the entry and verify initial version
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(elements != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(elements), 1);
+
+        cJSON* entry = cJSON_GetArrayItem(elements, 0);
+        cJSON* version = cJSON_GetObjectItem(entry, "version");
+        ASSERT_TRUE(version != nullptr);
+        ASSERT_EQ(cJSON_GetNumberValue(version), 1);
+        cJSON_Delete(elements);
+
+        // Increase all entry versions
+        int result = fim_db_increase_each_entry_version(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(result, 0);
+
+        // Verify version was increased to 2
+        elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(elements != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(elements), 1);
+
+        entry = cJSON_GetArrayItem(elements, 0);
+        version = cJSON_GetObjectItem(entry, "version");
+        ASSERT_TRUE(version != nullptr);
+        ASSERT_EQ(cJSON_GetNumberValue(version), 2);
+
+        cJSON_Delete(elements);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionMultipleEntries)
+{
+    const auto fileFIMTest1 {std::make_unique<FileItem>(insertFileStatement)};
+
+    EXPECT_NO_THROW({
+        // Insert first entry
+        ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Insert second entry with different path
+        auto secondStatement = insertFileStatement;
+        secondStatement["path"] = "/etc/test.conf";
+        secondStatement["inode"] = 99999;
+        const auto fileFIMTest2 {std::make_unique<FileItem>(secondStatement)};
+        ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Insert third entry with different path
+        auto thirdStatement = insertFileStatement;
+        thirdStatement["path"] = "/etc/another.txt";
+        thirdStatement["inode"] = 88888;
+        const auto fileFIMTest3 {std::make_unique<FileItem>(thirdStatement)};
+        ASSERT_EQ(fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Verify all entries have version 1
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(elements != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(elements), 3);
+
+        for (int i = 0; i < 3; i++)
+        {
+            cJSON* entry = cJSON_GetArrayItem(elements, i);
+            cJSON* version = cJSON_GetObjectItem(entry, "version");
+            ASSERT_TRUE(version != nullptr);
+            ASSERT_EQ(cJSON_GetNumberValue(version), 1);
+        }
+        cJSON_Delete(elements);
+
+        // Increase all entry versions
+        int result = fim_db_increase_each_entry_version(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(result, 0);
+
+        // Verify all entries now have version 2
+        elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        ASSERT_TRUE(elements != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(elements), 3);
+
+        for (int i = 0; i < 3; i++)
+        {
+            cJSON* entry = cJSON_GetArrayItem(elements, i);
+            cJSON* version = cJSON_GetObjectItem(entry, "version");
+            ASSERT_TRUE(version != nullptr);
+            ASSERT_EQ(cJSON_GetNumberValue(version), 2);
+        }
+
+        cJSON_Delete(elements);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionNullParameter)
+{
+    EXPECT_NO_THROW({
+        // Should handle NULL gracefully
+        int result = fim_db_increase_each_entry_version(nullptr);
+        ASSERT_EQ(result, -1);
+    });
+}
+
