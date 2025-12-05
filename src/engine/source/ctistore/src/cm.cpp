@@ -28,9 +28,9 @@ constexpr std::string_view assetTypeToString(cti::store::AssetType type) noexcep
 
 } // namespace
 
-ContentManager::ContentManager(const ContentManagerConfig& config, ContentDeployCallback deployCallback)
+ContentManager::ContentManager(const ContentManagerConfig& config, std::shared_ptr<std::atomic_bool> syncFlag)
     : m_config(config)
-    , m_deployCallback(deployCallback)
+    , m_syncFlag(syncFlag)
 {
     LOG_INFO("Initializing CTI Store ContentManager");
 
@@ -851,12 +851,12 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
         LOG_INFO("CTI processed up to offset {} (type='{}')", currentOffset, type);
 
         // Notify CMSync if content was successfully deployed
-        if (success && m_deployCallback)
+        if (success && m_syncFlag)
         {
             try
             {
                 LOG_DEBUG("CTI: notifying deploy callback");
-                m_deployCallback(shared_from_this());
+                m_syncFlag->store(true, std::memory_order_release);
             }
             catch (const std::exception& e)
             {

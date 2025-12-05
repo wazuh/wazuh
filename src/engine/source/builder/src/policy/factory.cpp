@@ -13,7 +13,6 @@
 namespace
 {
 auto constexpr GRAPH_INPUT_SUFFIX = "Input";
-const base::Name G_FILTER_NAME {"filter/allow-all/0"}; ///< Filter that allows all events
 } // namespace
 
 namespace builder::policy::factory
