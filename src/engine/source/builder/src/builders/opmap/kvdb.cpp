@@ -144,7 +144,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     // Return Op
     return [key,
             assetType,
-            validator,
+            targetValueValidator,
             successTrace,
             failureTrace1,
             failureTrace2,
@@ -199,7 +199,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         try
         {
             const auto& value = *valuePtr;
-            if (validator != nullptr)
+            if (targetValueValidator != nullptr)
             {
                 auto res = targetValueValidator(value);
                 if (base::isError(res))
