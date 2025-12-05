@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -125,7 +126,7 @@ protected:
     void SetUp() override
     {
         mockReader = std::make_shared<cti::store::MockCMReader>();
-        storeCTI = std::make_unique<CMStoreCTI>(mockReader, testNamespaceId);
+        storeCTI = std::make_unique<CMStoreCTI>(mockReader, testNamespaceId, std::filesystem::path("/default/outputs/path"));
     }
 
     void TearDown() override
@@ -142,7 +143,7 @@ protected:
 TEST_F(CMStoreCTITest, Constructor_ValidReader_Success)
 {
     EXPECT_NO_THROW({
-        CMStoreCTI store(mockReader, NamespaceId("valid_namespace"));
+        CMStoreCTI store(mockReader, NamespaceId("valid_namespace"), std::filesystem::path("/default/outputs/path"));
     });
 }
 
@@ -150,7 +151,7 @@ TEST_F(CMStoreCTITest, Constructor_NullReader_Accepted)
 {
     // Null reader is accepted at construction time (weak_ptr behavior)
     EXPECT_NO_THROW({
-        CMStoreCTI store(nullptr, NamespaceId("null_namespace"));
+        CMStoreCTI store(nullptr, NamespaceId("null_namespace"), std::filesystem::path("/default/outputs/path"));
     });
 }
 
@@ -910,7 +911,7 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_GetPolicy_ThrowsException)
 {
     // Create store with a reader that will be destroyed
     auto tempReader = std::make_shared<cti::store::MockCMReader>();
-    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"));
+    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"), std::filesystem::path("/default/outputs/path"));
 
     // Destroy the reader
     tempReader.reset();
@@ -922,7 +923,7 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_GetIntegrationByName_ThrowsException)
 {
     // Create store with a reader that will be destroyed
     auto tempReader = std::make_shared<cti::store::MockCMReader>();
-    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"));
+    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"), std::filesystem::path("/default/outputs/path"));
 
     // Destroy the reader
     tempReader.reset();
@@ -934,7 +935,7 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_AssetExistsByName_ReturnsFalse)
 {
     // Create store with a reader that will be destroyed
     auto tempReader = std::make_shared<cti::store::MockCMReader>();
-    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"));
+    CMStoreCTI storeWithExpiredReader(tempReader, NamespaceId("temp"), std::filesystem::path("/default/outputs/path"));
 
     // Destroy the reader
     tempReader.reset();
