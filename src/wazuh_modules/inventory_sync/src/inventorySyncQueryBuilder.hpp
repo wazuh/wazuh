@@ -258,11 +258,8 @@ namespace InventorySyncQueryBuilder
     {
         nlohmann::json query = {// Only fetch vulnerability.id; _id is part of hit metadata
                                 {"_source", nlohmann::json::array({"vulnerability.id"})},
-
                                 {"size", size},
-
                                 {"query", {{"bool", {{"must", nlohmann::json::array()}}}}},
-
                                 {"sort", {{{"_id", {{"order", "asc"}}}}}}};
 
         auto& must = query["query"]["bool"]["must"];
@@ -298,11 +295,8 @@ namespace InventorySyncQueryBuilder
     inline nlohmann::json
     buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
     {
-        nlohmann::json query = {// Only need vulnerability.id in _source; _id comes from hit metadata
-                                {"_source", nlohmann::json::array({"vulnerability.id"})},
-                                {"query", {{"term", {{"agent.id", agentId}}}}},
-                                {"size", size},
-                                {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+        nlohmann::json query = {
+            {"query", {{"term", {{"agent.id", agentId}}}}}, {"size", size}, {"sort", {{{"_id", {{"order", "asc"}}}}}}};
 
         if (!searchAfter.empty())
         {
