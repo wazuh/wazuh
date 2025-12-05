@@ -1297,51 +1297,9 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
     {
         LoggingHelper::getInstance().log(LOG_INFO, "DataClean notification sent successfully for SCA index");
 
-        // Clear local database tables
-        auto dbHandle = m_dBSync ? m_dBSync->handle() : nullptr;
-
-        if (dbHandle != nullptr)
-        {
-            try
-            {
-                // Delete all checks first (foreign key reference to policies)
-                const auto deleteChecksCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-                DBSyncTxn checkTxn {dbHandle, nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, deleteChecksCallback};
-
-                if (checkTxn.handle() != nullptr)
-                {
-                    // Sync with empty data to trigger deletions
-                    nlohmann::json emptyInput;
-                    emptyInput["table"] = "sca_check";
-                    emptyInput["data"] = nlohmann::json::array();
-
-                    checkTxn.syncTxnRow(emptyInput);
-                    checkTxn.getDeletedRows(deleteChecksCallback);
-                }
-
-                // Delete all policies
-                const auto deletePoliciesCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-                DBSyncTxn policyTxn {dbHandle, nlohmann::json {"sca_policy"}, 0, DBSYNC_QUEUE_SIZE, deletePoliciesCallback};
-
-                if (policyTxn.handle() != nullptr)
-                {
-                    nlohmann::json emptyInput;
-                    emptyInput["table"] = "sca_policy";
-                    emptyInput["data"] = nlohmann::json::array();
-
-                    policyTxn.syncTxnRow(emptyInput);
-                    policyTxn.getDeletedRows(deletePoliciesCallback);
-                }
-
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Local SCA database tables cleared");
-            }
-            catch (const std::exception& err)
-            {
-                LoggingHelper::getInstance().log(LOG_ERROR, "Error clearing database tables: " + std::string(err.what()));
-            }
-        }
+        // Delete both databases (sync protocol DB and SCA DB) like FIM does
+        deleteDatabase();
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA databases deleted");
 
         // Set flag to exit after DataClean
         m_exitAfterDataClean.store(true);
