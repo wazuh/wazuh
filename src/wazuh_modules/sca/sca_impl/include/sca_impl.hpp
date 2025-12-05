@@ -190,6 +190,11 @@ class SecurityConfigurationAssessment
         /// @return true if DB contains any policies or checks
         bool hasDataInDatabase();
 
+        /// @brief Handle the case when no policies are available (either at startup or runtime).
+        /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
+        /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
+        bool handleNoPoliciesAvailable();
+
         /// @brief Handle case when all policies are removed from config
         /// Sends DataClean, clears DB, syncs, and signals exit
         /// @return true if DataClean was sent and handled successfully
