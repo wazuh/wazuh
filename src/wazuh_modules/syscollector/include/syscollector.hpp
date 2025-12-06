@@ -160,8 +160,9 @@ class EXPORTED Syscollector final
                                bool createFields);
 
         bool hasDataInTable(const std::string& tableName);
-        void populateDisabledCollectorsIndices();
+        void checkDisabledCollectorsIndicesWithData();
         void clearTablesForIndices(const std::vector<std::string>& indices);
+        bool handleNotifyDataClean();
 
         std::shared_ptr<ISysInfo>                                                m_spInfo;
         std::function<void(const std::string&)>                                  m_reportDiffFunction;
@@ -187,6 +188,8 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        unsigned int                                                             m_dataCleanRetries;
+        bool                                                                     m_allCollectorsDisabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;

@@ -70,10 +70,6 @@ syscollector_parse_response_func syscollector_parse_response_ptr = NULL;
 syscollector_notify_data_clean_func syscollector_notify_data_clean_ptr = NULL;
 syscollector_delete_database_func syscollector_delete_database_ptr = NULL;
 
-// Partial disable handling function pointers
-syscollector_notify_disable_collectors_data_clean_func syscollector_notify_disable_collectors_data_clean_ptr = NULL;
-syscollector_delete_disable_collectors_data_func syscollector_delete_disable_collectors_data_ptr = NULL;
-
 // Query function pointer
 typedef size_t (*syscollector_query_func)(const char* query, char** output);
 syscollector_query_func syscollector_query_ptr = NULL;
@@ -241,90 +237,6 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t *sys) {
     }
 }
 
-/**
- * Handle DataClean for all disable collectors.
- * Called when all collectors are disable but module is enabled.
- */
-static void wm_handle_all_disable_collectors_and_notify_data_clean(wm_sys_t *sys) {
-
-    // Check if DB exists
-    if (!w_is_file(SYSCOLLECTOR_DB_DISK_PATH)) {
-        mtinfo(WM_SYS_LOGTAG, "No database file, skipping all collectors disable check.");
-        return;
-    }
-
-    mtinfo(WM_SYS_LOGTAG, "Database file exists, proceeding with all collectors disable check.");
-
-    if (syscollector_module = so_get_module_handle("syscollector"), syscollector_module) {
-
-        syscollector_init_ptr = so_get_function_sym(syscollector_module, "syscollector_init");
-
-        // Get sync protocol function pointers
-        syscollector_init_sync_ptr = so_get_function_sym(syscollector_module, "syscollector_init_sync");
-        syscollector_parse_response_ptr = so_get_function_sym(syscollector_module, "syscollector_parse_response");
-        syscollector_notify_disable_collectors_data_clean_ptr = so_get_function_sym(syscollector_module, "syscollector_notify_disable_collectors_data_clean");
-        syscollector_delete_disable_collectors_data_ptr = so_get_function_sym(syscollector_module, "syscollector_delete_disable_collectors_data");
-
-        MQ_Functions mq_funcs = {
-                .start = wm_sys_startmq,
-                .send_binary = wm_sys_send_binary_msg
-            };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
-
-        // Disable collectors indices array automatically populate at initialization
-        syscollector_init_ptr(sys->interval,
-                               wm_sys_send_diff_message,
-                               wm_sys_persist_diff_message,
-                               taggedLogFunction,
-                               SYSCOLLECTOR_DB_DISK_PATH,
-                               SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
-                               SYSCOLLECTOR_NORM_TYPE,
-                               sys->flags.scan_on_start,
-                               sys->flags.hwinfo,                 // false
-                               sys->flags.osinfo,                 // false
-                               sys->flags.netinfo,                // false
-                               sys->flags.programinfo,            // false
-                               sys->flags.portsinfo,              // false
-                               sys->flags.allports,
-                               sys->flags.procinfo,               // false
-                               sys->flags.hotfixinfo,             // false
-                               sys->flags.groups,                 // false
-                               sys->flags.users,                  // false
-                               sys->flags.services,               // false
-                               sys->flags.browser_extensions,     // false
-                               sys->flags.notify_first_scan);
-
-        if (syscollector_notify_disable_collectors_data_clean_ptr && syscollector_delete_disable_collectors_data_ptr)
-        {
-            bool ret = false;
-            while (!ret && !is_shutdown_process_started())
-            {
-                // Notify data clean for disabled collectors based on internal array populated at initialization
-                ret = syscollector_notify_disable_collectors_data_clean_ptr();
-                if (!ret) {
-                    for (uint32_t i = 0; i < sync_interval && !is_shutdown_process_started(); i++) {
-                        sleep(1);
-                    }
-                }
-                else
-                {
-                    mtdebug1(WM_SYS_LOGTAG, "Syscollector data clean notification for all collectors disable sent successfully.");
-                    // Delete data for disabled collectors based on internal array populated at initialization
-                    syscollector_delete_disable_collectors_data_ptr();
-                }
-            }
-        } else {
-            mtwarn(WM_SYS_LOGTAG, "Syscollector notify data clean functions for all collectors disable not available.");
-        }
-
-    }
-    else
-    {
-        mtwarn(WM_SYS_LOGTAG, "Failed to load Syscollector module for all collectors disable data clean notification.");
-        return;
-    }
-}
-
 #ifdef WIN32
 DWORD WINAPI wm_sys_main(void *arg) {
     wm_sys_t *sys = (wm_sys_t *)arg;
@@ -349,27 +261,6 @@ void* wm_sys_main(wm_sys_t *sys) {
         pthread_exit(NULL);
     }
 
-    // Check if all collectors are disable
-    const bool all_collectors_disable = sys->flags.hwinfo == 0 &&
-                                        sys->flags.osinfo == 0 &&
-                                        sys->flags.netinfo == 0 &&
-                                        sys->flags.programinfo == 0 &&
-                                        sys->flags.portsinfo == 0 &&
-                                        sys->flags.procinfo == 0 &&
-#ifdef WIN32
-                                        sys->flags.hotfixinfo == 0 &&
-#endif
-                                        sys->flags.groups == 0 &&
-                                        sys->flags.users == 0 &&
-                                        sys->flags.services == 0 &&
-                                        sys->flags.browser_extensions == 0;
-
-    if (all_collectors_disable) {
-        wm_handle_all_disable_collectors_and_notify_data_clean(sys);
-        mtinfo(WM_SYS_LOGTAG, "All collectors are disable. Exiting...");
-        pthread_exit(NULL);
-    }
-
 #ifndef WIN32
     // Connect to socket
     queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
@@ -391,8 +282,6 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_sync_module_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_module");
         syscollector_persist_diff_ptr = so_get_function_sym(syscollector_module, "syscollector_persist_diff");
         syscollector_parse_response_ptr = so_get_function_sym(syscollector_module, "syscollector_parse_response");
-        syscollector_notify_disable_collectors_data_clean_ptr = so_get_function_sym(syscollector_module, "syscollector_notify_disable_collectors_data_clean");
-        syscollector_delete_disable_collectors_data_ptr = so_get_function_sym(syscollector_module, "syscollector_delete_disable_collectors_data");
 
         // Get query function pointer
         syscollector_query_ptr = so_get_function_sym(syscollector_module, "syscollector_query");
@@ -451,41 +340,6 @@ void* wm_sys_main(wm_sys_t *sys) {
                 .send_binary = wm_sys_send_binary_msg
             };
             syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
-
-            if (syscollector_notify_disable_collectors_data_clean_ptr && syscollector_delete_disable_collectors_data_ptr)
-            {
-                bool ret = false;
-                int retries = 0;
-                const int max_retries = SYS_SYNC_RETRIES;
-
-                while (!ret && retries < max_retries && !is_shutdown_process_started())
-                {
-                    // Notify data clean for disabled collectors based on internal array populated at initialization
-                    ret = syscollector_notify_disable_collectors_data_clean_ptr();
-                    if (!ret) {
-                        retries++;
-                        if (retries < max_retries) {
-                            mtdebug1(WM_SYS_LOGTAG, "Syscollector data clean notification failed, retry %d/%d.", retries, max_retries);
-                            for (uint32_t i = 0; i < sync_interval && !is_shutdown_process_started(); i++) {
-                                sleep(1);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        mtdebug1(WM_SYS_LOGTAG, "Syscollector data clean notification for disable collectors sent successfully.");
-                        // Delete data for disabled collectors based on internal array populated at initialization
-                        syscollector_delete_disable_collectors_data_ptr();
-                    }
-                }
-
-                if (!ret && retries >= max_retries) {
-                    mtwarn(WM_SYS_LOGTAG, "Syscollector data clean notification failed after %d retries, continuing without cleanup.", max_retries);
-                }
-            } else {
-                mtwarn(WM_SYS_LOGTAG, "Syscollector notify data clean functions for disable collectors not available.");
-            }
-
 #ifndef WIN32
             // Launch inventory synchronization thread
             sync_module_running = 1;
@@ -499,6 +353,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         } else {
             mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
         }
+
         syscollector_start_ptr();
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
