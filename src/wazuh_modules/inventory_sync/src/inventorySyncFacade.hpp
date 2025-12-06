@@ -85,6 +85,172 @@ class InventorySyncFacadeImpl final
     static constexpr int m_threadCount = 1;
     static constexpr int m_bulkDataSize = 10 * 1024 * 1024;
 
+    /// Temporary debug helper: log Start message content as JSON.
+    void logStartMessage(const Wazuh::SyncSchema::Start* startMsg) const
+    {
+        if (!startMsg)
+        {
+            return;
+        }
+
+        nlohmann::json j;
+
+        j["type"] = "Start";
+
+        const auto module = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view {};
+        const auto hostname = startMsg->hostname() ? startMsg->hostname()->string_view() : std::string_view {};
+        const auto osname = startMsg->osname() ? startMsg->osname()->string_view() : std::string_view {};
+        const auto osplatform = startMsg->osplatform() ? startMsg->osplatform()->string_view() : std::string_view {};
+        const auto ostype = startMsg->ostype() ? startMsg->ostype()->string_view() : std::string_view {};
+        const auto osversion = startMsg->osversion() ? startMsg->osversion()->string_view() : std::string_view {};
+        const auto agentversion =
+            startMsg->agentversion() ? startMsg->agentversion()->string_view() : std::string_view {};
+        const auto agentname = startMsg->agentname() ? startMsg->agentname()->string_view() : std::string_view {};
+        const auto agentid = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view {};
+        const auto arch = startMsg->architecture() ? startMsg->architecture()->string_view() : std::string_view {};
+        std::string optionStr;
+        switch (startMsg->option())
+        {
+            case Wazuh::SyncSchema::Option_Sync: optionStr = "Sync"; break;
+            case Wazuh::SyncSchema::Option_VDFirst: optionStr = "VDFirst"; break;
+            case Wazuh::SyncSchema::Option_VDSync: optionStr = "VDSync"; break;
+            case Wazuh::SyncSchema::Option_VDClean: optionStr = "VDClean"; break;
+            default: optionStr = "Unknown"; break;
+        }
+
+        j["option"] = optionStr;
+        j["module"] = module;
+        j["mode"] = static_cast<int>(startMsg->mode());
+        j["size"] = startMsg->size();
+        j["architecture"] = arch;
+        j["hostname"] = hostname;
+        j["osname"] = osname;
+        j["osplatform"] = osplatform;
+        j["ostype"] = ostype;
+        j["osversion"] = osversion;
+        j["agentversion"] = agentversion;
+        j["agentname"] = agentname;
+        j["agentid"] = agentid;
+        j["global_version"] = startMsg->global_version();
+
+        // index: [string]
+        j["index"] = nlohmann::json::array();
+        if (auto indices = startMsg->index())
+        {
+            for (flatbuffers::uoffset_t i = 0; i < indices->size(); ++i)
+            {
+                auto idx = indices->Get(i);
+                if (idx)
+                {
+                    j["index"].push_back(idx->string_view());
+                }
+            }
+        }
+
+        // groups: [string]
+        j["groups"] = nlohmann::json::array();
+        if (auto groups = startMsg->groups())
+        {
+            for (flatbuffers::uoffset_t i = 0; i < groups->size(); ++i)
+            {
+                auto g = groups->Get(i);
+                if (g)
+                {
+                    j["groups"].push_back(g->string_view());
+                }
+            }
+        }
+
+        const auto dump = j.dump();
+        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::run: Start message debug: %s", dump.c_str());
+    }
+
+    /// Temporary debug helper: log DataValue message content as JSON (including payload).
+    void logDataValueMessage(const Wazuh::SyncSchema::DataValue* data) const
+    {
+        if (!data)
+        {
+            return;
+        }
+
+        nlohmann::json j;
+        j["type"] = "DataValue";
+        j["seq"] = data->seq();
+        j["session"] = data->session();
+        j["operation"] = static_cast<int>(data->operation());
+
+        const auto id = data->id() ? data->id()->string_view() : std::string_view {};
+        const auto index = data->index() ? data->index()->string_view() : std::string_view {};
+
+        j["id"] = id;
+        j["index"] = index;
+        j["version"] = data->version();
+
+        // Payload JSON (data: [byte])
+        if (auto bytes = data->data())
+        {
+            if (bytes->size() > 0)
+            {
+                const std::string payload(reinterpret_cast<const char*>(bytes->data()), bytes->size());
+                j["data_raw"] = payload;
+
+                try
+                {
+                    j["data"] = nlohmann::json::parse(payload);
+                }
+                catch (const std::exception& e)
+                {
+                    j["data_parse_error"] = e.what();
+                }
+            }
+        }
+
+        const auto dump = j.dump();
+        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::run: DataValue message debug: %s", dump.c_str());
+    }
+
+    /// Temporary debug helper: log DataContext message content as JSON (including payload).
+    void logDataContextMessage(const Wazuh::SyncSchema::DataContext* dataContext) const
+    {
+        if (!dataContext)
+        {
+            return;
+        }
+
+        nlohmann::json j;
+        j["type"] = "DataContext";
+        j["seq"] = dataContext->seq();
+        j["session"] = dataContext->session();
+
+        const auto id = dataContext->id() ? dataContext->id()->string_view() : std::string_view {};
+        const auto index = dataContext->index() ? dataContext->index()->string_view() : std::string_view {};
+
+        j["id"] = id;
+        j["index"] = index;
+
+        if (auto bytes = dataContext->data())
+        {
+            if (bytes->size() > 0)
+            {
+                const std::string payload(reinterpret_cast<const char*>(bytes->data()), bytes->size());
+                j["data_raw"] = payload;
+
+                try
+                {
+                    j["data"] = nlohmann::json::parse(payload);
+                }
+                catch (const std::exception& e)
+                {
+                    j["data_parse_error"] = e.what();
+                }
+            }
+        }
+
+        const auto dump = j.dump();
+        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::run: DataContext message debug: %s", dump.c_str());
+    }
+    /// Temporary debug helper
+
     void run(const std::vector<char>& dataRaw)
     {
         // Check if message is JSON (starts with '{')
@@ -125,6 +291,9 @@ class InventorySyncFacadeImpl final
             {
                 throw InventorySyncException("Invalid data message");
             }
+
+            // Temporary debug log
+            logDataValueMessage(data);
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
@@ -175,6 +344,9 @@ class InventorySyncFacadeImpl final
                 throw InventorySyncException("Invalid data context message");
             }
 
+            // Temporary debug log
+            logDataContextMessage(dataContext);
+
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
             if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
@@ -200,6 +372,9 @@ class InventorySyncFacadeImpl final
             {
                 throw InventorySyncException("Invalid start message");
             }
+
+            // Temporary debug log
+            logStartMessage(startMsg);
 
             // Extract agent ID and module name from Start message
             auto agentId = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view();
