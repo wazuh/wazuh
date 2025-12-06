@@ -379,8 +379,11 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_spNormalizer  = std::move(normalizer);
     m_initialized   = true;
 
-    // Populate the list of disabled collectors with existing data
-    populateDisabledCollectorsIndices();
+    m_allCollectorsDisabled = !(m_hardware || m_os || m_network || m_packages || m_ports || m_processes || m_hotfixes || m_groups || m_users || m_services || m_browserExtensions);
+    m_dataCleanRetries = 1;  // Default retries for data clean
+
+    // Check disabled collectors with existing data
+    checkDisabledCollectorsIndicesWithData();
 }
 
 void Syscollector::start()
@@ -406,7 +409,68 @@ void Syscollector::start()
         m_spSyncProtocol->reset();
     }
 
+    bool notifySuccess = handleNotifyDataClean();
+
+    if (notifySuccess)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "Syscollector data clean notification for disabled collectors sent successfully, proceeding to delete data.");
+        }
+
+        deleteDisableCollectorsData();
+    }
+    else
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Syscollector data clean notification for disabled collectors failed, proceeding without deleting data.");
+        }
+    }
+
+    // If all collectors are disabled, do not start the module
+    if (m_allCollectorsDisabled)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "All collectors are disabled. Exiting...");
+        }
+
+        return;
+    }
+
     syncLoop(lock);
+}
+
+bool Syscollector::handleNotifyDataClean()
+{
+    bool ret = false;
+    unsigned int retries = 1;
+
+    while (!ret && retries <= m_dataCleanRetries && !m_stopping)
+    {
+        ret = notifyDisableCollectorsDataClean();
+
+        if (!ret)
+        {
+            retries++;
+
+            if (retries <= m_dataCleanRetries)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_WARNING, "Syscollector data clean notification failed, retry " + std::to_string(retries) + "/" + std::to_string(m_dataCleanRetries) + ".");
+                }
+
+                for (unsigned int i = 0; i < m_intervalValue && !m_stopping; i++)
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+            }
+        }
+    }
+
+    return ret;
 }
 
 void Syscollector::destroy()
@@ -1598,6 +1662,8 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
                                     unsigned int retries,
                                     size_t maxEps)
 {
+    m_dataCleanRetries = retries;  // Same as sync retries for data clean notifications
+
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
         this->m_logFunction(level, msg);
@@ -2121,7 +2187,7 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
     }
 }
 
-void Syscollector::populateDisabledCollectorsIndices()
+void Syscollector::checkDisabledCollectorsIndicesWithData()
 {
     m_disabledCollectorsIndicesWithData.clear();
 

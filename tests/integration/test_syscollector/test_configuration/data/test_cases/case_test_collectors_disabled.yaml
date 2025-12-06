@@ -115,3 +115,53 @@
     browser_extensions_scan: 'yes'
     disabled_collectors:
       - network
+
+- name: all_collectors_disabled
+  description: Test with all collectors disabled - module should send DataClean and exit
+  configuration_parameters:
+    DISABLED: 'no'
+    INTERVAL_SCAN: 5s
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'no'
+    OS_SCAN: 'no'
+    NETWORK_SCAN: 'no'
+    PACKAGES_SCAN: 'no'
+    PORTS_SCAN: 'no'
+    ALL_PORTS: 'yes'
+    PROCESSES_SCAN: 'no'
+    HOTFIXES_SCAN: 'no'
+    GROUPS_SCAN: 'no'
+    USERS_SCAN: 'no'
+    SERVICES_SCAN: 'no'
+    BROWSER_EXTENSIONS_SCAN: 'no'
+    SYNC_INTERVAL: 1s
+    SYNC_RESPONSE_TIMEOUT: 1s
+  metadata:
+    disabled: 'no'
+    interval_scan: 5
+    start_on_start: 'yes'
+    hardware_scan: 'no'
+    os_scan: 'no'
+    network_scan: 'no'
+    packages_scan: 'no'
+    ports_scan: 'no'
+    all_ports: 'yes'
+    processes_scan: 'no'
+    hotfixes_scan: 'no'
+    groups_scan: 'no'
+    users_scan: 'no'
+    services_scan: 'no'
+    browser_extensions_scan: 'no'
+    all_collectors_disabled: true
+    disabled_collectors:
+      - hardware
+      - os
+      - network
+      - packages
+      - ports
+      - processes
+      - hotfixes
+      - groups
+      - users
+      - services
+      - browser_extensions

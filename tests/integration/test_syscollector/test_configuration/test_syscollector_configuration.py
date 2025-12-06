@@ -92,8 +92,8 @@ t5_config_parameters, t5_config_metadata, t5_case_ids = configuration.get_test_c
 t5_configurations = configuration.load_configuration_template(t1_3_5_config_path, t5_config_parameters, t5_config_metadata)
 
 # T6 Parameters: Check DataClean notification when some collectors are disabled.
-t6_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_syscollector_partial_disabled.yaml')
-t6_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_partial_collectors_disabled.yaml')
+t6_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_syscollector_collectors_disabled.yaml')
+t6_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_collectors_disabled.yaml')
 t6_config_parameters, t6_config_metadata, t6_case_ids = configuration.get_test_cases_data(t6_cases_path)
 t6_configurations = configuration.load_configuration_template(t6_config_path, t6_config_parameters, t6_config_metadata)
 
@@ -471,102 +471,12 @@ def test_syscollector_scanning(test_configuration, test_metadata, set_wazuh_conf
     assert log_monitor.callback_result
 
 
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_config_metadata), ids=t2_case_ids)
-def test_syscollector_all_collectors_disabled(test_configuration, test_metadata, set_wazuh_configuration,
-                                         configure_local_internal_options, truncate_monitored_files,
-                                         custom_daemons_handler, db_verifier):
-    '''
-    description: Check that when all collectors are disabled, DataClean notification is sent and no scan is triggered.
-
-    test_phases:
-        - setup:
-            - Ensures at least one entry on each collector table.
-            - Set Syscollector configuration with all collectors disabled.
-            - Configure modulesd in debug mode.
-            - Truncate all the log files and json alerts files.
-            - Restart the necessary daemons for each test case.
-        - test:
-            - Check that DataClean notification is sent for disabled collectors with data.
-            - Check that no scan is triggered.
-        - teardown:
-            - Restore Wazuh configuration.
-            - Restore local internal options.
-            - Truncate all the log files and json alerts files.
-            - Stop the necessary daemons.
-
-    wazuh_min_version: 4.4.0
-
-    tier: 0
-
-    parameters:
-        - test_configuration:
-            type: dict
-            brief: Configuration loaded from the template located in `configuration` folder.
-        - test_metadata:
-            type: dict
-            brief: Test case metadata.
-        - set_wazuh_configuration:
-            type: fixture
-            brief: Set wazuh configuration using the configuration template.
-        - configure_local_internal_options:
-            type: fixture
-            brief: Configure the local internal options file.
-        - truncate_monitored_files:
-            type: fixture
-            brief: Truncate the log file before and after the test execution.
-        - custom_daemons_handler:
-            type: fixture
-            brief: Handler of Wazuh daemons for each test case, also ensures one entry on each syscollector table.
-        - db_verifier:
-            type: fixture
-            brief: Helper to print database table sizes.
-
-    assertions:
-        - Check if disabled collectors with data are detected (all).
-        - Check if DataClean notification is sent for disabled collectors with data.
-        - Check that no scan is triggered when all collectors are disabled.
-
-    input_description:
-        - The `configuration_syscollector_scans_disabled.yaml` file provides the module configuration for this test.
-        - The `case_test_all_scans_disabled.yaml` file provides the test cases.
-    '''
-    db_verifier("DB state at start of test_syscollector_all_collectors_disabled (after daemons_handler setup)")
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-
-    # All collectors disabled check start
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_ALL_COLLECTORS_DISABLED_START_CHECK), timeout=10)
-    assert log_monitor.callback_result, "All collectors disabled check should start"
-
-    # Check disabled collectors with data are detected (database is pre-populated by fixture)
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DISABLED_COLLECTORS_DETECTED), timeout=30)
-    assert log_monitor.callback_result, "Disabled collectors with data should be detected"
-
-    # Check DataClean notification is started
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DATACLEAN_NOTIFICATION_STARTED), timeout=10)
-    assert log_monitor.callback_result, "DataClean notification should be started for disabled collectors with data"
-
-    # Verify no scan callbacks are present
-    check_callbacks = [patterns.CB_HARDWARE_SCAN_STARTED, patterns.CB_OS_SCAN_STARTED,
-                       patterns.CB_NETWORK_SCAN_STARTED, patterns.CB_PACKAGES_SCAN_STARTED,
-                       patterns.CB_PORTS_SCAN_STARTED, patterns.CB_PROCESSES_SCAN_STARTED,
-                       patterns.CB_GROUPS_SCAN_STARTED, patterns.CB_USERS_SCAN_STARTED,
-                       patterns.CB_SERVICES_SCAN_STARTED, patterns.CB_BROWSER_EXTENSIONS_SCAN_STARTED]
-
-    # Add the hotfixes check if the platform is Windows.
-    if sys.platform == WINDOWS:
-        check_callbacks.append(patterns.CB_HOTFIXES_SCAN_STARTED)
-
-    # Check that no scan is triggered.
-    for callback in check_callbacks:
-        log_monitor.start(callback=callbacks.generate_callback(callback), timeout=5)
-        assert not log_monitor.callback_result, f"Scan should not be triggered when all collectors are disabled"
-
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t6_configurations, t6_config_metadata), ids=t6_case_ids)
-def test_syscollector_partial_collectors_disabled(test_configuration, test_metadata, set_wazuh_configuration,
+def test_syscollector_collectors_disabled(test_configuration, test_metadata, set_wazuh_configuration,
                                                   configure_local_internal_options, truncate_monitored_files,
                                                   custom_daemons_handler, db_verifier):
     '''
-    description: Check that when some collectors are disabled (but not all), DataClean notification is sent, and enabled collectors continue scanning normally.
+    description: Check that when collectors are disabled, DataClean notification is sent, and enabled collectors continue scanning normally, if all disabled then module exits.
 
     test_phases:
         - setup:
@@ -578,8 +488,8 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
         - test:
             - Check that disabled collectors with data are detected.
             - Check that DataClean notification is sent for disabled collectors.
-            - Check that the module continues running (does not exit).
-            - Check that enabled collectors perform scans normally.
+            - If all collectors disabled: Check that the module exits.
+            - If some collectors enabled: Check that enabled collectors perform scans normally.
             - Check that disabled collectors do not perform scans.
         - teardown:
             - Restore Wazuh configuration.
@@ -597,7 +507,7 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
             brief: Configuration loaded from the template located in `configuration` folder.
         - test_metadata:
             type: dict
-            brief: Test case metadata with disabled_collectors list.
+            brief: Test case metadata with disabled_collectors list and all_collectors_disabled flag.
         - set_wazuh_configuration:
             type: fixture
             brief: Set wazuh configuration using the configuration template.
@@ -617,15 +527,20 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
     assertions:
         - Check if disabled collectors with data are detected.
         - Check if DataClean notification is sent for disabled collectors with data.
-        - Check if the module continues running and enabled collectors scan normally.
+        - Check if the module exits when all collectors are disabled.
+        - Check if the module continues running and enabled collectors scan normally when some are enabled.
         - Check if disabled collectors do not perform scans.
 
     input_description:
-        - The `configuration_syscollector_partial_disabled.yaml` file provides the module configuration for this test.
-        - The `case_test_partial_collectors_disabled.yaml` file provides the test cases.
+        - The `configuration_syscollector_collectors_disabled.yaml` file provides the module configuration for this test.
+        - The `case_test_collectors_disabled.yaml` file provides the test cases.
     '''
-    db_verifier("DB state at start of test_syscollector_partial_collectors_disabled (after daemons_handler setup)")
+    db_verifier("DB state at start of test_syscollector_collectors_disabled (after custom_daemons_handler setup)")
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+
+    # Get disabled collectors and all_collectors_disabled flag from test metadata
+    disabled_collectors = test_metadata.get('disabled_collectors', [])
+    all_collectors_disabled = test_metadata.get('all_collectors_disabled', False)
 
     # Module should start
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTING), timeout=10)
@@ -639,6 +554,13 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DATACLEAN_NOTIFICATION_STARTED), timeout=10)
     assert log_monitor.callback_result, "DataClean notification should be started for disabled collectors with data"
 
+    if all_collectors_disabled:
+        # When all collectors are disabled, the module should exit
+        log_monitor.start(callback=callbacks.generate_callback(patterns.CB_ALL_DISABLED_COLLECTORS_EXIT), timeout=30)
+        assert log_monitor.callback_result, "Module should exit when all collectors are disabled"
+        # No further checks needed - module has exited
+        return
+
     # Module should continue running (check it started successfully)
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTED), timeout=120)
     assert log_monitor.callback_result, "Module should continue running after DataClean"
@@ -646,9 +568,6 @@ def test_syscollector_partial_collectors_disabled(test_configuration, test_metad
     # Check general scan has started (enabled collectors should scan)
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_STARTED), timeout=10)
     assert log_monitor.callback_result, "Scan should start for enabled collectors"
-
-    # Get disabled collectors from test metadata
-    disabled_collectors = test_metadata.get('disabled_collectors', [])
 
     # Map collector names to their scan callbacks
     collector_callbacks = {
