@@ -42,7 +42,14 @@ constexpr auto MINIMAL_ELEMENTS_PER_BULK {1};
 // Overhead is the fixed JSON scaffolding for one bulk item:
 // {"index":{"_index":"<index>","id":"<id>"}}
 constexpr auto FORMATTED_LENGTH {20 + 8 + 2 + 2 + 1};
-
+namespace
+{
+    enum class BulkMode
+    {
+        Index,     // {"index":{"_index":"<name>","_id":"<id>"}}
+        DataStream // {"create":{"_index":"<data_stream_name>"}}
+    };
+} // namespace
 class IndexerResponse final
 {
 public:
@@ -98,6 +105,7 @@ class IndexerConnectorAsyncImpl final
     bool m_error413Logged {false};
     size_t m_successCount {0};
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
+    BulkMode m_bulkMode {BulkMode::Index};
 
 public:
     ~IndexerConnectorAsyncImpl() = default;
@@ -424,56 +432,87 @@ public:
 
         if (data.empty())
         {
-            logWarn(IC_NAME, "Empty data provided for document %.*s in index %.*s",
-                   static_cast<int>(id.size()), id.data(),
-                   static_cast<int>(index.size()), index.data());
+            logWarn(IC_NAME,
+                    "Empty data provided for document %.*s in index %.*s",
+                    static_cast<int>(id.size()),
+                    id.data(),
+                    static_cast<int>(index.size()),
+                    index.data());
         }
 
         std::string bulkData;
-        bulkData.reserve(data.size() + index.size() + ID_SIZE + FORMATTED_SIZE + VERSION_SIZE);
 
-        bulkData.append(R"({"index":{"_index":")");
-        bulkData.append(index);
-        if (!version.empty())
+        if (m_bulkMode == BulkMode::DataStream)
         {
-            // In case the version is provided, the id must be provided too
-            if (!id.empty())
-            {
-                bulkData.append(R"(","_id":")");
-                bulkData.append(id);
-            }
-            else
-            {
-                logError(IC_NAME, "Id must be provided if version value is provided");
-                throw IndexerConnectorException("Id must be provided if version value is provided");
-            }
+            bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE);
+            bulkData.append(R"({"create":{"_index":")");
+            bulkData.append(index);
+            bulkData.append(R"("}})");
+            bulkData.append("\n");
+            bulkData.append(data);
+            bulkData.append("\n");
 
-            bulkData.append(R"(","version":")");
-            bulkData.append(version);
-            bulkData.append(R"(","version_type":"external_gte)");
-            logDebug2(IC_NAME, "Using external version %.*s for document %.*s",
-                     static_cast<int>(version.size()), version.data(),
-                     static_cast<int>(id.size()), id.data());
+            logDebug2(IC_NAME,
+                    "Using data stream mode for index %.*s (id and version ignored).",
+                    static_cast<int>(index.size()), index.data());
         }
         else
         {
-            if (!id.empty())
+            bulkData.reserve(data.size() + index.size() + ID_SIZE + FORMATTED_SIZE + VERSION_SIZE);
+            bulkData.append(R"({"index":{"_index":")");
+            bulkData.append(index);
+            if (!version.empty())
             {
-                bulkData.append(R"(","_id":")");
-                bulkData.append(id);
+                // In case the version is provided, the id must be provided too
+                if (!id.empty())
+                {
+                    bulkData.append(R"(","_id":")");
+                    bulkData.append(id);
+                }
+                else
+                {
+                    logError(IC_NAME, "Id must be provided if version value is provided");
+                    throw IndexerConnectorException("Id must be provided if version value is provided");
+                }
+
+                bulkData.append(R"(","version":")");
+                bulkData.append(version);
+                bulkData.append(R"(","version_type":"external_gte)");
+                logDebug2(IC_NAME,
+                        "Using external version %.*s for document %.*s",
+                        static_cast<int>(version.size()),
+                        version.data(),
+                        static_cast<int>(id.size()),
+                        id.data());
             }
-            logDebug2(IC_NAME, "No version specified for document %.*s, using default versioning",
-                     static_cast<int>(id.size()), id.data());
+            else
+            {
+                if (!id.empty())
+                {
+                    bulkData.append(R"(","_id":")");
+                    bulkData.append(id);
+                }
+                logDebug2(IC_NAME,
+                        "No version specified for document %.*s, using default versioning",
+                        static_cast<int>(id.size()),
+                        id.data());
+            }
+            bulkData.append(R"("}})");
+            bulkData.append("\n");
+            bulkData.append(data);
+            bulkData.append("\n");
         }
-        bulkData.append(R"("}})");
-        bulkData.append("\n");
-        bulkData.append(data);
-        bulkData.append("\n");
+
         m_dispatcher->push(bulkData);
     }
 
     bool isAvailable() const
     {
         return m_selector->isAvailable();
+    }
+
+    void enableDataStreamBulkMode()
+    {
+        m_bulkMode = BulkMode::DataStream;
     }
 };

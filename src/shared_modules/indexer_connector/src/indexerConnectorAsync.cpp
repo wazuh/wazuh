@@ -48,6 +48,11 @@ public:
     {
         return m_impl.isAvailable();
     }
+
+    void enableDataStreamBulkMode()
+    {
+        m_impl.enableDataStreamBulkMode();
+    }
 };
 
 IndexerConnectorAsync::IndexerConnectorAsync(
@@ -78,6 +83,11 @@ void IndexerConnectorAsync::index(std::string_view index, std::string_view data)
 bool IndexerConnectorAsync::isAvailable() const
 {
     return m_impl->isAvailable();
+}
+
+void IndexerConnectorAsync::enableDataStreamBulkMode()
+{
+    m_impl->enableDataStreamBulkMode();
 }
 
 // LCOV_EXCL_STOP
