@@ -82,6 +82,8 @@ class EXPORTED Syscollector final
         bool notifyDataClean(const std::vector<std::string>& indices);
         void deleteDatabase();
         std::string query(const std::string& jsonQuery);
+        bool notifyDisableCollectorsDataClean();
+        void deleteDisableCollectorsData();
     private:
         Syscollector();
         ~Syscollector() = default;
@@ -157,6 +159,11 @@ class EXPORTED Syscollector final
                                const std::string& sourceKey,
                                bool createFields);
 
+        bool hasDataInTable(const std::string& tableName);
+        void checkDisabledCollectorsIndicesWithData();
+        void clearTablesForIndices(const std::vector<std::string>& indices);
+        bool handleNotifyDataClean();
+
         std::shared_ptr<ISysInfo>                                                m_spInfo;
         std::function<void(const std::string&)>                                  m_reportDiffFunction;
         std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_persistDiffFunction;
@@ -181,6 +188,8 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        unsigned int                                                             m_dataCleanRetries;
+        bool                                                                     m_allCollectorsDisabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
@@ -188,6 +197,7 @@ class EXPORTED Syscollector final
         std::mutex                                                               m_pauseMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
+        std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
 };
 
 
