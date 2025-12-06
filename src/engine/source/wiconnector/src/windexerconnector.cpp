@@ -78,6 +78,7 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig)
 
     const auto logFunction = logging::createStandaloneLogFunction();
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, logFunction);
+    m_indexerConnectorAsync->enableDataStreamBulkMode();
 }
 
 WIndexerConnector::WIndexerConnector(const Config& config, const LogFunctionType& logFunction)
@@ -89,6 +90,7 @@ WIndexerConnector::WIndexerConnector(const Config& config, const LogFunctionType
     }
 
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, logFunction);
+    m_indexerConnectorAsync->enableDataStreamBulkMode();
 }
 
 WIndexerConnector::~WIndexerConnector() = default;

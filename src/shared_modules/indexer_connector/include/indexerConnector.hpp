@@ -221,6 +221,12 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Enable data stream bulk mode.
+     *
+     */
+    void enableDataStreamBulkMode();
 };
 
 class IndexerConnectorException : public std::exception
