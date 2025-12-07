@@ -216,6 +216,14 @@ public:
     void index(std::string_view index, std::string_view data);
 
     /**
+     * @brief Index a document to a data stream.
+     *
+     * @param index Data stream name.
+     * @param data Data.
+     */
+    void indexDataStream(std::string_view index, std::string_view data);
+
+    /**
      * @brief Check have a server available.
      *
      * @return true if have a server available, false otherwise.
