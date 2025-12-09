@@ -7,7 +7,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
 #ifdef WIN32
 
 #include <cJSON.h>
@@ -99,6 +98,84 @@ STATIC const char* get_registry_key(const char* path) {
     return path;
 }
 
+cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, cJSON* registry_stateful){
+    cJSON* stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        return NULL;
+    }
+    cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
+
+    char *utf8_path = auto_to_utf8(path);
+    cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
+    os_free(utf8_path);
+
+    const char *hive = get_registry_hive_abbreviation(path);
+    const char *key = get_registry_key(path);
+
+    if (strlen(hive) > 0 && strlen(key) > 0) {
+        size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
+        char *full_key = NULL;
+        os_malloc(full_key_len, full_key);
+        snprintf(full_key, full_key_len, "%s\\%s", hive, key);
+        char *utf8_full_key = auto_to_utf8(full_key);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
+        os_free(utf8_full_key);
+        os_free(full_key);
+    } else {
+        char *utf8_key_path = auto_to_utf8(path);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
+        os_free(utf8_key_path);
+    }
+    cJSON_AddStringToObject(registry_stateful, "hive", hive);
+
+    cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+
+    cJSON* checksum = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
+    cJSON* hash = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum, "hash", hash);
+
+    cJSON* state = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "state", state);
+    cJSON_AddStringToObject(hash, "sha1", sha1_hash);
+
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+
+    cJSON_AddNumberToObject(state, "document_version", document_version);
+
+    return stateful_event;
+}
+
+
+cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *registry_data){
+    const registry_t* config = fim_registry_configuration(path, arch);
+    cJSON* registry_stateful = fim_registry_key_attributes_json(dbsync_event, registry_data, config);
+
+    cJSON* stateful_event = build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
+
+    if (!stateful_event) {
+        if (registry_stateful) {
+            cJSON_Delete(registry_stateful);
+        }
+        return NULL;
+    }
+    return stateful_event;
+}
+
+cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *registry_data){
+    const registry_t* config = fim_registry_configuration(path, arch);
+    cJSON* registry_stateful = fim_registry_value_attributes_json(dbsync_event, registry_data, config);
+
+    char *utf8_value = auto_to_utf8(value);
+    cJSON_AddStringToObject(registry_stateful, "value", utf8_value ? utf8_value : value);
+    os_free(utf8_value);
+
+    cJSON* stateful_event = build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
+
+    return stateful_event;
+}
 // DBSync Callbacks
 
 /**
@@ -113,7 +190,6 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
                                               void* user_data) {
 
     cJSON *stateless_event = NULL;
-    cJSON* stateful_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *old_data = NULL;
@@ -179,11 +255,6 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         return;
     }
 
-    stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
-        goto end;
-    }
-
     cJSON_AddStringToObject(stateless_event, "collector", "registry_key");
     cJSON_AddStringToObject(stateless_event, "module", "fim");
 
@@ -200,12 +271,8 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON* registry_stateless = fim_registry_key_attributes_json(result_json, event_data->key, event_data->config);
     cJSON_AddItemToObject(data, "registry", registry_stateless);
 
-    cJSON* registry_stateful = cJSON_Duplicate(registry_stateless, 1);
-    cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
-
     char *utf8_path = auto_to_utf8(path);
     cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
-    cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
     os_free(utf8_path);
 
     const char *hive = get_registry_hive_abbreviation(path);
@@ -218,20 +285,16 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
         char *utf8_full_key = auto_to_utf8(full_key);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
-        cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
     } else {
         char *utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
-        cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
     }
     cJSON_AddStringToObject(registry_stateless, "hive", hive);
-    cJSON_AddStringToObject(registry_stateful, "hive", hive);
 
     cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
 
     cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
@@ -261,31 +324,11 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         send_syscheck_msg(stateless_event);
     }
 
-    // Add checksum only to stateful event
-    cJSON* checksum = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
-    cJSON* hash = cJSON_CreateObject();
-    cJSON_AddItemToObject(checksum, "hash", hash);
+    char id_source_string[OS_MAXSTR] = {0};
+    snprintf(id_source_string, OS_MAXSTR - 1, "%d:%s", arch, path);
 
-    if (event_data->key != NULL) {
-        cJSON_AddStringToObject(hash, "sha1", event_data->key->checksum);
-    } else {
-        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
-        if (aux != NULL) {
-            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
-        } else {
-            mdebug1("Couldn't find checksum for '%s", path);
-            goto end; // LCOV_EXCL_LINE
-        }
-    }
-
-    // Add state modified_at and document_version fields for stateful event only
-    cJSON* state = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "state", state);
-
-    char modified_at_time[32];
-    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
-    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+    char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
 
     cJSON *version_aux = NULL;
     // For MODIFIED events, version is in the "new" object
@@ -300,23 +343,33 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     uint64_t document_version = 0;
     if (version_aux != NULL) {
         document_version = (uint64_t)version_aux->valueint;
-        cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
     } else {
         mdebug1("Couldn't find version for '%s", path);
         goto end; // LCOV_EXCL_LINE
     }
 
-    char id_source_string[OS_MAXSTR] = {0};
-    snprintf(id_source_string, OS_MAXSTR - 1, "%d:%s", arch, path);
-
-    char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
-    OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
-
+    // Calculate checksum
+    const char* sha1_hash;
+    if (event_data->key != NULL) {
+        sha1_hash = event_data->key->checksum;
+    } else {
+        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL) {
+            sha1_hash = cJSON_GetStringValue(aux);
+        } else {
+            mdebug1("Couldn't find checksum for '%s", path);
+            return;
+        }
+    }
+    cJSON* stateful_event = build_stateful_event_registry_key(path, sha1_hash, document_version, arch, result_json, event_data->key);
+    if (!stateful_event) {
+        merror("Couldn't create stateful event for %s", path);
+        goto end; // LCOV_EXCL_LINE
+    }
     persist_syscheck_msg(registry_key_sha1, sync_operation, FIM_REGISTRY_KEYS_SYNC_INDEX, stateful_event, document_version);
-
+    cJSON_Delete(stateful_event);
 end:
     cJSON_Delete(stateless_event);
-    cJSON_Delete(stateful_event);
 }
 
 /**
@@ -331,7 +384,6 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
                                                 void* user_data) {
 
     cJSON *stateless_event = NULL;
-    cJSON* stateful_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *json_value = NULL;
@@ -406,11 +458,6 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         goto end;
     }
 
-    stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
-        goto end; // LCOV_EXCL_LINE
-    }
-
     cJSON_AddStringToObject(stateless_event, "collector", "registry_value");
     cJSON_AddStringToObject(stateless_event, "module", "fim");
 
@@ -427,12 +474,8 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON* registry_stateless = fim_registry_value_attributes_json(result_json, event_data->data, event_data->config);
     cJSON_AddItemToObject(data, "registry", registry_stateless);
 
-    cJSON* registry_stateful = cJSON_Duplicate(registry_stateless, 1);
-    cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
-
     char *utf8_path = auto_to_utf8(path);
     cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
-    cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
     os_free(utf8_path);
 
     const char *hive = get_registry_hive_abbreviation(path);
@@ -445,23 +488,18 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
         char *utf8_full_key = auto_to_utf8(full_key);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
-        cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
     } else {
         char *utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
-        cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
     }
     cJSON_AddStringToObject(registry_stateless, "hive", hive);
-    cJSON_AddStringToObject(registry_stateful, "hive", hive);
 
     cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     char *utf8_value = auto_to_utf8(value);
     cJSON_AddStringToObject(registry_stateless, "value", utf8_value ? utf8_value : value);
-    cJSON_AddStringToObject(registry_stateful, "value", utf8_value ? utf8_value : value);
     os_free(utf8_value);
 
     cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
@@ -496,32 +534,6 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         send_syscheck_msg(stateless_event);
     }
 
-    // Add checksum only to stateful event
-    cJSON* checksum = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
-    cJSON* hash = cJSON_CreateObject();
-    cJSON_AddItemToObject(checksum, "hash", hash);
-
-    if (event_data->data != NULL) {
-        cJSON_AddStringToObject(hash, "sha1", event_data->data->checksum);
-    } else {
-        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
-        if (aux != NULL) {
-            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
-        } else {
-            mdebug1("Couldn't find checksum for '%s", path);
-            goto end; // LCOV_EXCL_LINE
-        }
-    }
-
-    // Add state modified_at and document_version fields for stateful event only
-    cJSON* state = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "state", state);
-
-    char modified_at_time[32];
-    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
-    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
-
     cJSON *version_aux = NULL;
     // For MODIFIED events, version is in the "new" object
     cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
@@ -535,24 +547,41 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     uint64_t document_version = 0;
     if (version_aux != NULL) {
         document_version = (uint64_t)version_aux->valueint;
-        cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
     } else {
         mdebug1("Couldn't find version for '%s", path);
         goto end; // LCOV_EXCL_LINE
     }
 
+    // Calculate checksum
+    const char* sha1_hash;
+    if (event_data->data != NULL) {
+        sha1_hash = event_data->data->checksum;
+    } else {
+        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL) {
+            sha1_hash = cJSON_GetStringValue(aux);
+        } else {
+            mdebug1("Couldn't find checksum for '%s", path);
+            return;
+        }
+    }
     char id_source_string[OS_MAXSTR] = {0};
     snprintf(id_source_string, OS_MAXSTR - 1, "%s:%d:%s", path, arch, value);
 
     char registry_value_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(id_source_string, -1, registry_value_sha1);
 
+    cJSON* stateful_event = build_stateful_event_registry_value(path, value, sha1_hash, document_version, arch, result_json, event_data->data);
+    if (!stateful_event) {
+        merror("Couldn't create stateful event for %s", path);
+        goto end; // LCOV_EXCL_LINE
+    }
     persist_syscheck_msg(registry_value_sha1, sync_operation, FIM_REGISTRY_VALUES_SYNC_INDEX, stateful_event, document_version);
+    cJSON_Delete(stateful_event);
 
 end:
     os_free(event_data->diff);
     cJSON_Delete(stateless_event);
-    cJSON_Delete(stateful_event);
 }
 
 /**
@@ -751,18 +780,21 @@ void fim_registry_get_checksum_key(fim_registry_key *data) {
 
     size = snprintf(0,
             0,
-            "%s:%s:%s:%s:%s:%lu",
+            "%s:%s:%s:%s:%s:%s:%lu:%d",
+            data->path ? data->path : "",
             data->permissions ? data->permissions : "",
             data->uid ? data->uid : "",
             data->owner ? data->owner : "",
             data->gid ? data->gid : "",
             data->group ? data->group : "",
-            data->mtime);
+            data->mtime,
+            data->architecture);
 
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
-            "%s:%s:%s:%s:%s:%lu:%d",
+            "%s:%s:%s:%s:%s:%s:%lu:%d",
+            data->path ? data->path : "",
             data->permissions ? data->permissions : "",
             data->uid ? data->uid : "",
             data->gid ? data->gid : "",
@@ -786,7 +818,10 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
 
     size = snprintf(0,
             0,
-            "%u:%llu:%s:%s:%s",
+            "%s:%s:%d:%u:%llu:%s:%s:%s",
+            data->path ? data->path : "",
+            data->value ? data->value : "",
+            data->architecture,
             data->type,
             data->size,
             data->hash_md5 ,
@@ -796,7 +831,10 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
-            "%u:%llu:%s:%s:%s",
+            "%s:%s:%d:%u:%llu:%s:%s:%s",
+            data->path ? data->path : "",
+            data->value ? data->value : "",
+            data->architecture,
             data->type,
             data->size,
             data->hash_md5 ,

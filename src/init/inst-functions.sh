@@ -767,11 +767,6 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/lib/libfimdb.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libfimdb.dylib ${INSTALLDIR}/lib/libfimdb.dylib
         fi
-        if [ -f syscheckd/build/lib/libfim_recovery.dylib ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/lib/libfim_recovery.dylib ${INSTALLDIR}/lib
-            install_name_tool -id @rpath/../lib/libfim_recovery.dylib ${INSTALLDIR}/lib/libfim_recovery.dylib
-        fi
     elif [ -f syscheckd/build/lib/libfimdb.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} syscheckd/build/lib/libfimdb.so ${INSTALLDIR}/lib
@@ -790,15 +785,6 @@ InstallCommon()
        		if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
        		    chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libfimebpf.so
        		fi
-      fi
-
-      if [ -f syscheckd/build/lib/libfim_recovery.so ]
-      then
-          ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} syscheckd/build/lib/libfim_recovery.so ${INSTALLDIR}/lib
-
-          if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-              chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libfim_recovery.so
-          fi
       fi
 
       if [ -f external/libbpf-bootstrap/build/libbpf/libbpf.so ]
