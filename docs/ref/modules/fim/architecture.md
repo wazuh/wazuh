@@ -420,6 +420,35 @@ fim_db_close_and_delete_database();             // Delete FIM database
 
 ---
 
+## DataClean: All Paths Removed
+
+When syscheck is enabled but all monitored paths have been removed from configuration, FIM triggers a DataClean process at startup via `handle_all_paths_removed()`. This notifies the manager to clear stale data and deletes local databases.
+
+**Trigger:** `fim_has_configured_paths()` returns false (checked after the disabled check in `start_daemon()`)
+
+**Process:**
+1. Check if database has data (`fim_has_data_in_database()`) - exit early if empty
+2. Send `asp_notify_data_clean()` for indices with data (with retry on failure)
+3. Delete sync protocol and FIM databases
+4. Exit module
+
+**Note:** Wildcards that don't expand to any paths are treated as "no paths configured."
+
+---
+
+## Partial Path Removal
+
+When some (but not all) paths are removed, the existing DBSync transaction mechanism handles cleanup automatically during the next scan:
+
+1. `fim_db_transaction_start()` marks all DB entries
+2. Scan touches only entries under currently configured paths
+3. `fim_db_transaction_deleted_rows()` identifies untouched entries as orphaned
+4. Delete events generated via `transaction_callback()` and synced to manager
+
+No special code is needed - this is built into the normal scanning process.
+
+---
+
 ## Synchronization Architecture
 
 ### Periodic Synchronization Thread
