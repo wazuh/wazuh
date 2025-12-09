@@ -4,9 +4,9 @@
 #include <cstdint>
 #include <numeric> // std::accumulate
 #include <stdexcept>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <string_view>
 
 #include <fmt/format.h>
 
