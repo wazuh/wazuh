@@ -15,6 +15,7 @@
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
+#include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
 #include "shared_modules/utils/certHelper.hpp"
 #include "simdjson.h"
@@ -33,6 +34,25 @@ constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
+
+/**
+ * @brief Appends an ID to bulkData, escaping special characters if necessary
+ * @param bulkData The string to append the ID to
+ * @param id The ID to append (will be escaped if needed)
+ */
+inline void appendEscapedId(std::string& bulkData, std::string_view id)
+{
+    if (needEscape(id))
+    {
+        std::string escapedId;
+        escapeJSONString(id, escapedId);
+        bulkData.append(escapedId);
+    }
+    else
+    {
+        bulkData.append(id);
+    }
+}
 
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
@@ -424,9 +444,12 @@ public:
 
         if (data.empty())
         {
-            logWarn(IC_NAME, "Empty data provided for document %.*s in index %.*s",
-                   static_cast<int>(id.size()), id.data(),
-                   static_cast<int>(index.size()), index.data());
+            logWarn(IC_NAME,
+                    "Empty data provided for document %.*s in index %.*s",
+                    static_cast<int>(id.size()),
+                    id.data(),
+                    static_cast<int>(index.size()),
+                    index.data());
         }
 
         std::string bulkData;
@@ -440,7 +463,7 @@ public:
             if (!id.empty())
             {
                 bulkData.append(R"(","_id":")");
-                bulkData.append(id);
+                appendEscapedId(bulkData, id);
             }
             else
             {
@@ -451,19 +474,24 @@ public:
             bulkData.append(R"(","version":")");
             bulkData.append(version);
             bulkData.append(R"(","version_type":"external_gte)");
-            logDebug2(IC_NAME, "Using external version %.*s for document %.*s",
-                     static_cast<int>(version.size()), version.data(),
-                     static_cast<int>(id.size()), id.data());
+            logDebug2(IC_NAME,
+                      "Using external version %.*s for document %.*s",
+                      static_cast<int>(version.size()),
+                      version.data(),
+                      static_cast<int>(id.size()),
+                      id.data());
         }
         else
         {
             if (!id.empty())
             {
                 bulkData.append(R"(","_id":")");
-                bulkData.append(id);
+                appendEscapedId(bulkData, id);
             }
-            logDebug2(IC_NAME, "No version specified for document %.*s, using default versioning",
-                     static_cast<int>(id.size()), id.data());
+            logDebug2(IC_NAME,
+                      "No version specified for document %.*s, using default versioning",
+                      static_cast<int>(id.size()),
+                      id.data());
         }
         bulkData.append(R"("}})");
         bulkData.append("\n");
