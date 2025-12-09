@@ -44,6 +44,11 @@ public:
         m_impl.bulkIndex(std::string_view(), index, data);
     }
 
+    void indexDataStream(std::string_view index, std::string_view data)
+    {
+        m_impl.bulkIndexDataStream(index, data);
+    }
+
     bool isAvailable() const
     {
         return m_impl.isAvailable();
@@ -73,6 +78,11 @@ void IndexerConnectorAsync::index(std::string_view id, std::string_view index, s
 void IndexerConnectorAsync::index(std::string_view index, std::string_view data)
 {
     m_impl->index(std::string_view(), index, data);
+}
+
+void IndexerConnectorAsync::indexDataStream(std::string_view index, std::string_view data)
+{
+    m_impl->indexDataStream(index, data);
 }
 
 bool IndexerConnectorAsync::isAvailable() const

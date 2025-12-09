@@ -105,7 +105,7 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
     if (m_indexerConnectorAsync)
     {
         try {
-            m_indexerConnectorAsync->index(index, data);
+            m_indexerConnectorAsync->indexDataStream(index, data);
         }
         catch (const IndexerConnectorException& e) {
             LOG_WARNING("Error indexing data: %s", e.what());

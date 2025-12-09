@@ -472,6 +472,33 @@ public:
         m_dispatcher->push(bulkData);
     }
 
+    void bulkIndexDataStream(std::string_view index, std::string_view data)
+    {
+        constexpr auto FORMATTED_SIZE {24}; // {"create":{"_index":""}} + newlines"
+
+        // Validate input parameters
+        if (index.empty())
+        {
+            throw IndexerConnectorException("Data stream name cannot be empty");
+        }
+
+        if (data.empty())
+        {
+            throw IndexerConnectorException("Data cannot be empty for data stream: " + std::string(index));
+        }
+
+        std::string bulkData;
+        bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE);
+
+        bulkData.append(R"({"create":{"_index":")");
+        bulkData.append(index);
+        bulkData.append(R"("}})");
+        bulkData.append("\n");
+        bulkData.append(data);
+        bulkData.append("\n");
+        m_dispatcher->push(bulkData);
+    }
+
     bool isAvailable() const
     {
         return m_selector->isAvailable();
