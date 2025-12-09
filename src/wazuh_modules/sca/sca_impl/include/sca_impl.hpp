@@ -149,6 +149,15 @@ class SecurityConfigurationAssessment
         /// @brief Sync protocol for module synchronization
         std::shared_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 
+        /// @brief Flag indicating if a sync operation is currently in progress
+        std::atomic<bool> m_syncInProgress {false};
+
+        /// @brief Condition variable for pause/resume coordination
+        std::condition_variable m_pauseCv;
+
+        /// @brief Mutex for pause/resume coordination
+        std::mutex m_pauseMutex;
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -233,20 +242,11 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if a scan is currently in progress
         std::atomic<bool> m_scanInProgress {false};
 
-        /// @brief Flag indicating if a sync operation is currently in progress
-        std::atomic<bool> m_syncInProgress {false};
-
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;
 
         /// @brief Mutex for condition variable
         std::mutex m_mutex;
-
-        /// @brief Condition variable for pause/resume coordination
-        std::condition_variable m_pauseCv;
-
-        /// @brief Mutex for pause/resume coordination
-        std::mutex m_pauseMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;

@@ -22,6 +22,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
 
 /**
  * @brief Test fixture for SCA DataClean on Policy Removal functionality
@@ -355,3 +356,56 @@ TEST_F(SCADataCleanTest, DataClean_WithoutSyncProtocol_Fails)
     EXPECT_TRUE(m_logOutput.find("Sync protocol not initialized") != std::string::npos);
 }
 
+// Test: DataClean waits for sync in progress to complete
+TEST_F(SCADataCleanTest, DataClean_WaitsForSyncInProgress)
+{
+    // Setup with no policies but data in DB
+    m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, {});
+    m_sca->setSyncProtocol(m_mockSyncProtocol);
+
+    // Set sync as in progress
+    m_sca->setSyncInProgress(true);
+
+    // Mock selectRows to indicate data exists
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke(
+                  [](const nlohmann::json& /* query */,
+                     std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json data;
+        data["count"] = 1;
+        callback(SELECTED, data);
+    }))
+    .WillOnce(::testing::Invoke(
+                  [](const nlohmann::json& /* query */,
+                     std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json data;
+        data["count"] = 1;
+        callback(SELECTED, data);
+    }))
+    .WillRepeatedly(::testing::Return());
+
+    // Expect DataClean to be called after sync completes
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_)).WillOnce(::testing::Return(true));
+
+    // Start Run() in a separate thread since it will block waiting for sync
+    std::thread runThread([this]()
+    {
+        m_sca->Run();
+    });
+
+    // Give Run() time to start and reach the wait
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Simulate sync completion
+    m_sca->notifySyncComplete();
+
+    // Wait for Run() to complete
+    runThread.join();
+
+    // Verify it waited for sync and then proceeded
+    EXPECT_TRUE(m_logOutput.find("Waiting for sync to complete before DataClean") != std::string::npos);
+    EXPECT_TRUE(m_logOutput.find("Proceeding with DataClean") != std::string::npos);
+    EXPECT_TRUE(m_logOutput.find("DataClean notification sent successfully") != std::string::npos);
+}

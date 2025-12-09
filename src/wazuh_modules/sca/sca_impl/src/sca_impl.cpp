@@ -1286,6 +1286,28 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
         return false;
     }
 
+    // Wait for any in-progress sync to complete before sending DataClean.
+    // We must lock m_pauseMutex BEFORE checking m_syncInProgress to avoid TOCTOU race:
+    // Otherwise, sync could start between our check and the wait.
+    {
+        std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+        if (m_syncInProgress.load())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Waiting for sync to complete before DataClean...");
+        }
+
+        m_pauseCv.wait(lock, [this] { return !m_syncInProgress.load() || !m_keepRunning; });
+
+        if (!m_keepRunning)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "DataClean aborted - module shutdown during sync wait");
+            return false;
+        }
+    }
+
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Proceeding with DataClean (sync not in progress)");
+
     // Send DataClean notification to manager with retry logic (similar to FIM)
     std::vector<std::string> indices = {SCA_SYNC_INDEX};
     bool dataCleanSent = false;
