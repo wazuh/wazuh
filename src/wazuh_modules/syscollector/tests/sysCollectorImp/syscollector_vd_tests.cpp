@@ -220,12 +220,13 @@ TEST_F(SyscollectorVDTest, DisabledPackages_NoPackageDataCollected)
     };
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
-    Syscollector::instance().destroy();
 
     if (t.joinable())
     {
         t.join();
     }
+
+    Syscollector::instance().destroy();
 }
 
 TEST_F(SyscollectorVDTest, DisabledOS_NoOSDataCollected)
@@ -277,12 +278,13 @@ TEST_F(SyscollectorVDTest, DisabledOS_NoOSDataCollected)
     };
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
-    Syscollector::instance().destroy();
 
     if (t.joinable())
     {
         t.join();
     }
+
+    Syscollector::instance().destroy();
 }
 
 TEST_F(SyscollectorVDTest, DisabledMultipleModules_NoDataCollected)
@@ -335,12 +337,13 @@ TEST_F(SyscollectorVDTest, DisabledMultipleModules_NoDataCollected)
     };
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
-    Syscollector::instance().destroy();
 
     if (t.joinable())
     {
         t.join();
     }
+
+    Syscollector::instance().destroy();
 }
 
 // ========================================

@@ -4285,3 +4285,1010 @@ TEST(InterfaceDestructorTest, IAgentSyncProtocolDeletingDestructor)
     // Delete through base pointer - this calls D0 destructor
     delete protocol;
 }
+
+// ========================================
+// Tests for fetchPendingItems()
+// ========================================
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_WithNullPersistentQueue)
+{
+    /**
+     * Test: fetchPendingItems should throw when persistent queue is null
+     * This happens when AgentSyncProtocol is initialized without a dbPath
+     */
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Create AgentSyncProtocol WITHOUT persistent queue (dbPath = std::nullopt)
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        std::nullopt,  // No dbPath - persistent queue will be null
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        nullptr  // No persistent queue
+    );
+
+    // fetchPendingItems should catch exception and return empty vector
+    auto result = protocol->fetchPendingItems(true);
+
+    EXPECT_TRUE(result.empty());
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_True)
+{
+    /**
+     * Test: fetchPendingItems with onlyDataValues=true
+     * Should fetch only DataValue items (not DataContext)
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Prepare test data - DataValue items only
+    std::vector<PersistedData> expectedData;
+    PersistedData item1;
+    item1.seq = 1;
+    item1.id = "hash_id_1";
+    item1.index = "wazuh-states-inventory-packages";
+    item1.data = R"({"name":"package1","version":"1.0"})";
+    item1.operation = Operation::CREATE;
+    expectedData.push_back(item1);
+
+    PersistedData item2;
+    item2.seq = 2;
+    item2.id = "hash_id_2";
+    item2.index = "wazuh-states-inventory-system";
+    item2.data = R"({"hostname":"test-host"})";
+    item2.operation = Operation::MODIFY;
+    expectedData.push_back(item2);
+
+    // Mock fetchPendingItems to return DataValue items
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(expectedData));
+
+    // Call fetchPendingItems with onlyDataValues=true
+    auto result = protocol->fetchPendingItems(true);
+
+    // Verify results
+    ASSERT_EQ(result.size(), 2);
+    EXPECT_EQ(result[0].seq, 1);
+    EXPECT_EQ(result[0].id, "hash_id_1");
+    EXPECT_EQ(result[0].index, "wazuh-states-inventory-packages");
+    EXPECT_EQ(result[0].operation, Operation::CREATE);
+    EXPECT_EQ(result[1].seq, 2);
+    EXPECT_EQ(result[1].id, "hash_id_2");
+    EXPECT_EQ(result[1].index, "wazuh-states-inventory-system");
+    EXPECT_EQ(result[1].operation, Operation::MODIFY);
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_False)
+{
+    /**
+     * Test: fetchPendingItems with onlyDataValues=false
+     * Should fetch both DataValue AND DataContext items
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Prepare test data - Mix of DataValue and DataContext
+    std::vector<PersistedData> expectedData;
+    
+    // DataValue item
+    PersistedData dataValue;
+    dataValue.seq = 1;
+    dataValue.id = "hash_id_1";
+    dataValue.index = "wazuh-states-inventory-packages";
+    dataValue.data = R"({"name":"package1","version":"1.0"})";
+    dataValue.operation = Operation::CREATE;
+    expectedData.push_back(dataValue);
+
+    // DataContext item
+    PersistedData dataContext;
+    dataContext.seq = 2;
+    dataContext.id = "hash_id_2";
+    dataContext.index = "wazuh-states-inventory-system";
+    dataContext.data = R"({"hostname":"test-host"})";
+    dataContext.operation = Operation::MODIFY;
+    expectedData.push_back(dataContext);
+
+    // Mock fetchPendingItems to return both types
+    EXPECT_CALL(*mockQueue, fetchPendingItems(false))
+        .Times(1)
+        .WillOnce(Return(expectedData));
+
+    // Call fetchPendingItems with onlyDataValues=false
+    auto result = protocol->fetchPendingItems(false);
+
+    // Verify results include both types
+    ASSERT_EQ(result.size(), 2);
+    EXPECT_EQ(result[0].seq, 1);
+    EXPECT_EQ(result[1].seq, 2);
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_EmptyQueue)
+{
+    /**
+     * Test: fetchPendingItems returns empty vector when queue is empty
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Mock fetchPendingItems to return empty vector
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(std::vector<PersistedData>()));
+
+    // Call fetchPendingItems
+    auto result = protocol->fetchPendingItems(true);
+
+    // Verify result is empty
+    EXPECT_TRUE(result.empty());
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_MultipleIndices)
+{
+    /**
+     * Test: fetchPendingItems correctly returns items from multiple indices
+     * Tests packages, system, and hotfixes indices
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Prepare test data from multiple indices
+    std::vector<PersistedData> expectedData;
+    
+    PersistedData pkgItem;
+    pkgItem.seq = 1;
+    pkgItem.id = "pkg_hash_1";
+    pkgItem.index = "wazuh-states-inventory-packages";
+    pkgItem.data = R"({"name":"vim","version":"8.2"})";
+    pkgItem.operation = Operation::CREATE;
+    expectedData.push_back(pkgItem);
+
+    PersistedData sysItem;
+    sysItem.seq = 2;
+    sysItem.id = "sys_hash_1";
+    sysItem.index = "wazuh-states-inventory-system";
+    sysItem.data = R"({"os_name":"Ubuntu","os_version":"22.04"})";
+    sysItem.operation = Operation::MODIFY;
+    expectedData.push_back(sysItem);
+
+    PersistedData hfItem;
+    hfItem.seq = 3;
+    hfItem.id = "hf_hash_1";
+    hfItem.index = "wazuh-states-inventory-hotfixes";
+    hfItem.data = R"({"hotfix":"KB123456"})";
+    hfItem.operation = Operation::CREATE;
+    expectedData.push_back(hfItem);
+
+    // Mock fetchPendingItems to return items from all indices
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(expectedData));
+
+    // Call fetchPendingItems
+    auto result = protocol->fetchPendingItems(true);
+
+    // Verify all items are returned
+    ASSERT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0].index, "wazuh-states-inventory-packages");
+    EXPECT_EQ(result[1].index, "wazuh-states-inventory-system");
+    EXPECT_EQ(result[2].index, "wazuh-states-inventory-hotfixes");
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_DifferentOperations)
+{
+    /**
+     * Test: fetchPendingItems correctly preserves operation types
+     * Tests CREATE, MODIFY, and DELETE operations
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Prepare test data with different operations
+    std::vector<PersistedData> expectedData;
+    
+    PersistedData createItem;
+    createItem.seq = 1;
+    createItem.id = "create_hash";
+    createItem.index = "wazuh-states-inventory-packages";
+    createItem.data = R"({"name":"new-package"})";
+    createItem.operation = Operation::CREATE;
+    expectedData.push_back(createItem);
+
+    PersistedData modifyItem;
+    modifyItem.seq = 2;
+    modifyItem.id = "modify_hash";
+    modifyItem.index = "wazuh-states-inventory-packages";
+    modifyItem.data = R"({"name":"updated-package"})";
+    modifyItem.operation = Operation::MODIFY;
+    expectedData.push_back(modifyItem);
+
+    PersistedData deleteItem;
+    deleteItem.seq = 3;
+    deleteItem.id = "delete_hash";
+    deleteItem.index = "wazuh-states-inventory-packages";
+    deleteItem.data = R"({"name":"removed-package"})";
+    deleteItem.operation = Operation::DELETE_;
+    expectedData.push_back(deleteItem);
+
+    // Mock fetchPendingItems
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(expectedData));
+
+    // Call fetchPendingItems
+    auto result = protocol->fetchPendingItems(true);
+
+    // Verify operations are preserved
+    ASSERT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0].operation, Operation::CREATE);
+    EXPECT_EQ(result[1].operation, Operation::MODIFY);
+    EXPECT_EQ(result[2].operation, Operation::DELETE_);
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_ExceptionHandling)
+{
+    /**
+     * Test: fetchPendingItems handles exceptions and returns empty vector
+     * Verifies graceful error handling when persistent queue throws
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    bool loggerCalled = false;
+    LoggerFunc testLogger = [&loggerCalled](modules_log_level_t level, const std::string& msg) {
+        if (level == LOG_ERROR && msg.find("Failed to fetch pending items") != std::string::npos)
+        {
+            loggerCalled = true;
+        }
+    };
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Mock fetchPendingItems to throw exception
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(testing::Throw(std::runtime_error("Database error")));
+
+    // Call fetchPendingItems - should catch exception and return empty
+    auto result = protocol->fetchPendingItems(true);
+
+    // Verify error handling
+    EXPECT_TRUE(result.empty());
+    EXPECT_TRUE(loggerCalled);
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_LargeDataSet)
+{
+    /**
+     * Test: fetchPendingItems handles large number of items
+     * Verifies performance and correctness with many items
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Prepare large dataset (1000 items)
+    std::vector<PersistedData> expectedData;
+    for (int i = 0; i < 1000; ++i)
+    {
+        PersistedData item;
+        item.seq = i + 1;
+        item.id = "hash_id_" + std::to_string(i);
+        item.index = "wazuh-states-inventory-packages";
+        item.data = R"({"name":"package)" + std::to_string(i) + R"("})";
+        item.operation = Operation::CREATE;
+        expectedData.push_back(item);
+    }
+
+    // Mock fetchPendingItems to return large dataset
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(expectedData));
+
+    // Call fetchPendingItems
+    auto result = protocol->fetchPendingItems(true);
+
+    // Verify all items are returned correctly
+    ASSERT_EQ(result.size(), 1000);
+    EXPECT_EQ(result[0].seq, 1);
+    EXPECT_EQ(result[999].seq, 1000);
+    EXPECT_EQ(result[0].id, "hash_id_0");
+    EXPECT_EQ(result[999].id, "hash_id_999");
+}
+
+TEST_F(AgentSyncProtocolTest, fetchPendingItems_SequenceNumberOrdering)
+{
+    /**
+     * Test: fetchPendingItems returns items in correct sequence order
+     * Verifies sequence numbers are properly maintained
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+        "test_module",
+        ":memory:",
+        mockMq,
+        testLogger,
+        std::chrono::seconds(1),
+        std::chrono::seconds(1),
+        retries,
+        maxEps,
+        mockQueue
+    );
+
+    // Prepare test data with specific sequence numbers
+    std::vector<PersistedData> expectedData;
+    
+    PersistedData item1;
+    item1.seq = 100;
+    item1.id = "hash_100";
+    item1.index = "wazuh-states-inventory-packages";
+    item1.data = R"({})";
+    item1.operation = Operation::CREATE;
+    expectedData.push_back(item1);
+
+    PersistedData item2;
+    item2.seq = 101;
+    item2.id = "hash_101";
+    item2.index = "wazuh-states-inventory-packages";
+    item2.data = R"({})";
+    item2.operation = Operation::CREATE;
+    expectedData.push_back(item2);
+
+    PersistedData item3;
+    item3.seq = 102;
+    item3.id = "hash_102";
+    item3.index = "wazuh-states-inventory-packages";
+    item3.data = R"({})";
+    item3.operation = Operation::CREATE;
+    expectedData.push_back(item3);
+
+    // Mock fetchPendingItems
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(expectedData));
+
+    // Call fetchPendingItems
+    auto result = protocol->fetchPendingItems(true);
+
+    // Verify sequence ordering is maintained
+    ASSERT_EQ(result.size(), 3);
+    EXPECT_EQ(result[0].seq, 100);
+    EXPECT_EQ(result[1].seq, 101);
+    EXPECT_EQ(result[2].seq, 102);
+}
+
+// ========================================
+// Tests for clearAllDataContext()
+// ========================================
+
+TEST_F(AgentSyncProtocolTest, clearAllDataContext_WithValidQueue)
+{
+    /**
+     * Test: clearAllDataContext should call clearAllDataContext on the persistent queue
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   std::nullopt,
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    // Expect clearAllDataContext to be called once
+    EXPECT_CALL(*mockQueue, clearAllDataContext())
+        .Times(1);
+
+    // Call clearAllDataContext
+    EXPECT_NO_THROW(protocol->clearAllDataContext());
+}
+
+TEST_F(AgentSyncProtocolTest, clearAllDataContext_WithNullQueue)
+{
+    /**
+     * Test: clearAllDataContext should handle null persistent queue gracefully
+     */
+
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   std::nullopt,
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   nullptr
+               );
+
+    // Should not throw when queue is null
+    EXPECT_NO_THROW(protocol->clearAllDataContext());
+}
+
+TEST_F(AgentSyncProtocolTest, clearAllDataContext_ExceptionHandling)
+{
+    /**
+     * Test: clearAllDataContext should handle exceptions from the persistent queue
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   std::nullopt,
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    // Make clearAllDataContext throw an exception
+    EXPECT_CALL(*mockQueue, clearAllDataContext())
+        .Times(1)
+        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+
+    // Should handle exception gracefully
+    EXPECT_NO_THROW(protocol->clearAllDataContext());
+}
+
+// ========================================
+// Tests for notifyDataClean() with Option parameter
+// ========================================
+
+TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_EmptyIndices)
+{
+    /**
+     * Test: notifyDataClean should return false when indices vector is empty
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   ":memory:",
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    std::vector<std::string> emptyIndices;
+
+    // Should return false for empty indices
+    bool result = protocol->notifyDataClean(emptyIndices, Option::SYNC);
+    EXPECT_FALSE(result);
+}
+
+TEST_F(AgentSyncProtocolTest, notifyDataClean_WithVDCLEANOption_SingleIndex)
+{
+    /**
+     * Test: notifyDataClean should accept VDCLEAN option for VD indices
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   ":memory:",
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    std::vector<std::string> vdIndices = {"wazuh-states-vulnerabilities"};
+
+    // We can't fully test the send without a real transport, but we can verify it doesn't crash
+    // and handles the VDCLEAN option parameter correctly
+    EXPECT_NO_THROW(protocol->notifyDataClean(vdIndices, Option::VDCLEAN));
+}
+
+TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_MultipleIndices)
+{
+    /**
+     * Test: notifyDataClean should handle multiple indices with SYNC option
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   ":memory:",
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    std::vector<std::string> indices =
+    {
+        "wazuh-states-inventory-hardware",
+        "wazuh-states-inventory-ports",
+        "wazuh-states-inventory-networks"
+    };
+
+    // Should handle multiple indices
+    EXPECT_NO_THROW(protocol->notifyDataClean(indices, Option::SYNC));
+}
+
+TEST_F(AgentSyncProtocolTest, notifyDataClean_WithVDCLEANOption_VDIndices)
+{
+    /**
+     * Test: notifyDataClean with VDCLEAN option for VD-specific indices
+     * This simulates the VD sync protocol cleaning VD data
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "syscollector_vd",  // VD module name
+                   ":memory:",
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    std::vector<std::string> vdIndices =
+    {
+        "wazuh-states-inventory-system",    // OS
+        "wazuh-states-inventory-packages",  // Packages
+        "wazuh-states-inventory-hotfixes"   // Hotfixes
+    };
+
+    // Should handle VD indices with VDCLEAN option
+    EXPECT_NO_THROW(protocol->notifyDataClean(vdIndices, Option::VDCLEAN));
+}
+
+TEST_F(AgentSyncProtocolTest, notifyDataClean_DefaultOption)
+{
+    /**
+     * Test: notifyDataClean should use SYNC as default option when not specified
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   ":memory:",
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    std::vector<std::string> indices = {"wazuh-states-inventory-hardware"};
+
+    // Should use default SYNC option
+    EXPECT_NO_THROW(protocol->notifyDataClean(indices));
+}
+
+TEST_F(AgentSyncProtocolTest, notifyDataClean_WithNullQueue)
+{
+    /**
+     * Test: notifyDataClean should handle null persistent queue
+     */
+
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module",
+                   std::nullopt,
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   nullptr
+               );
+
+    std::vector<std::string> indices = {"wazuh-states-inventory-hardware"};
+
+    // Should handle null queue gracefully
+    EXPECT_NO_THROW(protocol->notifyDataClean(indices, Option::SYNC));
+}
+
+// ========================================
+// Tests for Option enum conversions
+// ========================================
+
+TEST_F(AgentSyncProtocolTest, Option_SYNC_Value)
+{
+    /**
+     * Test: Verify Option::SYNC has correct value
+     */
+
+    EXPECT_EQ(static_cast<int>(Option::SYNC), OPTION_SYNC);
+}
+
+TEST_F(AgentSyncProtocolTest, Option_VDFIRST_Value)
+{
+    /**
+     * Test: Verify Option::VDFIRST has correct value
+     */
+
+    EXPECT_EQ(static_cast<int>(Option::VDFIRST), OPTION_VD_FIRST);
+}
+
+TEST_F(AgentSyncProtocolTest, Option_VDCLEAN_Value)
+{
+    /**
+     * Test: Verify Option::VDCLEAN has correct value
+     */
+
+    EXPECT_EQ(static_cast<int>(Option::VDCLEAN), OPTION_VD_CLEAN);
+}
+
+TEST_F(AgentSyncProtocolTest, Option_VDSYNC_Value)
+{
+    /**
+     * Test: Verify Option::VDSYNC has correct value
+     */
+
+    EXPECT_EQ(static_cast<int>(Option::VDSYNC), OPTION_VD_SYNC);
+}
+
+// ========================================
+// Integration tests for VD workflow
+// ========================================
+
+TEST_F(AgentSyncProtocolTest, VDWorkflow_ClearDataContextBeforeSync)
+{
+    /**
+     * Test: VD workflow should clear DataContext before synchronization
+     * This simulates the workflow in processVDDataContext()
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "syscollector_vd",
+                   ":memory:",
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    // Step 1: Clear all DataContext
+    EXPECT_CALL(*mockQueue, clearAllDataContext())
+        .Times(1);
+
+    protocol->clearAllDataContext();
+
+    // Step 2: Fetch pending DataValue items (onlyDataValues=true)
+    std::vector<PersistedData> dataValues;
+    PersistedData item1;
+    item1.seq = 0;
+    item1.id = "pkg1";
+    item1.index = "wazuh-states-inventory-packages";
+    item1.data = R"({"name":"test-pkg"})";
+    item1.operation = Operation::CREATE;
+    item1.is_data_context = false;
+    dataValues.push_back(item1);
+
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(dataValues));
+
+    auto result = protocol->fetchPendingItems(true);
+    ASSERT_EQ(result.size(), 1);
+    EXPECT_FALSE(result[0].is_data_context);
+}
+
+TEST_F(AgentSyncProtocolTest, VDWorkflow_FetchOnlyDataValues)
+{
+    /**
+     * Test: VD workflow should be able to fetch only DataValue items
+     * excluding DataContext items
+     */
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) { return 0; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto logger = [](modules_log_level_t, const std::string&) {};
+
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "syscollector_vd",
+                   ":memory:",
+                   mqFuncs,
+                   logger,
+                   std::chrono::seconds(syncEndDelay),
+                   std::chrono::seconds(max_timeout),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
+
+    // Create mixed data (DataValue and DataContext)
+    std::vector<PersistedData> allData;
+
+    PersistedData dataValue;
+    dataValue.seq = 0;
+    dataValue.id = "os1";
+    dataValue.index = "wazuh-states-inventory-system";
+    dataValue.data = R"({"os_name":"Linux"})";
+    dataValue.operation = Operation::MODIFY;
+    dataValue.is_data_context = false;
+    allData.push_back(dataValue);
+
+    PersistedData dataContext;
+    dataContext.seq = 1;
+    dataContext.id = "ctx1";
+    dataContext.index = "wazuh-states-inventory-packages";
+    dataContext.data = R"({"context":"data"})";
+    dataContext.operation = Operation::MODIFY;
+    dataContext.is_data_context = true;
+    allData.push_back(dataContext);
+
+    // When fetching only DataValues, should return only non-context items
+    std::vector<PersistedData> onlyDataValues = {dataValue};
+
+    EXPECT_CALL(*mockQueue, fetchPendingItems(true))
+        .Times(1)
+        .WillOnce(Return(onlyDataValues));
+
+    auto result = protocol->fetchPendingItems(true);
+    ASSERT_EQ(result.size(), 1);
+    EXPECT_FALSE(result[0].is_data_context);
+    EXPECT_EQ(result[0].index, "wazuh-states-inventory-system");
+}
