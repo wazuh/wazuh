@@ -438,14 +438,15 @@ When syscheck is enabled but all monitored paths have been removed from configur
 
 ## Partial Path Removal
 
-When some (but not all) paths are removed, the existing DBSync transaction mechanism handles cleanup automatically during the next scan:
+When some (but not all) paths are removed, the DBSync transaction mechanism handles cleanup during the next scan:
 
 1. `fim_db_transaction_start()` marks all DB entries
 2. Scan touches only entries under currently configured paths
 3. `fim_db_transaction_deleted_rows()` identifies untouched entries as orphaned
-4. Delete events generated via `transaction_callback()` and synced to manager
+4. `handle_orphaned_delete()` generates minimal delete events for files under removed paths
+5. Events synced to manager via `persist_syscheck_msg()`
 
-No special code is needed - this is built into the normal scanning process.
+**Note:** For orphaned deletes, `transaction_callback()` cannot use the normal event generation path since `fim_configuration_directory()` returns NULL for removed paths. The `handle_orphaned_delete()` function creates minimal events with just the path, checksum, and version from the database.
 
 ---
 
