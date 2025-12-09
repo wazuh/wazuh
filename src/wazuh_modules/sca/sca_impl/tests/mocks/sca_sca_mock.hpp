@@ -4,6 +4,7 @@
 
 #include <mock_dbsync.hpp>
 #include <mock_filesystem_wrapper.hpp>
+#include "iagent_sync_protocol.hpp"
 
 class SCAMock : public SecurityConfigurationAssessment
 {
@@ -15,5 +16,27 @@ class SCAMock : public SecurityConfigurationAssessment
         std::vector<std::unique_ptr<ISCAPolicy>>& GetPolicies()
         {
             return m_policies;
+        }
+
+        /// @brief Set the sync protocol for testing
+        /// @param syncProtocol Shared pointer to the sync protocol mock
+        void setSyncProtocol(std::shared_ptr<IAgentSyncProtocol> syncProtocol)
+        {
+            m_spSyncProtocol = std::move(syncProtocol);
+        }
+
+        /// @brief Set sync in progress flag for testing
+        /// @param inProgress Whether sync is in progress
+        void setSyncInProgress(bool inProgress)
+        {
+            m_syncInProgress.store(inProgress);
+        }
+
+        /// @brief Notify pause condition variable (to simulate sync completion)
+        void notifySyncComplete()
+        {
+            m_syncInProgress.store(false);
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_pauseCv.notify_all();
         }
 };

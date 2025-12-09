@@ -12,6 +12,7 @@ include_directories(
     ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/tests
     ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/tests/mocks
     ${SRC_FOLDER}/shared_modules/dbsync/tests/mocks
+    ${SRC_FOLDER}/shared_modules/sync_protocol/tests/mocks
     ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
     ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
     ${SRC_FOLDER}/shared_modules/utils/tests/mocks
@@ -85,6 +86,10 @@ add_test(NAME SCARecoveryTest COMMAND sca_recovery_unit_test)
 add_executable(sca_recovery_utils_unit_test sca_recovery_utils_test.cpp)
 target_link_libraries(sca_recovery_utils_unit_test PRIVATE SCAImpl)
 add_test(NAME SCARecoveryUtilsTest COMMAND sca_recovery_utils_unit_test)
+
+add_executable(sca_dataclean_unit_test sca_dataclean_test.cpp)
+target_link_libraries(sca_dataclean_unit_test PRIVATE SCAImpl)
+add_test(NAME SCADataCleanTest COMMAND sca_dataclean_unit_test)
 
 if(WIN32)
     add_executable(registry_rule_evaluator_unit_test registry_rule_evaluator_test.cpp)

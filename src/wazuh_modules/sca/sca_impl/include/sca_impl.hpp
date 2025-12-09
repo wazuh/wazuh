@@ -123,6 +123,10 @@ class SecurityConfigurationAssessment
         /// @return 0 on success, -1 on error
         int setVersion(int version);
 
+        /// @brief This is used before recovery sync to ensure versions are now lower than indexer
+        /// @return 0 on success, -1 on error
+        int increaseEachEntryVersion();
+
         /// @brief Pause SCA scanning operations for coordination
         void pause();
 
@@ -141,6 +145,18 @@ class SecurityConfigurationAssessment
     protected:
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
+
+        /// @brief Sync protocol for module synchronization
+        std::shared_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+
+        /// @brief Flag indicating if a sync operation is currently in progress
+        std::atomic<bool> m_syncInProgress {false};
+
+        /// @brief Condition variable for pause/resume coordination
+        std::condition_variable m_pauseCv;
+
+        /// @brief Mutex for pause/resume coordination
+        std::mutex m_pauseMutex;
 
     private:
         /// @brief Get the create statement for the database
@@ -179,6 +195,20 @@ class SecurityConfigurationAssessment
         /// @return true if recovery needed
         bool checkIfRecoveryRequired(const std::string& checksum);
 
+        /// @brief Check if DB has data (policies or checks)
+        /// @return true if DB contains any policies or checks
+        bool hasDataInDatabase();
+
+        /// @brief Handle the case when no policies are available (either at startup or runtime).
+        /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
+        /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
+        bool handleNoPoliciesAvailable();
+
+        /// @brief Handle case when all policies are removed from config
+        /// Sends DataClean, clears DB, syncs, and signals exit
+        /// @return true if DataClean was sent and handled successfully
+        bool handleAllPoliciesRemoved();
+
         /// @brief SCA module name
         std::string m_name = "SCA";
 
@@ -212,20 +242,11 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if a scan is currently in progress
         std::atomic<bool> m_scanInProgress {false};
 
-        /// @brief Flag indicating if a sync operation is currently in progress
-        std::atomic<bool> m_syncInProgress {false};
-
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;
 
         /// @brief Mutex for condition variable
         std::mutex m_mutex;
-
-        /// @brief Condition variable for pause/resume coordination
-        std::condition_variable m_pauseCv;
-
-        /// @brief Mutex for pause/resume coordination
-        std::mutex m_pauseMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;
@@ -239,9 +260,9 @@ class SecurityConfigurationAssessment
         /// @brief YAML to JSON conversion function
         YamlToJsonFunc m_yamlToJsonFunc;
 
+        /// @brief Flag indicating module should exit after DataClean (all policies removed)
+        std::atomic<bool> m_exitAfterDataClean {false};
+
         /// @brief Static/global function pointer to wm_exec
         static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);
-
-        /// @brief Path to the sync protocol
-        std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 };
