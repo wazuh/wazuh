@@ -386,7 +386,6 @@ int DB::updateVersion(const std::string& tableName, int version)
 
 int DB::increaseEachEntryVersion(const std::string& tableName)
 {
-    int retval {0};
     std::vector<nlohmann::json> rows;
     auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
     {
@@ -398,10 +397,10 @@ int DB::increaseEachEntryVersion(const std::string& tableName)
 
     try
     {
-        // Select all rows (only primary keys and version column)
+        // Select all rows
         auto selectQuery {SelectQuery::builder()
                           .table(tableName)
-                          .columnList({"*"})  // Get all columns to properly identify rows
+                          .columnList({"*"})
                           .rowFilter("")
                           .orderByOpt("")
                           .distinctOpt(false)
@@ -415,7 +414,11 @@ int DB::increaseEachEntryVersion(const std::string& tableName)
         return -1;
     }
 
-    // Update version for each row
+    FIMDB::instance().logFunction(LOG_DEBUG, "Incrementing version for " + std::to_string(rows.size()) + " entries in table " + tableName);
+
+    // Update version for each row - fail fast on first error
+    size_t updated = 0;
+
     for (auto& row : rows)
     {
         row["version"] = row["version"].get<int>() + 1;
@@ -431,15 +434,19 @@ int DB::increaseEachEntryVersion(const std::string& tableName)
         try
         {
             FIMDB::instance().updateItem(syncQuery.query(), updateCallback);
+            updated++;
         }
         catch (const std::exception& ex)
         {
-            FIMDB::instance().logFunction(LOG_ERROR, std::string("Error updating version: ") + ex.what());
-            retval = -1;
+            FIMDB::instance().logFunction(LOG_ERROR,
+                                          std::string("Error updating version for entry ") + std::to_string(updated) +
+                                          "/" + std::to_string(rows.size()) + " in table " + tableName + ": " + ex.what());
+            return -1;
         }
     }
 
-    return retval;
+    FIMDB::instance().logFunction(LOG_DEBUG, "Successfully incremented version for all " + std::to_string(updated) + " entries");
+    return 0;
 }
 
 #ifdef __cplusplus
@@ -639,6 +646,8 @@ cJSON* fim_db_get_every_element(const char* table_name)
             return NULL;
         }
 
+        size_t processed = 0;
+
         for (const auto& item : items)
         {
             // Convert nlohmann::json to cJSON for C compatibility
@@ -648,10 +657,18 @@ cJSON* fim_db_get_every_element(const char* table_name)
             if (c_json)
             {
                 cJSON_AddItemToArray(result_array, c_json);
+                processed++;
             }
             else
             {
-                FIMDB::instance().logFunction(LOG_ERROR, "Failed to parse JSON item");
+                // Critical: If ANY item fails to parse, the entire result is invalid
+                // Returning partial data could cause incomplete sync/recovery operations
+                FIMDB::instance().logFunction(LOG_ERROR,
+                                              std::string("Failed to parse JSON item ") + std::to_string(processed) +
+                                              "/" + std::to_string(items.size()) + " from table " + table_name +
+                                              ". Aborting to prevent data loss.");
+                cJSON_Delete(result_array);
+                return NULL;
             }
         }
     }
