@@ -61,6 +61,9 @@ INSTANTIATE_TEST_SUITE_P(
         StageT(R"({"index": "alerts"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"index": "wazuh-Alerts"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"index": "wazuh-alerts-#"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
+        StageT(R"({"index": "wazuh-events-v5-#Someth/ng"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
+        StageT(R"({"index": "wazuh-events-v5-some-${}"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
+        StageT(R"({"index": "wazuh-events-v5-${}${"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         // Valid string
         StageT(R"({"index": "wazuh-events-v5-applications"})",
                getIndexerOutputBuilder(getMockIndexerConnector()),
@@ -161,7 +164,7 @@ TEST_F(IndexerOutputOperationTest, output_several_references)
 
     EXPECT_CALL(*(mocks->ctx), runState());
 
-    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.a}-${wazuh.b}-${wazuh.c}"})");
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.a}${wazuh.b}${wazuh.c}"})");
     auto expression = builder(definition, this->mocks->ctx);
     auto event = std::make_shared<json::Json>(messageStr.c_str());
 
@@ -169,15 +172,45 @@ TEST_F(IndexerOutputOperationTest, output_several_references)
     ASSERT_TRUE(expression->isTerm());
     auto term = expression->getPtr<base::Term<base::EngineOp>>();
     ASSERT_EQ(term->getName(),
-              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.a}-${wazuh.b}-${wazuh.c})");
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.a}${wazuh.b}${wazuh.c})");
 
     // Check the operation
     auto operation = term->getFn();
     ASSERT_TRUE(operation);
 
     // Configure the behavior
-    EXPECT_CALL(mockConnector, index("wazuh-events-v5-value-a-value-b-value-c", ::testing::_));
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-value-avalue-bvalue-c", ::testing::_));
 
+    // Run the operation
+    auto result = operation(event);
+    ASSERT_TRUE(result.success());
+    ASSERT_EQ(*result.payload(), *event);
+}
+
+TEST_F(IndexerOutputOperationTest, output_several_references_separators)
+{
+    // Use the actual mockConnector instance as a shared_ptr
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), runState());
+
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.a}---somecrazystring--${wazuh.c}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto event = std::make_shared<json::Json>(messageStr.c_str());
+
+    // Check the expression
+    ASSERT_TRUE(expression->isTerm());
+    auto term = expression->getPtr<base::Term<base::EngineOp>>();
+    ASSERT_EQ(term->getName(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.a}---somecrazystring--${wazuh.c})");
+
+    // Check the operation
+    auto operation = term->getFn();
+    ASSERT_TRUE(operation);
+
+    // Configure the behavior
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-value-a---somecrazystring--value-c", ::testing::_));
     // Run the operation
     auto result = operation(event);
     ASSERT_TRUE(result.success());
