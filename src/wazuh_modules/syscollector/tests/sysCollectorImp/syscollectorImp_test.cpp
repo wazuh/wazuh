@@ -3324,14 +3324,13 @@ TEST_F(SyscollectorImpTest, notifyDataClean_VDIndicesOnly)
     };
 
     // Should not throw and should return success
-    bool result = false;
     EXPECT_NO_THROW(
     {
-        result = Syscollector::instance().notifyDataClean(vdIndices);
+        bool result = Syscollector::instance().notifyDataClean(vdIndices);
+        (void)result; // Result depends on sync protocol implementation
     });
 
-    // Note: Result depends on sync protocol implementation
-    // The test verifies the function executes without throwing
+    // Note: The test verifies the function executes without throwing
 
     Syscollector::instance().destroy();
 }
@@ -3666,14 +3665,13 @@ TEST_F(SyscollectorImpTest, notifyDataClean_VDWithoutSyncProtocol)
         SYSCOLLECTOR_SYNC_INDEX_PACKAGES
     };
 
-    bool result = false;
     EXPECT_NO_THROW(
     {
-        result = Syscollector::instance().notifyDataClean(vdIndices);
+        bool result = Syscollector::instance().notifyDataClean(vdIndices);
+        (void)result; // Without sync protocol, will fail early but not crash
     });
 
     // Without sync protocol initialized, should still not crash
-    // Result will be true since the VD sync protocol check will fail early
 
     Syscollector::instance().destroy();
 }

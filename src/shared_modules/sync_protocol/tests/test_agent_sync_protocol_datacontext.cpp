@@ -108,7 +108,7 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
-        .send_binary = [](int, const void* data, size_t size, const char*, char)
+        .send_binary = [](int, const void*, size_t, const char*, char)
         {
             return 1; // Success
         }
@@ -177,7 +177,7 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
-        .send_binary = [](int, const void* data, size_t size, const char*, char)
+        .send_binary = [](int, const void*, size_t, const char*, char)
         {
             return 1; // Success
         }

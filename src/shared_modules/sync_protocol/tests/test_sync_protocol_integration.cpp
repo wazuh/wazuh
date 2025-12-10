@@ -32,57 +32,63 @@
 
 class SyncProtocolIntegrationTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Create temporary directory for test databases
-        testDbPath = "/tmp/sync_protocol_integration_test_" +
-                     std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) +
-                     ".db";
-
-        // Set up metadata for sync protocol
-        agent_metadata_t metadata = {};
-        strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
-        strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
-        strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
-        strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
-        strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
-        strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
-        strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
-        strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
-        strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
-        char* groups[] = {const_cast<char*>("group1")};
-        metadata.groups = groups;
-        metadata.groups_count = 1;
-        metadata_provider_update(&metadata);
-
-        // Create logger
-        logger = [](modules_log_level_t level, const std::string& msg)
+    protected:
+        void SetUp() override
         {
-            // Silent logger for tests, but can be enabled for debugging
-            // std::cout << "[" << level << "] " << msg << std::endl;
-        };
+            // Create temporary directory for test databases
+            testDbPath = "/tmp/sync_protocol_integration_test_" +
+                         std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) +
+                         ".db";
 
-        // Create MQ functions (mock for now, but could be real)
-        mqFuncs.start = [](const char*, short, short) { return 0; };
-        mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) { return 0; };
-    }
+            // Set up metadata for sync protocol
+            agent_metadata_t metadata = {};
+            strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+            strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+            strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+            strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+            strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+            strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+            strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+            strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+            strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
+            char* groups[] = {const_cast<char*>("group1")};
+            metadata.groups = groups;
+            metadata.groups_count = 1;
+            metadata_provider_update(&metadata);
 
-    void TearDown() override
-    {
-        // Clean up test database
-        if (std::filesystem::exists(testDbPath))
-        {
-            std::filesystem::remove(testDbPath);
+            // Create logger
+            logger = [](modules_log_level_t, const std::string&)
+            {
+                // Silent logger for tests, but can be enabled for debugging
+                // std::cout << "[" << level << "] " << msg << std::endl;
+            };
+
+            // Create MQ functions (mock for now, but could be real)
+            mqFuncs.start = [](const char*, short, short)
+            {
+                return 0;
+            };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
+            {
+                return 0;
+            };
         }
 
-        // Reset metadata provider
-        metadata_provider_reset();
-    }
+        void TearDown() override
+        {
+            // Clean up test database
+            if (std::filesystem::exists(testDbPath))
+            {
+                std::filesystem::remove(testDbPath);
+            }
 
-    std::string testDbPath;
-    LoggerFunc logger;
-    MQ_Functions mqFuncs;
+            // Reset metadata provider
+            metadata_provider_reset();
+        }
+
+        std::string testDbPath;
+        LoggerFunc logger;
+        MQ_Functions mqFuncs;
 };
 
 // ========================================
@@ -354,6 +360,7 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_MultipleIndices)
 
     // Verify indices are correct
     std::set<std::string> indices;
+
     for (const auto& item : items)
     {
         indices.insert(item.index);

@@ -143,7 +143,8 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                                       ? CreateStatus::NEW_DELETED
                                       : oldCreateStatus;
 
-                    const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
+                    const std::string updateQuery =
+                        "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
                     SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
                     updateStmt.bind(1, newData.index);
                     updateStmt.bind(2, newData.data);
@@ -163,7 +164,8 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                                   ? CreateStatus::NEW
                                   : oldCreateStatus;
 
-                const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
+                const std::string updateQuery =
+                    "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
                 SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
                 updateStmt.bind(1, newData.index);
                 updateStmt.bind(2, newData.data);

@@ -4300,23 +4300,26 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_WithNullPersistentQueue)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     // Create AgentSyncProtocol WITHOUT persistent queue (dbPath = std::nullopt)
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        std::nullopt,  // No dbPath - persistent queue will be null
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        nullptr  // No persistent queue
-    );
+                   "test_module",
+                   std::nullopt,  // No dbPath - persistent queue will be null
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   nullptr  // No persistent queue
+               );
 
     // fetchPendingItems should catch exception and return empty vector
     auto result = protocol->fetchPendingItems(true);
@@ -4336,22 +4339,25 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_True)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Prepare test data - DataValue items only
     std::vector<PersistedData> expectedData;
@@ -4373,8 +4379,8 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_True)
 
     // Mock fetchPendingItems to return DataValue items
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     // Call fetchPendingItems with onlyDataValues=true
     auto result = protocol->fetchPendingItems(true);
@@ -4403,26 +4409,29 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_False)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Prepare test data - Mix of DataValue and DataContext
     std::vector<PersistedData> expectedData;
-    
+
     // DataValue item
     PersistedData dataValue;
     dataValue.seq = 1;
@@ -4443,8 +4452,8 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_False)
 
     // Mock fetchPendingItems to return both types
     EXPECT_CALL(*mockQueue, fetchPendingItems(false))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     // Call fetchPendingItems with onlyDataValues=false
     auto result = protocol->fetchPendingItems(false);
@@ -4466,27 +4475,30 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_EmptyQueue)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Mock fetchPendingItems to return empty vector
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(std::vector<PersistedData>()));
+    .Times(1)
+    .WillOnce(Return(std::vector<PersistedData>()));
 
     // Call fetchPendingItems
     auto result = protocol->fetchPendingItems(true);
@@ -4507,26 +4519,29 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_MultipleIndices)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Prepare test data from multiple indices
     std::vector<PersistedData> expectedData;
-    
+
     PersistedData pkgItem;
     pkgItem.seq = 1;
     pkgItem.id = "pkg_hash_1";
@@ -4553,8 +4568,8 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_MultipleIndices)
 
     // Mock fetchPendingItems to return items from all indices
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     // Call fetchPendingItems
     auto result = protocol->fetchPendingItems(true);
@@ -4578,26 +4593,29 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_DifferentOperations)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Prepare test data with different operations
     std::vector<PersistedData> expectedData;
-    
+
     PersistedData createItem;
     createItem.seq = 1;
     createItem.id = "create_hash";
@@ -4624,8 +4642,8 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_DifferentOperations)
 
     // Mock fetchPendingItems
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     // Call fetchPendingItems
     auto result = protocol->fetchPendingItems(true);
@@ -4649,11 +4667,15 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_ExceptionHandling)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     bool loggerCalled = false;
-    LoggerFunc testLogger = [&loggerCalled](modules_log_level_t level, const std::string& msg) {
+    LoggerFunc testLogger = [&loggerCalled](modules_log_level_t level, const std::string & msg)
+    {
         if (level == LOG_ERROR && msg.find("Failed to fetch pending items") != std::string::npos)
         {
             loggerCalled = true;
@@ -4661,21 +4683,21 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_ExceptionHandling)
     };
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Mock fetchPendingItems to throw exception
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(testing::Throw(std::runtime_error("Database error")));
+    .Times(1)
+    .WillOnce(testing::Throw(std::runtime_error("Database error")));
 
     // Call fetchPendingItems - should catch exception and return empty
     auto result = protocol->fetchPendingItems(true);
@@ -4697,25 +4719,29 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_LargeDataSet)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Prepare large dataset (1000 items)
     std::vector<PersistedData> expectedData;
+
     for (int i = 0; i < 1000; ++i)
     {
         PersistedData item;
@@ -4729,8 +4755,8 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_LargeDataSet)
 
     // Mock fetchPendingItems to return large dataset
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     // Call fetchPendingItems
     auto result = protocol->fetchPendingItems(true);
@@ -4755,26 +4781,29 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_SequenceNumberOrdering)
     MQ_Functions mockMq
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
     protocol = std::make_unique<AgentSyncProtocol>(
-        "test_module",
-        ":memory:",
-        mockMq,
-        testLogger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(1),
-        retries,
-        maxEps,
-        mockQueue
-    );
+                   "test_module",
+                   ":memory:",
+                   mockMq,
+                   testLogger,
+                   std::chrono::seconds(1),
+                   std::chrono::seconds(1),
+                   retries,
+                   maxEps,
+                   mockQueue
+               );
 
     // Prepare test data with specific sequence numbers
     std::vector<PersistedData> expectedData;
-    
+
     PersistedData item1;
     item1.seq = 100;
     item1.id = "hash_100";
@@ -4801,8 +4830,8 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_SequenceNumberOrdering)
 
     // Mock fetchPendingItems
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     // Call fetchPendingItems
     auto result = protocol->fetchPendingItems(true);
@@ -4828,7 +4857,10 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_WithValidQueue)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -4847,7 +4879,7 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_WithValidQueue)
 
     // Expect clearAllDataContext to be called once
     EXPECT_CALL(*mockQueue, clearAllDataContext())
-        .Times(1);
+    .Times(1);
 
     // Call clearAllDataContext
     EXPECT_NO_THROW(protocol->clearAllDataContext());
@@ -4862,7 +4894,10 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_WithNullQueue)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -4893,7 +4928,10 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_ExceptionHandling)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -4912,8 +4950,8 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_ExceptionHandling)
 
     // Make clearAllDataContext throw an exception
     EXPECT_CALL(*mockQueue, clearAllDataContext())
-        .Times(1)
-        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+    .Times(1)
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     // Should handle exception gracefully
     EXPECT_NO_THROW(protocol->clearAllDataContext());
@@ -4933,7 +4971,10 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_EmptyIndices)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -4967,7 +5008,10 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithVDCLEANOption_SingleIndex)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -5001,7 +5045,10 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_MultipleIndices)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -5040,7 +5087,10 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithVDCLEANOption_VDIndices)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -5078,7 +5128,10 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_DefaultOption)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -5110,7 +5163,10 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithNullQueue)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -5188,7 +5244,10 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_ClearDataContextBeforeSync)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -5207,7 +5266,7 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_ClearDataContextBeforeSync)
 
     // Step 1: Clear all DataContext
     EXPECT_CALL(*mockQueue, clearAllDataContext())
-        .Times(1);
+    .Times(1);
 
     protocol->clearAllDataContext();
 
@@ -5223,8 +5282,8 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_ClearDataContextBeforeSync)
     dataValues.push_back(item1);
 
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(dataValues));
+    .Times(1)
+    .WillOnce(Return(dataValues));
 
     auto result = protocol->fetchPendingItems(true);
     ASSERT_EQ(result.size(), 1);
@@ -5242,7 +5301,10 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_FetchOnlyDataValues)
     MQ_Functions mqFuncs
     {
         [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     auto logger = [](modules_log_level_t, const std::string&) {};
@@ -5284,8 +5346,8 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_FetchOnlyDataValues)
     std::vector<PersistedData> onlyDataValues = {dataValue};
 
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
-        .Times(1)
-        .WillOnce(Return(onlyDataValues));
+    .Times(1)
+    .WillOnce(Return(onlyDataValues));
 
     auto result = protocol->fetchPendingItems(true);
     ASSERT_EQ(result.size(), 1);

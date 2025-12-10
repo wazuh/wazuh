@@ -306,8 +306,8 @@ TEST(PersistentQueueTest, fetchPendingItems_OnlyDataValues_True)
 
     // Expect fetchPending to be called with onlyDataValues=true
     EXPECT_CALL(*mockStorage, fetchPending(true))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     auto result = queue.fetchPendingItems(true);
 
@@ -349,8 +349,8 @@ TEST(PersistentQueueTest, fetchPendingItems_OnlyDataValues_False)
 
     // Expect fetchPending to be called with onlyDataValues=false
     EXPECT_CALL(*mockStorage, fetchPending(false))
-        .Times(1)
-        .WillOnce(Return(expectedData));
+    .Times(1)
+    .WillOnce(Return(expectedData));
 
     auto result = queue.fetchPendingItems(false);
 
@@ -372,8 +372,8 @@ TEST(PersistentQueueTest, fetchPendingItems_EmptyResult)
     std::vector<PersistedData> emptyData;
 
     EXPECT_CALL(*mockStorage, fetchPending(true))
-        .Times(1)
-        .WillOnce(Return(emptyData));
+    .Times(1)
+    .WillOnce(Return(emptyData));
 
     auto result = queue.fetchPendingItems(true);
 
@@ -392,8 +392,8 @@ TEST(PersistentQueueTest, fetchPendingItems_ExceptionHandling)
 
     // Make storage throw an exception
     EXPECT_CALL(*mockStorage, fetchPending(true))
-        .Times(1)
-        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+    .Times(1)
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     // Should throw the exception
     EXPECT_THROW(queue.fetchPendingItems(true), std::runtime_error);
@@ -415,7 +415,7 @@ TEST(PersistentQueueTest, clearAllDataContext_Success)
 
     // Expect removeAllDataContext to be called once
     EXPECT_CALL(*mockStorage, removeAllDataContext())
-        .Times(1);
+    .Times(1);
 
     EXPECT_NO_THROW(queue.clearAllDataContext());
 }
@@ -432,8 +432,8 @@ TEST(PersistentQueueTest, clearAllDataContext_ExceptionHandling)
 
     // Make storage throw an exception
     EXPECT_CALL(*mockStorage, removeAllDataContext())
-        .Times(1)
-        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+    .Times(1)
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     // Should throw the exception
     EXPECT_THROW(queue.clearAllDataContext(), std::runtime_error);
