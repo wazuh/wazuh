@@ -445,28 +445,62 @@ void Syscollector::start()
 bool Syscollector::handleNotifyDataClean()
 {
     bool ret = false;
-    unsigned int retries = 1;
+    unsigned int attempt = 0;
+    constexpr unsigned int DATACLEAN_RETRY_WAIT_SECONDS = 60;  // Fixed wait time between retries
 
-    while (!ret && retries <= m_dataCleanRetries && !m_stopping)
+    // If all collectors are disabled, retry indefinitely until success or stopping
+    // Otherwise, respect the configured retry limit
+    while (!ret && !m_stopping)
     {
+        attempt++;
+
         ret = notifyDisableCollectorsDataClean();
 
-        if (!ret)
+        if (ret)
         {
-            retries++;
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Data clean notification succeeded on attempt " + std::to_string(attempt) + ".");
+            }
 
-            if (retries <= m_dataCleanRetries)
+            break;
+        }
+
+        // Check if we should continue retrying
+        bool shouldRetry = m_allCollectorsDisabled || (attempt < m_dataCleanRetries);
+
+        if (shouldRetry)
+        {
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_WARNING, "Syscollector data clean notification failed, retry in " + std::to_string(DATACLEAN_RETRY_WAIT_SECONDS) + " seconds.");
+            }
+
+            // Wait before next retry with fixed interval
+            for (unsigned int i = 0; i < DATACLEAN_RETRY_WAIT_SECONDS && !m_stopping; i++)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+
+            if (m_stopping)
             {
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_WARNING, "Syscollector data clean notification failed, retry " + std::to_string(retries) + "/" + std::to_string(m_dataCleanRetries) + ".");
+                    m_logFunction(LOG_DEBUG, "Data clean notification interrupted by module stop.");
                 }
 
-                for (unsigned int i = 0; i < m_intervalValue && !m_stopping; i++)
-                {
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                }
+                break;
             }
+        }
+        else
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_WARNING, "Syscollector data clean notification failed after " + std::to_string(m_dataCleanRetries) + " attempts.");
+            }
+
+            break;
         }
     }
 
@@ -2313,7 +2347,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
             indices += idx;
         }
 
-        m_logFunction(LOG_INFO, "Notifying DataClean for disabled collectors indices: " + indices);
+        m_logFunction(LOG_DEBUG, "Notifying DataClean for disabled collectors indices: " + indices);
     }
 
     return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData);
@@ -2331,6 +2365,20 @@ void Syscollector::deleteDisableCollectorsData()
         return;
     }
 
+    // If all collectors are disabled, delete the entire database instead of going table by table
+    if (m_allCollectorsDisabled)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "All collectors are disabled. Deleting entire database.");
+        }
+
+        deleteDatabase();
+        m_disabledCollectorsIndicesWithData.clear();
+        return;
+    }
+
+    // Only some collectors are disabled, delete specific tables
     if (m_logFunction)
     {
         std::string indices;
