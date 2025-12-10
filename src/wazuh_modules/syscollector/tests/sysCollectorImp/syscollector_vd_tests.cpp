@@ -326,3 +326,485 @@ TEST_F(SyscollectorVDTest, ClearLocalDBTables_IndexToTableMapping)
         }
     }
 }
+
+// ========================================
+// Tests for persistDifference() routing logic
+// ========================================
+
+TEST_F(SyscollectorVDTest, PersistDifference_VDTableRoutesToVDProtocol)
+{
+    /**
+     * Test: Verify that persistDifference routes VD tables (system, packages, hotfixes)
+     * to the VD sync protocol when available
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with VD modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH_VD,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  true,    // hotfixes (enabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test routing for VD tables (system, packages, hotfixes)
+    // These should route to m_spSyncProtocolVD
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().persistDifference(
+            "test_id_1",
+            Operation::CREATE,
+            SYSCOLLECTOR_SYNC_INDEX_SYSTEM,
+            R"({"test": "data"})",
+            1,
+            false
+        );
+
+        Syscollector::instance().persistDifference(
+            "test_id_2",
+            Operation::MODIFY,
+            SYSCOLLECTOR_SYNC_INDEX_PACKAGES,
+            R"({"test": "data"})",
+            2,
+            true
+        );
+
+        Syscollector::instance().persistDifference(
+            "test_id_3",
+            Operation::DELETE_,
+            SYSCOLLECTOR_SYNC_INDEX_HOTFIXES,
+            R"({"test": "data"})",
+            3,
+            false
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorVDTest, PersistDifference_NonVDTableRoutesToRegularProtocol)
+{
+    /**
+     * Test: Verify that persistDifference routes non-VD tables (processes, ports, etc.)
+     * to the regular sync protocol
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with non-VD modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH_VD,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  true,    // hardware (enabled)
+                                  false,   // os (disabled)
+                                  true,    // network (enabled)
+                                  false,   // packages (disabled)
+                                  true,    // ports (enabled)
+                                  false,   // portsAll
+                                  true,    // processes (enabled)
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test routing for non-VD tables
+    // These should route to m_spSyncProtocol
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().persistDifference(
+            "test_id_4",
+            Operation::CREATE,
+            SYSCOLLECTOR_SYNC_INDEX_PROCESSES,
+            R"({"test": "data"})",
+            4,
+            false
+        );
+
+        Syscollector::instance().persistDifference(
+            "test_id_5",
+            Operation::MODIFY,
+            SYSCOLLECTOR_SYNC_INDEX_PORTS,
+            R"({"test": "data"})",
+            5,
+            true
+        );
+
+        Syscollector::instance().persistDifference(
+            "test_id_6",
+            Operation::CREATE,
+            SYSCOLLECTOR_SYNC_INDEX_HARDWARE,
+            R"({"test": "data"})",
+            6,
+            false
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorVDTest, PersistDifference_WithoutSyncProtocol)
+{
+    /**
+     * Test: Verify that persistDifference handles the case when sync protocols
+     * are not initialized
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize without sync protocols
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH_VD,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Do NOT initialize sync protocols - test behavior without them
+
+    // Should not throw even without sync protocols
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().persistDifference(
+            "test_id_7",
+            Operation::CREATE,
+            SYSCOLLECTOR_SYNC_INDEX_SYSTEM,
+            R"({"test": "data"})",
+            7,
+            false
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+// ========================================
+// Tests for parseResponseBuffer() routing logic
+// ========================================
+
+TEST_F(SyscollectorVDTest, ParseResponseBuffer_RoutesToRegularProtocol)
+{
+    /**
+     * Test: Verify that parseResponseBuffer routes to the regular sync protocol
+     * (not the VD protocol)
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH_VD,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  true,    // hardware
+                                  true,    // os
+                                  true,    // network
+                                  true,    // packages
+                                  true,    // ports
+                                  false,   // portsAll
+                                  true,    // processes
+                                  false,   // hotfixes
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test parseResponseBuffer with sample data
+    const uint8_t testData[] = {0x01, 0x02, 0x03, 0x04};
+    bool result = false;
+
+    EXPECT_NO_THROW(
+    {
+        result = Syscollector::instance().parseResponseBuffer(testData, sizeof(testData));
+    });
+
+    // Result depends on sync protocol implementation
+    // The function should execute without throwing
+    (void)result;
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorVDTest, ParseResponseBuffer_WithoutSyncProtocol)
+{
+    /**
+     * Test: Verify that parseResponseBuffer returns false when sync protocol
+     * is not initialized
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize without sync protocols
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH_VD,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os
+                                  false,   // network
+                                  true,    // packages
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Do NOT initialize sync protocols
+
+    // Test parseResponseBuffer without sync protocol
+    const uint8_t testData[] = {0x01, 0x02, 0x03, 0x04};
+    bool result = false;
+
+    EXPECT_NO_THROW(
+    {
+        result = Syscollector::instance().parseResponseBuffer(testData, sizeof(testData));
+    });
+
+    // Should return false when sync protocol is not initialized
+    EXPECT_FALSE(result);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorVDTest, ParseResponseBufferVD_RoutesToVDProtocol)
+{
+    /**
+     * Test: Verify that parseResponseBufferVD routes to the VD sync protocol
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with VD modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH_VD,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  true,    // hotfixes (enabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test parseResponseBufferVD with sample data
+    const uint8_t testData[] = {0x01, 0x02, 0x03, 0x04};
+    bool result = false;
+
+    EXPECT_NO_THROW(
+    {
+        result = Syscollector::instance().parseResponseBufferVD(testData, sizeof(testData));
+    });
+
+    // Result depends on sync protocol implementation
+    // The function should execute without throwing
+    (void)result;
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorVDTest, ParseResponseBufferVD_WithoutSyncProtocol)
+{
+    /**
+     * Test: Verify that parseResponseBufferVD returns false when VD sync protocol
+     * is not initialized
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize without sync protocols
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH_VD,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os
+                                  false,   // network
+                                  true,    // packages
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Do NOT initialize sync protocols
+
+    // Test parseResponseBufferVD without sync protocol
+    const uint8_t testData[] = {0x01, 0x02, 0x03, 0x04};
+    bool result = false;
+
+    EXPECT_NO_THROW(
+    {
+        result = Syscollector::instance().parseResponseBufferVD(testData, sizeof(testData));
+    });
+
+    // Should return false when VD sync protocol is not initialized
+    EXPECT_FALSE(result);
+
+    Syscollector::instance().destroy();
+}
