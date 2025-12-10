@@ -13,18 +13,27 @@ namespace
 {
 
 // lowercase field conversion and spaces replacement with hyphens
-auto sanitizeField = [](const std::string& field, const base::Event& event) -> std::string
+auto sanitizeField = [](const std::string_view& field, const base::Event& event) -> std::string
 {
-    auto fieldValue = event->getString(field);
-    if (fieldValue == std::nullopt)
+    auto opt = event->getString(field);
+    if (!opt)
     {
-        throw std::runtime_error(fmt::format("Field '{}' does not exist in the event", field));
+        throw std::runtime_error("Missing field");
     }
-    auto fieldString = fieldValue.value();
-    std::transform(
-        fieldString.begin(), fieldString.end(), fieldString.begin(), [](unsigned char c) { return std::tolower(c); });
-    std::replace(fieldString.begin(), fieldString.end(), ' ', '-');
-    return fieldString;
+
+    std::string s = std::move(*opt);
+    for (char& c : s)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            c += 'a' - 'A';
+        }
+        else if (c == ' ')
+        {
+            c = '-';
+        }
+    }
+    return s;
 };
 
 } // namespace
