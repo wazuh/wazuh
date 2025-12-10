@@ -81,7 +81,8 @@ static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
             "wazuh-states-inventory-users",
             "wazuh-states-inventory-groups",
             "wazuh-states-inventory-services",
-            "wazuh-states-inventory-browser-extensions"
+            "wazuh-states-inventory-browser-extensions",
+            "wazuh-states-vulnerabilities"
         }
     }
 };
