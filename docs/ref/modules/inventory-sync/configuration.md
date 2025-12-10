@@ -16,7 +16,7 @@ Incoming FlatBuffer messages from agents are processed and grouped into **bulk o
 ```xml
   <indexer>
     <hosts>
-      <host>https://0.0.0.0:9200</host>
+      <host>https://127.0.0.1:9200</host>
     </hosts>
     <ssl>
       <certificate_authorities>
