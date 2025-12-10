@@ -1050,8 +1050,14 @@ void test_fim_has_configured_directories_null_list(void **state) {
 }
 
 void test_fim_has_configured_directories_with_directories(void **state) {
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+#ifdef TEST_WINAGENT
+    // On WINAGENT, pthread_rwlock functions are wrapped - need to set expectations
+    // OSList_foreach uses OSList_GetFirstNode (wrlock) and OSList_GetNext (rdlock)
+    // Note: pthread_mutex is NOT wrapped in test_run_check linker flags
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
 
     bool result = fim_has_configured_directories();
 
@@ -1059,8 +1065,14 @@ void test_fim_has_configured_directories_with_directories(void **state) {
 }
 
 void test_fim_has_configured_paths_with_directories(void **state) {
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+#ifdef TEST_WINAGENT
+    // On WINAGENT, pthread_rwlock functions are wrapped - need to set expectations
+    // OSList_foreach uses OSList_GetFirstNode (wrlock) and OSList_GetNext (rdlock)
+    // Note: pthread_mutex is NOT wrapped in test_run_check linker flags
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
 
     bool result = fim_has_configured_paths();
 
