@@ -337,11 +337,16 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
 bool SecurityConfigurationAssessment::syncModule(Mode mode)
 {
-    // Check if paused - don't start new sync operations
-    if (m_paused.load())
+    if (!m_paused.load())
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is paused");
-        return true;  // Return success to avoid error handling in caller
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is not paused");
+        return false;
+    }
+
+    if (m_syncInProgress.load())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - sync already in progress");
+        return false;
     }
 
     if (m_spSyncProtocol)
