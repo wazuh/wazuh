@@ -968,7 +968,7 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 
         if (needsRecovery)
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "Checksum mismatch detected, full recovery required");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Checksum mismatch detected, full recovery required");
         }
 
         return needsRecovery;
