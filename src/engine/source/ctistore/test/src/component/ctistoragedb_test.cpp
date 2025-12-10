@@ -1738,6 +1738,248 @@ TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
 }
 
 // ============================================================================
+// Payload-Level Field Updates Tests (Bug Fix Validation)
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, UpdateAssetRemoveIntegrationId)
+{
+    // Create decoder with integration_id at payload level
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_with_integration", "/name");
+    decoder.setInt(1, "/offset");
+    decoder.setInt(1, "/version");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("test_integration_id", "/integration_id");  // Payload-level field
+
+    json::Json document;
+    document.setObject();
+    document.setString("Test Decoder", "/name");
+    document.setBool(true, "/enabled");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Verify integration_id exists before removal
+    auto beforeUpdate = m_storage->getAsset(base::Name("Test Decoder"), "decoder");
+    EXPECT_TRUE(beforeUpdate.exists("/payload/integration_id"));
+    EXPECT_EQ(beforeUpdate.getString("/payload/integration_id").value_or(""), "test_integration_id");
+
+    // Remove integration_id using JSON Patch
+    json::Json operations;
+    operations.setArray();
+
+    json::Json removeOp;
+    removeOp.setObject();
+    removeOp.setString("remove", "/op");
+    removeOp.setString("/integration_id", "/path");  // Relative path (will be adjusted to /payload/integration_id)
+    operations.appendJson(removeOp);
+
+    // Apply update - should succeed after fix
+    bool updated = m_storage->updateAsset("decoder_with_integration", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify integration_id was removed
+    auto afterUpdate = m_storage->getAsset(base::Name("Test Decoder"), "decoder");
+    EXPECT_FALSE(afterUpdate.exists("/payload/integration_id"));
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetModifyPayloadLevelCustomField)
+{
+    // Create decoder with a custom field at payload level
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_with_custom", "/name");
+    decoder.setInt(1, "/offset");
+    decoder.setInt(1, "/version");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("original_value", "/custom_payload_field");  // Custom payload-level field
+
+    json::Json document;
+    document.setObject();
+    document.setString("Custom Decoder", "/name");
+    document.setBool(true, "/enabled");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Modify the custom field at payload level
+    json::Json operations;
+    operations.setArray();
+
+    json::Json replaceOp;
+    replaceOp.setObject();
+    replaceOp.setString("replace", "/op");
+    replaceOp.setString("/custom_payload_field", "/path");  // Payload-level field
+    replaceOp.setString("modified_value", "/value");
+    operations.appendJson(replaceOp);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("decoder_with_custom", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify custom field was modified at payload level
+    auto afterUpdate = m_storage->getAsset(base::Name("Custom Decoder"), "decoder");
+    EXPECT_EQ(afterUpdate.getString("/payload/custom_payload_field").value_or(""), "modified_value");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetRemoveIntegrationIdAsFirstOperation)
+{
+    // This test specifically validates the bug scenario where removing integration_id
+    // as the FIRST operation caused the entire update to fail
+
+    // Create decoder with integration_id
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_complex", "/name");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("old_integration", "/integration_id");
+
+    json::Json document;
+    document.setObject();
+    document.setString("Complex Decoder", "/name");
+    document.setString("old_value", "/some_field");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Create operations: remove integration_id FIRST, then modify document field
+    json::Json operations;
+    operations.setArray();
+
+    // FIRST operation: remove integration_id (this was causing the bug)
+    json::Json removeOp;
+    removeOp.setObject();
+    removeOp.setString("remove", "/op");
+    removeOp.setString("/integration_id", "/path");
+    operations.appendJson(removeOp);
+
+    // SECOND operation: modify document field
+    json::Json replaceOp;
+    replaceOp.setObject();
+    replaceOp.setString("replace", "/op");
+    replaceOp.setString("/document/some_field", "/path");
+    replaceOp.setString("new_value", "/value");
+    operations.appendJson(replaceOp);
+
+    // Apply both operations - should succeed with fix
+    bool updated = m_storage->updateAsset("decoder_complex", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify both operations were applied
+    auto afterUpdate = m_storage->getAsset(base::Name("Complex Decoder"), "decoder");
+    EXPECT_FALSE(afterUpdate.exists("/payload/integration_id"));  // Removed
+    EXPECT_EQ(afterUpdate.getString("/payload/document/some_field").value_or(""), "new_value");  // Modified
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetAddPayloadLevelField)
+{
+    // Store integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Add a new field at payload level
+    json::Json operations;
+    operations.setArray();
+
+    json::Json addOp;
+    addOp.setObject();
+    addOp.setString("add", "/op");
+    addOp.setString("/custom_field", "/path");  // Payload-level field
+    addOp.setString("custom_value", "/value");
+    operations.appendJson(addOp);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("integration_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify new field was added at payload level
+    auto afterUpdate = m_storage->getAsset(base::Name("Test Integration"), "integration");
+    EXPECT_TRUE(afterUpdate.exists("/payload/custom_field"));
+    EXPECT_EQ(afterUpdate.getString("/payload/custom_field").value_or(""), "custom_value");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetMixedPayloadAndDocumentOperations)
+{
+    // Create decoder with both payload-level and document-level fields
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_mixed", "/name");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("integration_123", "/integration_id");
+
+    json::Json document;
+    document.setObject();
+    document.setString("Mixed Decoder", "/name");
+    document.setString("original_check", "/check");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Create mixed operations: payload-level and document-level
+    json::Json operations;
+    operations.setArray();
+
+    // Payload-level: remove integration_id
+    json::Json removeOp;
+    removeOp.setObject();
+    removeOp.setString("remove", "/op");
+    removeOp.setString("/integration_id", "/path");
+    operations.appendJson(removeOp);
+
+    // Document-level: modify check field
+    json::Json replaceOp;
+    replaceOp.setObject();
+    replaceOp.setString("replace", "/op");
+    replaceOp.setString("/document/check", "/path");
+    replaceOp.setString("updated_check", "/value");
+    operations.appendJson(replaceOp);
+
+    // Payload-level: add new field
+    json::Json addOp;
+    addOp.setObject();
+    addOp.setString("add", "/op");
+    addOp.setString("/version", "/path");
+    addOp.setString("2.0", "/value");
+    operations.appendJson(addOp);
+
+    // Apply all operations
+    bool updated = m_storage->updateAsset("decoder_mixed", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify all operations were applied correctly
+    auto afterUpdate = m_storage->getAsset(base::Name("Mixed Decoder"), "decoder");
+
+    // Payload-level changes
+    EXPECT_FALSE(afterUpdate.exists("/payload/integration_id"));  // Removed
+    EXPECT_TRUE(afterUpdate.exists("/payload/version"));  // Added
+    EXPECT_EQ(afterUpdate.getString("/payload/version").value_or(""), "2.0");
+
+    // Document-level changes
+    EXPECT_EQ(afterUpdate.getString("/payload/document/check").value_or(""), "updated_check");  // Modified
+}
+
+// ============================================================================
 // Policy Access Tests
 // ============================================================================
 
