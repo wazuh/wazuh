@@ -503,4 +503,9 @@ public:
     {
         return m_selector->isAvailable();
     }
+
+    uint64_t getQueueSize() const
+    {
+        return m_dispatcher->size();
+    }
 };

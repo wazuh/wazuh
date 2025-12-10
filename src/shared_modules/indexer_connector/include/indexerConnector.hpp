@@ -229,6 +229,13 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Get the current size of the indexing queue.
+     *
+     * @return The number of pending indexing operations in the queue.
+     */
+    uint64_t getQueueSize() const;
 };
 
 class IndexerConnectorException : public std::exception
