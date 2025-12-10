@@ -1737,6 +1737,15 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     m_vdSyncEnabled = m_vdSyncEnabled || m_hotfixes;
 #endif
 
+    if (!m_vdSyncEnabled)
+    {
+#ifdef _WIN32
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages, OS, or hotfixes scanning is enabled in the configuration.");
+#else
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages or OS scanning is enabled in the configuration.");
+#endif
+    }
+
     try
     {
         // Initialize regular sync protocol
@@ -2245,13 +2254,13 @@ void Syscollector::processVDDataContext()
 
             if (m_logFunction && !contextItems.empty())
             {
-                m_logFunction(LOG_INFO, "Added " + std::to_string(contextItems.size()) + " DataContext items from " + tableName);
+                m_logFunction(LOG_DEBUG, "Added " + std::to_string(contextItems.size()) + " DataContext items from " + tableName);
             }
         }
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_INFO, "VD DataContext complete: " + std::to_string(totalDataContextItems) +
+            m_logFunction(LOG_DEBUG, "VD DataContext complete: " + std::to_string(totalDataContextItems) +
                           " items for " + std::to_string(pendingDataValues.size()) + " DataValues");
         }
     }
