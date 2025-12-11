@@ -183,26 +183,8 @@ public:
                   m_context->agentId.c_str(),
                   m_context->sessionId);
 
-        // TODO: Remove this log once stable
-        logInfo(LOGGER_DEFAULT_TAG,
-                "[SYNC_FLOW] Manager->Agent: Sending StartAck with Status_Ok | AgentID: %s | Session: %llu | Module: "
-                "%s | Mode: %s | Option: %s",
-                m_context->agentId.c_str(),
-                m_context->sessionId,
-                m_context->moduleName.c_str(),
-                m_context->mode == Wazuh::SyncSchema::Mode_ModuleFull ? "FULL" : "DELTA",
-                m_context->option == Wazuh::SyncSchema::Option_VDFirst   ? "VDFIRST"
-                : m_context->option == Wazuh::SyncSchema::Option_VDSync  ? "VDSYNC"
-                : m_context->option == Wazuh::SyncSchema::Option_VDClean ? "VDCLEAN"
-                                                                         : "SYNC");
-
         responseDispatcher.sendStartAck(
             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
-
-        // TODO: Remove this log once stable
-        logInfo(LOGGER_DEFAULT_TAG,
-                "[SYNC_FLOW] Manager->Agent: StartAck sent successfully for session %llu",
-                m_context->sessionId);
     }
 
     /// Deleted copy constructor and assignment operator (C.12 compliant).
