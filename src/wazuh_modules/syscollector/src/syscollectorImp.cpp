@@ -388,8 +388,6 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
 void Syscollector::start()
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
-
     // Don't start if initialization failed
     if (!m_initialized)
     {
@@ -401,7 +399,10 @@ void Syscollector::start()
         return;
     }
 
-    m_stopping = false;
+    {
+        std::unique_lock<std::mutex> lock{m_mutex};
+        m_stopping = false;
+    }
 
     // Reset sync protocol stop flag to allow restarting operations
     if (m_spSyncProtocol)
@@ -439,6 +440,7 @@ void Syscollector::start()
         return;
     }
 
+    std::unique_lock<std::mutex> lock{m_mutex};
     syncLoop(lock);
 }
 
