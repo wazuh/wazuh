@@ -14,7 +14,13 @@ metadata:
   references:
     - ""
 
-check: $wazuh.integration.category == "Cloud Services"
+definitions:
+  CLOUD_PROVIDERS_INTEGRATION:
+   - aws
+   - gcp
+   - azure
+
+check: $wazuh.integration.category == "Cloud Services" AND array_contains_any($wazuh.integration.name, CLOUD_PROVIDERS_INTEGRATION)
 
 outputs:
   - wazuh-indexer:
