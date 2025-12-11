@@ -21,7 +21,7 @@ def run(args):
         if error:
             sys.exit(f'Error getting asset or collection: {error}')
 
-        print(response['content'])
+        print(response['ymlContent'])
 
     except Exception as e:
         sys.exit(f'Error getting asset or collection: {e}')
