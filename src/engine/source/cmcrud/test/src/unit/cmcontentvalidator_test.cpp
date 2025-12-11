@@ -171,7 +171,7 @@ TEST(ContentValidator_Unit, ValidateIntegration_SuccessWhenBuilderReturnsNoError
     EXPECT_NO_THROW(validator.validateIntegration(nsReader, integration));
 }
 
-TEST(ContentValidator_Unit, ValidateIntegration_ErrorIsWrappedWithNamespaceAndName)
+TEST(ContentValidator_Unit, ValidateIntegration_ErrorIsWrappedWithName)
 {
     auto builderValidator = std::make_shared<NiceMock<MockValidator>>();
     ContentValidator validator {builderValidator};
@@ -195,7 +195,6 @@ TEST(ContentValidator_Unit, ValidateIntegration_ErrorIsWrappedWithNamespaceAndNa
     {
         const std::string msg {ex.what()};
         EXPECT_THAT(msg, ::testing::HasSubstr("Integration validation failed for 'windows'"));
-        EXPECT_THAT(msg, ::testing::HasSubstr("namespace 'dev'"));
         EXPECT_THAT(msg, ::testing::HasSubstr("integration failed"));
     }
 }
