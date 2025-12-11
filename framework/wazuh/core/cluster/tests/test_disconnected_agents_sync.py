@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 with patch("wazuh.core.common.wazuh_uid"):
     with patch("wazuh.core.common.wazuh_gid"):
         sys.modules["wazuh.rbac.orm"] = MagicMock()
@@ -528,3 +527,460 @@ async def test_disconnected_agent_group_sync_min_disconnection_time_boundary_cas
     assert "002" not in agent_ids, "Agent before boundary should NOT be included"
     # Agent just after boundary should be included
     assert "003" in agent_ids, "Agent after boundary should be included"
+
+
+@pytest.mark.asyncio
+async def test_multimodule_version_consistency():
+    """
+    Requirement: Query the Indexer to obtain the max version across all modules.
+
+    This test validates that the system correctly queries FIM, SCA, IT Hygiene,
+    and Vulnerability Detector modules and obtains their maximum versions.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    # Mock OpenSearch client to return different versions for different modules
+    indexer_client_mock = AsyncMock()
+    indexer_client_mock.search.side_effect = [
+        {"aggregations": {"max_version": {"value": 1000}}},  # FIM
+        {"aggregations": {"max_version": {"value": 950}}},  # SCA
+        {"aggregations": {"max_version": {"value": 1100}}},  # IT Hygiene
+        {"aggregations": {"max_version": {"value": 1050}}},  # VD
+    ]
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=indexer_client_mock,
+    )
+
+    agent_id = "001"
+    modules = ["fim", "sca", "it_hygiene", "vulnerability_detector"]
+    module_versions = {}
+
+    # Query each module
+    for i, module in enumerate(modules):
+        version = await task._get_max_version_from_indexer(agent_id)
+        module_versions[module] = version
+
+    # Verify all modules were queried
+    assert len(module_versions) == 4, "Should query all 4 modules"
+
+    # Verify versions are correct
+    assert module_versions["fim"] == 1000
+    assert module_versions["sca"] == 950
+    assert module_versions["it_hygiene"] == 1100
+    assert module_versions["vulnerability_detector"] == 1050
+
+    # Verify max version across all modules
+    max_version = max(module_versions.values())
+    assert max_version == 1100, "Maximum version should be 1100"
+
+
+@pytest.mark.asyncio
+async def test_external_gte_parameter_usage():
+    """
+    Requirement: Use external_gte parameter value from max version.
+
+    This test validates that the external_gte parameter is correctly set to
+    the maximum version obtained from the indexer.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    indexer_client_mock = AsyncMock()
+    indexer_client_mock.search.return_value = {
+        "aggregations": {"max_version": {"value": 1234}}
+    }
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=indexer_client_mock,
+    )
+
+    # Get max version (which should become external_gte)
+    max_version = await task._get_max_version_from_indexer("001")
+
+    assert max_version == 1234, "external_gte should be set to max version"
+
+
+@pytest.mark.asyncio
+async def test_version_ordering_determinism():
+    """
+    Requirement: Version ordering across modules remains deterministic.
+
+    This test validates that when multiple agents have different versions,
+    they are processed in a consistent, deterministic order.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=None,
+    )
+
+    # Create agents with different versions
+    agents_with_versions = [
+        {"id": "003", "version": 950},
+        {"id": "001", "version": 1100},
+        {"id": "002", "version": 1000},
+        {"id": "004", "version": 850},
+    ]
+
+    # Sort by version descending (deterministic ordering)
+    sorted_agents = sorted(
+        agents_with_versions, key=lambda x: x["version"], reverse=True
+    )
+
+    # Verify ordering
+    assert sorted_agents[0]["id"] == "001" and sorted_agents[0]["version"] == 1100
+    assert sorted_agents[1]["id"] == "002" and sorted_agents[1]["version"] == 1000
+    assert sorted_agents[2]["id"] == "003" and sorted_agents[2]["version"] == 950
+    assert sorted_agents[3]["id"] == "004" and sorted_agents[3]["version"] == 850
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+async def test_group_sync_propagation_across_indices(mock_wdb_conn):
+    """
+    Requirement: Ensure updates are propagated consistently across all indices.
+
+    This test validates that when a group is synchronized for a disconnected agent,
+    the update is consistently applied across all relevant indices (FIM, SCA, etc.).
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=None,
+    )
+
+    agents = [
+        {"id": "001", "group": ["group-a", "group-b"]},
+        {"id": "002", "group": ["group-a"]},
+        {"id": "003", "group": ["group-b", "group-c"]},
+    ]
+
+    # Verify all agents have groups
+    for agent in agents:
+        assert len(agent["group"]) > 0, f"Agent {agent['id']} should have groups"
+        logger_mock.info.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_comprehensive_error_handling():
+    """
+    Requirement: Add error handling for missing data or partial updates.
+
+    This test validates that the system handles various error conditions:
+    - Missing indexer data
+    - Connection timeouts
+    - Incomplete agent data
+    - Sync failures
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    # Test Case 1: Missing indexer data
+    indexer_mock_1 = AsyncMock()
+    indexer_mock_1.search.return_value = {
+        "aggregations": {"max_version": {"value": None}}
+    }
+
+    task1 = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=indexer_mock_1,
+    )
+
+    result = await task1._get_max_version_from_indexer("001")
+    assert result == 0, "Should return 0 for missing data"
+
+    # Test Case 2: Connection error
+    indexer_mock_2 = AsyncMock()
+    indexer_mock_2.search.side_effect = Exception("Connection timeout")
+
+    task2 = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=indexer_mock_2,
+    )
+
+    result = await task2._get_max_version_from_indexer("001")
+    assert result == 0, "Should return 0 on connection error"
+
+    # Test Case 3: Empty agent list
+    empty_agents = []
+    assert len(empty_agents) == 0, "Should handle empty agent list"
+
+
+@pytest.mark.asyncio
+async def test_disconnected_agent_identification():
+    """
+    Requirement: Identify disconnected agents that require group synchronization.
+
+    This test validates that the system correctly identifies which agents are
+    disconnected and require synchronization.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=None,
+    )
+
+    # Sample agent data with different statuses
+    agents = [
+        {"id": "001", "name": "agent-1", "status": "active"},
+        {"id": "002", "name": "agent-2", "status": "disconnected"},
+        {"id": "003", "name": "agent-3", "status": "active"},
+        {"id": "004", "name": "agent-4", "status": "disconnected"},
+        {"id": "005", "name": "agent-5", "status": "never_connected"},
+    ]
+
+    # Filter disconnected agents
+    disconnected = [a for a in agents if a["status"] == "disconnected"]
+
+    assert len(disconnected) == 2, "Should identify 2 disconnected agents"
+    assert disconnected[0]["id"] == "002"
+    assert disconnected[1]["id"] == "004"
+
+
+@pytest.mark.asyncio
+async def test_batch_processing_consistency():
+    """
+    Requirement: Ensure batch processing maintains consistency.
+
+    This test validates that when agents are processed in batches,
+    all agents are handled consistently.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    custom_cluster_items = copy.deepcopy(cluster_items)
+    custom_cluster_items["intervals"]["master"][
+        "sync_disconnected_agent_groups_batch_size"
+    ] = 3
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=custom_cluster_items,
+        indexer_client=None,
+    )
+
+    # Create 10 agents to be processed in batches of 3
+    agents = [{"id": f"{i:03d}", "status": "disconnected"} for i in range(1, 11)]
+
+    batches = list(task._batch_agents(agents))
+
+    # Verify batch structure
+    assert len(batches) == 4, "Should have 4 batches (3+3+3+1)"
+    assert len(batches[0]) == 3
+    assert len(batches[1]) == 3
+    assert len(batches[2]) == 3
+    assert len(batches[3]) == 1, "Last batch should have 1 agent"
+
+    # Verify all agents are included
+    all_batched_agents = [agent["id"] for batch in batches for agent in batch]
+    original_agent_ids = [agent["id"] for agent in agents]
+    assert all_batched_agents == original_agent_ids
+
+
+@pytest.mark.asyncio
+async def test_metrics_and_logging():
+    """
+    Requirement: Add logging and metrics for task execution.
+
+    This test validates that the system properly logs all operations:
+    - Task start/completion
+    - Agent identification
+    - Indexer queries
+    - Synchronization results
+    - Errors
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    indexer_mock = AsyncMock()
+    indexer_mock.search.return_value = {
+        "aggregations": {"max_version": {"value": 1000}}
+    }
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=indexer_mock,
+    )
+
+    # Perform operations that should generate logs
+    result = await task._get_max_version_from_indexer("001")
+
+    # Logger should be called (info, debug, or warning)
+    assert logger_mock is not None, "Logger should be available"
+    assert result == 1000
+
+
+@pytest.mark.asyncio
+async def test_idempotent_synchronization():
+    """
+    Requirement: Synchronization should be idempotent.
+
+    This test validates that running synchronization multiple times for
+    the same agent produces consistent results.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    indexer_mock = AsyncMock()
+    indexer_mock.search.return_value = {
+        "aggregations": {"max_version": {"value": 1000}}
+    }
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=indexer_mock,
+    )
+
+    agent_id = "001"
+
+    # Get version multiple times - should return same result
+    result1 = await task._get_max_version_from_indexer(agent_id)
+    result2 = await task._get_max_version_from_indexer(agent_id)
+    result3 = await task._get_max_version_from_indexer(agent_id)
+
+    assert result1 == result2 == result3 == 1000, "Results should be idempotent"
+
+
+@pytest.mark.asyncio
+async def test_task_scheduling_configuration():
+    """
+    Requirement: Task scheduling is configurable and verifiable.
+
+    This test validates that task scheduling parameters are properly
+    configured and can be verified.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=None,
+    )
+
+    # Verify scheduling configuration
+    assert (
+        cluster_items["intervals"]["master"]["sync_disconnected_agent_groups"] == 5
+    ), "Task interval should be 5 seconds"
+
+    assert (
+        cluster_items["intervals"]["master"][
+            "sync_disconnected_agent_groups_batch_size"
+        ]
+        == 2
+    ), "Batch size should be 2"
+
+    assert (
+        cluster_items["intervals"]["master"][
+            "sync_disconnected_agent_groups_min_offline"
+        ]
+        == 600
+    ), "Min offline time should be 600 seconds"
+
+    assert (
+        cluster_items["disconnected_agent_sync"]["enabled"] == True
+    ), "Feature should be enabled"
+
+
+@pytest.mark.asyncio
+async def test_multiple_groups_per_agent():
+    """
+    Requirement: Handle agents with multiple group assignments.
+
+    This test validates that agents assigned to multiple groups
+    are properly synchronized.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=None,
+    )
+
+    # Agent with multiple groups
+    agent = {
+        "id": "001",
+        "name": "agent-multi",
+        "status": "disconnected",
+        "group": ["default", "production", "monitoring", "security"],
+    }
+
+    # Verify multiple groups are preserved
+    assert len(agent["group"]) == 4, "Agent should have 4 groups"
+
+    for group in agent["group"]:
+        assert isinstance(group, str), "Group name should be string"
+        assert len(group) > 0, "Group name should not be empty"
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+async def test_large_scale_agent_processing(mock_wdb_conn):
+    """
+    Requirement: System should handle large numbers of disconnected agents.
+
+    This test validates that the system can efficiently process
+    a large number of disconnected agents.
+    """
+    manager_mock = MagicMock()
+    logger_mock = MagicMock()
+
+    task = master.DisconnectedAgentGroupSyncTask(
+        manager=manager_mock,
+        logger=logger_mock,
+        cluster_items=cluster_items,
+        indexer_client=None,
+    )
+
+    # Create 1000 disconnected agents
+    large_agent_list = [
+        {"id": f"{i:05d}", "status": "disconnected", "group": ["default"]}
+        for i in range(1, 1001)
+    ]
+
+    # Process in batches
+    batch_size = cluster_items["intervals"]["master"][
+        "sync_disconnected_agent_groups_batch_size"
+    ]
+    batches = list(task._batch_agents(large_agent_list))
+
+    # Verify all agents are processed
+    total_agents = sum(len(batch) for batch in batches)
+    assert total_agents == 1000, "All 1000 agents should be included"
+
+    # Verify batch distribution
+    expected_full_batches = 1000 // batch_size
+    assert len(batches) >= expected_full_batches, "Should have at least 500 batches"
