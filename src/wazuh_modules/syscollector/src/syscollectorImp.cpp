@@ -542,16 +542,25 @@ void Syscollector::destroy()
     m_cv.notify_all();
     lock.unlock();
 
-    // Signal sync protocol to stop any ongoing operations
+    // Signal sync protocols to stop any ongoing operations
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
     }
 
-    // Explicitly release DBSync before static destructors run
-    // This prevents use-after-free when Syscollector singleton destructs
-    // after DBSyncImplementation singleton has already been destroyed
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->stop();
+    }
+
+    // Explicitly release all resources to ensure clean state between tests
+    // and prevent use-after-free when Syscollector singleton destructs
+    // after static dependencies have already been destroyed
     m_spDBSync.reset();
+    m_spNormalizer.reset();
+    m_spSyncProtocol.reset();
+    m_spSyncProtocolVD.reset();
+    m_spInfo.reset();
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
