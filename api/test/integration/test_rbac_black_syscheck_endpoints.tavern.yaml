@@ -19,7 +19,7 @@ stages:
           failed_items: []
           total_affected_items: 5
           total_failed_items: 0
-        
+
   - name: Try to run a syscheck scan on a list of agents
     request:
       verify: False
@@ -44,7 +44,7 @@ stages:
                 - '003'
           total_affected_items: 2
           total_failed_items: 3
-        
+
   - name: Try to run a syscheck scan on a list of agents
     request:
       verify: False
@@ -55,4 +55,6 @@ stages:
       params:
         agents_list: '001'
     response:
-      <<: *permission_denied
+      status_code: 403
+      json:
+        error: 4000
