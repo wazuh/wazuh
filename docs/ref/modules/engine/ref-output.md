@@ -43,7 +43,7 @@ outputs:
 
 ## Indexer
 
-The `indexer` output sends alerts to `wazuh-index` for indexing.
+The `indexer` output sends alerts to `wazuh-indexer` for indexing.
 
 ### Signature
 
@@ -56,7 +56,9 @@ wazuh-indexer:
 
 | Name | type | required | Description |
 |------|------|----------|-------------|
-| index | string | yes | Index name where the alerts will be indexed. Should be a valid Elasticsearch index name and start with `wazuh-`. |
+| index | string | yes | Index name where the alerts will be indexed. Should be a valid Elasticsearch index name and start with `wazuh-events-v5-`. |
+
+Index name can be expanded with placeholders like `index-name-${PH1}-${PH2}`. If PHX results in an existing string reference to the event it will be replaced in runtime.
 
 ### Asset example
 
@@ -73,13 +75,13 @@ metadata:
     - ""
   author:
     name: Wazuh, Inc.
-    date: 2024/12/01
+    date: 2025/12/01
   references:
     - ""
 
 outputs:
   - wazuh-indexer:
-      index: wazuh-alerts-$(DATE)
+      index: "wazuh-events-v5-${wazuh.integration.category}"
 ```
 
 > [!TIP]
