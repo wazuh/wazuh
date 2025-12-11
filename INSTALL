@@ -9,6 +9,8 @@ Copyright (C) 2014 Trend Micro Inc.
 
 Visit https://www.wazuh.com
 
+= Documentation page = 
+Visit https://documentation.wazuh.com/current/deployment-options/wazuh-from-sources/index.html
 
 = Recommended Installation =
 
@@ -58,17 +60,33 @@ whatever you need from there.
 
 To compile everything by yourself the following dependencies need to be installed:
 
-- CentOS 6/7
-   $> yum update
-   $> yum install make gcc gcc-c++ policycoreutils-python automake autoconf libtool centos-release-scl devtoolset-7
-   $> scl enable devtoolset-7 bash
+- CentOS 7
+   # yum update -y
+   # yum install make gcc gcc-c++ policycoreutils-python automake autoconf libtool centos-release-scl openssl-devel wget bzip2 devtoolset-7 procps -y
+   # curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && ./contrib/download_prerequisites && ./configure --enable-languages=c,c++ --prefix=/usr --disable-multilib --disable-libsanitizer && make -j$(nproc) && make install && ln -fs /usr/bin/g++ /bin/c++ && ln -fs /usr/bin/gcc /bin/cc && cd .. && rm -rf gcc-* && scl enable devtoolset-7 bash
 
 - CentOS 8
-   $> yum install make gcc gcc-c++ python3 python3-policycoreutils automake autoconf libtool
-   $> rpm -i http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/libstdc++-static-8.3.1-5.1.el8.x86_64.rpm
+   # yum install make cmake gcc gcc-c++ python3 python3-policycoreutils automake autoconf libtool openssl-devel yum-utils procps -y
+   # curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && ./contrib/download_prerequisites && ./configure --enable-languages=c,c++ --prefix=/usr --disable-multilib --disable-libsanitizer && make -j$(nproc) && make install && ln -fs /usr/bin/g++ /bin/c++ && ln -fs /usr/bin/gcc /bin/cc && cd .. && rm -rf gcc-* && scl enable devtoolset-7 bash
+   # yum-config-manager --enable PowerTools
+   # yum install libstdc++-static -y
+
+- CentOS 9
+   # yum install make cmake gcc gcc-c++ python3 python3-policycoreutils automake autoconf libtool openssl-devel yum-utils procps -y
+   # curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && ./contrib/download_prerequisites && ./configure --enable-languages=c,c++ --prefix=/usr --disable-multilib --disable-libsanitizer && make -j$(nproc) && make install && ln -fs /usr/bin/g++ /bin/c++ && ln -fs /usr/bin/gcc /bin/cc && cd .. && rm -rf gcc-* && scl enable devtoolset-7 bash
+   # yum config-manager --set-enabled crb
+   # yum install libstdc++-static -y
 
 - Debian/Ubuntu
-   $> apt-get install python gcc g++ make libc6-dev curl policycoreutils automake autoconf libtool
+   # apt-get update
+   # apt-get install python3 gcc g++ make libc6-dev curl policycoreutils automake autoconf libtool libssl-dev procps build-essential
+
+ - Red Hat Enterprise Linux
+   # dnf update -y
+   # dnf install make cmake gcc gcc-c++ python3 python3-policycoreutils automake autoconf libtool openssl-devel yum-utils procps -y
+   # curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && tar xzf gcc-9.4.0.tar.gz && cd gcc-9.4.0/ && ./contrib/download_prerequisites && ./configure --enable-languages=c,c++ --prefix=/usr --disable-multilib --disable-libsanitizer && make -j$(nproc) && make install && ln -fs /usr/bin/g++ /bin/c++ && ln -fs /usr/bin/gcc /bin/cc && cd .. && rm -rf gcc-*
+   # dnf config-manager --set-enabled crb
+   # dnf install libstdc++-static -y
 
 The following step is common to all OSes:
 - CMake 3.18 installation
@@ -78,6 +96,21 @@ The following step is common to all OSes:
    $> cd .. && rm -rf cmake-*
 
 Note: `gcc/g++ 5.5` and `CMake 3.12.4` are the minimun required versions to be installed.
+
+The Python interpreter requires additional dependencies installed:
+
+- CentOS 7/8/9
+   # yum install epel-release yum-utils -y
+   # yum-builddep python36 -y
+
+- Debian/Ubuntu
+   # echo "deb-src http://archive.ubuntu.com/ubuntu $(lsb_release -cs) main" >> /etc/apt/sources.list
+   # apt-get update
+   # apt-get build-dep python3 -y
+
+- Red Hat Enterprise Linux
+   # dnf install epel-release dnf-utils -y
+   # dnf builddep python3 -y
 
 Under wazuh/src folder:
 1- make deps
