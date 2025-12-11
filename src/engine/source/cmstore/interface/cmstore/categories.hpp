@@ -14,7 +14,7 @@ namespace cm::store::categories
  * in the CMStore system. Any integration or asset should belong to one of these categories.
  */
 inline const std::vector<std::string_view> AVAILABLE_CATEGORIES = {
-    "UNDEFINED_1", "Applications", "Cloud Services", "Network Activity", "Security", "System Activity", "UNDEFINED_2"};
+    "Other", "Applications", "Cloud Services", "Network Activity", "Security", "System Activity", "Access Management"};
 
 /**
  * @brief Get all available categories and their indexes in the namespace
