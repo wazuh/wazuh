@@ -337,11 +337,16 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
 bool SecurityConfigurationAssessment::syncModule(Mode mode)
 {
-    // Check if paused - don't start new sync operations
-    if (m_paused.load())
+    if (!m_paused.load())
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is paused");
-        return true;  // Return success to avoid error handling in caller
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is not paused");
+        return false;
+    }
+
+    if (m_syncInProgress.load())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - sync already in progress");
+        return false;
     }
 
     if (m_spSyncProtocol)
@@ -610,7 +615,7 @@ int SecurityConfigurationAssessment::increaseEachEntryVersion()
 
 void SecurityConfigurationAssessment::pause()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA pause requested");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA pause requested");
 
     // Set pause flag to prevent new operations from starting
     m_paused.store(true);
@@ -624,7 +629,7 @@ void SecurityConfigurationAssessment::pause()
         return (scanDone && syncDone) || !m_keepRunning;
     });
 
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA module paused - all operations completed");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module paused - all operations completed");
 }
 
 int SecurityConfigurationAssessment::flush()
@@ -654,7 +659,7 @@ int SecurityConfigurationAssessment::flush()
 
 void SecurityConfigurationAssessment::resume()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning resumed after coordination");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning resumed after coordination");
 
     // Clear pause flag to allow operations to resume
     m_paused.store(false);
@@ -963,7 +968,7 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 
         if (needsRecovery)
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "Checksum mismatch detected, full recovery required");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Checksum mismatch detected, full recovery required");
         }
 
         return needsRecovery;
