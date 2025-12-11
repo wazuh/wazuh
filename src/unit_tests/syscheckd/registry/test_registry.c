@@ -576,10 +576,10 @@ static void test_fim_registry_calculate_hashes_CHECK_MD5SUM(void **state) {
     syscheck.registry = one_entry_config;
     registry_t *configuration = &syscheck.registry[0];
     configuration->opts = CHECK_MD5SUM;
-    BYTE *data_buffer = (unsigned char *)"value_data";
+    WCHAR data_buffer[] = L"value_data";
     entry->registry_entry.value->type = REG_EXPAND_SZ;
 
-    fim_registry_calculate_hashes(entry, configuration, data_buffer);
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)data_buffer);
 
     assert_string_equal(entry->registry_entry.value->hash_md5, "51718cc02664f7b131b76f8b53918927");
     assert_string_equal(entry->registry_entry.value->hash_sha1, "");
@@ -593,11 +593,10 @@ static void test_fim_registry_calculate_hashes_CHECK_SHA1SUM(void **state) {
     syscheck.registry = one_entry_config;
     registry_t *configuration = &syscheck.registry[0];
     configuration->opts = CHECK_SHA1SUM;
-    BYTE *data_buffer = (unsigned char *)"value_data\0";
+    WCHAR data_buffer[] = L"value_data\0";
     entry->registry_entry.value->type = REG_MULTI_SZ;
 
-    fim_registry_calculate_hashes(entry, configuration, data_buffer);
-
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)data_buffer);
 
     assert_string_equal(entry->registry_entry.value->hash_md5, "");
     assert_string_equal(entry->registry_entry.value->hash_sha1, "ee6cf811813827f6e18d07f0fb7e22a43337d63c");
@@ -653,6 +652,46 @@ static void test_fim_registry_calculate_hashes_no_config(void **state) {
     fim_registry_calculate_hashes(entry, configuration, data_buffer);
 
     assert_string_equal(entry->registry_entry.value->hash_md5, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+    assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_conversion(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_MD5SUM;
+
+    WCHAR utf16_data[] = L"cmd";
+    entry->registry_entry.value->type = REG_SZ;
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_data);
+
+    // Using MD5 hash of "cmd" (without null character)
+    assert_string_equal(entry->registry_entry.value->hash_md5, "dfff0a7fa1a55c8c1a4966c19f6da452");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+    assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_multi_sz(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_MD5SUM;
+
+    // REG_MULTI_SZ is expected to have double null termination:
+    // https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
+    WCHAR utf16_multi_data[] = L"A\0B\0";
+    entry->registry_entry.value->type = REG_MULTI_SZ;
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_multi_data);
+
+    // Using MD5 hash of "AB" (without null characters)
+    assert_string_equal(entry->registry_entry.value->hash_md5, "b86fc6b051f63d73de262d4c34e3a0a9");
     assert_string_equal(entry->registry_entry.value->hash_sha1, "");
     assert_string_equal(entry->registry_entry.value->hash_sha256, "");
     assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
@@ -1154,6 +1193,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_CHECK_SHA256SUM, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_default_type, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_no_config, setup_test_hashes, teardown_test_hashes),
+
+        /* UTF-16 to UTF-8 conversion tests for Issue #33371 */
+        cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_utf16_conversion, setup_test_hashes, teardown_test_hashes),
+        cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_utf16_multi_sz, setup_test_hashes, teardown_test_hashes),
 
         /* fim_registry_scan tests */
         cmocka_unit_test(test_fim_registry_scan_base_line_generation),

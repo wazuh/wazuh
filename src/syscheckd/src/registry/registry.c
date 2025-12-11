@@ -700,17 +700,31 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
 
     switch (entry->registry_entry.value->type) {
     case REG_SZ:
-    case REG_EXPAND_SZ:
-        fim_registry_update_digests(data_buffer, strlen((char *)data_buffer), configuration->opts, md5_ctx, sha1_ctx,
-                                    sha256_ctx);
-        break;
-    case REG_MULTI_SZ:
-        /* Print multiple strings */
-        for (string_it = (char *)data_buffer; *string_it; string_it += strlen(string_it) + 1) {
-            fim_registry_update_digests((BYTE *)string_it, strlen(string_it), configuration->opts, md5_ctx, sha1_ctx,
-                                        sha256_ctx);
+    case REG_EXPAND_SZ: {
+        WCHAR *w_data = (WCHAR *)data_buffer;
+        char *utf8_data = wide_to_utf8(w_data);
+        if (utf8_data) {
+            fim_registry_update_digests((BYTE *)utf8_data, strlen(utf8_data), configuration->opts,
+                                        md5_ctx, sha1_ctx, sha256_ctx);
+            os_free(utf8_data);
         }
-        break;
+    }
+    break;
+    case REG_MULTI_SZ: {
+        WCHAR *w_data = (WCHAR *)data_buffer;
+
+        // Multi string check
+        while (*w_data) {
+            char *utf8_data = wide_to_utf8(w_data);
+            if (utf8_data) {
+                fim_registry_update_digests((BYTE *)utf8_data, strlen(utf8_data), configuration->opts,
+                                            md5_ctx, sha1_ctx, sha256_ctx);
+                os_free(utf8_data);
+            }
+            w_data += wcslen(w_data) + 1; // Update pointer to next string location
+        }
+    }
+    break;
     case REG_DWORD:
         length = snprintf((char *)buffer, OS_SIZE_2048, "%08x", *((unsigned int *)data_buffer));
         fim_registry_update_digests(buffer, length, configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
@@ -925,8 +939,60 @@ void fim_read_values(HKEY key_handle,
         fim_registry_get_checksum_value(new.registry_entry.value);
 
         if (configuration->opts & CHECK_SEECHANGES) {
-            diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->name,
-                                       (char *)data_buffer, new.registry_entry.value->type, configuration);
+            char *value_data_for_diff = NULL;
+
+            if (data_type == REG_SZ || data_type == REG_EXPAND_SZ) {
+                // Single string case
+                value_data_for_diff = wide_to_utf8((WCHAR*)data_buffer);
+            } else if (data_type == REG_MULTI_SZ) {
+                // Multiple string case
+                WCHAR *w_data = (WCHAR *)data_buffer;
+                size_t total_size = 0;
+                WCHAR *it;
+                char *cur;
+
+                // 1) Compute sum of string sizes for allocation
+
+                it = w_data;
+                while (*it) {
+                    char *utf8_temp = wide_to_utf8(it);
+                    if (utf8_temp) {
+                        total_size += strlen(utf8_temp) + 1; // Include null terminator
+                        os_free(utf8_temp);
+                    }
+                    it += wcslen(it) + 1;
+                }
+                total_size += 1; // Final null terminator
+
+                os_calloc(total_size, sizeof(char), value_data_for_diff);
+
+                // 2) Create concatenated UTF-8 string
+                cur = value_data_for_diff;
+                while (*w_data) {
+                    char *utf8_data = wide_to_utf8(w_data);
+                    if (utf8_data) {
+                        size_t len = strlen(utf8_data);
+                        memcpy(cur, utf8_data, len + 1);
+                        cur += len + 1;
+                        os_free(utf8_data);
+                    }
+                    w_data += wcslen(w_data) + 1;
+                }
+                *cur = '\0';
+            } else {
+                // Binary or numeric cases
+                value_data_for_diff = (char *)data_buffer;
+            }
+
+            if (value_data_for_diff) {
+                diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->name,
+                                           value_data_for_diff, new.registry_entry.value->type, configuration);
+            }
+
+            // Free only if allocated in this function
+            if (data_type == REG_SZ || data_type == REG_EXPAND_SZ || data_type == REG_MULTI_SZ) {
+                os_free(value_data_for_diff);
+            }
         }
         txn_ctx_regval->diff = diff;
         txn_ctx_regval->data = new.registry_entry.value;
