@@ -1,0 +1,181 @@
+{
+  "Start": {
+    "agentid": "010",
+    "mode": "full",
+    "option": "VDSync",
+    "agentname": "win11-host",
+    "agentversion": "v5.0.0",
+    "architecture": "x86_64",
+    "hostname": "win11-host",
+    "osname": "Windows 11 Pro",
+    "osplatform": "windows",
+    "ostype": "windows",
+    "osversion": "10.0.22631",
+    "groups": [
+      "default"
+    ],
+    "indices": [
+      "wazuh-states-inventory-system",
+      "wazuh-states-inventory-packages"
+    ],
+    "size": 4
+  },
+  "data_values": [
+    {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "operation": "upsert",
+      "payload": {
+        "host": {
+          "hostname": "win11-host",
+          "architecture": "x86_64",
+          "os": {
+            "item_id": "os-win11-001",
+            "name": "Windows",
+            "platform": "windows",
+            "type": "windows",
+            "version": "10.0.22631",
+            "full": "Windows 11 23H2",
+            "major": "11",
+            "minor": "0"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T11:59:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "operation": "delete",
+      "payload": {
+        "host": {
+          "os": {
+            "item_id": "os-win10-old"
+          }
+        },
+        "state": {
+          "document_version": 2,
+          "modified_at": "2025-11-27T12:05:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "dddddddddddddddddddddddddddddddddddddddddd",
+      "operation": "upsert",
+      "payload": {
+        "package": {
+          "category": "browser",
+          "installed": null,
+          "path": "C:\\\\Program Files (x86)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe",
+          "priority": "optional",
+          "source": "microsoft-edge",
+          "type": "win",
+          "vendor": "Microsoft Corporation",
+          "version": "130.0.0.0",
+          "architecture": "amd64",
+          "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "description": "Microsoft Edge browser",
+          "name": "microsoft-edge",
+          "size": 250000000,
+          "format": "win",
+          "multiarch": "no",
+          "groups": "browser"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:10:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "cccccccccccccccccccccccccccccccccccccccc",
+      "operation": "upsert",
+      "payload": {
+        "package": {
+          "category": "office",
+          "installed": null,
+          "path": "C:\\\\Program Files\\\\Microsoft Office\\\\root\\\\Office16\\\\WINWORD.EXE",
+          "priority": "standard",
+          "source": "microsoft-office",
+          "type": "win",
+          "vendor": "Microsoft Corporation",
+          "version": "16.0.18000.20100",
+          "architecture": "amd64",
+          "checksum": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "description": "Microsoft Office suite",
+          "name": "microsoft-office",
+          "size": 1200000000,
+          "format": "win",
+          "multiarch": "no",
+          "groups": "office"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:12:00.000Z"
+        }
+      }
+    }
+  ],
+  "data_context": [
+    {
+      "payload": {
+        "host": {
+          "os": {
+            "item_id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+            "name": "Windows",
+            "platform": "windows",
+            "type": "windows",
+            "version": "10.0.22631",
+            "full": "Windows 11 23H2",
+            "major": "11",
+            "minor": "0"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:14:00.000Z"
+        }
+      }
+    },
+    {
+      "payload": {
+        "package": {
+          "hotfix": {
+            "name": "KB5068865"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:15:00.000Z"
+        }
+      }
+    },
+    {
+      "payload": {
+        "package": {
+          "hotfix": {
+            "name": "KB5068909"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:16:00.000Z"
+        }
+      }
+    },
+    {
+      "payload": {
+        "package": {
+          "hotfix": {
+            "name": "KB4532951"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:18:00.000Z"
+        }
+      }
+    }
+  ]
+}
