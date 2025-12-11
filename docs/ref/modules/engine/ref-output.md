@@ -56,9 +56,10 @@ wazuh-indexer:
 
 | Name | type | required | Description |
 |------|------|----------|-------------|
-| index | string | yes | Index name where the alerts will be indexed. Should be a valid Elasticsearch index name and start with `wazuh-events-v5-`. |
+| index | string | yes | Data Stream name where the alerts will be indexed. Should be a valid wazuh-indexer data stream name and start with `wazuh-events-v5-`. |
 
-Index name can be expanded with placeholders like `index-name-${PH1}-${PH2}`. If PHX results in an existing string reference to the event it will be replaced in runtime.
+Index name can be expanded with placeholders like `index-name-${PH1}-${PH2}`. If PHX results in an existing string reference to the event it will be replaced in runtime if not will be fail and the alert will not be sent to the indexer.
+The placeholders are sanitized to avoid invalid index names, spaces will be replaced with dashes and uppercase letters will be converted to lowercase.
 
 ### Asset example
 
@@ -85,4 +86,4 @@ outputs:
 ```
 
 > [!TIP]
-> The `$(DATE)` macro is replaced by the current date in the format `YYYY.MM.DD` when the alert is indexed.
+> The `$(DATE)` is special placeholder and replaced by the current date in the format `YYYY.MM.DD` when the alert is indexed.

@@ -14,7 +14,12 @@ metadata:
   references:
     - ""
 
-check: $wazuh.integration.category != "Cloud Services"
+check: >-
+  $wazuh.integration.category != "Cloud Services" OR
+  ($wazuh.integration.name != "aws"
+  AND $wazuh.integration.name != "azure"
+  AND $wazuh.integration.name != "gcp")
+
 
 outputs:
   - wazuh-indexer:
