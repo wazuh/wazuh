@@ -1,7 +1,7 @@
 import sys
 from api_communication.client import APIClient
 import api_communication.proto.crud_pb2 as crud
-
+from shared.dumpers import dict_to_str_yml
 
 def run(args):
 
@@ -21,7 +21,8 @@ def run(args):
         if error:
             sys.exit(f'Error listing resources: {error}')
 
-        print(response['resources'])
+        data = dict_to_str_yml(response['resources'])
+        print(data)
 
     except Exception as e:
         sys.exit(f'Error listing resources: {e}')
