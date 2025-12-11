@@ -14,6 +14,7 @@
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
+#include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
 #include "shared_modules/utils/certHelper.hpp"
 #include <atomic>
@@ -55,6 +56,25 @@ constexpr auto FORMATTED_LENGTH {INDEX_OPERATION_PREFIX + ID_FIELD_PREFIX + CLOS
 // {"delete":{"_index":"<index>","_id":"<id>"}}
 constexpr auto DELETE_FORMATTED_LENGTH {DELETE_OPERATION_PREFIX + DELETE_ID_FIELD_PREFIX + CLOSING_BRACES +
                                         NEWLINE_CHAR};
+
+/**
+ * @brief Appends an ID to bulkData, escaping special characters if necessary
+ * @param bulkData The string to append the ID to
+ * @param id The ID to append (will be escaped if needed)
+ */
+inline void appendEscapedId(std::string& bulkData, std::string_view id)
+{
+    if (needEscape(id))
+    {
+        std::string escapedId;
+        escapeJSONString(id, escapedId);
+        bulkData.append(escapedId);
+    }
+    else
+    {
+        bulkData.append(id);
+    }
+}
 
 template<typename TSelector,
          typename THttpRequest,
@@ -741,7 +761,7 @@ public:
         m_bulkData.append(R"({"delete":{"_index":")");
         m_bulkData.append(index);
         m_bulkData.append(R"(","_id":")");
-        m_bulkData.append(id);
+        appendEscapedId(m_bulkData, id);
         m_bulkData.append(R"("}})");
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
@@ -788,7 +808,7 @@ public:
             if (!id.empty())
             {
                 m_bulkData.append(R"(","_id":")");
-                m_bulkData.append(id);
+                appendEscapedId(m_bulkData, id);
             }
             else
             {
@@ -811,7 +831,7 @@ public:
             if (!id.empty())
             {
                 m_bulkData.append(R"(","_id":")");
-                m_bulkData.append(id);
+                appendEscapedId(m_bulkData, id);
             }
             logDebug2(IC_NAME,
                       "No version specified for document %.*s, using default versioning",

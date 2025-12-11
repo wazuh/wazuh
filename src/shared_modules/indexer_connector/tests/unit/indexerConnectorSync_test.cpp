@@ -1814,6 +1814,159 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     EXPECT_THAT(doc2_metadata, ::testing::Not(::testing::HasSubstr("version")));
 }
 
+// Test escaping special characters in document IDs for bulkIndex
+TEST_F(IndexerConnectorSyncTest, BulkIndexEscapesSpecialCharactersInId)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test various special characters that need escaping
+    connector.bulkIndex("001_dum\\amy", "test_index", R"({"group":"dum\\amy"})");
+    connector.bulkIndex("002_tab\tchar", "test_index", R"({"name":"tab\tchar"})");
+    connector.bulkIndex("003_quote\"char", "test_index", R"({"name":"quote\"char"})");
+    connector.bulkIndex("004_newline\nchar", "test_index", R"({"name":"newline\nchar"})");
+
+    connector.flush();
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for escape test processing";
+
+    // Verify backslash is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"001_dum\\amy")"));
+
+    // Verify tab is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"002_tab\tchar")"));
+
+    // Verify quote is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"003_quote\"char")"));
+
+    // Verify newline is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"004_newline\nchar")"));
+
+    // Verify the bulk data is valid (no JSON parse errors would occur)
+    EXPECT_FALSE(capturedBulkData.empty());
+}
+
+// Test escaping special characters in document IDs for bulkDelete
+TEST_F(IndexerConnectorSyncTest, BulkDeleteEscapesSpecialCharactersInId)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test special characters in delete operations
+    connector.bulkDelete("001_dum\\amy", "test_index");
+    connector.bulkDelete("002_tab\tchar", "test_index");
+
+    connector.flush();
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for delete escape test processing";
+
+    // Verify backslash is properly escaped in delete ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"001_dum\\amy")"));
+
+    // Verify tab is properly escaped in delete ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"002_tab\tchar")"));
+}
+
+// Test that IDs without special characters are not unnecessarily escaped
+TEST_F(IndexerConnectorSyncTest, BulkIndexDoesNotEscapeNormalIds)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test normal IDs that don't need escaping
+    connector.bulkIndex("001_normal_id", "test_index", R"({"field":"value"})");
+    connector.bulkIndex("002-another-normal-id_123", "test_index", R"({"field":"value"})");
+
+    connector.flush();
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for normal ID test processing";
+
+    // Verify normal IDs are passed through unchanged
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"001_normal_id")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"002-another-normal-id_123")"));
+}
+
 // Test error handling for invalid input with version in sync connector
 TEST_F(IndexerConnectorSyncTest, ErrorHandlingForInvalidInputWithVersion)
 {

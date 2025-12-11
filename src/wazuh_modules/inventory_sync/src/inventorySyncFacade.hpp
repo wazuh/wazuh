@@ -859,42 +859,28 @@ public:
                                 if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
+
+                                    // Build metadata using nlohmann::json for automatic escaping
+                                    nlohmann::json metadata;
+                                    metadata["agent"]["id"] = res.context->agentId;
+                                    metadata["agent"]["name"] = res.context->agentName;
+                                    metadata["agent"]["version"] = res.context->agentVersion;
+                                    metadata["agent"]["groups"] = res.context->groups;
+                                    metadata["agent"]["host"]["architecture"] = res.context->architecture;
+                                    metadata["agent"]["host"]["hostname"] = res.context->hostname;
+                                    metadata["agent"]["host"]["os"]["name"] = res.context->osname;
+                                    metadata["agent"]["host"]["os"]["platform"] = res.context->osplatform;
+                                    metadata["agent"]["host"]["os"]["type"] = res.context->ostype;
+                                    metadata["agent"]["host"]["os"]["version"] = res.context->osversion;
+                                    metadata["wazuh"]["cluster"]["name"] = m_clusterName;
+
+                                    // Serialize metadata to string and append FlatBuffer inventory data
                                     thread_local std::string dataString;
-                                    dataString.clear();
-                                    dataString.append(R"({"agent":{"id":")");
-                                    dataString.append(res.context->agentId);
-                                    dataString.append(R"(","name":")");
-                                    dataString.append(res.context->agentName);
-                                    dataString.append(R"(","version":")");
-                                    dataString.append(res.context->agentVersion);
-                                    dataString.append(R"(","groups":[)");
-                                    bool firstGroup = true;
-                                    for (const auto& group : res.context->groups)
-                                    {
-                                        if (!firstGroup)
-                                        {
-                                            dataString.append(",");
-                                        }
-                                        dataString.append(R"(")");
-                                        dataString.append(group);
-                                        dataString.append(R"(")");
-                                        firstGroup = false;
-                                    }
-                                    dataString.append(R"(],"host":{"architecture":")");
-                                    dataString.append(res.context->architecture);
-                                    dataString.append(R"(","hostname":")");
-                                    dataString.append(res.context->hostname);
-                                    dataString.append(R"(","os":{"name":")");
-                                    dataString.append(res.context->osname);
-                                    dataString.append(R"(","platform":")");
-                                    dataString.append(res.context->osplatform);
-                                    dataString.append(R"(","type":")");
-                                    dataString.append(res.context->ostype);
-                                    dataString.append(R"(","version":")");
-                                    dataString.append(res.context->osversion);
-                                    dataString.append(R"("}}},"wazuh":{"cluster":{"name":")");
-                                    dataString.append(m_clusterName);
-                                    dataString.append(R"("}},)");
+                                    dataString = metadata.dump();
+                                    // Remove closing brace to append inventory data
+                                    dataString.pop_back();
+                                    dataString.append(",");
+                                    // Append inventory data (skip opening brace from FlatBuffer data)
                                     dataString.append(std::string_view((const char*)data->data()->data() + 1,
                                                                        data->data()->size() - 1));
                                     const auto version = data->version();
