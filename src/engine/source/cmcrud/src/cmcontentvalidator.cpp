@@ -35,9 +35,8 @@ void ContentValidator::validateIntegration(const std::shared_ptr<cm::store::ICMS
     if (err.has_value())
     {
         const auto& e = base::getError(err);
-        throw std::runtime_error(fmt::format("Integration validation failed for '{}' in namespace '{}': {}",
+        throw std::runtime_error(fmt::format("Integration validation failed for '{}': {}",
                                              integration.getName(),
-                                             nsReader->getNamespaceId().toStr(),
                                              e.message));
     }
 }
@@ -55,8 +54,7 @@ void ContentValidator::validateAsset(const std::shared_ptr<cm::store::ICMStoreNS
     if (err.has_value())
     {
         const auto& e = base::getError(err);
-        throw std::runtime_error(fmt::format(
-            "Asset validation failed in namespace '{}': {}", nsReader->getNamespaceId().toStr(), e.message));
+        throw std::runtime_error(fmt::format("Asset validation failed: {}", e.message));
     }
 }
 

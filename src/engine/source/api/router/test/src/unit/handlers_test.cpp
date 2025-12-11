@@ -101,6 +101,7 @@ INSTANTIATE_TEST_SUITE_P(
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
                 jsonReq.setString("filter/name/0", "/route/filter");
+                jsonReq.setString("not-valid", "/route/namespaceId");
                 jsonReq.setInt(1, "/route/priority");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -109,7 +110,10 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid namespace id: Invalid namespace ID: "); },
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Invalid namespace id: Invalid namespace ID: not-valid");
+            },
             [](auto&) {}),
         // Invalid filter
         HandlerT(
@@ -117,7 +121,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
-                jsonReq.setString("policy/name/0", "/route/policy");
+                jsonReq.setString("testing", "/route/namespaceId");
                 jsonReq.setInt(1, "/route/priority");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -126,7 +130,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid namespace id: Invalid namespace ID: "); },
+            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid filter name: Name cannot be empty"); },
             [](auto&) {}),
         // Invalid priority (default 0)
         HandlerT(
@@ -336,7 +340,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePatchPriority(router); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>("error"); },
-            [](auto& mock) {
+            [](auto& mock)
+            {
                 EXPECT_CALL(mock, changeEntryPriority(testing::_, 1)).WillOnce(testing::Return(base::Error {"error"}));
             }),
         // Wrong request type

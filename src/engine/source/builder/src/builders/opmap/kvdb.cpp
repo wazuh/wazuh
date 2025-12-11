@@ -76,8 +76,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     catch (const std::exception& e)
     {
         const auto nsStr = nsReader.getNamespaceId().toStr();
-        throw std::runtime_error(fmt::format(
-            "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
+        throw std::runtime_error(fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
     }
 
     // Validate the target field
@@ -315,8 +314,7 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     catch (const std::exception& e)
     {
         const auto nsStr = nsReader.getNamespaceId().toStr();
-        throw std::runtime_error(fmt::format(
-            "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
+        throw std::runtime_error(fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
     }
 
     // Trace messages
@@ -458,8 +456,8 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         catch (const std::exception& e)
         {
             const auto nsStr = nsReader.getNamespaceId().toStr();
-            throw std::runtime_error(fmt::format(
-                "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
+            throw std::runtime_error(
+                fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
         }
 
         // Validate target field
@@ -745,8 +743,8 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         catch (const std::exception& e)
         {
             const auto nsStr = nsReader.getNamespaceId().toStr();
-            throw std::runtime_error(fmt::format(
-                "Engine KVDB builder: failed to load KVDB '{}' in namespace '{}': {}", dbName, nsStr, e.what()));
+            throw std::runtime_error(
+                fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
         }
 
         try

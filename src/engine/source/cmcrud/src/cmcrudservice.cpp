@@ -267,6 +267,14 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
             {
                 json::Json assetJson = yamlToJson(document);
                 auto name = assetNameFromJson(assetJson);
+                const auto resource = resourceTypeToString(type);
+
+                if (resource != name.parts().front())
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Asset name '{}' does not match resource type '{}'", name, resourceTypeToString(type)));
+                }
+
                 m_validator->validateAsset(nsReader, assetJson);
 
                 const std::string nameStr = name.toStr();

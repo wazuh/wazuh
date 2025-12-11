@@ -108,7 +108,10 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: "); },
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Invalid policy name: Invalid namespace ID: ");
+            },
             [](auto&) {}),
         // Invalid filter
         HandlerT(
@@ -116,7 +119,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/session");
-                jsonReq.setString("", "/session/policy");
+                jsonReq.setString("not-valid", "/session/namespaceId");
                 jsonReq.setInt(10, "/session/lifetime");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -125,7 +128,10 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Invalid namespace ID: "); },
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Invalid policy name: Invalid namespace ID: not-valid");
+            },
             [](auto&) {}),
         // Route with description
         HandlerT(

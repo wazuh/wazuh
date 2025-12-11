@@ -89,7 +89,6 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
         return base::noError();
     }
 
-    const auto& namespaceId = nsReader->getNamespaceId();
     const auto& integrationName = integration.getName();
 
     // Decoders
@@ -102,22 +101,17 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
         }
         catch (const std::exception& e)
         {
-            return base::Error {fmt::format(
-                "Failed to resolve name for decoder with uuid='{}' in namespace '{}' for integration '{}': {}",
-                uuid,
-                namespaceId.toStr(),
-                integrationName,
-                e.what())};
+            return base::Error {
+                fmt::format("Failed to resolve name for decoder with uuid='{}' for integration '{}': {}",
+                            uuid,
+                            integrationName,
+                            e.what())};
         }
 
         if (!nsReader->assetExistsByUUID(uuid))
         {
-            return base::Error {
-                fmt::format("Decoder '{}' (uuid='{}') does not exist in namespace '{}' for integration '{}'.",
-                            decoderName,
-                            uuid,
-                            namespaceId.toStr(),
-                            integrationName)};
+            return base::Error {fmt::format(
+                "Decoder '{}' (uuid='{}') does not exist for integration '{}'.", decoderName, uuid, integrationName)};
         }
     }
 
@@ -131,12 +125,10 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
         }
         catch (const std::exception& e)
         {
-            return base::Error {
-                fmt::format("Failed to resolve name for KVDB with uuid='{}' in namespace '{}' for integration '{}': {}",
-                            uuid,
-                            namespaceId.toStr(),
-                            integrationName,
-                            e.what())};
+            return base::Error {fmt::format("Failed to resolve name for KVDB with uuid='{}' for integration '{}': {}",
+                                            uuid,
+                                            integrationName,
+                                            e.what())};
         }
 
         try
@@ -145,13 +137,11 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
         }
         catch (const std::exception& e)
         {
-            return base::Error {
-                fmt::format("Error accessing KVDB '{}' (uuid='{}') in namespace '{}' for integration '{}': {}",
-                            kvdbName,
-                            uuid,
-                            namespaceId.toStr(),
-                            integrationName,
-                            e.what())};
+            return base::Error {fmt::format("Error accessing KVDB '{}' (uuid='{}') for integration '{}': {}",
+                                            kvdbName,
+                                            uuid,
+                                            integrationName,
+                                            e.what())};
         }
     }
 
@@ -159,10 +149,8 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
     const auto& category = integration.getCategory();
     if (!cm::store::categories::exists(category))
     {
-        return base::Error {fmt::format("Category '{}' is not a valid category for integration '{}' in namespace '{}'.",
-                                        category,
-                                        integrationName,
-                                        namespaceId.toStr())};
+        return base::Error {
+            fmt::format("Category '{}' is not a valid category for integration '{}'.", category, integrationName)};
     }
 
     // Default parent
@@ -171,11 +159,9 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
         const auto& parentName = *opt;
         if (!nsReader->assetExistsByUUID(parentName))
         {
-            return base::Error {
-                fmt::format("Default parent '{}' does not exist as asset in namespace '{}' for integration '{}'.",
-                            std::get<0>(nsReader->resolveNameFromUUID(parentName)),
-                            namespaceId.toStr(),
-                            integrationName)};
+            return base::Error {fmt::format("Default parent '{}' does not exist as asset for integration '{}'.",
+                                            std::get<0>(nsReader->resolveNameFromUUID(parentName)),
+                                            integrationName)};
         }
     }
 
@@ -196,7 +182,6 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
         auto asset = (*assetBuilder)(assetJson);
 
-        const auto& nsId = nsReader->getNamespaceId();
         const auto& assetName = asset.name();
         const auto& parents = asset.parents();
 
@@ -204,11 +189,8 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
         {
             if (!nsReader->assetExistsByName(parentName))
             {
-                return base::Error {
-                    fmt::format("Parent '{}' referenced by asset '{}' does not exist in namespace '{}'.",
-                                parentName.toStr(),
-                                assetName.toStr(),
-                                nsId.toStr())};
+                return base::Error {fmt::format(
+                    "Parent '{}' referenced by asset '{}' does not exist.", parentName.toStr(), assetName.toStr())};
             }
         }
     }
@@ -223,8 +205,7 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
 base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                            const cm::store::dataType::Policy& policy) const
 {
-    const auto& namespaceId = nsReader->getNamespaceId();
-    const auto policyName = namespaceId.toStr();
+    const auto policyName = nsReader->getNamespaceId().toStr();
 
     // Default parent
     const auto& defaultParent = policy.getDefaultParent();
