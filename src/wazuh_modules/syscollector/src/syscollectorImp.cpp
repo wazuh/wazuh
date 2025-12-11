@@ -391,15 +391,6 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     // Check disabled collectors with existing data
     checkDisabledCollectorsIndicesWithData();
-    // Clear local.db tables for disabled VD modules
-    // This complements the VDCLEAN notification sent in initSyncProtocol()
-    const auto indicesToClean = getDisabledVDIndices();
-
-    if (!indicesToClean.empty())
-    {
-        clearLocalDBTables(indicesToClean);
-    }
-
 }
 
 void Syscollector::start()
@@ -456,7 +447,6 @@ void Syscollector::start()
         return;
     }
 
-    std::unique_lock<std::mutex> lock{m_mutex};
     // Determine if VD sync should be enabled based on configuration
     // VD-relevant data includes: packages, OS, and hotfixes (Windows only)
     m_vdSyncEnabled = m_packages && m_os;
@@ -473,11 +463,10 @@ void Syscollector::start()
 #endif
     }
 
-    lock.unlock(); // Unlock to allow stop during notifyDataClean
     // Clean VD data for disabled modules
     cleanDisabledVDData();
-    lock.lock();
 
+    std::unique_lock<std::mutex> lock{m_mutex};
     syncLoop(lock);
 }
 

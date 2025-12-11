@@ -9,15 +9,85 @@
  * Foundation.
  */
 #include <cstdio>
-#include <fstream>
+#include <sqlite3.h>
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 #include "../../module_query_errors.h"
+#include "../../src/syscollectorTablesDef.hpp"
 
 #include <mock_sysinfo.hpp>
 
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
+constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
+
+// Helper to populate test DB manually
+void populateTestDb()
+{
+    std::string sql;
+    sql += OS_SQL_STATEMENT;
+    sql += HW_SQL_STATEMENT;
+    sql += PACKAGES_SQL_STATEMENT;
+    sql += HOTFIXES_SQL_STATEMENT;
+    sql += PROCESSES_SQL_STATEMENT;
+    sql += PORTS_SQL_STATEMENT;
+    sql += NETIFACE_SQL_STATEMENT;
+    sql += NETPROTO_SQL_STATEMENT;
+    sql += NETADDR_SQL_STATEMENT;
+    sql += USERS_SQL_STATEMENT;
+    sql += GROUPS_SQL_STATEMENT;
+    sql += SERVICES_SQL_STATEMENT;
+    sql += BROWSER_EXTENSIONS_SQL_STATEMENT;
+
+    // Use DBSync to create the database structure correctly (including metadata tables)
+    {
+        auto callbackErrorLogWrapper = [](const std::string& /*data*/) {};
+        // Ensure DBSync is initialized with our dummy logger
+        DBSync::initialize(callbackErrorLogWrapper);
+        DBSync dbSync(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_TEST_DB_PATH, sql, DbManagement::PERSISTENT);
+    }
+
+    sqlite3* db = nullptr;
+    // Open existing DB created by DBSync
+    int rc = sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr);
+
+    if (rc != SQLITE_OK)
+    {
+        if (db) sqlite3_close(db);
+
+        throw std::runtime_error("Failed to open test DB");
+    }
+
+    // Insert dummy data to trigger "disabled collector with data" detection
+    const char* inserts[] =
+    {
+        "INSERT INTO dbsync_packages (name, version_, architecture, type, path, checksum) VALUES ('pkg1', '1.0', 'arch', 'type', 'path', 'sum');",
+        "INSERT INTO dbsync_processes (pid, name, checksum) VALUES ('123', 'proc1', 'sum');",
+        "INSERT INTO dbsync_hwinfo (serial_number, checksum) VALUES ('sn1', 'sum');",
+        "INSERT INTO dbsync_osinfo (os_name, checksum) VALUES ('os1', 'sum');",
+        "INSERT INTO dbsync_ports (file_inode, network_transport, source_ip, source_port, checksum) VALUES (1, 'tcp', '127.0.0.1', 80, 'sum');",
+        "INSERT INTO dbsync_network_iface (interface_name, interface_alias, interface_type, checksum) VALUES ('eth0', 'alias', 'ethernet', 'sum');",
+        "INSERT INTO dbsync_network_protocol (interface_name, network_type, checksum) VALUES ('eth0', 'ipv4', 'sum');",
+        "INSERT INTO dbsync_network_address (interface_name, network_type, network_ip, checksum) VALUES ('eth0', 0, '1.1.1.1', 'sum');"
+    };
+
+    char* errMsg = 0;
+
+    for (const auto& insertSql : inserts)
+    {
+        rc = sqlite3_exec(db, insertSql, 0, 0, &errMsg);
+
+        if (rc != SQLITE_OK)
+        {
+            std::string msg = errMsg;
+            sqlite3_free(errMsg);
+            sqlite3_close(db);
+            throw std::runtime_error("Failed to insert data: " + msg);
+        }
+    }
+
+    sqlite3_close(db);
+}
 
 // Defines to replace inline JSON in EXPECT_CALLs
 #define EXPECT_CALL_HARDWARE_JSON R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})"
@@ -98,9 +168,15 @@ const auto expected_dbsync_browser_extensions
     R"({"collector":"dbsync_browser_extensions","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"event":{"changed_fields":[],"type":"created"},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":null,"description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":1710489821000,"name":"uBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":["[\\\"activeTab\\\"","\\\"storage\\\"","\\\"tabs\\\"","\\\"webNavigation\\\"]"],"persistent":false,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2","visible":false},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"}},"module":"inventory"})"
 };
 
-void SyscollectorImpTest::SetUp() {};
+void SyscollectorImpTest::SetUp()
+{
+    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+};
 
-void SyscollectorImpTest::TearDown() {};
+void SyscollectorImpTest::TearDown()
+{
+    std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+};
 
 using ::testing::_;
 using ::testing::Return;
@@ -142,6 +218,57 @@ void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/
     // };
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }
+
+// Log capturing structure for testing
+struct LogEntry
+{
+    modules_log_level_t level;
+    std::string message;
+};
+
+class LogCapture
+{
+    public:
+        std::vector<LogEntry> logs;
+
+        void clear()
+        {
+            logs.clear();
+        }
+
+        void capture(modules_log_level_t level, const std::string& message)
+        {
+            logs.push_back({level, message});
+        }
+
+        bool contains(modules_log_level_t level, const std::string& substring) const
+        {
+            for (const auto& entry : logs)
+            {
+                if (entry.level == level && entry.message.find(substring) != std::string::npos)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        size_t count(modules_log_level_t level) const
+        {
+            size_t cnt = 0;
+
+            for (const auto& entry : logs)
+            {
+                if (entry.level == level)
+                {
+                    cnt++;
+                }
+            }
+
+            return cnt;
+        }
+};
 
 // Expected results for persist callback - shared across all tests
 static const auto expectedPersistHW
