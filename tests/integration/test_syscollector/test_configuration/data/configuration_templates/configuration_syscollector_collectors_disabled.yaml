@@ -39,6 +39,8 @@
                   value: SYNC_INTERVAL
               - response_timeout:
                   value: SYNC_RESPONSE_TIMEOUT
+              - retries:
+                  value: 0
 
     - section: syscheck
       elements:
