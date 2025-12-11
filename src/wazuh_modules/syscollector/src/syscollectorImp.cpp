@@ -2101,18 +2101,9 @@ std::vector<std::string> Syscollector::getDataContextTables(Operation operation,
 #ifdef _WIN32
     else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
     {
-        // Hotfix changes (Windows only)
-        if (operation == Operation::CREATE)
-        {
-            // Hotfix INSERT → include packages
-            tables.push_back(PACKAGES_TABLE);
-        }
-        else  // MODIFY or DELETE
-        {
-            // Hotfix UPDATE/DELETE → include packages + hotfixes
-            tables.push_back(PACKAGES_TABLE);
-            tables.push_back(HOTFIXES_TABLE);
-        }
+        tables.push_back(OS_TABLE);
+        tables.push_back(PACKAGES_TABLE);
+        tables.push_back(HOTFIXES_TABLE);
     }
 
 #endif
