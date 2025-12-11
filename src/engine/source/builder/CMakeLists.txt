@@ -104,62 +104,61 @@ add_library(builder::mocks ALIAS builder_mocks)
 ## Unit tests
 add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/baseBuilders_test.cpp
-	${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
-	# ${UNIT_SRC_DIR}/allowedFields_test.cpp
-	# ${UNIT_SRC_DIR}/registry_test.cpp
+	${UNIT_SRC_DIR}/allowedFields_test.cpp
+	${UNIT_SRC_DIR}/registry_test.cpp
 	# ${UNIT_SRC_DIR}/policy/factory_test.cpp
 	# ${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
-	# ${UNIT_SRC_DIR}/builders/helperParser_test.cpp
-	# ${UNIT_SRC_DIR}/builders/baseBuilders_test.cpp
+	${UNIT_SRC_DIR}/builders/helperParser_test.cpp
 	# # Filter Builders
-	# ${UNIT_SRC_DIR}/builders/opfilter/filter_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/exists_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/startsWith_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/endsWith_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/intCmp_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/numberCmp_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/strCmp_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/regex_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/is_ipv4_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/is_ipv6_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/ip_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/arrayContains_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/types_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/match_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/is_test_session_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opfilter/keys_exist_in_list_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/filter_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/exists_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/startsWith_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/endsWith_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/intCmp_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/numberCmp_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/strCmp_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/regex_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/is_ipv4_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/is_ipv6_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/ip_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/arrayContains_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/types_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/match_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/is_test_session_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/keys_exist_in_list_test.cpp
 
 	# # Map Builders
-	# ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/strTransform_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/floatCalc_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/intCalc_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/toInt_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/toBool_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/regex_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/ip_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/time_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/hash_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/syslogFacilityAndSeverityName_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/mmdb_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/arrayObj_to_MapKv_test.cpp
-	# ${UNIT_SRC_DIR}/builders/opmap/array_extract_key_obj_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/map_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/strTransform_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/floatCalc_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/intCalc_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/toInt_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/toBool_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/regex_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/ip_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/time_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/hash_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/syslogFacilityAndSeverityName_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/mmdb_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/arrayObj_to_MapKv_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/array_extract_key_obj_test.cpp
 
 	# # Transform Builders
-	# ${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
-	# ${UNIT_SRC_DIR}/builders/optransform/jsonTransform_test.cpp
-	# ${UNIT_SRC_DIR}/builders/optransform/array_test.cpp
-	# ${UNIT_SRC_DIR}/builders/optransform/objectGet_test.cpp
+	${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
+	${UNIT_SRC_DIR}/builders/optransform/jsonTransform_test.cpp
+	${UNIT_SRC_DIR}/builders/optransform/array_test.cpp
+	${UNIT_SRC_DIR}/builders/optransform/objectGet_test.cpp
 	# ${UNIT_SRC_DIR}/builders/optransform/windows_test.cpp
-	# ${UNIT_SRC_DIR}/builders/optransform/hlp_test.cpp
-	# # Stage Builders
-	# ${UNIT_SRC_DIR}/builders/stage/check_test.cpp
-	# ${UNIT_SRC_DIR}/builders/stage/map_test.cpp
-	# ${UNIT_SRC_DIR}/builders/stage/normalize_test.cpp
-	# ${UNIT_SRC_DIR}/builders/stage/parse_test.cpp
-	# ${UNIT_SRC_DIR}/builders/stage/outputs_test.cpp
-	# ${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
+	${UNIT_SRC_DIR}/builders/optransform/hlp_test.cpp
+	# Stage Builders
+	${UNIT_SRC_DIR}/builders/stage/check_test.cpp
+	${UNIT_SRC_DIR}/builders/stage/map_test.cpp
+	${UNIT_SRC_DIR}/builders/stage/normalize_test.cpp
+	${UNIT_SRC_DIR}/builders/stage/parse_test.cpp
+	${UNIT_SRC_DIR}/builders/stage/outputs_test.cpp
+	${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
 	# # TODO: Until the indexer connector is unified with the rest of wazuh-manager
 	${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
 )
