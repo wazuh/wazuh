@@ -14,7 +14,6 @@
  * This file contains tests for:
  * - VD index to table name mapping verification
  * - getDisabledVDIndices() functionality with actual implementation testing
- * - clearLocalDBTables() functionality with mocked DBSync
  * - Integration tests for disabled modules with database cleanup
  */
 

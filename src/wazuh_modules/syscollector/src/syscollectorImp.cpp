@@ -457,6 +457,27 @@ void Syscollector::start()
     }
 
     std::unique_lock<std::mutex> lock{m_mutex};
+    // Determine if VD sync should be enabled based on configuration
+    // VD-relevant data includes: packages, OS, and hotfixes (Windows only)
+    m_vdSyncEnabled = m_packages && m_os;
+#ifdef _WIN32
+    m_vdSyncEnabled = m_vdSyncEnabled && m_hotfixes;
+#endif
+
+    if (!m_vdSyncEnabled)
+    {
+#ifdef _WIN32
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages, OS, or hotfixes scanning is enabled in the configuration.");
+#else
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages or OS scanning is enabled in the configuration.");
+#endif
+    }
+
+    lock.unlock(); // Unlock to allow stop during notifyDataClean
+    // Clean VD data for disabled modules
+    cleanDisabledVDData();
+    lock.lock();
+
     syncLoop(lock);
 }
 
@@ -1730,22 +1751,6 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         this->m_logFunction(level, msg);
     };
 
-    // Determine if VD sync should be enabled based on configuration
-    // VD-relevant data includes: packages, OS, and hotfixes (Windows only)
-    m_vdSyncEnabled = m_packages || m_os;
-#ifdef _WIN32
-    m_vdSyncEnabled = m_vdSyncEnabled || m_hotfixes;
-#endif
-
-    if (!m_vdSyncEnabled)
-    {
-#ifdef _WIN32
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages, OS, or hotfixes scanning is enabled in the configuration.");
-#else
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages or OS scanning is enabled in the configuration.");
-#endif
-    }
-
     try
     {
         // Initialize regular sync protocol
@@ -1757,46 +1762,6 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
-        // Clean VD data for disabled indices
-        const auto indicesToClean = getDisabledVDIndices();
-
-        for (const auto& index : indicesToClean)
-        {
-            std::string moduleType;
-
-            if (index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
-            {
-                moduleType = "Packages";
-            }
-            else if (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
-            {
-                moduleType = "OS";
-            }
-            else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
-            {
-                moduleType = "Hotfixes";
-            }
-
-            if (!moduleType.empty())
-            {
-                m_logFunction(LOG_INFO, moduleType + " scanning disabled, will clean " + moduleType + " data");
-            }
-        }
-
-        // Notify data clean for disabled VD indices
-        if (!indicesToClean.empty() && m_spSyncProtocolVD)
-        {
-            m_logFunction(LOG_INFO, "Notifying data clean for disabled VD indices");
-
-            if (m_spSyncProtocolVD->notifyDataClean(indicesToClean, Option::VDCLEAN))
-            {
-                m_logFunction(LOG_INFO, "Data clean notification sent successfully for disabled VD indices");
-            }
-            else
-            {
-                m_logFunction(LOG_WARNING, "Failed to send data clean notification for disabled VD indices");
-            }
-        }
     }
     catch (const std::exception& ex)
     {
@@ -1927,53 +1892,6 @@ bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
     return false;
 }
 
-void Syscollector::clearLocalDBTables(const std::vector<std::string>& indices)
-{
-    if (!m_spDBSync)
-    {
-        m_logFunction(LOG_WARNING, "Cannot clear local database tables: DBSync not initialized");
-        return;
-    }
-
-    for (const auto& index : indices)
-    {
-        std::string tableName;
-
-        // Map index to table name
-        if (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
-        {
-            tableName = OS_TABLE;
-        }
-        else if (index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
-        {
-            tableName = PACKAGES_TABLE;
-        }
-        else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
-        {
-            tableName = HOTFIXES_TABLE;
-        }
-
-        if (!tableName.empty())
-        {
-            try
-            {
-                // Delete all rows from the table in local.db
-                nlohmann::json deleteInput;
-                deleteInput["table"] = tableName;
-                deleteInput["query"]["where_filter_opt"] = "1=1";
-                m_spDBSync->deleteRows(deleteInput);
-
-                m_logFunction(LOG_INFO, "Cleared local database table: " + tableName + " for index: " + index);
-            }
-            catch (const std::exception& e)
-            {
-                m_logFunction(LOG_ERROR, "Failed to clear local database table " + tableName + ": " + std::string(e.what()));
-                // Don't fail the entire operation if local.db cleanup fails
-            }
-        }
-    }
-}
-
 std::vector<std::string> Syscollector::getDisabledVDIndices() const
 {
     std::vector<std::string> indices;
@@ -1998,6 +1916,50 @@ std::vector<std::string> Syscollector::getDisabledVDIndices() const
 #endif
 
     return indices;
+}
+
+void Syscollector::cleanDisabledVDData()
+{
+    // Clean VD data for disabled indices
+    const auto indicesToClean = getDisabledVDIndices();
+
+    for (const auto& index : indicesToClean)
+    {
+        std::string moduleType;
+
+        if (index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
+        {
+            moduleType = "Packages";
+        }
+        else if (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
+        {
+            moduleType = "OS";
+        }
+        else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
+        {
+            moduleType = "Hotfixes";
+        }
+
+        if (!moduleType.empty())
+        {
+            m_logFunction(LOG_INFO, moduleType + " scanning disabled, will clean " + moduleType + " data");
+        }
+    }
+
+    // Notify data clean for disabled VD indices
+    if (!indicesToClean.empty() && m_spSyncProtocolVD)
+    {
+        m_logFunction(LOG_INFO, "Notifying data clean for disabled VD indices");
+
+        if (m_spSyncProtocolVD->notifyDataClean(indicesToClean, Option::VDCLEAN))
+        {
+            m_logFunction(LOG_INFO, "Data clean notification sent successfully for disabled VD indices");
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Failed to send data clean notification for disabled VD indices");
+        }
+    }
 }
 
 std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds)
@@ -2298,13 +2260,6 @@ bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
     if (!vdIndices.empty() && m_spSyncProtocolVD)
     {
         success = m_spSyncProtocolVD->notifyDataClean(vdIndices, Option::VDCLEAN) && success;
-
-        // After successful notification, also clean the local.db tables
-        // This ensures that when modules are re-enabled, DBSync can detect new data
-        if (success)
-        {
-            clearLocalDBTables(vdIndices);
-        }
     }
 
     return success;

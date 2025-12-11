@@ -3266,7 +3266,6 @@ TEST_F(SyscollectorImpTest, notifyDataClean_VDIndicesOnly)
     /**
      * Test: Verify notifyDataClean correctly separates and processes VD indices
      * VD indices (system, packages, hotfixes) should use VDCLEAN option
-     * and trigger clearLocalDBTables for local cleanup
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};

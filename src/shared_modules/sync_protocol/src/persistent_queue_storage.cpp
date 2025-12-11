@@ -312,8 +312,8 @@ std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataVal
 
         if (m_logger)
         {
-            m_logger(LOG_DEBUG, "PersistentQueueStorage: Fetched " + std::to_string(result.size()) +
-                     " pending items (onlyDataValues=" + std::to_string(onlyDataValues) + ")");
+            m_logger(LOG_DEBUG, "PersistentQueueStorage: Fetcheing " + std::to_string(result.size()) +
+                     " pending datavalues items");
         }
     }
     catch (const std::exception& e)
