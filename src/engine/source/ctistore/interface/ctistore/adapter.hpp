@@ -182,6 +182,16 @@ json::Json adaptDecoder(const json::Json& document)
         }
     }
 
+    // 6. enabled
+    if (document.exists("/enabled"))
+    {
+        auto enabledOpt = document.getJson("/enabled");
+        if (enabledOpt.has_value())
+        {
+            result.set("/enabled", *enabledOpt);
+        }
+    }
+
     return result;
 }
 } // namespace

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <base/expression.hpp>
+#include <base/name.hpp>
 
 namespace builder::policy
 {

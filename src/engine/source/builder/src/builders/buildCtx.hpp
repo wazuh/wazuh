@@ -24,6 +24,8 @@ private:
 
     std::shared_ptr<const builder::IAllowedFields> m_allowedFields; ///< Allowed fields
 
+    std::shared_ptr<cm::store::ICMStoreNSReader> m_storeNSReader; ///< Store namespace reader
+
 public:
     BuildCtx()
     {
@@ -33,6 +35,7 @@ public:
         m_definitions = nullptr;
         m_schemaValidator = nullptr;
         m_allowedFields = nullptr;
+        m_storeNSReader = nullptr;
     }
 
     ~BuildCtx() = default;
@@ -52,13 +55,15 @@ public:
              const std::shared_ptr<const RegistryType>& registry,
              const std::shared_ptr<const defs::IDefinitions>& definitions,
              const std::shared_ptr<const schemf::IValidator>& schemaValidator,
-             const std::shared_ptr<const builder::IAllowedFields>& allowedFields)
+             const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
+             const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
         , m_definitions(definitions)
         , m_schemaValidator(schemaValidator)
         , m_allowedFields(allowedFields)
+        , m_storeNSReader(storeNSReader)
     {
     }
 
@@ -70,7 +75,7 @@ public:
     inline std::shared_ptr<IBuildCtx> clone() const override
     {
         return std::make_shared<BuildCtx>(
-            m_runState, m_context, m_registry, m_definitions, m_schemaValidator, m_allowedFields);
+            m_runState, m_context, m_registry, m_definitions, m_schemaValidator, m_allowedFields, m_storeNSReader);
     }
 
     /**
@@ -150,6 +155,26 @@ public:
     inline void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) override
     {
         m_allowedFields = allowedFields;
+    }
+
+    /**
+     * @copydoc IBuildCtx::getStoreNSReader
+     */
+    inline const cm::store::ICMStoreNSReader& getStoreNSReader() const override
+    {
+        if (!m_storeNSReader)
+        {
+            throw std::runtime_error("Store namespace reader not set in build context");
+        }
+        return *m_storeNSReader;
+    }
+
+    /**
+     * @copydoc IBuildCtx::setStoreNSReader
+     */
+    inline void setStoreNSReader(std::shared_ptr<cm::store::ICMStoreNSReader> nsReader) override
+    {
+        m_storeNSReader = std::move(nsReader);
     }
 };
 

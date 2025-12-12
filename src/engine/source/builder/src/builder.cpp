@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <store/utils.hpp>
+#include <cmstore/categories.hpp>
 
 #include "allowedFields.hpp"
 #include "builders/ibuildCtx.hpp"
@@ -19,19 +19,19 @@ class Builder::Registry final : public builders::RegistryType
 {
 };
 
-Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
+Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                  const std::shared_ptr<IAllowedFields>& allowedFields,
                  const BuilderDeps& builderDeps)
-    : m_storeRead {storeRead}
+    : m_cmStore {cmStore}
     , m_schema {schema}
     , m_definitionsBuilder {definitionsBuilder}
     , m_allowedFields {allowedFields}
 {
-    if (!m_storeRead)
+    if (!m_cmStore)
     {
-        throw std::runtime_error {"Store reader interface is null"};
+        throw std::runtime_error {"CMStore interface is null"};
     }
 
     if (!m_schema)
@@ -56,34 +56,18 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
 }
 
-std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name, bool trace, bool sandbox) const
+std::shared_ptr<IPolicy> Builder::buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace, bool sandbox) const
 {
-    auto policyDoc = m_storeRead->readInternalDoc(name);
-    if (base::isError(policyDoc))
-    {
-        throw std::runtime_error(base::getError(policyDoc).message);
-    }
-
-    auto policy = std::make_shared<policy::Policy>(base::getResponse<store::Doc>(policyDoc),
-                                                   m_storeRead,
-                                                   m_definitionsBuilder,
-                                                   m_registry,
-                                                   m_schema,
-                                                   m_allowedFields,
-                                                   trace,
-                                                   sandbox);
+    auto policy = std::make_shared<policy::Policy>(
+        namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_allowedFields, trace, sandbox);
 
     return policy;
 }
 
-base::Expression Builder::buildAsset(const base::Name& name) const
+base::Expression Builder::buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const
 {
-    auto assetDoc = store::utils::get(m_storeRead, name);
-    if (base::isError(assetDoc))
-    {
-        throw std::runtime_error(base::getError(assetDoc).message);
-    }
-
+    const auto nsReader = m_cmStore->getNSReader(namespaceId);
+    const auto& jsonAsset = nsReader->getAssetByName(name);
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(m_registry);
     buildCtx->setValidator(m_schema);
@@ -92,81 +76,100 @@ base::Expression Builder::buildAsset(const base::Name& name) const
     buildCtx->runState().sandbox = false;
 
     auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
-    auto asset = (*assetBuilder)(base::getResponse<store::Doc>(assetDoc));
+    auto asset = (*assetBuilder)(jsonAsset);
 
     return asset.expression();
 }
 
-base::OptError Builder::validateIntegration(const json::Json& json, const std::string& namespaceId) const
+base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                                const cm::store::dataType::Integration& integration) const
 {
-    // TODO: Make factory so this can be implemented without duplicating code
-    policy::factory::PolicyData policyData;
-    try
+    if (!integration.isEnabled())
     {
-        policyData = policy::factory::PolicyData({.name = "policy/fake/0", .hash = "fakehash"});
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("Error creating dummy policy: {}", e.what())};
+        return base::noError();
     }
 
-    auto namePath = json::Json::formatJsonPath(syntax::asset::NAME_KEY);
-    auto integrationNameResp = json.getString(namePath);
-    if (!integrationNameResp)
+    const auto& integrationName = integration.getName();
+
+    // Decoders
+    for (const auto& uuid : integration.getDecodersByUUID())
     {
-        return base::Error {"Integration name not found"};
-    }
-    auto integrationName = integrationNameResp.value();
-    try
-    {
-        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::DECODER,
-                                                syntax::integration::DECODER_PATH,
-                                                json,
-                                                m_storeRead,
-                                                integrationName,
-                                                namespaceId,
-                                                policyData);
-        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::RULE,
-                                                syntax::integration::RULE_PATH,
-                                                json,
-                                                m_storeRead,
-                                                integrationName,
-                                                namespaceId,
-                                                policyData);
-        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::OUTPUT,
-                                                syntax::integration::OUTPUT_PATH,
-                                                json,
-                                                m_storeRead,
-                                                integrationName,
-                                                namespaceId,
-                                                policyData);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
+        std::string decoderName;
+        try
+        {
+            decoderName = std::get<0>(nsReader->resolveNameFromUUID(uuid));
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {
+                fmt::format("Failed to resolve name for decoder with uuid='{}' for integration '{}': {}",
+                            uuid,
+                            integrationName,
+                            e.what())};
+        }
+
+        if (!nsReader->assetExistsByUUID(uuid))
+        {
+            return base::Error {fmt::format(
+                "Decoder '{}' (uuid='{}') does not exist for integration '{}'.", decoderName, uuid, integrationName)};
+        }
     }
 
-    auto buildCtx = std::make_shared<builders::BuildCtx>();
-    buildCtx->setRegistry(m_registry);
-    buildCtx->setValidator(m_schema);
-    buildCtx->setAllowedFields(m_allowedFields);
-    buildCtx->runState().trace = true;
-
-    auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
-
-    try
+    // KVDBs
+    for (const auto& uuid : integration.getKVDBsByUUID())
     {
-        policy::factory::buildAssets(policyData, m_storeRead, assetBuilder);
+        std::string kvdbName;
+        try
+        {
+            kvdbName = std::get<0>(nsReader->resolveNameFromUUID(uuid));
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {fmt::format("Failed to resolve name for KVDB with uuid='{}' for integration '{}': {}",
+                                            uuid,
+                                            integrationName,
+                                            e.what())};
+        }
+
+        try
+        {
+            (void)nsReader->getKVDBByUUID(uuid);
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {fmt::format("Error accessing KVDB '{}' (uuid='{}') for integration '{}': {}",
+                                            kvdbName,
+                                            uuid,
+                                            integrationName,
+                                            e.what())};
+        }
     }
-    catch (const std::exception& e)
+
+    // Category
+    const auto& category = integration.getCategory();
+    if (!cm::store::categories::exists(category))
     {
-        return base::Error {e.what()};
+        return base::Error {
+            fmt::format("Category '{}' is not a valid category for integration '{}'.", category, integrationName)};
+    }
+
+    // Default parent
+    if (const auto& opt = integration.getDefaultParent(); opt.has_value())
+    {
+        const auto& parentName = *opt;
+        if (!nsReader->assetExistsByUUID(parentName))
+        {
+            return base::Error {fmt::format("Default parent '{}' does not exist as asset for integration '{}'.",
+                                            std::get<0>(nsReader->resolveNameFromUUID(parentName)),
+                                            integrationName)};
+        }
     }
 
     return base::noError();
 }
 
-base::OptError Builder::validateAsset(const json::Json& json) const
+base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                      const json::Json& assetJson) const
 {
     try
     {
@@ -174,8 +177,22 @@ base::OptError Builder::validateAsset(const json::Json& json) const
         buildCtx->setRegistry(m_registry);
         buildCtx->setValidator(m_schema);
         buildCtx->setAllowedFields(m_allowedFields);
+        buildCtx->setStoreNSReader(nsReader);
+
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
-        auto asset = (*assetBuilder)(json);
+        auto asset = (*assetBuilder)(assetJson);
+
+        const auto& assetName = asset.name();
+        const auto& parents = asset.parents();
+
+        for (const auto& parentName : parents)
+        {
+            if (!nsReader->assetExistsByName(parentName))
+            {
+                return base::Error {fmt::format(
+                    "Parent '{}' referenced by asset '{}' does not exist.", parentName.toStr(), assetName.toStr())};
+            }
+        }
     }
     catch (const std::exception& e)
     {
@@ -185,16 +202,46 @@ base::OptError Builder::validateAsset(const json::Json& json) const
     return base::noError();
 }
 
-base::OptError Builder::validatePolicy(const json::Json& json) const
+base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                           const cm::store::dataType::Policy& policy) const
 {
-    try
+    const auto policyName = nsReader->getNamespaceId().toStr();
+
+    // Default parent
+    const auto& defaultParent = policy.getDefaultParent();
+    if (!nsReader->assetExistsByUUID(defaultParent))
     {
-        auto policy = std::make_shared<policy::Policy>(
-            json, m_storeRead, m_definitionsBuilder, m_registry, m_schema, m_allowedFields);
+        return base::Error {fmt::format("Default parent '{}' does not exist as asset in policy '{}'.",
+                                        std::get<0>(nsReader->resolveNameFromUUID(defaultParent)),
+                                        policyName)};
     }
-    catch (const std::exception& e)
+
+    // Root decoder optional
+    const auto& defaultDecoder = policy.getRootDecoder();
+    if (!nsReader->assetExistsByUUID(defaultDecoder))
     {
-        return base::Error {e.what()};
+        return base::Error {fmt::format("Root decoder '{}' does not exist as asset in policy '{}'.",
+                                        std::get<0>(nsReader->resolveNameFromUUID(defaultDecoder)),
+                                        policyName)};
+    }
+
+    // Integrations
+    for (const auto& integUUID : policy.getIntegrationsUUIDs())
+    {
+        std::string integrationName;
+        try
+        {
+            const auto integration = nsReader->getIntegrationByUUID(integUUID);
+            integrationName = integration.getName();
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {
+                fmt::format("Failed to resolve integration with uuid='{}' referenced by policy '{}': {}",
+                            integUUID,
+                            policyName,
+                            e.what())};
+        }
     }
 
     return base::noError();

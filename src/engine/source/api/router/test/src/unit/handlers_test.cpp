@@ -35,7 +35,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
-                protoReq.mutable_route()->set_policy("policy");
+                protoReq.mutable_route()->set_namespaceid("policy");
                 protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 return createRequest<eEngine::router::RoutePost_Request>(protoReq);
@@ -54,7 +54,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
-                protoReq.mutable_route()->set_policy("policy");
+                protoReq.mutable_route()->set_namespaceid("policy");
                 protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 return createRequest<eEngine::router::RoutePost_Request>(protoReq);
@@ -101,6 +101,7 @@ INSTANTIATE_TEST_SUITE_P(
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
                 jsonReq.setString("filter/name/0", "/route/filter");
+                jsonReq.setString("not-valid", "/route/namespaceId");
                 jsonReq.setInt(1, "/route/priority");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -109,7 +110,10 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Name cannot be empty"); },
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Invalid namespace id: Invalid namespace ID: not-valid");
+            },
             [](auto&) {}),
         // Invalid filter
         HandlerT(
@@ -117,7 +121,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
-                jsonReq.setString("policy/name/0", "/route/policy");
+                jsonReq.setString("testing", "/route/namespaceId");
                 jsonReq.setInt(1, "/route/priority");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -134,7 +138,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
-                jsonReq.setString("policy/name/0", "/route/policy");
+                jsonReq.setString("testing", "/route/namespaceId");
                 jsonReq.setString("filter/name/0", "/route/filter");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -164,7 +168,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
-                protoReq.mutable_route()->set_policy("policy");
+                protoReq.mutable_route()->set_namespaceid("policy");
                 protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 protoReq.mutable_route()->set_description("description");
@@ -336,7 +340,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePatchPriority(router); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>("error"); },
-            [](auto& mock) {
+            [](auto& mock)
+            {
                 EXPECT_CALL(mock, changeEntryPriority(testing::_, 1)).WillOnce(testing::Return(base::Error {"error"}));
             }),
         // Wrong request type

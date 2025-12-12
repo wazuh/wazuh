@@ -2,18 +2,18 @@
 #define ROUTER_IWORKER_HPP
 
 #include <memory>
-
-#include "irouter.hpp"
-#include "itester.hpp"
+#include <type_traits>
+#include <stdexcept>
 
 namespace router
 {
 
+using EpsLimit = std::function<bool()>;
+
+template<typename T>
 class IWorker
 {
 public:
-    using EpsLimit = std::function<bool()>;
-
     virtual ~IWorker() = default;
 
     /**
@@ -21,24 +21,18 @@ public:
      *
      * @param epsCounter The counter to measure the events per second
      */
-    virtual void start(const EpsLimit& epsLimit) = 0;
+    virtual void start() = 0;
 
     /**
      * @brief Stop the worker
      */
-    virtual void stop() = 0;
+    virtual void stop()  = 0;
 
     /**
-     * @brief Get the router associated with the worker.
+     * @brief Get the router or tester associated with the worker.
      * @return A constant reference to the shared pointer of the router.
      */
-    virtual const std::shared_ptr<IRouter>& getRouter() const = 0;
-
-    /**
-     * @brief Get the tester associated with the worker.
-     * @return A constant reference to the shared pointer of the tester.
-     */
-    virtual const std::shared_ptr<ITester>& getTester() const = 0;
+    virtual std::shared_ptr<T> get() const = 0;
 };
 
 } // namespace router

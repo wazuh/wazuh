@@ -19,6 +19,8 @@ public:
     MOCK_METHOD(json::Json, getAsset, (const base::Name& name), (const, override));
     MOCK_METHOD(bool, assetExists, (const base::Name& name), (const, override));
     MOCK_METHOD(std::string, resolveNameFromUUID, (const std::string& uuid), (const, override));
+    MOCK_METHOD((std::pair<std::string, std::string>), resolveNameAndTypeFromUUID, (const std::string& uuid), (const, override));
+    MOCK_METHOD(std::string, resolveUUIDFromName, (const base::Name& name, const std::string& type), (const, override));
 
     // KVDB operations
     MOCK_METHOD(std::vector<std::string>, listKVDB, (), (const, override));
