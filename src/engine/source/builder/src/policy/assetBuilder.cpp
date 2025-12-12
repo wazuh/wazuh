@@ -252,6 +252,16 @@ Asset AssetBuilder::operator()(const store::Doc& document) const
         objDoc.erase(objDoc.begin());
     }
 
+    // Get enabled
+    const auto enabledIt =
+        std::find_if(objDoc.begin(),
+                     objDoc.end(),
+                     [target = syntax::asset::ENABLED_KEY](const auto& elem) { return std::get<0>(elem) == target; });
+    if (enabledIt != objDoc.end())
+    {
+        objDoc.erase(enabledIt);
+    }
+
     // Get metadata (optional)
     json::Json metadata;
     {
