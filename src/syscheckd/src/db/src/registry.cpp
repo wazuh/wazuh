@@ -117,6 +117,43 @@ int fim_db_set_version_registry(int version)
     return retval;
 }
 
+void fim_db_clean_registry_tables()
+{
+    try
+    {
+        // Delete all registry values first (foreign key constraint with registry_key)
+        auto deleteValuesQuery
+        {
+            DeleteQuery::builder()
+            .table(FIMDB_REGISTRY_VALUE_TABLENAME)
+            .data(nlohmann::json::object())
+            .rowFilter("1=1")
+            .build()
+        };
+        FIMDB::instance().removeItem(deleteValuesQuery.query());
+
+        // Delete all registry keys
+        auto deleteKeysQuery
+        {
+            DeleteQuery::builder()
+            .table(FIMDB_REGISTRY_KEY_TABLENAME)
+            .data(nlohmann::json::object())
+            .rowFilter("1=1")
+            .build()
+        };
+        FIMDB::instance().removeItem(deleteKeysQuery.query());
+
+        FIMDB::instance().logFunction(LOG_DEBUG, "Registry tables cleaned successfully");
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
+}
+
 #ifdef __cplusplus
 }
 #endif

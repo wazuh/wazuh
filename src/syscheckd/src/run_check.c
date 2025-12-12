@@ -219,38 +219,30 @@ STATIC bool handle_all_paths_removed(void) {
 
     minfo("All monitored paths removed from configuration. FIM database has entries. Proceeding with DataClean notification.");
 
-    // Send data clean notification with limited retry logic (3 attempts max)
-    // This is a partial dataclean scenario - module enabled but no paths configured
-    // We don't block indefinitely; if it fails after 3 attempts, warn and continue
-    const int max_retries = 3;
+    // Send data clean notification with infinite retry until success or shutdown
+    // Since no paths are configured, we must ensure indexer data is cleaned
     bool dataCleanSent = false;
-
-    for (int attempt = 1; attempt <= max_retries && !dataCleanSent && !fim_shutdown_process_on(); attempt++) {
+    while (!dataCleanSent && !fim_shutdown_process_on()) {
         dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
-
-        if (!dataCleanSent && attempt < max_retries) {
-            mdebug1("DataClean notification failed (attempt %d/%d), retrying after sync interval (%u seconds)...",
-                    attempt, max_retries, syscheck.sync_interval);
+        if (!dataCleanSent) {
+            mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
             for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
                 sleep(1);
             }
+        } else {
+            minfo("DataClean notification sent successfully for FIM indices.");
+            // Delete both databases (sync protocol DB and FIM DB)
+            // Since no paths are configured, there's nothing to monitor - local cleanup is needed
+            asp_delete_database(syscheck.sync_handle);
+            fim_db_close_and_delete_database();
+            mdebug1("FIM databases deleted successfully.");
         }
     }
 
-    if (dataCleanSent) {
-        minfo("DataClean notification sent successfully for FIM indices.");
-    } else if (!fim_shutdown_process_on()) {
-        mwarn("DataClean notification failed after %d attempts. Indexer may retain stale FIM data. Proceeding with local database cleanup.", max_retries);
-    } else {
+    if (fim_shutdown_process_on() && !dataCleanSent) {
         mdebug1("DataClean notification aborted due to module shutdown.");
         return false;
     }
-
-    // Delete both databases (sync protocol DB and FIM DB) regardless of DataClean success
-    // Since no paths are configured, there's nothing to monitor - local cleanup is always needed
-    asp_delete_database(syscheck.sync_handle);
-    fim_db_close_and_delete_database();
-    mdebug1("FIM databases deleted successfully.");
 
     return true;
 }
