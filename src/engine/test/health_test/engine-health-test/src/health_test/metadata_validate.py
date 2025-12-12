@@ -1,6 +1,7 @@
 import sys
 import shared.resource_handler as rs
 from pathlib import Path
+from datetime import date
 from health_test.error_managment import ErrorReporter
 
 def validate_metadata(content, entry, error_reporter):
@@ -9,26 +10,33 @@ def validate_metadata(content, entry, error_reporter):
     """
     required_metadata_fields = ['module', 'title', 'description', 'compatibility', 'versions', 'references', 'author']
     required_author_fields = ['name', 'date']
-    
+
     metadata = content.get('metadata', {})
     missing_fields = [field for field in required_metadata_fields if field not in metadata]
-    
+
     if missing_fields:
         error_reporter.add_error('metadata', entry, f"Missing required metadata fields: {', '.join(missing_fields)}")
 
     for field in ['module', 'title', 'description', 'compatibility']:
         if not isinstance(metadata.get(field), str):
             error_reporter.add_error('metadata', entry, f"'{field}' must be of type string")
-    
+
     author_metadata = metadata.get('author', {})
     missing_author_fields = [field for field in required_author_fields if field not in author_metadata]
-    
+
     if missing_author_fields:
         error_reporter.add_error('metadata', entry, f"Missing required author fields: {', '.join(missing_author_fields)}")
 
-    for field in ['name', 'date']:
-        if not isinstance(author_metadata.get(field), str):
-            error_reporter.add_error('metadata', entry, f"'{field}' in author metadata must be of type string")
+    # Validate 'name' field must be a string
+    if not isinstance(author_metadata.get('name'), str):
+        error_reporter.add_error('metadata', entry, "'name' in author metadata must be of type string")
+
+    # Validate 'date' field - accept both string and date objects
+    date_value = author_metadata.get('date')
+    if not isinstance(date_value, (str, date)):
+        error_reporter.add_error('metadata', entry, "'date' in author metadata must be a string or date (e.g., '2025-06-27')")
+    elif isinstance(date_value, date):
+        author_metadata['date'] = date_value.isoformat()
 
     if not isinstance(metadata.get('versions', None), list):
         error_reporter.add_error('metadata', entry, "'versions' must be of type list")
