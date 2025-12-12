@@ -593,7 +593,7 @@ static void test_fim_registry_calculate_hashes_CHECK_SHA1SUM(void **state) {
     syscheck.registry = one_entry_config;
     registry_t *configuration = &syscheck.registry[0];
     configuration->opts = CHECK_SHA1SUM;
-    WCHAR data_buffer[] = L"value_data\0";
+    WCHAR data_buffer[] = L"value_data\0\0";
     entry->registry_entry.value->type = REG_MULTI_SZ;
 
     fim_registry_calculate_hashes(entry, configuration, (BYTE *)data_buffer);
@@ -685,7 +685,7 @@ static void test_fim_registry_calculate_hashes_utf16_multi_sz(void **state) {
 
     // REG_MULTI_SZ is expected to have double null termination:
     // https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
-    WCHAR utf16_multi_data[] = L"A\0B\0";
+    WCHAR utf16_multi_data[] = L"A\0B\0\0";
     entry->registry_entry.value->type = REG_MULTI_SZ;
 
     fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_multi_data);

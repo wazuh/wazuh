@@ -686,6 +686,7 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
     char *string_it;
     BYTE buffer[OS_SIZE_2048];
     size_t length;
+    bool is_successful = true;
 
     entry->registry_entry.value->hash_md5[0] = '\0';
     entry->registry_entry.value->hash_sha1[0] = '\0';
@@ -707,6 +708,9 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
             fim_registry_update_digests((BYTE *)utf8_data, strlen(utf8_data), configuration->opts,
                                         md5_ctx, sha1_ctx, sha256_ctx);
             os_free(utf8_data);
+        } else {
+            mdebug1("Error converting registry value data to UTF-8.");
+            is_successful = false;
         }
     }
     break;
@@ -720,6 +724,11 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
                 fim_registry_update_digests((BYTE *)utf8_data, strlen(utf8_data), configuration->opts,
                                             md5_ctx, sha1_ctx, sha256_ctx);
                 os_free(utf8_data);
+            }
+            else {
+                mdebug1("Error converting registry value data to UTF-8.");
+                is_successful = false;
+                break;
             }
             w_data += wcslen(w_data) + 1; // Update pointer to next string location
         }
@@ -735,6 +744,13 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
             fim_registry_update_digests(buffer, length, configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
         }
         break;
+    }
+
+    if (!is_successful) {
+        EVP_MD_CTX_free(md5_ctx);
+        EVP_MD_CTX_free(sha1_ctx);
+        EVP_MD_CTX_free(sha256_ctx);
+        return;
     }
 
     fim_registry_final_digests(configuration->opts, md5_ctx, sha1_ctx, sha256_ctx,
@@ -835,6 +851,64 @@ void fim_registry_free_entry(fim_entry *entry) {
     }
 }
 
+/**
+ * @brief Convert registry value data to UTF-8 format for diff generation.
+ *
+ * @param data_buffer The registry value data buffer.
+ * @param data_type The registry value type (REG_SZ, REG_EXPAND_SZ, REG_MULTI_SZ, etc.).
+ *
+ * @return Pointer to UTF-8 string data. For REG_SZ, REG_EXPAND_SZ, and REG_MULTI_SZ,
+ *         returns newly allocated memory that must be freed by caller. For other types,
+ *         returns the original buffer cast to char* (no allocation). Returns NULL if
+ *         UTF-16 to UTF-8 conversion fails.
+ */
+static char *fim_registry_convert_value_for_diff(const BYTE *data_buffer, DWORD data_type) {
+    char *value_data_for_diff = NULL;
+
+    if (data_type == REG_SZ || data_type == REG_EXPAND_SZ) {
+        value_data_for_diff = wide_to_utf8((WCHAR*)data_buffer);
+    } else if (data_type == REG_MULTI_SZ) {
+        WCHAR *w_data = (WCHAR *)data_buffer;
+        size_t total_size = 0;
+        WCHAR *it;
+        char *cur;
+
+        it = w_data;
+        while (*it) {
+            char *utf8_temp = wide_to_utf8(it);
+            if (utf8_temp) {
+                total_size += strlen(utf8_temp) + 1;
+                os_free(utf8_temp);
+            } else {
+                return NULL;
+            }
+            it += wcslen(it) + 1;
+        }
+        total_size += 1;
+
+        os_calloc(total_size, sizeof(char), value_data_for_diff);
+
+        cur = value_data_for_diff;
+        while (*w_data) {
+            char *utf8_data = wide_to_utf8(w_data);
+            if (utf8_data) {
+                size_t len = strlen(utf8_data);
+                memcpy(cur, utf8_data, len + 1);
+                cur += len + 1;
+                os_free(utf8_data);
+            } else {
+                os_free(value_data_for_diff);
+                return NULL;
+            }
+            w_data += wcslen(w_data) + 1;
+        }
+        *cur = '\0';
+    } else {
+        value_data_for_diff = (char *)data_buffer;
+    }
+
+    return value_data_for_diff;
+}
 
 /**
  * @brief Query the values belonging to a key.
@@ -939,50 +1013,7 @@ void fim_read_values(HKEY key_handle,
         fim_registry_get_checksum_value(new.registry_entry.value);
 
         if (configuration->opts & CHECK_SEECHANGES) {
-            char *value_data_for_diff = NULL;
-
-            if (data_type == REG_SZ || data_type == REG_EXPAND_SZ) {
-                // Single string case
-                value_data_for_diff = wide_to_utf8((WCHAR*)data_buffer);
-            } else if (data_type == REG_MULTI_SZ) {
-                // Multiple string case
-                WCHAR *w_data = (WCHAR *)data_buffer;
-                size_t total_size = 0;
-                WCHAR *it;
-                char *cur;
-
-                // 1) Compute sum of string sizes for allocation
-
-                it = w_data;
-                while (*it) {
-                    char *utf8_temp = wide_to_utf8(it);
-                    if (utf8_temp) {
-                        total_size += strlen(utf8_temp) + 1; // Include null terminator
-                        os_free(utf8_temp);
-                    }
-                    it += wcslen(it) + 1;
-                }
-                total_size += 1; // Final null terminator
-
-                os_calloc(total_size, sizeof(char), value_data_for_diff);
-
-                // 2) Create concatenated UTF-8 string
-                cur = value_data_for_diff;
-                while (*w_data) {
-                    char *utf8_data = wide_to_utf8(w_data);
-                    if (utf8_data) {
-                        size_t len = strlen(utf8_data);
-                        memcpy(cur, utf8_data, len + 1);
-                        cur += len + 1;
-                        os_free(utf8_data);
-                    }
-                    w_data += wcslen(w_data) + 1;
-                }
-                *cur = '\0';
-            } else {
-                // Binary or numeric cases
-                value_data_for_diff = (char *)data_buffer;
-            }
+            char *value_data_for_diff = fim_registry_convert_value_for_diff(data_buffer, data_type);
 
             if (value_data_for_diff) {
                 diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->name,
