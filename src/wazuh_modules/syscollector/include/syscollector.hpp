@@ -131,6 +131,7 @@ class EXPORTED Syscollector final
         bool                                                                    m_processes;
         bool                                                                    m_hotfixes;
         bool                                                                    m_stopping;
+        bool                                                                    m_syncLoopFinished;
         bool                                                                    m_notify;
         bool                                                                    m_groups;
         bool                                                                    m_users;
