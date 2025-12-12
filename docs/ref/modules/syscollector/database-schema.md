@@ -402,3 +402,26 @@ CREATE TABLE dbsync_hotfixes(
 - `hotfix_name`: Primary key (KB number or patch identifier)
 
 ---
+
+### Table Metadata (`table_metadata`)
+
+Stores recovery metadata for each inventory table, tracking the last synchronization timestamp.
+
+```sql
+CREATE TABLE table_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_sync_time INTEGER DEFAULT 0
+) WITHOUT ROWID;
+```
+
+**Key Fields:**
+- `table_name`: Primary key identifying the inventory table
+- `last_sync_time`: Unix timestamp of last integrity check/recovery
+
+**Purpose:**
+This table enables the recovery mechanism by tracking when each inventory table was last validated against the manager. When `integrity_interval` elapses for a table, Syscollector:
+1. Calculates checksum-of-checksums from the inventory table
+2. Sends it to manager for validation
+3. Updates `last_sync_time` after check completes
+
+---

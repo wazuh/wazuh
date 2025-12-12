@@ -120,14 +120,14 @@ void syscollector_stop()
 }
 
 void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
-                            unsigned int retries, size_t maxEps)
+                            unsigned int retries, size_t maxEps, uint32_t integrityInterval)
 {
     if (moduleName && syncDbPath && syncDbPathVD && mqFuncs)
     {
         try
         {
             Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD), *mqFuncs, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout),
-                                                      retries, maxEps);
+                                                      retries, maxEps, integrityInterval);
         }
         catch (const std::exception& ex)
         {
@@ -235,6 +235,21 @@ size_t syscollector_query(const char* json_query, char** output)
         *output = strdup(error.c_str());
         return strlen(*output);
     }
+}
+
+void syscollector_lock_scan_mutex()
+{
+    Syscollector::instance().lockScanMutex();
+}
+
+void syscollector_unlock_scan_mutex()
+{
+    Syscollector::instance().unlockScanMutex();
+}
+
+void syscollector_run_recovery_process()
+{
+    Syscollector::instance().runRecoveryProcess();
 }
 
 #ifdef __cplusplus

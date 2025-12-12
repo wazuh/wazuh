@@ -123,10 +123,6 @@ class SecurityConfigurationAssessment
         /// @return 0 on success, -1 on error
         int setVersion(int version);
 
-        /// @brief This is used before recovery sync to ensure versions are now lower than indexer
-        /// @return 0 on success, -1 on error
-        int increaseEachEntryVersion();
-
         /// @brief Pause SCA scanning operations for coordination
         void pause();
 
@@ -164,14 +160,6 @@ class SecurityConfigurationAssessment
 
         /// @brief Integrity check interval in seconds (0 = disabled)
         std::chrono::seconds m_integrityInterval = std::chrono::seconds(0);
-
-        /// @brief Calculate checksum-of-checksums for sca_check table
-        /// @return SHA1 checksum as hex string
-        std::string calculateTableChecksum();
-
-        /// @brief Get all records from sca_check table for recovery
-        /// @return Vector of JSON records
-        std::vector<nlohmann::json> getAllChecks();
 
         /// @brief Check if integrity interval has elapsed
         /// @param currentTime Current timestamp

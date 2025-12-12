@@ -60,4 +60,18 @@ class IDBSync
 
         /// @brief Closes the database connection and deletes the database file using the stored path.
         virtual void closeAndDeleteDatabase() = 0;
+
+        /// @brief Gets the concatenated checksums from all the elements of a table
+        /// @return the concatenated checksum
+        virtual std::string getConcatenatedChecksums(const std::string& tableName) = 0;
+
+        /// @brief Increases the version of each entry in a table by 1
+        /// @param tableName Name of the table to update
+        /// @throws std::exception if an error occurs during the version update
+        virtual void increaseEachEntryVersion(const std::string& tableName) = 0;
+
+        /// @brief Gets all elements from a table
+        /// @param tableName Name of the table to query
+        /// @return Vector of JSON objects representing all rows in the table
+        virtual std::vector<nlohmann::json> getEveryElement(const std::string& tableName) = 0;
 };

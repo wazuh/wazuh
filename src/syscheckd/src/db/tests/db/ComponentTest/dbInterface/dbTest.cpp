@@ -192,7 +192,7 @@ TEST(DBTest, TestFimDBCloseAndDeleteWithoutInit)
 TEST_F(DBTestFixture, TestFimDBGetLastSyncTimeNewTable)
 {
     EXPECT_NO_THROW({
-        // On first call, should return 0 (initialized by initializeTableMetadata)
+        // On first call, should return 0 (no row exists yet, lazy initialization)
         auto lastSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
         ASSERT_EQ(lastSyncTime, 0);
     });
@@ -232,6 +232,22 @@ TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTimeValueNullParameter)
     EXPECT_NO_THROW({
         // Should not crash, just log error
         fim_db_update_last_sync_time_value(nullptr, 1234567890);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTime)
+{
+    EXPECT_NO_THROW({
+        // Get initial sync time (should be 0)
+        auto initialSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(initialSyncTime, 0);
+
+        // Update to current time using fim_db_update_last_sync_time
+        fim_db_update_last_sync_time(FIMDB_FILE_TABLE_NAME);
+
+        // Verify it was updated (should be greater than 0)
+        auto updatedSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
+        ASSERT_GT(updatedSyncTime, 0);
     });
 }
 

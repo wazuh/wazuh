@@ -131,13 +131,6 @@ class EXPORTED DB final
          */
         int updateVersion(const std::string& tableName, int version);
 
-        /**
-         * @brief increaseEachEntryVersion Increase the version column for all entries in a table.
-         *
-         * @param tableName Table name.
-         * @return 0 on success, -1 on error.
-         */
-        int increaseEachEntryVersion(const std::string& tableName);
 
         /**
          * @brief updateFile Update/insert a file in the database.
@@ -166,30 +159,6 @@ class EXPORTED DB final
         void closeAndDeleteDatabase();
 
         /**
-        * @brief Gets the concatenated checksums from all the elements of a table
-        * @return the concatenated checksum
-        */
-        std::string getConcatenatedChecksums(const std::string& tableName);
-
-        /**
-         * @brief Calculate the checksum-of-checksums for a table
-         * @param table_name The table to calculate checksum for
-         * @return The SHA1 checksum-of-checksums as a hex string
-         */
-        std::string calculateTableChecksum(const char* table_name);
-
-        /**
-        * @brief Gets all the elements of a table
-        * @return a vector of elements in json format
-        */
-        std::vector<nlohmann::json> getEveryElement(const std::string& tableName);
-
-        /**
-         * @brief Initialize table_metadata entries for all FIM tables.
-         */
-        void initializeTableMetadata();
-
-        /**
          * @brief Update the last_sync_time for a given table.
          *
          * @param tableName Name of the table to update.
@@ -204,7 +173,6 @@ class EXPORTED DB final
          * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
          */
         int64_t getLastSyncTime(const std::string& tableName);
-
     private:
         DB() = default;
         ~DB() = default;
