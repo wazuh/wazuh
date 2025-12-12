@@ -24,6 +24,8 @@
 #include <memory>
 #include <set>
 #include <optional>
+#include <chrono>
+#include <mutex>
 
 #include "json.hpp"
 #include "iusers_utils_wrapper.hpp"
@@ -200,6 +202,28 @@ class UsersHelper : public IUsersHelper
         /// @brief Windows API wrapper instance used for system calls.
         std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
 
+        /// @brief Rate limiting constants (only applied during cache refresh)
+        static constexpr std::uint32_t BATCH_SIZE = 100;
+        static constexpr std::chrono::milliseconds BATCH_DELAY{250};
+
+        /// @brief Static cache for both local and roaming users (thread-local)
+        /// Both types are loaded together to maintain consistency
+        static thread_local std::vector<User> s_cachedLocalUsers;
+        static thread_local std::vector<User> s_cachedRoamingUsers;
+        static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
+        static thread_local bool s_cacheValid;
+        static constexpr std::chrono::seconds s_cacheTimeout{60}; // Cache válido por 60 segundos
+
+        /// @brief Validates cache and clears it if expired (> 60 seconds old).
+        static void validateCache();
+
+        /// @brief Updates cache timestamp after successful operation.
+        static void updateCacheTimestamp();
+
+        /// @brief Internal method to load both local and roaming users together
+        /// @param processed_sids Set to track which SIDs have been processed
+        void loadUsers(std::set<std::string>& processed_sids);
+
         /// @brief Creates a custom deleter for Windows registry handles.
         /// @return Lambda function to safely close registry handles.
         auto makeRegHandleDeleter()
@@ -216,8 +240,7 @@ class UsersHelper : public IUsersHelper
     public:
         /// @brief Constructs a UsersHelper with a Windows API wrapper.
         /// @param winapiWrapper Shared pointer to an `IWindowsApiWrapper`.
-        explicit UsersHelper(
-            std::shared_ptr<IWindowsApiWrapper> winapiWrapper);
+        explicit UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper);
 
         /// @brief Default constructor.
         UsersHelper();
@@ -251,4 +274,7 @@ class UsersHelper : public IUsersHelper
         /// @param sid Pointer to the SID.
         /// @return RID as a DWORD.
         DWORD getRidFromSid(PSID sid);
+
+        /// @brief Resets the cache.
+        static void resetCache();
 };

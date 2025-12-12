@@ -16,6 +16,11 @@
 // Reasonable upper bound for getpw_r buffer
 constexpr size_t MAX_GETPW_R_BUF_SIZE = 16 * 1024;
 
+// Initialize static thread-local cache variables
+thread_local std::unordered_map<uid_t, std::vector<gid_t>> UserGroupsProvider::s_userGroupsCache;
+thread_local std::chrono::steady_clock::time_point UserGroupsProvider::s_cacheTimestamp;
+thread_local bool UserGroupsProvider::s_cacheValid = false;
+
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperLinux> groupWrapper,
                                        std::shared_ptr<IPasswdWrapperLinux> passwdWrapper,
                                        std::shared_ptr<ISystemWrapper> sysWrapper)
@@ -30,6 +35,27 @@ UserGroupsProvider::UserGroupsProvider()
     , m_passwdWrapper(std::make_shared<PasswdWrapperLinux>())
     , m_sysWrapper(std::make_shared<SystemWrapper>())
 {
+}
+
+void UserGroupsProvider::resetCache()
+{
+    s_userGroupsCache.clear();
+    s_cacheValid = false;
+}
+
+void UserGroupsProvider::validateCache()
+{
+    if (s_cacheValid)
+    {
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - s_cacheTimestamp);
+
+        if (elapsed >= s_cacheTimeout)
+        {
+            s_userGroupsCache.clear();
+            s_cacheValid = false;
+        }
+    }
 }
 
 nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
@@ -64,7 +90,7 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
 
         for (const auto& gid : groups)
         {
-            struct group grp;
+            struct group grp {};
             struct group* grpResult = nullptr;
             auto groupBuf = std::make_unique<char[]>(bufSize);
 
@@ -125,7 +151,7 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids
     {
         for (const auto& gid : gids)
         {
-            struct group grp;
+            struct group grp {};
             struct group* grpResult = nullptr;
             auto groupBuf = std::make_unique<char[]>(bufSize);
 
@@ -180,8 +206,11 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids
 
 std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGroups(const std::set<uid_t>& uids)
 {
+    // Validate cache (auto-invalidates after 60 seconds)
+    validateCache();
+
     std::vector<std::pair<uid_t, std::vector<gid_t>>> userGroups;
-    struct passwd pwd;
+    struct passwd pwd {};
     struct passwd* pwdResults = nullptr;
 
     size_t bufSize = m_sysWrapper->sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -196,6 +225,15 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
     auto processUser = [&](const struct passwd * pwdInfo)
     {
         UserInfo user {pwdInfo->pw_name, pwdInfo->pw_uid, pwdInfo->pw_gid};
+
+        // Check cache first
+        auto it = s_userGroupsCache.find(user.uid);
+
+        if (it != s_userGroupsCache.end())
+        {
+            userGroups.emplace_back(user.uid, it->second);
+            return;
+        }
 
         std::vector<gid_t> groups(EXPECTED_GROUPS_MAX);
         int nGroups = EXPECTED_GROUPS_MAX;
@@ -217,6 +255,8 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
             groups.resize(nGroups);
         }
 
+        // Store in cache
+        s_userGroupsCache[user.uid] = groups;
         userGroups.emplace_back(user.uid, std::move(groups));
     };
 
@@ -244,6 +284,13 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
         }
 
         m_passwdWrapper->endpwent();
+    }
+
+    // Mark cache as valid and update timestamp
+    if (!s_userGroupsCache.empty())
+    {
+        s_cacheValid = true;
+        s_cacheTimestamp = std::chrono::steady_clock::now();
     }
 
     return userGroups;

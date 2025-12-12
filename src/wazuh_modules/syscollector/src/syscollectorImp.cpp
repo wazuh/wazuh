@@ -304,6 +304,7 @@ Syscollector::Syscollector()
     , m_hotfixes { false }
     , m_stopping { true }
     , m_initialized { false }
+    , m_syncLoopFinished { false }
     , m_notify { false }
     , m_paused { false }
     , m_scanning { false }
@@ -381,6 +382,10 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
+
+    std::unique_lock<std::mutex> lock{m_mutex};
+    m_stopping = false;
+    m_syncLoopFinished = false;
 
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
@@ -540,6 +545,12 @@ void Syscollector::destroy()
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = true;
     m_cv.notify_all();
+
+    // Wait for syncLoop to finish completely, including cleanup of resources
+    m_cv.wait(lock, [this]()
+    {
+        return m_syncLoopFinished;
+    });
     lock.unlock();
 
     // Signal sync protocols to stop any ongoing operations
@@ -1484,6 +1495,8 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         scan();
     }
     m_spDBSync.reset(nullptr);
+    m_syncLoopFinished = true;
+    m_cv.notify_all();
 }
 
 std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& data, const std::string& table)
