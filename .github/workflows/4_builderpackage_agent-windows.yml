@@ -1,0 +1,333 @@
+run-name: Packages - Build Wazuh agent Windows ${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }}${{ inputs.debug && ' - debug' || '' }} ${{ inputs.id }}
+name: Build Wazuh agent Windows
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/4_builderpackage_agent-windows.yml'
+  workflow_dispatch:
+    inputs:
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be downloaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
+        required: false
+        default: auto
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      is_stage:
+        type: boolean
+        description: |
+          Set production nomenclature if true.
+          Default is 'false'.
+        required: false
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+      trust_verification:
+        type: choice
+        description: |
+          This flag controls the dll and exe files signature verification mechanism.
+          Use '0' to disable mechanism.
+          Use '1' to warning only.
+          Use '2' to full enforce.
+          Default is '1'.
+        options:
+          - 0
+          - 1
+          - 2
+        required: false
+        default: '1'
+      ca_name:
+        description: |
+          CA name to be used to verify the trust of the agent.
+          Default is 'DigiCert Assured ID Root CA'.
+        required: false
+        default: DigiCert Assured ID Root CA
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+      source_reference:
+        description: |
+          Branch/tag of wazuh/wazuh to generate packages.
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      docker_image_tag:
+        type: string
+        required: false
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      trust_verification:
+        type: string
+        required: false
+      ca_name:
+        type: string
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      source_reference:
+        type: string
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  build-agent-windows-base:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    name: Build Windows wazuh-agent${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }}${{ inputs.debug && ' - debug' || '' }}
+
+    steps:
+      - name: Set VERSION, CONTAINER_NAME and AUTOMATION_BRANCH
+        run: |
+          VERSION=$(curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${{ inputs.source_reference || github.ref }}/VERSION.json" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV;
+          echo "CONTAINER_NAME=compile_windows_agent" >> $GITHUB_ENV
+          if [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git ${{ inputs.source_reference || github.ref }}`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=${{ inputs.source_reference || github.ref }}" >> $GITHUB_ENV;
+          elif [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git $VERSION`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=$VERSION" >> $GITHUB_ENV;
+          else
+            echo "AUTOMATION_BRANCH=main" >> $GITHUB_ENV;
+          fi
+
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_reference || github.ref }}
+
+      - name: Set TAG
+        run: |
+          if [ "${{ inputs.docker_image_tag || 'auto' }}" == "auto" ]; then
+            echo "TAG=${{ env.VERSION }}" >> $GITHUB_ENV
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
+            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference || github.ref }})" >> $GITHUB_ENV
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV
+          fi
+
+      - name: Set PKG_NAME
+        run: |
+          COMMIT_HASH="$(git rev-parse --short=7 HEAD)"
+          if [ "${{ inputs.is_stage }}" == "true" ]; then
+            echo "PKG_NAME=wazuh-agent-${{ env.VERSION }}-${{ inputs.revision || '0' }}" >> $GITHUB_ENV
+            echo "PKG_NAME_SYMBOLS_SHORT=wazuh-agent-debug-symbols-${{ env.VERSION }}-${{ inputs.revision || '0' }}" >> $GITHUB_ENV
+            echo "PACKAGE_SYMBOLS_NAME=wazuh-agent-debug-symbols-${{ env.VERSION }}-${{ inputs.revision || '0' }}-windows" >> $GITHUB_ENV
+          else
+            echo "PKG_NAME=wazuh-agent_${{ env.VERSION }}-${{ inputs.revision || '0' }}_windows_${COMMIT_HASH}" >> $GITHUB_ENV
+            echo "PKG_NAME_SYMBOLS_SHORT=wazuh-agent-debug-symbols_${{ env.VERSION }}-${{ inputs.revision || '0' }}_windows_${COMMIT_HASH}" >> $GITHUB_ENV
+            echo "PACKAGE_SYMBOLS_NAME=wazuh-agent-debug-symbols_${{ env.VERSION }}-${{ inputs.revision || '0' }}_windows_${COMMIT_HASH}" >> $GITHUB_ENV
+          fi
+
+      - name: Set vars to build Windows package
+        run: |
+          FLAGS="-s /tmp/windowsPKG --dont-build-docker -j $(nproc) -o ${{ env.PKG_NAME }}.zip "
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Copy check_file scripts
+        run: |
+          mkdir /tmp/check_files
+          cp .github/actions/check_files/check_files.py .github/actions/check_files/windows_agent_base.csv /tmp/check_files/
+
+      - name: Build Windows package
+        run: |
+          cd packages/windows/
+          cp generate_wazuh_msi.ps1 ../../src/win32
+          echo "generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification || '1' }} --tag ${{ env.TAG }} -c "${{ inputs.ca_name || 'DigiCert Assured ID Root CA' }}" ${{ env.FLAGS }}"
+          bash generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification || '1' }} --tag ${{ env.TAG }} -c "${{ inputs.ca_name || 'DigiCert Assured ID Root CA' }}" ${{ env.FLAGS }}
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Checkout wazuh/wazuh-automation repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh-automation
+          path: wazuh-automation
+          ref: ${{ env.AUTOMATION_BRANCH }}
+          token: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
+
+      - name: Install and set allocator requirements
+        working-directory: ./wazuh-automation
+        run: |
+          sudo apt-get install python3-venv
+          python3 -m venv allocator_env
+          source allocator_env/bin/activate
+          python3 -m pip install -r deployability/deps/requirements.txt
+          aws configure set default.region us-east-1
+
+      - name: Execute allocator module and set ssh variables
+        working-directory: ./wazuh-automation
+        id: alloc_vm
+        run: |
+          source allocator_env/bin/activate
+          python3 deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name windows-build-10-amd64 --label-team agent --label-termination-date 1d \
+            --working-dir /tmp/allocatorvm --track-output /tmp/allocatorvm/track.yml --inventory-output /tmp/allocatorvm/inventory.yml --instance-name gha_agent_packages_${{ github.run_id }}_build
+          ansible_host=$(grep 'ansible_host:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_host=$ansible_host" >> $GITHUB_ENV && echo "::add-mask::$ansible_host"
+          ansible_port=$(grep 'ansible_port:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_port=$ansible_port" >> $GITHUB_ENV && echo "::add-mask::$ansible_port"
+          ansible_user=$(grep 'ansible_user:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_user=$ansible_user" >> $GITHUB_ENV && echo "::add-mask::$ansible_user"
+          ansible_password=$(grep 'ansible_password:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_password=$ansible_password" >> $GITHUB_ENV && echo "::add-mask::$ansible_password"
+          ansible_ssh_private_key_file=$(grep 'ansible_ssh_private_key_file:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_private_key_file"
+          ansible_ssh_common_args=$(grep 'ansible_ssh_common_args:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_common_args=$ansible_ssh_common_args" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_common_args"
+
+      - name: Set SSH_COMMAND
+        run: |
+          echo "SSH_COMMAND=sshpass -p ${{ env.ansible_password }} ssh -p ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} ${{ env.ansible_user }}@${{ env.ansible_host }} powershell -Command" >> $GITHUB_ENV
+          echo "SCP_COMMAND=sshpass -p ${{ env.ansible_password }} scp -P ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }}" >> $GITHUB_ENV
+
+      - name: Copy zip and script from generation VM
+        run: |
+          ${{ env.SCP_COMMAND }} /tmp/windowsPKG/${{ env.PKG_NAME }}.zip ${{ env.ansible_user }}@${{ env.ansible_host }}:"C:/"
+
+      - name: Copy check_files script and base csv
+        run: |
+          ${{ env.SCP_COMMAND }} /tmp/check_files/check_files.py ${{ env.ansible_user }}@${{ env.ansible_host }}:"C:/"
+          ${{ env.SCP_COMMAND }} /tmp/check_files/windows_agent_base.csv ${{ env.ansible_user }}@${{ env.ansible_host }}:"C:/"
+
+      - name: Unzip base folder
+        run: |
+          ${{ env.SSH_COMMAND }} "Expand-Archive -LiteralPath C:/${{ env.PKG_NAME }}.zip C:/win-agent-base"
+
+      - name: Create MSI package (unsigned)
+        run: |
+          ${{ env.SSH_COMMAND }} "cd C:/win-agent-base/wazuh-local-src/src/win32/; ./generate_wazuh_msi.ps1 -MSI_NAME ${{ env.PKG_NAME }}.msi -SIGN no" &> /tmp/generation.log
+          cat /tmp/generation.log
+          if grep -q "Successfully created package" /tmp/generation.log; then
+            echo "Package generated successfully (unsigned)."
+            ${{ env.SSH_COMMAND }} "cp C:/win-agent-base/wazuh-local-src/src/win32/${{ env.PKG_NAME }}.msi C:/win-agent-base/"
+            ${{ env.SSH_COMMAND }} "cp C:/win-agent-base/wazuh-local-src/src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip C:/win-agent-base/${{ env.PACKAGE_SYMBOLS_NAME }}.zip"
+          else
+            echo "The generation could not be completed."
+            exit 1
+          fi
+
+      - name: Install Windows agent
+        run: |
+          ${{ env.SSH_COMMAND }} "Start-Process -FilePath 'C:/win-agent-base/${{ env.PKG_NAME }}.msi' -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l C:/win-agent-base/installer.log' -wait"
+          installerfile=$(${{ env.SSH_COMMAND }} "Get-Content C:/win-agent-base/installer.log")
+          echo $installerfile
+          if [[ $installerfile == *"Wazuh Agent -- Installation completed successfully"* ]]; then
+            echo "Installation successfully."
+            echo "Copying package to temporary location."
+            ${{ env.SCP_COMMAND }} ${{ env.ansible_user }}@${{ env.ansible_host }}:"C:/win-agent-base/${{ env.PKG_NAME }}.msi" /tmp/
+            echo "Copying debug symbols to temporary location."
+            ${{ env.SCP_COMMAND }} ${{ env.ansible_user }}@${{ env.ansible_host }}:"C:/win-agent-base/${{ env.PACKAGE_SYMBOLS_NAME }}.zip" /tmp/
+          else
+            echo "The installation could not be completed. The package will not be uploaded."
+            exit 1
+          fi
+
+      #TODO: not able to use original requirements.txt due to compatibilities issues
+      - name: Ensure dependencies installed on Windows VM
+        id: ensure_deps
+        run: |
+          ${{ env.SSH_COMMAND }} "python -m ensurepip || Write-Output 'pip is already installed'"
+          ${{ env.SSH_COMMAND }} "python -m pip install --upgrade pip"
+          ${{ env.SSH_COMMAND }} "python -m pip install pandas==1.3.4"
+          ${{ env.SSH_COMMAND }} "python -m pip install pywin32==225"
+          ${{ env.SSH_COMMAND }} "python -m pip install requests"
+
+      - name: Checking files after installation
+        run: |
+            if [[ "${{ steps.ensure_deps.outcome }}" == "success" ]]; then
+              echo "Running check_files.py (base comparison)"
+              ${{ env.SSH_COMMAND }} "python C:/check_files.py -f 'C:/windows_agent_base.csv' --wazuh_gid -1 --wazuh_uid -1 --directory 'C:\\Program Files (x86)\\ossec-agent'"
+
+              echo "Running check_files.py (actual state dump)"
+              ${{ env.SSH_COMMAND }} "python C:/check_files.py -b 'windows_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory 'C:\\Program Files (x86)\\ossec-agent'"
+
+              echo "Environment CSV"
+              ${{ env.SSH_COMMAND }} "Get-Content 'windows_actual_state.csv'"
+            else
+              echo "Can't execute check_file script, couldn't fill dependencies."
+            fi
+
+      - name: Delete allocated VM
+        working-directory: ./wazuh-automation
+        if: always() && steps.alloc_vm.outcome == 'success'
+        run: |
+          source allocator_env/bin/activate
+          python3 deployability/modules/allocation/main.py --action delete --track-output /tmp/allocatorvm/track.yml
+
+      - name: Upload MSI as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-windows-${{ github.run_id }}
+          path: /tmp/${{ env.PKG_NAME }}.msi
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload checksum as artifact
+        if: ${{ inputs.checksum }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-windows-${{ github.run_id }}-checksum
+          path: /tmp/${{ env.PKG_NAME }}.msi.sha512
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Generate checksum for MSI
+        if: ${{ inputs.checksum }}
+        run: |
+          sha512sum "/tmp/${{ env.PKG_NAME }}.msi" > "/tmp/${{ env.PKG_NAME }}.msi.sha512"
+
+      - name: Upload debug symbols as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-windows-${{ github.run_id }}-symbols
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Generate checksum for debug symbols
+        if: ${{ inputs.checksum }}
+        run: |
+          sha512sum "/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip" > "/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512"
+
+      - name: Upload debug symbols checksum as artifact
+        if: ${{ inputs.checksum }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-windows-${{ github.run_id }}-symbols-checksum
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512
+          if-no-files-found: warn
+          retention-days: 30

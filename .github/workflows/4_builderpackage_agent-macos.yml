@@ -1,0 +1,314 @@
+run-name: Packages - Build Wazuh agent macOS packages - ${{ inputs.architecture }}${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }}${{ inputs.debug && ' - debug' || '' }} ${{ inputs.id }}
+name: 4.X - Build Wazuh agent macOS packages
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/4_builderpackage_agent-macos.yml'
+  workflow_dispatch:
+    inputs:
+      architecture:
+        type: choice
+        description: Package architecture [intel64, arm64].
+        options:
+          - intel64
+          - arm64
+        required: true
+      revision:
+        type: string
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      is_stage:
+        type: boolean
+        description: |
+          Set production nomenclature if true.
+          Default is 'false'.
+        required: false
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+      source_reference:
+        type: string
+        description: |
+          Branch/tag of wazuh/wazuh to generate packages.
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      architecture:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      source_reference:
+        type: string
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  build-agent-macos-packages:
+    runs-on: VPN
+    timeout-minutes: 50
+    name: Build macOS wazuh-agent - ${{ inputs.architecture }}${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }}${{ inputs.debug && ' - debug' || '' }}
+
+    steps:
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Set vars to build macOS package
+        run: |
+          FLAGS="-j 2 -r ${{ inputs.revision || '0' }} "
+          if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.architecture || 'arm64' }}" == "intel64" ]; then FLAGS+="--not-compile "; fi
+          if [ "${{ inputs.debug}}" == "true" ]; then
+            FLAGS+="--debug --verbose";
+            echo "DEBUG_COMPILATION=yes" >> $GITHUB_ENV
+          else
+            echo "DEBUG_COMPILATION=no" >> $GITHUB_ENV
+          fi
+          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
+          VERSION="v$(curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${{ inputs.source_reference || github.ref }}/VERSION.json" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          if [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git ${{ inputs.source_reference || github.ref }}`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=${{ inputs.source_reference || github.ref }}" >> $GITHUB_ENV;
+          elif [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git $VERSION`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=$VERSION" >> $GITHUB_ENV;
+          else
+            echo "AUTOMATION_BRANCH=main" >> $GITHUB_ENV;
+          fi
+
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_reference || github.ref }}
+
+      - name: Checkout wazuh/wazuh-automation repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh-automation
+          path: wazuh-automation
+          ref: ${{ env.AUTOMATION_BRANCH }}
+          token: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
+
+      - name: Install and set allocator requirements
+        working-directory: ./wazuh-automation
+        run: |
+          pip3 install -r deployability/deps/requirements.txt
+
+      - name: Execute allocator module and set ssh variables to compile intel64 VM
+        id: alloc_vm_intel64
+        working-directory: ./wazuh-automation
+        if: inputs.architecture == 'intel64'
+        run: |
+          python3 deployability/modules/allocation/main.py --action create --provider vagrant --size large --composite-name macos-sierracmake-10.12-amd64 --working-dir /tmp/allocatorvm_intel64 \
+            --track-output /tmp/allocatorvm_intel64/track.yml --inventory-output /tmp/allocatorvm_intel64/inventory.yml --instance-name gha_agent_packages_${{ github.run_id }}_build
+          ansible_host_intel64=$(grep 'ansible_host:' /tmp/allocatorvm_intel64/inventory.yml | sed 's/.*: *//') && echo "ansible_host_intel64=$ansible_host_intel64" >> $GITHUB_ENV && echo "::add-mask::$ansible_host_intel64"
+          ansible_port_intel64=$(grep 'ansible_port:' /tmp/allocatorvm_intel64/inventory.yml | sed 's/.*: *//') && echo "ansible_port_intel64=$ansible_port_intel64" >> $GITHUB_ENV && echo "::add-mask::$ansible_port_intel64"
+          ansible_user_intel64=$(grep 'ansible_user:' /tmp/allocatorvm_intel64/inventory.yml | sed 's/.*: *//') && echo "ansible_user_intel64=$ansible_user_intel64" >> $GITHUB_ENV && echo "::add-mask::$ansible_user_intel64"
+          ansible_password_intel64=$(grep 'ansible_password:' /tmp/allocatorvm_intel64/inventory.yml | sed 's/.*: *//') && echo "ansible_password_intel64=$ansible_password_intel64" >> $GITHUB_ENV && echo "::add-mask::$ansible_password_intel64"
+          ansible_ssh_common_args_intel64=$(grep 'ansible_ssh_common_args:' /tmp/allocatorvm_intel64/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_common_args_intel64=$ansible_ssh_common_args_intel64" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_common_args_intel64"
+
+      - name: Set SSH_COMMAND_INTEL64, SCP_COMMAND_INTEL64 and clean known_hosts
+        if: inputs.architecture == 'intel64'
+        run: |
+          echo "SSH_COMMAND_INTEL64=sshpass -p ${{ env.ansible_password_intel64 }} ssh -p ${{ env.ansible_port_intel64 }} ${{ env.ansible_ssh_common_args_intel64 }} ${{ env.ansible_user_intel64 }}@${{ env.ansible_host_intel64 }}" >> $GITHUB_ENV
+          echo "SCP_COMMAND_INTEL64=sshpass -p ${{ env.ansible_password_intel64 }} scp -P ${{ env.ansible_port_intel64 }} ${{ env.ansible_ssh_common_args_intel64 }}" >> $GITHUB_ENV
+          ssh-keygen -f "/home/ubuntu/.ssh/known_hosts" -R "[${{ env.ansible_host_intel64 }}]:${{ env.ansible_port_intel64 }}"
+
+      - name: Compile src for intel64
+        if: inputs.architecture == 'intel64'
+        run: |
+          ${{ env.SSH_COMMAND_INTEL64 }} 'git clone https://github.com/wazuh/wazuh.git -b ${{ inputs.source_reference || github.ref }}'
+          ${{ env.SSH_COMMAND_INTEL64 }} 'export PATH=/Applications/CMake.app/Contents/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH && cd wazuh/src && make deps TARGET=agent && make -j 2 TARGET=agent DEBUG=${{ env.DEBUG_COMPILATION }}'
+          ${{ env.SSH_COMMAND_INTEL64 }} 'sudo rm -r wazuh/src/external/*'
+          ${{ env.SSH_COMMAND_INTEL64 }} 'zip -r /tmp/wazuh.zip wazuh/'
+          ${{ env.SCP_COMMAND_INTEL64 }} ${{ env.ansible_user_intel64 }}@${{ env.ansible_host_intel64 }}:"/tmp/wazuh.zip" /tmp/
+
+      - name: Execute allocator module and set ssh variables to build and package on ARM macOS
+        id: alloc_vm_arm64
+        working-directory: ./wazuh-automation
+        run: |
+          python3 deployability/modules/allocation/main.py --action create --provider vagrant --size large --composite-name macos-ventura-build-arm64 --working-dir /tmp/allocatorvm_arm64 \
+            --track-output /tmp/allocatorvm_arm64/track.yml --inventory-output /tmp/allocatorvm_arm64/inventory.yml --instance-name gha_agent_packages_${{ github.run_id }}_build
+          ansible_host_arm64=$(grep 'ansible_host:' /tmp/allocatorvm_arm64/inventory.yml | sed 's/.*: *//') && echo "ansible_host_arm64=$ansible_host_arm64" >> $GITHUB_ENV && echo "::add-mask::$ansible_host_arm64"
+          ansible_port_arm64=$(grep 'ansible_port:' /tmp/allocatorvm_arm64/inventory.yml | sed 's/.*: *//') && echo "ansible_port_arm64=$ansible_port_arm64" >> $GITHUB_ENV && echo "::add-mask::$ansible_port_arm64"
+          ansible_user_arm64=$(grep 'ansible_user:' /tmp/allocatorvm_arm64/inventory.yml | sed 's/.*: *//') && echo "ansible_user_arm64=$ansible_user_arm64" >> $GITHUB_ENV && echo "::add-mask::$ansible_user_arm64"
+          ansible_password_arm64=$(grep 'ansible_password:' /tmp/allocatorvm_arm64/inventory.yml | sed 's/.*: *//') && echo "ansible_password_arm64=$ansible_password_arm64" >> $GITHUB_ENV && echo "::add-mask::$ansible_password_arm64"
+          ansible_ssh_common_args_arm64=$(grep 'ansible_ssh_common_args:' /tmp/allocatorvm_arm64/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_common_args_arm64=$ansible_ssh_common_args_arm64" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_common_args_arm64"
+
+
+      - name: Set SSH_COMMAND_ARM64, SCP_COMMAND_ARM64 and clean known_hosts
+        run: |
+          echo "SSH_COMMAND_ARM64=sshpass -p ${{ env.ansible_password_arm64 }} ssh -p ${{ env.ansible_port_arm64 }} ${{ env.ansible_ssh_common_args_arm64 }} ${{ env.ansible_user_arm64 }}@${{ env.ansible_host_arm64 }}" >> $GITHUB_ENV
+          echo "SCP_COMMAND_ARM64=sshpass -p ${{ env.ansible_password_arm64 }} scp -P ${{ env.ansible_port_arm64 }} ${{ env.ansible_ssh_common_args_arm64 }}" >> $GITHUB_ENV
+          ssh-keygen -f "/home/ubuntu/.ssh/known_hosts" -R "[${{ env.ansible_host_arm64 }}]:${{ env.ansible_port_arm64 }}"
+
+      - name: Compile Wazuh agent and generate package (unsigned)
+        run: |
+          if [ "${{ inputs.architecture || 'arm64' }}" == "intel64" ]; then
+            ${{ env.SCP_COMMAND_ARM64 }} /tmp/wazuh.zip ${{ env.ansible_user_arm64 }}@${{ env.ansible_host_arm64 }}:"/tmp/wazuh.zip"
+            ${{ env.SSH_COMMAND_ARM64 }} 'unzip /tmp/wazuh.zip -d .'
+          else
+            ${{ env.SSH_COMMAND_ARM64 }} 'git clone https://github.com/wazuh/wazuh.git -b ${{ inputs.source_reference || github.ref }}'
+          fi
+          ${{ env.SSH_COMMAND_ARM64 }} 'bash wazuh/packages/macos/generate_wazuh_packages.sh -i'
+
+          ${{ env.SSH_COMMAND_ARM64 }} << 'EOF'
+          pushd wazuh || exit 1
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD) || exit 1
+          if [ -z "$SHORT_COMMIT" ]; then
+            echo "No commit found"
+            exit 1
+          fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '' '/"stage":/s/$/,/; /}/{i\
+              "commit": "'"$SHORT_COMMIT"'"'$'\n''}' VERSION.json || exit 1
+          cat VERSION.json
+          popd
+          EOF
+
+          echo 'generate_wazuh_packages.sh -a ${{ inputs.architecture || 'arm64' }} ${{ env.FLAGS }}'
+          ${{ env.SSH_COMMAND_ARM64 }} 'sudo bash wazuh/packages/macos/generate_wazuh_packages.sh -a ${{ inputs.architecture || 'arm64' }} ${{ env.FLAGS }}'
+          ${{ env.SSH_COMMAND_ARM64 }} 'package_name=$(find wazuh/packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;); \
+            echo "PACKAGE_NAME=$package_name";' | tee -a $GITHUB_ENV
+          ${{ env.SSH_COMMAND_ARM64 }} 'package_symbols_name=$(find wazuh/packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;); \
+            package_symbols_name=${package_symbols_name%.zip}; \
+            echo "PACKAGE_SYMBOLS_NAME=$package_symbols_name";' | tee -a $GITHUB_ENV
+
+      - name: Test install Wazuh agent
+        run: |
+          ${{ env.SCP_COMMAND_ARM64 }} ${{ env.ansible_user_arm64 }}@${{ env.ansible_host_arm64 }}:"wazuh/packages/macos/output/*agent*" /tmp/
+          if [ "${{ inputs.architecture || 'arm64' }}" == "arm64" ]; then
+            ${{ env.SSH_COMMAND_ARM64 }} 'sudo echo "WAZUH_MANAGER='1.1.1.1'" > /tmp/wazuh_envs && sudo installer -pkg /Users/${{ env.ansible_user_arm64 }}/wazuh/packages/macos/output/*agent*pkg -target / | sudo tee /tmp/installer.log'
+            ${{ env.SCP_COMMAND_ARM64 }} ${{ env.ansible_user_arm64 }}@${{ env.ansible_host_arm64 }}:"/tmp/installer.log" /tmp/
+          else
+            ${{ env.SCP_COMMAND_INTEL64 }} /tmp/${{ env.PACKAGE_NAME }} ${{ env.ansible_user_intel64 }}@${{ env.ansible_host_intel64 }}:"/tmp/"
+            ${{ env.SSH_COMMAND_INTEL64 }} 'sudo echo "WAZUH_MANAGER='1.1.1.1'" > /tmp/wazuh_envs && sudo installer -pkg /tmp/${{ env.PACKAGE_NAME }} -target / | sudo tee /tmp/installer.log'
+            ${{ env.SCP_COMMAND_INTEL64 }} ${{ env.ansible_user_intel64 }}@${{ env.ansible_host_intel64 }}:"/tmp/installer.log" /tmp/
+          fi
+          if grep -q "The install was successful" "/tmp/installer.log"; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded.";
+            exit 1;
+          fi
+
+      - name: Ensure dependencies are installed on macos VM
+        id: install_deps
+        run: |
+          if [ "${{ inputs.architecture || 'arm64' }}" == "intel64" ]; then
+            echo "Check-file test implementation pending for intel64 arch"
+          else
+            ${{ env.SSH_COMMAND_ARM64 }} "python3 -m ensurepip"
+            ${{ env.SSH_COMMAND_ARM64 }} "python3 -m pip install --upgrade pip"
+            ${{ env.SSH_COMMAND_ARM64 }} "python3 -m pip install -r wazuh/.github/actions/check_files/requirements.txt"
+          fi
+
+      - name: Checking files after installation
+        run: |
+          if [[ "${{ steps.install_deps.outcome }}" == "success" ]]; then
+            if [ "${{ inputs.architecture || 'arm64' }}" == "intel64" ]; then
+              echo "Check-file test implementation pending for intel64 arch"
+            else
+              ${{ env.SSH_COMMAND_ARM64 }} "sudo /Library/Ossec/bin/wazuh-control stop" || true
+
+              echo "Running check_files.py (base comparison)"
+              ${{ env.SSH_COMMAND_ARM64 }} "cd ~ && sudo python3 wazuh/.github/actions/check_files/check_files.py -f 'wazuh/.github/actions/check_files/macos_agent_base.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'"
+
+              echo "Running check_files.py (actual state dump)"
+              ${{ env.SSH_COMMAND_ARM64 }} "cd ~ && sudo python3 wazuh/.github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'"
+
+              echo "Environment CSV"
+              ${{ env.SSH_COMMAND_ARM64 }} "cd ~ && sudo cat 'macos_actual_state.csv'"
+            fi
+          else
+            echo "Can't execute check_file script, couldn't fill dependencies."
+          fi
+
+      - name: Delete allocated intel64 VM
+        if: always() && steps.alloc_vm_intel64.outcome == 'success'
+        working-directory: ./wazuh-automation
+        run: |
+          python3 deployability/modules/allocation/main.py --action delete --track-output /tmp/allocatorvm_intel64/track.yml
+
+      - name: Delete allocated arm64 VM
+        if: always() && steps.alloc_vm_arm64.outcome == 'success'
+        working-directory: ./wazuh-automation
+        run: |
+          python3 deployability/modules/allocation/main.py --action delete --track-output /tmp/allocatorvm_arm64/track.yml
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-macos-${{ inputs.architecture || 'arm64' }}-${{ github.run_id }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload checksum as artifact
+        if: ${{ inputs.checksum }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-macos-${{ inputs.architecture || 'arm64' }}-${{ github.run_id }}-checksum
+          path: /tmp/${{ env.PACKAGE_NAME }}.sha512
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug symbols as artifact
+        if: ${{ env.PACKAGE_SYMBOLS_NAME != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-macos-${{ inputs.architecture || 'arm64' }}-${{ github.run_id }}-symbols
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload debug symbols checksum as artifact
+        if: ${{ inputs.checksum && env.PACKAGE_SYMBOLS_NAME != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-macos-${{ inputs.architecture || 'arm64' }}-${{ github.run_id }}-symbols-checksum
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Delete tmp folder
+        if: always()
+        run: |
+          sudo rm -r /tmp/*
