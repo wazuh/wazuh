@@ -262,6 +262,14 @@ EXPORTED int fim_db_get_max_version_registry();
  */
 EXPORTED int fim_db_set_version_registry(int version);
 
+/**
+ * @brief Clean all registry entries from the database.
+ *
+ * This function deletes all entries from registry_key and registry_data tables.
+ * Used when all registry paths are removed from configuration to clean orphaned data.
+ */
+EXPORTED void fim_db_clean_registry_tables();
+
 #endif /* WIN32 */
 
 #ifdef __cplusplus

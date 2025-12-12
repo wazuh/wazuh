@@ -176,6 +176,330 @@ cJSON* build_stateful_event_registry_value(const char* path, const char* value, 
 
     return stateful_event;
 }
+
+/**
+ * @brief Handle delete events for registry keys under paths that were removed from configuration.
+ *
+ * When a registry path is removed from the FIM configuration, keys that were previously
+ * monitored under that path need to generate delete events even though we no
+ * longer have the configuration available. This function creates minimal
+ * stateless and stateful delete events using only the information available
+ * from the database.
+ *
+ * @param path The registry key path being deleted.
+ * @param arch The architecture (ARCH_32BIT or ARCH_64BIT).
+ * @param result_json Data from dbsync containing checksum and version.
+ * @param txn_context Transaction context with event metadata.
+ */
+STATIC void handle_orphaned_delete_registry_key(const char* path,
+                                                 int arch,
+                                                 const cJSON* result_json,
+                                                 fim_key_txn_context_t* txn_context) {
+    cJSON* stateless_event = NULL;
+    cJSON* stateful_event = NULL;
+    char iso_time[32];
+
+    mdebug1("Generating delete event for orphaned registry key '%s' (path removed from configuration)", path);
+
+    // Get checksum from result_json
+    cJSON* checksum_json = cJSON_GetObjectItem(result_json, "checksum");
+    if (checksum_json == NULL) {
+        mdebug1("Couldn't find checksum for orphaned delete '%s'", path);
+        return;
+    }
+    char* sha1_checksum = cJSON_GetStringValue(checksum_json);
+    if (sha1_checksum == NULL) {
+        mdebug1("Invalid checksum value for orphaned delete '%s'", path);
+        return;
+    }
+
+    // Get version from result_json (for DELETED events, version is at top level)
+    cJSON* version_json = cJSON_GetObjectItem(result_json, "version");
+    if (version_json == NULL) {
+        mdebug1("Couldn't find version for orphaned delete '%s'", path);
+        return;
+    }
+    uint64_t document_version = (uint64_t)version_json->valueint;
+
+    // Build minimal stateless event
+    stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
+        return;
+    }
+
+    cJSON_AddStringToObject(stateless_event, "collector", "registry_key");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateless_event, "data", data);
+
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[FIM_DELETE]);
+
+    cJSON* registry_stateless = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "registry", registry_stateless);
+
+    char* utf8_path = auto_to_utf8(path);
+    cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
+    os_free(utf8_path);
+
+    const char* hive = get_registry_hive_abbreviation(path);
+    const char* key = get_registry_key(path);
+
+    if (strlen(hive) > 0 && strlen(key) > 0) {
+        size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
+        char* full_key = NULL;
+        os_malloc(full_key_len, full_key);
+        snprintf(full_key, full_key_len, "%s\\%s", hive, key);
+        char* utf8_full_key = auto_to_utf8(full_key);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
+        os_free(utf8_full_key);
+        os_free(full_key);
+    } else {
+        char* utf8_key_path = auto_to_utf8(path);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
+        os_free(utf8_key_path);
+    }
+    cJSON_AddStringToObject(registry_stateless, "hive", hive);
+
+    cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
+
+    // Send stateless event if enabled
+    if (notify_scan != 0 && txn_context->evt_data->report_event) {
+        send_syscheck_msg(stateless_event);
+    }
+
+    cJSON_Delete(stateless_event);
+
+    // Build minimal stateful event for sync
+    stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        return;
+    }
+
+    cJSON* registry_stateful = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
+
+    utf8_path = auto_to_utf8(path);
+    cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
+    os_free(utf8_path);
+
+    if (strlen(hive) > 0 && strlen(key) > 0) {
+        size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
+        char* full_key = NULL;
+        os_malloc(full_key_len, full_key);
+        snprintf(full_key, full_key_len, "%s\\%s", hive, key);
+        char* utf8_full_key = auto_to_utf8(full_key);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
+        os_free(utf8_full_key);
+        os_free(full_key);
+    } else {
+        char* utf8_key_path = auto_to_utf8(path);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
+        os_free(utf8_key_path);
+    }
+    cJSON_AddStringToObject(registry_stateful, "hive", hive);
+    cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+
+    cJSON* checksum_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum_obj);
+    cJSON* hash_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum_obj, "hash", hash_obj);
+    cJSON_AddStringToObject(hash_obj, "sha1", sha1_checksum);
+
+    cJSON* state_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "state", state_obj);
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state_obj, "modified_at", modified_at_time);
+    cJSON_AddNumberToObject(state_obj, "document_version", (double)document_version);
+
+    // Compute SHA1 of arch:path for sync ID
+    char id_source_string[OS_MAXSTR] = {0};
+    snprintf(id_source_string, OS_MAXSTR - 1, "%d:%s", arch, path);
+
+    char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
+
+    // Persist stateful event for sync
+    persist_syscheck_msg(registry_key_sha1, OPERATION_DELETE, FIM_REGISTRY_KEYS_SYNC_INDEX,
+                         stateful_event, document_version);
+
+    cJSON_Delete(stateful_event);
+}
+
+/**
+ * @brief Handle delete events for registry values under paths that were removed from configuration.
+ *
+ * When a registry path is removed from the FIM configuration, values that were previously
+ * monitored under that path need to generate delete events even though we no
+ * longer have the configuration available. This function creates minimal
+ * stateless and stateful delete events using only the information available
+ * from the database.
+ *
+ * @param path The registry key path where the value resides.
+ * @param value The registry value name being deleted.
+ * @param arch The architecture (ARCH_32BIT or ARCH_64BIT).
+ * @param result_json Data from dbsync containing checksum and version.
+ * @param txn_context Transaction context with event metadata.
+ */
+STATIC void handle_orphaned_delete_registry_value(const char* path,
+                                                   const char* value,
+                                                   int arch,
+                                                   const cJSON* result_json,
+                                                   fim_val_txn_context_t* txn_context) {
+    cJSON* stateless_event = NULL;
+    cJSON* stateful_event = NULL;
+    char iso_time[32];
+
+    mdebug1("Generating delete event for orphaned registry value '%s\\%s' (path removed from configuration)", path, value);
+
+    // Get checksum from result_json
+    cJSON* checksum_json = cJSON_GetObjectItem(result_json, "checksum");
+    if (checksum_json == NULL) {
+        mdebug1("Couldn't find checksum for orphaned delete '%s\\%s'", path, value);
+        return;
+    }
+    char* sha1_checksum = cJSON_GetStringValue(checksum_json);
+    if (sha1_checksum == NULL) {
+        mdebug1("Invalid checksum value for orphaned delete '%s\\%s'", path, value);
+        return;
+    }
+
+    // Get version from result_json (for DELETED events, version is at top level)
+    cJSON* version_json = cJSON_GetObjectItem(result_json, "version");
+    if (version_json == NULL) {
+        mdebug1("Couldn't find version for orphaned delete '%s\\%s'", path, value);
+        return;
+    }
+    uint64_t document_version = (uint64_t)version_json->valueint;
+
+    // Build minimal stateless event
+    stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
+        return;
+    }
+
+    cJSON_AddStringToObject(stateless_event, "collector", "registry_value");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateless_event, "data", data);
+
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[FIM_DELETE]);
+
+    cJSON* registry_stateless = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "registry", registry_stateless);
+
+    char* utf8_path = auto_to_utf8(path);
+    cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
+    os_free(utf8_path);
+
+    const char* hive = get_registry_hive_abbreviation(path);
+    const char* key = get_registry_key(path);
+
+    if (strlen(hive) > 0 && strlen(key) > 0) {
+        size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
+        char* full_key = NULL;
+        os_malloc(full_key_len, full_key);
+        snprintf(full_key, full_key_len, "%s\\%s", hive, key);
+        char* utf8_full_key = auto_to_utf8(full_key);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
+        os_free(utf8_full_key);
+        os_free(full_key);
+    } else {
+        char* utf8_key_path = auto_to_utf8(path);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
+        os_free(utf8_key_path);
+    }
+    cJSON_AddStringToObject(registry_stateless, "hive", hive);
+
+    cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+
+    char* utf8_value = auto_to_utf8(value);
+    cJSON_AddStringToObject(registry_stateless, "value", utf8_value ? utf8_value : value);
+    os_free(utf8_value);
+
+    cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
+
+    // Send stateless event if enabled
+    if (notify_scan != 0 && txn_context->evt_data->report_event) {
+        send_syscheck_msg(stateless_event);
+    }
+
+    cJSON_Delete(stateless_event);
+
+    // Build minimal stateful event for sync
+    stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        return;
+    }
+
+    cJSON* registry_stateful = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
+
+    utf8_path = auto_to_utf8(path);
+    cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
+    os_free(utf8_path);
+
+    if (strlen(hive) > 0 && strlen(key) > 0) {
+        size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
+        char* full_key = NULL;
+        os_malloc(full_key_len, full_key);
+        snprintf(full_key, full_key_len, "%s\\%s", hive, key);
+        char* utf8_full_key = auto_to_utf8(full_key);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
+        os_free(utf8_full_key);
+        os_free(full_key);
+    } else {
+        char* utf8_key_path = auto_to_utf8(path);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
+        os_free(utf8_key_path);
+    }
+    cJSON_AddStringToObject(registry_stateful, "hive", hive);
+    cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+
+    utf8_value = auto_to_utf8(value);
+    cJSON_AddStringToObject(registry_stateful, "value", utf8_value ? utf8_value : value);
+    os_free(utf8_value);
+
+    cJSON* checksum_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum_obj);
+    cJSON* hash_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum_obj, "hash", hash_obj);
+    cJSON_AddStringToObject(hash_obj, "sha1", sha1_checksum);
+
+    cJSON* state_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "state", state_obj);
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state_obj, "modified_at", modified_at_time);
+    cJSON_AddNumberToObject(state_obj, "document_version", (double)document_version);
+
+    // Compute SHA1 of path:arch:value for sync ID
+    char id_source_string[OS_MAXSTR] = {0};
+    snprintf(id_source_string, OS_MAXSTR - 1, "%s:%d:%s", path, arch, value);
+
+    char registry_value_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(id_source_string, -1, registry_value_sha1);
+
+    // Persist stateful event for sync
+    persist_syscheck_msg(registry_value_sha1, OPERATION_DELETE, FIM_REGISTRY_VALUES_SYNC_INDEX,
+                         stateful_event, document_version);
+
+    cJSON_Delete(stateful_event);
+}
+
 // DBSync Callbacks
 
 /**
@@ -221,6 +545,11 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     if (event_data->config == NULL) {
         event_data->config = fim_registry_configuration(path, arch);
         if (event_data->config == NULL) {
+            // For DELETE events of orphaned registry keys (path removed from config),
+            // generate minimal delete events without requiring configuration
+            if (resultType == DELETED) {
+                handle_orphaned_delete_registry_key(path, arch, result_json, event_data);
+            }
             goto end;
         }
     }
@@ -421,6 +750,11 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     if (event_data->config == NULL) {
         event_data->config = fim_registry_configuration(path, arch);
         if (event_data->config == NULL) {
+            // For DELETE events of orphaned registry values (path removed from config),
+            // generate minimal delete events without requiring configuration
+            if (resultType == DELETED) {
+                handle_orphaned_delete_registry_value(path, value, arch, result_json, event_data);
+            }
             goto end;
         }
     }
@@ -1363,6 +1697,47 @@ void fim_registry_scan() {
     HKEY root_key_handle = NULL;
     const char *sub_key = NULL;
     int i = 0;
+
+    // Check if registries are configured - if syscheck.registry is NULL or empty,
+    // but we have data in the database, we need to send DataClean for registry indices
+    if (syscheck.registry == NULL || syscheck.registry[0].entry == NULL) {
+        int registry_keys_count = fim_db_get_count_registry_key();
+        int registry_values_count = fim_db_get_count_registry_data();
+
+        if (registry_keys_count > 0 || registry_values_count > 0) {
+            mdebug1("No registry paths configured but database has %d keys and %d values. Initiating DataClean for registries.",
+                    registry_keys_count, registry_values_count);
+
+            if (syscheck.sync_handle) {
+                // Prepare indices vector for data clean notification
+                const char* indices[2] = {NULL, NULL};
+                size_t indices_count = 0;
+
+                if (registry_keys_count > 0) {
+                    indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
+                }
+                if (registry_values_count > 0) {
+                    indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
+                }
+
+                // Send DataClean notification for registry indices
+                bool dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+                if (dataCleanSent) {
+                    minfo("DataClean notification sent successfully for registry indices (all registry paths removed from configuration).");
+                } else {
+                    mwarn("DataClean notification failed for registry indices. Indexer may retain stale registry data.");
+                }
+
+                // Clear registry tables from both databases
+                fim_db_clean_registry_tables();
+            } else {
+                mdebug1("Sync protocol not initialized, cannot send DataClean notification for registries.");
+            }
+        }
+        mdebug1(FIM_WINREGISTRY_ENDED);
+        return;
+    }
+
     event_data_t evt_data_registry_key = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
     fim_key_txn_context_t txn_ctx_reg = { .evt_data = &evt_data_registry_key, .config = NULL };
     TXN_HANDLE regkey_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, registry_key_transaction_callback, &txn_ctx_reg);
