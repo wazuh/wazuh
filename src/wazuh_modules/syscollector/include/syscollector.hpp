@@ -220,6 +220,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_processes;
         bool                                                                     m_hotfixes;
         bool                                                                     m_stopping;
+        bool                                                                     m_syncLoopFinished;
         bool                                                                     m_initialized;
         bool                                                                     m_notify;
         std::atomic<bool>                                                        m_paused;
