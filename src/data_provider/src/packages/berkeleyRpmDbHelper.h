@@ -221,7 +221,7 @@ class BerkeleyRpmDBReader final
                         {
                             std::string name(ucp);
 
-                            if (name.rfind("python", 0) == 0)
+                            if (name.rfind("python", 0) == 0 || name.rfind("platform-python", 0) == 0)
                             {
                                 isPython = true;
                             }
