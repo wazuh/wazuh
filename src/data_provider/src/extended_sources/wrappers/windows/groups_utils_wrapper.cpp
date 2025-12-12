@@ -8,11 +8,16 @@
  */
 
 #include <iostream>
+#include <thread>
 
 #include "groups_utils_wrapper.hpp"
 #include "users_utils_wrapper.hpp"
 #include "windows_api_wrapper.hpp"
 #include "encodingWindowsHelper.h"
+
+thread_local std::vector<Group> GroupsHelper::s_cachedGroups;
+thread_local std::chrono::steady_clock::time_point GroupsHelper::s_cacheTimestamp;
+thread_local bool GroupsHelper::s_cacheValid = false;
 
 GroupsHelper::GroupsHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper, std::shared_ptr<IUsersHelper> usersHelper)
     : m_winapiWrapper(std::move(winapiWrapper))
@@ -28,6 +33,15 @@ GroupsHelper::GroupsHelper()
 
 std::vector<Group> GroupsHelper::processLocalGroups()
 {
+    // Validate cache before processing
+    validateCache();
+
+    // Check if cache is valid and return cached data
+    if (s_cacheValid)
+    {
+        return s_cachedGroups;
+    }
+
     std::vector<Group> groups;
     DWORD groupInfoLevel = 1;
     DWORD numGroupsRead = 0;
@@ -79,10 +93,44 @@ std::vector<Group> GroupsHelper::processLocalGroups()
             newGroup.groupname = Utils::EncodingWindowsHelper::wstringToStringUTF8(groupsInfoBuffer.get()[i].lgrpi1_name);
 
             groups.push_back(std::move(newGroup));
+
+            // Rate limiting: pause every BATCH_SIZE groups
+            if (groups.size() % BATCH_SIZE == 0)
+            {
+                std::this_thread::sleep_for(BATCH_DELAY);
+            }
         }
 
     }
     while (ret == ERROR_MORE_DATA);
 
+    // Update cache with fresh data
+    s_cachedGroups = groups;
+    updateCacheTimestamp();
+
     return groups;
+}
+
+void GroupsHelper::validateCache()
+{
+    auto now = std::chrono::steady_clock::now();
+
+    if (s_cacheValid && (now - s_cacheTimestamp) >= s_cacheTimeout)
+    {
+        // Cache expired, clear it
+        s_cachedGroups.clear();
+        s_cacheValid = false;
+    }
+}
+
+void GroupsHelper::updateCacheTimestamp()
+{
+    s_cacheTimestamp = std::chrono::steady_clock::now();
+    s_cacheValid = true;
+}
+
+void GroupsHelper::resetCache()
+{
+    s_cachedGroups.clear();
+    s_cacheValid = false;
 }

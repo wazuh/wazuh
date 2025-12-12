@@ -4,15 +4,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-ventura:
-    runs-on: macos-13
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: Build wazuh agent for macOS 13
-        run: |
-          make deps -C src TARGET=agent -j4
-          make -C src TARGET=agent -j4
   build-sonoma:
     runs-on: macos-14
     steps:

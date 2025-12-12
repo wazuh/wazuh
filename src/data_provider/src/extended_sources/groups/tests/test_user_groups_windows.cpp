@@ -57,7 +57,7 @@ class MockGroupsHelper : public IGroupsHelper
         MOCK_METHOD(std::vector<Group>, processLocalGroups, (), (override));
 };
 
-class UserGroupsProviderTest : public ::testing::Test
+class UserGroupsProviderWindowsTest : public ::testing::Test
 {
     protected:
         std::shared_ptr<MockWindowsApiWrapper> winapiWrapper;
@@ -67,6 +67,11 @@ class UserGroupsProviderTest : public ::testing::Test
 
         void SetUp() override
         {
+            // Reset all static caches before each test
+            UserGroupsProvider::resetCache();
+            UsersHelper::resetCache();
+            GroupsHelper::resetCache();
+
             winapiWrapper = std::make_shared<MockWindowsApiWrapper>();
             usersHelper = std::make_shared<MockUsersHelper>();
             groupsHelper = std::make_shared<MockGroupsHelper>();
@@ -100,7 +105,7 @@ static auto ReturnGroups(const std::vector<std::wstring>& groupNames)
     };
 }
 
-TEST_F(UserGroupsProviderTest, CollectNoGroupsForUserReturnsEmpty)
+TEST_F(UserGroupsProviderWindowsTest, CollectNoGroupsForUserReturnsEmpty)
 {
     std::set<std::string> sids;
     User testUser
@@ -129,7 +134,7 @@ TEST_F(UserGroupsProviderTest, CollectNoGroupsForUserReturnsEmpty)
     EXPECT_TRUE(result.empty());
 }
 
-TEST_F(UserGroupsProviderTest, CollectUserWithValidGroupReturnsGroupInfo)
+TEST_F(UserGroupsProviderWindowsTest, CollectUserWithValidGroupReturnsGroupInfo)
 {
     std::set<std::string> sids;
     User testUser
@@ -181,7 +186,7 @@ TEST_F(UserGroupsProviderTest, CollectUserWithValidGroupReturnsGroupInfo)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectWithSpecificUidReturnsFilteredResults)
+TEST_F(UserGroupsProviderWindowsTest, CollectWithSpecificUidReturnsFilteredResults)
 {
     std::set<std::string> sids;
 
@@ -229,7 +234,7 @@ TEST_F(UserGroupsProviderTest, CollectWithSpecificUidReturnsFilteredResults)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectIgnoresSystemUsers)
+TEST_F(UserGroupsProviderWindowsTest, CollectIgnoresSystemUsers)
 {
     std::set<std::string> sids;
 
@@ -272,7 +277,7 @@ TEST_F(UserGroupsProviderTest, CollectIgnoresSystemUsers)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectHandlesNetUserGetLocalGroupsFailure)
+TEST_F(UserGroupsProviderWindowsTest, CollectHandlesNetUserGetLocalGroupsFailure)
 {
     std::set<std::string> sids;
 
@@ -316,7 +321,7 @@ TEST_F(UserGroupsProviderTest, CollectHandlesNetUserGetLocalGroupsFailure)
     EXPECT_EQ(result[0]["gid"], 2001);
 }
 
-TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
+TEST_F(UserGroupsProviderWindowsTest, CollectHandlesGroupNotFound)
 {
     std::set<std::string> sids;
 
@@ -356,7 +361,7 @@ TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
     EXPECT_TRUE(result.empty());
 }
 
-TEST_F(UserGroupsProviderTest, GetGroupNamesByUidSingleUid)
+TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidSingleUid)
 {
     User testUser{};
     testUser.uid = 1000;
@@ -402,7 +407,7 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidSingleUid)
                 ::testing::UnorderedElementsAre("groupA", "groupB"));
 }
 
-TEST_F(UserGroupsProviderTest, GetGroupNamesByUidMultipleUids)
+TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidMultipleUids)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -472,7 +477,7 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidMultipleUids)
                 ::testing::UnorderedElementsAre("groupB", "groupC"));
 }
 
-TEST_F(UserGroupsProviderTest, GetGroupNamesByUidAllUsers)
+TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidAllUsers)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -543,7 +548,7 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidAllUsers)
                 ::testing::UnorderedElementsAre("groupB", "groupC"));
 }
 
-TEST_F(UserGroupsProviderTest, GetUserNamesByGidSingleGid)
+TEST_F(UserGroupsProviderWindowsTest, GetUserNamesByGidSingleGid)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -575,7 +580,7 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidSingleGid)
                 ::testing::UnorderedElementsAre("alice"));
 }
 
-TEST_F(UserGroupsProviderTest, GetUserNamesByGidMultipleGids)
+TEST_F(UserGroupsProviderWindowsTest, GetUserNamesByGidMultipleGids)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -610,7 +615,7 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidMultipleGids)
                 ::testing::UnorderedElementsAre("alice", "bob"));
 }
 
-TEST_F(UserGroupsProviderTest, GetUserNamesByGidAllGroups)
+TEST_F(UserGroupsProviderWindowsTest, GetUserNamesByGidAllGroups)
 {
     User user1{}, user2{};
     user1.uid = 1000;
@@ -643,4 +648,118 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidAllGroups)
                 ::testing::UnorderedElementsAre("alice"));
     EXPECT_THAT(result["201"].get<std::vector<std::string>>(),
                 ::testing::UnorderedElementsAre("alice", "bob"));
+}
+
+TEST_F(UserGroupsProviderWindowsTest, RateLimitingAppliesAfterBatchSize)
+{
+    // Test that rate limiting delays occur after BATCH_SIZE (100) API calls
+    User user{};
+    std::vector<User> users;
+
+    // Create 105 users to test rate limiting at 100th call
+    for (int i = 0; i < 105; ++i)
+    {
+        User u{};
+        u.uid = 1000 + i;
+        u.username = "user" + std::to_string(i);
+        users.push_back(u);
+    }
+
+    Group group{};
+    group.gid = 200;
+    group.groupname = "testgroup";
+    std::vector<Group> groups = { group };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(groups));
+
+    // Expect NetUserGetLocalGroupsWrapper to be called for each user (105 times)
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::_, 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .Times(105)
+    .WillRepeatedly(ReturnGroups({ L"testgroup" }));
+
+    auto start = std::chrono::steady_clock::now();
+    auto result = provider->getUserNamesByGid({});
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    // After 100 calls, a 250ms delay should have occurred at least once (at call 100)
+    // Total expected delay: at least 250ms
+    EXPECT_GE(duration.count(), 250);
+
+    // Verify results are correct
+    EXPECT_EQ(result["200"].get<std::vector<std::string>>().size(), 105u);
+}
+
+TEST_F(UserGroupsProviderWindowsTest, RateLimitingResetOnCacheExpiration)
+{
+    // Test that rate limiting counter resets when cache expires
+    User user1{};
+    user1.uid = 1000;
+    user1.username = "testuser";
+    std::vector<User> users = { user1 };
+
+    Group group{};
+    group.gid = 200;
+    group.groupname = "testgroup";
+    std::vector<Group> groups = { group };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .Times(2)
+    .WillRepeatedly(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .Times(2)
+    .WillRepeatedly(::testing::Return(groups));
+
+    // First call - should make API call (cache miss)
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"testuser"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"testgroup" }));
+
+    auto result1 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result1["200"].get<std::vector<std::string>>().size(), 1u);
+
+    // Reset cache to simulate expiration
+    UserGroupsProvider::resetCache();
+
+    // Second call after reset - should make API call again and counter should be reset
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"testuser"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"testgroup" }));
+
+    auto result2 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result2["200"].get<std::vector<std::string>>().size(), 1u);
+}
+
+TEST_F(UserGroupsProviderWindowsTest, CachePreventsDuplicateApiCallsWithinValidPeriod)
+{
+    // Test that cached results prevent duplicate API calls
+    User user1{};
+    user1.uid = 1000;
+    user1.username = "cacheduser";
+    std::vector<User> users = { user1 };
+
+    Group group{};
+    group.gid = 200;
+    group.groupname = "testgroup";
+    std::vector<Group> groups = { group };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .Times(2)
+    .WillRepeatedly(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .Times(2)
+    .WillRepeatedly(::testing::Return(groups));
+
+    // First call - should make API call (cache miss)
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"cacheduser"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"testgroup" }));
+
+    auto result1 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result1["200"].get<std::vector<std::string>>().size(), 1u);
+
+    // Second call within cache validity - should NOT make API call (cache hit)
+    // NetUserGetLocalGroupsWrapper should NOT be called again
+    auto result2 = provider->getUserNamesByGid({});
+    EXPECT_EQ(result2["200"].get<std::vector<std::string>>().size(), 1u);
 }

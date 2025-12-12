@@ -56,7 +56,16 @@ using ::testing::NiceMock;
 using ::testing::InSequence;
 using ::testing::StrEq;
 
-TEST(UserGroupsProviderTest, CollectWithSpecificUid)
+class UserGroupsProviderLinuxTest : public ::testing::Test
+{
+    protected:
+        void SetUp() override
+        {
+            UserGroupsProvider::resetCache();
+        }
+};
+
+TEST_F(UserGroupsProviderLinuxTest, CollectWithSpecificUid)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -99,15 +108,15 @@ TEST(UserGroupsProviderTest, CollectWithSpecificUid)
     EXPECT_EQ(result[1]["gid"], 2002);
 }
 
-TEST(UserGroupsProviderTest, CollectAllUserGroups)
+TEST_F(UserGroupsProviderLinuxTest, CollectAllUserGroups)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
 
-    struct passwd user1;
-    struct passwd user2;
+    struct passwd user1 {};
+    struct passwd user2 {};
 
     const char* user1Name = "user1";
     const uid_t user1Uid = 1001;
@@ -193,7 +202,7 @@ TEST(UserGroupsProviderTest, CollectAllUserGroups)
     }
 }
 
-TEST(UserGroupsProviderTest, getUserNamesByGidAllGroups)
+TEST_F(UserGroupsProviderLinuxTest, getUserNamesByGidAllGroups)
 {
 
     auto mockGroup = std::make_shared<MockGroupWrapper>();
@@ -239,7 +248,7 @@ TEST(UserGroupsProviderTest, getUserNamesByGidAllGroups)
     free(user1.pw_name);
 }
 
-TEST(UserGroupsProviderTest, getUserNamesByGidSingleGid)
+TEST_F(UserGroupsProviderLinuxTest, getUserNamesByGidSingleGid)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -288,7 +297,7 @@ TEST(UserGroupsProviderTest, getUserNamesByGidSingleGid)
     free(user2.pw_name);
 }
 
-TEST(UserGroupsProviderTest, getUserNamesByGidMultipleGids)
+TEST_F(UserGroupsProviderLinuxTest, getUserNamesByGidMultipleGids)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
