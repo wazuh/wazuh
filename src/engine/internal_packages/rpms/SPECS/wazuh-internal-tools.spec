@@ -117,11 +117,10 @@ build_pep517 tools/api-communication
 if ! build_pep517 tools/engine-suite; then
   echo "[build] PEP517 failed for engine-suite; falling back to legacy mode..."
   build_legacy_from_copy tools/engine-suite engine-suite \
-    "engine_cm engine_archiver engine_router engine_schema engine_ns engine_geo engine_test engine_test_utils helper_test health_test integration_test"
+    "engine_cm engine_archiver engine_router engine_schema engine_ns engine_geo engine_test engine_test_utils helper_test integration_test"
 fi
 
 build_pep517 test/engine-test-utils  || build_legacy_from_copy test/engine-test-utils  engine-test-utils   "engine_test_utils"
-build_pep517 test/health_test/engine-health-test  || build_legacy_from_copy test/health_test/engine-health-test  engine-health-test  "health_test"
 build_pep517 test/helper_tests/engine-helper-test || build_legacy_from_copy test/helper_tests/engine-helper-test engine-helper-test "helper_test"
 build_pep517 test/integration_tests/engine-it     || build_legacy_from_copy test/integration_tests/engine-it     engine-it          "integration_test"
 
@@ -237,7 +236,6 @@ mk_wrapper engine-geo          engine_geo
 mk_wrapper engine-test         engine_test
 mk_wrapper engine-test-utils   engine_test_utils
 mk_wrapper engine-helper-test  helper_test
-mk_wrapper engine-health-test  health_test
 mk_wrapper engine-it           integration_test
 
 # =====================
@@ -283,7 +281,6 @@ PY
     for f in "$W"/api_communication-*.whl \
              "$W"/engine_suite-*.whl \
              "$W"/engine_test_utils-*.whl \
-             "$W"/engine_health_test-*.whl \
              "$W"/engine_helper_test-*.whl \
              "$W"/engine_it-*.whl; do
       [ -e "$f" ] && files+=("$f")
@@ -409,7 +406,6 @@ exit 0
 %{_bindir}/engine-test
 %{_bindir}/engine-test-utils
 %{_bindir}/engine-helper-test
-%{_bindir}/engine-health-test
 %{_bindir}/engine-it
 %dir %{prefix}
 %dir %{wheelsd}

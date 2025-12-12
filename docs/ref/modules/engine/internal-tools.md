@@ -53,18 +53,6 @@ For more details, refer to the README on src/engine/test/helper-test/README.md
 
 ---
 
-## Engine Health Test
-
-The `engine-health-test` tool performs comprehensive health checks on the Wazuh ruleset.
-It runs a series of automated tests against the Wazuh engine to ensure the ruleset operates as expected.
-This tool is essential for validating the integrity and functionality of the ruleset.
-
-For more details, refer to the README on src/engine/test/health_test/README.md
-
-**Location:** `src/engine/test/health_test/engine-health-test`
-
----
-
 ## Engine Integration Test
 
 The `engine-integration-test` tool is designed to test the integration of the Wazuh engine with external systems.

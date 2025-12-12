@@ -1,4 +1,3 @@
-/opt/wazuh-internal-tools/venv/bin/engine-health-test  /usr/bin/engine-health-test
 /opt/wazuh-internal-tools/venv/bin/engine-helper-test  /usr/bin/engine-helper-test
 /opt/wazuh-internal-tools/venv/bin/engine-it           /usr/bin/engine-it
 /opt/wazuh-internal-tools/venv/bin/engine-test         /usr/bin/engine-test

@@ -142,7 +142,6 @@
         "${env:ENGINE_SRC}/tools/api-communication/src",
         "${env:ENGINE_SRC}/tools/engine-suite/src",
         "${env:ENGINE_SRC}/test/engine-test-utils/src",
-        "${env:ENGINE_SRC}/test/health_test/engine-health-test/src",
         "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src",
         "${env:ENGINE_SRC}/test/integration_tests/engine-it/src"
     ],
