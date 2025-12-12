@@ -1,4 +1,4 @@
-fields_to_exclude = ['@timestamp']
+fields_to_exclude = ['@timestamp', 'wazuh.decoders']
 
 def filter_nested(data, exclude_keys=fields_to_exclude):
     """
