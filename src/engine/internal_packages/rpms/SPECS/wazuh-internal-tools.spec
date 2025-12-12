@@ -117,7 +117,7 @@ build_pep517 tools/api-communication
 if ! build_pep517 tools/engine-suite; then
   echo "[build] PEP517 failed for engine-suite; falling back to legacy mode..."
   build_legacy_from_copy tools/engine-suite engine-suite \
-    "engine_cm engine_archiver engine_decoder engine_router engine_schema engine_ns engine_geo engine_test engine_test_utils helper_test health_test integration_test"
+    "engine_cm engine_archiver engine_router engine_schema engine_ns engine_geo engine_test engine_test_utils helper_test health_test integration_test"
 fi
 
 build_pep517 test/engine-test-utils  || build_legacy_from_copy test/engine-test-utils  engine-test-utils   "engine_test_utils"
@@ -230,7 +230,6 @@ EOF
 
 mk_wrapper engine-cm           engine_ns
 mk_wrapper engine-archiver     engine_archiver
-mk_wrapper engine-decoder      engine_decoder
 mk_wrapper engine-router       engine_router
 mk_wrapper engine-schema       engine_schema
 mk_wrapper engine-ns           engine_ns
@@ -403,7 +402,6 @@ exit 0
 %files
 %{_bindir}/engine-cm
 %{_bindir}/engine-archiver
-%{_bindir}/engine-decoder
 %{_bindir}/engine-router
 %{_bindir}/engine-schema
 %{_bindir}/engine-ns

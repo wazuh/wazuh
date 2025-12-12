@@ -3,7 +3,6 @@
 1. [Summary](#summary)
 2. [Directory structure](#directory-structure)
     1. [Engine clear](#engine-clear)
-    1. [Engine decoder](#engine-decoder)
     1. [Engine integration](#engine-integration)
     1. [Engine policy](#engine-policy)
     1. [Engine router](#engine-router)
@@ -23,7 +22,6 @@ Wazuh environment, providing a centralized and efficient way to perform these ta
 │   └── src
 │       └── engine_clear
 │       └── engine_catalog
-│       └── engine_decoder
 │       └── engine_integration
 │       └── engine_policy
 │       └── engine_router
@@ -50,14 +48,6 @@ Wazuh environment, providing a centralized and efficient way to perform these ta
     - **Creation of Assets**: Allows you to create new assets, such as decoders, rules, integrations, etc.
     - **Deletion and Update**: Provides the ability to delete or update existing assets, providing flexibility in configuration management.
     - **Validation**: Validates the syntax of the asset files, ensuring that they are correctly formatted and can be used by the engine.
-
-## Engine decoder
-
-- **Updating Auxiliary Function Names**:
-    Allows you to change the names of auxiliary functions in decoders in bulk. You can specify an old-new name pair or provide a file containing a list of names to replace.
-
-- **Extraction of Decoder Fields**:
-    Provides the ability to list all fields extracted by a specific decoder, by parsing the expressions used in the `parse` and `normalize` sections of the decoder file.
 
 ## Engine integration
 
@@ -129,7 +119,6 @@ pip3 install -e tools/engine-suite[dev]
 **For developing we recommend to install it under a virtual environment.**
 
 Once installed the following scripts are available in the path:
-- [engine-decoder](src/engine_decoder/README.md)
 - [engine-catalog](src/engine_catalog/README.md)
 - [engine-integration](src/engine_integration/README.md)
 - [engine-clear](src/engine_clear/README.md)
