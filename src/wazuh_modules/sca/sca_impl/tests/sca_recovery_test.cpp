@@ -270,8 +270,8 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityEmptyChecksum)
     // Mock updateLastIntegrityCheckTime
     .WillRepeatedly(::testing::Return());
 
-    // Mock getConcatenatedChecksums to throw error (used by Recovery::calculateTableChecksum)
-    EXPECT_CALL(*m_mockDBSync, getConcatenatedChecksums(::testing::_))
+    // Mock calculateTableChecksum to throw error
+    EXPECT_CALL(*m_mockDBSync, calculateTableChecksum(::testing::_))
     .WillOnce(::testing::Throw(std::runtime_error("DB error")));
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
@@ -321,9 +321,9 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityIntegrationFlow)
     // 2. Any subsequent calls (updateLastIntegrityCheckTime, etc.)
     .WillRepeatedly(::testing::Return());
 
-    // Mock getConcatenatedChecksums (used by Recovery::calculateTableChecksum)
-    EXPECT_CALL(*m_mockDBSync, getConcatenatedChecksums(::testing::_))
-    .WillOnce(::testing::Return("abc123def456"));  // Concatenated checksums
+    // Mock calculateTableChecksum (used to calculate table checksum)
+    EXPECT_CALL(*m_mockDBSync, calculateTableChecksum(::testing::_))
+    .WillOnce(::testing::Return("abc123def456"));  // Table checksum
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 

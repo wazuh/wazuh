@@ -27,7 +27,6 @@
 #include "logging_helper.h"
 #include "../../module_query_errors.h"
 #include "defs.h"
-#include "recovery.hpp"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -2975,7 +2974,7 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
     m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
 
-    std::string final_checksum = Recovery::calculateTableChecksum(*m_spDBSync, tableName);
+    std::string final_checksum = m_spDBSync->calculateTableChecksum(tableName);
 
     m_logFunction(LOG_DEBUG, "Success! Final file table checksum is: " + std::string(final_checksum));
 

@@ -30,8 +30,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gmock_main
         cjson
         sqlite3
+        crypto
+        ssl
         pthread
         -static-libgcc -static-libstdc++
+        ws2_32
+        crypt32
     )
 else()
     target_link_libraries(fim_integration_test
@@ -45,6 +49,7 @@ else()
         optimized gmock_main
         cjson
         sqlite3
+        crypto
         pthread
         dl
     )

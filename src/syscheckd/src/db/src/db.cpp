@@ -24,7 +24,6 @@
 #include <hashHelper.h>
 #include "stringHelper.h"
 #include "timeHelper.h"
-#include "recovery.hpp"
 
 void DB::init(const int storage,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
@@ -462,7 +461,7 @@ char* fim_db_calculate_table_checksum(const char* table_name)
     try
     {
         DBSync dbSync(DB::instance().DBSyncHandle());
-        std::string checksum = Recovery::calculateTableChecksum(dbSync, table_name);
+        std::string checksum = dbSync.calculateTableChecksum(table_name);
         result = strdup(checksum.c_str());
     }
     catch (const std::exception& err)

@@ -21,6 +21,7 @@ class MockDBSync : public IDBSync
         MOCK_METHOD(DBSYNC_HANDLE, handle, (), (override));
         MOCK_METHOD(void, closeAndDeleteDatabase, (), (override));
         MOCK_METHOD(std::string, getConcatenatedChecksums, (const std::string& tableName), (override));
+        MOCK_METHOD(std::string, calculateTableChecksum, (const std::string& tableName), (override));
         MOCK_METHOD(void, increaseEachEntryVersion, (const std::string& tableName), (override));
         MOCK_METHOD(std::vector<nlohmann::json>, getEveryElement, (const std::string& tableName), (override));
 };

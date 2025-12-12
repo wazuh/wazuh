@@ -98,6 +98,9 @@ EXPORTED size_t syscollector_query(const char* query, char** output);
 EXPORTED void syscollector_lock_scan_mutex();
 EXPORTED void syscollector_unlock_scan_mutex();
 
+// Recovery process function
+EXPORTED void syscollector_run_recovery_process();
+
 #ifdef __cplusplus
 }
 #endif

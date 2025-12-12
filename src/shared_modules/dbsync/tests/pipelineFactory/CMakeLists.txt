@@ -35,7 +35,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         pthread
         sqlite3
         cjson
+        crypto
+        ssl
         -static-libgcc -static-libstdc++
+        ws2_32
+        crypt32
     )
 else()
     target_link_libraries(dbsyncPipelineFactory_unit_test
@@ -49,6 +53,7 @@ else()
         optimized gmock_main
         pthread
         sqlite3
+        crypto
         cjson
         dl
     )

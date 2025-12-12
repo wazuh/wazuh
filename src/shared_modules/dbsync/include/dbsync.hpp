@@ -177,6 +177,13 @@ class EXPORTED DBSync : public IDBSync
         std::string getConcatenatedChecksums(const std::string& tableName) override;
 
         /**
+         * @brief Calculate the checksum-of-checksums for a table
+         * @param tableName The table to calculate checksum for
+         * @return The SHA1 checksum-of-checksums as a hex string
+         */
+        std::string calculateTableChecksum(const std::string& tableName) override;
+
+        /**
          * @brief Increase the version column for all entries in a table.
          *
          * @param tableName Name of the table to update.

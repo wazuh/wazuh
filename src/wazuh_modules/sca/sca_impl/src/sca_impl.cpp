@@ -15,7 +15,6 @@
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.hpp"
 #include "hashHelper.h"
-#include "recovery.hpp"
 #include "../../include/sca.h"
 
 // Static member definitions
@@ -731,7 +730,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                     }
                     else
                     {
-                        checksum = Recovery::calculateTableChecksum(*m_dBSync, "sca_check");
+                        checksum = m_dBSync->calculateTableChecksum("sca_check");
                         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA table checksum calculated: " + checksum);
                     }
                 }

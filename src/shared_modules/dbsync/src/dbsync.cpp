@@ -16,6 +16,8 @@
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
 #include "cjsonSmartDeleter.hpp"
+#include "hashHelper.h"
+#include "stringHelper.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -869,6 +871,21 @@ std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
     return concatenatedChecksums;
 }
 
+std::string DBSync::calculateTableChecksum(const std::string& tableName)
+{
+    std::string concatenated_checksums = getConcatenatedChecksums(tableName);
+
+    // Build checksum-of-checksums
+    Utils::HashData hash(Utils::HashType::Sha1);
+    std::string final_checksum;
+
+    hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
+    const std::vector<unsigned char> hashResult = hash.hash();
+    final_checksum = Utils::asciiToHex(hashResult);
+
+    return final_checksum;
+}
+
 void DBSync::increaseEachEntryVersion(const std::string& tableName)
 {
     std::vector<nlohmann::json> rows;
@@ -889,8 +906,6 @@ void DBSync::increaseEachEntryVersion(const std::string& tableName)
                       .build()};
 
     selectRows(selectQuery.query(), callback);
-
-    log_message("Incrementing version for " + std::to_string(rows.size()) + " entries in table " + tableName);
 
     size_t processed = 0;
 
@@ -928,7 +943,6 @@ void DBSync::increaseEachEntryVersion(const std::string& tableName)
         }
     }
 
-    log_message("Successfully incremented version for all " + std::to_string(processed) + " entries");
 }
 
 std::vector<nlohmann::json> DBSync::getEveryElement(const std::string& tableName)
