@@ -21,7 +21,6 @@ providing a centralized and efficient workflow.
 ### Key Tools in `engine-suite`:
 - **engine-clear**: Clears specific configurations or data from the engine.
 - **engine-decoder**: Manages and tests decoders used by the engine.
-- **engine-diff**: Compares configurations or data for differences.
 - **engine-integration**: Handles integrations with external systems.
 - **engine-policy**: Manages policies within the Wazuh engine.
 - **engine-router**: Configures and tests routing within the engine.

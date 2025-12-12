@@ -6,7 +6,6 @@
 /opt/wazuh-internal-tools/venv/bin/engine-cm           /usr/bin/engine-cm
 /opt/wazuh-internal-tools/venv/bin/engine-clear        /usr/bin/engine-clear
 /opt/wazuh-internal-tools/venv/bin/engine-decoder      /usr/bin/engine-decoder
-/opt/wazuh-internal-tools/venv/bin/engine-diff         /usr/bin/engine-diff
 /opt/wazuh-internal-tools/venv/bin/engine-geo          /usr/bin/engine-geo
 /opt/wazuh-internal-tools/venv/bin/engine-integration  /usr/bin/engine-integration
 /opt/wazuh-internal-tools/venv/bin/engine-kvdb         /usr/bin/engine-kvdb

@@ -4,7 +4,6 @@
 2. [Directory structure](#directory-structure)
     1. [Engine clear](#engine-clear)
     1. [Engine decoder](#engine-decoder)
-    1. [Engine diff](#engine-diff)
     1. [Engine integration](#engine-integration)
     1. [Engine policy](#engine-policy)
     1. [Engine router](#engine-router)
@@ -25,7 +24,6 @@ Wazuh environment, providing a centralized and efficient way to perform these ta
 │       └── engine_clear
 │       └── engine_catalog
 │       └── engine_decoder
-│       └── engine_diff
 │       └── engine_integration
 │       └── engine_policy
 │       └── engine_router
@@ -60,17 +58,6 @@ Wazuh environment, providing a centralized and efficient way to perform these ta
 
 - **Extraction of Decoder Fields**:
     Provides the ability to list all fields extracted by a specific decoder, by parsing the expressions used in the `parse` and `normalize` sections of the decoder file.
-
-## Engine diff
-
-- **File Comparison**: Compares two event files in YAML or JSON formats, determining if they are identical or different.
-
-- **Sort and Difference Detection**: Sorts the events and detects different keys and values ​​between the compared files, showing key differences.
-
-- **Integration with External Tools**: Use the Delta tool for a clear visualization of the differences.
-
-- **Execution Options**: Includes a silent mode to show only the result and allows you to disable event sorting
-
 
 ## Engine integration
 
@@ -145,6 +132,5 @@ Once installed the following scripts are available in the path:
 - [engine-decoder](src/engine_decoder/README.md)
 - [engine-catalog](src/engine_catalog/README.md)
 - [engine-integration](src/engine_integration/README.md)
-- [engine-diff](src/engine_diff/README.md)
 - [engine-clear](src/engine_clear/README.md)
 - [engine-test](src/engine_test/README.md)
