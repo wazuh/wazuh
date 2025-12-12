@@ -242,6 +242,7 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
+    , m_syncLoopFinished { false }
     , m_notify { false }
     , m_groups { false }
     , m_users { false }
@@ -457,6 +458,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
+    m_syncLoopFinished = false;
 
     m_spDBSync      = std::move(dbSync);
     m_spRsync       = std::move(remoteSync);
@@ -471,6 +473,12 @@ void Syscollector::destroy()
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = true;
     m_cv.notify_all();
+
+    // Wait for syncLoop to finish completely, including cleanup of resources
+    m_cv.wait(lock, [this]()
+    {
+        return m_syncLoopFinished;
+    });
     lock.unlock();
 }
 
@@ -1073,6 +1081,8 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
+    m_syncLoopFinished = true;
+    m_cv.notify_all();
 }
 
 void Syscollector::push(const std::string& data)
