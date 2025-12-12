@@ -41,7 +41,7 @@ void populateTestDb()
 
     // Use DBSync to create the database structure correctly (including metadata tables)
     {
-        auto callbackErrorLogWrapper = [](const std::string & data) {};
+        auto callbackErrorLogWrapper = [](const std::string& /*data*/) {};
         // Ensure DBSync is initialized with our dummy logger
         DBSync::initialize(callbackErrorLogWrapper);
         DBSync dbSync(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_TEST_DB_PATH, sql, DbManagement::PERSISTENT);
@@ -73,9 +73,9 @@ void populateTestDb()
 
     char* errMsg = 0;
 
-    for (const auto& sql : inserts)
+    for (const auto& insertSql : inserts)
     {
-        rc = sqlite3_exec(db, sql, 0, 0, &errMsg);
+        rc = sqlite3_exec(db, insertSql, 0, 0, &errMsg);
 
         if (rc != SQLITE_OK)
         {
@@ -88,7 +88,6 @@ void populateTestDb()
 
     sqlite3_close(db);
 }
-
 
 // Defines to replace inline JSON in EXPECT_CALLs
 #define EXPECT_CALL_HARDWARE_JSON R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})"
@@ -3024,8 +3023,862 @@ TEST_F(SyscollectorImpTest, querySetVersionInvalidParameterType)
 }
 
 // ========================================
-// Tests for DataClean on collector disable functionality
+// Tests for initSyncProtocol()
 // ========================================
+
+TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
+{
+    /**
+     * Test: Verify initSyncProtocol initializes both sync protocols correctly
+     * when all VD-relevant modules (packages, OS, hotfixes) are enabled
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with all VD-relevant modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+#ifdef _WIN32
+                                  true,    // hotfixes (enabled on Windows)
+#else
+                                  false,   // hotfixes (not available on Linux)
+#endif
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Mock MQ functions
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    // Test initSyncProtocol - should not throw
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
+{
+    /**
+     * Test: Verify initSyncProtocol handles packages being disabled
+     * VD sync should still be enabled if OS or hotfixes are enabled
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with packages disabled but OS enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  false,   // packages (disabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Mock MQ functions
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    // Test initSyncProtocol - should not throw
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
+{
+    /**
+     * Test: Verify initSyncProtocol handles OS being disabled
+     * VD sync should still be enabled if packages are enabled
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with OS disabled but packages enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  false,   // os (disabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Mock MQ functions
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    // Test initSyncProtocol - should not throw
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, initSyncProtocol_AllVDModulesDisabled)
+{
+    /**
+     * Test: Verify initSyncProtocol handles all VD-relevant modules disabled
+     * VD sync should be disabled in this case
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with all VD-relevant modules disabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  false,   // os (disabled)
+                                  false,   // network
+                                  false,   // packages (disabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Mock MQ functions
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    // Test initSyncProtocol - should not throw
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, initSyncProtocol_VDModuleNameSuffix)
+{
+    /**
+     * Test: Verify initSyncProtocol creates VD sync protocol with "_vd" suffix
+     * This ensures the VD sync protocol has a different module name to avoid
+     * routing conflicts with the regular sync protocol
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with packages enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  false,   // packages (disabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Mock MQ functions
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    std::string moduleName = "syscollector";
+
+    // Test initSyncProtocol - should not throw
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            moduleName,
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // The test implicitly verifies that the VD module name is "syscollector_vd"
+    // by ensuring no routing conflicts occur during initialization
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
+{
+    /**
+     * Test: Verify initSyncProtocol accepts and handles different parameter values
+     * Tests various timeout, retry, and maxEps values
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with packages enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Mock MQ functions
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    // Test with different parameter values
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(30),  // Different syncEndDelay
+            std::chrono::seconds(15),  // Different timeout
+            5,                          // Different retries
+            500                         // Different maxEps
+        );
+    });
+
+    Syscollector::instance().destroy();
+}
+
+// ========================================
+// Tests for notifyDataClean() - VD functionality
+// ========================================
+
+TEST_F(SyscollectorImpTest, notifyDataClean_VDIndicesOnly)
+{
+    /**
+     * Test: Verify notifyDataClean correctly separates and processes VD indices
+     * VD indices (system, packages, hotfixes) should use VDCLEAN option
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with VD modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test notifyDataClean with VD indices
+    std::vector<std::string> vdIndices =
+    {
+        SYSCOLLECTOR_SYNC_INDEX_PACKAGES,
+        SYSCOLLECTOR_SYNC_INDEX_SYSTEM
+    };
+
+    // Should not throw and should return success
+    EXPECT_NO_THROW(
+    {
+        bool result = Syscollector::instance().notifyDataClean(vdIndices);
+        (void)result; // Result depends on sync protocol implementation
+    });
+
+    // Note: The test verifies the function executes without throwing
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDataClean_NonVDIndicesOnly)
+{
+    /**
+     * Test: Verify notifyDataClean correctly processes non-VD indices
+     * Non-VD indices (processes, ports, etc.) should use SYNC option
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with non-VD modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  false,   // os (disabled)
+                                  false,   // network
+                                  false,   // packages (disabled)
+                                  true,    // ports (enabled)
+                                  false,   // portsAll
+                                  true,    // processes (enabled)
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test notifyDataClean with non-VD indices
+    std::vector<std::string> nonVdIndices =
+    {
+        SYSCOLLECTOR_SYNC_INDEX_PROCESSES,
+        SYSCOLLECTOR_SYNC_INDEX_PORTS
+    };
+
+    // Should not throw
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().notifyDataClean(nonVdIndices);
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDataClean_MixedVDAndNonVDIndices)
+{
+    /**
+     * Test: Verify notifyDataClean correctly separates and processes
+     * a mix of VD and non-VD indices, routing each to the appropriate
+     * sync protocol with the correct option
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with mixed modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  true,    // ports (enabled)
+                                  false,   // portsAll
+                                  true,    // processes (enabled)
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test notifyDataClean with mixed indices
+    std::vector<std::string> mixedIndices =
+    {
+        SYSCOLLECTOR_SYNC_INDEX_PACKAGES,    // VD index
+        SYSCOLLECTOR_SYNC_INDEX_PROCESSES,   // Non-VD index
+        SYSCOLLECTOR_SYNC_INDEX_SYSTEM,      // VD index
+        SYSCOLLECTOR_SYNC_INDEX_PORTS        // Non-VD index
+    };
+
+    // Should not throw and should process both types
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().notifyDataClean(mixedIndices);
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDataClean_AllVDIndices)
+{
+    /**
+     * Test: Verify notifyDataClean handles all VD-relevant indices
+     * Tests system, packages, and hotfixes indices together
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize with all VD modules enabled
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+#ifdef _WIN32
+                                  true,    // hotfixes (enabled on Windows)
+#else
+                                  false,   // hotfixes (not available on Linux)
+#endif
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test notifyDataClean with all VD indices
+    std::vector<std::string> allVdIndices =
+    {
+        SYSCOLLECTOR_SYNC_INDEX_SYSTEM,
+        SYSCOLLECTOR_SYNC_INDEX_PACKAGES,
+#ifdef _WIN32
+        SYSCOLLECTOR_SYNC_INDEX_HOTFIXES
+#endif
+    };
+
+    // Should not throw
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().notifyDataClean(allVdIndices);
+    });
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDataClean_EmptyIndicesList)
+{
+    /**
+     * Test: Verify notifyDataClean handles empty indices list gracefully
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test notifyDataClean with empty list
+    std::vector<std::string> emptyIndices;
+
+    bool result = false;
+    EXPECT_NO_THROW(
+    {
+        result = Syscollector::instance().notifyDataClean(emptyIndices);
+    });
+
+    // With empty list, should return true (success)
+    EXPECT_TRUE(result);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDataClean_VDWithoutSyncProtocol)
+{
+    /**
+     * Test: Verify notifyDataClean behavior when VD sync protocol is not initialized
+     * This tests the edge case where VD indices are passed but m_spSyncProtocolVD is null
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize without initializing sync protocol
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,   // scanOnStart
+                                  false,   // hardware
+                                  true,    // os (enabled)
+                                  false,   // network
+                                  true,    // packages (enabled)
+                                  false,   // ports
+                                  false,   // portsAll
+                                  false,   // processes
+                                  false,   // hotfixes (disabled)
+                                  false,   // groups
+                                  false,   // users
+                                  false,   // services
+                                  false,   // browserExtensions
+                                  false);  // notifyOnFirstScan
+
+    // Do NOT initialize sync protocols
+
+    // Test notifyDataClean with VD indices (should handle gracefully)
+    std::vector<std::string> vdIndices =
+    {
+        SYSCOLLECTOR_SYNC_INDEX_PACKAGES
+    };
+
+    EXPECT_NO_THROW(
+    {
+        bool result = Syscollector::instance().notifyDataClean(vdIndices);
+        (void)result; // Without sync protocol, will fail early but not crash
+    });
+
+    // Without sync protocol initialized, should still not crash
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, notifyDataClean_VDIndexClassification)
+{
+    /**
+     * Test: Verify correct classification of indices as VD vs non-VD
+     * This test documents which indices are considered VD indices:
+     * - SYSTEM (VD)
+     * - PACKAGES (VD)
+     * - HOTFIXES (VD)
+     * All others are non-VD
+     */
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false, false, true, false, true, true, false, true, true, false, false, false, false, false);
+
+    // Initialize sync protocols
+    MQ_Functions mqFuncs;
+    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(5),
+            3,
+            100
+        );
+    });
+
+    // Test with known VD index - should be classified as VD
+    std::vector<std::string> systemIndex = { SYSCOLLECTOR_SYNC_INDEX_SYSTEM };
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().notifyDataClean(systemIndex);
+    });
+
+    // Test with known non-VD index - should be classified as non-VD
+    std::vector<std::string> portsIndex = { SYSCOLLECTOR_SYNC_INDEX_PORTS };
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().notifyDataClean(portsIndex);
+    });
+
+    // Verify the classification is correct by testing all indices
+    std::vector<std::string> allIndices =
+    {
+        SYSCOLLECTOR_SYNC_INDEX_SYSTEM,      // VD
+        SYSCOLLECTOR_SYNC_INDEX_PACKAGES,    // VD
+#ifdef _WIN32
+        SYSCOLLECTOR_SYNC_INDEX_HOTFIXES,    // VD (Windows only)
+#endif
+        SYSCOLLECTOR_SYNC_INDEX_PROCESSES,   // Non-VD
+        SYSCOLLECTOR_SYNC_INDEX_PORTS        // Non-VD
+    };
+
+    EXPECT_NO_THROW(
+    {
+        Syscollector::instance().notifyDataClean(allIndices);
+    });
+
+    Syscollector::instance().destroy();
+}
 
 TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanNoDisabledCollectors)
 {

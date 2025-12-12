@@ -15,7 +15,9 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 #include <iostream>
+#include <fstream>
 #include <stack>
+#include <set>
 #include <chrono>
 #include <thread>
 
@@ -112,6 +114,10 @@ static const std::map<std::string, std::string> INDEX_MAP
     {BROWSER_EXTENSIONS_TABLE, SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS},
     // LCOV_EXCL_STOP
 };
+
+// VD (Vulnerability Detection) flag file path
+// This file is created after the first successful VD sync to distinguish VDFIRST from VDSYNC
+static constexpr auto VD_FIRST_SYNC_FLAG_FILE = "queue/syscollector/db/.vd_first_sync_done";
 
 static void sanitizeJsonValue(nlohmann::json& input)
 {
@@ -306,6 +312,7 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
+    , m_vdSyncEnabled { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -440,6 +447,25 @@ void Syscollector::start()
         return;
     }
 
+    // Determine if VD sync should be enabled based on configuration
+    // VD-relevant data includes: packages, OS, and hotfixes (Windows only)
+    m_vdSyncEnabled = m_packages && m_os;
+#ifdef _WIN32
+    m_vdSyncEnabled = m_vdSyncEnabled && m_hotfixes;
+#endif
+
+    if (!m_vdSyncEnabled)
+    {
+#ifdef _WIN32
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages, OS, or hotfixes scanning is enabled in the configuration.");
+#else
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages or OS scanning is enabled in the configuration.");
+#endif
+    }
+
+    // Clean VD data for disabled modules
+    cleanDisabledVDData();
+
     std::unique_lock<std::mutex> lock{m_mutex};
     syncLoop(lock);
 }
@@ -516,16 +542,25 @@ void Syscollector::destroy()
     m_cv.notify_all();
     lock.unlock();
 
-    // Signal sync protocol to stop any ongoing operations
+    // Signal sync protocols to stop any ongoing operations
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
     }
 
-    // Explicitly release DBSync before static destructors run
-    // This prevents use-after-free when Syscollector singleton destructs
-    // after DBSyncImplementation singleton has already been destroyed
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->stop();
+    }
+
+    // Explicitly release all resources to ensure clean state between tests
+    // and prevent use-after-free when Syscollector singleton destructs
+    // after static dependencies have already been destroyed
     m_spDBSync.reset();
+    m_spNormalizer.reset();
+    m_spSyncProtocol.reset();
+    m_spSyncProtocolVD.reset();
+    m_spInfo.reset();
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
@@ -1414,6 +1449,14 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanUsers);
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
+
+    // Process VD DataContext after scan completes
+    // This adds context data (e.g., all packages when OS changes) based on platform-specific rules
+    if (m_vdSyncEnabled)
+    {
+        TRY_CATCH_TASK(processVDDataContext);
+    }
+
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -1694,7 +1737,8 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
+                                    std::chrono::seconds timeout,
                                     unsigned int retries,
                                     size_t maxEps)
 {
@@ -1707,8 +1751,15 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
     try
     {
+        // Initialize regular sync protocol
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Initialize VD sync protocol with different module name to avoid routing conflicts
+        std::string vdModuleName = moduleName + "_vd";
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
+
     }
     catch (const std::exception& ex)
     {
@@ -1730,39 +1781,96 @@ bool Syscollector::syncModule(Mode mode)
         return false;
     }
 
+    m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
+
+    // RAII guard ensures m_syncing is set to false even if function exits early
+    ScanGuard syncGuard(m_syncing, m_pauseCv);
+
+    bool success = true;
+
+    // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
-        m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
+        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+    }
 
-        // RAII guard ensures m_syncing is set to false even if function exits early
-        ScanGuard syncGuard(m_syncing, m_pauseCv);
-        bool result = m_spSyncProtocol->synchronizeModule(mode);
+    // Sync VD data with appropriate option based on first scan status
+    if (m_spSyncProtocolVD)
+    {
+        Option vdOption;
+        bool firstSyncDone = isVDFirstSyncDone();
 
-        if (result)
+        if (!m_vdSyncEnabled)
         {
-            m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
+            // If both packages and OS are disabled, use regular SYNC option
+            vdOption = Option::SYNC;
+            m_logFunction(LOG_DEBUG, "Using SYNC option (VD scanning disabled)");
         }
         else
         {
-            m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
+            // Use VDFIRST for first scan, VDSYNC for subsequent syncs
+            vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
         }
 
-        return result;
+        bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+
+        // Create flag file after successful first sync
+        if (vdSuccess && !firstSyncDone)
+        {
+            m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
+            std::ofstream flagFile(VD_FIRST_SYNC_FLAG_FILE);
+
+            if (flagFile.is_open())
+            {
+                flagFile << "1";
+                flagFile.close();
+                m_logFunction(LOG_INFO, "VD first sync completed, flag file created");
+            }
+            else
+            {
+                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
+            }
+        }
+        else if (!vdSuccess)
+        {
+            m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
+        }
+
+        success = vdSuccess && success;
     }
 
-    return false;
+    if (success)
+    {
+        m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
+    }
+    else
+    {
+        m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
+    }
+
+    return success;
 }
 
-void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
+void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext)
 {
-    if (m_spSyncProtocol)
+    // VD tables: system (os), packages, hotfixes
+    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+    if (isVDTable && m_spSyncProtocolVD)
     {
-        m_spSyncProtocol->persistDifference(id, operation, index, data, version);
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
+    }
+    else if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
     }
 }
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    // Route to regular (non-VD) sync protocol only
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->parseResponseBuffer(data, length);
@@ -1771,14 +1879,388 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
     return false;
 }
 
-bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
+bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
 {
-    if (m_spSyncProtocol)
+    // Route to VD sync protocol only
+    if (m_spSyncProtocolVD)
     {
-        return m_spSyncProtocol->notifyDataClean(indices);
+        return m_spSyncProtocolVD->parseResponseBuffer(data, length);
     }
 
     return false;
+}
+
+std::vector<std::string> Syscollector::getDisabledVDIndices() const
+{
+    std::vector<std::string> indices;
+
+    if (!m_packages)
+    {
+        indices.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+    }
+
+    if (!m_os)
+    {
+        indices.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+    }
+
+#ifdef _WIN32
+
+    if (!m_hotfixes)
+    {
+        indices.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+    }
+
+#endif
+
+    return indices;
+}
+
+void Syscollector::cleanDisabledVDData()
+{
+    // Clean VD data for disabled indices
+    const auto indicesToClean = getDisabledVDIndices();
+
+    for (const auto& index : indicesToClean)
+    {
+        std::string moduleType;
+
+        if (index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
+        {
+            moduleType = "Packages";
+        }
+        else if (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
+        {
+            moduleType = "OS";
+        }
+        else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
+        {
+            moduleType = "Hotfixes";
+        }
+
+        if (!moduleType.empty())
+        {
+            m_logFunction(LOG_INFO, moduleType + " scanning disabled, will clean " + moduleType + " data");
+        }
+    }
+
+    // Notify data clean for disabled VD indices
+    if (!indicesToClean.empty() && m_spSyncProtocolVD)
+    {
+        m_logFunction(LOG_INFO, "Notifying data clean for disabled VD indices");
+
+        if (m_spSyncProtocolVD->notifyDataClean(indicesToClean, Option::VDCLEAN))
+        {
+            m_logFunction(LOG_INFO, "Data clean notification sent successfully for disabled VD indices");
+        }
+        else
+        {
+            m_logFunction(LOG_WARNING, "Failed to send data clean notification for disabled VD indices");
+        }
+    }
+}
+
+std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds)
+{
+    std::vector<nlohmann::json> results;
+
+    if (!m_spDBSync)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Cannot fetch from table " + tableName + ": DBSync not initialized");
+        }
+
+        return results;
+    }
+
+    try
+    {
+        // Build SELECT query to fetch all rows from the table
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"*"})
+                           .build();
+
+        // Callback to collect selected rows, filtering out excluded IDs in-memory
+        // Note: We filter in the callback because excluded IDs are hash values (SHA1),
+        // not primary keys, so we cannot use SQL WHERE clause directly
+        const auto selectCallback = [&](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+        {
+            if (returnType == SELECTED)
+            {
+                // Calculate the hash ID for this row
+                std::string rowId = calculateHashId(resultData, tableName);
+
+                // Only include if not in the exclude list
+                if (excludeIds.find(rowId) == excludeIds.end())
+                {
+                    results.push_back(resultData);
+                }
+            }
+        };
+
+        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Fetched " + std::to_string(results.size()) + " rows from table " + tableName +
+                          " (excluded " + std::to_string(excludeIds.size()) + " DataValue items)");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to fetch from table " + tableName + ": " + std::string(e.what()));
+        }
+    }
+
+    return results;
+}
+
+std::vector<std::string> Syscollector::getDataContextTables(Operation operation, const std::string& index)
+{
+    std::vector<std::string> tables;
+
+    // Apply platform-specific DataContext inclusion rules
+    if (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
+    {
+        // OS changes → include packages as DataContext
+        if (operation == Operation::CREATE || operation == Operation::MODIFY)
+        {
+            tables.push_back(PACKAGES_TABLE);
+
+#ifdef _WIN32
+            // Windows: also include hotfixes
+            tables.push_back(HOTFIXES_TABLE);
+#endif
+        }
+    }
+    else if (index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
+    {
+        // Package changes
+        if (operation == Operation::DELETE_)
+        {
+            // Package DELETE → NO DataContext
+            // (no tables added)
+        }
+        else  // CREATE or MODIFY
+        {
+            // Linux/macOS: include OS
+            // Windows: include hotfixes (and OS implicitly needed but not in spec)
+            tables.push_back(OS_TABLE);
+
+#ifdef _WIN32
+            // Windows: also include hotfixes (except on delete, handled above)
+            tables.push_back(HOTFIXES_TABLE);
+#endif
+        }
+    }
+
+#ifdef _WIN32
+    else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
+    {
+        tables.push_back(OS_TABLE);
+        tables.push_back(PACKAGES_TABLE);
+        tables.push_back(HOTFIXES_TABLE);
+    }
+
+#endif
+
+    if (m_logFunction && !tables.empty())
+    {
+        std::string tablesStr;
+
+        for (const auto& table : tables)
+        {
+            if (!tablesStr.empty()) tablesStr += ", ";
+
+            tablesStr += table;
+        }
+
+        m_logFunction(LOG_DEBUG, "DataContext tables for index=" + index +
+                      " operation=" + std::to_string(static_cast<int>(operation)) +
+                      ": [" + tablesStr + "]");
+    }
+
+    return tables;
+}
+
+bool Syscollector::isVDFirstSyncDone() const
+{
+    std::ifstream flagCheck(VD_FIRST_SYNC_FLAG_FILE);
+    bool firstSyncDone = flagCheck.good();
+    flagCheck.close();
+    return firstSyncDone;
+}
+
+void Syscollector::processVDDataContext()
+{
+    // Skip DataContext processing on first VD scan or if protocol not initialized
+    if (!m_spSyncProtocolVD || !isVDFirstSyncDone())
+    {
+        return;
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Processing VD DataContext after scan");
+    }
+
+    try
+    {
+        // Step 0: Clear any existing DataContext from previous scans
+        // This prevents inconsistencies if a scan happens before the previous sync completes
+        m_spSyncProtocolVD->clearAllDataContext();
+
+        // Step 1: Fetch pending DataValue items from syscollector_vd_sync.db
+        std::vector<PersistedData> pendingDataValues = m_spSyncProtocolVD->fetchPendingItems(true);
+
+        if (pendingDataValues.empty())
+        {
+            return;
+        }
+
+        // Step 2: Build exclusion sets - IDs of items already submitted as DataValue
+        // These IDs are calculated from local.db data, so they match what we'll calculate later
+        std::map<std::string, std::set<std::string>> dataValueIdsByIndex;
+
+        for (const auto& dataValue : pendingDataValues)
+        {
+            dataValueIdsByIndex[dataValue.index].insert(dataValue.id);
+        }
+
+        // Step 3: Determine what DataContext tables are needed based on platform rules
+        std::set<std::string> dataContextTablesToFetch;
+
+        for (const auto& dataValue : pendingDataValues)
+        {
+            std::vector<std::string> contextTables = getDataContextTables(dataValue.operation, dataValue.index);
+
+            for (const auto& table : contextTables)
+            {
+                dataContextTablesToFetch.insert(table);
+            }
+        }
+
+        if (dataContextTablesToFetch.empty())
+        {
+            return;
+        }
+
+        // Step 4: Fetch and submit DataContext for each required table
+        size_t totalDataContextItems = 0;
+
+        for (const auto& tableName : dataContextTablesToFetch)
+        {
+            std::string contextIndex;
+            std::set<std::string> excludeIds;
+
+            if (tableName == OS_TABLE)
+            {
+                contextIndex = SYSCOLLECTOR_SYNC_INDEX_SYSTEM;
+                excludeIds = dataValueIdsByIndex[SYSCOLLECTOR_SYNC_INDEX_SYSTEM];
+            }
+            else if (tableName == PACKAGES_TABLE)
+            {
+                contextIndex = SYSCOLLECTOR_SYNC_INDEX_PACKAGES;
+                excludeIds = dataValueIdsByIndex[SYSCOLLECTOR_SYNC_INDEX_PACKAGES];
+            }
+            else if (tableName == HOTFIXES_TABLE)
+            {
+                contextIndex = SYSCOLLECTOR_SYNC_INDEX_HOTFIXES;
+                excludeIds = dataValueIdsByIndex[SYSCOLLECTOR_SYNC_INDEX_HOTFIXES];
+            }
+
+            if (contextIndex.empty())
+            {
+                continue;
+            }
+
+            // Fetch all items from local.db, excluding those already in DataValue
+            // Since local.db is stable during scan, the calculated IDs will match
+            std::vector<nlohmann::json> contextItems = fetchAllFromTable(tableName, excludeIds);
+
+            for (const auto& item : contextItems)
+            {
+                try
+                {
+                    // Calculate ID the same way as done during scan for DataValue
+                    std::string itemId = calculateHashId(item, tableName);
+
+                    // Submit as DataContext (isDataContext=true)
+                    // Note: operation and version parameters are not used for DataContext
+                    m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, item.dump(), 0, true);
+                    totalDataContextItems++;
+                }
+                catch (const std::exception& e)
+                {
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_ERROR, "Failed to persist DataContext from " + tableName + ": " + std::string(e.what()));
+                    }
+                }
+            }
+
+            if (m_logFunction && !contextItems.empty())
+            {
+                m_logFunction(LOG_DEBUG, "Added " + std::to_string(contextItems.size()) + " DataContext items from " + tableName);
+            }
+        }
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "VD DataContext complete: " + std::to_string(totalDataContextItems) +
+                          " items for " + std::to_string(pendingDataValues.size()) + " DataValues");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Error processing VD DataContext: " + std::string(e.what()));
+        }
+    }
+}
+
+bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
+{
+    // Separate VD and non-VD indices
+    std::vector<std::string> vdIndices;
+    std::vector<std::string> nonVdIndices;
+
+    for (const auto& index : indices)
+    {
+        bool isVDIndex = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                          index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                          index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+        if (isVDIndex)
+        {
+            vdIndices.push_back(index);
+        }
+        else
+        {
+            nonVdIndices.push_back(index);
+        }
+    }
+
+    bool success = true;
+
+    // Clean non-VD data with regular SYNC option
+    if (!nonVdIndices.empty() && m_spSyncProtocol)
+    {
+        success = m_spSyncProtocol->notifyDataClean(nonVdIndices, Option::SYNC);
+    }
+
+    // Clean VD data with VDCLEAN option
+    if (!vdIndices.empty() && m_spSyncProtocolVD)
+    {
+        success = m_spSyncProtocolVD->notifyDataClean(vdIndices, Option::VDCLEAN) && success;
+    }
+
+    return success;
 }
 
 void Syscollector::deleteDatabase()

@@ -22,9 +22,11 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
     public:
         MOCK_METHOD(void, submitOrCoalesce, (const PersistedData& data), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchPending, (bool onlyDataValues), (override));
         MOCK_METHOD(void, removeAllSynced, (), (override));
         MOCK_METHOD(void, resetAllSyncing, (), (override));
         MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
+        MOCK_METHOD(void, removeAllDataContext, (), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
 };
 
@@ -43,7 +45,8 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenLoggerIsNull)
     // Pass null logger function
     LoggerFunc nullLogger = nullptr;
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         PersistentQueue queue(":memory:", nullLogger, mockStorage);
     }, std::invalid_argument);
 }
@@ -58,7 +61,8 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenResetAllSyncingFails)
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         PersistentQueue queue(":memory:", testLogger, mockStorage);
     }, std::runtime_error);
 }
@@ -100,7 +104,8 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
     // Capture the log message
     std::string capturedLogMessage;
     modules_log_level_t capturedLogLevel;
-    LoggerFunc testLogger = [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string& message) {
+    LoggerFunc testLogger = [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string & message)
+    {
         capturedLogLevel = level;
         capturedLogMessage = message;
     };
@@ -256,4 +261,180 @@ TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
     EXPECT_THROW(queue.resetSyncingItems(), std::exception);
+}
+
+// Test to cover IPersistentQueue D0 destructor (delete through base pointer)
+TEST(InterfaceDestructorTest, IPersistentQueueDeletingDestructor)
+{
+    // Create concrete implementation through base interface pointer
+    IPersistentQueue* queue = nullptr;
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Create PersistentQueue through base interface pointer
+    queue = new PersistentQueue(":memory:", testLogger, mockStorage);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete queue;
+}
+
+// ========================================
+// Tests for fetchPendingItems()
+// ========================================
+
+TEST(PersistentQueueTest, fetchPendingItems_OnlyDataValues_True)
+{
+    /**
+     * Test: fetchPendingItems with onlyDataValues=true should call storage's fetchPending(true)
+     */
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    // Create test data
+    std::vector<PersistedData> expectedData;
+    PersistedData item1;
+    item1.seq = 0;
+    item1.id = "test1";
+    item1.index = "test-index";
+    item1.data = R"({"test":"data"})";
+    item1.operation = Operation::CREATE;
+    item1.is_data_context = false;
+    expectedData.push_back(item1);
+
+    // Expect fetchPending to be called with onlyDataValues=true
+    EXPECT_CALL(*mockStorage, fetchPending(true))
+    .Times(1)
+    .WillOnce(Return(expectedData));
+
+    auto result = queue.fetchPendingItems(true);
+
+    ASSERT_EQ(result.size(), 1);
+    EXPECT_EQ(result[0].id, "test1");
+    EXPECT_FALSE(result[0].is_data_context);
+}
+
+TEST(PersistentQueueTest, fetchPendingItems_OnlyDataValues_False)
+{
+    /**
+     * Test: fetchPendingItems with onlyDataValues=false should call storage's fetchPending(false)
+     */
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    // Create test data with both DataValue and DataContext
+    std::vector<PersistedData> expectedData;
+
+    PersistedData dataValue;
+    dataValue.seq = 0;
+    dataValue.id = "value1";
+    dataValue.index = "test-index";
+    dataValue.data = R"({"value":"data"})";
+    dataValue.operation = Operation::CREATE;
+    dataValue.is_data_context = false;
+    expectedData.push_back(dataValue);
+
+    PersistedData dataContext;
+    dataContext.seq = 1;
+    dataContext.id = "context1";
+    dataContext.index = "test-index";
+    dataContext.data = R"({"context":"data"})";
+    dataContext.operation = Operation::MODIFY;
+    dataContext.is_data_context = true;
+    expectedData.push_back(dataContext);
+
+    // Expect fetchPending to be called with onlyDataValues=false
+    EXPECT_CALL(*mockStorage, fetchPending(false))
+    .Times(1)
+    .WillOnce(Return(expectedData));
+
+    auto result = queue.fetchPendingItems(false);
+
+    ASSERT_EQ(result.size(), 2);
+    EXPECT_FALSE(result[0].is_data_context);
+    EXPECT_TRUE(result[1].is_data_context);
+}
+
+TEST(PersistentQueueTest, fetchPendingItems_EmptyResult)
+{
+    /**
+     * Test: fetchPendingItems should handle empty result from storage
+     */
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    std::vector<PersistedData> emptyData;
+
+    EXPECT_CALL(*mockStorage, fetchPending(true))
+    .Times(1)
+    .WillOnce(Return(emptyData));
+
+    auto result = queue.fetchPendingItems(true);
+
+    EXPECT_TRUE(result.empty());
+}
+
+TEST(PersistentQueueTest, fetchPendingItems_ExceptionHandling)
+{
+    /**
+     * Test: fetchPendingItems should handle exceptions from storage
+     */
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    // Make storage throw an exception
+    EXPECT_CALL(*mockStorage, fetchPending(true))
+    .Times(1)
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+
+    // Should throw the exception
+    EXPECT_THROW(queue.fetchPendingItems(true), std::runtime_error);
+}
+
+// ========================================
+// Tests for clearAllDataContext()
+// ========================================
+
+TEST(PersistentQueueTest, clearAllDataContext_Success)
+{
+    /**
+     * Test: clearAllDataContext should call storage's removeAllDataContext
+     */
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    // Expect removeAllDataContext to be called once
+    EXPECT_CALL(*mockStorage, removeAllDataContext())
+    .Times(1);
+
+    EXPECT_NO_THROW(queue.clearAllDataContext());
+}
+
+TEST(PersistentQueueTest, clearAllDataContext_ExceptionHandling)
+{
+    /**
+     * Test: clearAllDataContext should handle exceptions from storage
+     */
+
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    // Make storage throw an exception
+    EXPECT_CALL(*mockStorage, removeAllDataContext())
+    .Times(1)
+    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+
+    // Should throw the exception
+    EXPECT_THROW(queue.clearAllDataContext(), std::runtime_error);
 }

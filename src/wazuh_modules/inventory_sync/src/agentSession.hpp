@@ -111,6 +111,7 @@ public:
         auto globalVersion = data->global_version();
 
         auto agentIdString = std::string(agentId.data(), agentId.size());
+
         if (agentIdString.length() < 3)
         {
             agentIdString.insert(0, 3 - agentIdString.length(), '0');
@@ -118,6 +119,7 @@ public:
 
         // Extract groups
         std::vector<std::string> groups;
+
         if (data->groups())
         {
             for (const auto* group : *data->groups())
@@ -131,6 +133,7 @@ public:
 
         // Extract indices
         std::vector<std::string> indices;
+
         if (data->index())
         {
             for (const auto* index : *data->index())

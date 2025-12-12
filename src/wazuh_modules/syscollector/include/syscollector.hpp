@@ -74,11 +74,13 @@ class EXPORTED Syscollector final
         void destroy();
 
         // Sync protocol methods
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
+                              std::chrono::seconds timeout, unsigned int retries,
                               size_t maxEps);
         bool syncModule(Mode mode);
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
+        bool parseResponseBufferVD(const uint8_t* data, size_t length);
         bool notifyDataClean(const std::vector<std::string>& indices);
         void deleteDatabase();
         std::string query(const std::string& jsonQuery);
@@ -102,6 +104,45 @@ class EXPORTED Syscollector final
 
         std::pair<nlohmann::json, uint64_t> ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
         nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
+
+        std::vector<std::string> getDisabledVDIndices() const;
+
+        /**
+         * @brief Cleans VD data for disabled indices and notifies the sync protocol
+         * @details This method identifies which VD indices are disabled (Packages, OS, Hotfixes),
+         *          logs the cleanup operation, and sends a data clean notification to the VD sync protocol.
+         */
+        void cleanDisabledVDData();
+
+        /**
+         * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
+         * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")
+         * @param excludeIds Set of hash IDs to exclude from results (items already in DataValue)
+         * @return Vector of JSON objects representing all rows in the table (excluding specified IDs)
+         */
+        std::vector<nlohmann::json> fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds);
+
+        /**
+         * @brief Determines which DataContext items to include based on platform-specific rules
+         * @param operation The operation type (CREATE, MODIFY, DELETE_)
+         * @param index The index being modified (system, packages, hotfixes)
+         * @return Vector of table names that should be included as DataContext
+         */
+        std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
+
+        /**
+         * @brief Checks if the first VD sync has been completed
+         * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
+         */
+        bool isVDFirstSyncDone() const;
+
+        /**
+         * @brief Processes VD DataContext after scan completes
+         * @details Queries the VD sync protocol database for pending DataValue items,
+         *          applies platform-specific rules to determine what DataContext to include,
+         *          and submits the DataContext items to the sync protocol
+         */
+        void processVDDataContext();
         nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsPackageData(const nlohmann::json& originalData, bool createFields = true);
@@ -190,6 +231,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_browserExtensions;
         unsigned int                                                             m_dataCleanRetries;
         bool                                                                     m_allCollectorsDisabled;
+        bool                                                                     m_vdSyncEnabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
@@ -198,6 +240,7 @@ class EXPORTED Syscollector final
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
+        std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
 };
 
 
