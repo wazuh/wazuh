@@ -64,6 +64,7 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
         super().__init__(client=indexer_client)
 
         self.manager = manager
+        self._logger = logger
         self.cluster_items = cluster_items
 
         # Configuration parameters
@@ -102,7 +103,7 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
                 failed_agents = 0
                 
                 # Get non-connected agents
-                disconnected_agents = await self._get_non_connected_agents(wdb_conn)
+                disconnected_agents = await self._get_disconnected_agents(wdb_conn)
 
                 if not disconnected_agents:
                     self._logger.debug(
@@ -143,7 +144,7 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
             finally:
                 await asyncio.sleep(self.sync_interval)
 
-    async def _get_non_connected_agents(
+    async def _get_disconnected_agents(
         self, wdb_conn: AsyncWazuhDBConnection
     ) -> List[dict]:
         """Get list of non-connected agents from WazuhDB.
@@ -167,23 +168,42 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
             agents_data = Agent.get_agents_overview(
                 filters={
                     "status": ["disconnected, never_connected, pending"],
-                    "older_than": self.min_disconnection_time,
                 },
                 limit=None,
                 get_data=True,
             )
 
-            agents = agents_data.get("data", {}).get("affected_items", [])
+            all_agents = agents_data.get("data", {}).get("affected_items", [])
+            
+            # Filter agents by minimum disconnection time
+            current_time = int(time.time())
+            filtered_agents = []
+            
+            for agent in all_agents:
+                disconnection_time = agent.get("disconnection_time", 0)
+                time_disconnected = current_time - disconnection_time
+                
+                if time_disconnected >= self.min_disconnection_time:
+                    filtered_agents.append(agent)
+                    self._logger.debug(
+                        f"Agent {agent.get('id')} included: disconnected for {time_disconnected}s "
+                        f"(min required: {self.min_disconnection_time}s)"
+                    )
+                else:
+                    self._logger.debug(
+                        f"Agent {agent.get('id')} filtered out: disconnected for {time_disconnected}s "
+                        f"(min required: {self.min_disconnection_time}s)"
+                    )
 
             self._logger.debug(
-                f"Retrieved {len(agents)} non-connected agents from WazuhDB"
+                f"Retrieved {len(all_agents)} non-connected agents from WazuhDB, "
+                f"filtered to {len(filtered_agents)} agents meeting min disconnection time"
             )
-            return agents
+            return filtered_agents
 
         except Exception as e:
-            self._logger.critical(
-                f"Critical error retrieving non-connected agents from WazuhDB. "
-                f"Group version synchronization task aborted: {e}",
+            self._logger.error(
+                f"Error retrieving non-connected agents from WazuhDB: {e}",
                 exc_info=True
             )
             return []
@@ -212,21 +232,36 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
         if not agent_ids:
             return {}
 
-        # Build aggregation query that groups by agent.id
-        query = {
-            "size": 0,
-            "aggs": {
-                "by_agent": {
-                    "terms": {"field": "agent.id", "size": len(agent_ids)},
-                    "aggs": {"max_version": {"max": {"field": "state.document_version"}}},
-                }
-            },
-            "query": {
-                "bool": {
-                    "must": [{"terms": {"agent.id": agent_ids}}]
-                }
-            },
-        }
+        # Build aggregation query based on number of agents
+        if len(agent_ids) == 1:
+            # For single agent, use a simple max aggregation
+            query = {
+                "size": 0,
+                "aggs": {
+                    "max_version": {"max": {"field": "state.document_version"}}
+                },
+                "query": {
+                    "bool": {
+                        "must": [{"term": {"agent.id": agent_ids[0]}}]
+                    }
+                },
+            }
+        else:
+            # For multiple agents, group by agent.id
+            query = {
+                "size": 0,
+                "aggs": {
+                    "by_agent": {
+                        "terms": {"field": "agent.id", "size": len(agent_ids)},
+                        "aggs": {"max_version": {"max": {"field": "state.document_version"}}},
+                    }
+                },
+                "query": {
+                    "bool": {
+                        "must": [{"terms": {"agent.id": agent_ids}}]
+                    }
+                },
+            }
 
         try:
             result = await self._client.search(
@@ -235,17 +270,32 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
 
             # Extract max versions by agent from aggregation results
             max_versions = {}
-            buckets = (
-                result.get("aggregations", {})
-                .get("by_agent", {})
-                .get("buckets", [])
-            )
-
-            for bucket in buckets:
-                agent_id = bucket.get("key")
-                max_version = bucket.get("max_version", {}).get("value")
-                if agent_id and max_version is not None:
-                    max_versions[agent_id] = int(max_version)
+            
+            if len(agent_ids) == 1:
+                # Handle single agent response
+                max_version = (
+                    result.get("aggregations", {})
+                    .get("max_version", {})
+                    .get("value")
+                )
+                if max_version is not None:
+                    max_versions[agent_ids[0]] = int(max_version)
+                else:
+                    self._logger.debug(
+                        f"No version found for agent {agent_ids[0]} in indexer"
+                    )
+            else:
+                # Handle multiple agent response
+                buckets = (
+                    result.get("aggregations", {})
+                    .get("by_agent", {})
+                    .get("buckets", [])
+                )
+                for bucket in buckets:
+                    agent_id = bucket.get("key")
+                    max_version = bucket.get("max_version", {}).get("value")
+                    if agent_id and max_version is not None:
+                        max_versions[agent_id] = int(max_version)
 
             self._logger.debug(
                 f"Batch max version query completed for {len(max_versions)} agents "
