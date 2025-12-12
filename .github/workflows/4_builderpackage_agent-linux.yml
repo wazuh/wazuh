@@ -1,0 +1,254 @@
+run-name: Packages - Build Wazuh agent Linux amd - ${{ inputs.legacy && 'legacy' || 'agent' }} packages - ${{ inputs.system }} - ${{ inputs.architecture }}${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }}${{ inputs.debug && ' - debug' || '' }} ${{ inputs.id }}
+name: Build Wazuh agent linux amd
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/4_builderpackage_agent-linux.yml'
+  workflow_dispatch:
+    inputs:
+      docker_image_tag:
+        description: |
+          Specify the docker tag used to build the package.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
+        required: false
+        default: 'auto'
+      architecture:
+        type: choice
+        description: Package architecture [i386, x86_64, amd64].
+        required: true
+        options:
+          - i386
+          - x86_64
+          - amd64
+      system:
+        type: choice
+        description: Package OS [deb, rpm].
+        required: true
+        options:
+          - deb
+          - rpm
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      is_stage:
+        type: boolean
+        description: |
+          Set production nomenclature if true.
+          Default is 'false'.
+        required: false
+      legacy:
+        type: boolean
+        description: |
+          Set the use of rpm5 resources.
+          Default is 'false'.
+        required: false
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+      source_reference:
+        description: |
+          Branch from wazuh/wazuh repository to use.
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      docker_image_tag:
+        type: string
+        required: false
+        default: 'auto'
+      architecture:
+        type: string
+        required: true
+      system:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      legacy:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      source_reference:
+        type: string
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  Build-agent-linux-packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Build ${{ inputs.system }} wazuh-agent on ${{ inputs.architecture }} ${{ inputs.legacy && '- legacy' || '' }} ${{ inputs.is_stage && '- is stage' || '' }}
+
+    steps:
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_reference || github.ref }}
+
+      - name: Set ARCH
+        run: |
+          if [ ${{ inputs.architecture || 'x86_64' }} = 'x86_64' ]; then
+            arch="amd64"
+          else
+            arch=${{ inputs.architecture || 'x86_64' }}
+          fi
+          echo "ARCH=$arch" >> $GITHUB_ENV;
+
+      - name: Set TAG and CONTAINER_NAME
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV;
+          if [ "${{ inputs.docker_image_tag || 'auto' }}" == "auto" ]; then
+            echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
+            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference || github.ref }})" >> $GITHUB_ENV;
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
+          fi
+          if [ "${{ inputs.legacy }}" == "true" ]; then
+            echo "CONTAINER_NAME=pkg_${{ inputs.system || 'deb' }}_legacy_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          else
+            echo "CONTAINER_NAME=pkg_${{ inputs.system || 'deb' }}_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          fi
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build ${{ inputs.system }} wazuh-agent on ${{ env.ARCH }}
+        run: |
+          REVISION=${{ inputs.revision || '0' }}
+          FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
+          if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
+          if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
+          if [ "${{ inputs.legacy }}" == "true" ]; then FLAGS+="--legacy "; fi
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system || 'deb' }} $FLAGS"
+          bash packages/generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system || 'deb' }} $FLAGS
+
+          if [ "${{ inputs.system || 'deb' }}" == "deb" ]; then
+            SYMBOLS_TAG="dbg"
+          else
+            SYMBOLS_TAG="debuginfo"
+          fi
+
+          echo "PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.${{ inputs.system || 'deb' }} -exec basename {} 2>/dev/null \;| grep -v -E "^(wazuh-agent-dbg|wazuh-agent-debuginfo)")" | tee -a $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.${{ inputs.system || 'deb' }} -exec basename {} 2>/dev/null \;| grep -E "^(wazuh-agent-dbg|wazuh-agent-debuginfo)")" | tee -a $GITHUB_ENV
+
+      - name: Test install built package
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No package found matching the pattern!";
+            exit 1;
+          fi
+          sudo docker run \
+            -v $TESTS_PATH/:/tests \
+            -v /tmp/:/packages \
+            -v /var/ossec:/var/ossec \
+            -e ARCH="${{ env.ARCH }}" \
+            -e SYSTEM="${{ inputs.system || 'deb' }}" \
+            --entrypoint '/tests/install_component.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            ${{ env.PACKAGE_NAME }} agent
+          # Check if wazuh-agent was installed. The /tmp/status.log file was generated in the previous step.
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded.";
+            exit 1;
+          fi
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: CSV filename Formation
+        run: |
+          if [ "${{ inputs.legacy }}" == "true" ]; then
+            echo "CSV_FILENAME=${{ inputs.system || 'deb' }}5_linux_agent_${{ env.ARCH }}.csv" | tee -a $GITHUB_ENV
+          else
+            echo "CSV_FILENAME=${{ inputs.system || 'deb' }}_linux_agent_${{ env.ARCH }}.csv" | tee -a $GITHUB_ENV
+          fi
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          expected_files: ${{ env.CSV_FILENAME }}
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-${{ inputs.system || 'deb' }}-${{ env.ARCH }}-${{ inputs.legacy && 'legacy-' || '' }}${{ github.run_id }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload checksums as artifact
+        if: ${{ inputs.checksum }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-${{ inputs.system || 'deb' }}-${{ env.ARCH }}-${{ inputs.legacy && 'legacy-' || '' }}${{ github.run_id }}-checksum
+          path: /tmp/${{ env.PACKAGE_NAME }}.sha512
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug symbols as artifact
+        if: ${{ inputs.legacy != true && env.PACKAGE_SYMBOLS_NAME != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-${{ inputs.system || 'deb' }}-${{ env.ARCH }}-${{ inputs.legacy && 'legacy-' || '' }}${{ github.run_id }}-symbols
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload debug symbols checksum as artifact
+        if: ${{ inputs.checksum && inputs.legacy != true && env.PACKAGE_SYMBOLS_NAME != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-${{ inputs.system || 'deb' }}-${{ env.ARCH }}-${{ inputs.legacy && 'legacy-' || '' }}${{ github.run_id }}-symbols-checksum
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,284 @@
+run-name: Packages - Build Wazuh agent Linux ppc - ${{ inputs.system }}${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }}${{ inputs.debug && ' - debug' || '' }} ${{ inputs.id }}
+name: Build Wazuh agent linux ppc
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/4_builderpackage_agent-linux-ppc.yml'
+  workflow_dispatch:
+    inputs:
+      docker_image_tag:
+        description: |
+          Specify the docker tag used to build the package.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
+        required: false
+        default: 'auto'
+      system:
+        type: choice
+        description: Package OS [deb, rpm].
+        required: true
+        options:
+          - deb
+          - rpm
+      revision:
+        description: Package revision (name and metadata).
+        required: false
+        default: "0"
+      is_stage:
+        type: boolean
+        description: |
+          Set production nomenclature if true.
+          Default is 'false'.
+        required: false
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+      source_reference:
+        description: |
+          Branch/tag of wazuh/wazuh to generate the packages.
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      docker_image_tag:
+        type: string
+        required: false
+        default: 'auto'
+      system:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      source_reference:
+        type: string
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  Build-agent-linux-packages:
+    runs-on: VPN
+    timeout-minutes: 30
+    name: Packages - Build Wazuh agent packages - ${{ inputs.system || 'deb' }} - ppc64le
+
+    steps:
+      - name: Set TAG, CONTAINER_NAME, COMPOSITE_NAME, PROVIDER and AUTOMATION_BRANCH
+        run: |
+          VERSION=$(curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${{ inputs.source_reference || github.ref }}/VERSION.json" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV;
+          if [ "${{ inputs.docker_image_tag || 'auto' }}" == "auto" ]; then
+            echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
+            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference || github.ref }})" >> $GITHUB_ENV;
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
+          fi
+          echo "CONTAINER_NAME=pkg_${{ inputs.system || 'deb' }}_agent_builder_ppc64le" >> $GITHUB_ENV
+          if [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git ${{ inputs.source_reference || github.ref }}`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=${{ inputs.source_reference || github.ref }}" >> $GITHUB_ENV;
+          elif [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git $VERSION`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=$VERSION" >> $GITHUB_ENV;
+          else
+            echo "AUTOMATION_BRANCH=main" >> $GITHUB_ENV;
+          fi
+          if [ "${{ inputs.system || 'deb' }}" == "rpm" ]; then
+            echo "COMPOSITE_NAME=linux-centos-builder-ppc64" >> $GITHUB_ENV
+          elif [ "${{ inputs.system || 'deb' }}" == "deb" ]; then
+            echo "COMPOSITE_NAME=linux-debian-builder-ppc64" >> $GITHUB_ENV
+          fi
+          echo "PROVIDER=vagrant" >> $GITHUB_ENV
+
+      - name: Set vars to build ${{ inputs.system || 'deb' }} wazuh-agent on ppc64le
+        run: |
+          REVISION=${{ inputs.revision || '0' }}
+          FLAGS="-t agent -s /tmp --dont-build-docker -j $(nproc) --branch ${{ inputs.source_reference || github.ref }} "
+          if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
+          if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh
+          ref: ${{ inputs.source_reference || github.ref }}
+
+      - name: Checkout wazuh/wazuh-automation repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh-automation
+          path: wazuh-automation
+          ref: ${{ env.AUTOMATION_BRANCH }}
+          token: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
+
+      - name: Install and set allocator requirements
+        working-directory: ./wazuh-automation
+        run: |
+          sudo pip3 install -r deployability/deps/requirements.txt
+          aws configure set default.region us-east-1
+
+      - name: Execute allocator module and set ssh variables
+        id: alloc_vm
+        working-directory: ./wazuh-automation
+        run: |
+          python3 deployability/modules/allocation/main.py --action create --provider ${{ env.PROVIDER }} --size large --composite-name ${{ env.COMPOSITE_NAME }} --label-team agent --label-termination-date 1d \
+            --working-dir /tmp/allocatorvm --track-output /tmp/allocatorvm/track.yml --inventory-output /tmp/allocatorvm/inventory.yml --instance-name gha_agent_packages_${{ github.run_id }}_build
+          ansible_host=$(grep 'ansible_host:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_host=$ansible_host" >> $GITHUB_ENV && echo "::add-mask::$ansible_host"
+          ansible_port=$(grep 'ansible_port:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_port=$ansible_port" >> $GITHUB_ENV && echo "::add-mask::$ansible_port"
+          ansible_user=$(grep 'ansible_user:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_user=$ansible_user" >> $GITHUB_ENV && echo "::add-mask::$ansible_user"
+          ansible_password=$(grep 'ansible_password:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_password=$ansible_password" >> $GITHUB_ENV && echo "::add-mask::$ansible_password"
+          ansible_ssh_private_key_file=$(grep 'ansible_ssh_private_key_file:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_private_key_file"
+          ansible_ssh_common_args=$(grep 'ansible_ssh_common_args:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_common_args=$ansible_ssh_common_args" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_common_args"
+
+      - name: Set SSH_COMMAND
+        run: |
+          echo "SSH_COMMAND=ssh -i ${{ env.ansible_ssh_private_key_file }} -p ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} ${{ env.ansible_user }}@${{ env.ansible_host }}" >> $GITHUB_ENV
+          echo "SCP_COMMAND=scp -i ${{ env.ansible_ssh_private_key_file }} -P ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }}" >> $GITHUB_ENV
+
+      - name: VM - Install docker, checkout wazuh/wazuh repository and pull ${{ env.CONTAINER_NAME }} image
+        run: |
+          ${{ env.SSH_COMMAND }} 'git clone https://github.com/wazuh/wazuh.git -b ${{ inputs.source_reference || github.ref }} --depth 1'
+          ${{ env.SSH_COMMAND }} 'bash wazuh/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}'
+
+      - name: Append short commit to VERSION file
+        run: |
+          ${{ env.SSH_COMMAND }} << 'EOF'
+          pushd wazuh || exit 1
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD) || exit 1
+          if [ -z "$SHORT_COMMIT" ]; then
+            echo "No commit found"
+            exit 1
+          fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+          popd
+          EOF
+
+      # For ppc64le package construction, we have access to the container of a machine that is not reset on each use.
+      - name: VM - Build ${{ inputs.system || 'deb' }} wazuh-agent on ppc64le
+        run: |
+          # This step is necessary to clean the directory where the created packages are stored.
+          ${{ env.SSH_COMMAND }} 'docker run -t --rm --entrypoint "find" --name delete_items -v /tmp:/var/local/wazuh ${{ env.CONTAINER_NAME }}:${{ env.TAG }} /var/local/wazuh -type f -name '*agent*' -exec rm -f {} \;'
+          # Since our script to generate packages, raises a container, we have DinD (Docker in Docker), therefore we have restricted the use of volumes.
+          ${{ env.SSH_COMMAND }} 'sed -i "s/docker run -t --rm/docker run -t --name build_container/g" wazuh/packages/generate_package.sh'
+          ${{ env.SSH_COMMAND }} 'bash wazuh/packages/generate_package.sh -a ppc64le --tag ${{ env.TAG }} --system ${{ inputs.system || 'deb' }} ${{ env.FLAGS }}'
+          ${{ env.SSH_COMMAND }} 'docker cp build_container:/var/local/wazuh/. /tmp/'
+          ${{ env.SSH_COMMAND }} 'docker rm build_container'
+          ${{ env.SSH_COMMAND }} 'package_name=$(find /tmp -maxdepth 1 -type f -name "*agent*.${{ inputs.system || 'deb' }}" -exec basename {} 2>/dev/null \;| grep -v -E "^(wazuh-agent-dbg|wazuh-agent-debuginfo)"); \
+            echo "PACKAGE_NAME=$package_name";' | tee -a $GITHUB_ENV
+          ${{ env.SSH_COMMAND }} 'package_symbols_name=$(find /tmp -maxdepth 1 -type f -name "*agent*.${{ inputs.system || 'deb' }}" -exec basename {} 2>/dev/null \;| grep -E "^(wazuh-agent-dbg|wazuh-agent-debuginfo)"); \
+            echo "PACKAGE_SYMBOLS_NAME=$package_symbols_name";' | tee -a $GITHUB_ENV
+
+      - name: VM - Test install built package
+        run: |
+          # We must create the container in this way in order to be able to insert and extract the necessary files to carry out all the steps.
+          ${{ env.SSH_COMMAND }} 'docker create --entrypoint "/tests/install_component.sh" --name test_container ${{ env.CONTAINER_NAME }}:${{ env.TAG }} ${{ env.PACKAGE_NAME }} agent'
+          ${{ env.SSH_COMMAND }} 'docker cp wazuh/.github/actions/test-install-components/. test_container:/tests/'
+          ${{ env.SSH_COMMAND }} 'docker cp /tmp/. test_container:/packages'
+          ${{ env.SSH_COMMAND }} 'docker start test_container'
+          ${{ env.SSH_COMMAND }} 'docker wait test_container'
+          ${{ env.SSH_COMMAND }} 'docker cp test_container:/packages/status.log /tmp/status.log'
+          ${{ env.SSH_COMMAND }} 'docker rm test_container'
+          ${{ env.SCP_COMMAND }} ${{ env.ansible_user }}@${{ env.ansible_host }}:/tmp/status.log /tmp
+          # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
+          cat /tmp/status.log
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded.";
+            exit 1;
+          fi
+
+      - name: VM - Bring built package
+        run: |
+          ${{ env.SCP_COMMAND }} ${{ env.ansible_user }}@${{ env.ansible_host }}:/tmp/*agent* /tmp
+
+      - name: Clean docker
+        if: always() && steps.alloc_vm.outcome == 'success'
+        run: |
+          ${{ env.SSH_COMMAND }} 'docker rm -f test_container || true'
+          ${{ env.SSH_COMMAND }} 'docker rm -f build_container || true'
+          CURRENT_IMAGE=$(${{ env.SSH_COMMAND }} 'docker images -q --filter=reference="ghcr.io/wazuh/${{ env.CONTAINER_NAME }}:${{ env.TAG }}"')
+          if [ "${{ env.TAG }}" != "latest" ] && [ ! -z "$CURRENT_IMAGE" ]; then
+              echo "Removing image with tag '${{ env.CONTAINER_NAME }}:${{ env.TAG }}'"
+              ${{ env.SSH_COMMAND }} "docker rmi '${{ env.CONTAINER_NAME }}:${{ env.TAG }}'"
+              ${{ env.SSH_COMMAND }} "docker rmi 'ghcr.io/wazuh/${{ env.CONTAINER_NAME }}:${{ env.TAG }}'"
+          fi
+
+      - name: Delete allocated VM
+        if: always() && steps.alloc_vm.outcome == 'success'
+        working-directory: ./wazuh-automation
+        run: |
+          python3 deployability/modules/allocation/main.py --action delete --track-output /tmp/allocatorvm/track.yml
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-linux-ppc64le-${{ inputs.system || 'deb' }}-${{ github.run_id }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload checksum artifact
+        if: ${{ inputs.checksum }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-linux-ppc64le-${{ inputs.system || 'deb' }}-${{ github.run_id }}-checksum
+          path: /tmp/${{ env.PACKAGE_NAME }}.sha512
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload debug symbols artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-linux-ppc64le-${{ inputs.system || 'deb' }}-${{ github.run_id }}-symbols
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload debug symbols checksum artifact
+        if: ${{ inputs.checksum }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-linux-ppc64le-${{ inputs.system || 'deb' }}-${{ github.run_id }}-symbols-checksum
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+          retention-days: 30
+          if-no-files-found: warn
