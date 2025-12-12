@@ -74,6 +74,8 @@ class AWSInspector(aws_service.AWSService):
         # max DB records for region
         self.retain_db_records = 5
         self.sent_events = 0
+        self.sent_events_v1 = 0
+        self.sent_events_v2 = 0
 
     def send_describe_findings(self, arn_list: list):
         """
@@ -94,6 +96,7 @@ class AWSInspector(aws_service.AWSService):
                     continue
                 self.send_msg(self.format_message(elem))
                 self.sent_events += 1
+                self.sent_events_v1 += 1
 
     def get_alerts(self):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
@@ -126,6 +129,8 @@ class AWSInspector(aws_service.AWSService):
         # get current time (UTC)
         date_current = datetime.utcnow()
 
+        # Note: Regions in both INSPECTOR_V1_REGIONS and INSPECTOR_V2_REGIONS will process
+        # findings from both APIs, accumulating events in self.sent_events
         if self.region in INSPECTOR_V1_REGIONS:
             aws_tools.debug(f"+++ Listing findings from {date_scan}", 2)
             response = self.client.list_findings(maxResults=100,
@@ -141,10 +146,21 @@ class AWSInspector(aws_service.AWSService):
                 self.send_describe_findings(response['findingArns'])
 
         if self.region in INSPECTOR_V2_REGIONS:
+            aws_tools.debug(f"+++ Attempting to fetch Inspector V2 findings from {date_scan}", 2)
             self.get_alerts_inspector_v2(date_scan, date_current)
 
+        # Log events collected from each API separately for validation
+        if self.region in INSPECTOR_V1_REGIONS:
+            aws_tools.debug(f"+++ [InspectorV1] {self.sent_events_v1} events collected and processed", 1)
+
+        if self.region in INSPECTOR_V2_REGIONS:
+            if self.sent_events_v2 > 0:
+                aws_tools.debug(f"+++ [InspectorV2] {self.sent_events_v2} events collected and processed", 1)
+            else:
+                aws_tools.debug(f"+++ [InspectorV2] No findings with recent updates in the specified time range", 1)
+
         if self.sent_events:
-            aws_tools.debug(f"+++ {self.sent_events} events collected and processed in {self.region}", 1)
+            aws_tools.debug(f"+++ Total: {self.sent_events} events collected and processed in {self.region}", 1)
         else:
             aws_tools.debug(f'+++ There are no new events in the "{self.region}" region', 1)
 
@@ -206,6 +222,7 @@ class AWSInspector(aws_service.AWSService):
                     continue
                 self.send_msg(self.format_message(finding))
                 self.sent_events += 1
+                self.sent_events_v2 += 1
 
         response = client.list_findings(
             maxResults=100,
