@@ -20,8 +20,6 @@ providing a centralized and efficient workflow.
 
 ### Key Tools in `engine-suite`:
 - **engine-clear**: Clears specific configurations or data from the engine.
-- **engine-decoder**: Manages and tests decoders used by the engine.
-- **engine-diff**: Compares configurations or data for differences.
 - **engine-integration**: Handles integrations with external systems.
 - **engine-policy**: Manages policies within the Wazuh engine.
 - **engine-router**: Configures and tests routing within the engine.
@@ -52,18 +50,6 @@ automatically. The tool also generates documentation for helper functions.
 - Generate documentation for helper functions.
 
 For more details, refer to the README on src/engine/test/helper-test/README.md
-
----
-
-## Engine Health Test
-
-The `engine-health-test` tool performs comprehensive health checks on the Wazuh ruleset.
-It runs a series of automated tests against the Wazuh engine to ensure the ruleset operates as expected.
-This tool is essential for validating the integrity and functionality of the ruleset.
-
-For more details, refer to the README on src/engine/test/health_test/README.md
-
-**Location:** `src/engine/test/health_test/engine-health-test`
 
 ---
 
