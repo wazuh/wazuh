@@ -710,39 +710,45 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
         // Report stateless event
         if (m_reportDiffFunction)
         {
-            nlohmann::json statelessEvent;
-            statelessEvent["module"] = "agent_info";
-            statelessEvent["type"] = table;
-            statelessEvent["data"] = ecsFormattedData;
-            statelessEvent["data"]["event"]["type"] = OPERATION_MAP.at(result);
-            statelessEvent["data"]["event"]["created"] = Utils::getCurrentISO8601();
+            // Check if stateless event should be generated based on changed fields
+            bool shouldGenerateStateless = shouldGenerateStatelessEvent(result, data, table);
 
-            // Add previous data for MODIFIED events
-            if (result == MODIFIED && data.contains("old"))
+            if (shouldGenerateStateless)
             {
-                nlohmann::json oldEcsData = ecsData(data["old"], table);
-                // Add changed fields tracking
-                std::vector<std::string> changedFields;
+                nlohmann::json statelessEvent;
+                statelessEvent["module"] = "agent_info";
+                statelessEvent["type"] = table;
+                statelessEvent["data"] = ecsFormattedData;
+                statelessEvent["data"]["event"]["type"] = OPERATION_MAP.at(result);
+                statelessEvent["data"]["event"]["created"] = Utils::getCurrentISO8601();
 
-                for (auto& [key, value] : ecsFormattedData.items())
+                // Add previous data for MODIFIED events
+                if (result == MODIFIED && data.contains("old"))
                 {
-                    if (!oldEcsData.contains(key) || oldEcsData[key] != value)
+                    nlohmann::json oldEcsData = ecsData(data["old"], table);
+                    // Add changed fields tracking
+                    std::vector<std::string> changedFields;
+
+                    for (auto& [key, value] : ecsFormattedData.items())
                     {
-                        changedFields.push_back(key);
+                        if (!oldEcsData.contains(key) || oldEcsData[key] != value)
+                        {
+                            changedFields.push_back(key);
+                        }
                     }
+
+                    statelessEvent["data"]["event"]["changed_fields"] = changedFields;
                 }
 
-                statelessEvent["data"]["event"]["changed_fields"] = changedFields;
-            }
+                m_reportDiffFunction(statelessEvent.dump());
 
-            m_reportDiffFunction(statelessEvent.dump());
+                std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result) + " (sync flag set)";
+                m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
+            }
 
             // Mark that synchronization is needed for this table
             // The actual coordination will be done in the main loop after populateAgentMetadata
             setSyncFlag(table, true);
-
-            std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result) + " (sync flag set)";
-            m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
         }
     }
     catch (const std::exception& e)
@@ -750,6 +756,64 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
         std::string errorMsg = "Error processing event for table " + table + ": " + e.what();
         m_logFunction(LOG_ERROR, errorMsg);
     }
+}
+
+bool AgentInfoImpl::shouldGenerateStatelessEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table) const
+{
+    // For INSERTED and DELETED events, always generate stateless
+    if (result != MODIFIED)
+    {
+        return true;
+    }
+
+    // For MODIFIED events, check if only OS-related fields changed in AGENT_METADATA_TABLE
+    if (table == AGENT_METADATA_TABLE && data.contains("old") && data.contains("new"))
+    {
+        // OS-related fields (reported by Syscollector)
+        static const std::set<std::string> OS_RELATED_FIELDS =
+        {
+            "host_architecture",
+            "host_hostname",
+            "host_os_name",
+            "host_os_type",
+            "host_os_platform",
+            "host_os_version"
+        };
+
+        const nlohmann::json& newData = data["new"];
+        const nlohmann::json& oldData = data["old"];
+
+        // Determine which fields changed and if there are non-OS changes
+        bool hasChanges = false;
+        bool hasNonOsChanges = false;
+
+        for (const auto& [key, value] : newData.items())
+        {
+            // A field only changed if it exists in oldData and has a different value
+            // If a field is not in oldData, it means it didn't change
+            if (oldData.contains(key) && oldData[key] != value)
+            {
+                hasChanges = true;
+
+                // Check if this changed field is NOT an OS field
+                if (OS_RELATED_FIELDS.find(key) == OS_RELATED_FIELDS.end())
+                {
+                    hasNonOsChanges = true;
+                    break;
+                }
+            }
+        }
+
+        // If only OS fields changed, don't generate stateless event
+        if (hasChanges && !hasNonOsChanges)
+        {
+            m_logFunction(LOG_INFO, "Skipping stateless event for " + table + ": only OS-related fields changed");
+            return false;
+        }
+    }
+
+    // For all other cases (non-metadata tables, or changes include non-OS fields), generate stateless
+    return true;
 }
 
 nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::string& table) const
