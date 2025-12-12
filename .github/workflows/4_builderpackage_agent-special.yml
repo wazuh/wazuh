@@ -1,0 +1,332 @@
+run-name: Packages - Build Wazuh agent special package - System ${{ inputs.system }}${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }} - ${{ inputs.id }}
+name: Build Wazuh agent special
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/4_builderpackage_agent-special.yml'
+  workflow_dispatch:
+    inputs:
+      system:
+        type: choice
+        description: Package OS [aix, hp-ux, solaris10, solaris11].
+        required: true
+        options:
+          - aix
+          - hp-ux
+          - solaris10
+          - solaris11
+      revision:
+        description: Package revision (name and metadata).
+        required: false
+        default: "0"
+      is_stage:
+        type: boolean
+        description: |
+          Set production nomenclature if true.
+          Default is 'false'.
+        required: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+      source_reference:
+        description: |
+          Branch/tag of wazuh/wazuh to generate the packages.
+        required: false
+      pass:
+        description: |
+          Password - SSH connection data.
+        required: true
+      port:
+        description: |
+          Port - SSH connection data.
+        required: true
+      host:
+        description: |
+          Host - SSH connection data.
+        required: true
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      system:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      source_reference:
+        type: string
+        required: false
+      pass:
+        type: string
+        required: true
+      port:
+        type: string
+        required: true
+      host:
+        type: string
+        required: true
+      id:
+        type: string
+        required: false
+
+jobs:
+  Build-agent-special-packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    name: Packages - Build Wazuh agent special package
+
+    steps:
+      - name: Mask inputs
+        run: |
+          MASKED_PASS=$(jq -r '.inputs.pass' $GITHUB_EVENT_PATH)
+          echo "::add-mask::$MASKED_PASS"
+          echo "VERSION=$(curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${{ inputs.source_reference || github.ref }}/VERSION.json" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')" >> $GITHUB_ENV;
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Set util commands
+        run: |
+          if [[ "${{ inputs.system || 'aix' }}" == solaris* ]]; then algorithm_flag="-oKexAlgorithms=+diffie-hellman-group1-sha1 -oHostKeyAlgorithms=+ssh-rsa -oMACs=hmac-md5,hmac-sha1"; fi
+          echo "SSH_COMMAND=sshpass -p ${{ inputs.pass }} ssh $algorithm_flag -X -o StrictHostKeyChecking=no -p ${{ inputs.port }} root@${{ inputs.host }}" >> $GITHUB_ENV
+          echo "SCP_COMAND=sshpass -p ${{ inputs.pass }} scp $algorithm_flag -P ${{ inputs.port }} -o StrictHostKeyChecking=no" >> $GITHUB_ENV
+          echo "SED_IP_MANAGER_COMMAND=sed 's/MANAGER_IP/10.0.0.2/g' /var/ossec/etc/ossec.conf > /var/ossec/etc/ossec.conf.tmp && mv /var/ossec/etc/ossec.conf.tmp /var/ossec/etc/ossec.conf" >> $GITHUB_ENV
+
+      - name: Download and send dependencies
+        run: |
+          script_path=${{ inputs.system || 'aix' }}
+          work_folder=$script_path
+          if [ "${{ inputs.system || 'aix' }}" == "aix" ]; then
+            echo "SYSTEM_PACKAGE_NAME=aix-6.1_powerpc" >> $GITHUB_ENV
+
+            # Install bash
+            ${{ env.SSH_COMMAND }} 'rpm -ivh http://packages-dev.wazuh.com/utils/pkg/aix-tl9/bash-4.4-4.aix5.1.ppc.rpm || true'
+          elif [ "${{ inputs.system || 'aix' }}" == "hp-ux" ]; then
+            echo "SYSTEM_PACKAGE_NAME=hpux-11v3_ia64" >> $GITHUB_ENV
+
+            # Rest of dependencies
+            mkdir -p depot
+            cd depot
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/packages-ia64_32-11.31.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/cyrus_sasl-2.1.26-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/db-6.2.32-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/editline-2.9-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/expat-2.5.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/flex-2.6.4-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gettext-0.21.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/heimdal-7.8.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libiconv-1.17-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libidn2-2.0.3-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libssh2-1.9.0-hppa_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libunistring-1.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/m4-1.4.18-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/make-4.2.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/openldap-2.4.45-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/openssl-1.0.2u-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/termcap-1.3.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/zlib-1.2.13-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/zstd-1.4.5-hppa_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/autoconf-2.69-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/bison-3.0.4-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gawk-4.1.4-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gdbm-1.23-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/perl-5.10.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/sed-4.4-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/tcltk-8.5.19-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/texinfo-6.3-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/zip-3.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/readline-8.2.001-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gmp-6.1.2-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/mpfr-3.1.5-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/ncurses-6.3-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/bzip2-1.0.8-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libffi-3.4.4-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/python-3.9.13-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/sqlite-3.40.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/xz-5.2.3-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/curl-7.55.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/unzip-6.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gcc-4.2.3-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/cmake-3.22.2-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/bash-4.4.012-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gzip-1.8-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/automake-1.15.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libtool-2.4.6-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/coreutils-8.27-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gdb-7.9.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/regex-0.12-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/gnutls-3.3.28-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/ldns-1.7.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libgcrypt-1.8.0-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libgpg_error-1.27-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/libtasn1-4.12-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/lzo-2.10-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/nettle-2.7.1-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/p11_kit-0.23.2-ia64_32-11.31.depot.gz
+            curl -O https://packages-dev.wazuh.com/utils/hp-ux/repository/32b/unbound-1.12.0-hppa_32-11.31.depot.gz
+            ${{ env.SSH_COMMAND }} "mkdir -p /usr/local/lib/depothelper"
+            ${{ env.SCP_COMAND }} -r ./ root@${{ inputs.host }}:/usr/local/lib/depothelper
+          elif [[ "${{ inputs.system || 'aix' }}" == solaris* ]]; then
+            curl -o ca-bundle.crt https://curl.se/ca/cacert.pem
+            ${{ env.SCP_COMAND }} ca-bundle.crt root@${{ inputs.host }}:/etc/certs/ca-bundle.crt
+            echo "SYSTEM_PACKAGE_NAME=${{ inputs.system || 'aix' }}_sparc" >> $GITHUB_ENV
+            script_path=solaris/${{ inputs.system || 'aix' }}
+            work_folder=solaris
+          fi
+
+          # Send package generation folder
+          git clone -b ${{ inputs.source_reference || github.ref }} --single-branch https://github.com/wazuh/wazuh.git
+          ${{ env.SSH_COMMAND }} "mkdir -p /$work_folder"
+          ${{ env.SCP_COMAND }} -r ./wazuh/packages/$script_path/. root@${{ inputs.host }}:/$work_folder
+
+          echo "WORK_FOLDER=$work_folder" >> $GITHUB_ENV
+      - name: VM - Build ${{ inputs.system || 'aix' }} package
+        run: |
+          FLAGS="-b ${{ inputs.source_reference || github.ref }} "
+          if [[ "${{ inputs.system || 'aix' }}" != solaris* ]]; then FLAGS+="-r ${{ inputs.revision || '0' }} "; fi
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="-c "; fi
+          ${{ env.SSH_COMMAND }} 'chmod +x /${{ env.WORK_FOLDER }}/generate_wazuh_packages.sh'
+          # Use -e parameter to install dependencies and prepare environment
+          ${{ env.SSH_COMMAND }} '/${{ env.WORK_FOLDER }}/generate_wazuh_packages.sh -e'
+          # Execute generate_wazuh_packages.sh with the rest of needed parameters to generate Wazuh package
+          ${{ env.SSH_COMMAND }} "/${{ env.WORK_FOLDER }}/generate_wazuh_packages.sh $FLAGS"
+          if [ "${{ inputs.system || 'aix' }}" == "solaris10" ]; then
+            ${{ env.SSH_COMMAND }} "bash -c 'package_name=\$(find /${{ env.WORK_FOLDER }}/output -type f -name \"*agent*\" -exec basename {} 2>/dev/null \; | grep -v \"sha512\"); \
+              echo PACKAGE_NAME=\$package_name;'" | tee -a $GITHUB_ENV
+          else
+            ${{ env.SSH_COMMAND }} 'package_name=$(find /${{ env.WORK_FOLDER }}/output -type f -name "*agent*" -exec basename {} 2>/dev/null \; | grep -v "sha512"); \
+              echo "PACKAGE_NAME=$package_name";' | tee -a $GITHUB_ENV
+          fi
+
+      - name: Test install built package
+        run: |
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No package found matching the pattern!";
+            exit 1;
+          fi
+
+          if [ "${{ inputs.system || 'aix' }}" == "aix" ]; then
+            ${{ env.SSH_COMMAND }} 'WAZUH_MANAGER="10.0.0.2" rpm -ivh /${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} > /${{ env.WORK_FOLDER }}/output/status.log 2>&1'
+          elif [ "${{ inputs.system || 'aix' }}" == "hp-ux" ]; then
+            ${{ env.SSH_COMMAND }} 'cp /${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} /'
+            ${{ env.SSH_COMMAND }} '/usr/local/bin/gzip -d /${{ env.PACKAGE_NAME }}'
+            ${{ env.SSH_COMMAND }} 'tar -xvf /$(basename ${{ env.PACKAGE_NAME }} .gz) > /${{ env.WORK_FOLDER }}/output/status.log 2>&1'
+            ${{ env.SSH_COMMAND }} 'groupadd wazuh'
+            ${{ env.SSH_COMMAND }} 'useradd -G wazuh wazuh'
+            ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          elif [ "${{ inputs.system || 'aix' }}" == "solaris10" ]; then
+            ${{ env.SSH_COMMAND }} 'pkgadd -d /${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} -a /${{ env.WORK_FOLDER }}/noaskfile wazuh-agent > /solaris/output/status.log 2>&1'
+            ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          elif [ "${{ inputs.system || 'aix' }}" == "solaris11" ]; then
+            ${{ env.SSH_COMMAND }} 'pkg install -g /${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} wazuh-agent > /solaris/output/status.log 2>&1'
+            ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          fi
+
+          # Check if wazuh-agent was installed. The status.log file was generated in the previous step.
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control start >> /${{ env.WORK_FOLDER }}/output/status.log 2>&1 || true'
+          sleep 10
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control status >> /${{ env.WORK_FOLDER }}/output/status.log 2>&1 || true'
+          ${{ env.SCP_COMAND }} root@${{ inputs.host }}:/${{ env.WORK_FOLDER }}/output/status.log /tmp/
+          cat /tmp/status.log
+
+          services=("wazuh-execd" "wazuh-agentd" "wazuh-syscheckd" "wazuh-logcollector" "wazuh-modulesd")
+          all_started=true
+
+          for service in "${services[@]}"; do
+            if ! grep -iq "Started $service" /tmp/status.log; then
+              all_started=false
+              break
+            fi
+          done
+
+          if $all_started && grep -iq "Completed" /tmp/status.log && ! grep -iq "error" /tmp/status.log; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded."
+            exit 1
+          fi
+
+      - name: VM - Bring built package
+        run: |
+          ${{ env.SCP_COMAND }} root@${{ inputs.host }}:/${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} /tmp/
+          if [ "${{ inputs.checksum }}" == "true" ];
+            then ${{ env.SCP_COMAND }} root@${{ inputs.host }}:/${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }}.sha512 /tmp/
+          fi
+          # Fix the package name for developers and for AIX systems in stage.
+          NEW_PACKAGE_NAME=""
+          if [ "${{ inputs.is_stage }}" == "false" ]; then
+            COMMIT_HASH="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${{ inputs.source_reference || github.ref }} | jq -r '.sha' | cut -c1-7)"
+            NEW_PACKAGE_NAME="wazuh-agent_${{ env.VERSION }}-${{ inputs.revision || '0' }}_${{ env.SYSTEM_PACKAGE_NAME }}_$COMMIT_HASH.tar.gz"
+          elif [ "${{ inputs.system || 'aix' }}" == "aix" ]; then
+            NEW_PACKAGE_NAME=$(echo "${{ env.PACKAGE_NAME }}" | sed "s|aix6.1|aix|g")
+          fi
+          if [ -n "$NEW_PACKAGE_NAME" ]; then
+            mv /tmp/${{ env.PACKAGE_NAME }} /tmp/$NEW_PACKAGE_NAME
+            if [ "${{ inputs.checksum }}" == "true" ]; then
+              mv /tmp/${{ env.PACKAGE_NAME }}.sha512 /tmp/$NEW_PACKAGE_NAME.sha512
+            fi
+            echo "PACKAGE_NAME=$NEW_PACKAGE_NAME" >> $GITHUB_ENV
+          fi
+
+      - name: Uninstall package and clean the environment
+        if: always()
+        run: |
+          # Remove source code
+          ${{ env.SSH_COMMAND }} 'rm -rf /${{ env.WORK_FOLDER }}'
+
+          # Remove dependencies + uninstall package
+          if [ "${{ inputs.system || 'aix' }}" == "aix" ]; then
+            ${{ env.SSH_COMMAND }} 'rm -rf /wazuh*'
+            ${{ env.SSH_COMMAND }} 'rpm -e wazuh-agent'
+            ${{ env.SSH_COMMAND }} 'rm -rf /var/ossec'
+          elif [ "${{ inputs.system || 'aix' }}" == "hp-ux" ]; then
+            ${{ env.SSH_COMMAND }} 'rm -rf /wazuh*'
+            ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+            ${{ env.SSH_COMMAND }} 'groupdel wazuh'
+            ${{ env.SSH_COMMAND }} 'userdel wazuh'
+            ${{ env.SSH_COMMAND }} 'rm -rf /var/ossec'
+          elif [ "${{ inputs.system || 'aix' }}" == "solaris10" ]; then
+            ${{ env.SSH_COMMAND }} 'yes | pkgrm wazuh-agent'
+          elif [ "${{ inputs.system || 'aix' }}" == "solaris11" ]; then
+            ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+            ${{ env.SSH_COMMAND }} 'pkg uninstall wazuh-agent'
+            ${{ env.SSH_COMMAND }} 'groupdel wazuh'
+          fi
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-${{ inputs.system || 'aix' }}-${{ github.run_id }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload checksum artifact
+        if: ${{ inputs.checksum == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-${{ inputs.system || 'aix' }}-${{ github.run_id }}-checksum
+          path: /tmp/${{ env.PACKAGE_NAME }}.sha512
+          retention-days: 30
+          if-no-files-found: error

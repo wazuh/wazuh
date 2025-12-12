@@ -1,0 +1,225 @@
+run-name: Packages - Build Wazuh agent Solaris ${{ inputs.system_version }} i386${{ inputs.is_stage && ' - is stage' || '' }}${{ inputs.checksum && ' - checksum' || '' }} - ${{ inputs.id }}
+name: Build Wazuh agent Solaris i386
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/4_builderpackage_agent-solaris-i386.yml'
+  workflow_dispatch:
+    inputs:
+      system_version:
+        type: choice
+        description: Solaris version [10, 11].
+        required: true
+        options:
+          - 10
+          - 11
+      revision:
+        description: Package revision (name and metadata).
+        required: false
+        default: "0"
+      is_stage:
+        type: boolean
+        description: |
+          Set production nomenclature if true.
+          Default is 'false'.
+        required: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+      source_reference:
+        description: |
+          Branch/tag of wazuh/wazuh to generate the packages.
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      system_version:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      source_reference:
+        type: string
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  Build-agent-solaris-packages:
+    runs-on: VPN
+    timeout-minutes: 30
+    name: Packages - Build Wazuh agent packages - Solaris - i386
+
+    steps:
+      - name: Set VERSION, COMPOSITE_NAME, PROVIDER and AUTOMATION_BRANCH
+        run: |
+          VERSION=$(curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${{ inputs.source_reference || github.ref }}/VERSION.json" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+          if [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git ${{ inputs.source_reference || github.ref }}`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=${{ inputs.source_reference || github.ref }}" >> $GITHUB_ENV;
+          elif [ "X`git ls-remote https://${{ github.actor}}:${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}@github.com/wazuh/wazuh-automation.git $VERSION`" != "X" ]; then
+            echo "AUTOMATION_BRANCH=$VERSION" >> $GITHUB_ENV;
+          else
+            echo "AUTOMATION_BRANCH=main" >> $GITHUB_ENV;
+          fi
+          if [ "${{ inputs.system_version || '10' }}" == 10 ]; then
+            echo "COMPOSITE_NAME=solaris-i386-10-amd64" >> $GITHUB_ENV
+          elif [ "${{ inputs.system_version || '10' }}" == 11 ]; then
+            echo "COMPOSITE_NAME=solaris-i386-11.3-amd64" >> $GITHUB_ENV
+          fi
+          echo "PROVIDER=vagrant" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Checkout wazuh/wazuh-automation repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh-automation
+          ref: ${{ env.AUTOMATION_BRANCH }}
+          token: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
+
+      - name: Install and set allocator requirements
+        run: |
+          sudo pip3 install -r deployability/deps/requirements.txt
+          aws configure set default.region us-east-1
+
+      - name: Execute allocator module and set ssh variables
+        id: alloc_vm
+        run: |
+          python3 deployability/modules/allocation/main.py --action create --provider ${{ env.PROVIDER }} --size medium --composite-name ${{ env.COMPOSITE_NAME }} --label-team agent --label-termination-date 1d \
+            --working-dir /tmp/allocatorvm --track-output /tmp/allocatorvm/track.yml --inventory-output /tmp/allocatorvm/inventory.yml --instance-name gha_agent_packages_${{ github.run_id }}_build
+          ansible_host=$(grep 'ansible_host:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_host=$ansible_host" >> $GITHUB_ENV && echo "::add-mask::$ansible_host"
+          ansible_port=$(grep 'ansible_port:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_port=$ansible_port" >> $GITHUB_ENV && echo "::add-mask::$ansible_port"
+          ansible_user=$(grep 'ansible_user:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_user=$ansible_user" >> $GITHUB_ENV && echo "::add-mask::$ansible_user"
+          ansible_password=$(grep 'ansible_password:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_password=$ansible_password" >> $GITHUB_ENV && echo "::add-mask::$ansible_password"
+          ansible_ssh_private_key_file=$(grep 'ansible_ssh_private_key_file:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_private_key_file"
+          ansible_ssh_common_args=$(grep 'ansible_ssh_common_args:' /tmp/allocatorvm/inventory.yml | sed 's/.*: *//') && echo "ansible_ssh_common_args=$ansible_ssh_common_args" >> $GITHUB_ENV && echo "::add-mask::$ansible_ssh_common_args"
+
+      - name: Set util commands
+        run: |
+          echo "SSH_COMMAND=sshpass -p ${{ env.ansible_password }} ssh -p ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} -o StrictHostKeyChecking=no ${{ env.ansible_user }}@${{ env.ansible_host }}" >> $GITHUB_ENV
+          echo "SCP_COMAND=sshpass -p ${{ env.ansible_password }} scp -P ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} -o StrictHostKeyChecking=no" >> $GITHUB_ENV
+          echo "SED_IP_MANAGER_COMMAND=sudo sed 's/MANAGER_IP/10.0.0.2/g' /var/ossec/etc/ossec.conf | sudo tee /var/ossec/etc/ossec.conf.tmp > /dev/null && sudo mv /var/ossec/etc/ossec.conf.tmp /var/ossec/etc/ossec.conf" >> $GITHUB_ENV
+          ssh-keygen -f "/home/ubuntu/.ssh/known_hosts" -R "[${{ env.ansible_host }}]:${{ env.ansible_port }}"
+
+      - name: VM - Checkout wazuh/wazuh repository
+        run: |
+          # Send package generation folder
+          git clone -b ${{ inputs.source_reference || github.ref }} --single-branch https://github.com/wazuh/wazuh.git
+          ${{ env.SSH_COMMAND }} "mkdir -p /export/home/vagrant/solaris/"
+          ${{ env.SCP_COMAND }} -r ./wazuh/packages/solaris/. ${{ env.ansible_user }}@${{ env.ansible_host }}:/export/home/vagrant/solaris/
+
+          echo "working_dir=/export/home/vagrant/solaris/solaris${{ inputs.system_version || '10' }}" >> $GITHUB_ENV
+
+      - name: VM - Build Solaris ${{ inputs.system_version || '10' }} i386 wazuh-agent
+        run: |
+          FLAGS="-b ${{ inputs.source_reference || github.ref }} "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="-c "; fi
+          ${{ env.SSH_COMMAND }} 'ls ${{ env.working_dir }}/'
+          ${{ env.SSH_COMMAND }} "sudo bash ${{ env.working_dir }}/generate_wazuh_packages.sh $FLAGS"
+          ${{ env.SSH_COMMAND }} "bash -c 'package_name=\$(find ${{ env.working_dir }}/output -type f -name \"*agent*\" -exec basename {} 2>/dev/null \; | grep -v \"sha512\"); \
+            echo PACKAGE_NAME=\$package_name;'" | tee -a $GITHUB_ENV
+
+      - name: VM - Test install built package
+        run: |
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No package found matching the pattern!";
+            exit 1;
+          fi
+          if [ "${{ inputs.system_version || '10' }}" == 10 ]; then
+            ${{ env.SSH_COMMAND }} "sudo /usr/sbin/pkgadd -d ${{ env.working_dir }}/output/${{ env.PACKAGE_NAME }} -a ${{ env.working_dir }}/noaskfile wazuh-agent 2>&1 | sudo tee ${{ env.working_dir }}/output/status.log"
+            ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          elif [ "${{ inputs.system_version || '10' }}" == 11 ]; then
+            ${{ env.SSH_COMMAND }} "sudo pkg install -g ${{ env.working_dir }}/output/${{ env.PACKAGE_NAME }} wazuh-agent 2>&1 | sudo tee ${{ env.working_dir }}/output/status.log"
+            ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          fi
+
+          # Check if wazuh-agent was installed. The status.log file was generated in the previous step.
+          ${{ env.SSH_COMMAND }} 'sudo /var/ossec/bin/wazuh-control start 2>&1 | sudo tee -a ${{ env.working_dir }}/output/status.log > /dev/null || true'
+          sleep 10
+          ${{ env.SSH_COMMAND }} 'sudo /var/ossec/bin/wazuh-control status 2>&1 | sudo tee -a ${{ env.working_dir }}/output/status.log > /dev/null || true'
+          ${{ env.SCP_COMAND }} ${{ env.ansible_user }}@${{ env.ansible_host }}:${{ env.working_dir }}/output/status.log /tmp/
+          cat /tmp/status.log
+
+          services=("wazuh-execd" "wazuh-agentd" "wazuh-syscheckd" "wazuh-logcollector" "wazuh-modulesd")
+          all_started=true
+
+          for service in "${services[@]}"; do
+            if ! grep -iq "Started $service" /tmp/status.log; then
+              all_started=false
+              break
+            fi
+          done
+
+          if $all_started && grep -iq "Completed" /tmp/status.log && ! grep -iq "error" /tmp/status.log; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded."
+            exit 1
+          fi
+
+      - name: VM - Bring built package
+        run: |
+          ${{ env.SCP_COMAND }} ${{ env.ansible_user }}@${{ env.ansible_host }}:${{ env.working_dir }}/output/${{ env.PACKAGE_NAME }} /tmp
+          if [ "${{ inputs.checksum }}" == "true" ];
+            then ${{ env.SCP_COMAND }} ${{ env.ansible_user }}@${{ env.ansible_host }}:${{ env.working_dir }}/output/${{ env.PACKAGE_NAME }}.sha512 /tmp
+          fi
+          if [ "${{ inputs.is_stage }}" == "false" ]; then
+            COMMIT_HASH="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${{ inputs.source_reference || github.ref }} | sed -n 's/.*"sha": "\([^"]*\)".*/\1/p' | head -n 1 | cut -c1-7)"
+            if [[ -z "$COMMIT_HASH" || ${#COMMIT_HASH} -ne 7 ]]; then
+              echo "Error: Failed to retrieve a valid commit hash" >&2
+              exit 1
+            fi
+            NEW_PACKAGE_NAME="wazuh-agent_${{ env.VERSION }}-${{ inputs.revision || '0' }}_solaris${{ inputs.system_version || '10' }}_i386_$COMMIT_HASH.tar.gz"
+            mv /tmp/${{ env.PACKAGE_NAME }} /tmp/$NEW_PACKAGE_NAME
+            if [ "${{ inputs.checksum }}" == "true" ]; then
+              mv /tmp/${{ env.PACKAGE_NAME }}.sha512 /tmp/$NEW_PACKAGE_NAME.sha512
+            fi
+            echo "PACKAGE_NAME=$NEW_PACKAGE_NAME" >> $GITHUB_ENV
+          fi
+
+      - name: Delete allocated VM
+        if: always() && steps.alloc_vm.outcome == 'success'
+        run: |
+          python3 deployability/modules/allocation/main.py --action delete --track-output /tmp/allocatorvm/track.yml
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-solaris${{ inputs.system_version || '10' }}-i386-${{ github.run_id }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload checksum artifact
+        if: ${{ inputs.checksum == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-agent-solaris${{ inputs.system_version || '10' }}-i386-${{ github.run_id }}-checksum
+          path: /tmp/${{ env.PACKAGE_NAME }}.sha512
+          retention-days: 30
+          if-no-files-found: error

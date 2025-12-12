@@ -1,0 +1,201 @@
+run-name: Packages - Build WPK ${{ inputs.is_stage && 'stage' || '' }} ${{ inputs.checksum && 'checksum' || '' }} ${{ inputs.id }}
+name: 4.X - Build Wazuh WPK
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/4_builderpackage_agent-wpk.yml'
+  workflow_dispatch:
+    inputs:
+      source_reference:
+        description: |
+          Branch/tag of wazuh/wazuh to generate WPKs.
+        required: false
+      docker_image_tag:
+        description: |
+          Specify the docker tag used to build the package.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
+        required: false
+        default: 'auto'
+      wpk_reference:
+        description: |
+          Package URL with the package to be packed in the WPK.
+        required: true
+      is_stage:
+        description: |
+          Should set development/production nomenclature
+          True if WPK name should have production format.
+          False if WPK name should have developer format.
+          Default is 'false'.
+        required: false
+        type: boolean
+        default: false
+      checksum:
+        description: |
+          Generate package checksum
+          Default is 'false'.
+        required: false
+        type: boolean
+        default: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      source_reference:
+        type: string
+        required: false
+      docker_image_tag:
+        type: string
+        required: false
+      wpk_reference:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  WPK-generation:
+    name: Build WPK ${{ inputs.is_stage && 'stage' || '' }} ${{ inputs.checksum && 'checksum' || '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_reference || github.ref }}
+
+      - name: Set VERSION and CHECKSUM_FLAG
+        run: |
+          if [ -n "${{ inputs.wpk_reference }}" ]; then
+            echo "VERSION=$(echo "${{ inputs.wpk_reference }}" | sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/')" >> $GITHUB_ENV
+          else
+            echo "VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)" >> $GITHUB_ENV
+          fi
+          if [ "${{ inputs.checksum }}" == "true" ]; then echo "CHECKSUM_FLAG=-c" >> $GITHUB_ENV; fi
+
+      - name: Set Docker tag
+        run: |
+          if [ "${{ inputs.docker_image_tag || 'auto' }}" == "auto" ]; then
+            echo "TAG=${{ env.VERSION }}" >> $GITHUB_ENV
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
+            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference || github.ref }})" >> $GITHUB_ENV
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV
+          fi
+
+      - name: Set PKG_NAME
+        if: inputs.wpk_reference != ''
+        run: |
+          url="${{ inputs.wpk_reference }}"
+          filename="${url##*/}"
+          echo "The package filename is: $filename"
+          echo "PKG_NAME=${filename}" >> $GITHUB_ENV
+
+      - name: Set OS
+        if: inputs.wpk_reference != ''
+        run: |
+          if [[ "${{ env.PKG_NAME }}" == *.rpm ]]; then
+            echo "OS=linux" >> $GITHUB_ENV
+            echo "SYSTEM=rpm" >> $GITHUB_ENV
+          elif [[ "${{ env.PKG_NAME }}" == *.deb ]]; then
+            echo "OS=linux" >> $GITHUB_ENV
+            echo "SYSTEM=deb" >> $GITHUB_ENV
+          elif [[ "${{ env.PKG_NAME }}" == *.msi ]]; then
+            echo "OS=windows" >> $GITHUB_ENV
+          elif [[ "${{ env.PKG_NAME }}" == *.pkg ]]; then
+            echo "OS=macos" >> $GITHUB_ENV
+          else
+            echo "Unrecognized package type."
+            exit 1
+          fi
+
+      - name: Set WPK_NAME
+        run: |
+          if [ "${{ inputs.is_stage }}" == "true" ]; then
+            COMMON_NAME=wazuh_agent_v${{ env.VERSION }}_${{ env.OS }}
+            if [[ "${{ env.OS }}" == "windows" ]]; then
+              echo "WPK_NAME=${COMMON_NAME}.wpk" >> $GITHUB_ENV
+            else
+              PKG_TYPE=$(echo "${{ env.PKG_NAME }}" | rev | cut -d'.' -f1 | rev)
+              if [[ "${{ env.PKG_NAME }}" == *.deb ]]; then
+                ARCH=$(echo "${{ env.PKG_NAME }}" | rev | cut -b5- | cut -d'_' -f1 | rev)
+              else
+                ARCH=$(echo "${{ env.PKG_NAME }}" | rev | cut -b5- | cut -d'.' -f1 | rev)
+              fi
+              echo "WPK_NAME=${COMMON_NAME}_${ARCH}.${PKG_TYPE}.wpk" >> $GITHUB_ENV
+            fi
+          else
+            if [ -n "${{ env.PKG_NAME }}" ]; then
+              echo "WPK_NAME=${{ env.PKG_NAME }}.wpk" >> $GITHUB_ENV
+            else
+              echo "WPK_NAME=wazuh_agent_${{ env.VERSION }}.wpk" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Get secrets by name
+        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        with:
+          secret-ids: |
+            WPK_PRIVATE_KEY,${{ secrets.CI_AWS_WPK_PRIVATE_KEY_SECRET_NAME }}
+            WPK_CERT,${{ secrets.CI_AWS_WPK_CERT_SECRET_NAME }}
+
+      - name: Download docker image for WPK building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} common_wpk_builder ${{ env.TAG }}
+
+      - name: Build WPK
+        if: inputs.wpk_reference != ''
+        run: |
+          s3_package_uri="s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages"; echo "S3_PACKAGE_URI=$s3_package_uri" | tee -a $GITHUB_ENV
+          if [[ "${{ inputs.wpk_reference }}" =~ ^http.* ]]; then
+            curl -o ${{ env.PKG_NAME }} ${{ inputs.wpk_reference }}
+          else
+            aws s3 cp $s3_package_uri/${{ inputs.wpk_reference }} ./${{ env.PKG_NAME }}
+          fi
+          bash packages/wpk/generate_wpk_package.sh -t ${{ env.OS }} --dont-build-docker --tag ${{ env.TAG }} -b ${{ inputs.source_reference || github.ref }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.WPK_NAME }} -pn ./${{ env.PKG_NAME }} ${{ env.CHECKSUM_FLAG }}
+
+      - name: Upload WPK package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-wpk-${{ env.OS }}-${{ github.run_id }}
+          path: /tmp/${{ env.WPK_NAME }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload WPK checksum as artifact
+        if: ${{ inputs.checksum }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-wpk-${{ env.OS }}-${{ github.run_id }}-checksum
+          path: /tmp/${{ env.WPK_NAME }}.sha512
+          if-no-files-found: error
+          retention-days: 30
+
+    outputs:
+      os:       ${{ env.OS }}
+      system:   ${{ env.SYSTEM }}
+      version:  ${{ env.VERSION }}
+      wpk_name: ${{ env.WPK_NAME }}
