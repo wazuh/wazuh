@@ -10,6 +10,8 @@
 #pragma once
 
 #include <set>
+#include <chrono>
+#include <unordered_map>
 
 #include "igroup_wrapper.hpp"
 #include "ipasswd_wrapper.hpp"
@@ -60,6 +62,9 @@ class UserGroupsProvider
         /// @note If `gids` is empty, it retrieves usernames for all groups.
         nlohmann::json getUserNamesByGid(const std::set<gid_t>& gids = {});
 
+        /// @brief Resets the static thread-local cache.
+        static void resetCache();
+
     private:
         std::shared_ptr<IGroupWrapperLinux> m_groupWrapper;
         std::shared_ptr<IPasswdWrapperLinux> m_passwdWrapper;
@@ -87,4 +92,13 @@ class UserGroupsProvider
         /// @param ngroups The number of groups in the `groups` array.
         /// @note This method formats the group information into JSON objects and appends them to the results array.
         void addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups);
+
+        /// @brief Validates and invalidates cache if expired (60 seconds timeout).
+        static void validateCache();
+
+        // Static thread-local cache for getUserGroups results
+        static thread_local std::unordered_map<uid_t, std::vector<gid_t>> s_userGroupsCache;
+        static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
+        static thread_local bool s_cacheValid;
+        static constexpr std::chrono::seconds s_cacheTimeout{60};
 };
