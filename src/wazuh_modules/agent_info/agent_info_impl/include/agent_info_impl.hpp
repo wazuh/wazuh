@@ -93,6 +93,13 @@ class AgentInfoImpl
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
     private:
+        /// @brief Determine if a stateless event should be generated based on changed fields
+        /// @param result Type of change (INSERTED, MODIFIED, DELETED)
+        /// @param data Event data
+        /// @param table Table name
+        /// @return true if stateless event should be generated, false otherwise
+        bool shouldGenerateStatelessEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table) const;
+
         /// @brief Update the global metadata provider with current agent metadata
         /// @param agentMetadata Agent metadata JSON
         /// @param groups List of agent groups
