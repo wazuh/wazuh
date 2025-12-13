@@ -267,12 +267,12 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityEmptyChecksum)
         data["value"] = oldTime;
         callback(SELECTED, data);
     }))
-    // Mock calculateTableChecksum to throw error
-    .WillOnce(::testing::Throw(std::runtime_error("DB error")));
-
     // Mock updateLastIntegrityCheckTime
-    EXPECT_CALL(*m_mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(reinterpret_cast<DBSYNC_HANDLE>(0x1)));
+    .WillRepeatedly(::testing::Return());
+
+    // Mock calculateTableChecksum to throw error
+    EXPECT_CALL(*m_mockDBSync, calculateTableChecksum(::testing::_))
+    .WillOnce(::testing::Throw(std::runtime_error("DB error")));
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -318,22 +318,12 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityIntegrationFlow)
         data["value"] = oldTime;
         callback(SELECTED, data);
     }))
-    // 2. calculateTableChecksum - return some checksums
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data1, data2;
-        data1["checksum"] = "abc123";
-        data2["checksum"] = "def456";
-        callback(SELECTED, data1);
-        callback(SELECTED, data2);
-    }))
-    // 3. Any subsequent calls (updateLastIntegrityCheckTime, etc.)
+    // 2. Any subsequent calls (updateLastIntegrityCheckTime, etc.)
     .WillRepeatedly(::testing::Return());
 
-    // Mock handle for transactions
-    EXPECT_CALL(*m_mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(reinterpret_cast<DBSYNC_HANDLE>(0x1)));
+    // Mock calculateTableChecksum (used to calculate table checksum)
+    EXPECT_CALL(*m_mockDBSync, calculateTableChecksum(::testing::_))
+    .WillOnce(::testing::Return("abc123def456"));  // Table checksum
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -370,49 +360,4 @@ TEST_F(SCARecoveryTest, CheckIntegrityResponseStructure)
     // Verify values
     EXPECT_EQ(jsonResponse["data"]["module"], "sca");
     EXPECT_EQ(jsonResponse["data"]["action"], "check_integrity");
-}
-
-// Test: increaseEachEntryVersion with empty table returns success
-TEST_F(SCARecoveryTest, IncreaseEachEntryVersionEmptyTable)
-{
-    // Mock selectRows to return no data
-    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return());
-
-    int result = m_sca->increaseEachEntryVersion();
-
-    EXPECT_EQ(result, 0);
-    EXPECT_TRUE(m_logOutput.find("no rows to update") != std::string::npos);
-}
-
-// Test: increaseEachEntryVersion with data but null handle returns error
-// Note: When handle is null, DBSyncTxn throws an exception during construction,
-// which is caught and results in an error return.
-TEST_F(SCARecoveryTest, IncreaseEachEntryVersionWithDataNullHandle)
-{
-    // Mock selectRows to return checks with versions
-    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json check1, check2;
-        check1["id"] = "check1";
-        check1["checksum"] = "abc123";
-        check1["policy_id"] = "policy1";
-        check1["version"] = 5;
-        check2["id"] = "check2";
-        check2["checksum"] = "def456";
-        check2["policy_id"] = "policy1";
-        check2["version"] = 3;
-        callback(SELECTED, check1);
-        callback(SELECTED, check2);
-    }));
-
-    // Handle returns nullptr (default from SetUp), so DBSyncTxn constructor will throw
-    int result = m_sca->increaseEachEntryVersion();
-
-    // The function returns -1 because DBSyncTxn throws when handle is null
-    // This is the expected behavior - transaction requires valid handle
-    EXPECT_EQ(result, -1);
-    EXPECT_TRUE(m_logOutput.find("Error increasing entry versions") != std::string::npos);
 }

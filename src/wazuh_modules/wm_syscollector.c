@@ -10,6 +10,7 @@
  */
 #include <stdlib.h>
 #include "../../wmodules_def.h"
+#include "syscollector/include/syscollector.h"
 #include "wmodules.h"
 #include "module_query_errors.h"
 #include "wm_syscollector.h"
@@ -77,11 +78,21 @@ syscollector_delete_database_func syscollector_delete_database_ptr = NULL;
 typedef size_t (*syscollector_query_func)(const char* query, char** output);
 syscollector_query_func syscollector_query_ptr = NULL;
 
+// Mutex access function pointers
+typedef void (*syscollector_lock_scan_mutex_func)();
+typedef void (*syscollector_unlock_scan_mutex_func)();
+syscollector_lock_scan_mutex_func syscollector_lock_scan_mutex_ptr = NULL;
+syscollector_unlock_scan_mutex_func syscollector_unlock_scan_mutex_ptr = NULL;
+
+typedef void (*syscollector_run_recovery_process_func)();
+syscollector_run_recovery_process_func syscollector_run_recovery_process_ptr = NULL;
+
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
 uint32_t sync_end_delay = 1;                 // Database synchronization end delay in seconds (default value)
 uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
 long sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
+uint32_t integrity_interval = 86400;         // Integrity check interval in seconds (default value)
 
 long syscollector_max_eps = 50;          // Number of events per second (default value)
 int queue_fd = 0;                        // Output queue file descriptor
@@ -201,7 +212,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
             .start = wm_sys_startmq,
             .send_binary = wm_sys_send_binary_msg
         };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps, integrity_interval);
 
         syscollector_init_ptr(sys->interval,
                               wm_sys_send_diff_message,
@@ -332,9 +343,13 @@ void* wm_sys_main(wm_sys_t* sys)
 
         // Get query function pointer
         syscollector_query_ptr = so_get_function_sym(syscollector_module, "syscollector_query");
-    }
-    else
-    {
+
+        // Get mutex access function pointers
+        syscollector_lock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_lock_scan_mutex");
+        syscollector_unlock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_unlock_scan_mutex");
+
+        syscollector_run_recovery_process_ptr = so_get_function_sym(syscollector_module, "syscollector_run_recovery_process");
+    } else {
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
         pthread_exit(NULL);
     }
@@ -354,6 +369,7 @@ void* wm_sys_main(wm_sys_t* sys)
             sync_end_delay = sys->sync.sync_end_delay;
             sync_response_timeout = sys->sync.sync_response_timeout;
             sync_max_eps = sys->sync.sync_max_eps;
+            integrity_interval = sys->sync.integrity_interval;
         }
 
         if (sys->max_eps)
@@ -394,7 +410,7 @@ void* wm_sys_main(wm_sys_t* sys)
                 .start = wm_sys_startmq,
                 .send_binary = wm_sys_send_binary_msg
             };
-            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps, integrity_interval);
 #ifndef WIN32
             // Launch inventory synchronization thread
             sync_module_running = 1;
@@ -535,6 +551,7 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
     cJSON_AddNumberToObject(synchronization, "max_eps", sys->sync.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "response_timeout", sys->sync.sync_response_timeout);
     cJSON_AddNumberToObject(synchronization, "sync_end_delay", sys->sync.sync_end_delay);
+    cJSON_AddNumberToObject(synchronization, "integrity_interval", sys->sync.integrity_interval);
 
     cJSON_AddItemToObject(wm_sys, "synchronization", synchronization);
 
@@ -619,14 +636,22 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         sleep(1);
     }
 
-    while (sync_module_running)
-    {
-        if (syscollector_sync_module_ptr)
-        {
-            syscollector_sync_module_ptr(MODE_DELTA);
-        }
-        else
-        {
+    while (sync_module_running) {
+        if (syscollector_sync_module_ptr) {
+            syscollector_lock_scan_mutex_ptr();
+            mtinfo(WM_SYS_LOGTAG, "Starting inventory synchronization.");
+
+            bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
+
+            if (sync_result) {
+                mtdebug1(WM_SYS_LOGTAG, "Synchronization succeeded");
+                syscollector_run_recovery_process_ptr();
+            } else {
+                mtdebug1(WM_SYS_LOGTAG, "Synchronization failed");
+            }
+
+            syscollector_unlock_scan_mutex_ptr();
+        } else {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }
 

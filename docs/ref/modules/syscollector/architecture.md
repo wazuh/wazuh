@@ -197,6 +197,86 @@ if (m_persistDiffFunction) {
 
 ---
 
+## Recovery Flow
+
+The Syscollector module includes automatic recovery to detect and resolve synchronization inconsistencies between the agent and manager:
+
+### Recovery Mechanism
+
+1. **Periodic Integrity Checks**: Each time the `integrity_interval` elapses, Syscollector performs an integrity check for each enabled inventory table
+2. **Checksum Calculation**: Agent calculates checksum-of-checksums from each inventory table
+3. **Manager Validation**: Checksum is sent to manager via `requiresFullSync()` in Agent Sync Protocol
+4. **Comparison**: Manager compares agent checksum with its indexed data
+5. **Recovery Trigger**: On checksum mismatch, full recovery is initiated for that specific table
+6. **Timestamp Tracking**: `last_sync_time` is stored in `table_metadata` table per inventory type
+
+### Recovery Process
+
+When a checksum mismatch is detected for a table:
+
+1. **Version Increment**: All entries in the table have their version incremented by 1
+   - Uses DBSync's `increaseEachEntryVersion()` method
+2. **Data Extraction**: All elements are retrieved from the affected table using `getEveryElement()`
+3. **Memory Preparation**: In-memory sync data is cleared via `clearInMemoryData()`
+4. **Stateful Message Rebuild**: Each inventory item is:
+   - Converted to ECS format
+   - Wrapped in stateful message structure
+   - Persisted to sync protocol memory with CREATE operation
+5. **Full Synchronization**: A FULL mode synchronization is triggered
+   - Sends all data for the affected table to manager
+   - Manager replaces its entire state for that index
+6. **Timestamp Update**: `last_sync_time` is updated to current timestamp
+
+### Recovery Flow Diagram
+
+```
+Main Scanning Loop (syncLoop)
+         │
+         ▼
+Periodic Scan Execution
+         │
+         ▼
+Check if integrity_interval elapsed for each table
+         │
+         ├─► No  → Skip integrity check for this table
+         │
+         └─► Yes → Calculate table checksum
+                   │
+                   ▼
+             Send checksum to manager (requiresFullSync)
+                   │
+                   ├─► Match    → No action needed, update last_sync_time
+                   │
+                   └─► Mismatch → Perform full recovery for this table
+                                  │
+                                  ├─► Lock scan mutex (prevent concurrent scans)
+                                  ├─► Increase version for all entries
+                                  ├─► Load all elements from table
+                                  ├─► Clear in-memory sync data
+                                  ├─► Rebuild stateful messages
+                                  ├─► Trigger FULL synchronization
+                                  ├─► Update last_sync_time
+                                  └─► Unlock scan mutex
+```
+
+### Configuration
+
+Recovery behavior is controlled by the `integrity_interval` parameter:
+
+```xml
+<wodle name="syscollector">
+    <synchronization>
+        <integrity_interval>86400</integrity_interval>  <!-- 24 hours -->
+    </synchronization>
+</wodle>
+```
+
+**Default**: 86400 seconds (24 hours)
+**Minimum**: 60 seconds (1 minute)
+**Disabled**: Set to 0 to disable integrity checks
+
+---
+
 ## Database Transaction Flow
 
 ### Transaction Process

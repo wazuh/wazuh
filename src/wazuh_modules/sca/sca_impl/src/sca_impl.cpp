@@ -534,85 +534,6 @@ int SecurityConfigurationAssessment::setVersion(int version)
     }
 }
 
-int SecurityConfigurationAssessment::increaseEachEntryVersion()
-{
-    if (!m_dBSync)
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot increase entry versions");
-        return -1;
-    }
-
-    try
-    {
-        // First, get ALL rows with ALL columns (like FIM does)
-        std::vector<nlohmann::json> rows;
-
-        auto selectQuery = SelectQuery::builder()
-                           .table("sca_check")
-                           .columnList({"*"}) // Get all columns to properly identify and update rows
-                           .build();
-
-        const auto selectCallback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
-        {
-            if (returnTypeCallback == SELECTED)
-            {
-                rows.push_back(resultData);
-            }
-        };
-
-        m_dBSync->selectRows(selectQuery.query(), selectCallback);
-
-        if (rows.empty())
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA increaseEachEntryVersion: no rows to update");
-            return 0;
-        }
-
-        // Use transaction-based approach to ensure changes are immediately reflected in DB
-        const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&)
-        {
-            // No action needed for transaction callback
-        };
-
-        DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {"sca_check"}, 0, DBSYNC_QUEUE_SIZE, txnCallback};
-
-        if (txn.handle() != nullptr)
-        {
-            // Increment each row's version field by 1 (like FIM does)
-            for (auto& row : rows)
-            {
-                if (row.contains("version") && row["version"].is_number())
-                {
-                    row["version"] = row["version"].get<int>() + 1;
-                }
-                else
-                {
-                    row["version"] = 1; // Default to 1 if version is missing
-                }
-
-                nlohmann::json input;
-                input["table"] = "sca_check";
-                input["data"] = nlohmann::json::array({row});
-
-                txn.syncTxnRow(input);
-            }
-
-            // Call getDeletedRows to ensure changes are immediately reflected in the database
-            txn.getDeletedRows(txnCallback);
-        }
-
-        LoggingHelper::getInstance().log(LOG_DEBUG,
-                                         "SCA increaseEachEntryVersion: incremented version for " +
-                                         std::to_string(rows.size()) + " checks");
-        return 0;
-    }
-    catch (const std::exception& err)
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Error increasing entry versions: " + std::string(err.what()));
-        return -1;
-    }
-}
-
 void SecurityConfigurationAssessment::pause()
 {
     LoggingHelper::getInstance().log(LOG_DEBUG, "SCA pause requested");
@@ -799,7 +720,24 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Integrity interval elapsed, performing integrity check");
 
                 // Calculate local checksum
-                std::string checksum = calculateTableChecksum();
+                std::string checksum;
+
+                try
+                {
+                    if (!m_dBSync)
+                    {
+                        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot calculate checksum");
+                    }
+                    else
+                    {
+                        checksum = m_dBSync->calculateTableChecksum("sca_check");
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA table checksum calculated: " + checksum);
+                    }
+                }
+                catch (const std::exception& err)
+                {
+                    LoggingHelper::getInstance().log(LOG_ERROR, "Error calculating table checksum: " + std::string(err.what()));
+                }
 
                 if (checksum.empty())
                 {
@@ -868,86 +806,6 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 }
 
 // Recovery methods implementation
-std::string SecurityConfigurationAssessment::calculateTableChecksum()
-{
-    if (!m_dBSync)
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot calculate checksum");
-        return "";
-    }
-
-    try
-    {
-        std::string concatenatedChecksums;
-
-        auto selectQuery = SelectQuery::builder()
-                           .table("sca_check")
-                           .columnList({"checksum"})
-                           .rowFilter("ORDER BY checksum ASC")
-                           .build();
-
-        const auto callback = [&concatenatedChecksums](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
-        {
-            if (returnTypeCallback == SELECTED && resultData.contains("checksum"))
-            {
-                concatenatedChecksums += resultData["checksum"].get<std::string>();
-            }
-        };
-
-        m_dBSync->selectRows(selectQuery.query(), callback);
-
-        // Calculate SHA1 of concatenated checksums
-        Utils::HashData hash(Utils::HashType::Sha1);
-        hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
-        const std::vector<unsigned char> hashResult = hash.hash();
-        std::string finalChecksum = Utils::asciiToHex(hashResult);
-
-        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA table checksum calculated: " + finalChecksum);
-        return finalChecksum;
-    }
-    catch (const std::exception& err)
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Error calculating table checksum: " + std::string(err.what()));
-        return "";
-    }
-}
-
-std::vector<nlohmann::json> SecurityConfigurationAssessment::getAllChecks()
-{
-    std::vector<nlohmann::json> results;
-
-    if (!m_dBSync)
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get all checks");
-        return results;
-    }
-
-    try
-    {
-        auto selectQuery = SelectQuery::builder()
-                           .table("sca_check")
-                           .columnList({"*"})
-                           .build();
-
-        const auto callback = [&results](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
-        {
-            if (returnTypeCallback == SELECTED)
-            {
-                results.push_back(resultData);
-            }
-        };
-
-        m_dBSync->selectRows(selectQuery.query(), callback);
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Retrieved " + std::to_string(results.size()) + " checks from database");
-    }
-    catch (const std::exception& err)
-    {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Error retrieving all checks: " + std::string(err.what()));
-    }
-
-    return results;
-}
-
 bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string& checksum)
 {
     if (!m_spSyncProtocol)
@@ -988,17 +846,17 @@ bool SecurityConfigurationAssessment::performRecovery()
     {
         // Increase version for all entries before recovery sync
         // This ensures our versions are higher than what's in the indexer
-        int increaseResult = increaseEachEntryVersion();
-
-        if (increaseResult == -1)
+        if (!m_dBSync)
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to increase version for each entry in sca_check");
+            LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot perform recovery");
             return false;
         }
 
+        m_dBSync->increaseEachEntryVersion("sca_check");
+
         // Get all checks from database (now with incremented versions)
-        auto checks = getAllChecks();
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Loaded " + std::to_string(checks.size()) + " checks for recovery");
+        auto checks = m_dBSync->getEveryElement("sca_check");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Retrieved " + std::to_string(checks.size()) + " checks from database");
 
         // Clear in-memory data before repopulating
         if (m_spSyncProtocol)

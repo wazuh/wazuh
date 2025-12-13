@@ -267,7 +267,8 @@ TEST_F(SyscollectorVDTest, PersistDifference_VDTableRoutesToVDProtocol)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -356,7 +357,8 @@ TEST_F(SyscollectorVDTest, PersistDifference_NonVDTableRoutesToRegularProtocol)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -502,7 +504,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBuffer_RoutesToRegularProtocol)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -623,7 +626,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBufferVD_RoutesToVDProtocol)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 

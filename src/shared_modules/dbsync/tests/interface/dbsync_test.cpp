@@ -2435,3 +2435,107 @@ TEST_F(DBSyncTest, TestUpgrade)
 
     EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
 }
+
+TEST_F(DBSyncTest, IncreaseEachEntryVersionSuccess)
+{
+    const auto sql{"CREATE TABLE test_table(`id` INTEGER PRIMARY KEY, `name` TEXT, `version` INTEGER);"};
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_MEMORY, sql, DbManagement::PERSISTENT);
+
+    // Insert test data with initial version
+    const auto insertData = R"({"table":"test_table","data":[
+        {"id":1,"name":"entry1","version":1},
+        {"id":2,"name":"entry2","version":1},
+        {"id":3,"name":"entry3","version":2}
+    ]})";
+    EXPECT_NO_THROW(dbSync->insertData(nlohmann::json::parse(insertData)));
+
+    // Increase versions
+    EXPECT_NO_THROW(dbSync->increaseEachEntryVersion("test_table"));
+
+    // Verify all versions were increased by 1
+    auto selectQuery = SelectQuery::builder()
+                       .table("test_table")
+                       .columnList({"id", "version"})
+                       .orderByOpt("id")
+                       .build();
+
+    std::vector<nlohmann::json> results;
+    ResultCallbackData callback
+    {
+        [&results](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            if (type == SELECTED)
+            {
+                results.push_back(jsonResult);
+            }
+        }
+    };
+
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), callback));
+    ASSERT_EQ(3, results.size());
+    EXPECT_EQ(2, results[0]["version"].get<int>());
+    EXPECT_EQ(2, results[1]["version"].get<int>());
+    EXPECT_EQ(3, results[2]["version"].get<int>());
+}
+
+TEST_F(DBSyncTest, IncreaseEachEntryVersionEmptyTable)
+{
+    const auto sql{"CREATE TABLE test_table(`id` INTEGER PRIMARY KEY, `name` TEXT, `version` INTEGER);"};
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_MEMORY, sql, DbManagement::PERSISTENT);
+
+    // Should not throw on empty table
+    EXPECT_NO_THROW(dbSync->increaseEachEntryVersion("test_table"));
+}
+
+TEST_F(DBSyncTest, IncreaseEachEntryVersionInvalidTable)
+{
+    const auto sql{"CREATE TABLE test_table(`id` INTEGER PRIMARY KEY, `name` TEXT, `version` INTEGER);"};
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_MEMORY, sql, DbManagement::PERSISTENT);
+
+    // Should throw on non-existent table
+    EXPECT_THROW(dbSync->increaseEachEntryVersion("nonexistent_table"), std::exception);
+}
+
+TEST_F(DBSyncTest, GetEveryElementSuccess)
+{
+    const auto sql{"CREATE TABLE test_table(`id` INTEGER PRIMARY KEY, `name` TEXT, `value` INTEGER);"};
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_MEMORY, sql, DbManagement::PERSISTENT);
+
+    // Insert test data
+    const auto insertData = R"({"table":"test_table","data":[
+        {"id":1,"name":"item1","value":100},
+        {"id":2,"name":"item2","value":200},
+        {"id":3,"name":"item3","value":300}
+    ]})";
+    EXPECT_NO_THROW(dbSync->insertData(nlohmann::json::parse(insertData)));
+
+    // Get all elements
+    std::vector<nlohmann::json> results;
+    EXPECT_NO_THROW(results = dbSync->getEveryElement("test_table"));
+
+    // Verify all elements returned
+    ASSERT_EQ(3, results.size());
+    EXPECT_EQ(1, results[0]["id"].get<int>());
+    EXPECT_EQ("item2", results[1]["name"].get<std::string>());
+    EXPECT_EQ(300, results[2]["value"].get<int>());
+}
+
+TEST_F(DBSyncTest, GetEveryElementEmptyTable)
+{
+    const auto sql{"CREATE TABLE test_table(`id` INTEGER PRIMARY KEY, `name` TEXT);"};
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_MEMORY, sql, DbManagement::PERSISTENT);
+
+    // Should return empty vector for empty table
+    std::vector<nlohmann::json> results;
+    EXPECT_NO_THROW(results = dbSync->getEveryElement("test_table"));
+    EXPECT_TRUE(results.empty());
+}
+
+TEST_F(DBSyncTest, GetEveryElementInvalidTable)
+{
+    const auto sql{"CREATE TABLE test_table(`id` INTEGER PRIMARY KEY, `name` TEXT);"};
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_MEMORY, sql, DbManagement::PERSISTENT);
+
+    // Should throw on non-existent table
+    EXPECT_THROW(dbSync->getEveryElement("nonexistent_table"), std::exception);
+}
