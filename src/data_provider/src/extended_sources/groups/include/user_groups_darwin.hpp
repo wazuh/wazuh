@@ -9,9 +9,7 @@
 
 #pragma once
 
-#include <chrono>
 #include <set>
-#include <unordered_map>
 
 #include "json.hpp"
 #include "igroup_wrapper.hpp"
@@ -33,11 +31,7 @@ class UserGroupsProvider
 
         nlohmann::json getGroupNamesByUid(const std::set<uid_t>& uids);
 
-        static void resetCache();
-
     private:
-        static bool validateCache();
-
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
         std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;
@@ -52,6 +46,5 @@ class UserGroupsProvider
         void getGroupsForUser(nlohmann::json& results, const UserInfo& user);
         void addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups);
         std::vector<gid_t> getGroupIdsForUser(const UserInfo& user);
-        std::vector<gid_t> getUserGroups(uid_t uid, const char* username, gid_t gid);
 
 };

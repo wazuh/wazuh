@@ -19,17 +19,7 @@ class MockGroupsHelper : public IGroupsHelper
         MOCK_METHOD(std::vector<Group>, processLocalGroups, (), (override));
 };
 
-class GroupsProviderWindowsTest : public ::testing::Test
-{
-    protected:
-        void SetUp() override
-        {
-            // Reset cache before each test
-            GroupsHelper::resetCache();
-        }
-};
-
-TEST_F(GroupsProviderWindowsTest, CollectAllGroups)
+TEST(GroupsProviderTest, CollectAllGroups)
 {
     auto mockHelper = std::make_shared<MockGroupsHelper>();
     GroupsProvider provider(mockHelper);
@@ -52,7 +42,7 @@ TEST_F(GroupsProviderWindowsTest, CollectAllGroups)
     EXPECT_EQ(result[0]["groupname"], "Administrators");
 }
 
-TEST_F(GroupsProviderWindowsTest, CollectWithSpecificGids)
+TEST(GroupsProviderTest, CollectWithSpecificGids)
 {
     auto mockHelper = std::make_shared<MockGroupsHelper>();
     GroupsProvider provider(mockHelper);
@@ -76,7 +66,7 @@ TEST_F(GroupsProviderWindowsTest, CollectWithSpecificGids)
     EXPECT_EQ(result[1]["gid"], 30);
 }
 
-TEST_F(GroupsProviderWindowsTest, ReturnsEmptyWhenNoMatchingGids)
+TEST(GroupsProviderTest, ReturnsEmptyWhenNoMatchingGids)
 {
     auto mockHelper = std::make_shared<MockGroupsHelper>();
     GroupsProvider provider(mockHelper);

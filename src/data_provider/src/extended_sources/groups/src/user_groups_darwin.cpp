@@ -13,11 +13,6 @@
 #include "passwd_wrapper.hpp"
 #include "open_directory_utils_wrapper.hpp"
 
-// Thread-local cache for user group mappings (uid -> list of gids)
-static thread_local std::unordered_map<uid_t, std::vector<gid_t>> s_userGroupsCache;
-static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
-static constexpr std::chrono::seconds CACHE_TIMEOUT{60};
-
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
                                        std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
                                        std::shared_ptr<IODUtilsWrapper> odWrapper)
@@ -32,60 +27,6 @@ UserGroupsProvider::UserGroupsProvider()
     , m_passwdWrapper(std::make_shared<PasswdWrapperDarwin>())
     , m_odWrapper(std::make_shared<ODUtilsWrapper>())
 {
-}
-
-void UserGroupsProvider::resetCache()
-{
-    s_userGroupsCache.clear();
-    s_cacheTimestamp = std::chrono::steady_clock::time_point{};
-}
-
-bool UserGroupsProvider::validateCache()
-{
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - s_cacheTimestamp);
-
-    if (elapsed > CACHE_TIMEOUT)
-    {
-        s_userGroupsCache.clear();
-        s_cacheTimestamp = now;
-        return false;
-    }
-
-    return !s_userGroupsCache.empty();
-}
-
-std::vector<gid_t> UserGroupsProvider::getUserGroups(uid_t uid, const char* username, gid_t gid)
-{
-    // Check cache first
-    if (validateCache())
-    {
-        auto it = s_userGroupsCache.find(uid);
-
-        if (it != s_userGroupsCache.end())
-        {
-            return it->second;
-        }
-    }
-
-    // Cache miss - get groups from system
-    int ngroups = m_groupWrapper->getgroupcount(username, gid);
-    std::vector<gid_t> groups(ngroups);
-
-    if (m_groupWrapper->getgrouplist(username, gid, groups.data(), &ngroups) < 0)
-    {
-        groups.clear();
-    }
-    else
-    {
-        groups.resize(ngroups);
-    }
-
-    // Store in cache
-    s_userGroupsCache[uid] = groups;
-    s_cacheTimestamp = std::chrono::steady_clock::now();
-
-    return groups;
 }
 
 nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
@@ -127,12 +68,16 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
 
 void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInfo& user)
 {
-    // Use cache-aware method
-    auto groups = getUserGroups(user.uid, user.name, user.gid);
+    int ngroups = m_groupWrapper->getgroupcount(user.name, user.gid);
+    std::vector<gid_t> groups(ngroups);
 
-    if (!groups.empty())
+    if (m_groupWrapper->getgrouplist(user.name, user.gid, groups.data(), &ngroups) < 0)
     {
-        addGroupsToResults(results, user.uid, groups.data(), groups.size());
+        // std::cerr << "Could not get users group list" << std::endl;
+    }
+    else
+    {
+        addGroupsToResults(results, user.uid, groups.data(), ngroups);
     }
 }
 
@@ -149,14 +94,20 @@ void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_t uid, 
 
 std::vector<gid_t> UserGroupsProvider::getGroupIdsForUser(const UserInfo& user)
 {
-    // Use cache-aware method
-    return getUserGroups(user.uid, user.name, user.gid);
+    int ngroups = m_groupWrapper->getgroupcount(user.name, user.gid);
+    std::vector<gid_t> groups(ngroups);
+
+    if (m_groupWrapper->getgrouplist(user.name, user.gid, groups.data(), &ngroups) < 0)
+    {
+        return {};
+    }
+
+    groups.resize(ngroups);
+    return groups;
 }
 
 nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids)
 {
-    validateCache();
-
     bool singleGid = (gids.size() == 1);
     nlohmann::json results = singleGid ? nlohmann::json::array() : nlohmann::json::object();
     std::map<std::string, bool> usernames;
@@ -209,14 +160,14 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
 
         UserInfo user {pwd->pw_name, pwd->pw_uid, pwd->pw_gid};
 
-        // Use cache-aware method
-        auto groups = getUserGroups(user.uid, user.name, user.gid);
+        int ngroups = m_groupWrapper->getgroupcount(user.name, user.gid);
+        std::vector<gid_t> groups(ngroups);
 
-        if (!groups.empty())
+        if (m_groupWrapper->getgrouplist(user.name, user.gid, groups.data(), &ngroups) >= 0)
         {
             nlohmann::json groupNames = nlohmann::json::array();
 
-            for (size_t i = 0; i < groups.size(); ++i)
+            for (int i = 0; i < ngroups; ++i)
             {
                 struct group* grp = m_groupWrapper->getgrgid(groups[i]);
 

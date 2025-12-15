@@ -46,17 +46,7 @@ class MockWindowsApiWrapper : public IWindowsApiWrapper
         MOCK_METHOD(LSTATUS, RegCloseKeyWrapper, (HKEY hKey), (override));
 };
 
-class UsersHelperTest : public ::testing::Test
-{
-    protected:
-        void SetUp() override
-        {
-            // Reset cache before each test to avoid memory accumulation
-            UsersHelper::resetCache();
-        }
-};
-
-TEST_F(UsersHelperTest, GetUserShellReturnsDefault)
+TEST(UsersHelperTest, GetUserShellReturnsDefault)
 {
     auto mockApi = std::make_shared<MockWindowsApiWrapper>();
     UsersHelper helper(mockApi);
@@ -65,7 +55,7 @@ TEST_F(UsersHelperTest, GetUserShellReturnsDefault)
     EXPECT_EQ(helper.getUserShell(sid), "C:\\Windows\\system32\\cmd.exe");
 }
 
-TEST_F(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
+TEST(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
 {
     auto mockApi = std::make_shared<MockWindowsApiWrapper>();
     UsersHelper helper(mockApi);
@@ -129,20 +119,7 @@ TEST_F(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
                   ::testing::Return(NERR_Success)
               ));
 
-    // getRoamingProfileSids() is called first - mock it to return empty (FILE_NOT_FOUND)
-    HKEY fakeProfileListKey = reinterpret_cast<HKEY>(0x9999);
-    EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"), 0, KEY_READ, ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeProfileListKey), ::testing::Return(ERROR_SUCCESS)));
-
-    EXPECT_CALL(*mockApi, RegQueryInfoKeyWWrapper(fakeProfileListKey, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_,
-                                                  ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(0), ::testing::Return(ERROR_SUCCESS)));
-
-    EXPECT_CALL(*mockApi, RegCloseKeyWrapper(fakeProfileListKey))
-    .WillOnce(::testing::Return(ERROR_SUCCESS));
-
-    // getUserHomeDir() calls RegOpenKeyExWWrapper for each user
-    EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, ::testing::HasSubstr(L"ProfileList\\S-1-5-21-1000"), 0, KEY_READ, ::testing::_))
+    EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
     .WillOnce(::testing::Return(ERROR_FILE_NOT_FOUND));
 
     auto users = helper.processLocalAccounts(processedSids);
@@ -162,7 +139,7 @@ TEST_F(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
     delete userInfo3;
 }
 
-TEST_F(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
+TEST(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
 {
     auto mockApi = std::make_shared<MockWindowsApiWrapper>();
     UsersHelper helper(mockApi);
@@ -189,15 +166,6 @@ TEST_F(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
         buffer[length - 1] = L'\0';
     }),
     ::testing::Return(ERROR_SUCCESS)));
-
-    // All subsequent calls return ERROR_NO_MORE_ITEMS to stop iteration
-    EXPECT_CALL(*mockApi, RegEnumKeyWWrapper(fakeRootKey, ::testing::Ge(1), ::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return(ERROR_NO_MORE_ITEMS));
-
-    // RegCloseKeyWrapper may be called by RAII destructors
-    EXPECT_CALL(*mockApi, RegCloseKeyWrapper(::testing::_))
-    .Times(::testing::AtLeast(0))
-    .WillRepeatedly(::testing::Return(ERROR_SUCCESS));
 
     EXPECT_CALL(*mockApi, ConvertStringSidToSidAWrapper(::testing::StrEq("S-1-5-21-1234567890-1234567890-1234567890-1002"), ::testing::_))
     .WillOnce(::testing::DoAll(::testing::SetArgPointee<1>(fakeSid), ::testing::Return(TRUE)));

@@ -12,8 +12,6 @@
 #include "igroups_utils_wrapper.hpp"
 #include "iusers_utils_wrapper.hpp"
 #include "iwindows_api_wrapper.hpp"
-#include <chrono>
-#include <mutex>
 
 /// @brief Helper class for managing and retrieving Windows group information.
 ///
@@ -26,22 +24,6 @@ class GroupsHelper : public IGroupsHelper
 
         /// @brief Users helper instance for user-related operations.
         std::shared_ptr<IUsersHelper> m_usersHelper;
-
-        /// @brief Rate limiting constants (only applied during cache refresh)
-        static constexpr std::uint32_t BATCH_SIZE = 100;
-        static constexpr std::chrono::milliseconds BATCH_DELAY{250};
-
-        /// @brief Static cache for processLocalGroups results (thread-local)
-        static thread_local std::vector<Group> s_cachedGroups;
-        static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
-        static thread_local bool s_cacheValid;
-        static constexpr std::chrono::seconds s_cacheTimeout{60}; // Cache válido por 60 segundos
-
-        /// @brief Validates cache and clears it if expired (> 60 seconds old).
-        static void validateCache();
-
-        /// @brief Updates cache timestamp after successful operation.
-        static void updateCacheTimestamp();
 
     public:
         /// @brief Constructs a GroupsHelper.
@@ -57,6 +39,4 @@ class GroupsHelper : public IGroupsHelper
         /// @return Vector of Group objects representing local groups.
         std::vector<Group> processLocalGroups() override;
 
-        /// @brief Resets the cache.
-        static void resetCache();
 };

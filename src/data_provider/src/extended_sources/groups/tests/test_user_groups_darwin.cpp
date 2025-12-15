@@ -52,16 +52,6 @@ class MockODUtilsWrapper : public IODUtilsWrapper
         MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
 };
 
-// Test fixture to ensure cache is reset before each test
-class UserGroupsProviderDarwinTest : public ::testing::Test
-{
-    protected:
-        void SetUp() override
-        {
-            UserGroupsProvider::resetCache();
-        }
-};
-
 struct passwd* createFakePasswd(const char* name, uid_t uid, gid_t gid)
 {
     auto* pwd = new passwd();
@@ -71,7 +61,7 @@ struct passwd* createFakePasswd(const char* name, uid_t uid, gid_t gid)
     return pwd;
 }
 
-TEST_F(UserGroupsProviderDarwinTest, CollectWithUIDReturnsExpectedGroups)
+TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedGroups)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -108,7 +98,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithUIDReturnsExpectedGroups)
     delete fakePwd;
 }
 
-TEST_F(UserGroupsProviderDarwinTest, CollectWithoutUID_ReturnsExpectedGroups)
+TEST(UserGroupsProviderTest, CollectWithoutUID_ReturnsExpectedGroups)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -151,7 +141,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithoutUID_ReturnsExpectedGroups)
     delete fakePwd;
 }
 
-TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidSingleGidReturnsCorrectUsernames)
+TEST(UserGroupsProviderTest, GetUserNamesByGidSingleGidReturnsCorrectUsernames)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -197,7 +187,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidSingleGidReturnsCorrectUse
     delete fakePwd;
 }
 
-TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidMultipleGidsReturnsGroupedUsernames)
+TEST(UserGroupsProviderTest, GetUserNamesByGidMultipleGidsReturnsGroupedUsernames)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -251,7 +241,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidMultipleGidsReturnsGrouped
     delete fakePwd;
 }
 
-TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGid_NoMatch_ReturnsEmpty)
+TEST(UserGroupsProviderTest, GetUserNamesByGid_NoMatch_ReturnsEmpty)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -269,7 +259,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGid_NoMatch_ReturnsEmpty)
     ASSERT_TRUE(result.empty());
 }
 
-TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidSingleUidReturnsGroupNames)
+TEST(UserGroupsProviderTest, GetGroupNamesByUidSingleUidReturnsGroupNames)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -321,7 +311,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidSingleUidReturnsGroupName
     delete fakeGroup2;
 }
 
-TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidMultipleUidsReturnsGroupedNames)
+TEST(UserGroupsProviderTest, GetGroupNamesByUidMultipleUidsReturnsGroupedNames)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
@@ -384,7 +374,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidMultipleUidsReturnsGroupe
     delete grp2;
 }
 
-TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidInvalidUIDReturnsEmpty)
+TEST(UserGroupsProviderTest, GetGroupNamesByUidInvalidUIDReturnsEmpty)
 {
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();

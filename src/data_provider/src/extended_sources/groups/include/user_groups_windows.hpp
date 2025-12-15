@@ -13,8 +13,6 @@
 #include "groups_utils_wrapper.hpp"
 
 #include "json.hpp"
-#include <unordered_map>
-#include <chrono>
 
 /// @brief Class for collecting user groups information on Windows.
 ///
@@ -61,29 +59,10 @@ class UserGroupsProvider
         /// If `gids` contains multiple GIDs, the result is an object where each key is a GID and the value is an array of usernames.
         nlohmann::json getUserNamesByGid(const std::set<std::uint32_t>& gids = {});
 
-        /// @brief Resets the cache
-        static void resetCache();
-
     private:
         std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
         std::shared_ptr<IUsersHelper> m_usersHelper;
         std::shared_ptr<IGroupsHelper> m_groupsHelper;
-
-        /// @brief Static thread-local cache for user-group memberships (username -> group names)
-        /// This cache is automatically invalidated after 60 seconds and shared across instances in same thread.
-        static thread_local std::unordered_map<std::string, std::vector<std::string>> s_userGroupsCache;
-
-        /// @brief Cache timestamp and validity tracking (static thread-local)
-        static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
-        static thread_local bool s_cacheValid;
-        static constexpr std::chrono::seconds s_cacheTimeout{60};
-
-        /// @brief Thread-local counter for rate limiting API calls
-        static thread_local std::size_t s_apiCallCount;
-
-        /// @brief Rate limiting constants (only applied during cache refresh)
-        static constexpr std::uint32_t BATCH_SIZE = 100;
-        static constexpr std::chrono::milliseconds BATCH_DELAY{250};
 
         /// @brief Processes local user groups and appends the results to the provided JSON object.
         /// @param user The user for whom to process groups.
@@ -106,10 +85,4 @@ class UserGroupsProvider
         /// @return A vector of strings containing the names of local groups that the user belongs to.
         /// @note This method uses the Windows API to enumerate the groups associated with the specified user.
         std::vector<std::string> getLocalGroupNamesForUser(const std::string& username);
-
-        /// @brief Validates cache and clears it if expired (> 60 seconds old).
-        static void validateCache();
-
-        /// @brief Updates cache timestamp after successful operation.
-        static void updateCacheTimestamp();
 };
