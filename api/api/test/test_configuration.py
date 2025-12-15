@@ -21,7 +21,7 @@ custom_api_configuration = {
         "key": "server.key",
         "cert": "server.crt",
         "use_ca": False,
-        "ca": "ca.crt",
+        "ca": "rootCA.pem",
         "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
@@ -96,6 +96,10 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         # Currently we only add SSL path to HTTPS options
         for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
             config[section][subsection] = config[section][subsection].replace(f'{api.constants.API_SSL_PATH}/', '')
+        
+        # SSL paths (key, cert, ca) must preserve their original case
+        if 'https' in read_config and 'ca' in read_config['https']:
+            assert config['https']['ca'] == read_config['https']['ca']
 
         check_config_values(config, {}, read_config)
 

@@ -10,6 +10,7 @@
  */
 
 #pragma once
+#include <cstdint>
 #include <string>
 #include <sqlite3.h>
 #include <memory>

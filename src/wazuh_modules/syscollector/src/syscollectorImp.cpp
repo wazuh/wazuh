@@ -305,6 +305,7 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
+    , m_syncLoopFinished { true }
     , m_initialized { false }
     , m_notify { false }
     , m_paused { false }
@@ -384,6 +385,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
+
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
+    m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
@@ -543,6 +547,12 @@ void Syscollector::destroy()
     std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = true;
     m_cv.notify_all();
+
+    // Wait for syncLoop to finish completely, including cleanup of resources
+    m_cv.wait(lock, [this]()
+    {
+        return m_syncLoopFinished;
+    });
     lock.unlock();
 
     // Signal sync protocols to stop any ongoing operations
@@ -1466,6 +1476,7 @@ void Syscollector::scan()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
+    m_syncLoopFinished = false;
     m_logFunction(LOG_INFO, "Module started.");
 
     if (m_scanOnStart)
@@ -1487,6 +1498,8 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
         scan();
     }
     m_spDBSync.reset(nullptr);
+    m_syncLoopFinished = true;
+    m_cv.notify_all();
 }
 
 std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& data, const std::string& table)

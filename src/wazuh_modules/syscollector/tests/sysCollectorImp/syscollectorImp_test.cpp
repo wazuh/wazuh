@@ -4270,6 +4270,85 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     Syscollector::instance().destroy();
 }
 
+TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
+{
+    auto spInfoWrapper
+    {
+        std::make_shared<MockSysInfo>()
+    };
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapper](const std::string & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapper](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)
+        {
+            // Empty callback for this test
+        }
+    };
+
+    // Allow any number of callback invocations
+    EXPECT_CALL(wrapper, callbackMock(testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+
+    std::atomic<bool> syncLoopExited{false};
+    std::atomic<bool> destroyReturned{false};
+
+    std::thread t
+    {
+        [&]()
+        {
+            // Start syscollector with a long interval
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, // 1 hour interval to ensure we control the timing
+                                          true, true, true, false, false, false, false, false, false, false, false, false, false, false);
+            syncLoopExited = true;
+        }
+    };
+
+    // Wait for init to start and complete first scan
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    // Call destroy in separate thread to verify it blocks
+    std::thread destroyThread{[&]()
+    {
+        Syscollector::instance().destroy();
+        destroyReturned = true;
+    }};
+
+    // Give destroy time to be called
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // At this point, destroy should have been called and should be waiting
+    // Now wait for syncLoop to actually exit
+    destroyThread.join();
+
+    // Verify the correct order: syncLoop must exit before destroy returns
+    // If destroy returned, syncLoop must have exited
+    EXPECT_TRUE(destroyReturned);
+    EXPECT_TRUE(syncLoopExited);
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+}
+
 // Recovery functions tests via public interface
 TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
 {

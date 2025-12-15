@@ -258,7 +258,8 @@ jobs:
 
       - name: Get latest Wazuh release from GitHub
         run: |
-          apt-get update && apt-get install -y curl jq
+          sudo apt-get update
+          sudo apt-get install -y curl jq
 
           CURRENT_TAG="${{ env.TAG }}"
           PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | \
