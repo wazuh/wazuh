@@ -52,6 +52,22 @@ message namespaceDelete_Request
 }
 // message namespaceDelete_Response -> Return a GenericStatus_Response
 
+/***************************************************
+ * Import a full namespace from JSON
+ *
+ * endpoint: POST content/namespace/import (<resource>/<action>)
+ * Imports a complete namespace definition provided as a JSON payload.
+ * This operation may create all resources within the target namespace.
+ * When `force` is enabled, validation checks are skipped.
+ **************************************************/
+message namespaceImport_Request
+{
+    string space = 1;       // Namespace name to import into
+    string jsonContent = 2; // Full namespace JSON payload
+    bool force = 3;         // If true, skip validation
+}
+// message namespaceImport_Response -> Return a GenericStatus_Response
+
 /******************** Policy operations ********************/
 /***************************************************
  * Upsert policy for a namespace
@@ -102,15 +118,16 @@ message resourceList_Response
  **************************************************/
 message resourceGet_Request
 {
-    string space = 1; // Namespace name
-    string uuid = 2;  // UUID of the resource to retrieve
+    string space = 1;         // Namespace name
+    string uuid = 2;          // UUID of the resource to retrieve
+    optional bool asJson = 3; // If true, return the resource in JSON format
 }
 
 message resourceGet_Response
 {
-    ReturnStatus status = 1;        // Status of the query
-    optional string error = 2;      // Error message if status is ERROR
-    optional string ymlContent = 3; // YAML representation of the resource (asset/integration/kvdb)
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string content = 3; // YAML or JSON representation of the resource (asset/integration/kvdb)
 }
 
 /***************************************************

@@ -104,6 +104,7 @@ inline ResourceType getResourceTypeFromAssetName(const base::Name& name)
     switch (rType)
     {
         case ResourceType::DECODER:
+        case ResourceType::INTEGRATION:
         case ResourceType::OUTPUT:
         case ResourceType::RULE:
         case ResourceType::FILTER: return rType;

@@ -1,5 +1,6 @@
 #include <fmt/format.h>
 
+#include <base/logging.hpp>
 #include <cmstore/types.hpp>
 #include <yml/yml.hpp>
 
@@ -101,6 +102,162 @@ void CrudService::deleteNamespace(std::string_view nsName)
     }
 }
 
+void CrudService::importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force)
+{
+    const cm::store::NamespaceId nsId {nsName};
+
+    auto existsNS = [this](const cm::store::NamespaceId& id) -> bool
+    {
+        try
+        {
+            (void)m_store->getNSReader(id);
+            return true;
+        }
+        catch (const std::exception& ex)
+        {
+            return false;
+        }
+    };
+
+    auto bestEffortDelete = [this, functionName = logging::getLambdaName(__FUNCTION__, "bestEffortDelete")](
+                                const cm::store::NamespaceId& id)
+    {
+        try
+        {
+            m_store->deleteNamespace(id);
+        }
+        catch (const std::exception& ex)
+        {
+            LOG_WARNING_L(functionName.c_str(), "Rollback delete failed for '{}': {}", id.toStr(), ex.what());
+        }
+    };
+
+    bool destinationCreated = false;
+
+    try
+    {
+        // Reject if destination namespace already exists
+        if (existsNS(nsId))
+        {
+            throw std::runtime_error(fmt::format(
+                "Namespace '{}' already exists. Import is only allowed into a new namespace.", nsName));
+        }
+
+        // Parse input JSON
+        json::Json nsJson;
+        try
+        {
+            std::string jsonStr {jsonDocument};
+            nsJson = json::Json {jsonStr.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(fmt::format("Invalid JSON document for namespace import: {}", e.what()));
+        }
+
+        // Create empty destination namespace
+        m_store->createNamespace(nsId);
+        destinationCreated = true;
+
+        // Import into the new namespace
+        {
+            auto ns = m_store->getNS(nsId);
+            auto nsReader = m_store->getNSReader(nsId);
+
+            auto importResources = [&](cm::store::ResourceType type, std::string_view key)
+            {
+                const auto path = fmt::format("/resources/{}", key);
+                auto resourcesArrayOpt = nsJson.getArray(path);
+                if (!resourcesArrayOpt)
+                {
+                    return;
+                }
+
+                const auto& resourcesArray = resourcesArrayOpt.value();
+                for (const auto& item : resourcesArray)
+                {
+                    json::Json itemJson {item};
+
+                    switch (type)
+                    {
+                        case cm::store::ResourceType::INTEGRATION:
+                        {
+                            auto integ = cm::store::dataType::Integration::fromJson(itemJson);
+                            if (!force) { m_validator->validateIntegration(nsReader, integ); }
+
+                            const std::string& name = integ.getName();
+                            const std::string yml = jsonToYaml(integ.toJson());
+                            ns->createResource(name, type, yml);
+                            break;
+                        }
+
+                        case cm::store::ResourceType::KVDB:
+                        {
+                            auto kvdb = cm::store::dataType::KVDB::fromJson(itemJson);
+                            if (!force) { m_validator->validateKVDB(nsReader, kvdb); }
+
+                            const std::string& name = kvdb.getName();
+                            const std::string yml = jsonToYaml(kvdb.toJson());
+                            ns->createResource(name, type, yml);
+                            break;
+                        }
+
+                        case cm::store::ResourceType::DECODER:
+                        case cm::store::ResourceType::OUTPUT:
+                        case cm::store::ResourceType::RULE:
+                        case cm::store::ResourceType::FILTER:
+                        {
+                            auto assetJson = itemJson;
+                            auto name = assetNameFromJson(assetJson);
+                            const auto resourceStr = cm::store::resourceTypeToString(type);
+
+                            if (resourceStr != name.parts().front())
+                            {
+                                throw std::runtime_error(fmt::format(
+                                    "Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
+                            }
+
+                            if (!force) { m_validator->validateAsset(nsReader, assetJson); }
+
+                            const std::string yml = jsonToYaml(assetJson);
+                            const std::string nameStr = name.toStr();
+                            ns->createResource(nameStr, type, yml);
+                            break;
+                        }
+
+                        default:
+                            throw std::runtime_error("Unsupported resource type in importNamespace");
+                    }
+                }
+            };
+
+            // Required order
+            importResources(cm::store::ResourceType::KVDB, "kvdb");
+            importResources(cm::store::ResourceType::FILTER, "filter");
+            importResources(cm::store::ResourceType::DECODER, "decoder");
+            importResources(cm::store::ResourceType::RULE, "rule");
+            importResources(cm::store::ResourceType::OUTPUT, "output");
+            importResources(cm::store::ResourceType::INTEGRATION, "integration");
+
+            // Policy
+            if (auto policyObjOpt = nsJson.getJson("/policy"))
+            {
+                auto policy = cm::store::dataType::Policy::fromJson(*policyObjOpt);
+                if (!force) { m_validator->validatePolicy(nsReader, policy); }
+                ns->upsertPolicy(policy);
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (destinationCreated)
+        {
+            bestEffortDelete(nsId);
+        }
+        throw std::runtime_error(fmt::format("Failed to import namespace '{}': {}", nsName, e.what()));
+    }
+}
+
 void CrudService::upsertPolicy(std::string_view nsName, std::string_view policyDocument)
 {
     try
@@ -167,7 +324,7 @@ std::vector<ResourceSummary> CrudService::listResources(std::string_view nsName,
     }
 }
 
-std::string CrudService::getResourceByUUID(std::string_view nsName, const std::string& uuid) const
+std::string CrudService::getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson) const
 {
     try
     {
@@ -182,12 +339,20 @@ std::string CrudService::getResourceByUUID(std::string_view nsName, const std::s
             case cm::store::ResourceType::INTEGRATION:
             {
                 auto integ = nsView->getIntegrationByUUID(uuid);
+                if (asJson)
+                {
+                    return integ.toJson().str();
+                }
                 return jsonToYaml(integ.toJson());
             }
 
             case cm::store::ResourceType::KVDB:
             {
                 auto kvdb = nsView->getKVDBByUUID(uuid);
+                if (asJson)
+                {
+                    return kvdb.toJson().str();
+                }
                 return jsonToYaml(kvdb.toJson());
             }
 
@@ -197,6 +362,10 @@ std::string CrudService::getResourceByUUID(std::string_view nsName, const std::s
             case cm::store::ResourceType::FILTER:
             {
                 auto assetJson = nsView->getAssetByUUID(uuid);
+                if (asJson)
+                {
+                    return assetJson.str();
+                }
                 return jsonToYaml(assetJson);
             }
 

@@ -14,6 +14,7 @@ namespace api::cmcrud::handlers
 adapter::RouteHandler namespaceList(std::shared_ptr<cm::crud::ICrudService> crud);
 adapter::RouteHandler namespaceCreate(std::shared_ptr<cm::crud::ICrudService> crud);
 adapter::RouteHandler namespaceDelete(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler namespaceImport(std::shared_ptr<cm::crud::ICrudService> crud);
 
 /*************** Policy ***************/
 adapter::RouteHandler policyUpsert(std::shared_ptr<cm::crud::ICrudService> crud);
@@ -33,6 +34,7 @@ inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
     server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/list", namespaceList(crud));
     server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/create", namespaceCreate(crud));
     server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/delete", namespaceDelete(crud));
+    server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/import", namespaceImport(crud));
 
     // Policy
     server->addRoute(httpsrv::Method::POST, "/_internal/content/policy/upsert", policyUpsert(crud));

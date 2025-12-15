@@ -14,6 +14,10 @@ public:
     MOCK_METHOD(std::vector<cm::store::NamespaceId>, listNamespaces, (), (const, override));
     MOCK_METHOD(void, createNamespace, (std::string_view nsName), (override));
     MOCK_METHOD(void, deleteNamespace, (std::string_view nsName), (override));
+    MOCK_METHOD(void,
+                importNamespace,
+                (std::string_view nsName, std::string_view jsonDocument, bool force),
+                (override));
 
     MOCK_METHOD(void, upsertPolicy, (std::string_view nsName, std::string_view document), (override));
     MOCK_METHOD(void, deletePolicy, (std::string_view nsName), (override));
@@ -23,7 +27,10 @@ public:
                 (std::string_view nsName, cm::store::ResourceType type),
                 (const, override));
 
-    MOCK_METHOD(std::string, getResourceByUUID, (std::string_view nsName, const std::string& uuid), (const, override));
+    MOCK_METHOD(std::string,
+                getResourceByUUID,
+                (std::string_view nsName, const std::string& uuid, bool asJson),
+                (const, override));
 
     MOCK_METHOD(void,
                 upsertResource,

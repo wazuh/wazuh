@@ -57,6 +57,9 @@ public:
     /** @copydoc ICMStore::deleteNamespace */
     void deleteNamespace(const NamespaceId& nsId) override;
 
+    /** @copydoc ICMStore::renameNamespace */
+    void renameNamespace(const NamespaceId& from, const NamespaceId& to) override;
+
     /** @copydoc ICMStore::getNamespaces */
     std::vector<NamespaceId> getNamespaces() const override;
 };

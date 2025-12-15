@@ -331,6 +331,14 @@ public:
     virtual void deleteNamespace(const NamespaceId& nsId) = 0;
 
     /**
+     * @brief Rename an existing namespace
+     * @param from NamespaceId of the namespace to rename
+     * @param to NamespaceId of the new namespace
+     * @throw std::runtime_error if the namespace does not exist or any error occurs
+     */
+    virtual void renameNamespace(const NamespaceId& from, const NamespaceId& to) = 0;
+
+    /**
      * @brief Get all existing namespaces
      * @return std::vector<NamespaceId> Vector of NamespaceId
      */

@@ -36,6 +36,16 @@ class namespaceGet_Response(_message.Message):
     status: _engine_pb2.ReturnStatus
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., spaces: _Optional[_Iterable[str]] = ...) -> None: ...
 
+class namespaceImport_Request(_message.Message):
+    __slots__ = ["force", "jsonContent", "space"]
+    FORCE_FIELD_NUMBER: _ClassVar[int]
+    JSONCONTENT_FIELD_NUMBER: _ClassVar[int]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    force: bool
+    jsonContent: str
+    space: str
+    def __init__(self, space: _Optional[str] = ..., jsonContent: _Optional[str] = ..., force: bool = ...) -> None: ...
+
 class namespacePost_Request(_message.Message):
     __slots__ = ["space"]
     SPACE_FIELD_NUMBER: _ClassVar[int]
@@ -65,22 +75,24 @@ class resourceDelete_Request(_message.Message):
     def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ...) -> None: ...
 
 class resourceGet_Request(_message.Message):
-    __slots__ = ["space", "uuid"]
+    __slots__ = ["asJson", "space", "uuid"]
+    ASJSON_FIELD_NUMBER: _ClassVar[int]
     SPACE_FIELD_NUMBER: _ClassVar[int]
     UUID_FIELD_NUMBER: _ClassVar[int]
+    asJson: bool
     space: str
     uuid: str
-    def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ...) -> None: ...
+    def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ..., asJson: bool = ...) -> None: ...
 
 class resourceGet_Response(_message.Message):
-    __slots__ = ["error", "status", "ymlContent"]
+    __slots__ = ["content", "error", "status"]
+    CONTENT_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
-    YMLCONTENT_FIELD_NUMBER: _ClassVar[int]
+    content: str
     error: str
     status: _engine_pb2.ReturnStatus
-    ymlContent: str
-    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., content: _Optional[str] = ...) -> None: ...
 
 class resourceList_Request(_message.Message):
     __slots__ = ["space", "type"]

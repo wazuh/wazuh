@@ -22,6 +22,7 @@ namespace eEngine = ::com::wazuh::api::engine;
 // Error messages
 constexpr auto MESSAGE_SPACE_REQUIRED = "Field /space cannot be empty";
 constexpr auto MESSAGE_YML_REQUIRED = "Field /ymlContent cannot be empty";
+constexpr auto MESSAGE_JSON_REQUIRED = "Field /jsonContent cannot be empty";
 constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
 constexpr auto MESSAGE_TYPE_REQUIRED = "Field /type is required";
 constexpr auto MESSAGE_TYPE_UNSUPPORTED = "Unsupported value for /type";
@@ -144,6 +145,52 @@ adapter::RouteHandler namespaceDelete(std::shared_ptr<cm::crud::ICrudService> cr
         try
         {
             service->deleteNamespace(protoReq.space());
+        }
+        catch (const std::exception& ex)
+        {
+            res = adapter::userErrorResponse<ResponseType>(ex.what());
+            return;
+        }
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        res = adapter::userResponse(eResponse);
+    };
+}
+
+adapter::RouteHandler namespaceImport(std::shared_ptr<cm::crud::ICrudService> crud)
+{
+    return [wCrud = std::weak_ptr<cm::crud::ICrudService>(crud)](const auto& req, auto& res)
+    {
+        using RequestType  = eContent::namespaceImport_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::cm::crud::ICrudService>(req, wCrud);
+        if (adapter::isError(result))
+        {
+            res = adapter::getErrorResp(result);
+            return;
+        }
+
+        auto [service, protoReq] = adapter::getRes(result);
+
+        if (protoReq.space().empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_SPACE_REQUIRED);
+            return;
+        }
+
+        if (protoReq.jsoncontent().empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_JSON_REQUIRED);
+            return;
+        }
+
+        try
+        {
+            service->importNamespace(protoReq.space(),
+                                     protoReq.jsoncontent(),
+                                     protoReq.force());
         }
         catch (const std::exception& ex)
         {
@@ -343,8 +390,8 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud)
 
         try
         {
-            const auto yml = service->getResourceByUUID(protoReq.space(), protoReq.uuid());
-            eResponse.set_ymlcontent(yml);
+            const auto content = service->getResourceByUUID(protoReq.space(), protoReq.uuid(), protoReq.asjson());
+            eResponse.set_content(content);
             eResponse.set_status(eEngine::ReturnStatus::OK);
             res = adapter::userResponse(eResponse);
         }

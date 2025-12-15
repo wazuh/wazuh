@@ -6,6 +6,7 @@ from shared.default_settings import Constants
 from engine_ns.cmds.list import configure as configure_list
 from engine_ns.cmds.create import configure as configure_create
 from engine_ns.cmds.delete import configure as configure_delete
+from engine_ns.cmds.import_ns import configure as configure_import
 
 
 def parse_args():
@@ -25,6 +26,7 @@ def parse_args():
     configure_create(subparsers)
     configure_delete(subparsers)
     configure_list(subparsers)
+    configure_import(subparsers)
 
     return parser.parse_args()
 
