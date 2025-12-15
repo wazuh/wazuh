@@ -288,6 +288,7 @@ For environments with frequent inventory changes:
         <interval>120</interval>         <!-- Sync every 2 minutes -->
         <response_timeout>60</response_timeout>
         <max_eps>25</max_eps>           <!-- Higher sync throughput -->
+        <integrity_interval>1h</integrity_interval>  <!-- Check integrity every hour -->
     </synchronization>
 </wodle>
 ```
