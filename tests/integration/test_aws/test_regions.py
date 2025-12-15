@@ -401,8 +401,11 @@ def test_inspector_regions(
     only_logs_after = metadata['only_logs_after']
     aws_profile = metadata['aws_profile']
     regions: str = metadata['regions']
-    expected_results = metadata['expected_results']
     regions_list = regions.split(",")
+
+    # Get expected results (for inspector, this is minimum total)
+    expected_results_min = metadata.get('expected_results_min')
+    expected_results = metadata.get('expected_results')  # Fallback for non-inspector services
 
     parameters = [
         'wodles/aws/aws-s3',
@@ -429,7 +432,31 @@ def test_inspector_regions(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    if expected_results:
+    # For inspector, validate V1 and V2 APIs both execute successfully
+    if service_type == 'inspector' and expected_results_min is not None:
+        # Validate InspectorV1 API executed (can return 0+ events)
+        log_monitor.start(
+            timeout=TIMEOUT[10],
+            callback=event_monitor.make_aws_callback(r'.*\[InspectorV1\] \d+ events collected and processed'),
+        )
+        assert log_monitor.callback_result is not None, 'InspectorV1 API did not execute - check logs'
+
+        # Validate InspectorV2 API executed (can return 0+ events or report no updates)
+        log_monitor.start(
+            timeout=TIMEOUT[10],
+            callback=event_monitor.make_aws_callback(r'.*\[InspectorV2\] .*(?:\d+ events collected and processed|No findings with recent updates)'),
+        )
+        assert log_monitor.callback_result is not None, 'InspectorV2 API did not execute - check logs'
+
+        # Validate total events meets minimum threshold
+        log_monitor.start(
+            timeout=TIMEOUT[10],
+            callback=event_monitor.make_aws_callback(r'.*Total: (\d+) events'),
+        )
+        assert log_monitor.callback_result is not None, f'Did not find total events count in logs'
+        total_events = int(log_monitor.callback_result.group(1))
+        assert total_events >= expected_results_min, f'Total events ({total_events}) less than minimum expected ({expected_results_min})'
+    elif expected_results:
         log_monitor.start(
             timeout=TIMEOUT[20],
             callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
@@ -449,7 +476,8 @@ def test_inspector_regions(
 
     table_name = 'aws_services'
 
-    if expected_results:
+    # Validate DB for cases with expected results (including inspector with expected_results_min)
+    if expected_results or expected_results_min:
         assert table_exists_or_has_values(table_name=table_name, db_path=AWS_SERVICES_DB_PATH)
         for row in get_multiple_service_db_row(table_name=table_name):
             assert (getattr(row, 'region', None) or getattr(row, 'aws_region')) in regions_list
