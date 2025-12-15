@@ -26,7 +26,7 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost, bool ignoreFai
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
+        auto uniqueEnv = m_envBuilder->create(entry.namespaceId(), entry.filter());
         entry.hash(uniqueEnv->hash());
         entry.environment() = std::move(uniqueEnv);
     }
@@ -82,7 +82,7 @@ base::OptError Router::rebuildEntry(const std::string& name)
     auto& entry = m_table.get(name);
     try
     {
-        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
+        auto uniqueEnv = m_envBuilder->create(entry.namespaceId(), entry.filter());
         entry.environment() = std::move(uniqueEnv);
         entry.lastUpdate(getStartTime());
         entry.hash(entry.environment()->hash());
@@ -169,20 +169,22 @@ base::RespOrError<prod::Entry> Router::getEntry(const std::string& name) const
 void Router::ingest(base::Event&& event)
 {
     std::shared_lock lock {m_mutex};
+    base::Event shared_event {std::move(event)};
+    bool processed {false};
 
     for (const auto& entry : m_table)
     {
-        if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(event))
+        if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(shared_event))
         {
-            entry.environment()->ingest(std::move(event));
-            event = nullptr;
-            break;
+            base::Event ev_copy = shared_event;
+            entry.environment()->ingest(std::move(ev_copy));
+            processed = true;
         }
     }
 
-    if (event)
+    if (!processed && shared_event)
     {
-        LOG_WARNING("Event not processed: {}", event->str());
+        LOG_WARNING("Event not processed: {}", shared_event->str());
     }
 }
 

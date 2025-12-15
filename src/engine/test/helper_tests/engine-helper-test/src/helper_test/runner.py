@@ -7,49 +7,77 @@ import sys
 import yaml
 from pathlib import Path
 from typing import Optional
+
 from google.protobuf.json_format import MessageToJson, ParseDict
 from google.protobuf.message import Message
 
 from api_communication.client import APIClient
-from api_communication.proto import catalog_pb2 as api_catalog
-from api_communication.proto import kvdb_pb2 as api_kvdb
+from api_communication.proto import crud_pb2 as api_crud
 from api_communication.proto import engine_pb2 as api_engine
-from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import tester_pb2 as api_tester
 from engine_handler.handler import EngineHandler
 
-POLICY_NAME = "policy/wazuh/0"
+# ===================================================================
+#  Constants
+# ===================================================================
+
+# Namespace / policy used for helpers tests
+POLICY_NS = "testing"
+POLICY_NAME = POLICY_NS  # kept for compatibility
+
+# Helpers decoder
 ASSET_NAME = "decoder/test/0"
+
+# Tester session name
 SESSION_NAME = "test"
-NAMESPACE = "user"
+
+# Namespace used in RunPost (namespaces list)
+NAMESPACE = POLICY_NS
+
 QUEUE = 1
 LOCATION = "[agent-id] (agent-ex) any->SomeModule"
 
+# Fixed UUIDs (valid v4) for decoder and its integration
+HELPERS_DECODER_UUID = "7a2d5a4b-4e6b-4dcb-8e4a-5c6e0c7a9f11"
+HELPERS_INTEG_UUID   = "e9d1a9c3-8f2b-4a6a-9f4b-2c6d5e7f2b10"
+
+# KVDB resource UUID in CM
+KVDB_RESOURCE_UUID = "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10"
+
+
+# ===================================================================
+#  CLI
+# ===================================================================
+
 def configure(subparsers):
     """
-    Parses command-line arguments for configuring the environment and selecting test cases to display.
+    Configure the 'run' subcommand for executing helper tests.
     """
-    parser = subparsers.add_parser('run',
-                                   help="Runs the generated test cases and validates their results")
+    parser = subparsers.add_parser(
+        "run",
+        help="Runs the generated test cases and validates their results",
+    )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--input-file", help="Absolute or relative path to the test case file")
+        "--input-file",
+        help="Absolute or relative path to the test case file",
+    )
     group.add_argument(
-        "--input-dir", help="Absolute or relative path to the directory containing test case files")
+        "--input-dir",
+        help="Absolute or relative path to the directory containing test case files",
+    )
     parser.add_argument(
-        "--show-failure", help="Shows only the failure test cases that occurred", action="store_true")
+        "--show-failure",
+        help="Shows only the failure test cases that occurred",
+        action="store_true",
+    )
 
     parser.set_defaults(func=run)
 
+
 def load_yaml(file_path: str) -> dict:
     """
-    Loads data from a YAML file.
-
-    Args:
-        file_path (str): The path to the YAML file.
-
-    Returns:
-        dict: The data loaded from the YAML file.
+    Load a YAML file and return its contents as a Python dict.
     """
     with open(file_path, "r") as stream:
         try:
@@ -58,21 +86,13 @@ def load_yaml(file_path: str) -> dict:
             raise Exception(f"Error loading YAML file: {exc}")
 
 
+# ===================================================================
+#  Evaluator
+# ===================================================================
+
 class Evaluator:
     """
-    A class to evaluate and record the results of various test cases.
-
-    Attributes:
-        successful (list): A list of successful test cases.
-        failure (list): A list of failed test cases.
-        id (int): The ID of the test case.
-        asset (str): The asset definition.
-        helper_name (str): The name of the helper function.
-        helper_type (str): The type of the helper function.
-        description (str): The description of the test case.
-        should_pass (bool): Whether the test case should pass.
-        expected (str): The expected result of the test case.
-        input (list): The input data for the test case.
+    Helper class that collects and evaluates test case results.
     """
 
     def __init__(self):
@@ -90,116 +110,62 @@ class Evaluator:
         self.input = []
 
     def set_id(self, id: int):
-        """
-        Sets the ID of the current test case.
-
-        Args:
-            id (int): The ID of the test case.
-        """
         self.id = id
 
     def set_helper_name(self, helper_name: str):
-        """
-        Sets the name of the helper being tested.
-
-        Args:
-            helper_name (str): The name of the helper.
-        """
         self.helper_name = helper_name
 
     def set_description(self, description: str):
-        """
-        Sets the description of the test case.
-
-        Args:
-            description (str): The description of the test case.
-        """
         self.description = description
 
     def set_asset_definition(self, asset: str):
-        """
-        Sets the asset definition related to the test case.
-
-        Args:
-            asset (str): The asset definition.
-        """
         self.asset = asset
 
     def set_should_pass(self, should_pass: bool):
-        """
-        Sets whether the test case is expected to pass.
-
-        Args:
-            should_pass (bool): True if the test case is expected to pass, False otherwise.
-        """
         self.should_pass = should_pass
 
     def set_skipped(self, skipped: bool):
-        """
-        Sets whether the test case is skipped.
-
-        Args:
-            skipped (bool): True whether the test should be skipped, False otherwise.
-        """
         self.skipped = skipped
 
     def set_expected(self, expected: str):
-        """
-        Sets the expected result of the test case.
-
-        Args:
-            expected (str): The expected result.
-        """
         self.expected = expected
 
     def set_helper_type(self, helper_type: str):
-        """
-        Sets the type of helper being tested.
-
-        Args:
-            helper_type (str): The type of helper.
-        """
         self.helper_type = helper_type
 
     def set_input(self, input: list):
-        """
-        Sets the input data for the test case.
-
-        Args:
-            input (list): The input data.
-        """
         self.input = input
 
     def create_failure_test(self, response):
         """
-        Creates a record for a failed test case.
-
-        Args:
-            response: The response received from the API call.
+        Register a failed test case with extended context.
         """
         if json.loads(MessageToJson(response)).get("result"):
             output = json.loads(MessageToJson(response))["result"]["output"]
             json_response = json.loads(output).get(self.field_mapping)
         else:
             json_response = None
+
         failure_test = {
             "helper": self.helper_name,
             "id": self.id,
-            "description": json.dumps({
-                "message": f"{self.description}",
-                "asset": self.asset,
-                "all_response": json.loads(MessageToJson(response)),
-                "should_pass": self.should_pass,
-                "expected": self.expected,
-                "response": json_response
-            }),
+            "description": json.dumps(
+                {
+                    "message": f"{self.description}",
+                    "asset": self.asset,
+                    "all_response": json.loads(MessageToJson(response)),
+                    "should_pass": self.should_pass,
+                    "expected": self.expected,
+                    "response": json_response,
+                }
+            ),
         }
 
         self.failure.append(failure_test)
 
     def create_success_test(self):
         """
-        Creates a log entry for a successful test case.
+        Register a successful test case (minimal data).
         """
         success_test = {
             "helper": self.helper_name,
@@ -209,7 +175,8 @@ class Evaluator:
 
     def check_response(self, response: dict) -> None:
         """
-        Checks the response of an API request and creates a log entry based on the result.
+        Check a GenericStatus-like response and classify as success/failure
+        according to should_pass and skipped.
         """
         if not self.skipped:
             if (self.should_pass and response.status == api_engine.OK) or (
@@ -223,12 +190,7 @@ class Evaluator:
 
     def handle_map_event_with_field_mapping(self, response, output: dict, field_mapping: str):
         """
-        Handles the event of a map test case with a field mapping.
-
-        Args:
-            response (dict): The response from the API request.
-            output (dict): The output data from the response.
-            field_mapping (str): The field mapping to check.
+        Validate a map helper test case that expects a specific field mapping.
         """
         if self.expected:
             if self.should_pass:
@@ -246,12 +208,7 @@ class Evaluator:
 
     def handle_transform_event_with_field_mapping(self, response, output: dict, field_mapping: str):
         """
-        Handles the transform event with field mapping.
-
-        Args:
-            response: The response received from the API call.
-            output (dict): The output from the API call.
-            field_mapping (str): The field mapping to be checked in the output.
+        Validate a transform helper test case that expects a specific field mapping.
         """
         if self.expected:
             if output[field_mapping] == self.expected:
@@ -263,23 +220,21 @@ class Evaluator:
 
     def tester_run_map(self, api_client: APIClient, field_mapping: str):
         """
-        Runs the map test case.
-
-        Args:
-            api_client: The API client to use for the request.
-            field_mapping (str): The field mapping to be checked in the output.
+        Execute a tester run for a map helper and evaluate the result.
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request,
-                             api_tester.RunPost_Response())
+        response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
         if not self.skipped:
-            if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
+            if (self.should_pass and field_mapping in output) or (
+                not self.should_pass and field_mapping not in output
+            ):
                 if field_mapping in output:
                     self.handle_map_event_with_field_mapping(
-                        response, output, field_mapping)
+                        response, output, field_mapping
+                    )
                 else:
                     self.create_success_test()
             else:
@@ -289,20 +244,18 @@ class Evaluator:
 
     def tester_run_filter(self, api_client: APIClient, field_mapping: str):
         """
-        Runs the filter test case.
-
-        Args:
-            api_client: The API client to use for the request.
-            field_mapping (str): The field mapping to be checked in the output.
+        Execute a tester run for a filter helper and evaluate based on presence/absence
+        of the given field.
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request,
-                             api_tester.RunPost_Response())
+        response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
         if not self.skipped:
-            if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
+            if (self.should_pass and field_mapping in output) or (
+                not self.should_pass and field_mapping not in output
+            ):
                 self.create_success_test()
             else:
                 self.create_failure_test(response)
@@ -311,25 +264,26 @@ class Evaluator:
 
     def tester_run_transform(self, api_client: APIClient, field_mapping: str):
         """
-        Runs the transform test case.
-
-        Args:
-            api_client: The API client to use for the request.
-            field_mapping (str): The field mapping to be checked in the output.
+        Execute a tester run for a transform helper and validate:
+          - transformation trace (Success/Failure)
+          - optional expected value in field_mapping
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request,
-                             api_tester.RunPost_Response())
+        response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
         result = extract_transformation_result_from_response(
-            response, self.helper_name)
+            response, self.helper_name
+        )
 
         if not self.skipped:
-            if (self.should_pass and result == "Success") or (not self.should_pass and result != "Success"):
+            if (self.should_pass and result == "Success") or (
+                not self.should_pass and result != "Success"
+            ):
                 if field_mapping in output:
                     self.handle_transform_event_with_field_mapping(
-                        response, output, field_mapping)
+                        response, output, field_mapping
+                    )
                 else:
                     self.create_success_test()
             else:
@@ -338,23 +292,21 @@ class Evaluator:
             self.create_success_test()
 
 
+# ===================================================================
+#  Generic helpers
+# ===================================================================
+
 def run_command(command: str):
     result = subprocess.run(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
     assert result.returncode == 0, f"{result.stderr}"
 
 
 def send_recv(api_client: APIClient, request: Message, expected_response_type: Message) -> Message:
     """
-    Sends a request to the API and receives a response, handling errors and parsing the response.
-
-    Args:
-        api_client: The API client handling the communication.
-        request: The request to be sent.
-        expected_response_type: The expected response type for parsing.
-
-    Returns:
-        Message: Object that contains the parsed response.
+    Send a request through APIClient and parse the response into expected_response_type.
+    Raises on transport or parsing errors.
     """
     try:
         error, response = api_client.send_recv(request)
@@ -365,26 +317,78 @@ def send_recv(api_client: APIClient, request: Message, expected_response_type: M
         raise Exception(f"Error parsing response: {e}")
 
 
+# ===================================================================
+#  CM / Policy / Tester helpers
+# ===================================================================
+
+def list_namespaces(api_client: APIClient):
+    """
+    Return the list of existing namespace spaces via namespaceGet.
+    """
+    req = api_crud.namespaceGet_Request()
+    resp = send_recv(api_client, req, api_crud.namespaceGet_Response())
+    return list(resp.spaces)
+
+
+def create_namespace(api_client: APIClient):
+    """
+    Ensure POLICY_NS exists. If it already exists, do nothing.
+    """
+    spaces = list_namespaces(api_client)
+    if POLICY_NS in spaces:
+        return
+
+    req = api_crud.namespacePost_Request()
+    req.space = POLICY_NS
+    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    assert response.status == api_engine.OK, f"{response.error}"
+
+
+def delete_namespace(api_client: APIClient):
+    """
+    Delete POLICY_NS. This is kept for potential full teardown,
+    but is not used in normal per-file setup anymore.
+    """
+    req = api_crud.namespaceDelete_Request()
+    req.space = POLICY_NS
+    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    assert response.status == api_engine.OK, f"{response.error}"
+
+
+def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
+    """
+    Build a resourcePost request for a decoder in engine-cm.
+
+    We enforce:
+      - name = ASSET_NAME
+      - id   = HELPERS_DECODER_UUID
+    so that the integration can reference the decoder by UUID.
+    """
+    asset = dict(asset)  # copy to avoid mutating original
+
+    asset["name"] = ASSET_NAME
+    asset["id"] = HELPERS_DECODER_UUID
+    asset["enabled"] = True
+
+    yml = yaml.safe_dump(asset, sort_keys=False)
+
+    req = api_crud.resourcePost_Request()
+    req.space = POLICY_NS
+    req.type = "decoder"
+    req.ymlContent = yml
+    return req
+
+
 def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator) -> bool:
     """
-    Creates an asset at runtime and verifies the creation status.
-
-    Args:
-        api_client: The API client used to send requests.
-        asset (dict): The asset details required to create the asset.
-        id (str): The identifier for the test case.
-        helper_name (str): The name of the helper function.
-        description (str): A description of the test case.
-        failed_tests (list): A list to append details of failed test cases.
-
-    Returns:
-        bool: True if the asset creation is successful, False otherwise.
+    Create a decoder in runtime (in POLICY_NS) and evaluate the result
+    according to should_pass and skipped.
     """
     request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request,
-                         api_engine.GenericStatus_Response())
+    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
     if response.status == api_engine.OK:
         return True
+
     if result_evaluator.skipped:
         result_evaluator.create_success_test()
     else:
@@ -395,83 +399,191 @@ def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator)
     return False
 
 
+def create_asset_for_buildtime(api_client: APIClient, result_evaluator: Evaluator):
+    """
+    Create a decoder for build-time tests in POLICY_NS and classify
+    the result using Evaluator.check_response.
+    """
+    request = build_asset_request(result_evaluator.asset)
+    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    result_evaluator.check_response(response)
+
+
+def delete_asset(api_client: APIClient):
+    """
+    Delete the helpers decoder (if present) in POLICY_NS by UUID.
+    No error if it doesn't exist.
+    """
+    req = api_crud.resourceDelete_Request()
+    req.space = POLICY_NS
+    req.uuid = HELPERS_DECODER_UUID
+    api_client.send_recv(req)
+
+
+def delete_integration(api_client: APIClient):
+    """
+    Delete the helpers integration (if present) in POLICY_NS by UUID.
+    No error if it doesn't exist.
+    """
+    req = api_crud.resourceDelete_Request()
+    req.space = POLICY_NS
+    req.uuid = HELPERS_INTEG_UUID
+    api_client.send_recv(req)
+
+
+def create_helpers_integration(api_client: APIClient):
+    """
+    Create/update the helpers integration that references the helpers decoder
+    and associates the KVDB resource.
+    The policy will be built solely from integrations.
+    """
+    integration_yaml = f"""\
+id: {HELPERS_INTEG_UUID}
+title: helpers-test
+enabled: true
+category: Other
+default_parent: {HELPERS_DECODER_UUID}
+decoders:
+  - "{HELPERS_DECODER_UUID}"
+kvdbs:
+  - "{KVDB_RESOURCE_UUID}"
+"""
+    req = api_crud.resourcePost_Request()
+    req.space = POLICY_NS
+    req.type = "integration"
+    req.ymlContent = integration_yaml
+    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    assert response.status == api_engine.OK, f"{response.error}"
+
+
 def create_policy(api_client: APIClient):
     """
-    Creates a policy using the provided API client.
+    Create/update the policy in engine-cm, in namespace POLICY_NS.
 
-    Args:
-        api_client: The API client used to send requests.
+    The policy is defined solely in terms of integrations:
+      - default_parent and root_decoder point to the helpers decoder (ASSET_NAME),
+      - the integrations list contains HELPERS_INTEG_UUID.
     """
-    request = api_policy.StorePost_Request()
-    request.policy = POLICY_NAME
-    send_recv(api_client, request, api_engine.GenericStatus_Response())
+    policy_yaml = f"""\
+type: policy
+title: Helpers Testing Policy
+default_parent: {HELPERS_DECODER_UUID}
+root_decoder: {HELPERS_DECODER_UUID}
+integrations:
+  - "{HELPERS_INTEG_UUID}"
+"""
+    req = api_crud.policyPost_Request()
+    req.space = POLICY_NS
+    req.ymlContent = policy_yaml
+    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    assert response.status == api_engine.OK, f"{response.error}"
 
 
-def add_asset_to_policy(api_client: APIClient, asset: dict):
+def delete_policy(api_client: APIClient):
     """
-    Adds an asset to a policy using the provided API client.
-
-    Args:
-        api_client: The API client used to send requests.
-        asset (dict): The asset details required to add the asset to the policy.
+    Delete the policy in namespace POLICY_NS (if it exists).
     """
-    request = api_policy.AssetPost_Request()
-    request.policy = POLICY_NAME
-    request.asset = asset["name"]
-    request.namespace = NAMESPACE
-    response = send_recv(api_client, request, api_policy.AssetPost_Response())
-    assert response.status == api_engine.OK, f"{response.error}, Asset: {asset}"
-    assert len(response.warning) == 0, f"{response.warning}"
+    req = api_crud.policyDelete_Request()
+    req.space = POLICY_NS
+    api_client.send_recv(req)
 
 
 def create_session(api_client: APIClient):
+    """
+    Create a tester session pointing to namespaceId = POLICY_NS.
+    """
     request = api_tester.SessionPost_Request()
     request.session.name = SESSION_NAME
-    request.session.policy = POLICY_NAME
-    response = send_recv(api_client, request,
-                         api_engine.GenericStatus_Response())
+    request.session.namespaceId = POLICY_NS
+    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
     assert response.status == api_engine.OK, f"{response.error}"
 
 
 def delete_session(api_client: APIClient):
+    """
+    Delete the tester session SESSION_NAME (best-effort).
+    """
     request = api_tester.SessionDelete_Request()
     request.name = SESSION_NAME
-    send_recv(api_client, request, api_engine.GenericStatus_Response())
+    api_client.send_recv(request)
 
 
-def delete_policy(api_client: APIClient):
-    request = api_policy.StoreDelete_Request()
-    request.policy = POLICY_NAME
-    send_recv(api_client, request, api_engine.GenericStatus_Response())
+def create_kvdb_resource(api_client: APIClient):
+    """
+    Create or update a KVDB resource in POLICY_NS using valid JSON content.
+    """
+
+    kvdb_json = {
+        "id": KVDB_RESOURCE_UUID,
+        "date": "2025-10-06T13:32:19Z",
+        "title": "windows_kerberos_status_code_to_code_name",
+        "author": "Wazuh Inc.",
+        "content": {
+
+            "0x0": "KDC_ERR_NONE",
+            "0x1": "KDC_ERR_NAME_EXP",
+            "0x2": "KDC_ERR_SERVICE_EXP",
+            "0x3": "KDC_ERR_BAD_PVNO",
+            "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+            "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+            "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
 
 
-def delete_asset(api_client: APIClient):
-    request = api_catalog.ResourceDelete_Request()
-    request.name = ASSET_NAME
-    request.namespaceid = NAMESPACE
-    send_recv(api_client, request, api_engine.GenericStatus_Response())
+            "bitmask_test_values": [0, 1, 2, 3, 4, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31],
 
 
-def create_kvdb(api_client: APIClient, kvdb_path: str):
-    request = api_kvdb.managerPost_Request()
-    request.name = "testing"
-    request.path = kvdb_path
-    send_recv(api_client, request, api_engine.GenericStatus_Response())
+            "access_mask": {
+                "0": "Create Child",
+                "1": "Delete Child",
+                "2": "List Contents",
+                "3": "SELF",
+                "4": "Read Property",
+                "5": "Write Property",
+                "6": "Delete Tree",
+                "7": "List Object",
+                "8": "Control Access",
+                "16": "DELETE",
+                "17": "READ_CONTROL",
+                "18": "WRITE_DAC",
+                "19": "WRITE_OWNER",
+                "20": "SYNCHRONIZE",
+                "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+                "31": "ADS_RIGHT_GENERIC_READ",
+                "30": "ADS_RIGHT_GENERIC_WRITE",
+                "29": "ADS_RIGHT_GENERIC_EXECUTE",
+                "28": "ADS_RIGHT_GENERIC_ALL"
+            },
+        },
+        "enabled": True,
+    }
+
+    req = api_crud.resourcePost_Request()
+    req.space = POLICY_NS
+    req.type = "kvdb"
+    # api_crud.resourcePost_Request expects YAML/JSON as string in ymlContent
+    req.ymlContent = json.dumps(kvdb_json, separators=(",", ":"))
+
+    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    assert response.status == api_engine.OK, f"{response.error}"
 
 
-def delete_kvdb(api_client: APIClient):
-    request = api_kvdb.managerDelete_Request()
-    request.name = "testing"
-    send_recv(api_client, request, api_engine.GenericStatus_Response())
+def delete_kvdb_resource(api_client: APIClient):
+    """
+    Delete the KVDB resource by UUID in POLICY_NS (best-effort).
+    """
+    req = api_crud.resourceDelete_Request()
+    req.space = POLICY_NS
+    req.uuid = KVDB_RESOURCE_UUID
+    api_client.send_recv(req)
 
+
+# ===================================================================
+#  Report generation
+# ===================================================================
 
 def generate_report(successful_tests: list, failed_tests: list, show_failure: bool) -> str:
     """
-    Generates a report of the test results.
-
-    Args:
-        successful_tests (list): A list of successful test cases.
-        failed_tests (list): A list of failed test cases.
+    Build a human-readable report of all executed tests.
     """
     report = "## Test Report\n\n"
     report += "### General Summary\n\n"
@@ -496,54 +608,26 @@ def generate_report(successful_tests: list, failed_tests: list, show_failure: bo
     return report
 
 
-def build_asset_request(asset: dict) -> api_catalog.ResourcePost_Request:
-    """
-    Builds a request to post an asset.
-
-    Args:
-        asset (dict): The asset details required to build the request.
-
-    Returns:
-        request: The built request object for posting the asset.
-    """
-    request = api_catalog.ResourcePost_Request()
-    request.type = api_catalog.ResourceType.Value("decoder")
-    request.format = api_catalog.ResourceFormat.Value("json")
-    request.content = json.dumps(asset)
-    request.namespaceid = NAMESPACE
-    return request
-
+# ===================================================================
+#  Tester Run helpers
+# ===================================================================
 
 def build_run_post_request(input_data: dict, level: api_tester.TraceLevel) -> api_tester.RunPost_Request:
     """
-    Builds a request to run a post operation with the given input data and debug level.
-
-    Args:
-        input_data (dict): The input data for the run post request.
-        level (api_tester.TraceLevel): The debug level for the request (NONE, ASSET_ONLY, ALL).
-
-    Returns:
-        request: The built request object for running the post operation.
+    Build a tester RunPost request using the global SESSION_NAME and
+    the helpers location/queue constants.
     """
     request = api_tester.RunPost_Request()
     request.name = SESSION_NAME
     request.trace_level = level
-
     request.event = f"{QUEUE}:{LOCATION}:{json.dumps(input_data, separators=(',', ':'))}"
-
-    request.namespaces.extend([NAMESPACE])
     return request
 
 
 def extract_output_from_response(response: dict) -> dict:
     """
-    Extracts the event output from the response object.
-
-    Args:
-        response (object): The response object returned from the API call.
-
-    Returns:
-        dict: The event output extracted from the response.
+    Extract the 'output' field (JSON string) from the RunPost response
+    and parse it as a Python dict.
     """
     response = json.loads(MessageToJson(response))
     return json.loads(response["result"]["output"])
@@ -551,15 +635,7 @@ def extract_output_from_response(response: dict) -> dict:
 
 def get_target_trace(traces: list, helper_name: str, count=1) -> Optional[str]:
     """
-    Obtains the target trace containing the specified helper name from a list of traces.
-
-    Args:
-        traces (list): The list of trace strings to search through.
-        helper_name (str): The helper name to look for within each trace.
-        count (int, optional): The number of times to call next on the filtered iterator. Default is 1.
-
-    Returns:
-        str or None: The target trace containing the helper name if found, otherwise None.
+    Return the nth trace (count) that contains helper_name, or None if not found.
     """
     iterator = (trace for trace in traces if helper_name in trace)
     target_trace = None
@@ -572,22 +648,16 @@ def get_target_trace(traces: list, helper_name: str, count=1) -> Optional[str]:
 
 def extract_transformation_result_from_response(response: dict, helper_name: str) -> Optional[str]:
     """
-    Extracts the transformation result from the response object.
-
-    Args:
-        response (object): The response object returned from the API call.
-
-    Returns:
-        str: The transformation result extracted from the response.
+    Parse the RunPost response and extract the 'Success'/'Failure' result
+    from the asset trace for the given helper_name.
     """
     response = json.loads(MessageToJson(response))
     # Take the first asset trace as the asset is unique
-    # TODO check name of the asset
     traces = response["result"]["assetTraces"][0]["traces"]
     if helper_name != "parse_json":
         target_trace = get_target_trace(traces, helper_name)
     else:
-        # Ignore the first parse_json of the event.original
+        # Ignore the first parse_json trace (event.original)
         target_trace = get_target_trace(traces, helper_name, count=2)
 
     if target_trace:
@@ -598,29 +668,14 @@ def extract_transformation_result_from_response(response: dict, helper_name: str
     return None
 
 
-def create_asset_for_buildtime(api_client: APIClient, result_evaluator: Evaluator):
-    """
-    Creates an asset for build-time testing and handles the response.
-
-    Args:
-        api_client (APIClient): The API client used to make requests.
-    """
-    request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request,
-                         api_engine.GenericStatus_Response())
-    result_evaluator.check_response(response)
-
+# ===================================================================
+#  Test execution
+# ===================================================================
 
 def execute_single_run_test(api_client: APIClient, run_test: dict, result_evaluator: Evaluator):
     """
-    Execute single run test.
-
-    Args:
-        api_client (APIClient): The API client used to make requests.
-        run_test (dict): The configuration for the run test.
-        result_evaluator: Object that handles the result of each test by deciding whether it was successful or not
+    Execute a single run_test block (no test_cases array).
     """
-
     result_evaluator.set_id(run_test["id"])
     result_evaluator.set_should_pass(run_test.get("should_pass", None))
     result_evaluator.set_expected(run_test.get("expected"))
@@ -628,31 +683,31 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
     result_evaluator.set_description(run_test["description"])
     result_evaluator.set_input([])
 
+    # Create runtime decoder
     if create_asset_for_runtime(api_client, result_evaluator):
+        # Integration that references the decoder and KVDB
+        create_helpers_integration(api_client)
+        # Policy based only on integrations
         create_policy(api_client)
-        add_asset_to_policy(api_client, run_test["assets_definition"])
+        # Tester session bound to the namespace/policy
         create_session(api_client)
 
         if result_evaluator.helper_type == "map":
             result_evaluator.tester_run_map(api_client, "helper")
         elif result_evaluator.helper_type == "filter":
-            result_evaluator.tester_run_filter(
-                api_client, "verification_field")
+            result_evaluator.tester_run_filter(api_client, "verification_field")
         elif result_evaluator.helper_type == "transformation":
             result_evaluator.tester_run_transform(api_client, "target_field")
         else:
             raise Exception(
-                f"Helper type '{result_evaluator.helper_type}' is not valid")
+                f"Helper type '{result_evaluator.helper_type}' is not valid"
+            )
 
 
 def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_evaluator: Evaluator):
     """
-    Execute multiple run tests.
-
-    Args:
-        api_client (APIClient): The API client used to make requests.
-        run_test (dict): The configuration for the run test.
-        result_evaluator: Object that handles the result of each test by deciding whether it was successful or not
+    Execute a run_test block that contains a test_cases array.
+    The first test_case sets up decoder + integration + policy + session.
     """
     for j, test_case in enumerate(run_test["test_cases"]):
         result_evaluator.set_id(test_case.get("id"))
@@ -664,36 +719,37 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
 
         if j == 0:
             if not create_asset_for_runtime(api_client, result_evaluator):
-                continue
+                break
+            create_helpers_integration(api_client)
             create_policy(api_client)
-            add_asset_to_policy(api_client, run_test["assets_definition"])
             create_session(api_client)
 
         if result_evaluator.helper_type == "map":
             result_evaluator.tester_run_map(api_client, "helper")
         elif result_evaluator.helper_type == "filter":
-            result_evaluator.tester_run_filter(
-                api_client, "verification_field")
+            result_evaluator.tester_run_filter(api_client, "verification_field")
         elif result_evaluator.helper_type == "transformation":
             result_evaluator.tester_run_transform(api_client, "target_field")
         else:
             raise Exception(
-                f"Helper type '{result_evaluator.helper_type}' is not valid")
+                f"Helper type '{result_evaluator.helper_type}' is not valid"
+            )
 
 
 def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator, kvdb_path: str):
     """
-    Process a YAML file containing test configurations.
-
-    Args:
-        file (str): The YAML file to process.
-        api_client (APIClient): The API client used to make requests.
-        successful_tests (list): A list to store successful test cases.
-        failure_tests (list): A list to store failed test cases.
+    Process a single YAML test file:
+      - ensure namespace exists,
+      - run build_test then run_test sections.
+    kvdb_path is currently unused (KVDB is injected as a CM resource).
     """
     file_content = load_yaml(file)
     result_evaluator.set_helper_name(file.stem)
 
+    # Ensure namespace exists (do not recreate if it is already there)
+    create_namespace(api_client)
+
+    # Build-time tests
     for build_test in file_content.get("build_test", []):
         result_evaluator.set_id(build_test["id"])
         result_evaluator.set_asset_definition(build_test["assets_definition"])
@@ -701,26 +757,31 @@ def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator,
         result_evaluator.set_description(build_test["description"])
         result_evaluator.set_skipped(build_test.get("skipped", False))
 
-        # Tear Down
+        # Tear down
+        delete_session(api_client)
+        delete_policy(api_client)
         delete_asset(api_client)
-        delete_kvdb(api_client)
+        delete_integration(api_client)
+        delete_kvdb_resource(api_client)
 
         # Setup
-        create_kvdb(api_client, kvdb_path)
+        create_kvdb_resource(api_client)
         create_asset_for_buildtime(api_client, result_evaluator)
 
+    # Run-time tests
     for run_test in file_content.get("run_test", []):
         result_evaluator.set_helper_type(file_content["helper_type"])
         result_evaluator.set_asset_definition(run_test["assets_definition"])
 
-        # Tear Down
-        delete_asset(api_client)
-        delete_policy(api_client)
+        # Tear down
         delete_session(api_client)
-        delete_kvdb(api_client)
+        delete_policy(api_client)
+        delete_asset(api_client)
+        delete_integration(api_client)
+        delete_kvdb_resource(api_client)
 
         # Setup
-        create_kvdb(api_client, kvdb_path)
+        create_kvdb_resource(api_client)
 
         if "test_cases" not in run_test:
             execute_single_run_test(api_client, run_test, result_evaluator)
@@ -730,13 +791,8 @@ def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator,
 
 def run_test_cases_executor(input_path: Path, api_client: APIClient, kvdb_path: str) -> Evaluator:
     """
-    Execute test cases found in Python files in specific directories.
-
-    Args:
-        api_client (APIClient): The API client used to make requests.
-        kvdb_path (str): The path to the key-value database.
+    Execute all test files under input_path (or the single file if input_path is a file).
     """
-
     print("Running test cases...")
     result_evaluator = Evaluator()
 
@@ -752,7 +808,15 @@ def run_test_cases_executor(input_path: Path, api_client: APIClient, kvdb_path: 
     return result_evaluator
 
 
+# ===================================================================
+#  Main runner
+# ===================================================================
+
 def runner(input_path: Path, env_dir: Path, show_failure: bool):
+    """
+    Validate paths, start an engine instance, run all tests, print report,
+    and stop the engine.
+    """
     engine_handler = Optional[EngineHandler]
     success = True
 
@@ -774,37 +838,38 @@ def runner(input_path: Path, env_dir: Path, show_failure: bool):
 
     if input_path.is_dir() and not list(input_path.rglob("*.yml")):
         raise FileNotFoundError(
-            f"No YAML files found in directory: {input_path}")
+            f"No YAML files found in directory: {input_path}"
+        )
     print("Parameters validated.")
 
     try:
         print("Starting Engine instance...")
         engine_handler = EngineHandler(
-            bin_path.as_posix(), config_path.as_posix())
+            bin_path.as_posix(), config_path.as_posix()
+        )
         engine_handler.start()
         print("Engine started.")
 
         result = run_test_cases_executor(
-            input_path, engine_handler.api_client, kvdb_path.as_posix())
+            input_path, engine_handler.api_client, kvdb_path.as_posix()
+        )
 
         if len(result.failure) != 0:
             success = False
 
         print("Generating report...")
-        report = generate_report(
-            result.successful, result.failure, show_failure)
+        report = generate_report(result.successful, result.failure, show_failure)
         print(report)
 
         print("Stopping Engine instance...")
         engine_handler.stop()
         print("Engine stopped.")
 
-    except:
+    except Exception:
         if engine_handler:
             print("Stopping Engine instance...")
             engine_handler.stop()
             print("Engine stopped.")
-
         raise
 
     if not success:
@@ -812,12 +877,13 @@ def runner(input_path: Path, env_dir: Path, show_failure: bool):
 
 
 def run(args):
-    input_file = Path(args.get('input_file')).resolve(
-    ) if args.get('input_file') else None
-    input_dir = Path(args.get('input_dir')).resolve(
-    ) if args.get('input_dir') else None
-    env_dir = Path(args.get('environment')).resolve()
-    show_failure = args.get('show_failure')
+    """
+    Entrypoint for the CLI subcommand configured by configure().
+    """
+    input_file = Path(args.get("input_file")).resolve() if args.get("input_file") else None
+    input_dir = Path(args.get("input_dir")).resolve() if args.get("input_dir") else None
+    env_dir = Path(args.get("environment")).resolve()
+    show_failure = args.get("show_failure")
 
     try:
         runner(input_file or input_dir, env_dir, show_failure)

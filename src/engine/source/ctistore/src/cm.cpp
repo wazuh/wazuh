@@ -28,9 +28,9 @@ constexpr std::string_view assetTypeToString(cti::store::AssetType type) noexcep
 
 } // namespace
 
-ContentManager::ContentManager(const ContentManagerConfig& config, ContentDeployCallback deployCallback)
+ContentManager::ContentManager(const ContentManagerConfig& config, std::shared_ptr<std::atomic_bool> syncFlag)
     : m_config(config)
-    , m_deployCallback(deployCallback)
+    , m_syncFlag(syncFlag)
 {
     LOG_INFO("Initializing CTI Store ContentManager");
 
@@ -175,7 +175,7 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
         throw std::runtime_error("Storage not initialized");
     }
 
-    static const std::array<std::string, 2> types {"integration", "decoder"};
+    static const std::array<std::string, 3> types {"integration", "decoder", "kvdb"};
     std::optional<std::string> errorMsg = std::nullopt;
 
     for (const auto& t : types)
@@ -196,6 +196,42 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
     }
     throw std::runtime_error(
         fmt::format("Asset with UUID '{}' not found: {}", uuid, errorMsg ? *errorMsg : "unknown error"));
+}
+
+std::pair<std::string, std::string> ContentManager::resolveNameAndTypeFromUUID(const std::string& uuid) const
+{
+    if (!m_storage || !m_storage->isOpen())
+    {
+        throw std::runtime_error("Storage not initialized");
+    }
+
+    try
+    {
+        auto [name, typeStr] = m_storage->resolveNameAndTypeFromUUID(uuid);
+        return std::make_pair(name, typeStr);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Asset with UUID '{}' not found: {}", uuid, e.what()));
+    }
+}
+
+std::string ContentManager::resolveUUIDFromName(const base::Name& name, const std::string& type) const
+{
+    if (!m_storage || !m_storage->isOpen())
+    {
+        throw std::runtime_error("Storage not initialized");
+    }
+
+    try
+    {
+        return m_storage->resolveUUIDFromName(name, type);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Failed to resolve UUID for name '{}' of type '{}': {}",
+                                             name.toStr(), type, e.what()));
+    }
 }
 
 std::vector<std::string> ContentManager::listKVDB() const
@@ -291,7 +327,12 @@ json::Json ContentManager::getPolicy(const base::Name& name) const
     }
     try
     {
-        return m_storage->getPolicy(name);
+        auto policy = m_storage->getPolicy(name);
+        policy.setString(resolveUUIDFromName(base::Name {"decoder/integrations/0"}, "decoder"),
+                         "/payload/document/default_parent");
+        policy.setString(resolveUUIDFromName(base::Name {"decoder/core-wazuh-message/0"}, "decoder"),
+                         "/payload/document/root_decoder");
+        return policy;
     }
     catch (const std::exception& e)
     {
@@ -843,7 +884,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 
             // Store result to return after releasing lock
             result = {currentOffset, hash, success};
-            callDeployCallback = success && m_deployCallback;
+            callDeployCallback = success && m_syncFlag;
         }
         catch (const std::exception& e)
         {
@@ -868,7 +909,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
             try
             {
                 LOG_DEBUG("CTI: notifying deploy callback");
-                m_deployCallback(shared_from_this());
+                m_syncFlag->store(true, std::memory_order_release);
             }
             catch (const std::exception& e)
             {

@@ -38,6 +38,7 @@ void populateTestDb()
     sql += GROUPS_SQL_STATEMENT;
     sql += SERVICES_SQL_STATEMENT;
     sql += BROWSER_EXTENSIONS_SQL_STATEMENT;
+    sql += TABLE_METADATA_SQL_STATEMENT;
 
     // Use DBSync to create the database structure correctly (including metadata tables)
     {
@@ -85,6 +86,9 @@ void populateTestDb()
             throw std::runtime_error("Failed to insert data: " + msg);
         }
     }
+
+    // Ensure all data is flushed to disk (important for WAL mode)
+    sqlite3_exec(db, "PRAGMA wal_checkpoint(FULL);", 0, 0, 0);
 
     sqlite3_close(db);
 }
@@ -3081,7 +3085,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3139,7 +3144,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3197,7 +3203,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3255,7 +3262,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllVDModulesDisabled)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3316,7 +3324,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_VDModuleNameSuffix)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3377,7 +3386,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
             std::chrono::seconds(30),  // Different syncEndDelay
             std::chrono::seconds(15),  // Different timeout
             5,                          // Different retries
-            500                         // Different maxEps
+            500,                        // Different maxEps
+            86400
         );
     });
 
@@ -3438,7 +3448,8 @@ TEST_F(SyscollectorImpTest, notifyDataClean_VDIndicesOnly)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3511,7 +3522,8 @@ TEST_F(SyscollectorImpTest, notifyDataClean_NonVDIndicesOnly)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3582,7 +3594,8 @@ TEST_F(SyscollectorImpTest, notifyDataClean_MixedVDAndNonVDIndices)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3658,7 +3671,8 @@ TEST_F(SyscollectorImpTest, notifyDataClean_AllVDIndices)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3729,7 +3743,8 @@ TEST_F(SyscollectorImpTest, notifyDataClean_EmptyIndicesList)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -3842,7 +3857,8 @@ TEST_F(SyscollectorImpTest, notifyDataClean_VDIndexClassification)
             std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100
+            100,
+            86400
         );
     });
 
@@ -4330,4 +4346,108 @@ TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
     {
         t.join();
     }
+
+}
+
+// Recovery functions tests via public interface
+TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Initialize sync protocol with integrity interval
+    MQ_Functions mqFuncs{};
+    mqFuncs.start = [](const char*, short, short)
+    {
+        return 0;
+    };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
+    {
+        return 0;
+    };
+
+    EXPECT_NO_THROW(
+        Syscollector::instance().initSyncProtocol(
+            "syscollector",
+            ":memory:",
+            ":memory:",
+            mqFuncs,
+            std::chrono::seconds(10),
+            std::chrono::seconds(30),
+            3,
+            1000,
+            86400  // 24 hours integrity interval
+        )
+    );
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, runRecoveryProcessWithoutSyncProtocol)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Running recovery without sync protocol should not crash
+    EXPECT_NO_THROW(Syscollector::instance().runRecoveryProcess());
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs{};
+    mqFuncs.start = [](const char*, short, short)
+    {
+        return 0;
+    };
+    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol(
+        "syscollector",
+        ":memory:",
+        ":memory:",
+        mqFuncs,
+        std::chrono::seconds(10),
+        std::chrono::seconds(30),
+        3,
+        1000,
+        86400
+    );
+
+    // Run recovery process - should execute without throwing
+    EXPECT_NO_THROW(Syscollector::instance().runRecoveryProcess());
+
+    Syscollector::instance().destroy();
 }

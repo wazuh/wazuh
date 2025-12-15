@@ -6,12 +6,15 @@ set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 # INTERFACE
 add_library(cmstore_icmstore INTERFACE)
 target_include_directories(cmstore_icmstore INTERFACE ${IFACE_DIR})
-target_link_libraries(cmstore_icmstore INTERFACE base ctistore::ictistore)
+target_link_libraries(cmstore_icmstore INTERFACE base)
 add_library(cmstore::icmstore ALIAS cmstore_icmstore)
 
 # Implementation
 add_library(cmstore_cmstore STATIC
     ${SRC_DIR}/cmstore.cpp
+    ${SRC_DIR}/storens.cpp
+    ${SRC_DIR}/storecti.cpp
+    ${SRC_DIR}/cachens.cpp
 )
 target_include_directories(cmstore_cmstore
     PUBLIC
@@ -21,6 +24,9 @@ target_link_libraries(cmstore_cmstore
     PUBLIC
     base
     cmstore::icmstore
+    ctistore::ictistore
+    PRIVATE
+    yml
 )
 add_library(cmstore::cmstore ALIAS cmstore_cmstore)
 
@@ -41,22 +47,32 @@ add_library(cmstore::mocks ALIAS cmstore_mocks)
 
 add_executable(cmstore_utest
     ${UNIT_SRC_DIR}/cmstore_test.cpp
+    ${UNIT_SRC_DIR}/cachens_test.cpp
+    ${UNIT_SRC_DIR}/storecti_test.cpp
 )
 target_link_libraries(cmstore_utest
     PRIVATE
     GTest::gtest_main
     GTest::gmock
     cmstore::cmstore
+    ctistore::mocks
 )
 target_include_directories(cmstore_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(cmstore_utest)
 
 add_executable(cmstore_ctest
     ${COMPONENT_SRC_DIR}/cmstore_test.cpp
+    ${COMPONENT_SRC_DIR}/storecti_test.cpp
 )
 
-target_link_libraries(cmstore_ctest PRIVATE cmstore::cmstore GTest::gtest_main)
+target_link_libraries(cmstore_ctest
+    PRIVATE
+    cmstore::cmstore
+    GTest::gtest_main
+    GTest::gmock
+    ctistore::mocks
+)
+target_include_directories(cmstore_ctest PRIVATE ${SRC_DIR})
 gtest_discover_tests(cmstore_ctest)
 
 endif(ENGINE_BUILD_TEST)
-

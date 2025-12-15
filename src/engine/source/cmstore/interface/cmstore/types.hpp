@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -21,14 +22,16 @@ enum class ResourceType : uint8_t
     DECODER = 1,
     OUTPUT = 2,
     RULE = 3,
-    INTEGRATION = 4,
-    KVDB = 5
+    FILTER = 4,
+    INTEGRATION = 5,
+    KVDB = 6
 };
 
 constexpr std::string_view RESOURCE_TYPE_UNDEFINED_STR = "undefined";
 constexpr std::string_view RESOURCE_TYPE_DECODER_STR = "decoder";
 constexpr std::string_view RESOURCE_TYPE_OUTPUT_STR = "output";
 constexpr std::string_view RESOURCE_TYPE_RULE_STR = "rule";
+constexpr std::string_view RESOURCE_TYPE_FILTER_STR = "filter";
 constexpr std::string_view RESOURCE_TYPE_INTEGRATION_STR = "integration";
 constexpr std::string_view RESOURCE_TYPE_KVDB_STR = "kvdb";
 
@@ -47,6 +50,11 @@ constexpr ResourceType resourceTypeFromString(std::string_view typeStr)
     if (typeStr == RESOURCE_TYPE_RULE_STR)
     {
         return ResourceType::RULE;
+    }
+
+    if (typeStr == RESOURCE_TYPE_FILTER_STR)
+    {
+        return ResourceType::FILTER;
     }
 
     if (typeStr == RESOURCE_TYPE_INTEGRATION_STR)
@@ -69,9 +77,37 @@ constexpr std::string_view resourceTypeToString(ResourceType type)
         case ResourceType::DECODER: return RESOURCE_TYPE_DECODER_STR;
         case ResourceType::OUTPUT: return RESOURCE_TYPE_OUTPUT_STR;
         case ResourceType::RULE: return RESOURCE_TYPE_RULE_STR;
+        case ResourceType::FILTER: return RESOURCE_TYPE_FILTER_STR;
         case ResourceType::KVDB: return RESOURCE_TYPE_KVDB_STR;
         case ResourceType::INTEGRATION: return RESOURCE_TYPE_INTEGRATION_STR;
         default: return RESOURCE_TYPE_UNDEFINED_STR;
+    }
+}
+
+/**
+ * @brief Get ResourceType from an asset Name
+ *
+ * Only DECODER, OUTPUT, RULE and FILTER are considered assets.
+ * @param name Asset name
+ * @return ResourceType Resource type of the asset, or UNDEFINED if it could not be determined
+ */
+inline ResourceType getResourceTypeFromAssetName(const base::Name& name)
+{
+    if (name.parts().size() < 2)
+    {
+        return ResourceType::UNDEFINED;
+    }
+
+    const auto& typePart = name.parts()[0];
+
+    auto rType = resourceTypeFromString(typePart);
+    switch (rType)
+    {
+        case ResourceType::DECODER:
+        case ResourceType::OUTPUT:
+        case ResourceType::RULE:
+        case ResourceType::FILTER: return rType;
+        default: return ResourceType::UNDEFINED;
     }
 }
 
@@ -105,7 +141,7 @@ public:
     {
         if (!isValidName(m_namespace))
         {
-            throw std::runtime_error("Invalid namespace ID: " + m_namespace);
+            throw std::runtime_error(fmt::format("Invalid namespace ID: {}", m_namespace));
         }
     }
 
@@ -130,5 +166,17 @@ public:
 };
 
 } // namespace cm::store
+
+namespace std
+{
+template<>
+struct hash<cm::store::NamespaceId>
+{
+    size_t operator()(const cm::store::NamespaceId& ns) const noexcept
+    {
+        return std::hash<std::string_view> {}(static_cast<std::string_view>(ns));
+    }
+};
+} // namespace std
 
 #endif // _CMSTORE_ITYPES

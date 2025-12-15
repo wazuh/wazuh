@@ -88,6 +88,140 @@ cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const 
 // DBSync Callback
 
 /**
+ * @brief Handle delete events for files under paths that were removed from configuration.
+ *
+ * When a path is removed from the FIM configuration, files that were previously
+ * monitored under that path need to generate delete events even though we no
+ * longer have the configuration available. This function creates minimal
+ * stateless and stateful delete events using only the information available
+ * from the database.
+ *
+ * @param path The file path being deleted.
+ * @param result_json Data from dbsync containing checksum and version.
+ * @param txn_context Transaction context with event metadata.
+ */
+STATIC void handle_orphaned_delete(const char* path,
+                                   const cJSON* result_json,
+                                   callback_ctx* txn_context) {
+    cJSON* stateless_event = NULL;
+    cJSON* stateful_event = NULL;
+    char iso_time[32];
+
+    mdebug1("Generating delete event for orphaned file '%s' (path removed from configuration)", path);
+
+    // Clean up any diff files that may exist for this path
+    // Safe to call unconditionally - returns gracefully if no diff files exist
+    fim_diff_process_delete_file(path);
+
+    // Get checksum from result_json (file's SHA1 hash from database)
+    cJSON* checksum_json = cJSON_GetObjectItem(result_json, "checksum");
+    if (checksum_json == NULL) {
+        mdebug1("Couldn't find checksum for orphaned delete '%s'", path);
+        return;
+    }
+    char* sha1_checksum = cJSON_GetStringValue(checksum_json);
+    if (sha1_checksum == NULL) {
+        mdebug1("Invalid checksum value for orphaned delete '%s'", path);
+        return;
+    }
+
+    // Get version from result_json (for DELETED events, version is at top level)
+    cJSON* version_json = cJSON_GetObjectItem(result_json, "version");
+    if (version_json == NULL) {
+        mdebug1("Couldn't find version for orphaned delete '%s'", path);
+        return;
+    }
+    uint64_t document_version = (uint64_t)version_json->valueint;
+
+    // Build minimal stateless event
+    stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
+        return;
+    }
+
+    cJSON_AddStringToObject(stateless_event, "collector", "file");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateless_event, "data", data);
+
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[FIM_DELETE]);
+
+    cJSON* file_stateless = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "file", file_stateless);
+
+#ifdef WIN32
+    char* utf8_path = auto_to_utf8(path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(file_stateless, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(file_stateless, "path", path);
+    }
+#else
+    cJSON_AddStringToObject(file_stateless, "path", path);
+#endif
+
+    cJSON_AddStringToObject(file_stateless, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
+
+    // Send stateless event if enabled
+    if (notify_scan != 0 && txn_context->event->report_event) {
+        send_syscheck_msg(stateless_event);
+    }
+
+    cJSON_Delete(stateless_event);
+
+    // Build minimal stateful event for sync
+    stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        return;
+    }
+
+    cJSON* file_stateful = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "file", file_stateful);
+
+#ifdef WIN32
+    utf8_path = auto_to_utf8(path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(file_stateful, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(file_stateful, "path", path);
+    }
+#else
+    cJSON_AddStringToObject(file_stateful, "path", path);
+#endif
+
+    cJSON* checksum_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum_obj);
+    cJSON* hash_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum_obj, "hash", hash_obj);
+    cJSON_AddStringToObject(hash_obj, "sha1", sha1_checksum);
+
+    cJSON* state_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "state", state_obj);
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state_obj, "modified_at", modified_at_time);
+    cJSON_AddNumberToObject(state_obj, "document_version", (double)document_version);
+
+    // Compute SHA1 of path for sync ID
+    char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(path, -1, file_path_sha1);
+
+    // Persist stateful event for sync
+    persist_syscheck_msg(file_path_sha1, OPERATION_DELETE, FIM_FILES_SYNC_INDEX,
+                         stateful_event, document_version);
+
+    cJSON_Delete(stateful_event);
+}
+
+/**
  * @brief File callback.
  *
  * @param resultType Action performed by DBSync (INSERTED|MODIFIED|DELETED|MAXROWS)
@@ -120,8 +254,14 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (txn_context->config == NULL) {
-        txn_context->config = fim_configuration_directory(path, true);
+        // For DELETE events, don't log "not found" since path may have been removed from config
+        txn_context->config = fim_configuration_directory(path, resultType != DELETED);
         if (txn_context->config == NULL) {
+            // For DELETE events of orphaned files (path removed from config),
+            // generate minimal delete events without requiring configuration
+            if (resultType == DELETED) {
+                handle_orphaned_delete(path, result_json, txn_context);
+            }
             goto end;
         }
     }

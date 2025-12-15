@@ -58,6 +58,7 @@ Each module instance:
 - [Integration Guide](integration-guide.md) - Step-by-step module integration examples
 - [Protocol Lifecycle](lifecycle.md) - Detailed explanation of the synchronization phases
 - [Sequence Diagrams](sequence-diagrams.md) - Visual representation of protocol interactions
+- [Persistence Performance](persistence-performance.md) - WAL mode justification and performance analysis
 
 ## Quick Start
 

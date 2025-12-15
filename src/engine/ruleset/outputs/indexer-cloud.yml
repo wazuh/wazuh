@@ -1,0 +1,25 @@
+name: output/indexer-cloud/0
+
+metadata:
+  module: wazuh
+  title: Indexer output for cloud category events
+  description: Output integrations events to wazuh-indexer
+  compatibility: >
+    This decoder has been tested on Wazuh version 5.0
+  versions:
+    - ""
+  author:
+    name: Wazuh, Inc.
+    date: 2025/12/01
+  references:
+    - ""
+
+check: >-
+  $wazuh.integration.category == "Cloud Services" AND
+  ($wazuh.integration.name == "aws"
+  OR $wazuh.integration.name == "azure"
+  OR $wazuh.integration.name == "gcp")
+
+outputs:
+  - wazuh-indexer:
+      index: "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"

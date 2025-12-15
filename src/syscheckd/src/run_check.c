@@ -83,6 +83,171 @@ bool fim_shutdown_process_on() {
 }
 
 /**
+ * @brief Check if there are any configured directories to monitor
+ *
+ * @return true if there are configured directories (non-wildcard), false otherwise
+ */
+STATIC bool fim_has_configured_directories(void) {
+    if (syscheck.directories == NULL) {
+        return false;
+    }
+
+    OSListNode *node_it;
+    directory_t *dir_it;
+
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        // Count non-wildcard directories (explicitly configured)
+        if (!dir_it->is_wildcard) {
+            w_rwlock_unlock(&syscheck.directories_lock);
+            return true;
+        }
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    return false;
+}
+
+#ifdef WIN32
+/**
+ * @brief Check if there are any configured registries to monitor
+ *
+ * @return true if there are configured registries, false otherwise
+ */
+STATIC bool fim_has_configured_registries(void) {
+    if (syscheck.registry == NULL) {
+        return false;
+    }
+
+    return syscheck.registry[0].entry != NULL;
+}
+#endif
+
+/**
+ * @brief Check if there are any configured paths (directories or registries) to monitor
+ *
+ * @return true if there are configured paths, false otherwise
+ */
+STATIC bool fim_has_configured_paths(void) {
+    bool has_directories = fim_has_configured_directories();
+
+#ifdef WIN32
+    bool has_registries = fim_has_configured_registries();
+    return has_directories || has_registries;
+#else
+    return has_directories;
+#endif
+}
+
+/**
+ * @brief Check if the FIM database has any entries
+ *
+ * @return true if database has entries, false otherwise
+ */
+STATIC bool fim_has_data_in_database(void) {
+    int files_count = fim_db_get_count_file_entry();
+    if (files_count > 0) {
+        return true;
+    }
+
+#ifdef WIN32
+    int registry_keys_count = fim_db_get_count_registry_key();
+    int registry_values_count = fim_db_get_count_registry_data();
+
+    if (registry_keys_count > 0 || registry_values_count > 0) {
+        return true;
+    }
+#endif
+
+    return false;
+}
+
+/**
+ * @brief Handles the scenario when all monitored paths have been removed from configuration
+ *
+ * This function is called when syscheck is enabled but has no configured directories/registries.
+ * It performs the following operations:
+ * 1. Checks if the database has existing entries
+ * 2. If data exists, sends DataClean notifications to the server
+ * 3. Clears the database after successful notification
+ * 4. Module exits after cleanup
+ *
+ * @return true if DataClean was sent and handled successfully (or no data to clean), false otherwise
+ */
+STATIC bool handle_all_paths_removed(void) {
+    if (!fim_has_data_in_database()) {
+        mdebug1("No monitored paths configured and no data in database. Nothing to clean.");
+        return true;
+    }
+
+    mdebug1("All monitored paths removed from configuration but database has data. Initiating DataClean process.");
+
+    if (!syscheck.sync_handle) {
+        merror("Sync protocol not initialized, cannot send DataClean notification.");
+        return false;
+    }
+
+    // Prepare indices vector for data clean notification
+    const char* indices[3] = {NULL, NULL, NULL};
+    size_t indices_count = 0;
+
+    int files_count = fim_db_get_count_file_entry();
+    if (files_count > 0) {
+        indices[indices_count++] = FIM_FILES_SYNC_INDEX;
+        mdebug1("Found %d file entries to clean.", files_count);
+    }
+
+#ifdef WIN32
+    int registry_keys_count = fim_db_get_count_registry_key();
+    int registry_values_count = fim_db_get_count_registry_data();
+
+    if (registry_keys_count > 0) {
+        indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
+        mdebug1("Found %d registry key entries to clean.", registry_keys_count);
+    }
+    if (registry_values_count > 0) {
+        indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
+        mdebug1("Found %d registry value entries to clean.", registry_values_count);
+    }
+#endif
+
+    if (indices_count == 0) {
+        mdebug1("No indices to clean.");
+        return true;
+    }
+
+    minfo("All monitored paths removed from configuration. FIM database has entries. Proceeding with DataClean notification.");
+
+    // Send data clean notification with infinite retry until success or shutdown
+    // Since no paths are configured, we must ensure indexer data is cleaned
+    bool dataCleanSent = false;
+    while (!dataCleanSent && !fim_shutdown_process_on()) {
+        dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        if (!dataCleanSent) {
+            mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
+            for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
+                sleep(1);
+            }
+        } else {
+            minfo("DataClean notification sent successfully for FIM indices.");
+            // Delete both databases (sync protocol DB and FIM DB)
+            // Since no paths are configured, there's nothing to monitor - local cleanup is needed
+            asp_delete_database(syscheck.sync_handle);
+            fim_db_close_and_delete_database();
+            mdebug1("FIM databases deleted successfully.");
+        }
+    }
+
+    if (fim_shutdown_process_on() && !dataCleanSent) {
+        mdebug1("DataClean notification aborted due to module shutdown.");
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Handles the FIM disabled scenario by cleaning up database and notifying the server
  *
  * This function is called when syscheck is disabled. It performs the following operations:
@@ -315,6 +480,15 @@ void start_daemon()
     if (syscheck.disabled) {
         handle_fim_disabled();
         minfo("Syscheck is disabled. Exiting.");
+        return;
+    }
+
+    // Check for the scenario where syscheck is enabled but has no configured paths
+    // This handles the case when all directories/registries are removed from configuration
+    if (!fim_has_configured_paths()) {
+        mdebug1("Syscheck enabled but no monitored paths configured. Checking for orphaned data.");
+        handle_all_paths_removed();
+        minfo("No monitored paths configured. FIM module exiting after DataClean.");
         return;
     }
 

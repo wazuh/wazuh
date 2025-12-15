@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include <cstdint>
 #include <iostream>
 #include <fstream>
 #include <stack>
@@ -216,7 +217,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 
 void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
-    nlohmann::json aux = result == MODIFIED && data.contains("new") ? data["new"] : data;
+    nlohmann::json aux = (result == MODIFIED && data.contains("new")) ? data["new"] : data;
 
     auto [newData, version] = ecsData(aux, table);
 
@@ -293,6 +294,7 @@ void Syscollector::updateChanges(const std::string& table,
 
 Syscollector::Syscollector()
     : m_intervalValue { 0 }
+    , m_integrityIntervalValue { 86400 }
     , m_scanOnStart { false }
     , m_hardware { false }
     , m_os { false }
@@ -333,6 +335,7 @@ std::string Syscollector::getCreateStatement() const
     ret += USERS_SQL_STATEMENT;
     ret += SERVICES_SQL_STATEMENT;
     ret += BROWSER_EXTENSIONS_SQL_STATEMENT;
+    ret += TABLE_METADATA_SQL_STATEMENT;
     return ret;
 }
 
@@ -383,7 +386,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
-    std::unique_lock<std::mutex> lock{m_mutex};
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
@@ -411,7 +414,7 @@ void Syscollector::start()
     }
 
     {
-        std::unique_lock<std::mutex> lock{m_mutex};
+        std::unique_lock<std::mutex> lock{m_scan_mutex};
         m_stopping = false;
     }
 
@@ -470,8 +473,8 @@ void Syscollector::start()
     // Clean VD data for disabled modules
     cleanDisabledVDData();
 
-    std::unique_lock<std::mutex> lock{m_mutex};
-    syncLoop(lock);
+    std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
+    syncLoop(scan_lock);
 }
 
 bool Syscollector::handleNotifyDataClean()
@@ -541,7 +544,7 @@ bool Syscollector::handleNotifyDataClean()
 
 void Syscollector::destroy()
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = true;
     m_cv.notify_all();
 
@@ -1471,7 +1474,7 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
-void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
+void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
     m_syncLoopFinished = false;
     m_logFunction(LOG_INFO, "Module started.");
@@ -1481,7 +1484,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         scan();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
     return m_stopping;
 }))
@@ -1753,9 +1756,10 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
                                     std::chrono::seconds timeout,
                                     unsigned int retries,
-                                    size_t maxEps)
+                                    size_t maxEps, uint32_t integrityInterval)
 {
     m_dataCleanRetries = retries;  // Same as sync retries for data clean notifications
+    m_integrityIntervalValue = integrityInterval;
 
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
@@ -1773,6 +1777,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
+        m_logFunction(LOG_DEBUG, "Integrity interval set to " + std::to_string(integrityInterval) + " seconds");
     }
     catch (const std::exception& ex)
     {
@@ -2527,6 +2532,16 @@ int Syscollector::setVersion(int version)
     }
 }
 
+void Syscollector::lockScanMutex()
+{
+    m_scan_mutex.lock();
+}
+
+void Syscollector::unlockScanMutex()
+{
+    m_scan_mutex.unlock();
+}
+
 std::string Syscollector::query(const std::string& jsonQuery)
 {
     // Log the received query
@@ -2966,3 +2981,178 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
         }
     }
 }
+// LCOV_EXCL_STOP
+
+bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
+{
+    m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
+
+    std::string final_checksum = m_spDBSync->calculateTableChecksum(tableName);
+
+    m_logFunction(LOG_DEBUG, "Success! Final file table checksum is: " + std::string(final_checksum));
+
+    bool needs_full_sync;
+    needs_full_sync = m_spSyncProtocol->requiresFullSync(
+                          INDEX_MAP.at(tableName),
+                          final_checksum
+                      );
+
+    if (needs_full_sync)
+    {
+        m_logFunction(LOG_DEBUG, "Checksum mismatch detected for index " + tableName + " full sync required");
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG, "Checksum valid for index " + tableName + ", delta sync sufficient");
+    }
+
+    return needs_full_sync;
+}
+
+int64_t Syscollector::getLastSyncTime(const std::string& tableName)
+{
+    int64_t lastSyncTime = 0;
+
+    auto callback = [&lastSyncTime](ReturnTypeCallback result, const nlohmann::json & data)
+    {
+        if (result == ReturnTypeCallback::SELECTED && data.contains("last_sync_time"))
+        {
+            lastSyncTime = data.at("last_sync_time").get<int64_t>();
+        }
+    };
+
+    auto selectQuery = SelectQuery::builder()
+                       .table("table_metadata")
+                       .columnList({"last_sync_time"})
+                       .rowFilter("WHERE table_name = '" + tableName + "'")
+                       .build();
+
+    m_spDBSync->selectRows(selectQuery.query(), callback);
+
+    return lastSyncTime;
+
+}
+
+void Syscollector::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
+{
+    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+    auto syncQuery = SyncRowQuery::builder()
+                     .table("table_metadata")
+    .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
+    .build();
+
+    m_spDBSync->syncRow(syncQuery.query(), emptyCallback);
+}
+
+bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval)
+{
+    int64_t currentTime = Utils::getSecondsFromEpoch();
+    int64_t lastSyncTime = getLastSyncTime(tableName);
+
+    // If never checked before (lastSyncTime == 0), initialize timestamp and don't run check yet
+    // This enables integrity checks to run after the configured interval
+    if (lastSyncTime == 0)
+    {
+        updateLastSyncTime(tableName, currentTime);
+        return false;
+    }
+
+    int64_t elapsedTime = currentTime - lastSyncTime;
+    return (elapsedTime >= integrityInterval);
+}
+
+void Syscollector::runRecoveryProcess()
+{
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        // Skip disabled modules
+        if (tableName == OS_TABLE && !m_os) continue;
+
+        if (tableName == HW_TABLE && !m_hardware) continue;
+
+        if (tableName == HOTFIXES_TABLE && !m_hotfixes) continue;
+
+        if (tableName == PACKAGES_TABLE && !m_packages) continue;
+
+        if (tableName == PROCESSES_TABLE && !m_processes) continue;
+
+        if (tableName == PORTS_TABLE && !m_ports) continue;
+
+        if (((tableName == NET_ADDRESS_TABLE) || (tableName == NET_IFACE_TABLE) || (tableName == NET_PROTOCOL_TABLE)) && !m_network) continue;
+
+        if (tableName == USERS_TABLE && !m_users) continue;
+
+        if (tableName == GROUPS_TABLE && !m_groups) continue;
+
+        if (tableName == SERVICES_TABLE && !m_services) continue;
+
+        if (tableName == BROWSER_EXTENSIONS_TABLE && !m_browserExtensions) continue;
+
+        if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
+        {
+            m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
+            bool full_sync_required = checkIfFullSyncRequired(tableName);
+
+            if (full_sync_required)
+            {
+                try
+                {
+                    m_spDBSync->increaseEachEntryVersion(tableName);
+                }
+                catch (const std::exception& ex)
+                {
+                    m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
+                    return;
+                }
+
+                std::vector<nlohmann::json> items;
+
+                try
+                {
+                    items = m_spDBSync->getEveryElement(tableName);
+                }
+                catch (const std::exception& ex)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
+                    return;
+                }
+
+                m_spSyncProtocol->clearInMemoryData();
+
+                for (const auto& item : items)
+                {
+                    // Build stateful event
+                    auto [newData, version] = ecsData(item, tableName);
+                    const auto statefulToSend{newData.dump()};
+
+                    m_spSyncProtocol->persistDifferenceInMemory(
+                        calculateHashId(item, tableName),
+                        Operation::CREATE,
+                        index,
+                        statefulToSend,
+                        item["version"].get<uint64_t>()
+                    );
+                }
+
+                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
+                m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
+                bool success = syncModule(Mode::FULL);
+
+                if (success)
+                {
+                    m_logFunction(LOG_DEBUG, "Recovery completed successfully");
+                }
+                else
+                {
+                    m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
+                }
+
+                // Update the last sync time regardless of whether full sync was required
+                // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+                updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+            }
+        }
+    }
+}
+

@@ -2,131 +2,155 @@ import json
 import os
 import subprocess
 from typing import Optional, Tuple
+
 from behave import given, when, then
-from google.protobuf.json_format import MessageToJson
-from pathlib import Path
+from google.protobuf.json_format import MessageToJson, ParseDict
 
 from api_communication.client import APIClient
-from google.protobuf.json_format import ParseDict
 from api_communication.proto import tester_pb2 as api_tester
-from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import engine_pb2 as api_engine
-from api_communication.proto import catalog_pb2 as api_catalog
-from api_utils.commands import engine_clear
+from api_communication.proto import crud_pb2 as api_crud
 
-ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
+# ===================================================================
+#  Environment / API client
+# ===================================================================
+
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api.socket"
-RULESET_DIR = ENV_DIR + "/engine"
 
 api_client = APIClient(SOCKET_PATH)
 
+# ===================================================================
+#  Constants shared with init.py
+# ===================================================================
+
+POLICY_NS = "testing"
+
+DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
+DECODER_OTHER_UUID = "594ea807-a037-408d-95b8-9a124ea333df"
+
+INTEG_WAZUH_CORE_UUID = "9b1a1ef2-1a70-4a8b-a89b-38b34174c2d1"
+INTEG_OTHER_WAZUH_CORE_UUID = "a15bbd77-8cb0-488f-94cd-4783d689a72f"
+
+
+# ===================================================================
+#  Generic helpers
+# ===================================================================
 
 def run_command(command):
     result = subprocess.run(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
     assert result.returncode == 0, f"{result.stderr}"
 
 
-def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
-    try:
-        error, response = api_client.send_recv(request)
-        print(f'Request: {request}')
-        print(f"Error: {error}")
-        print(f"Response: {response}")
-        assert error is None, f"{error}"
-        parse_response = ParseDict(response, expected_response_type)
-        if parse_response.status == api_engine.ERROR:
-            return parse_response.error, parse_response
-        else:
-            return None, parse_response
-    except Exception as e:
-        assert False, f"Error parsing response: {str(e)}"
-
-
-def add_integration(integration_name: str):
-    namespace = "system"
-    integration_path = Path(RULESET_DIR).resolve() / integration_name
-    assert integration_path.is_dir(
-    ), f"Integration {integration_name} not found"
-    asset_types = {
-        "decoders": api_catalog.decoder,
-        "rules": api_catalog.rule,
-        "outputs": api_catalog.output,
-        "filters": api_catalog.filter
-    }
-
-    for directory, asset_type in asset_types.items():
-        path = integration_path / directory
-        if path.is_dir():
-            for asset_file in path.rglob("*.yml"):
-                request = api_catalog.ResourcePost_Request()
-                request.namespaceid = namespace
-                request.content = asset_file.read_text()
-                request.format = api_catalog.yaml
-                request.type = asset_type
-
-                error, response = api_client.send_recv(request)
-                assert error is None, f"{error}"
-                parsed_response = ParseDict(
-                    response, api_engine.GenericStatus_Response())
-                assert parsed_response.status == api_engine.OK, f"{parsed_response}"
-
-    # Add manifest
-    manifest_file = integration_path / "manifest.yml"
-    assert manifest_file.is_file(
-    ), f"Manifest file not found for integration {integration_name}"
-    request = api_catalog.ResourcePost_Request()
-    request.namespaceid = namespace
-    request.content = manifest_file.read_text()
-    request.format = api_catalog.yaml
-    request.type = api_catalog.integration
-
+def send_recv(request, expected_response_type) -> Tuple[Optional[str], object]:
+    """
+    Generic helper for engine-api:
+      - Returns (error_string, parsed_response)
+      - error_string is None if status != ERROR
+      - If status == ERROR, error_string = parsed_response.error
+    """
     error, response = api_client.send_recv(request)
-    assert error is None, f"{error}"
-    parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
-    assert parsed_response.status == api_engine.OK, f"{parsed_response}"
-
-
-def create_policy(policy_name: str):
-    request = api_policy.StorePost_Request()
-    request.policy = policy_name
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    print(f"Request: {request}")
+    print(f"Error: {error}")
+    print(f"Response: {response}")
     assert error is None, f"{error}"
 
+    parsed = ParseDict(response, expected_response_type)
+    status = getattr(parsed, "status", None)
+    if status == api_engine.ERROR:
+        return parsed.error, parsed
+    return None, parsed
 
-def delete_policy(policy_name: str):
-    request = api_policy.StoreDelete_Request()
-    request.policy = policy_name
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+
+# ===================================================================
+#  CMCRUD helpers (policy only)
+# ===================================================================
+
+def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids):
+    """
+    Policy YAML according to the model:
+
+      {
+        "type": "policy",
+        "title": "Development 0.0.1",
+        "default_parent": "...",
+        "root_decoder": "...",
+        "integrations": [ ... ]
+      }
+    """
+    integrations_block = "\n".join(f'  - "{u}"' for u in integration_uuids)
+    return f"""\
+type: policy
+title: Development 0.0.1
+default_parent: {default_parent}
+root_decoder: {root_decoder}
+integrations:
+{integrations_block}
+"""
+
+
+def cm_policy_upsert(space: str, yml: str):
+    req = api_crud.policyPost_Request()
+    req.space = space
+    req.ymlContent = yml
+    err, resp = send_recv(req, api_engine.GenericStatus_Response())
+    assert err is None, f"Error upserting policy in '{space}': {err}"
+    assert resp.status == api_engine.OK, f"{resp}"
+
+
+def cm_policy_delete(space: str):
+    req = api_crud.policyDelete_Request()
+    req.space = space
+    err, resp = send_recv(req, api_engine.GenericStatus_Response())
+    assert err is None, f"Error deleting policy '{space}': {err}"
+    assert resp.status == api_engine.OK, f"{resp}"
 
 
 def add_integration_to_policy(integration_name: str, policy_name: str):
-    request = api_policy.AssetPost_Request()
-    request.policy = policy_name
-    request.asset = f"integration/{integration_name}/0"
-    request.namespace = "system"
-    error, response = send_recv(request, api_policy.AssetPost_Response())
-    assert error is None, f"{error}"
+    """
+    "Add integration" is done as a policy upsert, leaving
+    both integrations in the document.
+    It is used in the scenario where sync becomes OUTDATED.
+    """
+    assert policy_name == POLICY_NS, "This step is intended for policy 'testing'"
+
+    # We always leave the policy with both integrations
+    integ_list = [INTEG_WAZUH_CORE_UUID, INTEG_OTHER_WAZUH_CORE_UUID]
+    policy_yaml = build_policy_yaml(
+        default_parent=DECODER_TEST_UUID,
+        root_decoder=DECODER_TEST_UUID,
+        integration_uuids=integ_list,
+    )
+    cm_policy_upsert(POLICY_NS, policy_yaml)
 
 
-def policy_tear_down(policy_name: str, integration_name: str):
-    engine_clear(api_client)
+def delete_policy(policy_name: str):
+    assert policy_name == POLICY_NS, "This step is intended for policy 'testing'"
+    cm_policy_delete(POLICY_NS)
 
+
+# ===================================================================
+#  Tester helpers (sessions)
+# ===================================================================
 
 def create_session(session_name: str, policy_name: str) -> api_engine.GenericStatus_Response:
+    """
+    In the new tester, the session references the namespace/policy
+    via namespaceId.
+    """
     request = api_tester.SessionPost_Request()
     request.session.name = session_name
-    request.session.policy = policy_name
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    request.session.namespaceId = policy_name
+    _, response = send_recv(request, api_engine.GenericStatus_Response())
     return response
 
 
 def get_session(context, session_name: str):
     request = api_tester.SessionGet_Request()
     request.name = session_name
-    error, context.result = send_recv(
-        request, api_tester.SessionGet_Response())
+    error, context.result = send_recv(request, api_tester.SessionGet_Response())
     assert error is None, f"{error}"
 
 
@@ -140,31 +164,62 @@ def session_tear_down():
 
     # Delete all sessions
     for session in response.sessions:
-        request = api_tester.SessionDelete_Request()
-        request.name = session.name
-        error, response = send_recv(
-            request, api_engine.GenericStatus_Response())
+        req = api_tester.SessionDelete_Request()
+        req.name = session.name
+        _, _ = send_recv(req, api_engine.GenericStatus_Response())
 
+
+# ===================================================================
+#  GIVEN steps
+# ===================================================================
 
 @given('I have a policy "{policy_name}" that has an integration called "{integration_name}" loaded')
 def step_impl(context, policy_name: str, integration_name: str):
-    # TearDown
-    policy_tear_down(policy_name, integration_name)
+    """
+    - policy_name must be 'testing' (namespace/policy in CM)
+    - integration_name: 'wazuh-core-test' or 'other-wazuh-core-test'
+    Here we DO NOT create decoders or integrations (that is done by init.py),
+    we only upsert the policy in CM with the corresponding integration.
+    """
+    assert policy_name == POLICY_NS, (
+        f"Tester steps currently only support policy '{POLICY_NS}', got '{policy_name}'"
+    )
 
-    # Setup
-    add_integration(integration_name)
-    create_policy(policy_name)
-    add_integration_to_policy(integration_name, policy_name)
+    # Session cleanup so each scenario starts clean
+    session_tear_down()
+
+    if integration_name == "wazuh-core-test":
+        integ_list = [INTEG_WAZUH_CORE_UUID]
+        default_parent = DECODER_TEST_UUID
+        root_decoder = DECODER_TEST_UUID
+    elif integration_name == "other-wazuh-core-test":
+        integ_list = [INTEG_OTHER_WAZUH_CORE_UUID]
+        default_parent = DECODER_OTHER_UUID
+        root_decoder = DECODER_OTHER_UUID
+    else:
+        raise AssertionError(f"Unsupported integration name: {integration_name}")
+
+    policy_yaml = build_policy_yaml(
+        default_parent=default_parent,
+        root_decoder=root_decoder,
+        integration_uuids=integ_list,
+    )
+    cm_policy_upsert(POLICY_NS, policy_yaml)
 
 
 @given('I create a "{session_name}" session that points to policy "{policy_name}"')
 def step_impl(context, session_name: str, policy_name: str):
-    # TearDown
+    # Session cleanup
     session_tear_down()
 
-    # Setup
-    create_session(session_name, policy_name)
+    # Create the session pointing to namespaceId == policy_name
+    response = create_session(session_name, policy_name)
+    assert response.status == api_engine.OK, f"{response}"
 
+
+# ===================================================================
+#  WHEN steps
+# ===================================================================
 
 @when('I send a request to the tester to add a new session called "{session_name}" with the data from policy:"{policy_name}"')
 def step_impl(context, session_name: str, policy_name: str):
@@ -181,8 +236,7 @@ def step_impl(context, sessions: str, session_name: str, policy_name: str):
 def step_impl(context, session_name: str):
     request = api_tester.SessionDelete_Request()
     request.name = session_name
-    error, context.result = send_recv(
-        request, api_engine.GenericStatus_Response())
+    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
 
 
 @when('I send a request to the tester to get the session "{session_name}"')
@@ -192,7 +246,7 @@ def step_impl(context, session_name: str):
 
 @when('I send a request to the policy "{policy_name}" to add an integration called "{integration_name}"')
 def step_impl(context, policy_name: str, integration_name: str):
-    add_integration(integration_name)
+    # Update the policy in CM so that it has both integrations
     add_integration_to_policy(integration_name, policy_name)
 
 
@@ -201,8 +255,8 @@ def step_impl(context, policy_name: str):
     delete_policy(policy_name)
 
 
-@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug "{namespace}" namespace, agent.id "{agent_id}" and "{asset_trace}" asset trace')
-def step_impl(context, message: str, session_name: str, debug_level: str, agent_id: str, namespace: str, asset_trace: str):
+@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug, agent.id "{agent_id}" and "{asset_trace}" asset trace')
+def step_impl(context, message: str, session_name: str, debug_level: str, agent_id: str, asset_trace: str):
     debug_level_to_int = {
         "NONE": 0,
         "ASSET_ONLY": 1,
@@ -215,11 +269,14 @@ def step_impl(context, message: str, session_name: str, debug_level: str, agent_
     LOCATION = f"[{agent_id}] (agent-ex) any->SomeModule"
     QUEUE = 1
     request.event = f"{QUEUE}:{LOCATION}:{message}"
-    request.namespaces.extend([namespace])
     request.asset_trace.extend([asset_trace])
     error, context.result = send_recv(request, api_tester.RunPost_Response())
     assert error is None, f"{error}"
 
+
+# ===================================================================
+#  THEN steps
+# ===================================================================
 
 @then('I should receive a {status} response indicating that "{message}"')
 def step_impl(context, status: str, message: str):
@@ -256,7 +313,8 @@ def step_impl(context, policy_sync: str):
         3: "ERROR"
     }
     assert policy_sync_to_string[
-        context.result.session.policy_sync] == policy_sync, f"{context.result.session.policy_sync}"
+        context.result.session.namespace_sync
+    ] == policy_sync, f"{context.result.session.namespace_sync}"
 
 
 @then('I send a request to the tester to reload the "{session_name}" session and the sync change to "{policy_sync}" again')
@@ -275,7 +333,8 @@ def step_impl(context, session_name: str, policy_sync: str):
         3: "ERROR"
     }
     assert policy_sync_to_string[
-        context.result.session.policy_sync] == policy_sync, f"{context.result.session.policy_sync}"
+        context.result.session.namespace_sync
+    ] == policy_sync, f"{context.result.session.namespace_sync}"
 
 
 @then('I send a request to the tester to reload the "{session_name}"')
@@ -283,7 +342,8 @@ def step_impl(context, session_name: str):
     request = api_tester.SessionReload_Request()
     request.name = session_name
     error, context.result = send_recv(
-        request, api_engine.GenericStatus_Response())
+        request, api_engine.GenericStatus_Response()
+    )
 
 
 @then('I should receive an error response')

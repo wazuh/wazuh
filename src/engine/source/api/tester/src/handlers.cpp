@@ -21,37 +21,39 @@ using TesterAndRequest = std::pair<std::shared_ptr<::router::ITesterAPI>, Reques
 namespace
 {
 
-eTester::Sync getHashSatus(const ::router::test::Entry& entry,
-                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eTester::Sync getHashStatus(const ::router::test::Entry& entry, const std::weak_ptr<cm::store::ICMStore>& wStore)
 {
-    auto policyManager = wPolicyManager.lock();
-    if (!policyManager)
+    auto store = wStore.lock();
+    if (!store)
     {
         return eTester::Sync::SYNC_UNKNOWN;
     }
 
-    auto resPolicy = policyManager->getHash(entry.policy());
-    if (base::isError(resPolicy))
+    std::string hash;
+    try
+    {
+        auto nsId = store->getNSReader(entry.namespaceId());
+        hash = nsId->getPolicy().getHash();
+    }
+    catch(const std::exception& e)
     {
         return eTester::Sync::ERROR;
     }
 
-    return base::getResponse(resPolicy) == entry.hash() ? eTester::Sync::UPDATED : eTester::Sync::OUTDATED;
+    return hash == entry.hash() ? eTester::Sync::UPDATED : eTester::Sync::OUTDATED;
 }
 
 /**
  * @brief Transform a router::test::Entry to a eTester::Session
  *
  * @param entry Entry to transform
- * @param wPolicyManager Policy manager to get the policy hash
  * @return eTester::Session
  */
-eTester::Session toSession(const ::router::test::Entry& entry,
-                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eTester::Session toSession(const ::router::test::Entry& entry, const std::weak_ptr<cm::store::ICMStore>& wStore)
 {
     eTester::Session session;
     session.set_name(entry.name());
-    session.set_policy(entry.policy().fullName());
+    session.set_namespaceid(entry.namespaceId().toStr());
     session.set_lifetime(static_cast<uint32_t>(entry.lifetime()));
     if (entry.description().has_value())
     {
@@ -62,70 +64,10 @@ eTester::Session toSession(const ::router::test::Entry& entry,
                            : ::router::env::State::DISABLED == entry.status() ? eTester::State::DISABLED
                                                                               : eTester::State::STATE_UNKNOWN;
 
-    session.set_policy_sync(getHashSatus(entry, wPolicyManager));
+    session.set_namespace_sync(getHashStatus(entry, wStore));
     session.set_entry_status(state);
     session.set_last_use(static_cast<uint32_t>(entry.lastUse()));
     return session;
-}
-
-/**
- * @brief Filter the assets of a policy by namespaces and return them in a set of strings
- * or the error response
- *
- * @tparam RequestType
- * @tparam ResponseType
- * @param eRequest Request to get namespaces and policy name
- * @param wStore Store to use to get the namespaces of the assets
- * @param tester Tester to use to get the assets of the policy
- * @return std::variant<httplib::Response, std::unordered_set<std::string>>
- */
-template<typename RequestType, typename ResponseType>
-auto getNsFilterAssets(const RequestType& eRequest,
-                       const std::weak_ptr<store::IStoreReader>& wStore,
-                       const std::shared_ptr<::router::ITesterAPI>& tester)
-    -> std::variant<httplib::Response, std::unordered_set<std::string>>
-{
-    // Validate the store
-    auto store = wStore.lock();
-    if (!store)
-    {
-        return adapter::internalErrorResponse<ResponseType>("Error: Store is not initialized");
-    }
-
-    // Get namespaces
-    std::vector<std::string> namespaces {};
-    for (const auto& ns : eRequest.namespaces())
-    {
-        namespaces.push_back(ns);
-    }
-    if (namespaces.empty())
-    {
-        return adapter::userErrorResponse<ResponseType>("Error: Namespaces parameter is required");
-    }
-
-    // Get all assets of the running policy
-    auto resPolicyAssets = tester->getAssets(eRequest.name());
-    if (base::isError(resPolicyAssets))
-    {
-        return adapter::userErrorResponse<ResponseType>(base::getError(resPolicyAssets).message);
-    }
-    auto& policyAssets = base::getResponse(resPolicyAssets);
-
-    // Filter assets by namespace, and store them in a set
-    std::unordered_set<std::string> assets {};
-    for (const auto& asset : policyAssets)
-    {
-        auto assetNamespace = store->getNamespace(asset);
-        if (!assetNamespace)
-        {
-            return adapter::userErrorResponse<ResponseType>(fmt::format("Asset {} not found in store", asset));
-        }
-        if (std::find(namespaces.begin(), namespaces.end(), assetNamespace.value()) != namespaces.end())
-        {
-            assets.insert(asset);
-        }
-    }
-    return assets;
 }
 
 /**
@@ -185,17 +127,20 @@ adapter::RouteHandler sessionPost(const std::shared_ptr<::router::ITesterAPI>& t
             return;
         }
 
-        auto policyName = tryGetProperty<ResponseType, base::Name>(
-            true, [&protoSession]() { return base::Name(adapter::getRes(protoSession).policy()); }, "policy", "name");
-        if (adapter::isError(policyName))
+        auto namespaceId = tryGetProperty<ResponseType, cm::store::NamespaceId>(
+            true,
+            [&protoSession]() { return cm::store::NamespaceId(adapter::getRes(protoSession).namespaceid()); },
+            "policy",
+            "name");
+        if (adapter::isError(namespaceId))
         {
-            res = adapter::getErrorResp(policyName);
+            res = adapter::getErrorResp(namespaceId);
             return;
         }
 
         // Add the session
         ::router::test::EntryPost entryPost(
-            protoReq.session().name(), adapter::getRes(policyName), protoReq.session().lifetime());
+            protoReq.session().name(), adapter::getRes(namespaceId), protoReq.session().lifetime());
 
         if (protoReq.session().has_description() && !protoReq.session().description().empty())
         {
@@ -254,11 +199,9 @@ adapter::RouteHandler sessionDelete(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                                 const std::shared_ptr<api::policy::IPolicy>& policy)
+adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester, const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eTester::SessionGet_Request;
         using ResponseType = eTester::SessionGet_Response;
@@ -273,13 +216,6 @@ adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& te
 
         auto [tester, protoReq] = adapter::getRes(result);
 
-        auto policy = wPolicyManager.lock();
-        if (!policy)
-        {
-            res = adapter::internalErrorResponse<ResponseType>("Error: Policy Manager is not initialized");
-            return;
-        }
-
         // Get the session
         auto entry = tester->getTestEntry(protoReq.name());
         if (base::isError(entry))
@@ -289,7 +225,7 @@ adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& te
         }
 
         ResponseType eResponse;
-        eResponse.mutable_session()->CopyFrom(toSession(base::getResponse(entry), wPolicyManager));
+        eResponse.mutable_session()->CopyFrom(toSession(base::getResponse(entry), wStore));
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };
@@ -334,11 +270,9 @@ adapter::RouteHandler sessionReload(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                               const std::shared_ptr<api::policy::IPolicy>& policy)
+adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester, const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eTester::TableGet_Request;
         using ResponseType = eTester::TableGet_Response;
@@ -359,7 +293,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
         ResponseType eResponse;
         for (const auto& entry : entries)
         {
-            eResponse.add_sessions()->CopyFrom(toSession(entry, wPolicyManager));
+            eResponse.add_sessions()->CopyFrom(toSession(entry, wStore));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
@@ -367,11 +301,9 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 }
 
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                              const std::shared_ptr<store::IStoreReader>& store,
                               const base::eventParsers::ProtocolHandler& protocolHandler)
 {
     return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            wStore = std::weak_ptr<store::IStoreReader>(store),
             protocolHandler](const auto& req, auto& res)
     {
         using RequestType = eTester::RunPost_Request;
@@ -398,24 +330,25 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         if (traceLevel != OTraceLavel::NONE)
         {
             // Get the assets of the policy filtered by namespaces
-            auto resFilteredAssets = getNsFilterAssets<RequestType, ResponseType>(protoReq, wStore, tester);
-            if (std::holds_alternative<httplib::Response>(resFilteredAssets))
+            auto resPolicyAssets = tester->getAssets(protoReq.name());
+            if (base::isError(resPolicyAssets))
             {
-                res = std::get<httplib::Response>(resFilteredAssets);
+                res = adapter::userErrorResponse<ResponseType>(base::getError(resPolicyAssets).message);
                 return;
             }
-            auto& filteredAssets = std::get<std::unordered_set<std::string>>(resFilteredAssets);
+
+            auto& policyAssets = base::getResponse(resPolicyAssets);
 
             if (protoReq.asset_trace_size() == 0)
             {
-                assetToTrace = std::move(filteredAssets);
+                assetToTrace = std::move(policyAssets);
             }
             else // If eRequest.assets() has assets, then only those assets should be traced
             {
                 std::unordered_set<std::string> requestAssets {};
                 for (const auto& asset : protoReq.asset_trace())
                 {
-                    if (filteredAssets.find(asset) == filteredAssets.end())
+                    if (policyAssets.find(asset) == policyAssets.end())
                     {
                         res =
                             adapter::userErrorResponse<ResponseType>(fmt::format("Asset {} not found in store", asset));

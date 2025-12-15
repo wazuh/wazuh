@@ -35,6 +35,7 @@ Syscollector is configured in the agent's `ossec.conf` file using the `<wodle na
         <interval>300</interval>                  <!-- Sync interval in seconds -->
         <response_timeout>60</response_timeout>   <!-- Response timeout in seconds -->
         <max_eps>10</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
+        <integrity_interval>86400</integrity_interval>  <!-- Integrity check interval in seconds (24 hours) -->
     </synchronization>
 </wodle>
 ```
@@ -87,6 +88,7 @@ The synchronization feature enables persistent inventory state management throug
 | `interval` | Integer | `300` | `1` - `∞` | How often to trigger synchronization with the manager (seconds) |
 | `response_timeout` | Integer | `60` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
 | `max_eps` | Integer | `10` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
+| `integrity_interval` | Integer | `86400` | `60` - `∞` | Time between integrity checks for each inventory table (seconds) |
 
 ---
 
@@ -169,6 +171,42 @@ uint32_t sync_max_eps;  /* Maximum sync events per second */
 - Prevents overwhelming the manager with inventory synchronization traffic
 - Separate from stateless inventory event rate limiting
 - Set to `0` for unlimited (not recommended for production)
+
+### Integrity Check Interval
+
+Controls how frequently each inventory table's integrity is verified with the manager:
+
+```xml
+<synchronization>
+    <integrity_interval>86400</integrity_interval>  <!-- 24 hours -->
+</synchronization>
+```
+
+**Implementation:**
+```c
+uint32_t integrity_interval;  /* Time between integrity checks per table (seconds) */
+```
+
+**Behavior:**
+- Each of the 13 inventory tables (osinfo, hwinfo, packages, processes, ports, network_iface, network_protocol, network_address, users, groups, services, browser_extensions, hotfixes) is checked independently
+- When `integrity_interval` elapses for a table:
+  1. Agent calculates checksum-of-checksums for the table
+  2. Sends checksum to manager for validation
+  3. If checksums match: integrity confirmed, `last_sync_time` updated
+  4. If checksums mismatch: full table recovery initiated
+- Recovery process involves sending all table rows to the manager
+
+**Considerations:**
+- Default: `86400` seconds (24 hours) - balances reliability and performance
+- Each table tracks its own `last_sync_time` independently
+
+**Recovery on Mismatch:**
+When checksums don't match, the agent performs full table recovery:
+1. Increases version number for all table entries
+2. Retrieves all rows from the table
+3. Sends each row to the manager for synchronization
+4. Manager compares with its database and resolves differences
+5. Updates `last_sync_time` after successful recovery
 
 ### First Scan Notification
 

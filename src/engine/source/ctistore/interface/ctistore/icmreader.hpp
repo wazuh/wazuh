@@ -8,6 +8,7 @@
 #include <shared_mutex>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include <base/name.hpp>
 #include <base/json.hpp>
@@ -150,6 +151,26 @@ public:
      * @throw std::runtime_error on error (if the asset does not exist, unable to read the store, etc)
      */
     virtual std::string resolveNameFromUUID(const std::string& uuid) const = 0;
+
+    /**
+     * @brief Resolve a UUID from an asset name and type
+     *
+     * @param name Name of the asset to resolve
+     * @param type Type of asset (decoder, integration, kvdb, policy)
+     * @return std::string UUID of the asset
+     * @throw std::runtime_error on error (if the asset does not exist, unable to read the store, etc)
+     */
+    virtual std::string resolveUUIDFromName(const base::Name& name, const std::string& type) const = 0;
+
+    /**
+     * @brief Resolve asset name and type from its UUID
+     *
+     * @param uuid UUID of the asset to resolve
+     * @return std::pair<std::string, std::string> pair with the asset name (first)
+     *         and the asset type string (second): "decoder", "integration" or "kvdb"
+     * @throw std::runtime_error on error (if the asset does not exist, unable to read the store, etc)
+     */
+    virtual std::pair<std::string, std::string> resolveNameAndTypeFromUUID(const std::string& uuid) const = 0;
 
     // TODO: Analize if we need to add metadata functions
     // virtual XXX getMetadata() const = 0;

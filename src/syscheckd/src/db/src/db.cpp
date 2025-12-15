@@ -38,8 +38,6 @@ void DB::init(const int storage,
                                                  DbManagement::PERSISTENT)};
 
     FIMDB::instance().init(callbackLogWrapper, dbsyncHandler, fileLimit, valueLimit);
-
-    initializeTableMetadata();
 }
 
 DBSYNC_HANDLE DB::DBSyncHandle()
@@ -87,179 +85,6 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
     return count;
 }
 
-std::string DB::getConcatenatedChecksums(const std::string& tableName)
-{
-    std::vector<std::string> checksums;
-
-    auto callback {[&checksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-    {
-        if (ReturnTypeCallback::SELECTED == type)
-        {
-            checksums.push_back(jsonResult.at("checksum").get<std::string>());
-        }
-    }};
-
-    auto selectQuery {SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"checksum"})
-                      .orderByOpt({"checksum"})
-                      .rowFilter("")
-                      .distinctOpt(false)
-                      .build()};
-
-    FIMDB::instance().executeQuery(selectQuery.query(), callback);
-
-    std::string concatenatedChecksums;
-    size_t totalSize = 0;
-
-    for (const auto& checksum : checksums)
-    {
-        totalSize += checksum.length();
-    }
-
-    concatenatedChecksums.reserve(totalSize);
-
-    for (const auto& checksum : checksums)
-    {
-        concatenatedChecksums += checksum;
-    }
-
-    return concatenatedChecksums;
-}
-
-std::string DB::calculateTableChecksum(const char* table_name)
-{
-    std::string concatenated_checksums = DB::instance().getConcatenatedChecksums(table_name);
-
-    // Build checksum-of-checksums
-    Utils::HashData hash(Utils::HashType::Sha1);
-    std::string final_checksum;
-
-    try
-    {
-        hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
-        const std::vector<unsigned char> hashResult = hash.hash();
-        final_checksum = Utils::asciiToHex(hashResult);
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
-    }
-
-    // LCOV_EXCL_STOP
-
-
-    return final_checksum;
-}
-
-std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName)
-{
-    std::vector<nlohmann::json> recoveryItems;
-    auto callback {[&recoveryItems](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-    {
-        if (ReturnTypeCallback::SELECTED == type)
-        {
-            recoveryItems.push_back(jsonResult);
-        }
-    }};
-    auto selectQuery {SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"*"})
-                      .build()};
-
-    FIMDB::instance().executeQuery(selectQuery.query(), callback);
-    return recoveryItems;
-}
-
-void DB::initializeTableMetadata()
-{
-    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-    // Check if metadata entries already exist by querying the table
-    bool fileEntryExists = false;
-
-    auto checkCallback = [&fileEntryExists](ReturnTypeCallback result, const nlohmann::json&)
-    {
-        if (result == ReturnTypeCallback::SELECTED)
-        {
-            fileEntryExists = true;
-        }
-    };
-
-    auto checkQuery = SelectQuery::builder()
-                      .table("table_metadata")
-                      .columnList({"table_name"})
-                      .rowFilter("WHERE table_name = 'file_entry'")
-                      .build();
-
-    FIMDB::instance().executeQuery(checkQuery.query(), checkCallback);
-
-    // Only insert if the entry doesn't exist
-    if (!fileEntryExists)
-    {
-        auto fileEntrySyncQuery = SyncRowQuery::builder()
-                                  .table("table_metadata")
-        .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
-        .build();
-        FIMDB::instance().updateItem(fileEntrySyncQuery.query(), emptyCallback);
-    }
-
-#ifdef WIN32
-    bool registryKeyExists = false;
-    auto checkRegistryKeyCallback = [&registryKeyExists](ReturnTypeCallback result, const nlohmann::json&)
-    {
-        if (result == ReturnTypeCallback::SELECTED)
-        {
-            registryKeyExists = true;
-        }
-    };
-
-    auto checkRegistryKeyQuery = SelectQuery::builder()
-                                 .table("table_metadata")
-                                 .columnList({"table_name"})
-                                 .rowFilter("WHERE table_name = 'registry_key'")
-                                 .build();
-
-    FIMDB::instance().executeQuery(checkRegistryKeyQuery.query(), checkRegistryKeyCallback);
-
-    if (!registryKeyExists)
-    {
-        auto registryKeySyncQuery = SyncRowQuery::builder()
-                                    .table("table_metadata")
-        .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
-        .build();
-        FIMDB::instance().updateItem(registryKeySyncQuery.query(), emptyCallback);
-    }
-
-    bool registryDataExists = false;
-    auto checkRegistryDataCallback = [&registryDataExists](ReturnTypeCallback result, const nlohmann::json&)
-    {
-        if (result == ReturnTypeCallback::SELECTED)
-        {
-            registryDataExists = true;
-        }
-    };
-
-    auto checkRegistryDataQuery = SelectQuery::builder()
-                                  .table("table_metadata")
-                                  .columnList({"table_name"})
-                                  .rowFilter("WHERE table_name = 'registry_data'")
-                                  .build();
-
-    FIMDB::instance().executeQuery(checkRegistryDataQuery.query(), checkRegistryDataCallback);
-
-    if (!registryDataExists)
-    {
-        auto registryDataSyncQuery = SyncRowQuery::builder()
-                                     .table("table_metadata")
-        .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
-        .build();
-        FIMDB::instance().updateItem(registryDataSyncQuery.query(), emptyCallback);
-    }
-
-#endif
-}
 
 void DB::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
 {
@@ -384,70 +209,6 @@ int DB::updateVersion(const std::string& tableName, int version)
     return retval;
 }
 
-int DB::increaseEachEntryVersion(const std::string& tableName)
-{
-    std::vector<nlohmann::json> rows;
-    auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-    {
-        if (ReturnTypeCallback::SELECTED == type)
-        {
-            rows.push_back(jsonResult);
-        }
-    }};
-
-    try
-    {
-        // Select all rows
-        auto selectQuery {SelectQuery::builder()
-                          .table(tableName)
-                          .columnList({"*"})
-                          .rowFilter("")
-                          .orderByOpt("")
-                          .distinctOpt(false)
-                          .build()};
-
-        FIMDB::instance().executeQuery(selectQuery.query(), callback);
-    }
-    catch (const std::exception& ex)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, std::string("Error selecting rows for version update: ") + ex.what());
-        return -1;
-    }
-
-    FIMDB::instance().logFunction(LOG_DEBUG, "Incrementing version for " + std::to_string(rows.size()) + " entries in table " + tableName);
-
-    // Update version for each row - fail fast on first error
-    size_t updated = 0;
-
-    for (auto& row : rows)
-    {
-        row["version"] = row["version"].get<int>() + 1;
-
-        // Use syncRow to update the entry
-        auto updateCallback {[](ReturnTypeCallback, const nlohmann::json&) {}};
-
-        auto syncQuery {SyncRowQuery::builder()
-                        .table(tableName)
-                        .data(row)
-                        .build()};
-
-        try
-        {
-            FIMDB::instance().updateItem(syncQuery.query(), updateCallback);
-            updated++;
-        }
-        catch (const std::exception& ex)
-        {
-            FIMDB::instance().logFunction(LOG_ERROR,
-                                          std::string("Error updating version for entry ") + std::to_string(updated) +
-                                          "/" + std::to_string(rows.size()) + " in table " + tableName + ": " + ex.what());
-            return -1;
-        }
-    }
-
-    FIMDB::instance().logFunction(LOG_DEBUG, "Successfully incremented version for all " + std::to_string(updated) + " entries");
-    return 0;
-}
 
 #ifdef __cplusplus
 extern "C"
@@ -612,15 +373,15 @@ int fim_db_increase_each_entry_version(const char* table_name)
 
     try
     {
-        return DB::instance().increaseEachEntryVersion(table_name);
+        FIMDB::instance().DBSyncHandler()->increaseEachEntryVersion(table_name);
+        return 0;
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return -1;
     }
-
-    return -1;
 
     // LCOV_EXCL_STOP
 }
@@ -636,7 +397,7 @@ cJSON* fim_db_get_every_element(const char* table_name)
 
     try
     {
-        std::vector<nlohmann::json> items = DB::instance().getEveryElement(table_name);
+        std::vector<nlohmann::json> items = FIMDB::instance().DBSyncHandler()->getEveryElement(table_name);
 
         result_array = cJSON_CreateArray();
 
@@ -699,7 +460,8 @@ char* fim_db_calculate_table_checksum(const char* table_name)
 
     try
     {
-        std::string checksum = DB::instance().calculateTableChecksum(table_name);
+        DBSync dbSync(DB::instance().DBSyncHandle());
+        std::string checksum = dbSync.calculateTableChecksum(table_name);
         result = strdup(checksum.c_str());
     }
     catch (const std::exception& err)
