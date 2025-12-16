@@ -1350,8 +1350,7 @@ INDEXER_TEMPLATES_BASE := \
 INDEXER_TEMPLATES_SERVER_STATES := \
 	vulnerabilities.json
 
-INDEXER_TEMPLATES_SERVER_STREAMS := \
-	alerts.json
+INDEXER_TEMPLATES_SERVER_STREAMS :=
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
