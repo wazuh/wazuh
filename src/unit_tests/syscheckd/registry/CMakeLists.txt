@@ -25,7 +25,7 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                                      -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                                      -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                                     -Wl,--wrap,fim_db_close_and_delete_database \
+                                     -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                      -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                      -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
@@ -54,7 +54,7 @@ target_link_libraries(test_events "${DEBUG_OP_WRAPPERS} \
                                    -Wl,--wrap=fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_remove_path \
                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
                                    -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                                   -Wl,--wrap,fim_db_close_and_delete_database \
+                                   -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
                                    -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                    -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database")
 

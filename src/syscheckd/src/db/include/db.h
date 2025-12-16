@@ -113,6 +113,14 @@ EXPORTED int fim_db_get_max_version_file();
 EXPORTED int fim_db_set_version_file(int version);
 
 /**
+ * @brief Clean all file entries from the database.
+ *
+ * This function deletes all entries from file_entry table.
+ * Used when all directory paths are removed from configuration to clean orphaned data.
+ */
+EXPORTED void fim_db_clean_file_table();
+
+/**
  * @brief Makes any necessary queries to get the entry updated in the DB.
  *
  * @param data The information linked to the path to be created or updated.

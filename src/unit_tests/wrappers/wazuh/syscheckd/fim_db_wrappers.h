@@ -90,6 +90,8 @@ void __wrap__imp__dbsync_initialize();
 
 void __wrap_fim_db_close_and_delete_database();
 
+void __wrap_fim_db_clean_file_table();
+
 void __wrap_fim_db_update_last_sync_time(const char* table_name);
 
 int __wrap_fim_db_get_max_version_file();
