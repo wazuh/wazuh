@@ -52,6 +52,7 @@ jobs:
       - name: Bandit Scan
         uses: PyCQA/bandit-action@v1
         with:
+          targets: ${{ env.PYTHON_DIRS }}
           exclude: .git,__pycache__,*/test_*,*/test/*,*/tests/*,*/testing/*
 
       - name: Upload SARIF
@@ -62,4 +63,3 @@ jobs:
           ref: refs/heads/${{ matrix.ref }}
           sha: ${{ matrix.sha }}
           wait-for-processing: true
-

@@ -8,7 +8,8 @@ on:
       - 'framework/**/*.py'
       - 'api/**/*.py'
       - 'wodles/**/*.py'
-
+env:
+  PYTHON_DIRS: "api wodles framework"
 
 jobs:
   bandit-scan:
@@ -32,9 +33,9 @@ jobs:
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }}:baseline_branch
           git checkout baseline_branch
-          bandit -r . -f json -o bandit_baseline.json --exit-zero
+          bandit -r ${{ env.PYTHON_DIRS }} -f json -o bandit_baseline.json --exit-zero
 
       - name: Run bandit scan on PR changes
         run: |
           git checkout ${{ github.event.pull_request.head.ref }}
-          bandit -r . --baseline bandit_baseline.json
+          bandit -r ${{ env.PYTHON_DIRS }} --baseline bandit_baseline.json
