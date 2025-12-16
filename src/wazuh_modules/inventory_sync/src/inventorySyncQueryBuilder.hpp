@@ -296,12 +296,27 @@ namespace InventorySyncQueryBuilder
     buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
     {
         nlohmann::json query = {
-            {"query", {{"term", {{"agent.id", agentId}}}}}, {"size", size}, {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+            {"_source", nlohmann::json::array({"vulnerability.id"})},
+            {"query", {{"term", {{"agent.id", agentId}}}}},
+            {"size", size},
+            {"sort", {{{"_id", {{"order", "asc"}}}}}}};
 
         if (!searchAfter.empty())
         {
             query["search_after"] = {searchAfter};
         }
+
+        return query;
+    }
+
+    /// @brief Build GET query for a vulnerability document by _id (package only).
+    /// @details Returns only the package object to enrich missing package context.
+    inline nlohmann::json buildVulnerabilityPackageGetByIdQuery(const std::string& detectionId)
+    {
+        nlohmann::json query = {
+            {"_source", nlohmann::json::array({"package"})},
+            {"query", {{"ids", {{"values", nlohmann::json::array({detectionId})}}}}},
+            {"size", 1}};
 
         return query;
     }

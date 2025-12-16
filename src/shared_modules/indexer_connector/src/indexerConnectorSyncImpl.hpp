@@ -656,7 +656,7 @@ public:
 
         const auto onSuccess = [&resultJson](const std::string& response)
         {
-            logDebug2(IC_NAME, "Search query response: %s", response.c_str());
+            //logDebug2(IC_NAME, "Search query response: %s", response.c_str());
             resultJson = nlohmann::json::parse(response);
         };
 
