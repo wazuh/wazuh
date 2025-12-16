@@ -438,7 +438,7 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, PythonPackageWithFilesGetNextPythonFiles)
     // unused data
     cp += 4;
 
-    // dirindexes tag
+    // dir indexes tag
     ip = (int32_t*)cp;
     *ip = __builtin_bswap32(TAG_DIRINDEXES);
     cp += 4;
