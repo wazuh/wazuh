@@ -2,6 +2,8 @@
 
 Syscollector is configured in the agent's `ossec.conf` file using the `<wodle name="syscollector">` section. The module supports both basic inventory collection and advanced synchronization features for persistent inventory state management.
 
+> **Important:** Starting in version 5.0, vulnerability detection is handled by a separate Vulnerability Detector module. Syscollector focuses exclusively on inventory collection (packages, OS, hotfixes, etc.), while vulnerability detection and CVE correlation are performed independently.
+
 ---
 
 ## Basic Configuration
