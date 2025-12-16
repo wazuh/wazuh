@@ -501,12 +501,6 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 
     while (sca_sync_module_running)
     {
-        // Wait for sync_interval before next cycle
-        for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
-        {
-            sleep(1);
-        }
-
         if (!sca_sync_module_running)
         {
             break;
@@ -570,6 +564,12 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         }
 
         mdebug1("SCA synchronization cycle finished, waiting for %d seconds before next run.", sca_sync_interval);
+
+        // Wait for sync_interval before next cycle
+        for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
+        {
+            sleep(1);
+        }
     }
 
 #ifdef WIN32
