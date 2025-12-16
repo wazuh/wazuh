@@ -674,7 +674,10 @@ int main(int argc, char* argv[])
                 [orchestrator, archiver, hostInfo](std::string_view msg)
                 {
                     archiver->archive(msg.data());
-                    orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg, hostInfo));
+                    auto event = base::eventParsers::parseLegacyEvent(msg, hostInfo);
+                    // TODO: momentary change
+                    event->setString("temp-cluster-name", "/wazuh/cluster/name");
+                    orchestrator->postEvent(std::move(event));
                 },
                 confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
@@ -688,10 +691,28 @@ int main(int argc, char* argv[])
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
+            // TODO: momentary change
+            auto modifyParsingJson = []() -> api::event::handlers::ProtolHandler
+            {
+                auto parser = api::event::protocol::getNDJsonParser();
+                return [parser](std::string&& batch) -> std::queue<base::Event>
+                {
+                    auto batchEvents = parser(std::move(batch));
+                    std::queue<base::Event> modifiedEvents;
+                    while (!batchEvents.empty())
+                    {
+                        batchEvents.front()->setString("temp-cluster-name", "/wazuh/cluster/name");
+                        modifiedEvents.push(std::move(batchEvents.front()));
+                        batchEvents.pop();
+                    }
+                    return modifiedEvents;
+                };
+            };
+
             engineRemoteServer->addRoute(
                 httpsrv::Method::POST,
                 "/events/enriched", // TODO: Double check route
-                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
+                api::event::handlers::pushEvent(orchestrator, modifyParsingJson(), archiver));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
