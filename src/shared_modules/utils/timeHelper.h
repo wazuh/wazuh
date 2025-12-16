@@ -164,10 +164,9 @@ namespace Utils
      * @brief Convert a timestamp to ISO8601 format.
      *
      * @param timestamp Timestamp to convert. Format: "YYYY/MM/DD hh:mm:ss".
-     * @param utc If true, the time will be expressed as a UTC time.
      * @return std::string ISO8601 timestamp.
      */
-    static std::string timestampToISO8601(const std::string& timestamp, const bool utc = true)
+    static std::string timestampToISO8601(const std::string& timestamp)
     {
         std::tm tm {};
         std::istringstream ss(timestamp);
@@ -181,8 +180,7 @@ namespace Utils
         auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
-        // gmtime: result expressed as a UTC time
-        struct tm const* localTime = utc ? gmtime_r(&time, &tm) : localtime_r(&time, &tm);
+        struct tm const* localTime = gmtime_r(&time, &tm);
 
         if (localTime == nullptr)
         {
@@ -343,7 +341,7 @@ namespace Utils
             {
                 // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
                 // if not, check if it is already ISO8601.
-                auto ISO8601Timestamp = timestampToISO8601(timestamp, false);
+                auto ISO8601Timestamp = timestampToISO8601(timestamp);
                 return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(timestamp) : ISO8601Timestamp;
             }
             std::time_t time = std::stoi(timestamp);
@@ -371,7 +369,7 @@ namespace Utils
             {
                 // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
                 // if not, check if it is already ISO8601.
-                auto ISO8601Timestamp = timestampToISO8601(std::string(timestamp), false);
+                auto ISO8601Timestamp = timestampToISO8601(std::string(timestamp));
                 return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp)) : ISO8601Timestamp;
             }
             std::time_t time;
