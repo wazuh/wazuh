@@ -1,6 +1,6 @@
 {
   "Start": {
-    "agentid": "001",
+    "agentid": "020",
     "mode": "delta",
     "option": "VDSync",
     "agentname": "ubuntu22",
@@ -42,8 +42,7 @@
           "description": "zlib1g - compression library - runtime",
           "name": "zlib1g",
           "size": 512,
-          "multiarch": "foreign",
-          "groups": "compression"
+          "multiarch": "foreign"
         },
         "state": {
           "document_version": 1,
@@ -74,7 +73,6 @@
           "name": "zlib1g",
           "size": 512,
           "multiarch": "foreign",
-          "groups": "compression",
           "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*"
         },
         "state": {
@@ -105,8 +103,7 @@
           "description": "zlib1g-doc - compression library - documentation",
           "name": "zlib1g-doc",
           "size": 256,
-          "multiarch": "foreign",
-          "groups": "compression"
+          "multiarch": "foreign"
         },
         "state": {
           "document_version": 2,
@@ -119,39 +116,21 @@
     {
       "id": "ctx-os-ubuntu24-001",
       "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "996d7206f3c607c7aa377702d65c1b53a80d2a84"
-          }
-        },
-        "host": {
-          "architecture": "aarch64",
-          "hostname": "ubuntu24",
-          "os": {
-            "build": null,
-            "codename": "noble",
-            "distribution": {
-              "release": null
-            },
-            "full": null,
-            "kernel": {
-              "name": "Linux",
-              "release": "6.8.0-71-generic",
-              "version": "#71-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 16:44:45 UTC 2025"
-            },
-            "major": "24",
-            "minor": "04",
-            "name": "Ubuntu",
-            "patch": "2",
-            "platform": "ubuntu",
-            "type": "linux",
-            "version": "24.04.2 LTS (Noble Numbat)"
-          }
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T11:57:48.873Z"
-        }
+        "architecture": "aarch64",
+        "checksum": "996d7206f3c607c7aa377702d65c1b53a80d2a84",
+        "hostname": "ubuntu24",
+        "os_codename": "noble",
+        "os_kernel_name": "Linux",
+        "os_kernel_release": "6.8.0-71-generic",
+        "os_kernel_version": "#71-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 16:44:45 UTC 2025",
+        "os_major": "24",
+        "os_minor": "04",
+        "os_name": "Ubuntu",
+        "os_patch": "2",
+        "os_platform": "ubuntu",
+        "os_type": "linux",
+        "os_version": "24.04.2 LTS (Noble Numbat)",
+        "version": 1
       }
     }
   ]

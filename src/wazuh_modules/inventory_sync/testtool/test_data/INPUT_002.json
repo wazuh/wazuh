@@ -1,6 +1,6 @@
 {
   "Start": {
-    "agentid": "020",
+    "agentid": "022",
     "mode": "full",
     "option": "VDSync",
     "agentname": "ubuntu24",
@@ -89,8 +89,7 @@
           "description": "Linux kernel image for version 6.8.0-36-generic",
           "name": "linux-image-6.8.0-36-generic",
           "size": 65000000,
-          "multiarch": "no",
-          "groups": "kernel"
+          "multiarch": "no"
         },
         "state": {
           "document_version": 2,
@@ -120,8 +119,7 @@
           "description": "Linux kernel image for version 6.8.0-41-generic",
           "name": "linux-image-6.8.0-41-generic",
           "size": 66000000,
-          "multiarch": "no",
-          "groups": "kernel"
+          "multiarch": "no"
         },
         "state": {
           "document_version": 3,
@@ -134,92 +132,62 @@
     {
       "id": "ctx-zlib1g-001",
       "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "4444444444444444444444444444444444444444"
-          }
-        },
-        "package": {
-          "category": "libs",
-          "installed": null,
-          "path": null,
-          "priority": "required",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1:1.2.11.dfsg-2ubuntu1.5",
-          "architecture": "amd64",
-          "description": "zlib1g - compression library - runtime",
-          "name": "zlib1g",
-          "size": 512,
-          "multiarch": "foreign",
-          "groups": "compression"
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T12:31:07.733Z"
-        }
+        "architecture": "amd64",
+        "category": "libs",
+        "checksum": "4444444444444444444444444444444444444444",
+        "description": "zlib1g - compression library - runtime",
+        "installed": null,
+        "name": "zlib1g",
+        "path": "",
+        "priority": "required",
+        "size": 512,
+        "source": "zlib",
+        "type": "deb",
+        "vendor": "Ubuntu Developers",
+        "version": "1:1.2.11.dfsg-2ubuntu1.5",
+        "multiarch": "foreign",
+        "version_": "1:1.2.11.dfsg-2ubuntu1.5"
       }
     },
     {
       "id": "ctx-zlib1g-002",
       "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "5555555555555555555555555555555555555555"
-          }
-        },
-        "package": {
-          "category": "libs",
-          "installed": null,
-          "path": null,
-          "priority": "required",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1.2.11",
-          "architecture": "amd64",
-          "description": "zlib1g - compression library runtime",
-          "name": "zlib1g",
-          "size": 512,
-          "multiarch": "foreign",
-          "groups": "compression",
-          "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*"
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T12:31:07.733Z"
-        }
+        "architecture": "amd64",
+        "category": "libs",
+        "checksum": "5555555555555555555555555555555555555555",
+        "description": "zlib1g - compression library runtime",
+        "installed": null,
+        "name": "zlib1g",
+        "path": "",
+        "priority": "required",
+        "size": 512,
+        "source": "zlib",
+        "type": "deb",
+        "vendor": "Ubuntu Developers",
+        "version": "1.2.11",
+        "multiarch": "foreign",
+        "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*",
+        "version_": "1.2.11"
       }
     },
     {
       "id": "ctx-zlib1g-doc-001",
       "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "6666666666666666666666666666666666666666"
-          }
-        },
-        "package": {
-          "category": "doc",
-          "installed": null,
-          "path": "/usr/share/doc/zlib1g-doc",
-          "priority": "optional",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1:1.2.11.dfsg-2ubuntu1.5",
-          "architecture": "amd64",
-          "description": "zlib1g-doc - compression library - documentation",
-          "name": "zlib1g-doc",
-          "size": 256,
-          "multiarch": "foreign",
-          "groups": "compression"
-        },
-        "state": {
-          "document_version": 2,
-          "modified_at": "2025-11-27T13:05:00.000Z"
-        }
+        "architecture": "amd64",
+        "category": "doc",
+        "checksum": "6666666666666666666666666666666666666666",
+        "description": "zlib1g-doc - compression library - documentation",
+        "installed": null,
+        "name": "zlib1g-doc",
+        "path": "/usr/share/doc/zlib1g-doc",
+        "priority": "optional",
+        "size": 256,
+        "source": "zlib",
+        "type": "deb",
+        "vendor": "Ubuntu Developers",
+        "version": "1:1.2.11.dfsg-2ubuntu1.5",
+        "multiarch": "foreign",
+        "version_": "1:1.2.11.dfsg-2ubuntu1.5"
       }
     }
   ]

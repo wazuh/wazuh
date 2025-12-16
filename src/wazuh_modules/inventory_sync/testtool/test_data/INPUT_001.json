@@ -10,64 +10,77 @@
     "osname": "Windows 11 Pro",
     "osplatform": "windows",
     "ostype": "windows",
-    "osversion": "11.0.22631",
+    "osversion": "10.0.22000.2416",
     "groups": [
       "default"
     ],
     "indices": [
-      "wazuh-states-inventory-system",
-      "wazuh-states-inventory-packages"
+      "wazuh-states-inventory-hotfixes"
     ],
-    "size": 4
+    "size": 6
   },
   "data_values": [
     {
-      "id": "os-win11-upsert-001",
-      "operation": "upsert",
+      "id": "hvx-kb5034123",
+      "operation": "delete",
       "payload": {
-        "host": {
-          "hostname": "win11-host",
-          "architecture": "x86_64",
-          "os": {
-            "name": "Windows",
-            "platform": "windows",
-            "type": "windows",
-            "version": "11.0.22631",
-            "full": "Windows 11 23H2",
-            "major": "11",
-            "minor": "0"
+        "package": {
+          "hotfix": {
+            "name": "KB5034123"
           }
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-11-27T11:59:00.000Z"
-        }
-      }
-    },
-    {
-      "id": "os-win10-delete-001",
-      "operation": "delete",
-      "payload": {
-        "host": {
-          "os": {
-            "name": "Windows",
-            "platform": "windows",
-            "type": "windows",
-            "version": "10.0.11432",
-            "full": "Windows 10 23H2",
-            "major": "10",
-            "minor": "0"
-          }
-        },
-        "state": {
-          "document_version": 2,
           "modified_at": "2025-11-27T12:05:00.000Z"
         }
       }
+    }
+  ],
+  "data_context": [
+    {
+      "id": "ctx-os-win11-22000-2416",
+      "payload": {
+        "hostname": "win11-host",
+        "architecture": "x86_64",
+        "os_name": "Windows 11 Pro",
+        "os_platform": "windows",
+        "os_type": "windows",
+        "os_version": "10.0.22000.2416",
+        "os_full": "21H2",
+        "os_major": "10",
+        "os_minor": "0",
+        "os_build": "22000.2416",
+        "os_distribution_release": "2009",
+        "checksum": "placeholder-win11-checksum",
+        "version": 1
+      }
     },
     {
-      "id": "dddddddddddddddddddddddddddddddddddddddddd",
-      "operation": "upsert",
+      "id": "ctx-hotfix-kb5031358",
+      "payload": {
+        "hotfix_name": "KB5031358",
+        "checksum": "checksum-kb5031358",
+        "version": 1
+      }
+    },
+    {
+      "id": "ctx-hotfix-kb5030650",
+      "payload": {
+        "hotfix_name": "KB5030650",
+        "checksum": "checksum-kb5030650",
+        "version": 1
+      }
+    },
+    {
+      "id": "ctx-hotfix-kb5025239",
+      "payload": {
+        "hotfix_name": "KB5025239",
+        "checksum": "checksum-kb5025239",
+        "version": 1
+      }
+    },
+    {
+      "id": "ctx-edge-116",
       "payload": {
         "package": {
           "category": "browser",
@@ -77,23 +90,21 @@
           "source": "microsoft-edge",
           "type": "win",
           "vendor": "Microsoft Corporation",
-          "version": "130.0.0.0",
+          "version": "116.0.1938.54",
           "architecture": "amd64",
           "description": "Microsoft Edge browser",
           "name": "microsoft-edge",
           "size": 250000000,
-          "multiarch": "no",
-          "groups": "browser"
+          "multiarch": "no"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-11-27T12:10:00.000Z"
+          "modified_at": "2025-11-27T12:20:00.000Z"
         }
       }
     },
     {
-      "id": "cccccccccccccccccccccccccccccccccccccccc",
-      "operation": "upsert",
+      "id": "ctx-office-2016-10396",
       "payload": {
         "package": {
           "category": "office",
@@ -103,81 +114,88 @@
           "source": "microsoft-office",
           "type": "win",
           "vendor": "Microsoft Corporation",
-          "version": "16.0.18000.20100",
+          "version": "16.0.10396.20017",
           "architecture": "amd64",
-          "description": "Microsoft Office suite",
+          "description": "Microsoft Office 2016",
           "name": "microsoft-office",
           "size": 1200000000,
-          "multiarch": "no",
-          "groups": "office"
+          "multiarch": "no"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-11-27T12:12:00.000Z"
-        }
-      }
-    }
-  ],
-  "data_context": [
-    {
-      "id": "ctx-os-win11-001",
-      "payload": {
-        "host": {
-          "os": {
-            "name": "Windows",
-            "platform": "windows",
-            "type": "windows",
-            "version": "11.0.22631",
-            "full": "Windows 11 23H2",
-            "major": "11",
-            "minor": "0"
-          }
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T12:14:00.000Z"
+          "modified_at": "2025-11-27T12:22:00.000Z"
         }
       }
     },
     {
-      "id": "ctx-hotfix-kb5068865",
+      "id": "ctx-7zip-1900",
       "payload": {
         "package": {
-          "hotfix": {
-            "name": "KB5068865"
-          }
+          "category": "archiver",
+          "installed": "2025-11-27T12:24:00.000Z",
+          "path": "C:\\\\Program Files\\\\7-Zip\\\\7z.exe",
+          "priority": "optional",
+          "source": "7zip",
+          "type": "win",
+          "vendor": "Igor Pavlov",
+          "version": "19.00",
+          "architecture": "amd64",
+          "description": "7-Zip file archiver",
+          "name": "7zip",
+          "size": 2000000,
+          "multiarch": "no"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-11-27T12:15:00.000Z"
+          "modified_at": "2025-11-27T12:24:00.000Z"
         }
       }
     },
     {
-      "id": "ctx-hotfix-kb5068909",
+      "id": "ctx-java-8u351",
       "payload": {
         "package": {
-          "hotfix": {
-            "name": "KB5068909"
-          }
+          "category": "runtime",
+          "installed": null,
+          "path": "C:\\\\Program Files\\\\Java\\\\jre1.8.0_351\\\\bin\\\\java.exe",
+          "priority": "optional",
+          "source": "oracle-java",
+          "type": "win",
+          "vendor": "Oracle Corporation",
+          "version": "8.0.3510.10",
+          "architecture": "amd64",
+          "description": "Java Runtime Environment 8",
+          "name": "java-8-jre",
+          "size": 90000000,
+          "multiarch": "no"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-11-27T12:16:00.000Z"
+          "modified_at": "2025-11-27T12:26:00.000Z"
         }
       }
     },
     {
-      "id": "ctx-hotfix-kb4532951",
+      "id": "ctx-chrome-100",
       "payload": {
         "package": {
-          "hotfix": {
-            "name": "KB4532951"
-          }
+          "category": "browser",
+          "installed": null,
+          "path": "C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe",
+          "priority": "optional",
+          "source": "google-chrome",
+          "type": "win",
+          "vendor": "Google LLC",
+          "version": "100.0.4896.60",
+          "architecture": "amd64",
+          "description": "Google Chrome browser",
+          "name": "google-chrome",
+          "size": 180000000,
+          "multiarch": "no"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-11-27T12:18:00.000Z"
+          "modified_at": "2025-11-27T12:28:00.000Z"
         }
       }
     }
