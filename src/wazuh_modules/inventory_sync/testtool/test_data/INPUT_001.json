@@ -10,7 +10,7 @@
     "osname": "Windows 11 Pro",
     "osplatform": "windows",
     "ostype": "windows",
-    "osversion": "10.0.22631",
+    "osversion": "11.0.22631",
     "groups": [
       "default"
     ],
@@ -22,18 +22,17 @@
   },
   "data_values": [
     {
-      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "id": "os-win11-upsert-001",
       "operation": "upsert",
       "payload": {
         "host": {
           "hostname": "win11-host",
           "architecture": "x86_64",
           "os": {
-            "item_id": "os-win11-001",
             "name": "Windows",
             "platform": "windows",
             "type": "windows",
-            "version": "10.0.22631",
+            "version": "11.0.22631",
             "full": "Windows 11 23H2",
             "major": "11",
             "minor": "0"
@@ -46,12 +45,18 @@
       }
     },
     {
-      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "id": "os-win10-delete-001",
       "operation": "delete",
       "payload": {
         "host": {
           "os": {
-            "item_id": "os-win10-old"
+            "name": "Windows",
+            "platform": "windows",
+            "type": "windows",
+            "version": "10.0.11432",
+            "full": "Windows 10 23H2",
+            "major": "10",
+            "minor": "0"
           }
         },
         "state": {
@@ -74,11 +79,9 @@
           "vendor": "Microsoft Corporation",
           "version": "130.0.0.0",
           "architecture": "amd64",
-          "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "description": "Microsoft Edge browser",
           "name": "microsoft-edge",
           "size": 250000000,
-          "format": "win",
           "multiarch": "no",
           "groups": "browser"
         },
@@ -102,11 +105,9 @@
           "vendor": "Microsoft Corporation",
           "version": "16.0.18000.20100",
           "architecture": "amd64",
-          "checksum": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "description": "Microsoft Office suite",
           "name": "microsoft-office",
           "size": 1200000000,
-          "format": "win",
           "multiarch": "no",
           "groups": "office"
         },
@@ -119,14 +120,14 @@
   ],
   "data_context": [
     {
+      "id": "ctx-os-win11-001",
       "payload": {
         "host": {
           "os": {
-            "item_id": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
             "name": "Windows",
             "platform": "windows",
             "type": "windows",
-            "version": "10.0.22631",
+            "version": "11.0.22631",
             "full": "Windows 11 23H2",
             "major": "11",
             "minor": "0"
@@ -139,6 +140,7 @@
       }
     },
     {
+      "id": "ctx-hotfix-kb5068865",
       "payload": {
         "package": {
           "hotfix": {
@@ -152,6 +154,7 @@
       }
     },
     {
+      "id": "ctx-hotfix-kb5068909",
       "payload": {
         "package": {
           "hotfix": {
@@ -165,6 +168,7 @@
       }
     },
     {
+      "id": "ctx-hotfix-kb4532951",
       "payload": {
         "package": {
           "hotfix": {
