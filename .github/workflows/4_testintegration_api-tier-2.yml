@@ -85,7 +85,15 @@ jobs:
           sudo tail -F /var/ossec/logs/api.log >> /tmp/wazuh-logs/api.log 2>/dev/null &
           sudo tail -F /var/ossec/logs/ossec.log >> /tmp/wazuh-logs/ossec.log 2>/dev/null &
           cd tests/integration
-          sudo python3 -m pytest --tier 2 test_api/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest --tier 2 test_api/ --html=results.html --self-contained-html
+      # Upload the tests result html as an artifact
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results-${{ github.run_id }}
+          path: ./tests/integration/results.html
+          retention-days: 7
       # Collect logs if tests fail
       - name: Collect logs on failure
         if: failure()

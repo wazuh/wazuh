@@ -94,4 +94,12 @@ jobs:
         run: |
           NET START wazuh
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 2 test_fim\
+          $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest --tier 2 test_fim\ --html=results.html --self-contained-html
+      # Upload the tests result html as an artifact
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fim-test-results-${{ github.run_id }}
+          path: C:\wazuh\tests\integration\results.html
+          retention-days: 7

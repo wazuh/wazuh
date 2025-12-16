@@ -51,4 +51,12 @@ jobs:
         run: |
           cd src
           echo "{}" > states_update_mappings.json
-          python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+          GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${{ github.head_ref || github.ref_name }}" python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG --html=results.html --self-contained-html
+      # Upload the tests result html as an artifact
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-harvester-test-results-${{ github.run_id }}
+          path: ./src/results.html
+          retention-days: 7

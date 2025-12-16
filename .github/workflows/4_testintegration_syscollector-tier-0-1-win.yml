@@ -102,4 +102,12 @@ jobs:
       - name: Run syscollector integration tests
         run: |
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_syscollector\
+          $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest --tier 0 --tier 1 test_syscollector\ --html=results.html --self-contained-html
+      # Upload the tests result html as an artifact
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: syscollector-test-results-${{ github.run_id }}
+          path: C:\wazuh\tests\integration\results.html
+          retention-days: 7
