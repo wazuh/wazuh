@@ -1,25 +1,41 @@
-name: 4.X - Python - Code analysis
+run-name: Python static code analysis on PR ${{ github.event.pull_request.number }}
+name: 4.X - Python static code analysis on PR
+
 on:
-  workflow_dispatch:
   pull_request:
     paths:
-      - '.github/workflows/4_codeanalysis_python.yml'
-  schedule:
-    - cron: '0 10 * * 2'
+      - ".github/workflows/4_codeanalysis_python.yml"
+      - 'framework/**/*.py'
+      - 'api/**/*.py'
+      - 'wodles/**/*.py'
+env:
+  PYTHON_DIRS: "api wodles framework"
 
 jobs:
-  bandit:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-
+  bandit-scan:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Bandit Scan
-        uses: shundor/python-bandit-scan@v1.0
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
-          exit_zero: true
-          excluded_paths: .git,__pycache__,*/test_*,*/test/*,*/tests/*,*/testing/*
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: 'framework/.python-version'
+
+      - name: Install bandit
+        run: |
+          pip install bandit
+
+      - name: Generate baseline from target branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:baseline_branch
+          git checkout baseline_branch
+          bandit -r ${{ env.PYTHON_DIRS }} -f json -o bandit_baseline.json --exit-zero
+
+      - name: Run bandit scan on PR changes
+        run: |
+          git checkout ${{ github.event.pull_request.head.ref }}
+          bandit -r ${{ env.PYTHON_DIRS }} --baseline bandit_baseline.json
