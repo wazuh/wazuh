@@ -1,0 +1,226 @@
+{
+  "Start": {
+    "agentid": "020",
+    "mode": "full",
+    "option": "VDSync",
+    "agentname": "ubuntu24",
+    "agentversion": "v5.0.0",
+    "architecture": "x86_64",
+    "hostname": "ubuntu24",
+    "osname": "Ubuntu",
+    "osplatform": "ubuntu",
+    "ostype": "linux",
+    "osversion": "24.04.2 LTS (Noble Numbat)",
+    "groups": [
+      "default"
+    ],
+    "indices": [
+      "wazuh-states-inventory-system",
+      "wazuh-states-inventory-packages"
+    ],
+    "size": 7
+  },
+  "data_values": [
+    {
+      "id": "os-upsert-ubuntu24-24042",
+      "operation": "upsert",
+      "payload": {
+        "host": {
+          "hostname": "ubuntu24",
+          "architecture": "x86_64",
+          "os": {
+            "name": "Ubuntu",
+            "platform": "ubuntu",
+            "type": "linux",
+            "version": "24.04.2 LTS (Noble Numbat)",
+            "full": "Ubuntu 24.04.2 LTS",
+            "major": "24",
+            "minor": "04",
+            "patch": "2"
+          }
+        },
+        "state": {
+          "document_version": 3,
+          "modified_at": "2025-11-27T14:10:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "os-delete-ubuntu24-old",
+      "operation": "delete",
+      "payload": {
+        "host": {
+          "os": {
+            "name": "Ubuntu",
+            "platform": "ubuntu",
+            "type": "linux",
+            "version": "24.04.2 LTS (Noble Numbat)",
+            "full": "Ubuntu 24.04.2 LTS",
+            "major": "24",
+            "minor": "04",
+            "patch": "2"
+          }
+        },
+        "state": {
+          "document_version": 4,
+          "modified_at": "2025-11-27T14:12:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "kernel-old-6-8-0-36",
+      "operation": "delete",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        },
+        "package": {
+          "category": "kernel",
+          "installed": null,
+          "path": "/boot/vmlinuz-6.8.0-36-generic",
+          "priority": "required",
+          "source": "linux-image-generic",
+          "type": "deb",
+          "vendor": "Ubuntu",
+          "version": "6.8.0-36.36~22.04.1",
+          "architecture": "amd64",
+          "description": "Linux kernel image for version 6.8.0-36-generic",
+          "name": "linux-image-6.8.0-36-generic",
+          "size": 65000000,
+          "multiarch": "no",
+          "groups": "kernel"
+        },
+        "state": {
+          "document_version": 2,
+          "modified_at": "2025-11-27T14:15:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "kernel-new-6-8-0-41",
+      "operation": "upsert",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        },
+        "package": {
+          "category": "kernel",
+          "installed": null,
+          "path": "/boot/vmlinuz-6.8.0-41-generic",
+          "priority": "required",
+          "source": "linux-image-generic",
+          "type": "deb",
+          "vendor": "Ubuntu",
+          "version": "6.8.0-41.41~24.04.1",
+          "architecture": "amd64",
+          "description": "Linux kernel image for version 6.8.0-41-generic",
+          "name": "linux-image-6.8.0-41-generic",
+          "size": 66000000,
+          "multiarch": "no",
+          "groups": "kernel"
+        },
+        "state": {
+          "document_version": 3,
+          "modified_at": "2025-11-27T14:16:00.000Z"
+        }
+      }
+    }
+  ],
+  "data_context": [
+    {
+      "id": "ctx-zlib1g-001",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "4444444444444444444444444444444444444444"
+          }
+        },
+        "package": {
+          "category": "libs",
+          "installed": null,
+          "path": null,
+          "priority": "required",
+          "source": "zlib",
+          "type": "deb",
+          "vendor": "Ubuntu Developers",
+          "version": "1:1.2.11.dfsg-2ubuntu1.5",
+          "architecture": "amd64",
+          "description": "zlib1g - compression library - runtime",
+          "name": "zlib1g",
+          "size": 512,
+          "multiarch": "foreign",
+          "groups": "compression"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:31:07.733Z"
+        }
+      }
+    },
+    {
+      "id": "ctx-zlib1g-002",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "5555555555555555555555555555555555555555"
+          }
+        },
+        "package": {
+          "category": "libs",
+          "installed": null,
+          "path": null,
+          "priority": "required",
+          "source": "zlib",
+          "type": "deb",
+          "vendor": "Ubuntu Developers",
+          "version": "1.2.11",
+          "architecture": "amd64",
+          "description": "zlib1g - compression library runtime",
+          "name": "zlib1g",
+          "size": 512,
+          "multiarch": "foreign",
+          "groups": "compression",
+          "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-11-27T12:31:07.733Z"
+        }
+      }
+    },
+    {
+      "id": "ctx-zlib1g-doc-001",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "6666666666666666666666666666666666666666"
+          }
+        },
+        "package": {
+          "category": "doc",
+          "installed": null,
+          "path": "/usr/share/doc/zlib1g-doc",
+          "priority": "optional",
+          "source": "zlib",
+          "type": "deb",
+          "vendor": "Ubuntu Developers",
+          "version": "1:1.2.11.dfsg-2ubuntu1.5",
+          "architecture": "amd64",
+          "description": "zlib1g-doc - compression library - documentation",
+          "name": "zlib1g-doc",
+          "size": 256,
+          "multiarch": "foreign",
+          "groups": "compression"
+        },
+        "state": {
+          "document_version": 2,
+          "modified_at": "2025-11-27T13:05:00.000Z"
+        }
+      }
+    }
+  ]
+}
