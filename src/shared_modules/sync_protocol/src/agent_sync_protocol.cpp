@@ -1199,7 +1199,6 @@ Wazuh::SyncSchema::Option AgentSyncProtocol::toProtocolOption(Option option) con
         {Option::SYNC, Wazuh::SyncSchema::Option::Sync},
         {Option::VDFIRST, Wazuh::SyncSchema::Option::VDFirst},
         {Option::VDSYNC, Wazuh::SyncSchema::Option::VDSync},
-        {Option::VDCLEAN, Wazuh::SyncSchema::Option::VDClean}
     };
 
     if (const auto it = optionMap.find(option); it != optionMap.end())

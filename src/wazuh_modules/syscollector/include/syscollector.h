@@ -48,6 +48,7 @@ extern "C" {
 #define SYSCOLLECTOR_SYNC_INDEX_GROUPS "wazuh-states-inventory-groups"
 #define SYSCOLLECTOR_SYNC_INDEX_SERVICES "wazuh-states-inventory-services"
 #define SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS "wazuh-states-inventory-browser-extensions"
+#define SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES "wazuh-states-vulnerabilities"
 
 typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 

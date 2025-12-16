@@ -470,9 +470,6 @@ void Syscollector::start()
 #endif
     }
 
-    // Clean VD data for disabled modules
-    cleanDisabledVDData();
-
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
     syncLoop(scan_lock);
 }
@@ -1908,76 +1905,6 @@ bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
     return false;
 }
 
-std::vector<std::string> Syscollector::getDisabledVDIndices() const
-{
-    std::vector<std::string> indices;
-
-    if (!m_packages)
-    {
-        indices.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
-    }
-
-    if (!m_os)
-    {
-        indices.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
-    }
-
-#ifdef _WIN32
-
-    if (!m_hotfixes)
-    {
-        indices.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-    }
-
-#endif
-
-    return indices;
-}
-
-void Syscollector::cleanDisabledVDData()
-{
-    // Clean VD data for disabled indices
-    const auto indicesToClean = getDisabledVDIndices();
-
-    for (const auto& index : indicesToClean)
-    {
-        std::string moduleType;
-
-        if (index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
-        {
-            moduleType = "Packages";
-        }
-        else if (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
-        {
-            moduleType = "OS";
-        }
-        else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
-        {
-            moduleType = "Hotfixes";
-        }
-
-        if (!moduleType.empty())
-        {
-            m_logFunction(LOG_INFO, moduleType + " scanning disabled, will clean " + moduleType + " data");
-        }
-    }
-
-    // Notify data clean for disabled VD indices
-    if (!indicesToClean.empty() && m_spSyncProtocolVD)
-    {
-        m_logFunction(LOG_INFO, "Notifying data clean for disabled VD indices");
-
-        if (m_spSyncProtocolVD->notifyDataClean(indicesToClean, Option::VDCLEAN))
-        {
-            m_logFunction(LOG_INFO, "Data clean notification sent successfully for disabled VD indices");
-        }
-        else
-        {
-            m_logFunction(LOG_WARNING, "Failed to send data clean notification for disabled VD indices");
-        }
-    }
-}
-
 std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds)
 {
     std::vector<nlohmann::json> results;
@@ -2244,41 +2171,12 @@ void Syscollector::processVDDataContext()
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 {
-    // Separate VD and non-VD indices
-    std::vector<std::string> vdIndices;
-    std::vector<std::string> nonVdIndices;
-
-    for (const auto& index : indices)
+    if (m_spSyncProtocol)
     {
-        bool isVDIndex = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
-                          index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
-                          index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-
-        if (isVDIndex)
-        {
-            vdIndices.push_back(index);
-        }
-        else
-        {
-            nonVdIndices.push_back(index);
-        }
+        return m_spSyncProtocol->notifyDataClean(indices);
     }
 
-    bool success = true;
-
-    // Clean non-VD data with regular SYNC option
-    if (!nonVdIndices.empty() && m_spSyncProtocol)
-    {
-        success = m_spSyncProtocol->notifyDataClean(nonVdIndices, Option::SYNC);
-    }
-
-    // Clean VD data with VDCLEAN option
-    if (!vdIndices.empty() && m_spSyncProtocolVD)
-    {
-        success = m_spSyncProtocolVD->notifyDataClean(vdIndices, Option::VDCLEAN) && success;
-    }
-
-    return success;
+    return false;
 }
 
 void Syscollector::deleteDatabase()
@@ -2736,6 +2634,7 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
 void Syscollector::checkDisabledCollectorsIndicesWithData()
 {
     m_disabledCollectorsIndicesWithData.clear();
+    bool already_included_vd = false;
 
     if (!m_hardware && hasDataInTable(HW_TABLE))
     {
@@ -2745,16 +2644,31 @@ void Syscollector::checkDisabledCollectorsIndicesWithData()
     if (!m_os && hasDataInTable(OS_TABLE))
     {
         m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+        if (!already_included_vd)
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
+            already_included_vd = true;
+        }
     }
 
     if (!m_packages && hasDataInTable(PACKAGES_TABLE))
     {
         m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+        if (!already_included_vd)
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
+            already_included_vd = true;
+        }
     }
 
     if (!m_hotfixes && hasDataInTable(HOTFIXES_TABLE))
     {
         m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+        if (!already_included_vd)
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
+            already_included_vd = true;
+        }
     }
 
     if (!m_processes && hasDataInTable(PROCESSES_TABLE))
