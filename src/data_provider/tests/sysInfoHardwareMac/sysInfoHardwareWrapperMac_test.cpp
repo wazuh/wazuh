@@ -180,7 +180,7 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamTotal_Succeed)
     });
     uint64_t ret = 0;
     EXPECT_NO_THROW(ret = wrapper->ramTotal());
-    EXPECT_EQ(ret, (uint64_t)17179869184 / 1024);
+    EXPECT_EQ(ret, (uint64_t)17179869184);
 }
 
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamTotal_Failed_Sysctlbyname)
@@ -224,7 +224,7 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamFree_Succeed)
     });
     uint64_t ret = 0;
     EXPECT_NO_THROW(ret = wrapper->ramFree());
-    EXPECT_EQ(ret, (uint64_t)(16384) * 342319 / 1024);
+    EXPECT_EQ(ret, (uint64_t)(16384) * 342319);
 }
 
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamFree_Failed_Sysctlbyname1)

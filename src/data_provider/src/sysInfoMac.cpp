@@ -76,7 +76,7 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
-    jsProcessInfo["start"]      = taskInfo.pbsd.pbi_start_tvsec;
+    jsProcessInfo["start"]      = taskInfo.pbsd.pbi_start_tvsec * 1000;
 
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
     const auto pathLen

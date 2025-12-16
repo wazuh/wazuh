@@ -354,7 +354,7 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         jsProcessInfo["parent_pid"]   = processEntry.th32ParentProcessID;
         jsProcessInfo["pid"]          = std::to_string(pId);
         jsProcessInfo["utime"]        = process.userModeTime();
-        jsProcessInfo["start"]        = process.creationTime();
+        jsProcessInfo["start"]        = process.creationTime() * 1000;
         CloseHandle(processHandle);
     }
 

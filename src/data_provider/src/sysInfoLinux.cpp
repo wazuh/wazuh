@@ -128,7 +128,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["command_line"] = commandLine;
     jsProcessInfo["args"]         = commandLineArgs;
     jsProcessInfo["args_count"]   = commandLineCount;
-    jsProcessInfo["start"]        = Utils::timeTick2unixTime(process->start_time);
+    jsProcessInfo["start"]        = Utils::timeTick2unixTime(process->start_time) * 1000;
     return jsProcessInfo;
 }
 
