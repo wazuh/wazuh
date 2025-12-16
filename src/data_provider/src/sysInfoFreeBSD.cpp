@@ -36,7 +36,7 @@ static void getMemory(nlohmann::json& info)
         };
     }
 
-    const auto ramTotal{ram / KByte};
+    const auto ramTotal{ram};
     info["memory_total"] = ramTotal;
     u_int pageSize{0};
     len = sizeof(pageSize);
@@ -68,7 +68,7 @@ static void getMemory(nlohmann::json& info)
         };
     }
 
-    const auto ramFree{(vmt.t_free * pageSize) / KByte};
+    const auto ramFree{(vmt.t_free * pageSize)};
     info["memory_free"] = ramFree;
     info["memory_used"] = 100 - (100 * ramFree / ramTotal);
 }

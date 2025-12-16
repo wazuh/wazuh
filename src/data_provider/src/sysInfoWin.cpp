@@ -551,8 +551,8 @@ static void getMemory(nlohmann::json& info)
 
     if (GlobalMemoryStatusEx(&statex))
     {
-        info["memory_total"] = statex.ullTotalPhys / KByte;
-        info["memory_free"] = statex.ullAvailPhys / KByte;
+        info["memory_total"] = statex.ullTotalPhys;
+        info["memory_free"] = statex.ullAvailPhys;
         info["memory_used"] = statex.dwMemoryLoad;
     }
     else

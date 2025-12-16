@@ -126,7 +126,7 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
                 };
             }
 
-            return ramTotal / KByte;
+            return ramTotal;
         }
 
         uint64_t ramFree() const
@@ -159,7 +159,7 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
                 };
             }
 
-            return (freePages * pageSize) / KByte;
+            return (freePages * pageSize);
         }
 
         uint64_t ramUsage() const
