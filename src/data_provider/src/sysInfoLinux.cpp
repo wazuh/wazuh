@@ -465,12 +465,12 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
         for (const auto& procFile : procFiles)
         {
             // Only directories that represent a PID are inspected.
-            const std::string procFilePath {procPath / procFile};
+            std::string procFileName = procFile.filename().string();
 
-            if (Utils::isNumber(procFile) && fs.is_directory(procFilePath))
+            if (Utils::isNumber(procFileName) && fs.is_directory(procFile))
             {
                 // Only fd directory is inspected.
-                const std::string pidFilePath {procFilePath + "/fd"};
+                const std::filesystem::path pidFilePath = procFile / "fd";
 
                 if (fs.is_directory(pidFilePath))
                 {
@@ -480,9 +480,10 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
                     for (const auto& fdFile : fdFiles)
                     {
                         // Only sysmlinks that represent a socket are read.
-                        const std::string fdFilePath {pidFilePath / fdFile};
+                        const std::string fdFilePath = fdFile.string();
+                        const std::string fdFileName = fdFile.filename().string();
 
-                        if (!Utils::startsWith(fdFile, ".") && fs.is_socket(fdFilePath))
+                        if (!Utils::startsWith(fdFileName, ".") && fs.is_socket(fdFilePath))
                         {
                             try
                             {
@@ -493,9 +494,9 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
                                 return it == inode;
                             }))
                                 {
-                                    std::string statPath {procFilePath + "/" + "stat"};
+                                    std::string statPath = (procFile / "stat").string();
                                     std::string processName = getProcessName(statPath);
-                                    int32_t pid { std::stoi(procFile) };
+                                    int32_t pid { std::stoi(procFileName) };
 
                                     ret.emplace(std::make_pair(inode, std::make_pair(pid, processName)));
                                 }
