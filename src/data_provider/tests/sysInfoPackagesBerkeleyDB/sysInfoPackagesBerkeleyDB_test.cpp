@@ -588,3 +588,140 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, PythonPackageNoFilesGetNextPythonFiles)
     ASSERT_TRUE(reader.getNextPythonFiles(pythonFiles));
     ASSERT_TRUE(pythonFiles.empty());
 }
+
+TEST_F(SysInfoPackagesBerkeleyDBTest, PlatformPythonPackageWithFilesGetNextPythonFiles)
+{
+    DBT data, key;
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+    char bytes[FIRST_ENTRY_OFFSET + ENTRY_SIZE * 4 + 27 + 4 + 4 + 9 + 9 + 10 + 1];
+    memset(bytes, 0, sizeof(bytes));
+    char* cp;
+    int* ip;
+
+    data.data = bytes;
+    data.size = sizeof(bytes);
+
+    cp = (char*) bytes;
+
+    // index lenght
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(4);
+    cp += 4;
+
+    // Data lenght
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(63);
+    cp += 4;
+
+    // Name tag
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(TAG_NAME);
+    cp += 4;
+
+    // type
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(STRING_TYPE);
+    cp += 4;
+
+    //offset
+    ip = (int32_t*)cp;
+    *ip = 0;
+    cp += 4;
+
+    // unused data
+    cp += 4;
+
+    // dir indexes tag
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(TAG_DIRINDEXES);
+    cp += 4;
+
+    // type
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(INT32_TYPE);
+    cp += 4;
+
+    //offset
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(27);
+    cp += 4;
+
+    // count
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(2);
+    cp += 4;
+
+    // basenames tag
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(TAG_BASENAMES);
+    cp += 4;
+
+    // type
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(STRING_VECTOR_TYPE);
+    cp += 4;
+
+    // offset
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(35);
+    cp += 4;
+
+    // count
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(2);
+    cp += 4;
+
+    // dirnames tag
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(TAG_DIRNAMES);
+    cp += 4;
+
+    // type
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(STRING_VECTOR_TYPE);
+    cp += 4;
+
+    // offset
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(53);
+    cp += 4;
+
+    // count
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(1);
+    cp += 4;
+
+    strcpy(cp, "platform-python-sample-pkg");
+    cp += 27;
+
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(0);
+    cp += 4;
+
+    ip = (int32_t*)cp;
+    *ip = __builtin_bswap32(0);
+    cp += 4;
+
+    strcpy(cp, "file1.py");
+    cp += 9;
+
+    strcpy(cp, "file2.py");
+    cp += 9;
+
+    strcpy(cp, "/usr/lib/");
+    cp += 10;
+
+    const auto& dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
+    EXPECT_CALL(*dbWrapper, getRow(_, _))
+    .Times(2)
+    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)))
+    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)));
+
+    BerkeleyRpmDBReader reader(dbWrapper);
+    std::vector<std::string> pythonFiles;
+    ASSERT_TRUE(reader.getNextPythonFiles(pythonFiles));
+    ASSERT_EQ(2u, pythonFiles.size());
+    ASSERT_EQ("/usr/lib/file1.py", pythonFiles[0]);
+    ASSERT_EQ("/usr/lib/file2.py", pythonFiles[1]);
+}
