@@ -110,7 +110,9 @@ void fim_initialize() {
 #endif
 
     if (ret_val != FIMDB_OK) {
-        merror_exit("Unable to initialize database.");
+        merror("Unable to initialize database. FIM module will be disabled.");
+        syscheck.disabled = 1;
+        return;
     }
 
     w_rwlock_init(&syscheck.directories_lock, NULL);

@@ -223,7 +223,7 @@ TEST(DBTest, TestInvalidFimLimit)
     mockSync = new MockSyncMsg();
 
     EXPECT_CALL(*mockLog,
-                loggingFunction(LOG_ERROR_EXIT,
+                loggingFunction(LOG_ERROR,
                                 "Error, id: dbEngine: Invalid row limit, values below 0 not allowed.")).Times(1);
     auto result
     {
