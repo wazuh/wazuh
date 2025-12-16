@@ -2,30 +2,48 @@ FROM ubuntu:24.04
 
 # Set locale
 RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* \
-	&& localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+    && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 ENV LANG en_US.utf8
 
-# Install Node.js and dependencies for OpenSearch Dashboards
+# Install dependencies for downloading and installing the dashboard
 RUN apt-get update && apt-get install -y \
-	curl \
-	gnupg \
-	wget \
-	lsb-release \
-	ca-certificates \
-	&& rm -rf /var/lib/apt/lists/*
+    curl \
+    gnupg \
+    wget \
+    lsb-release \
+    ca-certificates \
+    sudo \
+    jq \
+    unzip \
+	gosu \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install OpenSearch Dashboards (alternative to Wazuh Dashboard)
-# This is a lightweight alternative that can be configured for Wazuh
-RUN mkdir -p /usr/share/wazuh-dashboard/bin && \
-	echo '#!/bin/bash' > /usr/share/wazuh-dashboard/bin/opensearch-dashboards && \
-	echo 'echo "OpenSearch Dashboards service placeholder"' >> /usr/share/wazuh-dashboard/bin/opensearch-dashboards && \
-	echo 'tail -f /dev/null' >> /usr/share/wazuh-dashboard/bin/opensearch-dashboards && \
-	chmod +x /usr/share/wazuh-dashboard/bin/opensearch-dashboards
+# Install GitHub CLI (needed for download script)
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y gh \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create required directories
-RUN mkdir -p /etc/wazuh-dashboard
+# Create wazuh-dashboard user
+RUN groupadd -r wazuh-dashboard && useradd -r -g wazuh-dashboard wazuh-dashboard
 
-# Expose port
-EXPOSE 5601
+# Copy scripts
+COPY download_artifacts.sh /tmp/download_artifacts.sh
+COPY entrypoint.sh /tmp/entrypoint.sh
+COPY config.yml /tmp/opensearch_dashboards.yml
+RUN chmod +x /tmp/download_artifacts.sh /tmp/entrypoint.sh
 
-CMD [ "/usr/share/wazuh-dashboard/bin/opensearch-dashboards", "--allow-root", "-c", "/etc/wazuh-dashboard/opensearch_dashboards_custom.yml" ]
+# Create directory for dashboard installation
+RUN mkdir -p /usr/share/wazuh-dashboard /var/log/wazuh-dashboard /etc/wazuh-dashboard \
+    && chown -R wazuh-dashboard:wazuh-dashboard /usr/share/wazuh-dashboard /var/log/wazuh-dashboard /etc/wazuh-dashboard
+
+# Create a directory for downloaded artifacts
+RUN mkdir -p /tmp/wazuh-dashboard
+
+# Expose dashboard port
+EXPOSE 4040
+
+# Use our custom entrypoint
+ENTRYPOINT ["/tmp/entrypoint.sh"]

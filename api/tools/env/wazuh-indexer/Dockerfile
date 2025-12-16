@@ -1,23 +1,56 @@
-FROM opensearchproject/opensearch:2.19.0
+FROM ubuntu:24.04
 
-USER root
+# ---------- Locale ----------
+RUN apt-get update && apt-get install -y locales \
+    && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN yum update -y && \
-    yum install -y curl unzip sudo jq yum-utils --allowerasing && \
-    yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo && \
-    yum install -y gh && \
-    yum clean all && \
-    rm -rf /var/cache/yum
+ENV LANG=en_US.utf8 \
+    LC_ALL=en_US.utf8
 
-COPY --chown=opensearch:opensearch download_indexer.sh /usr/share/opensearch/download_indexer.sh
-COPY --chown=opensearch:opensearch entrypoint.sh /usr/share/opensearch/entrypoint.sh
+# ---------- Base deps ----------
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    jq \
+    unzip \
+    gosu \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN chmod +x /usr/share/opensearch/download_indexer.sh /usr/share/opensearch/entrypoint.sh
+# ---------- GitHub CLI ----------
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] \
+        https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update \
+    && apt-get install -y gh \
+    && rm -rf /var/lib/apt/lists/*
 
-# Allow opensearch user to run gh, mkdir, touch, chmod as root without password for setup operations
-RUN echo 'opensearch ALL=(ALL) NOPASSWD: /usr/bin/gh, /bin/mkdir, /bin/touch, /bin/chmod' >> /etc/sudoers.d/opensearch && \
-    chmod 0440 /etc/sudoers.d/opensearch
+# ---------- User ----------
+RUN groupadd -r wazuh-dashboard \
+    && useradd -r -g wazuh-dashboard wazuh-dashboard
 
-USER opensearch
+# ---------- Directories ----------
+RUN mkdir -p \
+      /usr/share/wazuh-dashboard \
+      /var/log/wazuh-dashboard \
+      /etc/wazuh-dashboard \
+      /tmp/wazuh-dashboard
 
-ENTRYPOINT ["/usr/share/opensearch/entrypoint.sh"]
+# ---------- Files ----------
+COPY download_artifacts.sh /tmp/download_artifacts.sh
+COPY entrypoint.sh /entrypoint.sh
+COPY config.yml /tmp/opensearch_dashboards.yml
+
+RUN chmod +x /tmp/download_artifacts.sh /entrypoint.sh
+
+# ---------- Ports ----------
+EXPOSE 4040
+
+# ---------- Entrypoint ----------
+ENTRYPOINT ["/entrypoint.sh"]

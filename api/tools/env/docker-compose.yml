@@ -28,7 +28,7 @@ services:
       - wazuh-base
     environment:
       - OPENDISTRO_SECURITY_ENABLED=false
-      - INDEXER_URL=https://wazuh-indexer:55000
+      - INDEXER_URL=https://wazuh-indexer:9200
       - INDEXER_USERNAME=admin
       - INDEXER_PASSWORD=admin
 
@@ -51,7 +51,7 @@ services:
       - worker
     environment:
       - OPENDISTRO_SECURITY_ENABLED=false
-      - INDEXER_URL=https://wazuh-indexer:55000
+      - INDEXER_URL=https://wazuh-indexer:9200
 
   wazuh-worker2:
     image: dev-wazuh-manager
@@ -72,7 +72,7 @@ services:
       - worker
     environment:
       - OPENDISTRO_SECURITY_ENABLED=false
-      - INDEXER_URL=https://wazuh-indexer:55000
+      - INDEXER_URL=https://wazuh-indexer:9200
 
   nginx-lb:
     build:
@@ -105,27 +105,37 @@ services:
       context: ./wazuh-indexer
     image: dev-wazuh-indexer
     hostname: wazuh-indexer
+    volumes:
+      - ./certs/root-ca.pem:/usr/share/opensearch/config/root-ca.pem
+      - ./certs/wazuh-indexer.pem:/usr/share/opensearch/config/indexer.pem
+      - ./certs/wazuh-indexer.key:/usr/share/opensearch/config/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/usr/share/opensearch/config/indexer-key.pem
     ports:
-      - "55053:55000"
+      - "9200:9200"
     environment:
       - node.name=wazuh-indexer
       - discovery.type=single-node
-      - DISABLE_SECURITY_PLUGIN=true
+      - plugins.security.ssl.transport.pemcert_filepath=indexer.pem
+      - plugins.security.ssl.transport.pemkey_filepath=indexer-key.pem
+      - plugins.security.ssl.transport.pemtrustedcas_filepath=root-ca.pem
+      - plugins.security.ssl.http.enabled=true
+      - plugins.security.ssl.http.pemcert_filepath=indexer.pem
+      - plugins.security.ssl.http.pemkey_filepath=indexer-key.pem
+      - plugins.security.ssl.http.pemtrustedcas_filepath=root-ca.pem
+      - plugins.security.ssl.http.clientauth_mode=NONE
+      - plugins.security.allow_default_init_securityindex=true
+      - cluster.blocks.create_index=false
       - network.host=0.0.0.0
-      - http.port=55000
+      - http.port=9200
       - http.host=0.0.0.0
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - cluster.blocks.create_index=false
       - action.auto_create_index=true
       - plugins.security.allow_default_init_securityindex=true
       - DISABLE_INSTALL_DEMO_CONFIG=true
       - plugins.security.ssl.http.enabled=false
-      - plugins.security.ssl.transport.enabled=false
+      - plugins.security.ssl.transport.enabled=true
       - SKIP_INDEXER_DOWNLOAD=${SKIP_INDEXER_DOWNLOAD:-}
       - GH_TOKEN=${GH_TOKEN}
-    volumes:
-      - wazuh-indexer-data:/usr/share/opensearch/data
-      - wazuh-indexer-certs:/usr/share/opensearch/certs
     depends_on:
       - wazuh-base
 
@@ -135,12 +145,14 @@ services:
     image: dev-wazuh-dashboard
     hostname: wazuh-dashboard
     volumes:
-      - ./wazuh-dashboard/config.yml:/etc/wazuh-dashboard/opensearch_dashboards_custom.yml
       - ./certs/root-ca.pem:/etc/wazuh-dashboard/certs/root-ca.pem
       - ./certs/wazuh-worker1.pem:/etc/wazuh-dashboard/certs/dashboard.pem
       - ./certs/wazuh-worker1-key.pem:/etc/wazuh-dashboard/certs/dashboard-key.pem
     ports:
       - "4040:443"
+    environment:
+      - SKIP_INDEXER_DOWNLOAD=${SKIP_INDEXER_DOWNLOAD}
+      - GH_TOKEN=${GH_TOKEN}
     depends_on:
       - wazuh-indexer
 
