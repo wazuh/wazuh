@@ -87,6 +87,10 @@ TEST_F(TimeUtilsTest, TimestampToISO8601)
 
     EXPECT_EQ(currentISO8601ZeroMs, Utils::timestampToISO8601(timestamp));
     EXPECT_EQ("", Utils::timestampToISO8601("21:00:00"));
+
+    // Additional cases
+    EXPECT_EQ("2025-12-01T18:25:40.000Z", Utils::timestampToISO8601("2025/12/01 18:25:40", false));
+    EXPECT_EQ("2025-06-30T18:29:50.000Z", Utils::timestampToISO8601("2025/06/30 18:29:50", false));
 }
 
 TEST_F(TimeUtilsTest, RawTimestampToISO8601)
@@ -108,4 +112,25 @@ TEST_F(TimeUtilsTest, RawTimestampToISO8601)
     EXPECT_EQ("2020-11-13T01:54:25.040Z", Utils::rawTimestampToISO8601(1605232465.04));
     EXPECT_EQ("2020-11-13T01:54:25.120Z", Utils::rawTimestampToISO8601(1605232465.120));
 
+    EXPECT_EQ("2025-12-01T18:25:40.000Z", Utils::rawTimestampToISO8601(std::string("2025/12/01 18:25:40")));
+    EXPECT_EQ("2025-06-30T18:29:50.000Z", Utils::rawTimestampToISO8601(std::string("2025/06/30 18:29:50")));
+    EXPECT_EQ("2025-11-26T12:00:01.000Z", Utils::rawTimestampToISO8601(std::string("2025-11-26T12:00:01Z")));
+    EXPECT_EQ("2024-11-14T18:32:28.000Z", Utils::rawTimestampToISO8601(std::string("2024-11-14T18:32:28Z")));
+    EXPECT_EQ("2025-11-26T12:00:01.000Z", Utils::rawTimestampToISO8601(std::string("2025-11-26T12:00:01.000Z")));
+    EXPECT_EQ("2024-11-14T18:32:28.005Z", Utils::rawTimestampToISO8601(std::string("2024-11-14T18:32:28.005Z")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string("2024-11-14T18:32:28ZABC")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string("2024-11-14T18:32:28.005ZABC")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string("2024-11-14T18:32:28.0052Z")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string("2024-11-14T18:32:28.005A")));
+
+    EXPECT_EQ("2025-12-01T18:25:40.000Z", Utils::rawTimestampToISO8601(std::string_view("2025/12/01 18:25:40")));
+    EXPECT_EQ("2025-06-30T18:29:50.000Z", Utils::rawTimestampToISO8601(std::string_view("2025/06/30 18:29:50")));
+    EXPECT_EQ("2025-11-26T12:00:01.000Z", Utils::rawTimestampToISO8601(std::string_view("2025-11-26T12:00:01Z")));
+    EXPECT_EQ("2024-11-14T18:32:28.000Z", Utils::rawTimestampToISO8601(std::string_view("2024-11-14T18:32:28Z")));
+    EXPECT_EQ("2025-11-26T12:00:01.000Z", Utils::rawTimestampToISO8601(std::string_view("2025-11-26T12:00:01.000Z")));
+    EXPECT_EQ("2024-11-14T18:32:28.005Z", Utils::rawTimestampToISO8601(std::string_view("2024-11-14T18:32:28.005Z")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string_view("2024-11-14T18:32:28ZABC")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string_view("2024-11-14T18:32:28.005ZABC")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string_view("2024-11-14T18:32:28.0052Z")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string_view("2024-11-14T18:32:28.005A")));
 }
