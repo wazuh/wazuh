@@ -419,7 +419,6 @@ void fim_db_clean_file_table()
         {
             DeleteQuery::builder()
             .table(FIMDB_FILE_TABLE_NAME)
-            .data(nlohmann::json::object())
             .rowFilter("1=1")
             .build()
         };
