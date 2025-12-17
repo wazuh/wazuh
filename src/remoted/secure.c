@@ -175,7 +175,7 @@ typedef struct {
 } evt_item_t;
 
 typedef struct {
-    char *agent_id;
+    const char *agent_id;
     int   header_added;
     bulk_t bulk;             // body to send (header + events)
 } dispatch_ctx_t;
@@ -1262,8 +1262,8 @@ static const char* infer_os_type(const char *os_platform) {
 
 // Encode the header ONLY once above the body
 static int append_header(dispatch_ctx_t *ctx) {
-    if (ctx->header_added) return 0;
     if (!ctx || !ctx->agent_id) return -1;
+    if (ctx->header_added) return 0;
 
     // Snapshot metadata for this agent (copies strings into 'snap')
     agent_meta_t snap = {0};
@@ -1421,7 +1421,6 @@ void *dispach_events_thread(void *arg) {
         }
 
         // Online path: build one agent batch and POST it
-        const char *agent_key_borrowed = NULL;
         dispatch_ctx_t ctx = {
             .agent_id     = NULL,
             .header_added = 0
@@ -1429,12 +1428,7 @@ void *dispach_events_thread(void *arg) {
         bulk_init(&ctx.bulk, 8192);
 
         size_t drained = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
-                                                   rr_collect_one, &ctx, &agent_key_borrowed);
-
-        // Copy the borrowed pointer to owned memory
-        if (agent_key_borrowed) {
-            os_strdup(agent_key_borrowed, ctx.agent_id);
-        }
+                                                   rr_collect_one, &ctx, &ctx.agent_id);
 
         if (drained > 0 && ctx.bulk.len > 0) {
             uhttp_result_t res = {0};
@@ -1458,7 +1452,6 @@ void *dispach_events_thread(void *arg) {
         }
 
         bulk_free(&ctx.bulk);
-        os_free(ctx.agent_id);
     }
 
     if (cli) uhttp_client_free(cli);
