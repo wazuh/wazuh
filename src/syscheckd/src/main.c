@@ -286,7 +286,7 @@ int main(int argc, char **argv)
 
     fim_initialize();
 
-    if (start_realtime == 1) {
+    if (!syscheck.disabled && start_realtime == 1) {
         realtime_start();
     }
 
