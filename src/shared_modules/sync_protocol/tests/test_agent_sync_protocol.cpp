@@ -4998,43 +4998,6 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_EmptyIndices)
     EXPECT_FALSE(result);
 }
 
-TEST_F(AgentSyncProtocolTest, notifyDataClean_WithVDCLEANOption_SingleIndex)
-{
-    /**
-     * Test: notifyDataClean should accept VDCLEAN option for VD indices
-     */
-
-    mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs
-    {
-        [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char)
-        {
-            return 0;
-        }
-    };
-
-    auto logger = [](modules_log_level_t, const std::string&) {};
-
-    protocol = std::make_unique<AgentSyncProtocol>(
-                   "test_module",
-                   ":memory:",
-                   mqFuncs,
-                   logger,
-                   std::chrono::seconds(syncEndDelay),
-                   std::chrono::seconds(max_timeout),
-                   retries,
-                   maxEps,
-                   mockQueue
-               );
-
-    std::vector<std::string> vdIndices = {"wazuh-states-vulnerabilities"};
-
-    // We can't fully test the send without a real transport, but we can verify it doesn't crash
-    // and handles the VDCLEAN option parameter correctly
-    EXPECT_NO_THROW(protocol->notifyDataClean(vdIndices, Option::VDCLEAN));
-}
-
 TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_MultipleIndices)
 {
     /**
@@ -5074,48 +5037,6 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_MultipleIndices)
 
     // Should handle multiple indices
     EXPECT_NO_THROW(protocol->notifyDataClean(indices, Option::SYNC));
-}
-
-TEST_F(AgentSyncProtocolTest, notifyDataClean_WithVDCLEANOption_VDIndices)
-{
-    /**
-     * Test: notifyDataClean with VDCLEAN option for VD-specific indices
-     * This simulates the VD sync protocol cleaning VD data
-     */
-
-    mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs
-    {
-        [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char)
-        {
-            return 0;
-        }
-    };
-
-    auto logger = [](modules_log_level_t, const std::string&) {};
-
-    protocol = std::make_unique<AgentSyncProtocol>(
-                   "syscollector_vd",  // VD module name
-                   ":memory:",
-                   mqFuncs,
-                   logger,
-                   std::chrono::seconds(syncEndDelay),
-                   std::chrono::seconds(max_timeout),
-                   retries,
-                   maxEps,
-                   mockQueue
-               );
-
-    std::vector<std::string> vdIndices =
-    {
-        "wazuh-states-inventory-system",    // OS
-        "wazuh-states-inventory-packages",  // Packages
-        "wazuh-states-inventory-hotfixes"   // Hotfixes
-    };
-
-    // Should handle VD indices with VDCLEAN option
-    EXPECT_NO_THROW(protocol->notifyDataClean(vdIndices, Option::VDCLEAN));
 }
 
 TEST_F(AgentSyncProtocolTest, notifyDataClean_DefaultOption)
@@ -5209,15 +5130,6 @@ TEST_F(AgentSyncProtocolTest, Option_VDFIRST_Value)
      */
 
     EXPECT_EQ(static_cast<int>(Option::VDFIRST), OPTION_VD_FIRST);
-}
-
-TEST_F(AgentSyncProtocolTest, Option_VDCLEAN_Value)
-{
-    /**
-     * Test: Verify Option::VDCLEAN has correct value
-     */
-
-    EXPECT_EQ(static_cast<int>(Option::VDCLEAN), OPTION_VD_CLEAN);
 }
 
 TEST_F(AgentSyncProtocolTest, Option_VDSYNC_Value)

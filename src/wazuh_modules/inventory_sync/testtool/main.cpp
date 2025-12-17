@@ -59,7 +59,7 @@ struct AgentTestData
      *   "Start": {
      *     "agentid": "001",
      *     "mode": "full|delta",    // optional, defaults to "delta"
-     *     "option": "VDFirst|VDSync|VDClean|Sync", // optional, defaults to "VDSync"
+     *     "option": "VDFirst|VDSync|Sync", // optional, defaults to "VDSync"
      *
      *     // Optional agent / OS metadata (defaults provided if omitted)
      *     "agentname": "test-agent-001",
@@ -515,8 +515,6 @@ inline Wazuh::SyncSchema::Option parseOption(const std::string& opt)
         return Wazuh::SyncSchema::Option_VDFirst;
     if (opt == "VDSync")
         return Wazuh::SyncSchema::Option_VDSync;
-    if (opt == "VDClean")
-        return Wazuh::SyncSchema::Option_VDClean;
     if (opt == "Sync")
         return Wazuh::SyncSchema::Option_Sync;
     return Wazuh::SyncSchema::Option_VDSync;

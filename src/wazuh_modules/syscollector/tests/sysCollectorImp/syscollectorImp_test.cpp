@@ -3401,8 +3401,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
 TEST_F(SyscollectorImpTest, notifyDataClean_VDIndicesOnly)
 {
     /**
-     * Test: Verify notifyDataClean correctly separates and processes VD indices
-     * VD indices (system, packages, hotfixes) should use VDCLEAN option
+     * Test: Verify notifyDataClean correctly processes VD indices
+     * VD indices (system, packages, hotfixes) are handled by the sync protocol
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
@@ -3476,7 +3476,7 @@ TEST_F(SyscollectorImpTest, notifyDataClean_NonVDIndicesOnly)
 {
     /**
      * Test: Verify notifyDataClean correctly processes non-VD indices
-     * Non-VD indices (processes, ports, etc.) should use SYNC option
+     * Non-VD indices (processes, ports, etc.) are handled by the sync protocol
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
@@ -3546,9 +3546,8 @@ TEST_F(SyscollectorImpTest, notifyDataClean_NonVDIndicesOnly)
 TEST_F(SyscollectorImpTest, notifyDataClean_MixedVDAndNonVDIndices)
 {
     /**
-     * Test: Verify notifyDataClean correctly separates and processes
-     * a mix of VD and non-VD indices, routing each to the appropriate
-     * sync protocol with the correct option
+     * Test: Verify notifyDataClean correctly processes a mix of VD and non-VD indices
+     * All indices are handled by the same sync protocol regardless of type
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
