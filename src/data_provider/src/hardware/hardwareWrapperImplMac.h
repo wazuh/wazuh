@@ -162,14 +162,14 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
             return (freePages * pageSize);
         }
 
-        uint64_t ramUsage() const
+        double ramUsage() const
         {
-            uint64_t ret{0};
+            double ret{0.0};
             const auto ramTotal{this->ramTotal()};
 
             if (ramTotal)
             {
-                ret = 100 - (100 * ramFree() / ramTotal);
+                ret = (100 - (100 * ramFree() / ramTotal)) * 0.01;
             }
 
             return ret;

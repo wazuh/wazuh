@@ -31,7 +31,7 @@ class OSHardwareWrapperMacMock: public IOSHardwareWrapper
         MOCK_METHOD(double, cpuMhz, (), (override));
         MOCK_METHOD(uint64_t, ramTotal, (), (const, override));
         MOCK_METHOD(uint64_t, ramFree, (), (const, override));
-        MOCK_METHOD(uint64_t, ramUsage, (), (const, override));
+        MOCK_METHOD(double, ramUsage, (), (const, override));
 };
 
 TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_Succeed)
@@ -44,7 +44,7 @@ TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_Succeed)
     EXPECT_CALL(*mock, cpuMhz()).WillOnce(Return(3204.0));
     EXPECT_CALL(*mock, ramTotal()).WillOnce(Return(16777216));
     EXPECT_CALL(*mock, ramFree()).WillOnce(Return(8388608));
-    EXPECT_CALL(*mock, ramUsage()).WillOnce(Return(50));
+    EXPECT_CALL(*mock, ramUsage()).WillOnce(Return(0.5));
     EXPECT_NO_THROW(FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildHardwareData(hardware));
 
     EXPECT_EQ("H2WH91N3Q6NY", hardware.at("serial_number").get_ref<nlohmann::json::string_t&>());
@@ -53,5 +53,5 @@ TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_Succeed)
     EXPECT_EQ((double)3204.0, hardware.at("cpu_speed").get_ref<nlohmann::json::number_float_t&>());
     EXPECT_EQ((uint64_t)16777216, hardware.at("memory_total").get_ref<nlohmann::json::number_unsigned_t&>());
     EXPECT_EQ((uint64_t)8388608, hardware.at("memory_free").get_ref<nlohmann::json::number_unsigned_t&>());
-    EXPECT_EQ((uint64_t)50, hardware.at("memory_used").get_ref<nlohmann::json::number_unsigned_t&>());
+    EXPECT_DOUBLE_EQ(0.5, hardware.at("memory_used").get_ref<nlohmann::json::number_float_t&>());
 }

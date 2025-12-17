@@ -354,7 +354,7 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         jsProcessInfo["parent_pid"]   = processEntry.th32ParentProcessID;
         jsProcessInfo["pid"]          = std::to_string(pId);
         jsProcessInfo["utime"]        = process.userModeTime();
-        jsProcessInfo["start"]        = process.creationTime() * 1000;
+        jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(process.creationTime()));
         CloseHandle(processHandle);
     }
 
@@ -553,7 +553,7 @@ static void getMemory(nlohmann::json& info)
     {
         info["memory_total"] = statex.ullTotalPhys;
         info["memory_free"] = statex.ullAvailPhys;
-        info["memory_used"] = statex.dwMemoryLoad;
+        info["memory_used"] = statex.dwMemoryLoad / 100.0;
     }
     else
     {
@@ -1085,9 +1085,9 @@ nlohmann::json SysInfo::getUsers() const
 
         // Only Macos
         userItem["user_is_hidden"] = 0;
-        userItem["user_created"] = 0;
+        userItem["user_created"] = UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = 0;
-        userItem["user_auth_failed_timestamp"] = 0;
+        userItem["user_auth_failed_timestamp"] = UNKNOWN_VALUE;
 
         auto matched = false;
         auto lastLogin = 0;
@@ -1111,7 +1111,7 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = newDate;
+                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -1134,13 +1134,13 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
+            userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
-        userItem["user_password_expiration_date"] = 0;
+        userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
         userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
         userItem["user_password_inactive_days"] = 0;
-        userItem["user_password_last_change"] = 0;
+        userItem["user_password_last_change"] = UNKNOWN_VALUE;
         userItem["user_password_max_days_between_changes"] = 0;
         userItem["user_password_min_days_between_changes"] = 0;
         userItem["user_password_status"] = UNKNOWN_VALUE;

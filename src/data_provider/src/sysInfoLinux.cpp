@@ -30,6 +30,7 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
+#include "timeHelper.h"
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
 #include "logged_in_users_linux.hpp"
@@ -128,7 +129,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["command_line"] = commandLine;
     jsProcessInfo["args"]         = commandLineArgs;
     jsProcessInfo["args_count"]   = commandLineCount;
-    jsProcessInfo["start"]        = Utils::timeTick2unixTime(process->start_time) * 1000;
+    jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(Utils::timeTick2unixTime(process->start_time)));
     return jsProcessInfo;
 }
 
@@ -264,7 +265,7 @@ static void getMemory(nlohmann::json& info)
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };
     info["memory_total"] = ramTotal * 1024;
     info["memory_free"] = memFree * 1024;
-    info["memory_used"] = 100 - (100 * memFree / ramTotal);
+    info["memory_used"] = (100.0 - (100.0 * memFree / ramTotal)) * 0.01;
 }
 
 nlohmann::json SysInfo::getHardware() const
@@ -734,9 +735,9 @@ nlohmann::json SysInfo::getUsers() const
 
         // Macos
         userItem["user_is_hidden"] = 0;
-        userItem["user_created"] = 0;
+        userItem["user_created"] = UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = 0;
-        userItem["user_auth_failed_timestamp"] = 0;
+        userItem["user_auth_failed_timestamp"] = UNKNOWN_VALUE;
 
         auto matched = false;
         auto lastLogin = 0;
@@ -760,7 +761,7 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = newDate;
+                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -783,7 +784,7 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
+            userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
         matched = false;
@@ -794,10 +795,12 @@ nlohmann::json SysInfo::getUsers() const
             if (singleShadow["username"] == username)
             {
                 matched = true;
-                userItem["user_password_expiration_date"] = singleShadow["expire"];
+                auto expireTimestamp = singleShadow["expire"].get<int64_t>();
+                auto lastChangeTimestamp = singleShadow["last_change"].get<double>();
+                userItem["user_password_expiration_date"] = expireTimestamp > 0 ? Utils::rawTimestampToISO8601(static_cast<uint32_t>(expireTimestamp)) : UNKNOWN_VALUE;
                 userItem["user_password_hash_algorithm"] = singleShadow["hash_alg"];
                 userItem["user_password_inactive_days"] = singleShadow["inactive"];
-                userItem["user_password_last_change"] = singleShadow["last_change"];
+                userItem["user_password_last_change"] = lastChangeTimestamp > 0 ? Utils::rawTimestampToISO8601(lastChangeTimestamp) : UNKNOWN_VALUE;
                 userItem["user_password_max_days_between_changes"] = singleShadow["max"];
                 userItem["user_password_min_days_between_changes"] = singleShadow["min"];
                 userItem["user_password_status"] = singleShadow["password_status"];
@@ -807,10 +810,10 @@ nlohmann::json SysInfo::getUsers() const
 
         if (!matched)
         {
-            userItem["user_password_expiration_date"] = 0;
+            userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
             userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
             userItem["user_password_inactive_days"] = 0;
-            userItem["user_password_last_change"] = 0;
+            userItem["user_password_last_change"] = UNKNOWN_VALUE;
             userItem["user_password_max_days_between_changes"] = 0;
             userItem["user_password_min_days_between_changes"] = 0;
             userItem["user_password_status"] = UNKNOWN_VALUE;

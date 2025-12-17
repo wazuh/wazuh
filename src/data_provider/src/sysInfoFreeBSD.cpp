@@ -70,7 +70,7 @@ static void getMemory(nlohmann::json& info)
 
     const auto ramFree{(vmt.t_free * pageSize)};
     info["memory_free"] = ramFree;
-    info["memory_used"] = 100 - (100 * ramFree / ramTotal);
+    info["memory_used"] = (100.0 - (100.0 * ramFree / ramTotal)) * 0.01;
 }
 
 

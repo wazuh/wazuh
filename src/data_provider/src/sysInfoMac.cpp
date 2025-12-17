@@ -29,6 +29,7 @@
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
+#include "timeHelper.h"
 #include "groups_darwin.hpp"
 #include "user_groups_darwin.hpp"
 #include "logged_in_users_darwin.hpp"
@@ -76,7 +77,7 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
-    jsProcessInfo["start"]      = taskInfo.pbsd.pbi_start_tvsec * 1000;
+    jsProcessInfo["start"]      = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));
 
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
     const auto pathLen
@@ -581,11 +582,14 @@ nlohmann::json SysInfo::getUsers() const
         }
 
         // Macos
-        userItem["user_password_last_change"] = user["password_last_set_time"];
+        auto passwordLastChange = user["password_last_set_time"].get<double>();
+        auto creationTime = user["creation_time"].get<double>();
+        auto failedLoginTimestamp = user["failed_login_timestamp"].get<double>();
+        userItem["user_password_last_change"] = passwordLastChange > 0 ? Utils::rawTimestampToISO8601(passwordLastChange) : UNKNOWN_VALUE;
         userItem["user_is_hidden"] = user["is_hidden"];
-        userItem["user_created"] = user["creation_time"];
+        userItem["user_created"] = creationTime > 0 ? Utils::rawTimestampToISO8601(creationTime) : UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = user["failed_login_count"];
-        userItem["user_auth_failed_timestamp"] = user["failed_login_timestamp"];
+        userItem["user_auth_failed_timestamp"] = failedLoginTimestamp > 0 ? Utils::rawTimestampToISO8601(failedLoginTimestamp) : UNKNOWN_VALUE;
         // Macos or windows
         userItem["user_uuid"] = user["uuid"];
 
@@ -617,7 +621,7 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = newDate;
+                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -640,10 +644,10 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
+            userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
-        userItem["user_password_expiration_date"] = 0;
+        userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
         userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
         userItem["user_password_inactive_days"] = 0;
         userItem["user_password_max_days_between_changes"] = 0;
