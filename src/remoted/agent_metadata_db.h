@@ -16,14 +16,11 @@
 typedef struct agent_meta
 {
     int agent_id;
-    char* agent_ip;
-    char* version;
+    char* agent_name;
+    char* agent_version;
     char* os_name;
     char* os_version;
-    char* os_codename;
     char* os_platform;
-    char* os_build;
-    char* os_kernel;
     char* arch;
 } agent_meta_t;
 
@@ -33,7 +30,7 @@ struct agent_info_data;
 void agent_metadata_init(void);
 void agent_metadata_teardown(void);
 
-agent_meta_t* agent_meta_from_agent_info(const char* id_str, const struct agent_info_data* ai);
+agent_meta_t* agent_meta_from_agent_info(const char* id_str, const char* agent_name, const struct agent_info_data* ai);
 
 int agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh);
 
