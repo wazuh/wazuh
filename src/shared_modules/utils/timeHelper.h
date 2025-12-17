@@ -24,8 +24,8 @@
 #include <string_view>
 #endif
 
-#define ISO8601_LENGHT_WITH_MS 24
-#define ISO8601_LENGHT_NO_MS 20
+#define ISO8601_LENGTH_WITH_MS 24
+#define ISO8601_LENGTH_NO_MS 20
 
 #ifdef WIN32
 
@@ -219,7 +219,7 @@ namespace Utils
         // "2024-11-14T18:32:28Z"
         // "2025-11-26T12:00:01.000Z"
         const int size = static_cast<int>(timestamp.size());
-        if (size != ISO8601_LENGHT_WITH_MS && size != ISO8601_LENGHT_NO_MS)
+        if (size != ISO8601_LENGTH_WITH_MS && size != ISO8601_LENGTH_NO_MS)
         {
             return "";
         }
@@ -241,21 +241,25 @@ namespace Utils
             {
                 return "";
             }
-            // Check Z exists on expected position if no milliseconds.
-            else if (size == ISO8601_LENGHT_NO_MS && i == 19 && timestamp[i] == 'Z')
+            // Check Z exists on expected position if no milliseconds and add default milliseconds.
+            else if (size == ISO8601_LENGTH_NO_MS && i == 19)
             {
+                if (timestamp[i] != 'Z')
+                {
+                    return "";
+                }
                 // Adds milliseconds to a valid ISO8601 without milliseconds.
                 auto tempTimestamp {timestamp};
                 Utils::replaceFirst(tempTimestamp, "Z", ".000Z");
                 return tempTimestamp;
             }
             // Check . exists on expected position if milliseconds.
-            else if (size == ISO8601_LENGHT_WITH_MS && i == 19 && timestamp[i] != '.')
+            else if (size == ISO8601_LENGTH_WITH_MS && i == 19 && timestamp[i] != '.')
             {
                 return "";
             }
             // Check Z exists on expected position if milliseconds.
-            else if (size == ISO8601_LENGHT_WITH_MS && i == 23 && timestamp[i] != 'Z')
+            else if (size == ISO8601_LENGTH_WITH_MS && i == 23 && timestamp[i] != 'Z')
             {
                 return "";
             }
@@ -273,12 +277,12 @@ namespace Utils
     }
 
 #if __cplusplus >= 201703L
-    template<typename T>
     /**
      * @brief Convert a raw timestamp to ISO8601 format.
      * @param timestamp Timestamp to convert. Can be uint32_t, double, std::string or std::string_view.
      * @return std::string ISO8601 timestamp or empty string.
      */
+    template<typename T>
     static std::string rawTimestampToISO8601(T timestamp)
     {
         static_assert(std::is_same_v<std::decay_t<T>, uint32_t> || std::is_same_v<std::decay_t<T>, double> ||
