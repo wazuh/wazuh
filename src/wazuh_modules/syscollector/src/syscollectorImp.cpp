@@ -2131,12 +2131,15 @@ void Syscollector::processVDDataContext()
             {
                 try
                 {
+                    nlohmann::json aux = ecsData(item, tableName);
+                    const auto statefulToSend{aux.dump()};
+
                     // Calculate ID the same way as done during scan for DataValue
                     std::string itemId = calculateHashId(item, tableName);
 
                     // Submit as DataContext (isDataContext=true)
                     // Note: operation and version parameters are not used for DataContext
-                    m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, item.dump(), 0, true);
+                    m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, statefulToSend, 0, true);
                     totalDataContextItems++;
                 }
                 catch (const std::exception& e)
