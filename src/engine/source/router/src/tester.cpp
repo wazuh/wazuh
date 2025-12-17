@@ -133,6 +133,29 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     return std::nullopt;
 }
 
+base::OptError Tester::renameEntry(const std::string& from, const std::string& to)
+{
+    std::unique_lock<std::shared_mutex> lock {m_mutex};
+
+    auto it = m_table.find(from);
+    if (it == m_table.end())
+    {
+        return base::Error {"Error renaming session: The \"from\" testing environment not exist"};
+    }
+
+    if (m_table.find(to) != m_table.end())
+    {
+        return base::Error {"Error renaming session: The \"to\" testing environment already exist"};
+    }
+
+    auto node = m_table.extract(it);
+    node.key() = to;
+    node.mapped().name(to);
+    m_table.insert(std::move(node));
+
+    return std::nullopt;
+}
+
 base::OptError Tester::enableEntry(const std::string& name)
 {
     std::unique_lock lock {m_mutex};

@@ -18,6 +18,7 @@ target_link_libraries(api_cmcrud
   PUBLIC
     base
     api::adapter
+    router::irouter
     cmcrud::icmcrud
 )
 

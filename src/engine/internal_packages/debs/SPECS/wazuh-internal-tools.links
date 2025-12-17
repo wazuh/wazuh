@@ -2,11 +2,11 @@
 /opt/wazuh-internal-tools/venv/bin/engine-it           /usr/bin/engine-it
 /opt/wazuh-internal-tools/venv/bin/engine-test         /usr/bin/engine-test
 /opt/wazuh-internal-tools/venv/bin/engine-archiver     /usr/bin/engine-archiver
-/opt/wazuh-internal-tools/venv/bin/engine-cm           /usr/bin/engine-cm
+/opt/wazuh-internal-tools/venv/bin/engine-public       /usr/bin/engine-public
+/opt/wazuh-internal-tools/venv/bin/engine-private      /usr/bin/engine-private
 /opt/wazuh-internal-tools/venv/bin/engine-clear        /usr/bin/engine-clear
 /opt/wazuh-internal-tools/venv/bin/engine-geo          /usr/bin/engine-geo
 /opt/wazuh-internal-tools/venv/bin/engine-integration  /usr/bin/engine-integration
 /opt/wazuh-internal-tools/venv/bin/engine-kvdb         /usr/bin/engine-kvdb
-/opt/wazuh-internal-tools/venv/bin/engine-ns           /usr/bin/engine-ns
 /opt/wazuh-internal-tools/venv/bin/engine-router       /usr/bin/engine-router
 /opt/wazuh-internal-tools/venv/bin/engine-schema       /usr/bin/engine-schema

@@ -282,6 +282,13 @@ std::vector<NamespaceId> CMStore::getNamespaces() const
     return nsIds;
 }
 
+bool CMStore::existsNamespace(const NamespaceId& nsId) const
+{
+    std::shared_lock lock(m_mutex);
+
+    return m_namespaces.find(nsId) != m_namespaces.end();
+}
+
 std::shared_ptr<ICMstoreNS> CMStore::getNS(const NamespaceId& nsId)
 {
     std::shared_lock lock(m_mutex);

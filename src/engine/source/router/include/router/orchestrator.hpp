@@ -202,6 +202,11 @@ public:
     base::OptError reloadTestEntry(const std::string& name) override;
 
     /**
+     * @copydoc router::ITesterAPI::renameTestEnvironment
+     */
+    base::OptError renameTestEntry(const std::string& from, const std::string& to) override;
+
+    /**
      * @copydoc router::ITesterAPI::getTestEntries
      */
     std::list<test::Entry> getTestEntries() const override;

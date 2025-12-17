@@ -149,9 +149,9 @@ PY
 case "${1:-configure}" in
   configure)
     # Ensure CLI wrappers are executable
-    for c in engine-cm engine-archiver engine-geo \
-             engine-ns engine-router engine-schema engine-test \
-             engine-it engine-helper-test; do
+    for c in engine-public engine-private engine-archiver engine-decoder \
+             engine-geo engine-router engine-schema engine-test \
+             engine-it engine-helper-test engine-health-test; do
       [ -f "/usr/bin/$c" ] && chmod 0755 "/usr/bin/$c" || true
     done
 

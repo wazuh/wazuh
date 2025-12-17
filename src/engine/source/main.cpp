@@ -660,7 +660,7 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Archiver API registered.");
 
             // Crud Manager
-            api::cmcrud::handlers::registerHandlers(cmCrudService, apiServer);
+            api::cmcrud::handlers::registerHandlers(cmCrudService, orchestrator, apiServer);
             LOG_DEBUG("Content Manager CRUD API registered.");
 
             // Finally start the API server

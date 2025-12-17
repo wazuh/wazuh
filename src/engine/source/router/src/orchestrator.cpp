@@ -11,9 +11,9 @@
 
 #include "entryConverter.hpp"
 #include "epsCounter.hpp"
-#include "worker.hpp"
 #include "router.hpp"
 #include "tester.hpp"
+#include "worker.hpp"
 
 namespace router
 {
@@ -67,7 +67,8 @@ base::OptError Orchestrator::forTesterWorker(const WorkerOp<ITester>& f)
 /**************************************************************************
  * Manage configuration - Dump
  *************************************************************************/
-base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker<ITester>>& worker)
+base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
+                                  const std::shared_ptr<IWorker<ITester>>& worker)
 {
     for (const auto& entry : entries)
     {
@@ -82,7 +83,8 @@ base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, co
     return std::nullopt;
 }
 
-base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker<IRouter>>& worker)
+base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
+                                 const std::shared_ptr<IWorker<IRouter>>& worker)
 {
     for (const auto& entry : entries)
     {
@@ -565,6 +567,27 @@ base::OptError Orchestrator::reloadTestEntry(const std::string& name)
         return error;
     }
     return forTesterWorker([&name](const auto& worker) { return worker->get()->enableEntry(name); });
+}
+
+base::OptError Orchestrator::renameTestEntry(const std::string& from, const std::string& to)
+{
+    if (from.empty() || to.empty())
+    {
+        return base::Error {"Name cannot be empty"};
+    }
+
+    std::unique_lock lock {m_syncMutex};
+
+    // Now rename in the tester worker
+    auto error = forTesterWorker([&](const auto& worker) { return worker->get()->renameEntry(from, to); });
+
+    if (error)
+    {
+        return error;
+    }
+
+    dumpTesters();
+    return std::nullopt;
 }
 
 std::list<test::Entry> Orchestrator::getTestEntries() const
