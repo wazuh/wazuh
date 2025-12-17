@@ -101,13 +101,10 @@ install_local "$BASE/tools/engine-suite" "engine-suite"
 # 3) engine-test-utils
 install_local "$BASE/test/engine-test-utils" "engine-test-utils"
 
-# 4) health_test
-install_local "$BASE/test/health_test/engine-health-test" "health_test"
-
-# 5) helper_tests
+# 4) helper_tests
 install_local "$BASE/test/helper_tests/engine-helper-test" "helper_tests"
 
-# 6) integration_tests
+# 5) integration_tests
 install_local "$BASE/test/integration_tests/engine-it" "integration_tests"
 
 echo "[i] Environment is ready at: ${VENV_DIR}"
