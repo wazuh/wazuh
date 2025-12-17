@@ -1,6 +1,6 @@
 # Architecture
 
-The **Syscollector module** implements a **dual event architecture** designed to provide both immediate alerting and reliable state synchronization for system inventory monitoring. It combines stateless events with persistent stateful events using the Agent Sync Protocol for guaranteed delivery.
+The **Syscollector module** implements a **tri-event architecture** designed to provide both immediate alerting, reliable state synchronization, and vulnerability context data for system inventory monitoring. It combines stateless events with persistent stateful events using the Agent Sync Protocol for guaranteed delivery, while also supporting VD Context events for vulnerability detection integration.
 
 ---
 
@@ -38,6 +38,42 @@ Starting in version 5.0, the Vulnerability Detector (VD) operates as an independ
 * **DataContext support**: VD uses DataContext messages for vulnerability data synchronization
 * **Decoupled operation**: Syscollector and VD can be configured, started, stopped, and synchronized independently
 * **Improved scalability**: Each module can optimize its sync strategy based on its data characteristics
+
+### **VD Context Integration (v5.0+)**
+
+Syscollector integrates with the Vulnerability Detector through a dual database system and context-aware event routing.
+Responsibilities:
+
+* **Context Evaluation**: Determines whether inventory data requires VD processing via `is_data_context` parameter
+* **Dual Database Management**: Maintains separate databases for regular inventory and VD context data
+* **DataContext Event Generation**: Creates specialized events for vulnerability detection when context evaluation triggers
+* **VD Sync Protocol Coordination**: Routes DataContext events to VD's independent sync protocol instance
+* **Context-Aware Persistence**: Uses `persistDifference()` with context flags to route data appropriately
+* **VD Database Operations**: Supports VD-specific operations like `getAllEvents()` and `deleteDataContextBatch()`
+
+**VD Context Event Flow Integration:**
+
+```cpp
+// VD table detection based on sync index
+bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                  index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                  index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+if (isVDTable && m_spSyncProtocolVD) {
+    // Route to VD sync protocol
+    m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
+} else if (m_spSyncProtocol) {
+    // Route to regular sync protocol
+    m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
+}
+```
+
+**Key VD Context Features:**
+- **VD Table Detection**: Automatic routing based on sync index (system, packages, hotfixes)
+- **Dual Sync Protocols**: Separate `m_spSyncProtocolVD` for VD tables vs `m_spSyncProtocol` for regular inventory
+- **DataContext Processing**: Post-scan processing via `processVDDataContext()` method
+- **Platform-Specific Rules**: `getDataContextTables()` determines context inclusion based on platform and operation
+- **VD Context Batch Operations**: Support for `clearAllDataContext()` and context table fetching
 
 ### **Transaction Callbacks**
 
@@ -133,7 +169,7 @@ This coordination mechanism ensures that:
 
 ## Event Flow Architecture
 
-### Complete Syscollector Event Flow
+### Complete Syscollector Event Flow with VD Context Integration
 
 ```
 System Inventory Change Detected
@@ -149,25 +185,38 @@ notifyChange() / processEvent() Compare with stored state
          │
          ├─► Generate Stateless Event ─────► reportDiffFunction() ─────► Manager (immediate)
          │
-         └─► Generate Stateful Event ──────► persistDiffFunction()
+         └─► Generate Stateful Event ──────► persistDifference()
                                                       │
-                                                      └─► persistDifference()
-                                                                │
-                                                                ▼
-                                                        Sync Protocol Database
-                                                                │
-                                                                ▼
-                                            Periodic Sync Thread (syncLoop)
-                                                                │
-                                                                └─► syncModule()
-                                                                         │
-                                                                         ▼
-                                                                      Manager
+                                                      ▼
+                                              VD Table Detection
+                                                      │
+                                                      ├─► VD Table (OS/Packages/Hotfixes) ──────► VD Sync Protocol
+                                                      │
+                                                      └─► Regular Table ──────► Regular Sync Protocol Database
+                                                                                         │
+                                                                                         ▼
+                                                                         Periodic Sync Thread (syncLoop)
+                                                                                         │
+                                                                                         └─► syncModule()
+                                                                                                  │
+                                                                                                  ▼
+                                                                                               Manager
+         │
+         ▼
+Scan Completion
+         │
+         ▼
+processVDDataContext() ──────► getDataContextTables() ──────► Fetch Context Data ──────► VD Sync Protocol
+         │                              │                             │
+         ├─► clearAllDataContext()      ├─► Platform Rules            └─► DataContext Events
+         ├─► fetchPendingItems()        └─► OS → packages
+         └─► fetchAllFromTable()              packages → OS + hotfixes (Windows)
+                                              hotfixes → OS + packages (Windows)
 ```
 
 ---
 
-## Dual Event System
+## Tri-Event System
 
 ### Stateless Events
 
@@ -203,6 +252,29 @@ if (m_persistDiffFunction) {
 - Survive agent restarts and network failures
 - Synchronized periodically with manager
 - Use specific sync indexes for each inventory type
+
+### VD Context Events (DataContext Messages)
+
+Generated for VD-relevant inventory data (OS, packages, hotfixes):
+
+```cpp
+// VD table routing based on sync index
+bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                  index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                  index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+if (isVDTable && m_spSyncProtocolVD) {
+    m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
+}
+```
+
+**Characteristics:**
+- Generated automatically for VD-relevant tables (OS, packages, hotfixes)
+- Routed to VD's independent sync protocol instance (`m_spSyncProtocolVD`)
+- Post-scan processing via `processVDDataContext()` method
+- Platform-specific DataContext rules via `getDataContextTables()`
+- Support for VD-specific operations like `clearAllDataContext()`
+- Use vulnerability-specific sync index (`wazuh-states-vulnerabilities`)
 
 ---
 
@@ -350,25 +422,25 @@ bool ret = parseResponseBuffer(response_data, response_length);
 
 ### Inventory Type Synchronization
 
-Each inventory type is synchronized with its specific index:
+Each inventory type is synchronized with its specific index, with certain types also supporting VD context routing:
 
-| Inventory Type | Database Table | Sync Protocol Index |
-|----------------|----------------|-------------------|
-| Hardware | `dbsync_hwinfo` | `wazuh-states-inventory-hardware` |
-| OS | `dbsync_osinfo` | `wazuh-states-inventory-system` |
-| Packages | `dbsync_packages` | `wazuh-states-inventory-packages` |
-| Processes | `dbsync_processes` | `wazuh-states-inventory-processes` |
-| Ports | `dbsync_ports` | `wazuh-states-inventory-ports` |
-| Users | `dbsync_users` | `wazuh-states-inventory-users` |
-| Groups | `dbsync_groups` | `wazuh-states-inventory-groups` |
-| Services | `dbsync_services` | `wazuh-states-inventory-services` |
-| Browser Extensions | `dbsync_browser_extensions` | `wazuh-states-inventory-browser-extensions` |
-| Hotfixes | `dbsync_hotfixes` | `wazuh-states-inventory-hotfixes` |
-| Network Interfaces | `dbsync_network_iface` | `wazuh-states-inventory-interfaces` |
-| Network Protocols | `dbsync_network_protocol` | `wazuh-states-inventory-protocols` |
-| Network Address | `dbsync_network_address` | `wazuh-states-inventory-networks` |
+| Inventory Type | Database Table | Sync Protocol Index | VD Context Support |
+|----------------|----------------|-------------------|-------------------|
+| Hardware | `dbsync_hwinfo` | `wazuh-states-inventory-hardware` | No |
+| OS | `dbsync_osinfo` | `wazuh-states-inventory-system` | **Yes** → `wazuh-states-vulnerabilities` |
+| Packages | `dbsync_packages` | `wazuh-states-inventory-packages` | **Yes** → `wazuh-states-vulnerabilities` |
+| Processes | `dbsync_processes` | `wazuh-states-inventory-processes` | No |
+| Ports | `dbsync_ports` | `wazuh-states-inventory-ports` | No |
+| Users | `dbsync_users` | `wazuh-states-inventory-users` | No |
+| Groups | `dbsync_groups` | `wazuh-states-inventory-groups` | No |
+| Services | `dbsync_services` | `wazuh-states-inventory-services` | No |
+| Browser Extensions | `dbsync_browser_extensions` | `wazuh-states-inventory-browser-extensions` | No |
+| Hotfixes | `dbsync_hotfixes` | `wazuh-states-inventory-hotfixes` | **Yes** → `wazuh-states-vulnerabilities` |
+| Network Interfaces | `dbsync_network_iface` | `wazuh-states-inventory-interfaces` | No |
+| Network Protocols | `dbsync_network_protocol` | `wazuh-states-inventory-protocols` | No |
+| Network Address | `dbsync_network_address` | `wazuh-states-inventory-networks` | No |
 
-> **Note:** Starting in version 5.0, vulnerability data is synchronized through a separate Vulnerability Detector module with its own sync protocol instance and uses the `wazuh-states-vulnerabilities` index with DataContext message support.
+> **VD Context Routing**: Starting in version 5.0, OS info, packages, and hotfixes data is evaluated for vulnerability detection context. When `is_data_context` evaluation returns true, these events are routed as DataContext messages to the VD module's independent sync protocol instance using the `wazuh-states-vulnerabilities` index, while still generating regular stateful events for inventory synchronization.
 
 ---
 
