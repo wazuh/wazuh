@@ -67,8 +67,7 @@ enum Mode: byte {
 enum Option: byte {
     Sync,
     VDFirst,
-    VDSync,
-    VDClean
+    VDSync
 }
 ```
 

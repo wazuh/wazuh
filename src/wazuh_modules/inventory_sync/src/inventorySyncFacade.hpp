@@ -912,7 +912,6 @@ public:
                         }
 
                         if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
-                            res.context->option == Wazuh::SyncSchema::Option_VDClean ||
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
                             logDebug2(LOGGER_DEFAULT_TAG,

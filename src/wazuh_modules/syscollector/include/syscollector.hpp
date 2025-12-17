@@ -113,15 +113,6 @@ class EXPORTED Syscollector final
         std::pair<nlohmann::json, uint64_t> ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
         nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
 
-        std::vector<std::string> getDisabledVDIndices() const;
-
-        /**
-         * @brief Cleans VD data for disabled indices and notifies the sync protocol
-         * @details This method identifies which VD indices are disabled (Packages, OS, Hotfixes),
-         *          logs the cleanup operation, and sends a data clean notification to the VD sync protocol.
-         */
-        void cleanDisabledVDData();
-
         /**
          * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
          * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")

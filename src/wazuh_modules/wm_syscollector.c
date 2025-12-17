@@ -252,7 +252,8 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
                 SYSCOLLECTOR_SYNC_INDEX_USERS,
                 SYSCOLLECTOR_SYNC_INDEX_GROUPS,
                 SYSCOLLECTOR_SYNC_INDEX_SERVICES,
-                SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS
+                SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS,
+                SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES
             };
             size_t indices_count = sizeof(indices) / sizeof(indices[0]);
             bool ret = false;

@@ -13,7 +13,7 @@
  *
  * This file contains tests for:
  * - VD index to table name mapping verification
- * - getDisabledVDIndices() functionality with actual implementation testing
+ * - Integration tests for VD sync protocol routing
  * - Integration tests for disabled modules with database cleanup
  */
 
@@ -126,91 +126,6 @@ TEST_F(SyscollectorVDTest, VDIndexMapping_HotfixesToHotfixes)
 
     std::string expectedTable = "dbsync_hotfixes";
     EXPECT_EQ("dbsync_hotfixes", expectedTable);
-}
-
-TEST_F(SyscollectorVDTest, GetDisabledVDIndices_LogicOSDisabled)
-{
-    /**
-     * Test: Document the logic when OS module is disabled
-     */
-
-    bool packages = true;
-    bool os = false;  // OS disabled
-    bool hotfixes = true;
-
-    std::vector<std::string> result;
-
-    if (!packages) result.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
-
-    if (!os) result.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
-
-#ifdef _WIN32
-
-    if (!hotfixes) result.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-
-#else
-    (void)hotfixes;
-#endif
-
-    EXPECT_EQ(1UL, result.size());
-    EXPECT_EQ(SYSCOLLECTOR_SYNC_INDEX_SYSTEM, result[0]);
-}
-
-TEST_F(SyscollectorVDTest, GetDisabledVDIndices_LogicPackagesDisabled)
-{
-    /**
-     * Test: Document the logic when packages module is disabled
-     */
-
-    bool packages = false;  // Packages disabled
-    bool os = true;
-    bool hotfixes = true;
-
-    std::vector<std::string> result;
-
-    if (!packages) result.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
-
-    if (!os) result.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
-
-#ifdef _WIN32
-
-    if (!hotfixes) result.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-
-#else
-    (void)hotfixes;
-#endif
-
-    EXPECT_EQ(1UL, result.size());
-    EXPECT_EQ(SYSCOLLECTOR_SYNC_INDEX_PACKAGES, result[0]);
-}
-
-TEST_F(SyscollectorVDTest, GetDisabledVDIndices_LogicMultipleDisabled)
-{
-    /**
-     * Test: Document the logic when multiple modules are disabled
-     */
-
-    bool packages = false;  // Packages disabled
-    bool os = false;        // OS disabled
-    bool hotfixes = true;
-
-    std::vector<std::string> result;
-
-    if (!packages) result.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
-
-    if (!os) result.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
-
-#ifdef _WIN32
-
-    if (!hotfixes) result.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-
-#else
-    (void)hotfixes;
-#endif
-
-    EXPECT_EQ(2UL, result.size());
-    EXPECT_EQ(SYSCOLLECTOR_SYNC_INDEX_PACKAGES, result[0]);
-    EXPECT_EQ(SYSCOLLECTOR_SYNC_INDEX_SYSTEM, result[1]);
 }
 
 // ========================================

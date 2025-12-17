@@ -42,8 +42,7 @@ enum class Option : int
 {
     SYNC    = OPTION_SYNC,     ///< Standard synchronization option.
     VDFIRST = OPTION_VD_FIRST, ///< Virtual data first synchronization option.
-    VDSYNC  = OPTION_VD_SYNC,  ///< Virtual data synchronization option.
-    VDCLEAN = OPTION_VD_CLEAN  ///< Virtual data cleanup synchronization option.
+    VDSYNC  = OPTION_VD_SYNC   ///< Virtual data synchronization option.
 };
 
 /// @brief Represents a persisted message used in module synchronization.
