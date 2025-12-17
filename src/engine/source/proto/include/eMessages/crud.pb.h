@@ -97,6 +97,9 @@ extern resourceList_ResponseDefaultTypeInternal _resourceList_Response_default_i
 class resourcePost_Request;
 struct resourcePost_RequestDefaultTypeInternal;
 extern resourcePost_RequestDefaultTypeInternal _resourcePost_Request_default_instance_;
+class resourceValidate_Request;
+struct resourceValidate_RequestDefaultTypeInternal;
+extern resourceValidate_RequestDefaultTypeInternal _resourceValidate_Request_default_instance_;
 }  // namespace content
 }  // namespace engine
 }  // namespace api
@@ -118,6 +121,7 @@ template<> ::com::wazuh::api::engine::content::resourceGet_Response* Arena::Crea
 template<> ::com::wazuh::api::engine::content::resourceList_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourceList_Request>(Arena*);
 template<> ::com::wazuh::api::engine::content::resourceList_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourceList_Response>(Arena*);
 template<> ::com::wazuh::api::engine::content::resourcePost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourcePost_Request>(Arena*);
+template<> ::com::wazuh::api::engine::content::resourceValidate_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourceValidate_Request>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace com {
 namespace wazuh {
@@ -4372,6 +4376,8 @@ inline void resourceDelete_Request::set_allocated_uuid(std::string* uuid) {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

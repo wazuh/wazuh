@@ -130,3 +130,11 @@ class resourcePost_Request(_message.Message):
     type: str
     ymlContent: str
     def __init__(self, space: _Optional[str] = ..., type: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
+
+class resourceValidate_Request(_message.Message):
+    __slots__ = ["jsonContent", "type"]
+    JSONCONTENT_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    jsonContent: str
+    type: str
+    def __init__(self, type: _Optional[str] = ..., jsonContent: _Optional[str] = ...) -> None: ...

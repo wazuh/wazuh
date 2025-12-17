@@ -246,7 +246,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_crud_2eproto[15];
+static ::_pb::Metadata file_level_metadata_crud_2eproto[16];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_crud_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_crud_2eproto = nullptr;
 
