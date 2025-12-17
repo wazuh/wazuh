@@ -300,7 +300,6 @@ void Syscollector::processVDDataContext() {
 - **DataContext flag** (`isDataContext=true`) marks context vs regular data
 - **Context data routing** to VD sync protocol for vulnerability analysis
 - **Exclusion logic** prevents duplicate data submission
-- Uses vulnerability-specific sync index (`wazuh-states-vulnerabilities`)
 
 ---
 
@@ -453,20 +452,20 @@ Each inventory type is synchronized with its specific index, with certain types 
 | Inventory Type | Database Table | Sync Protocol Index | VD Context Support |
 |----------------|----------------|-------------------|-------------------|
 | Hardware | `dbsync_hwinfo` | `wazuh-states-inventory-hardware` | No |
-| OS | `dbsync_osinfo` | `wazuh-states-inventory-system` | **Yes** → `wazuh-states-vulnerabilities` |
-| Packages | `dbsync_packages` | `wazuh-states-inventory-packages` | **Yes** → `wazuh-states-vulnerabilities` |
+| OS | `dbsync_osinfo` | `wazuh-states-inventory-system` | **Yes** → VD Sync Protocol |
+| Packages | `dbsync_packages` | `wazuh-states-inventory-packages` | **Yes** → VD Sync Protocol |
 | Processes | `dbsync_processes` | `wazuh-states-inventory-processes` | No |
 | Ports | `dbsync_ports` | `wazuh-states-inventory-ports` | No |
 | Users | `dbsync_users` | `wazuh-states-inventory-users` | No |
 | Groups | `dbsync_groups` | `wazuh-states-inventory-groups` | No |
 | Services | `dbsync_services` | `wazuh-states-inventory-services` | No |
 | Browser Extensions | `dbsync_browser_extensions` | `wazuh-states-inventory-browser-extensions` | No |
-| Hotfixes | `dbsync_hotfixes` | `wazuh-states-inventory-hotfixes` | **Yes** → `wazuh-states-vulnerabilities` |
+| Hotfixes | `dbsync_hotfixes` | `wazuh-states-inventory-hotfixes` | **Yes** → VD Sync Protocol |
 | Network Interfaces | `dbsync_network_iface` | `wazuh-states-inventory-interfaces` | No |
 | Network Protocols | `dbsync_network_protocol` | `wazuh-states-inventory-protocols` | No |
 | Network Address | `dbsync_network_address` | `wazuh-states-inventory-networks` | No |
 
-> **VD Context Routing**: Starting in version 5.0, OS info, packages, and hotfixes data is evaluated for vulnerability detection context. When `is_data_context` evaluation returns true, these events are routed as DataContext messages to the VD module's independent sync protocol instance using the `wazuh-states-vulnerabilities` index, while still generating regular stateful events for inventory synchronization.
+> **VD Context Routing**: OS info, packages, and hotfixes data is automatically routed to the VD module's independent sync protocol instance based on table detection logic in the code, while still generating regular stateful events for inventory synchronization.
 
 ---
 
@@ -574,135 +573,6 @@ Send data clean notification ────────► syscollector_notify_dat
 3. Skip data clean notification (nothing to clean)
 4. Exit module startup immediately
 ```
-
----
-
-## Individual Collector Disabled Cleanup Flow
-
-### Overview
-
-Starting in version 5.0, Syscollector supports automatic cleanup when **individual collectors** are disabled (e.g., disabling just `packages`, `os`, or `hotfixes` while keeping the module running). This ensures the manager's state remains synchronized with the agent's actual monitoring configuration even when specific inventory types are turned off.
-
-### Execution Trigger
-
-The cleanup is triggered during normal Syscollector operation when the module detects that specific collectors have been disabled and contain data that needs to be cleaned.
-
-### Collector-Level Cleanup Flow
-
-```
-Syscollector Startup / Configuration Change
-      │
-      ▼
-Check Each Collector Configuration
-      │
-      ├─► For Each Disabled Collector:
-      │   │
-      │   ├─► Check if data exists in local database
-      │   │   for this collector type
-      │   │
-      │   └─► If data exists:
-      │       │
-      │       ├─► Determine affected indices
-      │       │   (e.g., packages → SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
-      │       │
-      │       ├─► Add to cleanup list
-      │       │
-      │       └─► Notify manager via notifyDataClean()
-      │           │
-      │           ├─► Send DataClean message for specific indices
-      │           │
-      │           ├─► Retry logic:
-      │           │   ├─► If ALL collectors disabled: Infinite retries
-      │           │   └─► Otherwise: Respect m_dataCleanRetries limit
-      │           │
-      │           └─► On success:
-      │               │
-      │               └─► Clean local database tables for those collectors
-      │
-      ▼
-Continue Normal Operation
-(with remaining enabled collectors)
-```
-
-### Cleanup Behavior
-
-#### Retry Logic
-
-The cleanup notification uses intelligent retry logic based on the scope of disabled collectors:
-
-- **All collectors disabled**: Retries infinitely until successful (agent cannot continue without cleanup)
-- **Some collectors disabled**: Retries up to `m_dataCleanRetries` limit (default: 3), then continues operation with remaining collectors
-
-#### Affected Indices by Collector Type
-
-| Disabled Collector | Affected Index | Data Cleaned |
-|-------------------|----------------|--------------|
-| `packages` | `SYSCOLLECTOR_SYNC_INDEX_PACKAGES` | Installed software packages |
-| `os` | `SYSCOLLECTOR_SYNC_INDEX_SYSTEM` | Operating system information |
-| `hotfixes` | `SYSCOLLECTOR_SYNC_INDEX_HOTFIXES` | Windows updates and patches |
-| `processes` | `SYSCOLLECTOR_SYNC_INDEX_PROCESSES` | Running processes |
-| `ports` | `SYSCOLLECTOR_SYNC_INDEX_PORTS` | Open network ports |
-| `hardware` | `SYSCOLLECTOR_SYNC_INDEX_HARDWARE` | Hardware specifications |
-| `network` | `SYSCOLLECTOR_SYNC_INDEX_INTERFACES`, `SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS`, `SYSCOLLECTOR_SYNC_INDEX_NETWORKS` | Network configuration |
-| `users` | `SYSCOLLECTOR_SYNC_INDEX_USERS` | System user accounts |
-| `groups` | `SYSCOLLECTOR_SYNC_INDEX_GROUPS` | System groups |
-| `services` | `SYSCOLLECTOR_SYNC_INDEX_SERVICES` | System services |
-| `browser_extensions` | `SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS` | Browser add-ons |
-
-### Behavior Scenarios
-
-#### Scenario 1: Disable Packages Collector with Existing Data
-
-```
-1. Agent running with packages collector enabled and populated database
-2. Configuration changed to <packages>no</packages>
-3. Syscollector detects packages collector disabled
-4. Checks dbsync_packages table - finds existing package data
-5. Prepares DataClean notification for SYSCOLLECTOR_SYNC_INDEX_PACKAGES
-6. Sends notification to manager (retries up to m_dataCleanRetries)
-7. Manager removes packages index from agent's state
-8. Syscollector cleans dbsync_packages table locally
-9. Continues normal operation with remaining collectors
-```
-
-#### Scenario 2: Disable Multiple Collectors
-
-```
-1. Agent running with packages, os, and hotfixes collectors enabled
-2. Configuration changed to disable packages and hotfixes
-3. Syscollector detects both collectors disabled
-4. Checks database for existing data in both tables
-5. Prepares DataClean notification for:
-   - SYSCOLLECTOR_SYNC_INDEX_PACKAGES
-   - SYSCOLLECTOR_SYNC_INDEX_HOTFIXES
-6. Sends single notification with both indices
-7. On success, cleans both local tables
-8. Continues operation with OS and other enabled collectors
-```
-
-#### Scenario 3: Disable All Collectors
-
-```
-1. Agent running with all collectors enabled
-2. Configuration changed to disable all collectors
-3. Syscollector detects all collectors disabled
-4. Prepares DataClean notification for all 13 indices
-5. Sends notification with infinite retry logic
-   (agent cannot continue until cleanup succeeds)
-6. Manager removes all indices from agent's state
-7. Syscollector cleans all local database tables
-8. Continues running (module still enabled but no active collectors)
-```
-
-### Resource Management
-
-During the data clean notification process, Syscollector:
-
-- **Unlocks m_mutex** during `handleNotifyDataClean()` to allow the module to be stopped if needed
-- **Blocks new scans** until cleanup completes for affected collectors
-- **Maintains operation** for collectors that remain enabled
-- **Logs warnings** if cleanup notification fails after retry limit
-
 ---
 
 ## Coordination Commands Architecture
