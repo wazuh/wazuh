@@ -93,8 +93,10 @@ bool w_hotreload_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, 
                                      OSList * list_msg);
 
 /**
- * @brief Check if the queue of the pipeline are empty
+ * @brief Drain the analysisd queues, for hot reload purposes
  *
- * @return true if the queues are empty. False otherwise
+ * This function drains the analysisd queues to ensure they are empty before switching rulesets.
+ * The events of the drained queues can refer to the old ruleset or can be used
+ * for querying to wazuh-db.
  */
-bool w_hotreload_queues_are_empty();
+void w_hotreload_drain_queues();
