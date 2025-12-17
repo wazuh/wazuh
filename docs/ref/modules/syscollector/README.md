@@ -6,6 +6,8 @@ The module implements a **dual event system** that provides both real-time alert
 
 Syscollector persistence supports **stateful synchronization** for complete system inventory including hardware, OS, network, packages, ports, processes, users, groups, services, and browser extensions, while maintaining **stateless real-time events** for immediate inventory change detection.
 
+> **Note:** Starting in version 5.0, vulnerability detection operates as an independent module separate from Syscollector, with its own synchronization protocol.
+
 ## Overview
 
 Syscollector performs periodic scans to gather inventory data and only sends changes to the Wazuh manager, providing efficient monitoring of system state across your infrastructure.
@@ -17,6 +19,7 @@ Syscollector performs periodic scans to gather inventory data and only sends cha
 - **Cross-Platform**: Supports Windows, Linux, macOS, and Unix systems
 - **Configurable**: Flexible scan intervals and component selection
 - **Local Storage**: SQLite database for change detection and state persistence
+- **Automatic Data Cleanup**: When individual collectors (packages, OS, hotfixes, etc.) are disabled, Syscollector automatically notifies the manager and cleans up associated data
 
 ### How It Works
 
