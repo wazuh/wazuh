@@ -38,6 +38,7 @@ enum class ParserType
     P_FLOAT,
     P_LONG,
     P_SCALED_FLOAT,
+    P_UNSIGNED_LONG,
     // Other types
     P_ALPHANUMERIC,
     P_BOOL,
@@ -83,6 +84,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_URI: return "uri";
         case ParserType::P_USER_AGENT: return "useragent";
         case ParserType::P_XML: return "xml";
+        case ParserType::P_UNSIGNED_LONG: return "unsigned_long";
         default: return "error_type";
     }
 }
@@ -137,6 +139,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_IGNORE;
     if (str == parserTypeToStr(ParserType::P_ALPHANUMERIC))
         return ParserType::P_ALPHANUMERIC;
+    if (str == parserTypeToStr(ParserType::P_UNSIGNED_LONG))
+        return ParserType::P_UNSIGNED_LONG;
     return ParserType::ERROR_TYPE;
 }
 
