@@ -1,6 +1,6 @@
 # Architecture
 
-The **Syscollector module** implements a **tri-event architecture** designed to provide both immediate alerting, reliable state synchronization, and vulnerability context data for system inventory monitoring. It combines stateless events with persistent stateful events using the Agent Sync Protocol for guaranteed delivery, while also supporting VD Context events for vulnerability detection integration.
+The **Syscollector module** implements a **dual event architecture** designed to provide both immediate alerting and reliable state synchronization for system inventory monitoring. It combines stateless events with persistent stateful events using the Agent Sync Protocol for guaranteed delivery, with enhanced VD Context routing for vulnerability detection integration.
 
 ---
 
@@ -216,7 +216,7 @@ processVDDataContext() ──────► getDataContextTables() ────
 
 ---
 
-## Tri-Event System
+## Dual Event System with VD Context Routing
 
 ### Stateless Events
 
@@ -234,7 +234,7 @@ if (m_reportDiffFunction) {
 - No persistence or retry mechanism
 - Lost if network is down or agent restarts
 
-### Stateful Events (Synchronization State)
+### Stateful Events (Synchronization State) with VD Context Routing
 
 Generated with complete data including checksums and persisted for synchronization:
 
@@ -246,16 +246,7 @@ if (m_persistDiffFunction) {
 }
 ```
 
-**Characteristics:**
-- Include complete inventory metadata and checksums
-- Persisted to sync protocol database
-- Survive agent restarts and network failures
-- Synchronized periodically with manager
-- Use specific sync indexes for each inventory type
-
-### VD Context Events (DataContext Messages)
-
-Generated for VD-relevant inventory data (OS, packages, hotfixes):
+**VD Context Routing for Stateful Events:**
 
 ```cpp
 // VD table routing based on sync index
@@ -265,16 +256,51 @@ bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
 
 if (isVDTable && m_spSyncProtocolVD) {
     m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
+} else {
+    m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
 }
 ```
 
 **Characteristics:**
-- Generated automatically for VD-relevant tables (OS, packages, hotfixes)
-- Routed to VD's independent sync protocol instance (`m_spSyncProtocolVD`)
-- Post-scan processing via `processVDDataContext()` method
-- Platform-specific DataContext rules via `getDataContextTables()`
-- Support for VD-specific operations like `clearAllDataContext()`
-- Use vulnerability-specific sync index (`wazuh-states-vulnerabilities`)
+- Include complete inventory metadata and checksums
+- Persisted to sync protocol database
+- Survive agent restarts and network failures
+- Synchronized periodically with manager
+- **VD-relevant tables** (OS, packages, hotfixes) are routed to VD sync protocol
+- **Regular tables** continue using standard sync protocol
+- Use specific sync indexes for each inventory type
+
+### VD DataContext Processing (Post-Scan)
+
+Additional context data generated after scan completion for VD analysis:
+
+Additional context data generated after scan completion for VD analysis:
+
+```cpp
+void Syscollector::processVDDataContext() {
+    // Clear previous DataContext
+    m_spSyncProtocolVD->clearAllDataContext();
+    
+    // Get pending DataValue items
+    std::vector<PersistedData> pendingDataValues = m_spSyncProtocolVD->fetchPendingItems(true);
+    
+    // Determine context tables needed based on platform rules
+    std::vector<std::string> contextTables = getDataContextTables(operation, index);
+    
+    // Fetch and submit context data
+    for (const auto& item : contextItems) {
+        m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, item.dump(), 0, true);
+    }
+}
+```
+
+**Characteristics:**
+- **Post-scan processing** via `processVDDataContext()` method
+- **Platform-specific rules** via `getDataContextTables()` determine context inclusion
+- **DataContext flag** (`isDataContext=true`) marks context vs regular data
+- **Context data routing** to VD sync protocol for vulnerability analysis
+- **Exclusion logic** prevents duplicate data submission
+- Uses vulnerability-specific sync index (`wazuh-states-vulnerabilities`)
 
 ---
 
