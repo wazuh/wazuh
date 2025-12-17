@@ -22,6 +22,7 @@ typedef struct agent_meta
     char* os_version;
     char* os_platform;
     char* arch;
+    char* hostname;
 } agent_meta_t;
 
 /* Forward declaration is OK in the header (we only need the pointer type here) */

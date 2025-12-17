@@ -53,6 +53,18 @@ void parse_uname_string (char *uname,
     if (!osd)
         return;
 
+    // Extract hostname (nodename) for Linux/macOS: format is "sysname |nodename |..."
+    // For Windows this won't match the pattern
+    if (str_tmp = strstr(uname, " |"), str_tmp) {
+        char *hostname_start = str_tmp + 2;  // Skip " |"
+        char *hostname_end = strstr(hostname_start, " |");
+        if (hostname_end) {
+            int hostname_len = hostname_end - hostname_start;
+            os_malloc(hostname_len + 1, osd->hostname);
+            snprintf(osd->hostname, hostname_len + 1, "%.*s", hostname_len, hostname_start);
+        }
+    }
+
     // [Ver: os_major.os_minor.os_build]
     if (str_tmp = strstr(uname, " [Ver: "), str_tmp) {
         *str_tmp = '\0';

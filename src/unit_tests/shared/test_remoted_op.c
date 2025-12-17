@@ -211,6 +211,7 @@ void test_parse_uname_string_linux(void **state)
     assert_string_equal("buster", osd->os_codename);
     assert_string_equal("debian", osd->os_platform);
     assert_string_equal("x86_64", osd->os_arch);
+    assert_string_equal("debian10", osd->hostname);
     assert_string_equal("Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64",uname);
 
     os_free(osd->os_name);
@@ -221,6 +222,7 @@ void test_parse_uname_string_linux(void **state)
     os_free(osd->os_codename);
     os_free(osd->os_platform);
     os_free(osd->os_arch);
+    os_free(osd->hostname);
     os_free(osd);
     os_free(uname);
 }
@@ -244,6 +246,7 @@ root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina
     assert_string_equal("Catalina", osd->os_codename);
     assert_string_equal("darwin", osd->os_platform);
     assert_string_equal("x86_64", osd->os_arch);
+    assert_string_equal("TESTmac.local", osd->hostname);
     assert_string_equal("Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64",uname);
 
     os_free(osd->os_name);
@@ -254,6 +257,7 @@ root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina
     os_free(osd->os_codename);
     os_free(osd->os_platform);
     os_free(osd->os_arch);
+    os_free(osd->hostname);
     os_free(osd);
     os_free(uname);
 }

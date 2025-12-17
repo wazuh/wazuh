@@ -1246,6 +1246,20 @@ void * save_control_thread(void * control_msg_queue)
     return NULL;
 }
 
+static const char* infer_os_type(const char *os_platform) {
+    if (!os_platform) return NULL;
+
+    if (strcmp(os_platform, "windows") == 0) {
+        return "windows";
+    } else if (strcmp(os_platform, "darwin") == 0) {
+        return "macos";
+    } else if (strcmp(os_platform, "bsd") == 0) {
+        return "unix";
+    }
+
+    return "linux";
+}
+
 // Encode the header ONLY once above the body
 static int append_header(dispatch_ctx_t *ctx) {
     if (ctx->header_added) return 0;
@@ -1282,8 +1296,17 @@ static int append_header(dispatch_ctx_t *ctx) {
     if (have_meta && snap.os_version)  cJSON_AddStringToObject(os, "version",  snap.os_version);
     if (have_meta && snap.os_platform) cJSON_AddStringToObject(os, "platform", snap.os_platform);
 
+    // agent.host.os.type (ECS-compliant, inferred from platform)
+    if (have_meta && snap.os_platform) {
+        const char *os_type = infer_os_type(snap.os_platform);
+        if (os_type) cJSON_AddStringToObject(os, "type", os_type);
+    }
+
     // agent.host.architecture
     if (have_meta && snap.arch) cJSON_AddStringToObject(host, "architecture", snap.arch);
+
+    // agent.host.hostname (only for Linux/macOS, empty for Windows)
+    if (have_meta && snap.hostname) cJSON_AddStringToObject(host, "hostname", snap.hostname);
 
     // Emit header line
     char *json = cJSON_PrintUnformatted(root);
