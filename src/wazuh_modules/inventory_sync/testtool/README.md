@@ -190,7 +190,7 @@ The `Start` block maps 1:1 to the InventorySync Start message:
 | -------------- | -------- | -------- | ------------------------------------------------------- |
 | `agentid`      | string   | Yes      | Agent identifier (`Start.agentid`).                     |
 | `mode`         | string   | Yes      | `"full"` or `"delta"` → mapped to `Mode_ModuleFull/Delta`. |
-| `option`       | string   | Yes      | `"VDFirst"`, `"VDSync"`, or `"VDClean"`.                |
+| `option`       | string   | Yes      | `"VDFirst"`, `"VDSync"`, or `"Sync"`.                   |
 | `agentname`    | string   | Yes      | Agent name.                                             |
 | `agentversion` | string   | Yes      | Agent version.                                          |
 | `architecture` | string   | Yes      | Agent architecture (e.g., `x86_64`, `aarch64`).         |
@@ -407,7 +407,6 @@ Controlled by `Start.option`:
 | --------- | ----------------- | ---------------------- |
 | `VDFirst` | Initial full scan | New agent registration |
 | `VDSync`  | Delta scan        | Package changes only   |
-| `VDClean` | Cleanup scan      | Remove all agent data  |
 
 ---
 

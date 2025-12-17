@@ -2644,6 +2644,7 @@ void Syscollector::checkDisabledCollectorsIndicesWithData()
     if (!m_os && hasDataInTable(OS_TABLE))
     {
         m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+
         if (!already_included_vd)
         {
             m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
@@ -2654,6 +2655,7 @@ void Syscollector::checkDisabledCollectorsIndicesWithData()
     if (!m_packages && hasDataInTable(PACKAGES_TABLE))
     {
         m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+
         if (!already_included_vd)
         {
             m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
@@ -2664,10 +2666,10 @@ void Syscollector::checkDisabledCollectorsIndicesWithData()
     if (!m_hotfixes && hasDataInTable(HOTFIXES_TABLE))
     {
         m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
         if (!already_included_vd)
         {
             m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
-            already_included_vd = true;
         }
     }
 
