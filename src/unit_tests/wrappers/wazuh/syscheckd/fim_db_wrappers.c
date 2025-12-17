@@ -146,6 +146,10 @@ void __wrap_fim_db_close_and_delete_database() {
     function_called();
 }
 
+void __wrap_fim_db_clean_file_table() {
+    function_called();
+}
+
 void __wrap_fim_db_update_last_sync_time(__attribute__((unused)) const char* table_name) {
     function_called();
 }

@@ -15,6 +15,7 @@
 #include "../db/include/db.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -1113,6 +1114,37 @@ void fim_handle_delete_by_path(const char *path,
 void fim_file_scan() {
     OSListNode *node_it;
     directory_t *dir_it;
+
+    // Check if directories are configured - if syscheck.directories is NULL or empty,
+    // but we have data in the database, we need to send DataClean for files index
+    if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
+        int files_count = fim_db_get_count_file_entry();
+
+        if (files_count > 0) {
+            mdebug1("No directory paths configured but database has %d files. Initiating DataClean for files.",
+                    files_count);
+
+            if (syscheck.sync_handle) {
+                // Prepare indices vector for data clean notification
+                const char* indices[1] = {FIM_FILES_SYNC_INDEX};
+                size_t indices_count = 1;
+
+                // Send DataClean notification for files index
+                bool dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+                if (dataCleanSent) {
+                    minfo("DataClean notification sent successfully for files index (all directory paths removed from configuration).");
+                } else {
+                    mwarn("DataClean notification failed for files index. Indexer may retain stale file data.");
+                }
+
+                // Clear file table from database
+                fim_db_clean_file_table();
+            } else {
+                mdebug1("Sync protocol not initialized, cannot send DataClean notification for files.");
+            }
+        }
+        return;
+    }
 
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
     callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL };

@@ -410,6 +410,31 @@ int fim_db_set_version_file(int version)
     return retval;
 }
 
+void fim_db_clean_file_table()
+{
+    try
+    {
+        // Delete all file entries
+        auto deleteQuery
+        {
+            DeleteQuery::builder()
+            .table(FIMDB_FILE_TABLE_NAME)
+            .rowFilter("1=1")
+            .build()
+        };
+        FIMDB::instance().removeItem(deleteQuery.query());
+
+        FIMDB::instance().logFunction(LOG_DEBUG, "File table cleaned successfully");
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
+}
+
 #ifdef __cplusplus
 }
 #endif

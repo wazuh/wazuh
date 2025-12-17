@@ -164,6 +164,64 @@ STATIC bool fim_has_data_in_database(void) {
 }
 
 /**
+ * @brief Prepares indices array based on database entry counts
+ *
+ * @param indices Array to store indices (must have at least 3 elements)
+ * @param indices_count Pointer to store the number of indices added
+ */
+STATIC void prepare_data_clean_indices(const char* indices[3], size_t* indices_count) {
+    *indices_count = 0;
+
+    int files_count = fim_db_get_count_file_entry();
+    if (files_count > 0) {
+        indices[(*indices_count)++] = FIM_FILES_SYNC_INDEX;
+        mdebug1("Found %d file entries to clean.", files_count);
+    }
+
+#ifdef WIN32
+    int registry_keys_count = fim_db_get_count_registry_key();
+    int registry_values_count = fim_db_get_count_registry_data();
+
+    if (registry_keys_count > 0) {
+        indices[(*indices_count)++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
+        mdebug1("Found %d registry key entries to clean.", registry_keys_count);
+    }
+    if (registry_values_count > 0) {
+        indices[(*indices_count)++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
+        mdebug1("Found %d registry value entries to clean.", registry_values_count);
+    }
+#endif
+}
+
+/**
+ * @brief Sends DataClean notification with retry logic and cleans up databases on success
+ *
+ * @param indices Array of index names to clean
+ * @param indices_count Number of indices in the array
+ * @return true if DataClean was sent successfully, false if aborted due to shutdown
+ */
+STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_count) {
+    bool dataCleanSent = false;
+
+    while (!dataCleanSent && !fim_shutdown_process_on()) {
+        dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        if (!dataCleanSent) {
+            mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
+            for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
+                sleep(1);
+            }
+        } else {
+            mdebug1("DataClean notification sent successfully.");
+            asp_delete_database(syscheck.sync_handle);
+            fim_db_close_and_delete_database();
+            mdebug1("FIM databases deleted successfully.");
+        }
+    }
+
+    return dataCleanSent;
+}
+
+/**
  * @brief Handles the scenario when all monitored paths have been removed from configuration
  *
  * This function is called when syscheck is enabled but has no configured directories/registries.
@@ -188,29 +246,9 @@ STATIC bool handle_all_paths_removed(void) {
         return false;
     }
 
-    // Prepare indices vector for data clean notification
     const char* indices[3] = {NULL, NULL, NULL};
     size_t indices_count = 0;
-
-    int files_count = fim_db_get_count_file_entry();
-    if (files_count > 0) {
-        indices[indices_count++] = FIM_FILES_SYNC_INDEX;
-        mdebug1("Found %d file entries to clean.", files_count);
-    }
-
-#ifdef WIN32
-    int registry_keys_count = fim_db_get_count_registry_key();
-    int registry_values_count = fim_db_get_count_registry_data();
-
-    if (registry_keys_count > 0) {
-        indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
-        mdebug1("Found %d registry key entries to clean.", registry_keys_count);
-    }
-    if (registry_values_count > 0) {
-        indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
-        mdebug1("Found %d registry value entries to clean.", registry_values_count);
-    }
-#endif
+    prepare_data_clean_indices(indices, &indices_count);
 
     if (indices_count == 0) {
         mdebug1("No indices to clean.");
@@ -219,25 +257,7 @@ STATIC bool handle_all_paths_removed(void) {
 
     minfo("All monitored paths removed from configuration. FIM database has entries. Proceeding with DataClean notification.");
 
-    // Send data clean notification with infinite retry until success or shutdown
-    // Since no paths are configured, we must ensure indexer data is cleaned
-    bool dataCleanSent = false;
-    while (!dataCleanSent && !fim_shutdown_process_on()) {
-        dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
-        if (!dataCleanSent) {
-            mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
-            for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
-                sleep(1);
-            }
-        } else {
-            minfo("DataClean notification sent successfully for FIM indices.");
-            // Delete both databases (sync protocol DB and FIM DB)
-            // Since no paths are configured, there's nothing to monitor - local cleanup is needed
-            asp_delete_database(syscheck.sync_handle);
-            fim_db_close_and_delete_database();
-            mdebug1("FIM databases deleted successfully.");
-        }
-    }
+    bool dataCleanSent = send_data_clean_with_retry(indices, indices_count);
 
     if (fim_shutdown_process_on() && !dataCleanSent) {
         mdebug1("DataClean notification aborted due to module shutdown.");
@@ -257,50 +277,15 @@ STATIC bool handle_all_paths_removed(void) {
  * 4. Resets the database tables after successful notification
  */
 STATIC void handle_fim_disabled(void) {
-
-    // Prepare indices vector for data clean notification
     const char* indices[3] = {NULL, NULL, NULL};
     size_t indices_count = 0;
+    prepare_data_clean_indices(indices, &indices_count);
 
-    int files_count = fim_db_get_count_file_entry();
-    if (files_count > 0) {
-        indices[indices_count++] = FIM_FILES_SYNC_INDEX;
-    }
-
-#ifdef WIN32
-    int registry_keys_count = fim_db_get_count_registry_key();
-    int registry_values_count = fim_db_get_count_registry_data();
-
-    if (registry_keys_count > 0) {
-        indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
-    }
-    if (registry_values_count > 0) {
-        indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
-    }
-#endif
-
-    // Send data clean notification if there are any indices to clean
     if (indices_count > 0) {
-        minfo( "Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
-
-        bool ret = false;
-        while (!ret && !fim_shutdown_process_on())
-        {
-            ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
-            if (!ret) {
-                for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
-                    sleep(1);
-                }
-            }
-            else
-            {
-                mdebug1("Data clean notification sent successfully.");
-                asp_delete_database(syscheck.sync_handle);
-                fim_db_close_and_delete_database();
-            }
-        }
+        minfo("Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
+        send_data_clean_with_retry(indices, indices_count);
     } else {
-        minfo( "Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
+        minfo("Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
     }
 }
 

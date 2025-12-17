@@ -126,7 +126,6 @@ void fim_db_clean_registry_tables()
         {
             DeleteQuery::builder()
             .table(FIMDB_REGISTRY_VALUE_TABLENAME)
-            .data(nlohmann::json::object())
             .rowFilter("1=1")
             .build()
         };
@@ -137,7 +136,6 @@ void fim_db_clean_registry_tables()
         {
             DeleteQuery::builder()
             .table(FIMDB_REGISTRY_KEY_TABLENAME)
-            .data(nlohmann::json::object())
             .rowFilter("1=1")
             .build()
         };
