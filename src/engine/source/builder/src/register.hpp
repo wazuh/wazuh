@@ -311,6 +311,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "parse_double", {schemf::STypeToken::create(schemf::Type::DOUBLE), builders::optransform::doubleParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
+        "parse_unsigned_long",
+        {schemf::STypeToken::create(schemf::Type::UNSIGNED_LONG), builders::optransform::unsignedLongParseBuilder});
+    registry->template add<builders::OpBuilderEntry>(
         "parse_binary", {schemf::STypeToken::create(schemf::Type::BINARY), builders::optransform::binaryParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "parse_date", {schemf::STypeToken::create(schemf::Type::DATE), builders::optransform::dateParseBuilder});

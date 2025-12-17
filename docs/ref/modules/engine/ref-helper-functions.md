@@ -125,6 +125,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [parse_key_value](#parse_key_value)
 - [parse_long](#parse_long)
 - [parse_quoted](#parse_quoted)
+- [parse_unsigned_long](#parse_unsigned_long)
 - [parse_uri](#parse_uri)
 - [parse_useragent](#parse_useragent)
 - [parse_xml](#parse_xml)
@@ -18831,6 +18832,140 @@ normalize:
 ```json
 {
   "input_field": "don't start with quotes \"here",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# parse_unsigned_long
+
+## Signature
+
+```
+
+field: parse_unsigned_long(input_field)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| input_field | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Evaluates if the content of the input field is a string that can be successfully converted into an unsigned long
+number. It converts and stores the unsigned long number in `field` with truncation.
+
+
+## Keywords
+
+- `parser` 
+
+## Examples
+
+### Example 1
+
+Failure unsigned long parse (negative integer)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_unsigned_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 2
+
+Success unsigned long parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_unsigned_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": 23
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Failure unsigned long parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_unsigned_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "hello",
   "target_field": "any_value"
 }
 ```

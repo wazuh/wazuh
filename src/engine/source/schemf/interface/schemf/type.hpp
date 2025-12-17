@@ -33,7 +33,8 @@ enum class Type
     OBJECT,
     NESTED,
     FLAT_OBJECT,
-    GEO_POINT
+    GEO_POINT,
+    UNSIGNED_LONG
 };
 
 inline constexpr bool hasProperties(Type type)
@@ -73,6 +74,7 @@ inline constexpr auto typeToStr(Type type)
         case Type::NESTED: return "nested";
         case Type::FLAT_OBJECT: return "flat_object";
         case Type::GEO_POINT: return "geo_point";
+        case Type::UNSIGNED_LONG: return "unsigned_long";
         default: return "error";
     }
 }
@@ -123,6 +125,8 @@ inline constexpr auto strToType(std::string_view strType)
         return Type::FLAT_OBJECT;
     if (typeToStr(Type::GEO_POINT) == strType)
         return Type::GEO_POINT;
+    if (typeToStr(Type::UNSIGNED_LONG) == strType)
+        return Type::UNSIGNED_LONG;
     return Type::ERROR;
 }
 
@@ -139,6 +143,7 @@ inline constexpr auto typeToJType(Type type)
         case Type::HALF_FLOAT: return json::Json::Type::Number;
         case Type::SCALED_FLOAT: return json::Json::Type::Number;
         case Type::DOUBLE: return json::Json::Type::Number;
+        case Type::UNSIGNED_LONG: return json::Json::Type::Number;
         case Type::KEYWORD: return json::Json::Type::String;
         case Type::TEXT: return json::Json::Type::String;
         case Type::MATCH_ONLY_TEXT: return json::Json::Type::String;

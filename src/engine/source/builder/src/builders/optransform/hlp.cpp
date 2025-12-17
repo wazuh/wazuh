@@ -37,6 +37,7 @@ enum class HLPParserType
     DSV,
     CSV,
     KV,
+    UNSIGNED_LONG
 };
 
 auto parserGetter(HLPParserType parserType)
@@ -65,6 +66,7 @@ auto parserGetter(HLPParserType parserType)
         case HLPParserType::DSV: return hlp::parsers::getDSVParser;
         case HLPParserType::CSV: return hlp::parsers::getCSVParser;
         case HLPParserType::KV: return hlp::parsers::getKVParser;
+        case HLPParserType::UNSIGNED_LONG: return hlp::parsers::getUnsignedLongParser;
         default: throw std::logic_error("Invalid HLP parser type");
     }
 }
@@ -326,4 +328,13 @@ TransformOp alphanumericParseBuilder(const Reference& targetField,
 {
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::ALPHANUMERIC));
 }
+
+// +parse_unsigned_long/[$ref|value]
+TransformOp unsignedLongParseBuilder(const Reference& targetField,
+                                     const std::vector<OpArg>& opArgs,
+                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::UNSIGNED_LONG));
+}
+
 } // namespace builder::builders::optransform

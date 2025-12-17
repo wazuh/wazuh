@@ -899,6 +899,20 @@ void Json::setInt64(int64_t value, std::string_view path)
     }
 }
 
+void Json::setUint64(uint64_t value, std::string_view path)
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        pp.Set(m_document, value);
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::setUint64(basePointerPath)] Invalid json path: '{}'", path));
+    }
+}
+
 void Json::setFloat(float_t value, std::string_view path)
 {
     auto pp = rapidjson::Pointer(path.data());

@@ -720,6 +720,17 @@ public:
     void setInt64(int64_t value, std::string_view path = "");
 
     /**
+     * @brief Set the Unsigned Integer object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setUint64(uint64_t value, std::string_view path = "");
+
+    /**
      * @brief Set the Double object at the path.
      * Parents objects are created if they do not exist.
      *
