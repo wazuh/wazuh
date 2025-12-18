@@ -10,6 +10,7 @@ from wazuh.core import common
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.common import get_installation_uid
+from api.constants import *
 
 """
 Wazuh HIDS Python package

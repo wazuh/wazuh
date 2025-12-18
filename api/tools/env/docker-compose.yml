@@ -129,22 +129,6 @@ services:
     depends_on:
       - wazuh-base
 
-  wazuh-dashboard:
-    build:
-      context: ./wazuh-dashboard
-    image: dev-wazuh-dashboard
-    hostname: wazuh-dashboard
-    volumes:
-      - ./wazuh-dashboard/config.yml:/etc/wazuh-dashboard/opensearch_dashboards_custom.yml
-      - ./certs/root-ca.pem:/etc/wazuh-dashboard/certs/root-ca.pem
-      - ./certs/wazuh-worker1.pem:/etc/wazuh-dashboard/certs/dashboard.pem
-      - ./certs/wazuh-worker1-key.pem:/etc/wazuh-dashboard/certs/dashboard-key.pem
-    ports:
-      - "4040:443"
-    depends_on:
-      - wazuh-indexer
-
 volumes:
   wazuh-indexer-data:
   wazuh-indexer-certs:
- 
