@@ -41,7 +41,7 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
 
     try:
         if node_type == 'master':
-            results = send_reload_ruleset_and_get_results(node_id=node_id, results=results)
+            results = await send_reload_ruleset_and_get_results(node_id=node_id, results=results)
         else:
             lc = local_client.LocalClient()
             result = await set_reload_ruleset_flag(lc)
