@@ -582,10 +582,10 @@ nlohmann::json SysInfo::getUsers() const
         }
 
         // Macos
-        auto passwordLastChange = user["password_last_set_time"].get<double>();
+        auto passwordLastChange = user["password_last_set_time"].get<int64_t>();
         auto creationTime = user["creation_time"].get<double>();
         auto failedLoginTimestamp = user["failed_login_timestamp"].get<double>();
-        userItem["user_password_last_change"] = passwordLastChange > 0 ? Utils::rawTimestampToISO8601(passwordLastChange) : UNKNOWN_VALUE;
+        userItem["user_password_last_change"] = passwordLastChange > 0 ? passwordLastChange : 0;
         userItem["user_is_hidden"] = user["is_hidden"];
         userItem["user_created"] = creationTime > 0 ? Utils::rawTimestampToISO8601(creationTime) : UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = user["failed_login_count"];

@@ -184,7 +184,7 @@ constexpr auto USERS_SQL_STATEMENT
         user_last_login TEXT,
         user_auth_failed_count BIGINT,
         user_auth_failed_timestamp TEXT,
-        user_password_last_change TEXT,
+        user_password_last_change BIGINT,
         user_password_expiration_date TEXT,
         user_password_hash_algorithm TEXT,
         user_password_inactive_days INTEGER,

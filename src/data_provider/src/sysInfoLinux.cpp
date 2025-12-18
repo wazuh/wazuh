@@ -796,11 +796,11 @@ nlohmann::json SysInfo::getUsers() const
             {
                 matched = true;
                 auto expireTimestamp = singleShadow["expire"].get<int64_t>();
-                auto lastChangeTimestamp = singleShadow["last_change"].get<double>();
+                auto lastChangeTimestamp = singleShadow["last_change"].get<int64_t>();
                 userItem["user_password_expiration_date"] = expireTimestamp > 0 ? Utils::rawTimestampToISO8601(static_cast<uint32_t>(expireTimestamp)) : UNKNOWN_VALUE;
                 userItem["user_password_hash_algorithm"] = singleShadow["hash_alg"];
                 userItem["user_password_inactive_days"] = singleShadow["inactive"];
-                userItem["user_password_last_change"] = lastChangeTimestamp > 0 ? Utils::rawTimestampToISO8601(lastChangeTimestamp) : UNKNOWN_VALUE;
+                userItem["user_password_last_change"] = lastChangeTimestamp > 0 ? lastChangeTimestamp : 0;
                 userItem["user_password_max_days_between_changes"] = singleShadow["max"];
                 userItem["user_password_min_days_between_changes"] = singleShadow["min"];
                 userItem["user_password_status"] = singleShadow["password_status"];
@@ -813,7 +813,7 @@ nlohmann::json SysInfo::getUsers() const
             userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
             userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
             userItem["user_password_inactive_days"] = 0;
-            userItem["user_password_last_change"] = UNKNOWN_VALUE;
+            userItem["user_password_last_change"] = 0;
             userItem["user_password_max_days_between_changes"] = 0;
             userItem["user_password_min_days_between_changes"] = 0;
             userItem["user_password_status"] = UNKNOWN_VALUE;

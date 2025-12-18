@@ -165,6 +165,12 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
         uint64_t ramUsage() const
         {
             const auto ramTotal{this->ramTotal()};
+
+            if (ramTotal == 0)
+            {
+                return 0;
+            }
+
             const auto ramFreeValue{this->ramFree()};
             return ramTotal > ramFreeValue ? ramTotal - ramFreeValue : 0;
         }
