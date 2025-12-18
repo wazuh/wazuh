@@ -676,7 +676,7 @@ int main(int argc, char* argv[])
                     archiver->archive(msg.data());
                     auto event = base::eventParsers::parseLegacyEvent(msg, hostInfo);
                     // TODO: momentary change
-                    event->setString("temp-cluster-name", "/wazuh/cluster/name");
+                    event->setString("wazuh", "/wazuh/cluster/name");
                     orchestrator->postEvent(std::move(event));
                 },
                 confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
@@ -701,7 +701,7 @@ int main(int argc, char* argv[])
                     std::queue<base::Event> modifiedEvents;
                     while (!batchEvents.empty())
                     {
-                        batchEvents.front()->setString("temp-cluster-name", "/wazuh/cluster/name");
+                        batchEvents.front()->setString("wazuh", "/wazuh/cluster/name");
                         modifiedEvents.push(std::move(batchEvents.front()));
                         batchEvents.pop();
                     }
