@@ -4,6 +4,10 @@
 
 # Development Documentation
 
+- [Setup Environment](dev/setup.md)
+- [Build from Sources](dev/build-sources.md)
+- [Run from Sources](dev/run-sources.md)
+
 # Reference Manual
 
 - [Introduction](ref/README.md)

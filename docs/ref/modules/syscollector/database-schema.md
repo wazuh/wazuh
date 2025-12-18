@@ -8,6 +8,26 @@ This document describes the database schema additions specific to Syscollector (
 
 Syscollector uses a SQLite database with multiple tables to store different types of system inventory data. Each table is designed to track specific system components and their changes over time. The schema is defined in `src/wazuh_modules/syscollector/src/syscollectorTablesDef.hpp`.
 
+### Wazuh Common Schema (WCS)
+
+The schemas according to the Wazuh Common Schema (WCS) are available in `src/external/indexer-plugins` and are downloaded during the agent build process as part of external dependencies (`make deps`):
+
+- `inventory-browser-extensions.json`
+- `inventory-groups.json`
+- `inventory-hardware.json`
+- `inventory-hotfixes.json`
+- `inventory-interfaces.json`
+- `inventory-networks.json`
+- `inventory-packages.json`
+- `inventory-ports.json`
+- `inventory-processes.json`
+- `inventory-protocols.json`
+- `inventory-services.json`
+- `inventory-system.json`
+- `inventory-users.json`
+
+These schemas define the standardized format for inventory data that is sent to the Wazuh indexer.
+
 ---
 
 ## Database Tables
