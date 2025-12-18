@@ -169,7 +169,7 @@ void * try_queue_pop_ex(w_queue_t * queue) {
     data = queue_pop(queue);
 
     if (data) {
-        w_cond_signal(&queue->available_not_empty)
+        w_cond_signal(&queue->available_not_empty);
     }
 
     w_mutex_unlock(&queue->mutex);

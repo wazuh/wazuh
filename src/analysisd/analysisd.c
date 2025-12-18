@@ -2556,7 +2556,7 @@ void w_hotreload_drain_queues() {
         NULL
     };
 
-    // Drain all queues in the array
+    // Drain all queues
     for (int i = 0; queues_to_drain[i] != NULL; i++) {
         w_hotreload_drain_eventinfo_queue(queues_to_drain[i]);
     }
