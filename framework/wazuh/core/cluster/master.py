@@ -22,10 +22,18 @@ from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
-from wazuh.core.indexer.base import BaseIndex
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 from wazuh.core.indexer.disconnected_agents import DisconnectedAgentGroupSyncTask
+
+# Try to import AsyncOpenSearch
+try:
+    from opensearchpy import AsyncOpenSearch
+except ImportError:
+    try:
+        from opensearchpy._async.client import AsyncOpenSearch
+    except ImportError:
+        AsyncOpenSearch = None
 
 DEFAULT_DATE: str = 'n/a'
 
@@ -1022,13 +1030,38 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
+
+        # Initialize Indexer client if available
+        self.indexer_client = None
+        if AsyncOpenSearch:
+            try:
+                # Get configuration from environment variables (standard in Wazuh Docker env)
+                indexer_url = os.environ.get('INDEXER_URL', '')
+                indexer_user = os.environ.get('INDEXER_USERNAME', 'admin')
+                indexer_pass = os.environ.get('INDEXER_PASSWORD', 'admin')
+
+                if indexer_url:
+                    self.logger.info(f"Initializing Indexer client for disconnected agent sync (URL: {indexer_url})")
+                    self.indexer_client = AsyncOpenSearch(
+                        hosts=[indexer_url],
+                        http_auth=(indexer_user, indexer_pass),
+                        verify_certs=False,
+                        ssl_show_warn=False
+                    )
+                else:
+                    self.logger.warning("INDEXER_URL not found in environment, Indexer client will not be available for disconnected agent sync")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize Indexer client: {e}")
+        else:
+            self.logger.warning("opensearch-py not installed, Indexer client will not be available")
+
         # Initialize disconnected agent group sync task
         logger_sync_task = self.setup_task_logger('Disconnected agent group sync')
         self.disconnected_agent_group_sync_task = DisconnectedAgentGroupSyncTask(
             manager=self,
             logger=logger_sync_task,
             cluster_items=self.cluster_items,
-            indexer_client=None  # Will be set when Indexer client is available
+            indexer_client=self.indexer_client
         )
         self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update, 
                           self.disconnected_agent_group_sync_task.run])

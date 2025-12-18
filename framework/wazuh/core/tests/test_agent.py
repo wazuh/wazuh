@@ -963,13 +963,13 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     assert agents['items'][0]['id'] == first_id
 
 
-@pytest.mark.parametrize("agent_id, group_id, replace, replace_list", [
-    ('002', 'test_group', False, None),
-    ('002', 'test_group', True, ['default']),
+@pytest.mark.parametrize("agent_id, group_id, replace, replace_list, external_gte", [
+    ('002', 'test_group', False, None, None),
+    ('002', 'test_group', True, ['default'], None),
 ])
 @patch('wazuh.core.agent.Agent.get_agent_groups', new_callable=AsyncMock)
 @patch('wazuh.core.agent.Agent.set_agent_group_relationship')
-async def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock, agent_id, group_id, replace, replace_list):
+async def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock, agent_id, group_id, replace, replace_list, external_gte):
     """Test if add_group_to_agent() works as expected and uses the correct parameters.
 
     Parameters
@@ -982,12 +982,14 @@ async def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock,
         Whether to append new group to current agent's group or replace it.
     replace_list : list
         List of Group names that can be replaced.
+    external_gte : str
+        Greater than or equal version of installed packages.
     """
     agent_groups_mock.return_value = ['default']
     # Run the method with different options
     result = await Agent.add_group_to_agent(group_id, agent_id, replace, replace_list, external_gte=None)
     assert result == f'Agent {agent_id} assigned to {group_id}', 'Result is not the expected one'
-    set_agent_group_mock.assert_called_once_with(agent_id, group_id, override=replace)
+    set_agent_group_mock.assert_called_once_with(agent_id, group_id, override=replace, external_gte=external_gte)
 
 
 @patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])

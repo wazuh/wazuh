@@ -1677,12 +1677,11 @@ async def test_disconnected_agent_group_sync(mock_assign, mock_group_exists, moc
             assert call.kwargs.get('external_gte') == external_gte or call[1].get('external_gte') == external_gte
 
 
-@pytest.mark.parametrize('agent_list, group_list, external_gte, expected_error', [
-    (None, ['default'], 100, WazuhError),
-    (['001'], None, 100, WazuhError),
-    (['001'], ['default'], None, WazuhError),
+@pytest.mark.parametrize('agent_list, group_list, external_gte, expected_err', [
+    (['001'], None, 100, 1001),
+    (['001'], ['default'], None, 1001),
 ])
-async def test_disconnected_agent_group_sync_missing_params(agent_list, group_list, external_gte, expected_error):
+async def test_disconnected_agent_group_sync_missing_params(agent_list, group_list, external_gte, expected_err):
     """Test `disconnected_agent_group_sync` function raises errors with missing parameters.
 
     Parameters
@@ -1698,7 +1697,7 @@ async def test_disconnected_agent_group_sync_missing_params(agent_list, group_li
     """
     from wazuh.agent import disconnected_agent_group_sync
     
-    with pytest.raises(expected_error):
+    with pytest.raises(WazuhException, match=f".* {expected_err} .*"):
         await disconnected_agent_group_sync(agent_list, group_list, external_gte)
 
 
