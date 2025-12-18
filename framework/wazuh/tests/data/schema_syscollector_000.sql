@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     version TEXT,
     os_release TEXT,
     os_display_version TEXT,
-    PRIMARY KEY (scan_id, os_name)
+    PRIMARY KEY (scan_id, os_name, os_version)
 );
 
 CREATE TABLE IF NOT EXISTS sys_hwinfo (

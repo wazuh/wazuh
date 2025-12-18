@@ -1505,7 +1505,9 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
 
     if (table == OS_TABLE)
     {
-        ret = data.contains("os_name") ? data["os_name"].get<std::string>() : "";
+        std::string osName = data.contains("os_name") ? data["os_name"].get<std::string>() : "";
+        std::string osVersion = data.contains("os_version") ? data["os_version"].get<std::string>() : "";
+        ret = osName + ":" + osVersion;
     }
     else if (table == HW_TABLE)
     {

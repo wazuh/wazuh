@@ -116,7 +116,7 @@ def populate_syscollector_db():
                 os_full TEXT,
                 checksum TEXT,
                 version INTEGER NOT NULL DEFAULT 1, db_status_field_dm INTEGER DEFAULT 1,
-                PRIMARY KEY (os_name)) WITHOUT ROWID;
+                PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;
             CREATE TABLE IF NOT EXISTS dbsync_hwinfo (
                 serial_number TEXT,
                 cpu_name TEXT,
