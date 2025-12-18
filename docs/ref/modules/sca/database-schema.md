@@ -2,6 +2,14 @@
 
 The SCA module uses SQLite database to store policy metadata and check results. The database maintains the state of security configuration assessments and enables change detection between scans.
 
+## Wazuh Common Schema (WCS)
+
+The schema according to the Wazuh Common Schema (WCS) is available in `src/external/indexer-plugins` and is downloaded during the agent build process as part of external dependencies (`make deps`):
+
+- `sca.json`
+
+This schema defines the standardized format for SCA data that is sent to the Wazuh indexer.
+
 ---
 
 ## Tables
