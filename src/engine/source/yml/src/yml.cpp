@@ -105,27 +105,28 @@ rapidjson::Document Converter::loadYMLfromString(const std::string& yamlStr)
 
 YAML::Node Converter::jsonToYaml(const rapidjson::Value& value)
 {
-    YAML::Node node;
     if (value.IsObject())
     {
+        YAML::Node node(YAML::NodeType::Map);
         for (auto& m : value.GetObject())
         {
             node[m.name.GetString()] = jsonToYaml(m.value);
         }
+        return node;
     }
     else if (value.IsArray())
     {
+        YAML::Node node(YAML::NodeType::Sequence);   // key for empty arrays
         for (auto& v : value.GetArray())
         {
             node.push_back(jsonToYaml(v));
         }
+        return node;
     }
     else
     {
-        node = parseScalar(value);
+        return parseScalar(value);
     }
-
-    return node;
 }
 
 rapidjson::Value Converter::yamlToJson(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator)

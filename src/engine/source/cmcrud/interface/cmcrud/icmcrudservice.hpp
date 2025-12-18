@@ -74,6 +74,15 @@ public:
      */
     virtual void deleteNamespace(std::string_view nsName) = 0;
 
+    /*
+     * @brief Import a full namespace from a JSON document.
+     *
+     * @param nsName Namespace name (space).
+     * @param jsonDocument JSON string with policy + resources.
+     * @param force If true, skip all validations.
+     */
+    virtual void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) = 0;
+
     /********************************* Policy *********************************/
 
     /**
@@ -133,13 +142,14 @@ public:
      *
      * @param nsName Target namespace name.
      * @param uuid   Resource UUID.
+     * @param asJSon Get with json format
      *
      * @return Document representing the resource.
      *
      * @throws std::runtime_error if the namespace or resource does not exist
      *         or if the serialization fails.
      */
-    virtual std::string getResourceByUUID(std::string_view nsName, const std::string& uuid) const = 0;
+    virtual std::string getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson) const = 0;
 
     /**
      * @brief Upsert a resource (asset, integration or KVDB) from a document.

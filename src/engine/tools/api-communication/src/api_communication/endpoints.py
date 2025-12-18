@@ -37,6 +37,8 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
         return None, '_internal/content/namespace/delete'
     if isinstance(message, crud.namespaceGet_Request):
         return None, '_internal/content/namespace/list'
+    if isinstance(message, crud.namespaceImport_Request):
+        return None, '_internal/content/namespace/import'
 
     # CRUD CM
     if isinstance(message, crud.resourcePost_Request):

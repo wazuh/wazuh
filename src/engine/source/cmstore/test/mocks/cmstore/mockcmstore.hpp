@@ -84,6 +84,7 @@ public:
 
     MOCK_METHOD(std::shared_ptr<ICMstoreNS>, createNamespace, (const NamespaceId& nsId), (override));
     MOCK_METHOD(void, deleteNamespace, (const NamespaceId& nsId), (override));
+    MOCK_METHOD(void, renameNamespace, (const NamespaceId& from, const NamespaceId& to), (override));
     MOCK_METHOD(std::vector<NamespaceId>, getNamespaces, (), (const, override));
 };
 

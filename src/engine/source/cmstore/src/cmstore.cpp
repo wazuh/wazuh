@@ -186,6 +186,14 @@ void CMStore::deleteNamespace(const NamespaceId& nsId)
         throw std::runtime_error("Cannot delete read-only namespace: " + nsId.toStr());
     }
 
+    // Abort if there are live shared_ptr CMStoreNS
+    if (it->second.use_count() > 1)
+    {
+        throw std::runtime_error(fmt::format("Cannot delete namespace '{}': active references detected (use_count={})",
+                                             nsId.toStr(),
+                                             it->second.use_count()));
+    }
+
     // Remove namespace directory from disk
     auto nsPath = m_baseStoragePath / nsId.toStr();
     std::error_code ec;
@@ -197,6 +205,69 @@ void CMStore::deleteNamespace(const NamespaceId& nsId)
 
     // Remove from in-memory map
     m_namespaces.erase(it);
+}
+
+void CMStore::renameNamespace(const NamespaceId& from, const NamespaceId& to)
+{
+    std::unique_lock lock(m_mutex);
+
+    auto itFrom = m_namespaces.find(from);
+    if (itFrom == m_namespaces.end())
+    {
+        throw std::runtime_error("Namespace does not exist: " + from.toStr());
+    }
+
+    if (m_namespaces.find(to) != m_namespaces.end())
+    {
+        throw std::runtime_error("Namespace already exists: " + to.toStr());
+    }
+
+    if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), from) != FORBIDDEN_NAMESPACES.end())
+    {
+        throw std::runtime_error("Cannot rename read-only namespace: " + from.toStr());
+    }
+    if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), to) != FORBIDDEN_NAMESPACES.end())
+    {
+        throw std::runtime_error("Namespace name is forbidden: " + to.toStr());
+    }
+
+    const auto srcPath = m_baseStoragePath / from.toStr();
+    const auto dstPath = m_baseStoragePath / to.toStr();
+
+    if (!std::filesystem::exists(srcPath))
+    {
+        throw std::runtime_error("Namespace directory does not exist on disk: " + srcPath.string());
+    }
+    if (std::filesystem::exists(dstPath))
+    {
+        throw std::runtime_error("Namespace directory already exists on disk: " + dstPath.string());
+    }
+
+    // Abort if there are live shared_ptr outside the store (same policy as deleteNamespace).
+    // Map holds exactly 1 reference; anything >1 means active readers/writers exist.
+    const auto activeRefs = itFrom->second.use_count();
+    if (activeRefs > 1)
+    {
+        throw std::runtime_error(fmt::format(
+            "Cannot rename namespace '{}' -> '{}': active references detected (use_count={})",
+            from.toStr(), to.toStr(), activeRefs));
+    }
+
+    // Keep the instance only to rollback the map if filesystem rename fails.
+    auto oldPtr = std::move(itFrom->second);
+    m_namespaces.erase(itFrom);
+
+    std::error_code ec;
+    std::filesystem::rename(srcPath, dstPath, ec);
+    if (ec)
+    {
+        m_namespaces.emplace(from, std::move(oldPtr));
+        throw std::runtime_error(fmt::format(
+            "Failed to rename namespace directory: {} -> {}: {}", srcPath.string(), dstPath.string(), ec.message()));
+    }
+
+    auto newNsInstance = std::make_shared<CMStoreNS>(to, dstPath, m_defaultOutputsPath);
+    m_namespaces.emplace(to, std::move(newNsInstance));
 }
 
 std::vector<NamespaceId> CMStore::getNamespaces() const

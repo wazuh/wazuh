@@ -268,11 +268,14 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eContent::resourceGet_Response protoRes;
                 protoRes.set_status(eEngine::ReturnStatus::OK);
-                protoRes.set_ymlcontent("yml: content");
+                protoRes.set_content("yml: content");
                 return userResponse<eContent::resourceGet_Response>(protoRes);
             },
             [](auto& mock)
-            { EXPECT_CALL(mock, getResourceByUUID("draft", "uuid-1")).WillOnce(::testing::Return("yml: content")); }),
+            {
+                EXPECT_CALL(mock, getResourceByUUID("draft", "uuid-1", false))
+                    .WillOnce(::testing::Return("yml: content"));
+            }),
         // Wrong request type
         CmCrudHandlerT(
             []()

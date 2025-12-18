@@ -226,7 +226,7 @@ std::filesystem::path CMStoreNS::getResourcePaths(const std::string& name, Resou
 
     auto fileName = name;
     if (type == ResourceType::DECODER || type == ResourceType::OUTPUT || type == ResourceType::RULE
-        || type == ResourceType::FILTER)
+        || type == ResourceType::FILTER || type == ResourceType::INTEGRATION || type == ResourceType::KVDB)
     {
         // Replace '/' with '_' to avoid directory traversal on assets names
         std::replace(fileName.begin(), fileName.end(), '/', '_');
@@ -322,6 +322,10 @@ bool CMStoreNS::assetExistsByUUID(const std::string& uuid) const
     }
 
     const auto& [name, rType] = opt.value();
+    if (rType == ResourceType::KVDB)
+    {
+        return true;
+    }
     const auto assetType = getResourceTypeFromAssetName(base::Name(name));
     return assetType != ResourceType::UNDEFINED && assetType == rType;
 }

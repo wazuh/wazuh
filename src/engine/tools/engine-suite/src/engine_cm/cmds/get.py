@@ -11,6 +11,7 @@ def run(args):
     json_request = dict()
     json_request['space'] = args['space']
     json_request['uuid'] = args['uuid']
+    json_request['asJson'] = args['json']
 
     # Create the api request
     try:
@@ -21,7 +22,7 @@ def run(args):
         if error:
             sys.exit(f'Error getting asset or collection: {error}')
 
-        print(response['ymlContent'])
+        print(response['content'])
 
     except Exception as e:
         sys.exit(f'Error getting asset or collection: {e}')
@@ -35,5 +36,7 @@ def configure(subparsers):
 
     parser_get.add_argument('uuid', type=str,
                             help=f'UUID of the resource to get.')
+
+    parser_get.add_argument('--json', action='store_true', help='Json format', default=False)
 
     parser_get.set_defaults(func=run)
