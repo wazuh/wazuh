@@ -2131,8 +2131,8 @@ void Syscollector::processVDDataContext()
             {
                 try
                 {
-                    nlohmann::json aux = ecsData(item, tableName);
-                    const auto statefulToSend{aux.dump()};
+                    const auto ecsPair = ecsData(item, tableName);
+                    const auto statefulToSend{ecsPair.first.dump()};
 
                     // Calculate ID the same way as done during scan for DataValue
                     std::string itemId = calculateHashId(item, tableName);
@@ -3074,4 +3074,3 @@ void Syscollector::runRecoveryProcess()
         }
     }
 }
-
