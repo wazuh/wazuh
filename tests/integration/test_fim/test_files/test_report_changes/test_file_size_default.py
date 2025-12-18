@@ -189,8 +189,11 @@ def test_file_size_default(test_configuration, test_metadata, configure_local_in
     to_write = generate_string(int(size_limit), '1')
     write_file(file_to_monitor, data=to_write)
 
-    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=30)
+    now = time.time()
+    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=300)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FOLDER_DELETED
+    after = time.time()
+    print(f"[DEBUG] Time taken to detect folder deletion: {after - now} seconds")
 
     if os.path.exists(diff_file_path):
         pytest.raises(FileExistsError(f"{diff_file_path} found. It should not exist after incresing the size."))

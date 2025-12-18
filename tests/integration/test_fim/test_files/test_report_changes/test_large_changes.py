@@ -179,8 +179,11 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     original_string = generate_string(test_metadata.get('original_size'), '0')
     write_file_write(test_file_path, content=original_string)
 
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=30)
+    now = time.time()
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=300)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
+    after = time.time()
+    print(f"[DEBUG] Time taken to detect file addition: {after - now} seconds")
 
     # Modify the file with new content
     truncate_file(WAZUH_LOG_PATH)

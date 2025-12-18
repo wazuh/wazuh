@@ -9,6 +9,8 @@ on:
 
 jobs:
   build-sonoma:
+    # ISSUE 33111: Skip this workflow for issue-33111 branch testing
+    if: ${{ !contains(github.head_ref || github.ref_name, '33111') }}
     runs-on: macos-14
     steps:
       - name: Checkout Repo

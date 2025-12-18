@@ -8,6 +8,8 @@ on:
 
 jobs:
   scan-build-linux:
+    # ISSUE 33111: Skip this workflow for issue-33111 branch testing
+    if: ${{ !contains(github.head_ref || github.ref_name, '33111') }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false

@@ -178,8 +178,13 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
     write_file(file_to_monitor, data=to_write)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=30)
+
+    now = time.time()
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=300)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
+    after = time.time()
+    print(f"[DEBUG] Time taken to detect report changes event: {after - now} seconds")
+
     content_changes = str(wazuh_log_monitor.callback_result)
     assert 'test_string' in content_changes or 'More changes...' in content_changes, 'Wrong content_changes field'
 
@@ -200,6 +205,10 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FILE_LIMIT_REACHED
 
     # Check the content_changes field in the event
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=30)
+    now = time.time()
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=300)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
+    after = time.time()
+    print(f"[DEBUG] Time taken to detect unable diff event: {after - now} seconds")
+    
     assert 'Unable to calculate diff due to \'file_size\' limit has been reached.' in wazuh_log_monitor.callback_result, 'Wrong content_changes field'

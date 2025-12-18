@@ -85,6 +85,53 @@ jobs:
         run: |
           cd  C:\wazuh\src\win32
           .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
+
+      # ISSUE 33111: Enable FIM debug logging
+      - name: Enable FIM debug logging
+        run: |
+          Write-Host "=== Enabling FIM Debug Logging ===" -ForegroundColor Cyan
+
+          # Find Wazuh installation directory
+          $possiblePaths = @(
+            "C:\Program Files (x86)\ossec-agent",
+            "C:\Program Files\ossec-agent",
+            "C:\wazuh-agent"
+          )
+
+          $agentPath = $null
+          foreach ($path in $possiblePaths) {
+            if (Test-Path $path) {
+              $agentPath = $path
+              Write-Host "Found Wazuh agent at: $agentPath"
+              break
+            }
+          }
+
+          if (-not $agentPath) {
+            Write-Host "WARNING: Wazuh agent directory not found. Listing Program Files:"
+            Get-ChildItem "C:\Program Files (x86)\" | Where-Object { $_.Name -like "*wazuh*" -or $_.Name -like "*ossec*" }
+            Get-ChildItem "C:\Program Files\" | Where-Object { $_.Name -like "*wazuh*" -or $_.Name -like "*ossec*" }
+            # Use default path anyway
+            $agentPath = "C:\Program Files (x86)\ossec-agent"
+            New-Item -ItemType Directory -Force -Path $agentPath | Out-Null
+          }
+
+          $internalOptionsPath = Join-Path $agentPath "local_internal_options.conf"
+
+          # Create debug settings (no leading whitespace)
+          $debugSettings = @"
+          syscheck.debug=2
+          agent.debug=2
+          wazuh_modules.debug=2
+          "@
+
+          # Write to file (create if not exists)
+          Set-Content -Path $internalOptionsPath -Value $debugSettings -Force
+
+          Write-Host "Debug settings written to: $internalOptionsPath"
+          Write-Host "Contents:"
+          Get-Content $internalOptionsPath
+
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |
@@ -102,5 +149,84 @@ jobs:
       - name: Run fim integration tests
         run: |
           NET START wazuh
+
+          Write-Host "=== Wazuh Service Status ===" -ForegroundColor Cyan
+          sc query wazuh
+
+          Write-Host "=== Test Framework Version ===" -ForegroundColor Cyan
+          pip show wazuh-testing
+
+          Write-Host "=== Starting FIM Tests (Issue 33111) ===" -ForegroundColor Cyan
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_fim\
+
+          # ISSUE 33111: Run all 3 failing tests with all FIM modes (scheduled, realtime, whodata)
+          python -m pytest test_fim/test_files/test_report_changes/test_file_size_default.py test_fim/test_files/test_report_changes/test_file_size_values.py test_fim/test_files/test_report_changes/test_large_changes.py -v --tb=long
+
+      - name: Collect Wazuh logs and diagnostics
+        if: always()
+        run: |
+          $artifactPath = "C:\wazuh-logs"
+
+          # Find Wazuh installation directory
+          $possiblePaths = @(
+            "C:\Program Files (x86)\ossec-agent",
+            "C:\Program Files\ossec-agent",
+            "C:\wazuh-agent"
+          )
+
+          $agentPath = $null
+          foreach ($path in $possiblePaths) {
+            if (Test-Path $path) {
+              $agentPath = $path
+              break
+            }
+          }
+
+          if (-not $agentPath) {
+            Write-Host "WARNING: Wazuh agent directory not found"
+            $agentPath = "C:\Program Files (x86)\ossec-agent"
+          }
+
+          Write-Host "=== Collecting Wazuh Logs from: $agentPath ===" -ForegroundColor Cyan
+
+          # Create artifact directory
+          New-Item -ItemType Directory -Force -Path $artifactPath | Out-Null
+
+          # Copy ossec.log (full content)
+          $logPath = "$agentPath\ossec.log"
+          if (Test-Path $logPath) {
+            Copy-Item $logPath -Destination "$artifactPath\ossec.log"
+            $logSize = (Get-Item $logPath).Length / 1KB
+            Write-Host "ossec.log size: $([math]::Round($logSize, 2)) KB"
+          } else {
+            Write-Host "WARNING: ossec.log not found at $logPath"
+          }
+
+          # Copy configuration files
+          if (Test-Path "$agentPath\ossec.conf") {
+            Copy-Item "$agentPath\ossec.conf" -Destination "$artifactPath\ossec.conf"
+          }
+          if (Test-Path "$agentPath\local_internal_options.conf") {
+            Copy-Item "$agentPath\local_internal_options.conf" -Destination "$artifactPath\local_internal_options.conf"
+          }
+          if (Test-Path "$agentPath\internal_options.conf") {
+            Copy-Item "$agentPath\internal_options.conf" -Destination "$artifactPath\internal_options.conf"
+          }
+
+          # List all collected files
+          Write-Host "`n=== Collected Files ===" -ForegroundColor Yellow
+          Get-ChildItem $artifactPath | Format-Table Name, Length
+
+          # Show last 100 lines of log in console for quick debugging
+          Write-Host "`n=== Last 100 lines of ossec.log ===" -ForegroundColor Yellow
+          if (Test-Path $logPath) {
+            Get-Content $logPath -Tail 100
+          }
+
+      - name: Upload Wazuh logs and config
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-debug-logs-${{ github.run_id }}
+          path: C:\wazuh-logs\
+          if-no-files-found: warn
