@@ -286,6 +286,9 @@ STATIC void handle_fim_disabled(void) {
         send_data_clean_with_retry(indices, indices_count);
     } else {
         minfo("Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
+        asp_delete_database(syscheck.sync_handle);
+        fim_db_close_and_delete_database();
+        mdebug1("FIM databases deleted successfully.");
     }
 }
 
