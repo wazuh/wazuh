@@ -553,7 +553,7 @@ static void getMemory(nlohmann::json& info)
     {
         info["memory_total"] = statex.ullTotalPhys;
         info["memory_free"] = statex.ullAvailPhys;
-        info["memory_used"] = statex.dwMemoryLoad / 100.0;
+        info["memory_used"] = statex.ullTotalPhys - statex.ullAvailPhys;
     }
     else
     {

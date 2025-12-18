@@ -302,12 +302,12 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Succeed)
         *static_cast<uint64_t*>(oldp) = 342319;
         return 0;
     });
-    double ret = 0.0;
+    uint64_t ret = 0;
     EXPECT_NO_THROW(ret = wrapper->ramUsage());
     const uint64_t ramFree = (uint64_t)16384 * 342319;
     const uint64_t ramTotal = 17179869184;
-    const double expected = (100 - (100 * ramFree / ramTotal)) * 0.01;
-    EXPECT_DOUBLE_EQ(ret, expected);
+    const uint64_t expected = ramTotal - ramFree;
+    EXPECT_EQ(ret, expected);
 }
 
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Succeed_TotalRamZero)
@@ -323,9 +323,9 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Succeed_TotalRamZero)
         *static_cast<uint64_t*>(oldp) = 0;
         return 0;
     });
-    double ret = 0.0;
+    uint64_t ret = 0;
     EXPECT_NO_THROW(ret = wrapper->ramUsage());
-    EXPECT_DOUBLE_EQ(ret, 0.0);
+    EXPECT_EQ(ret, 0ULL);
 }
 
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname1)

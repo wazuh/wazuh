@@ -28,6 +28,6 @@ class IOSHardwareWrapper
         virtual double cpuMhz() = 0;
         virtual uint64_t ramTotal() const = 0;
         virtual uint64_t ramFree() const = 0;
-        virtual double ramUsage() const = 0;
+        virtual uint64_t ramUsage() const = 0;
 };
 #endif // _HARDWARE_WRAPPER_INTERFACE_H

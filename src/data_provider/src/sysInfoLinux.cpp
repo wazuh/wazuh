@@ -265,7 +265,7 @@ static void getMemory(nlohmann::json& info)
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };
     info["memory_total"] = ramTotal * 1024;
     info["memory_free"] = memFree * 1024;
-    info["memory_used"] = (100.0 - (100.0 * memFree / ramTotal)) * 0.01;
+    info["memory_used"] = (ramTotal - memFree) * 1024;
 }
 
 nlohmann::json SysInfo::getHardware() const

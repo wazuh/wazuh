@@ -42,7 +42,7 @@ constexpr auto HW_SQL_STATEMENT
     cpu_speed DOUBLE,
     memory_total INTEGER,
     memory_free INTEGER,
-    memory_used DOUBLE,
+    memory_used INTEGER,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (serial_number)) WITHOUT ROWID;)"
