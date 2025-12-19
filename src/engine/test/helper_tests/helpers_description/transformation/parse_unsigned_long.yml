@@ -37,8 +37,15 @@ test:
   - arguments:
       input_field: "23.45"
     target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failed unsigned long parse
+
+  - arguments:
+      input_field: "2345"
+    target_field: any_value
     should_pass: true
-    expected: 23
+    expected: 2345
     description: Success unsigned long parse
 
   - arguments:

@@ -1,6 +1,7 @@
 #include <base/json.hpp>
 
 #include <exception>
+#include <limits>
 #include <unordered_set>
 
 #include "rapidjson/schema.h"
@@ -264,6 +265,56 @@ std::optional<int64_t> Json::getInt64(std::string_view path) const
         if (value && value->IsInt64())
         {
             return value->GetInt64();
+        }
+        else
+        {
+            return std::nullopt;
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] Invalid json path: '{}'", path));
+    }
+}
+
+std::optional<int16_t> Json::getInt16(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value && value->IsInt())
+        {
+            int32_t intValue = value->GetInt();
+            if (intValue >= std::numeric_limits<int16_t>::min() && intValue <= std::numeric_limits<int16_t>::max())
+            {
+                return static_cast<int16_t>(intValue);
+            }
+            // Value is out of range
+            return std::nullopt;
+        }
+        else
+        {
+            return std::nullopt;
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] Invalid json path: '{}'", path));
+    }
+}
+
+std::optional<uint64_t> Json::getUint64(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value && value->IsUint64())
+        {
+            return value->GetUint64();
         }
         else
         {
@@ -643,6 +694,24 @@ bool Json::isInt(std::string_view path) const
         if (value)
         {
             return value->IsInt();
+        }
+
+        return false;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+bool Json::isUint64(std::string_view path) const
+{
+    const auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value)
+        {
+            return value->IsUint64();
         }
 
         return false;

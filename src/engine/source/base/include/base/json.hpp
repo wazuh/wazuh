@@ -328,6 +328,24 @@ public:
     std::optional<int64_t> getInt64(std::string_view path = "") const;
 
     /**
+     * @brief Get the Int16 object field.
+     *
+     * @param basePointerPath The base pointer path to set.
+     * @return std::optional<int16_t>
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<int16_t> getInt16(std::string_view path = "") const;
+
+    /**
+     * @brief Get the Uint64 object field.
+     *
+     * @param basePointerPath The base pointer path to set.
+     * @return std::optional<uint32_t>
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<uint64_t> getUint64(std::string_view path = "") const;
+
+    /**
      * @brief Get the value of the int or int64 field as int64.
      *
      * @param path The path to the field.
@@ -537,6 +555,19 @@ public:
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
     bool isInt(std::string_view path = "") const;
+
+    /**
+     * @brief Check if the Json described by the path is uint64.
+     *
+     * Ensure that the path exists before calling this function.
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is uint64.
+     * @return false if Json is not uint64.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
+     */
+    bool isUint64(std::string_view path = "") const;
 
     /**
      * @brief Check if the Json described by the path is int64.

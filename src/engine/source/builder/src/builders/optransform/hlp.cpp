@@ -37,7 +37,9 @@ enum class HLPParserType
     DSV,
     CSV,
     KV,
-    UNSIGNED_LONG
+    UNSIGNED_LONG,
+    INTEGER,
+    SHORT
 };
 
 auto parserGetter(HLPParserType parserType)
@@ -67,6 +69,8 @@ auto parserGetter(HLPParserType parserType)
         case HLPParserType::CSV: return hlp::parsers::getCSVParser;
         case HLPParserType::KV: return hlp::parsers::getKVParser;
         case HLPParserType::UNSIGNED_LONG: return hlp::parsers::getUnsignedLongParser;
+        case HLPParserType::INTEGER: return hlp::parsers::getIntegerParser;
+        case HLPParserType::SHORT: return hlp::parsers::getShortParser;
         default: throw std::logic_error("Invalid HLP parser type");
     }
 }
@@ -335,6 +339,22 @@ TransformOp unsignedLongParseBuilder(const Reference& targetField,
                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::UNSIGNED_LONG));
+}
+
+// +parse_integer/[$ref|value]
+TransformOp integerParseBuilder(const Reference& targetField,
+                                const std::vector<OpArg>& opArgs,
+                                const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::INTEGER));
+}
+
+// +parse_short/[$ref|value]
+TransformOp shortParseBuilder(const Reference& targetField,
+                              const std::vector<OpArg>& opArgs,
+                              const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::SHORT));
 }
 
 } // namespace builder::builders::optransform
