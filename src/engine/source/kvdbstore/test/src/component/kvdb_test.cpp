@@ -9,11 +9,21 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/utils/hash.hpp>
 #include <cmstore/icmstore.hpp>
 #include <cmstore/mockcmstore.hpp>
 #include <cmstore/datakvdb.hpp>
 
 #include <kvdbstore/kvdbManager.hpp>
+
+class KVDB_Component : public ::testing::Test
+{
+protected:
+    static void SetUpTestSuite()
+    {
+        [[maybe_unused]] volatile auto warmup = base::utils::hash::sha256("openssl_init");
+    }
+};
 
 namespace
 {
@@ -53,7 +63,7 @@ inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kv
 } // namespace
 
 // Build once and then serve from the cache: no refetch, same pointer.
-TEST(KVDB_Component, BuildOnceThenCache_NoRefetch_SamePointer)
+TEST_F(KVDB_Component, BuildOnceThenCache_NoRefetch_SamePointer)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
@@ -86,7 +96,7 @@ TEST(KVDB_Component, BuildOnceThenCache_NoRefetch_SamePointer)
 }
 
 // After all handlers are released, a subsequent request rebuilds with new content.
-TEST(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
+TEST_F(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
@@ -118,7 +128,7 @@ TEST(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
 }
 
 // Different namespaces and db names are fully isolated (distinct caches).
-TEST(KVDB_Component, CrossNamespaceAndDb_IsolatedCaches)
+TEST_F(KVDB_Component, CrossNamespaceAndDb_IsolatedCaches)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsA {"A"}, nsB {"B"};
@@ -163,7 +173,7 @@ TEST(KVDB_Component, CrossNamespaceAndDb_IsolatedCaches)
 }
 
 // Concurrent cold race on the same (ns, db) eventually converges to a stable cache.
-TEST(KVDB_Component, ConcurrentColdRace_EventualConvergence)
+TEST_F(KVDB_Component, ConcurrentColdRace_EventualConvergence)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
@@ -215,7 +225,7 @@ TEST(KVDB_Component, ConcurrentColdRace_EventualConvergence)
 }
 
 // Non-object payloads are invalid and must throw during build.
-TEST(KVDB_Component, InvalidPayload_Throws)
+TEST_F(KVDB_Component, InvalidPayload_Throws)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
@@ -239,7 +249,7 @@ TEST(KVDB_Component, InvalidPayload_Throws)
 }
 
 // Mixed value types (object, array, number, boolean, string, null) are supported as values.
-TEST(KVDB_Component, NestedValues_AccessAndEquality)
+TEST_F(KVDB_Component, NestedValues_AccessAndEquality)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};

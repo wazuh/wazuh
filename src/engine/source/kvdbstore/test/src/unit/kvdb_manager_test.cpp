@@ -9,11 +9,21 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/utils/hash.hpp>
 #include <cmstore/datakvdb.hpp>
 #include <cmstore/icmstore.hpp>
 #include <cmstore/mockcmstore.hpp>
 
 #include <kvdbstore/kvdbManager.hpp>
+
+class KVDB_Manager_Unit : public ::testing::Test
+{
+protected:
+    static void SetUpTestSuite()
+    {
+        [[maybe_unused]] volatile auto warmup = base::utils::hash::sha256("openssl_init");
+    }
+};
 
 namespace
 {
@@ -51,7 +61,7 @@ inline std::vector<std::reference_wrapper<const json::Json>> parallelReadRefs(kv
 }
 } // namespace
 
-TEST(KVDB_Manager_Unit, CacheHitDoesNotFetchAgain)
+TEST_F(KVDB_Manager_Unit, CacheHitDoesNotFetchAgain)
 {
     kvdbstore::KVDBManager mgr;
 
@@ -80,7 +90,7 @@ TEST(KVDB_Manager_Unit, CacheHitDoesNotFetchAgain)
 }
 
 // Cache hit reuses the existing map (same underlying buffer) and does not rebuild.
-TEST(KVDB_Manager_Unit, CacheHitReusesExistingMap)
+TEST_F(KVDB_Manager_Unit, CacheHitReusesExistingMap)
 {
     kvdbstore::KVDBManager mgr;
 
@@ -107,7 +117,7 @@ TEST(KVDB_Manager_Unit, CacheHitReusesExistingMap)
 }
 
 // After all handlers expire, the manager rebuilds with the new content.
-TEST(KVDB_Manager_Unit, RebuildsAfterAllHandlersExpire)
+TEST_F(KVDB_Manager_Unit, RebuildsAfterAllHandlersExpire)
 {
     kvdbstore::KVDBManager mgr;
 
@@ -136,7 +146,7 @@ TEST(KVDB_Manager_Unit, RebuildsAfterAllHandlersExpire)
 }
 
 // Same namespace but different dbName entries must use different cached maps.
-TEST(KVDB_Manager_Unit, DifferentDbNamesUseDifferentCachedMaps)
+TEST_F(KVDB_Manager_Unit, DifferentDbNamesUseDifferentCachedMaps)
 {
     kvdbstore::KVDBManager mgr;
 
@@ -168,7 +178,7 @@ TEST(KVDB_Manager_Unit, DifferentDbNamesUseDifferentCachedMaps)
 }
 
 // Parallel requests for the same namespace and dbName must return the same pointer.
-TEST(KVDB_Manager_Unit, ParallelWarm_NoRefetch_SamePointer)
+TEST_F(KVDB_Manager_Unit, ParallelWarm_NoRefetch_SamePointer)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
@@ -200,7 +210,7 @@ TEST(KVDB_Manager_Unit, ParallelWarm_NoRefetch_SamePointer)
 }
 
 // Cold race where multiple threads request the same namespace and dbName
-TEST(KVDB_Manager_Unit, ParallelColdRace_EventualConvergence)
+TEST_F(KVDB_Manager_Unit, ParallelColdRace_EventualConvergence)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
@@ -254,7 +264,7 @@ TEST(KVDB_Manager_Unit, ParallelColdRace_EventualConvergence)
 }
 
 // Parallel requests for the same namespace and dbName must share the cached map.
-TEST(KVDB_Manager_Unit, ParallelSameNsSameDb_SharedCachedMap)
+TEST_F(KVDB_Manager_Unit, ParallelSameNsSameDb_SharedCachedMap)
 {
     kvdbstore::KVDBManager mgr;
 
@@ -296,7 +306,7 @@ TEST(KVDB_Manager_Unit, ParallelSameNsSameDb_SharedCachedMap)
 }
 
 // Parallel requests for different namespaces must be isolated.
-TEST(KVDB_Manager_Unit, ParallelTwoNamespaces_Isolated)
+TEST_F(KVDB_Manager_Unit, ParallelTwoNamespaces_Isolated)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsA {"A"}, nsB {"B"};
@@ -340,7 +350,7 @@ TEST(KVDB_Manager_Unit, ParallelTwoNamespaces_Isolated)
 }
 
 // Same namespace but different dbName entries must be isolated.
-TEST(KVDB_Manager_Unit, ParallelSameNs_DifferentDb_Isolated)
+TEST_F(KVDB_Manager_Unit, ParallelSameNs_DifferentDb_Isolated)
 {
     kvdbstore::KVDBManager mgr;
     cm::store::NamespaceId nsId {"ns"};
