@@ -34,8 +34,7 @@ static void getMemory(nlohmann::json& info)
         };
     }
 
-    const auto ramTotal{ram / KByte};
-    info["memory_total"] = ramTotal;
+    info["memory_total"] = ram;
     info["memory_free"] = 0;
     info["memory_used"] = 0;
 }

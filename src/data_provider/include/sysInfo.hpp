@@ -27,11 +27,6 @@
 
 #include "sysInfoInterface.h"
 
-constexpr auto KByte
-{
-    1024
-};
-
 constexpr auto primaryArraySeparator { "," };
 
 constexpr auto secondaryArraySeparator { ":" };

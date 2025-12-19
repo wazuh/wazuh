@@ -125,6 +125,8 @@ int main(int argc, const char* argv[])
                                       true,
                                       true);
 
+        Syscollector::instance().start();
+
         if (thread.joinable())
         {
             thread.join();

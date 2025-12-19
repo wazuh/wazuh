@@ -74,7 +74,7 @@ class PYPI final
                 {
                     const auto& [key, value] {*it};
 
-                    if (!packageInfo.contains(value))
+                    if (!packageInfo.contains(value) || packageInfo[value] == UNKNOWN_VALUE)
                     {
                         packageInfo[value] = Utils::trim(line.substr(key.length()), "\r");
                     }
