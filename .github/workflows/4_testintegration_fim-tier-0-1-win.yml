@@ -160,7 +160,8 @@ jobs:
           cd C:\wazuh\tests\integration
 
           # ISSUE 33111: Run all 3 failing tests with all FIM modes (scheduled, realtime, whodata)
-          python -m pytest test_fim/test_files/test_report_changes/test_file_size_default.py test_fim/test_files/test_report_changes/test_file_size_values.py test_fim/test_files/test_report_changes/test_large_changes.py -v --tb=long
+          # -s flag disables output capture so print() timing statements appear in logs
+          python -m pytest test_fim/test_files/test_report_changes/test_file_size_default.py test_fim/test_files/test_report_changes/test_file_size_values.py test_fim/test_files/test_report_changes/test_large_changes.py -v -s --tb=long
 
       - name: Collect Wazuh logs and diagnostics
         if: always()
