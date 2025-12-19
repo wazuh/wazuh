@@ -25,6 +25,7 @@ link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/agent_metadata/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
@@ -40,6 +41,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/shared_modules/agent_metadata/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
@@ -53,6 +55,9 @@ find_library(FILE_IO_LIB FileIO
     NO_DEFAULT_PATH)
 find_library(DBSYNC_LIB dbsync
     HINTS ${SRC_FOLDER}/shared_modules/dbsync/build/lib
+    NO_DEFAULT_PATH)
+find_library(AGENT_METADATA_LIB agent_metadata
+    HINTS ${SRC_FOLDER}/shared_modules/agent_metadata/build/lib
     NO_DEFAULT_PATH)
 find_library(SYNC_PROTOCOL_LIB agent_sync_protocol
     HINTS ${SRC_FOLDER}/shared_modules/sync_protocol/build/lib
@@ -80,6 +85,10 @@ if(NOT DBSYNC_LIB)
     set(DBSYNC_LIB dbsync)
     message(STATUS "dbsync library not found, using target name")
 endif()
+if(NOT AGENT_METADATA_LIB)
+    set(AGENT_METADATA_LIB agent_metadata)
+    message(STATUS "agent_metadata library not found, using target name")
+endif()
 if(NOT SYNC_PROTOCOL_LIB)
     set(SYNC_PROTOCOL_LIB agent_sync_protocol)
     message(STATUS "agent_sync_protocol library not found, using target name")
@@ -104,6 +113,7 @@ target_link_libraries(
             sysinfo
             ${FILESYSTEM_WRAPPER_LIB}
             ${FILE_IO_LIB}
+            ${AGENT_METADATA_LIB}
             ${SYNC_PROTOCOL_LIB}
             ${DBSYNC_LIB}
             wazuhext # contains hash_helper, string_helper, time_helper utilities

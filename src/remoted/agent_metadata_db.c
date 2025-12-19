@@ -31,6 +31,7 @@ void agent_meta_clear(agent_meta_t *m) {
     os_free(m->os_name);
     os_free(m->os_version);
     os_free(m->os_platform);
+    os_free(m->os_type);
     os_free(m->arch);
     os_free(m->hostname);
     memset(m, 0, sizeof(*m));
@@ -63,6 +64,7 @@ agent_meta_t *agent_meta_from_agent_info(const char *id_str,
         if (ai->osd->os_name)     os_strdup(ai->osd->os_name,     m->os_name);
         if (ai->osd->os_version)  os_strdup(ai->osd->os_version,  m->os_version);
         if (ai->osd->os_platform) os_strdup(ai->osd->os_platform, m->os_platform);
+        if (ai->osd->os_type)     os_strdup(ai->osd->os_type,     m->os_type);
         if (ai->osd->os_arch)     os_strdup(ai->osd->os_arch,     m->arch);
         if (ai->osd->hostname)    os_strdup(ai->osd->hostname,    m->hostname);
     }
@@ -108,6 +110,7 @@ int agent_meta_snapshot_str(const char *agent_id_str, agent_meta_t *out) {
     if (m->os_name)       { os_strdup(m->os_name,       tmp.os_name);       if (!tmp.os_name)       goto oom_unlock; }
     if (m->os_version)    { os_strdup(m->os_version,    tmp.os_version);    if (!tmp.os_version)    goto oom_unlock; }
     if (m->os_platform)   { os_strdup(m->os_platform,   tmp.os_platform);   if (!tmp.os_platform)   goto oom_unlock; }
+    if (m->os_type)       { os_strdup(m->os_type,       tmp.os_type);       if (!tmp.os_type)       goto oom_unlock; }
     if (m->arch)          { os_strdup(m->arch,          tmp.arch);          if (!tmp.arch)          goto oom_unlock; }
     if (m->hostname)      { os_strdup(m->hostname,      tmp.hostname);      if (!tmp.hostname)      goto oom_unlock; }
 

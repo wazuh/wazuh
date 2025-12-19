@@ -26,6 +26,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /Library/Ossec/lib/libsyscollector.dylib,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/lib/libsca.dylib,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/lib/libagent_info.dylib,root,wheel,750,file,-rwxr-x---,,
+/Library/Ossec/lib/libagent_metadata.dylib,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/lib/libwazuhext.dylib,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/VERSION.json,wazuh,wazuh,440,file,-r--r-----,,
 /Library/Ossec/wodles/__init__.py,root,wazuh,750,file,-rwxr-x---,,

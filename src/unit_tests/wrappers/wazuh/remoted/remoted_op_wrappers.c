@@ -19,3 +19,10 @@ int __wrap_parse_agent_update_msg(char *msg, __attribute__((unused)) agent_info_
     memcpy(agent_data, aux, sizeof(agent_info_data));
     return mock();
 }
+
+int __wrap_parse_json_keepalive(const char *json_str, __attribute__((unused)) agent_info_data *agent_data) {
+    check_expected(json_str);
+    agent_info_data *aux = mock_ptr_type(agent_info_data*);
+    memcpy(agent_data, aux, sizeof(agent_info_data));
+    return mock();
+}

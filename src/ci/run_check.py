@@ -213,6 +213,9 @@ def runCoverage(moduleName):
     elif moduleName == "shared_modules/sync_protocol":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
+    elif moduleName == "shared_modules/agent_metadata":
+        paths = [root for root, _, _ in os.walk(
+            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
     elif moduleName == "shared_modules/file_helper":
         build_dir = os.path.join(currentDir, "build")
         paths = [root for root, _, _ in os.walk(build_dir) if root.endswith('.dir')]
@@ -533,6 +536,8 @@ def runTestToolForWindows(moduleName, testToolConfig):
                                         path=utils.rootPath())
     schema_validator = utils.findFile(name="schema_validator.dll",
                                       path=utils.rootPath())
+    agent_metadata = utils.findFile(name="libagent_metadata.dll",
+                                    path=utils.rootPath())
     stdcpp = utils.findFile(name="libstdc++-6.dll",
                             path=utils.rootPath())
     shutil.copyfile(libgcc,
@@ -543,6 +548,8 @@ def runTestToolForWindows(moduleName, testToolConfig):
                     os.path.join(rootPath, "libagent_sync_protocol.dll"))
     shutil.copyfile(schema_validator,
                     os.path.join(rootPath, "schema_validator.dll"))
+    shutil.copyfile(agent_metadata,
+                    os.path.join(rootPath, "libagent_metadata.dll"))
     shutil.copyfile(stdcpp,
                     os.path.join(rootPath, "libstdc++-6.dll"))
 
@@ -629,7 +636,7 @@ def runTests(moduleName):
 
                 for _name in ("libstdc++-6.dll", "libgcc_s_dw2-1.dll", "libwinpthread-1.dll",
                               "dbsync.dll", "sysinfo.dll", "libwazuhext.dll", "libagent_sync_protocol.dll",
-                              "schema_validator.dll"):
+                              "libagent_metadata.dll", "schema_validator.dll"):
                     try:
                         _p = utils.findFile(name=_name, path=utils.rootPath())
                         if _p:

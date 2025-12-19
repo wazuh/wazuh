@@ -21,6 +21,7 @@ typedef struct agent_meta
     char* os_name;
     char* os_version;
     char* os_platform;
+    char* os_type;
     char* arch;
     char* hostname;
 } agent_meta_t;

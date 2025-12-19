@@ -43,7 +43,7 @@ run_wazuh_unit_tests() {
         ctest --output-on-failure  > "test_results.txt" || true
         make coverage > "coverage_results.txt" || true
     elif [[ $target == "winagent" ]]; then
-        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;$(realpath $(pwd)/../..);$(realpath $(pwd)/../../shared_modules/sync_protocol/build/bin)" ctest --output-on-failure > test_results.txt || true
+        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;$(realpath $(pwd)/../..);$(realpath $(pwd)/../../shared_modules/sync_protocol/build/bin);$(realpath $(pwd)/../../shared_modules/agent_metadata/build/bin)" ctest --output-on-failure > test_results.txt || true
     fi
 }
 
