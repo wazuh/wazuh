@@ -207,13 +207,6 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
         syscollector_notify_data_clean_ptr = so_get_function_sym(syscollector_module, "syscollector_notify_data_clean");
         syscollector_delete_database_ptr = so_get_function_sym(syscollector_module, "syscollector_delete_database");
 
-        MQ_Functions mq_funcs =
-        {
-            .start = wm_sys_startmq,
-            .send_binary = wm_sys_send_binary_msg
-        };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps, integrity_interval);
-
         syscollector_init_ptr(sys->interval,
                               wm_sys_send_diff_message,
                               wm_sys_persist_diff_message,
@@ -235,6 +228,13 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
                               sys->flags.services,
                               sys->flags.browser_extensions,
                               sys->flags.notify_first_scan);
+
+        MQ_Functions mq_funcs =
+        {
+            .start = wm_sys_startmq,
+            .send_binary = wm_sys_send_binary_msg
+        };
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps, integrity_interval);
 
         if (syscollector_notify_data_clean_ptr && syscollector_delete_database_ptr)
         {
