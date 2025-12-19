@@ -38,6 +38,9 @@ cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sh
 cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *registry_data);
 #endif
 
+// Mock directories list for tests
+static OSList mock_directories = {0};
+
 // Mock implementations
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
     check_expected(table_name);
@@ -192,7 +195,7 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     will_return(__wrap_asp_sync_module, true);
 
     // Call the function
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
 
     // The function should complete successfully
     // Note: test_items is freed by the function, so don't free it here
@@ -245,7 +248,7 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     will_return(__wrap_asp_sync_module, false);
 
     // Call the function
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
 
     // The function should complete (even though sync failed)
     // Note: test_items is freed by the function, so don't free it here
@@ -264,7 +267,7 @@ static void test_fim_recovery_persist_table_and_resync_version_increase_failure(
     expect_any(__wrap__merror, formatted_msg);
 
     // Call the function - should return early without calling other functions
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
 
     // Function should return early without crashing
 }
@@ -286,7 +289,7 @@ static void test_fim_recovery_persist_table_and_resync_null_items(void **state) 
     expect_any(__wrap__merror, formatted_msg);
 
     // Call the function - should handle NULL gracefully (no sync call expected)
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
 
     // Function should return early without crashing
 }
@@ -373,7 +376,7 @@ static void test_buildFileStatefulEvent_success(void **state) {
     cJSON_AddStringToObject(mock_result, "type", "file");
     will_return(__wrap_build_stateful_event_file, mock_result);
 
-    cJSON* result = buildFileStatefulEvent("/tmp/test.txt", file_data, "abc123", 1);
+    cJSON* result = buildFileStatefulEvent("/tmp/test.txt", file_data, "abc123", 1, &mock_directories);
 
     assert_non_null(result);
     // Verify inode was converted to string

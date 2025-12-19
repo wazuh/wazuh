@@ -529,6 +529,17 @@ void fim_insert_directory(OSList *config_list,
 directory_t *fim_copy_directory(const directory_t *_dir);
 
 /**
+ * @brief Creates a deep copy of an OSList containing directory_t objects.
+ *
+ * This function creates a new OSList and copies all directory_t elements from the source list.
+ * It handles thread-safe reading of the source list using read locks.
+ *
+ * @param source Source OSList to be copied (must contain directory_t objects)
+ * @return Pointer to the newly created OSList copy, or NULL on error
+ */
+OSList *fim_copy_directory_list(const OSList *source);
+
+/**
  * @brief Expands wildcards in the given path
  *
  * @param path Path to be expanded

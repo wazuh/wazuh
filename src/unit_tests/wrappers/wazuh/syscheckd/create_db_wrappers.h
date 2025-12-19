@@ -15,7 +15,10 @@
 
 void __wrap_fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration);
 
-directory_t *__wrap_fim_configuration_directory(const char *path);
+// Forward declaration for OSList
+typedef struct _OSList OSList;
+
+directory_t *__wrap_fim_configuration_directory(const char *path, bool notify_not_found, const OSList *directories_list);
 
 cJSON *__wrap_fim_json_event();
 

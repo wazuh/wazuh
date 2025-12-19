@@ -16,11 +16,15 @@
 // Forward declaration for AgentSyncProtocolHandle
 typedef struct AgentSyncProtocolHandle AgentSyncProtocolHandle;
 
+// Forward declaration for OSList
+typedef struct _OSList OSList;
+
 /**
  * @brief Wrapper for fim_recovery_persist_table_and_resync
  */
 void __wrap_fim_recovery_persist_table_and_resync(char* table_name,
-                                                   AgentSyncProtocolHandle* handle);
+                                                   AgentSyncProtocolHandle* handle,
+                                                   const OSList* directories_list);
 
 /**
  * @brief Wrapper for fim_recovery_check_if_full_sync_required

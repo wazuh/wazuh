@@ -27,8 +27,8 @@
  * @param document_version Version number of the document
  * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version) {
-    if (!path || !file_data || !sha1_hash) {
+cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version, const OSList *directories_list) {
+    if (!path || !file_data || !sha1_hash || !directories_list) {
         merror("Invalid parameters to buildFileStatefulEvent");
         return NULL;
     }
@@ -46,7 +46,7 @@ cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sh
         inode_item->valuestring = strdup(buf);
     }
     // Call the actual builder
-    cJSON* result = build_stateful_event_file(path, sha1_hash, document_version, file_data, NULL);
+    cJSON* result = build_stateful_event_file(path, sha1_hash, document_version, file_data, NULL, directories_list);
 
     return result;
 }
@@ -79,7 +79,7 @@ cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* val
 }
 #endif // WIN32
 
-void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle){
+void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list){
     int increase_result = fim_db_increase_each_entry_version(table_name);
     if (increase_result == -1) {
         merror("Failed to increase version for each entry in %s", table_name);
@@ -177,7 +177,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         cJSON* stateful_event = NULL;
 
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-            stateful_event = buildFileStatefulEvent(path, item_copy, checksum, document_version);
+            stateful_event = buildFileStatefulEvent(path, item_copy, checksum, document_version, directories_list);
         }
 #ifdef WIN32
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {

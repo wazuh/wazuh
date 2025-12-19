@@ -14,7 +14,8 @@
 #include <cmocka.h>
 
 void __wrap_fim_recovery_persist_table_and_resync(__attribute__((unused)) char* table_name,
-                                                   __attribute__((unused)) AgentSyncProtocolHandle* handle) {
+                                                   __attribute__((unused)) AgentSyncProtocolHandle* handle,
+                                                   __attribute__((unused)) const OSList* directories_list) {
     function_called();
 }
 
