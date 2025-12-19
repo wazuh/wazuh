@@ -111,19 +111,23 @@ void saveConfig(const std::weak_ptr<store::IStoreInternal>& wStore, const base::
     }
 }
 
-void Orchestrator::dumpTesters() const
+void Orchestrator::dumpTestersInternal() const
 {
     auto jDump = EntryConverter::toJsonArray(m_testerWorker->get()->getEntries());
     saveConfig(m_wStore, m_storeTesterName, jDump);
 }
 
-void Orchestrator::dumpRouters() const
+void Orchestrator::dumpRoutersInternal() const
 {
+    if (m_isShutdown.load(std::memory_order_acquire) || m_routerWorkers.empty())
+    {
+        return;
+    }
     auto jDump = EntryConverter::toJsonArray(m_routerWorkers.front()->get()->getEntries());
     saveConfig(m_wStore, m_storeRouterName, jDump);
 }
 
-void Orchestrator::dumpEps() const
+void Orchestrator::dumpEpsInternal() const
 {
     json::Json jDump;
     jDump.setObject();
@@ -132,6 +136,24 @@ void Orchestrator::dumpEps() const
     jDump.setBool(m_epsCounter->isActive(), "/active");
     saveConfig(m_wStore, STORE_PATH_ROUTER_EPS, jDump);
     LOG_INFO("Router: EPS settings dumped to the store");
+}
+
+void Orchestrator::dumpTesters() const
+{
+    std::shared_lock lock {m_syncMutex};
+    dumpTestersInternal();
+}
+
+void Orchestrator::dumpRouters() const
+{
+    std::shared_lock lock {m_syncMutex};
+    dumpRoutersInternal();
+}
+
+void Orchestrator::dumpEps() const
+{
+    std::shared_lock lock {m_syncMutex};
+    dumpEpsInternal();
 }
 
 void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wStore)
@@ -150,7 +172,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
         LOG_WARNING("Router: EPS settings could not be loaded from the store due to '{}'. Using default settings",
                     base::getError(epsResp).message);
         m_epsCounter = std::make_shared<EpsCounter>();
-        dumpEps();
+        dumpEpsInternal();
         return;
     }
 
@@ -159,7 +181,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
     {
         LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
         m_epsCounter = std::make_shared<EpsCounter>();
-        dumpEps();
+        dumpEpsInternal();
         return;
     }
 
@@ -171,7 +193,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
     {
         LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
         m_epsCounter = std::make_shared<EpsCounter>();
-        dumpEps();
+        dumpEpsInternal();
         return;
     }
 
@@ -253,6 +275,7 @@ Orchestrator::Orchestrator(const Options& opt)
     , m_testQueue(opt.m_testQueue)
     , m_envBuilder()
     , m_syncMutex()
+    , m_isShutdown(false)
     , m_storeTesterName(STORE_PATH_TESTER_TABLE)
     , m_storeRouterName(STORE_PATH_ROUTER_TABLE)
 {
@@ -330,7 +353,7 @@ void Orchestrator::start()
 void Orchestrator::stop()
 {
     std::shared_lock lock {m_syncMutex};
-    dumpTesters(); // TODO: For save the last used time
+    dumpTestersInternal();
     for (const auto& routerWorker : m_routerWorkers)
     {
         routerWorker->stop();
@@ -342,7 +365,8 @@ void Orchestrator::stop()
 void Orchestrator::cleanup()
 {
     this->stop();
-    std::shared_lock lock {m_syncMutex};
+    m_isShutdown.store(true, std::memory_order_release);
+    std::unique_lock lock {m_syncMutex};
     m_routerWorkers.clear();
     m_testerWorker.reset();
     m_envBuilder.reset();
@@ -378,7 +402,7 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
     {
         return error;
     }
-    dumpRouters();
+    dumpRoutersInternal();
     return std::nullopt;
 }
 
@@ -395,7 +419,7 @@ base::OptError Orchestrator::deleteEntry(const std::string& name)
     {
         return error;
     }
-    dumpRouters();
+    dumpRoutersInternal();
     return std::nullopt;
 }
 
@@ -406,7 +430,16 @@ base::RespOrError<prod::Entry> Orchestrator::getEntry(const std::string& name) c
         return base::Error {"Name cannot be empty"};
     }
 
+    if (m_isShutdown.load(std::memory_order_acquire))
+    {
+        return base::Error {"Orchestrator has been shutdown"};
+    }
+
     std::shared_lock lock {m_syncMutex};
+    if (m_routerWorkers.empty())
+    {
+        return base::Error {"Orchestrator has been cleaned up, no workers available"};
+    }
     return m_routerWorkers.front()->get()->getEntry(name);
 }
 
@@ -441,13 +474,21 @@ base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t
     {
         return error;
     }
-    dumpRouters();
+    dumpRoutersInternal();
     return std::nullopt;
 }
 
 std::list<prod::Entry> Orchestrator::getEntries() const
 {
+    if (m_isShutdown.load(std::memory_order_acquire))
+    {
+        return {};
+    }
     std::shared_lock lock {m_syncMutex};
+    if (m_routerWorkers.empty())
+    {
+        return {};
+    }
     return m_routerWorkers.front()->get()->getEntries();
 }
 
@@ -520,7 +561,7 @@ base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
     {
         return error;
     }
-    dumpTesters();
+    dumpTestersInternal();
     return std::nullopt;
 }
 
@@ -538,7 +579,7 @@ base::OptError Orchestrator::deleteTestEntry(const std::string& name)
     {
         return error;
     }
-    dumpTesters();
+    dumpTestersInternal();
     return std::nullopt;
 }
 
@@ -578,7 +619,6 @@ base::OptError Orchestrator::renameTestEntry(const std::string& from, const std:
 
     std::unique_lock lock {m_syncMutex};
 
-    // Now rename in the tester worker
     auto error = forTesterWorker([&](const auto& worker) { return worker->get()->renameEntry(from, to); });
 
     if (error)
@@ -586,7 +626,7 @@ base::OptError Orchestrator::renameTestEntry(const std::string& from, const std:
         return error;
     }
 
-    dumpTesters();
+    dumpTestersInternal();
     return std::nullopt;
 }
 
