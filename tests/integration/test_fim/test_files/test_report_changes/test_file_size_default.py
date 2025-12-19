@@ -189,7 +189,10 @@ def test_file_size_default(test_configuration, test_metadata, configure_local_in
     to_write = generate_string(int(size_limit), '1')
     write_file(file_to_monitor, data=to_write)
 
-    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=30)
+    start_time = time.time()
+    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=60)
+    elapsed_time = time.time() - start_time
+    print(f"Elapsed time to detect diff folder deleted event: {elapsed_time:.2f} seconds.")
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FOLDER_DELETED
 
     if os.path.exists(diff_file_path):

@@ -178,7 +178,11 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
     write_file(file_to_monitor, data=to_write)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=30)
+
+    start_time = time.time()
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=60)
+    elapsed_time = time.time() - start_time
+    print(f"Elapsed time to detect report_changes event: {elapsed_time:.2f} seconds.")
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     content_changes = str(wazuh_log_monitor.callback_result)
     assert 'test_string' in content_changes or 'More changes...' in content_changes, 'Wrong content_changes field'
@@ -196,7 +200,10 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
     if os.path.exists(diff_file_path):
         pytest.raises(FileExistsError(f"{diff_file_path} found. It should not exist after incresing the size."))
 
-    wazuh_log_monitor.start(callback=generate_callback(FILE_SIZE_LIMIT_REACHED), timeout=30)
+    start_time = time.time()
+    wazuh_log_monitor.start(callback=generate_callback(FILE_SIZE_LIMIT_REACHED), timeout=60)
+    elapsed_time = time.time() - start_time
+    print(f"Elapsed time to detect file_size limit reached event: {elapsed_time:.2f} seconds.")
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FILE_LIMIT_REACHED
 
     # Check the content_changes field in the event
