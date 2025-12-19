@@ -150,3 +150,34 @@ message RunPost_Response
     optional string error = 2;  // Error message if status is ERROR
     optional Result result = 3; // Result of the test
 }
+
+/***************************************************
+ * Run a logtest event using an existing testing session
+ *
+ * endpoint: POST logtest/run
+ *
+ * Sends a single event to the engine using a previously created testing session.
+ * This endpoint does NOT validate or create policies/sessions; it only injects
+ * events into the already loaded session and returns the execution result.
+ *
+ * Prerequisite:
+ * - A testing session must exist and be loaded beforehand (e.g., via the session
+ *   creation/prepare endpoint in the tester API).
+ **************************************************/
+message PublicRunPost_Request
+{
+    // Queue number where the event will be injected (engine/input queue).
+    uint32 queue = 1;
+
+    // Event source/location label (e.g., file path, agent name, or custom identifier).
+    string location = 2;
+
+    // Raw event payload to test.
+    string event = 3;
+
+    // Trace verbosity level (e.g., NONE, ASSET_ONLY, ALL).
+    // Recommended: treat it as case-insensitive.
+    string trace_level = 4;
+}
+
+// MessageTestPost_Response -> returns a RunPost_Response

@@ -25,6 +25,8 @@ tags:
     description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
   - name: Content
     description: "Operations for management content."
+  - name: Logtest
+    description: "Operations for testing of events."
 
 #################################################################################
 # Paths
@@ -230,6 +232,92 @@ paths:
                   value:
                     status: "ERROR"
                     error: "Cleanup: failed deleting namespace 'policy_validate_<nonce>': <details>"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Logtest
+  ################################
+  /logtest/post:
+    post:
+      tags:
+        - Logtest
+      summary: Inject an event into an existing testing session
+      description: |
+        Injects a single event into the engine using a previously created and loaded testing session.
+
+        This endpoint **does not** validate policies and **does not** create sessions.
+        It only validates request parameters, parses/builds the event payload, and runs the test ingestion
+        against the already-loaded session (currently hardcoded as `"testing"`).
+
+        If tracing is enabled (trace_level != NONE), the endpoint retrieves the list of policy assets
+        from the active testing session and uses them as the trace filter.
+
+        Notes about event parsing:
+        - `queue` is stored as the event queue id.
+        - `location` cannot be empty.
+        - If `location` matches the legacy agent format (`"[ID] (Name) IP->Module"`), it is parsed and may
+          rewrite the final stored location to just the module.
+        - If not legacy, host metadata is merged into the event before setting location/message.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicRunPost_Request"
+            examples:
+              basic:
+                summary: Basic run using queue 0
+                value:
+                  queue: 0
+                  location: "/var/log/auth.log"
+                  event: "Dec 19 12:00:00 host sshd[123]: Failed password for root from 10.0.0.1 port 12345 ssh2"
+                  trace_level: "NONE"
+              with_trace:
+                summary: Run with tracing enabled
+                value:
+                  queue: 1
+                  location: "[001] (my-agent) 192.168.1.10->syslog"
+                  event: "<34>Dec 19 12:00:00 my-agent myapp: something happened"
+                  trace_level: "ALL"
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterRunPost_Response"
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                invalid_queue:
+                  summary: Queue out of allowed range (0..255)
+                  value:
+                    status: "ERROR"
+                    error: "Invalid queue: 300 (must be 0..255)"
+                invalid_trace_level:
+                  summary: Unsupported trace level
+                  value:
+                    status: "ERROR"
+                    error: "Invalid trace level: VERBOSE. Only support: NONE, ASSET_ONLY, ALL"
+                empty_location:
+                  summary: Location cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing event: Invalid format: location cannot be empty"
+                event_parse_error:
+                  summary: Protocol parsing failed
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing event: <details>"
+
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -3069,6 +3157,20 @@ components:
               items:
                 $ref: "#/components/schemas/KVDBEntry"
               description: "List of entries if status is OK"
+
+    #################################
+    # Content
+    #################################
+    policyValidate_Request:
+      type: object
+      required: [jsonContent]
+      properties:
+        jsonContent:
+          type: string
+          description: "Full policy JSON payload"
+        load_in_tester:
+          type: bool
+          description: "If true, load testing policies into the Tester environment."
     #################################
     # Tester
     #################################
@@ -3173,6 +3275,27 @@ components:
           properties:
             result:
               $ref: "#/components/schemas/TesterResult"
+
+    PublicRunPost_Request:
+      type: object
+      required: [queue, location, event, trace_level]
+      properties:
+        queue:
+          type: uint8
+          description: "Queue number where the event will be injected (engine/input queue)"
+        location:
+          type: string
+          description: "Event source/location label (e.g., file path, agent name, or custom identifier)"
+        event:
+          type: string
+          description: "Raw event payload to test"
+        trace_level:
+          type: string
+          enum:
+            - NONE
+            - ASSET_ONLY
+            - ALL
+          description: "Level of traces"
 
     TesterTableGet_Response:
       allOf:

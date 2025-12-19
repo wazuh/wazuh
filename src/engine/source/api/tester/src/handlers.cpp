@@ -35,7 +35,7 @@ eTester::Sync getHashStatus(const ::router::test::Entry& entry, const std::weak_
         auto nsId = store->getNSReader(entry.namespaceId());
         hash = nsId->getPolicy().getHash();
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         return eTester::Sync::ERROR;
     }
@@ -199,9 +199,11 @@ adapter::RouteHandler sessionDelete(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester, const std::shared_ptr<cm::store::ICMStore>& store)
+adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester,
+                                 const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eTester::SessionGet_Request;
         using ResponseType = eTester::SessionGet_Response;
@@ -270,9 +272,11 @@ adapter::RouteHandler sessionReload(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester, const std::shared_ptr<cm::store::ICMStore>& store)
+adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester,
+                               const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eTester::TableGet_Request;
         using ResponseType = eTester::TableGet_Response;
@@ -303,8 +307,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                               const base::eventParsers::ProtocolHandler& protocolHandler)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            protocolHandler](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), protocolHandler](const auto& req, auto& res)
     {
         using RequestType = eTester::RunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -375,6 +378,94 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 
         // Run the test
         auto opt = ::router::test::Options(traceLevel, assetToTrace, protoReq.name());
+
+        auto futureResult = tester->ingestTest(std::move(event), opt);
+        event = nullptr;
+
+        futureResult.wait_for(std::chrono::seconds(5));
+        auto response = futureResult.get();
+
+        if (base::isError(response))
+        {
+            res = adapter::userErrorResponse<ResponseType>(base::getError(response).message);
+            return;
+        }
+
+        ResponseType eResponse {};
+        eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(response)));
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        res = adapter::userResponse(eResponse);
+    };
+}
+
+adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
+                                    const base::eventParsers::PublicProtocolHandler& protocolHandler)
+{
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), protocolHandler](const auto& req, auto& res)
+    {
+        using RequestType = eTester::PublicRunPost_Request;
+        using ResponseType = eTester::RunPost_Response;
+
+        // Validate request
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::router::ITesterAPI>(req, wTester);
+        if (adapter::isError(result))
+        {
+            res = adapter::getErrorResp(result);
+            return;
+        }
+
+        auto [tester, protoReq] = adapter::getRes(result);
+
+        const uint32_t q = protoReq.queue();
+        if (q > std::numeric_limits<uint8_t>::max())
+        {
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid queue: {} (must be 0..255)", q));
+            return;
+        }
+
+        const auto queue = static_cast<uint8_t>(q);
+
+        // Checks params
+        using OTraceLavel = ::router::test::Options::TraceLevel;
+        OTraceLavel traceLevel = ::router::test::Options::stringToTraceLevel(protoReq.trace_level());
+        if (traceLevel == OTraceLavel::UNKNOWN)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Invalid trace level: {}. Only support: NONE, ASSET_ONLY, ALL", protoReq.trace_level()));
+            return;
+        }
+
+        // Create The event to test
+        base::Event event;
+        const auto hostInfo = base::hostInfo::toJson();
+        try
+        {
+            event = protocolHandler(queue, protoReq.location(), protoReq.event(), hostInfo);
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Error parsing event: {}", e.what()));
+            return;
+        }
+
+        // Find the list of assets to trace
+        std::unordered_set<std::string> assetToTrace {};
+        if (traceLevel != OTraceLavel::NONE)
+        {
+            // Get the assets of the policy filtered by namespaces
+            auto resPolicyAssets = tester->getAssets("testing");
+            if (base::isError(resPolicyAssets))
+            {
+                res = adapter::userErrorResponse<ResponseType>(base::getError(resPolicyAssets).message);
+                return;
+            }
+
+            auto& policyAssets = base::getResponse(resPolicyAssets);
+            assetToTrace = std::move(policyAssets);
+        }
+
+        // Run the test
+        auto opt = ::router::test::Options(traceLevel, assetToTrace, "testing");
 
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;
