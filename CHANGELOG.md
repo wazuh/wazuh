@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 
 - Prevented Azure Log Analytics bookmarks from being overwritten across similar configurations. ([#33046](https://github.com/wazuh/wazuh/pull/33046))
 - Fixed discrepancy in the API certificate files. ([#33330](https://github.com/wazuh/wazuh/pull/33330))
+- Made analysisd ruleset reload endpoints fully asynchronous to avoid blocking the API event loop. ([#33589](https://github.com/wazuh/wazuh/pull/33589))
+- Improved analysisd ruleset hot reload performance. ([#33580](https://github.com/wazuh/wazuh/pull/33580))
 
 ### Agent
 
