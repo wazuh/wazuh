@@ -17,6 +17,8 @@ on:
 
 jobs:
   build:
+    # ISSUE 33111: Skip this workflow for issue-33111 branch testing
+    if: ${{ !contains(github.head_ref || github.ref_name, '33111') }}
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}

@@ -5,6 +5,10 @@
           value: 'no'
       - frequency:
             value: 3
+      - synchronization:
+          elements:
+            - enabled:
+                value: 'no'
       - directories:
           value: TEST_DIRECTORIES
           attributes: ATTRIBUTES

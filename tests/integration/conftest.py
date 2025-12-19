@@ -30,6 +30,10 @@ from wazuh_testing.utils.file import remove_file, truncate_file
 from wazuh_testing.utils.manage_agents import remove_agents
 import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
+from datetime import datetime
+
+# Path for accumulated logs across all test executions
+ACCUMULATED_LOG_PATH = os.path.join(os.path.dirname(WAZUH_LOG_PATH), 'ossec_accumulated.log')
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -268,35 +272,73 @@ def file_monitoring(request):
     logger.debug(f"Trucanted {file_to_monitor}")
 
 
-def truncate_monitored_files_implementation() -> None:
-    """Truncate all the log files and json alerts files before and after the test execution"""
+def _save_log_to_accumulated(log_file: str, phase: str, test_name: str = "unknown") -> None:
+    """Save current log content to accumulated log file before truncation.
+
+    Args:
+        log_file: Path to the log file to save
+        phase: 'pre' or 'post' to indicate before or after test
+        test_name: Name of the current test
+    """
+    try:
+        full_path = os.path.join(ROOT_PREFIX, log_file) if not os.path.isabs(log_file) else log_file
+        if os.path.isfile(full_path):
+            with open(full_path, 'r', errors='replace') as src:
+                content = src.read()
+                if content.strip():  # Only save if there's content
+                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+                    with open(ACCUMULATED_LOG_PATH, 'a', errors='replace') as dst:
+                        dst.write(f"\n{'='*80}\n")
+                        dst.write(f"[{timestamp}] [{phase.upper()}] Test: {test_name}\n")
+                        dst.write(f"Log file: {log_file}\n")
+                        dst.write(f"{'='*80}\n")
+                        dst.write(content)
+                        dst.write(f"\n{'='*80}\n\n")
+    except Exception as e:
+        logger.debug(f"Failed to save log to accumulated file: {e}")
+
+
+def truncate_monitored_files_implementation(request: pytest.FixtureRequest = None) -> None:
+    """Truncate all the log files and json alerts files before and after the test execution.
+
+    Before truncating, saves the current log content to an accumulated log file for debugging.
+    """
     if services.get_service() == WAZUH_MANAGER:
         log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH,
                      WAZUH_API_JSON_LOG_FILE_PATH, WAZUH_CLIENT_KEYS_PATH]
     else:
         log_files = [WAZUH_LOG_PATH]
 
+    # Get test name if available
+    test_name = "unknown"
+    if request is not None:
+        test_name = request.node.name if hasattr(request, 'node') else "unknown"
+
+    # Save logs before pre-test truncation
     for log_file in log_files:
+        _save_log_to_accumulated(log_file, 'pre', test_name)
         if os.path.isfile(os.path.join(ROOT_PREFIX, log_file)):
             file.truncate_file(log_file)
 
     yield
 
+    # Save logs before post-test truncation
     for log_file in log_files:
+        _save_log_to_accumulated(log_file, 'post', test_name)
         if os.path.isfile(os.path.join(ROOT_PREFIX, log_file)):
             file.truncate_file(log_file)
 
 
 @pytest.fixture()
-def truncate_monitored_files() -> None:
+def truncate_monitored_files(request: pytest.FixtureRequest) -> None:
     """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
-    yield from truncate_monitored_files_implementation()
+    yield from truncate_monitored_files_implementation(request)
 
 
 @pytest.fixture(scope='module')
-def truncate_monitored_files_module() -> None:
+def truncate_monitored_files_module(request: pytest.FixtureRequest) -> None:
     """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
-    yield from truncate_monitored_files_implementation()
+    yield from truncate_monitored_files_implementation(request)
 
 
 def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
