@@ -1,10 +1,10 @@
 # Name of the helper function
-name: parse_long
+name: parse_short
 
 metadata:
   description: |
-    Evaluates if the content of the input field is a string that can be successfully converted into a 64-bit
-    integer (long). It converts and stores the integer value in `field`.
+    Evaluates if the content of the input field is a string that can be successfully converted into an short integer
+    number. It converts and stores the short integer number in `field` with truncation.
   keywords:
     - parser
 
@@ -21,36 +21,36 @@ arguments:
     source: reference # includes only references (their names start with $)
 
 skipped:
-  - success_cases # avoid random auto-generated successes on arbitrary strings
+  - success_cases # parser failed
 
 target_field:
   type: object
 
 test:
   - arguments:
-      input_field: "12345"
+      input_field: "-2"
     target_field: any_value
     should_pass: true
-    expected: 12345
-    description: Success long parse (positive integer)
+    expected: -2
+    description: Success short parse
 
   - arguments:
-      input_field: "-42"
-    target_field: any_value
-    should_pass: true
-    expected: -42
-    description: Success long parse (negative integer)
-
-  - arguments:
-      input_field: "42.23"
+      input_field: "32768"
     target_field: any_value
     should_pass: false
     expected: any_value
-    description: Failure long parse (floating point number)
+    description: Failure short parse (out of range)
 
   - arguments:
-      input_field: 12a3
+      input_field: "23.45"
     target_field: any_value
     should_pass: false
     expected: any_value
-    description: Failure long parse (non-numeric characters)
+    description: Failure short parse
+
+  - arguments:
+      input_field: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure unsigned long parse

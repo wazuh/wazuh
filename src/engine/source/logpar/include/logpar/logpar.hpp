@@ -36,8 +36,10 @@ enum class ParserType
     P_BYTE,
     P_DOUBLE,
     P_FLOAT,
+    P_INTEGER,
     P_LONG,
     P_SCALED_FLOAT,
+    P_SHORT,
     P_UNSIGNED_LONG,
     // Other types
     P_ALPHANUMERIC,
@@ -85,6 +87,8 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_USER_AGENT: return "useragent";
         case ParserType::P_XML: return "xml";
         case ParserType::P_UNSIGNED_LONG: return "unsigned_long";
+        case ParserType::P_INTEGER: return "integer";
+        case ParserType::P_SHORT: return "short";
         default: return "error_type";
     }
 }
@@ -141,6 +145,10 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_ALPHANUMERIC;
     if (str == parserTypeToStr(ParserType::P_UNSIGNED_LONG))
         return ParserType::P_UNSIGNED_LONG;
+    if (str == parserTypeToStr(ParserType::P_INTEGER))
+        return ParserType::P_INTEGER;
+    if (str == parserTypeToStr(ParserType::P_SHORT))
+        return ParserType::P_SHORT;
     return ParserType::ERROR_TYPE;
 }
 
