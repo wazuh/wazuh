@@ -31,9 +31,8 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
-            check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET, \
-            disconnected_agent_group_sync
-        from wazuh.core.agent import Agent
+            check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
+        from wazuh.core.agent import Agent, disconnected_agent_group_sync
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
@@ -1621,16 +1620,25 @@ def test_check_uninstall_permission():
     assert result == expected
 
 
-@pytest.mark.parametrize('agent_list, group_list, external_gte, expected_affected, expected_failed', [
-    (['001'], ['default'], 100, 1, 0),
-    (['001', '002'], ['group1', 'group2'], 200, 2, 0),
-    ([], ['default'], 100, 0, 0),
-])
-@patch('wazuh.agent.get_agents_info')
-@patch('wazuh.agent.Agent.group_exists')
+@pytest.mark.parametrize(
+    'agent_list, group_list, external_gte, expected_affected, expected_failed',
+    [
+        (['001'], ['default'], 100, 1, 0),
+        (['001', '002'], ['group1', 'group2'], 200, 2, 0),
+        ([], ['default'], 100, 0, 0),
+    ]
+)
 @patch('wazuh.agent.assign_agents_to_group')
-async def test_disconnected_agent_group_sync(mock_assign, mock_group_exists, mock_get_agents_info, agent_list, group_list, external_gte,
-                                             expected_affected, expected_failed):
+@patch('wazuh.core.agent.get_agents_info')
+async def test_disconnected_agent_group_sync(
+    mock_get_agents_info,
+    mock_assign,
+    agent_list,
+    group_list,
+    external_gte,
+    expected_affected,
+    expected_failed
+):
     """Test `disconnected_agent_group_sync` function.
 
     Parameters
@@ -1646,35 +1654,30 @@ async def test_disconnected_agent_group_sync(mock_assign, mock_group_exists, moc
     expected_failed : int
         Expected number of failed items
     """
-    from wazuh.agent import disconnected_agent_group_sync
-    
     # Setup mocks
     mock_get_agents_info.return_value = {'001', '002'}  # Mock available agents
-    mock_group_exists.return_value = True
     
     # Make assign_agents_to_group return an async mock
     async def mock_assign_async(*args, **kwargs):
-        return AffectedItemsWazuhResult(
-            affected_items=agent_list
-        )
-    
+        return None
+
     mock_assign.side_effect = mock_assign_async
-    
+
     # Call the function
     result = await disconnected_agent_group_sync(agent_list, group_list, external_gte)
-    
+
     # Verify the result
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == expected_affected
     assert result.total_failed_items == expected_failed
-    
+
     # Verify assign_agents_to_group was called with correct parameters
     if agent_list:
         # Called once per agent
-        assert mock_assign.call_count == len(agent_list)
+        assert mock_assign.call_count == expected_affected
         # Verify external_gte was passed correctly in all calls
         for call in mock_assign.call_args_list:
-            assert call.kwargs.get('external_gte') == external_gte or call[1].get('external_gte') == external_gte
+            assert call.kwargs['external_gte'] == external_gte
 
 
 @pytest.mark.parametrize('agent_list, group_list, external_gte, expected_err', [
@@ -1695,8 +1698,6 @@ async def test_disconnected_agent_group_sync_missing_params(agent_list, group_li
     expected_error : WazuhError
         Expected exception type
     """
-    from wazuh.agent import disconnected_agent_group_sync
-    
     with pytest.raises(WazuhException, match=f".* {expected_err} .*"):
         await disconnected_agent_group_sync(agent_list, group_list, external_gte)
 
@@ -1719,7 +1720,6 @@ async def test_disconnected_agent_group_sync_invalid_agent(mock_assign, mock_get
     agent_id_invalid : str
         Invalid agent ID that should be filtered out
     """
-    from wazuh.agent import disconnected_agent_group_sync
     
     # Setup mocks
     mock_get_agents_info.return_value = {'001', '002'}  # Only valid agent IDs

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from uuid import uuid4
+from opensearchpy import AsyncOpenSearch
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
@@ -26,14 +27,6 @@ from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 from wazuh.core.indexer.disconnected_agents import DisconnectedAgentGroupSyncTask
 
-# Try to import AsyncOpenSearch
-try:
-    from opensearchpy import AsyncOpenSearch
-except ImportError:
-    try:
-        from opensearchpy._async.client import AsyncOpenSearch
-    except ImportError:
-        AsyncOpenSearch = None
 
 DEFAULT_DATE: str = 'n/a'
 

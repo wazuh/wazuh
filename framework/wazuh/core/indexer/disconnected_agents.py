@@ -13,14 +13,6 @@ from opensearchpy import AsyncOpenSearch
 from wazuh.core.indexer.base import BaseIndex
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
-# Index patterns that should be excluded from synchronization operations
-EXCLUDED_INDEX_PATTERN_MONITORING = "wazuh-monitoring-*"
-EXCLUDED_INDEX_PATTERN_STATISTICS = "wazuh-statistics-*"
-EXCLUDED_INDEX_PATTERNS = [
-    EXCLUDED_INDEX_PATTERN_MONITORING,
-    EXCLUDED_INDEX_PATTERN_STATISTICS,
-]
-
 # Index patterns for agent states (all data related to agent status)
 AGENT_STATE_INDEX_PATTERN = "wazuh-states-*"
 
@@ -359,7 +351,7 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
             - 'processed': number of successfully processed agents
             - 'failed': number of agents that failed synchronization
         """
-        from wazuh import agent as agent_module
+        from wazuh.core.agent import disconnected_agent_group_sync
 
         processed = 0
         failed = 0
@@ -403,7 +395,7 @@ class DisconnectedAgentGroupSyncTask(BaseIndex):
 
                 # Call disconnected_agent_group_sync function
                 try:
-                    result = await agent_module.disconnected_agent_group_sync(
+                    result = await disconnected_agent_group_sync(
                         agent_list=[agent_id],
                         group_list=groups if isinstance(groups, list) else [groups],
                         external_gte=external_gte,
