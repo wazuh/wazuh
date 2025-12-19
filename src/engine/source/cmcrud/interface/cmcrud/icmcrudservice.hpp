@@ -78,7 +78,7 @@ public:
      * @brief Import a full namespace from a JSON document.
      *
      * @param nsName Namespace name (space).
-     * @param jsonDocument JSON string with policy + resources. must end in /0
+     * @param jsonDocument JSON string with policy + resources. must end in \0
      * @param force If true, skip all validations.
      */
     virtual void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) = 0;

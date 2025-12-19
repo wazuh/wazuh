@@ -63,7 +63,7 @@ public:
     /** @copydoc ICMStore::getNamespaces */
     std::vector<NamespaceId> getNamespaces() const override;
 
-    /** @copydoc ICMStore::existNamespace */
+    /** @copydoc ICMStore::existsNamespace */
     bool existsNamespace(const NamespaceId& nsId) const override;
 };
 
