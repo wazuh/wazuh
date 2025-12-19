@@ -231,4 +231,114 @@ int parse_agent_update_msg (char *msg,
     return OS_SUCCESS;
 }
 
+/* Parse JSON keepalive message (5.0+ agents) */
+int parse_json_keepalive(const char *json_str, agent_info_data *agent_data) {
+    cJSON *root = cJSON_Parse(json_str);
+    if (!root) {
+        return OS_INVALID;
+    }
+
+    cJSON *agent = cJSON_GetObjectItem(root, "agent");
+    if (!agent) {
+        cJSON_Delete(root);
+        return OS_INVALID;
+    }
+
+    // Extract agent version
+    cJSON *version = cJSON_GetObjectItem(agent, "version");
+    if (version && cJSON_IsString(version)) {
+        os_strdup(version->valuestring, agent_data->version);
+    }
+
+    // Extract agent config_sum
+    cJSON *config_sum = cJSON_GetObjectItem(agent, "config_sum");
+    if (config_sum && cJSON_IsString(config_sum)) {
+        os_strdup(config_sum->valuestring, agent_data->config_sum);
+    }
+
+    // Extract agent merged_sum
+    cJSON *merged_sum = cJSON_GetObjectItem(agent, "merged_sum");
+    if (merged_sum && cJSON_IsString(merged_sum)) {
+        os_strdup(merged_sum->valuestring, agent_data->merged_sum);
+    }
+
+    // Extract agent ip
+    cJSON *agent_ip = cJSON_GetObjectItem(agent, "ip");
+    if (agent_ip && cJSON_IsString(agent_ip)) {
+        os_strdup(agent_ip->valuestring, agent_data->agent_ip);
+    }
+
+    // Extract agent uname
+    cJSON *agent_uname = cJSON_GetObjectItem(agent, "uname");
+
+    // Extract agent labels
+    cJSON *labels = cJSON_GetObjectItem(agent, "labels");
+    if (labels && cJSON_IsString(labels)) {
+        os_strdup(labels->valuestring, agent_data->labels);
+    }
+
+    // Allocate os_data structure
+    os_calloc(1, sizeof(os_data), agent_data->osd);
+
+    // Parse uname FIRST to get ALL fields (major, minor, codename, build)
+    if (agent_uname && cJSON_IsString(agent_uname)) {
+        char *uname_copy = NULL;
+        os_strdup(agent_uname->valuestring, uname_copy);
+        os_strdup(agent_uname->valuestring, agent_data->osd->os_uname);
+        parse_uname_string(uname_copy, agent_data->osd);
+        os_free(uname_copy);
+    }
+
+    // Extract host info
+    cJSON *host = cJSON_GetObjectItem(root, "host");
+    if (host) {
+        // Extract OS info
+        cJSON *os = cJSON_GetObjectItem(host, "os");
+        if (os) {
+
+            // THEN overwrite with more accurate JSON fields
+            cJSON *os_name = cJSON_GetObjectItem(os, "name");
+            if (os_name && cJSON_IsString(os_name)) {
+                os_free(agent_data->osd->os_name);
+                os_strdup(os_name->valuestring, agent_data->osd->os_name);
+            }
+
+            cJSON *os_version = cJSON_GetObjectItem(os, "version");
+            if (os_version && cJSON_IsString(os_version)) {
+                os_free(agent_data->osd->os_version);
+                os_strdup(os_version->valuestring, agent_data->osd->os_version);
+            }
+
+            cJSON *os_platform = cJSON_GetObjectItem(os, "platform");
+            if (os_platform && cJSON_IsString(os_platform)) {
+                os_free(agent_data->osd->os_platform);
+                os_strdup(os_platform->valuestring, agent_data->osd->os_platform);
+            }
+
+            cJSON *os_type = cJSON_GetObjectItem(os, "type");
+            if (os_type && cJSON_IsString(os_type)) {
+                os_free(agent_data->osd->os_type);
+                os_strdup(os_type->valuestring, agent_data->osd->os_type);
+            }
+        }
+
+        // Extract architecture (after uname parsing, to overwrite if present)
+        cJSON *architecture = cJSON_GetObjectItem(host, "architecture");
+        if (architecture && cJSON_IsString(architecture)) {
+            os_free(agent_data->osd->os_arch);
+            os_strdup(architecture->valuestring, agent_data->osd->os_arch);
+        }
+
+        // Extract hostname (after uname parsing, to overwrite if present)
+        cJSON *hostname = cJSON_GetObjectItem(host, "hostname");
+        if (hostname && cJSON_IsString(hostname)) {
+            os_free(agent_data->osd->hostname);
+            os_strdup(hostname->valuestring, agent_data->osd->hostname);
+        }
+    }
+
+    cJSON_Delete(root);
+    return OS_SUCCESS;
+}
+
 #endif

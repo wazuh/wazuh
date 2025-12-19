@@ -26,6 +26,14 @@ if(NOT SYSINFO)
   message(FATAL_ERROR "libsysinfo not found in ${SRC_FOLDER}/data_provider/build/bin Aborting...")
 endif()
 
+# Find the agent_metadata library
+find_library(AGENT_METADATA NAMES agent_metadata HINTS "${SRC_FOLDER}/shared_modules/agent_metadata/build/bin")
+
+if(NOT AGENT_METADATA)
+  message(FATAL_ERROR "AGENT_METADATA is set to '${AGENT_METADATA}', but did not find any file matching ${SRC_FOLDER}/shared_modules/agent_metadata/build/bin/${CMAKE_FIND_LIBRARY_PREFIXES}agent_metadata${CMAKE_FIND_LIBRARY_SUFFIXES}")
+  message(FATAL_ERROR "libagent_metadata not found in ${SRC_FOLDER}/shared_modules/agent_metadata/build/bin Aborting...")
+endif()
+
 # Win32 pthread library
 find_library(PTHREAD NAMES libwinpthread-1.dll HINTS "${SRC_FOLDER}/win32")
 if(NOT PTHREAD)
@@ -78,12 +86,12 @@ set_target_properties(
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 wintrust)
+target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${AGENT_METADATA} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 wintrust)
 
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
-set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
-set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} ${AGENT_METADATA} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} ${AGENT_METADATA} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(client-agent)
 add_subdirectory(wazuh_modules)

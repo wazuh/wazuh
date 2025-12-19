@@ -520,7 +520,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             /* Parsing msg */
             os_calloc(1, sizeof(agent_info_data), agent_data);
 
-            result = parse_agent_update_msg(msg, agent_data);
+            // Detect JSON format (5.0+ agent) vs text format (4.x agent)
+            if (msg[0] == '{') {
+                // JSON keepalive from 5.0+ agent
+                result = parse_json_keepalive(msg, agent_data);
+            } else {
+                // Text keepalive from 4.x agent
+                result = parse_agent_update_msg(msg, agent_data);
+            }
 
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent '%s'", key->id);

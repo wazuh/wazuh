@@ -15,17 +15,18 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest/goo
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/sqlite/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/flatbuffers/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../utils/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../agent_metadata/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../headers/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../)
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest/lib/)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../agent_metadata/build/lib/)
 
 # Prepare test sources
 set(TEST_SOURCES
     main.cpp
     test_persistent_queue_storage.cpp
     test_persistent_queue.cpp
-    test_metadata_provider.cpp
     test_agent_sync_protocol_datacontext.cpp
     test_sync_protocol_integration.cpp
 )
@@ -61,6 +62,7 @@ endif()
 target_link_libraries(agent_sync_protocol_tests
     PRIVATE
     agent_sync_protocol
+    agent_metadata
     debug gtestd
     debug gmockd
     optimized gtest
