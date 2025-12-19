@@ -180,7 +180,7 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     now = time.time()
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=300)
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=10)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     after = time.time()
     print(f"[DEBUG] Time taken to detect report changes event: {after - now} seconds")
@@ -206,7 +206,7 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
 
     # Check the content_changes field in the event
     now = time.time()
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=300)
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=10)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     after = time.time()
     print(f"[DEBUG] Time taken to detect unable diff event: {after - now} seconds")

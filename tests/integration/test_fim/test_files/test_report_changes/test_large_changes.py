@@ -180,7 +180,7 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     write_file_write(test_file_path, content=original_string)
 
     now = time.time()
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=300)
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=10)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
     after = time.time()
     print(f"[DEBUG] Time taken to detect file addition: {after - now} seconds")

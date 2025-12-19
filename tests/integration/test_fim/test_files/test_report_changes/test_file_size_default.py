@@ -190,7 +190,7 @@ def test_file_size_default(test_configuration, test_metadata, configure_local_in
     write_file(file_to_monitor, data=to_write)
 
     now = time.time()
-    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=300)
+    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=10)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FOLDER_DELETED
     after = time.time()
     print(f"[DEBUG] Time taken to detect folder deletion: {after - now} seconds")
