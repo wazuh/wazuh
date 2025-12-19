@@ -203,6 +203,16 @@ jobs:
             Write-Host "WARNING: ossec.log not found at $logPath"
           }
 
+          # Copy accumulated log (contains all logs from all test executions)
+          $accumulatedLogPath = "$agentPath\ossec_accumulated.log"
+          if (Test-Path $accumulatedLogPath) {
+            Copy-Item $accumulatedLogPath -Destination "$artifactPath\ossec_accumulated.log"
+            $accLogSize = (Get-Item $accumulatedLogPath).Length / 1KB
+            Write-Host "ossec_accumulated.log size: $([math]::Round($accLogSize, 2)) KB"
+          } else {
+            Write-Host "WARNING: ossec_accumulated.log not found at $accumulatedLogPath"
+          }
+
           # Copy configuration files
           if (Test-Path "$agentPath\ossec.conf") {
             Copy-Item "$agentPath\ossec.conf" -Destination "$artifactPath\ossec.conf"
@@ -218,10 +228,10 @@ jobs:
           Write-Host "`n=== Collected Files ===" -ForegroundColor Yellow
           Get-ChildItem $artifactPath | Format-Table Name, Length
 
-          # Show last 100 lines of log in console for quick debugging
-          Write-Host "`n=== Last 100 lines of ossec.log ===" -ForegroundColor Yellow
-          if (Test-Path $logPath) {
-            Get-Content $logPath -Tail 100
+          # Show last 100 lines of accumulated log in console for quick debugging
+          Write-Host "`n=== Last 200 lines of ossec_accumulated.log ===" -ForegroundColor Yellow
+          if (Test-Path $accumulatedLogPath) {
+            Get-Content $accumulatedLogPath -Tail 500
           }
 
       - name: Upload Wazuh logs and config
