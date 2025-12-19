@@ -5,12 +5,9 @@
 
 import logging
 from enum import Enum
+from opensearchpy import AsyncOpenSearch
 from typing import Any, Dict, List, Tuple
 
-try:
-    from opensearchpy import AsyncOpenSearch
-except ImportError:
-    from opensearchpy._async.client import AsyncOpenSearch
 
 POST_METHOD = "POST"
 

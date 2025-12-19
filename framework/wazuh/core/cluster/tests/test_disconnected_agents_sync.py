@@ -137,7 +137,7 @@ async def test_disconnected_agent_group_sync_task_get_max_version_from_indexer_e
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
-@patch("wazuh.agent.disconnected_agent_group_sync")
+@patch("wazuh.core.agent.disconnected_agent_group_sync")
 async def test_disconnected_agent_group_sync_task_sync_agent_batch(
     mock_disconnected_sync, mock_wdb_conn
 ):
@@ -173,7 +173,7 @@ async def test_disconnected_agent_group_sync_task_sync_agent_batch(
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
-@patch("wazuh.agent.disconnected_agent_group_sync")
+@patch("wazuh.core.agent.disconnected_agent_group_sync", new_callable=AsyncMock)
 async def test_disconnected_agent_group_sync_task_sync_agent_batch_with_error(
     mock_disconnected_sync, mock_wdb_conn
 ):
@@ -206,7 +206,7 @@ async def test_disconnected_agent_group_sync_task_sync_agent_batch_with_error(
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
 @patch("wazuh.core.agent.Agent.get_agents_overview")
-@patch("wazuh.agent.disconnected_agent_group_sync")
+@patch("wazuh.core.agent.disconnected_agent_group_sync")
 async def test_disconnected_agent_group_sync_integration_full_cycle(
     mock_disconnected_sync, mock_get_agents, mock_wdb_conn
 ):
