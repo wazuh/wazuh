@@ -232,8 +232,8 @@ function fetch_artifacts_with_prefixes() {
 # ==============================================================================
 function get_indexer_artifact() {
   local repo="wazuh/wazuh-indexer"
-  local workflow_file="build.yml"
-  local run_name_prefix='Build [ \"deb\" ] Wazuh Indexer on [ \"x64\" ] | main'
+  local workflow_file="5_builderpackage_indexer.yml"
+  local run_name_prefix='Build [ \"deb\" ] Wazuh Indexer on [ \"x64\" ] | main_'
 
   echo "==> Searching for the first successful build for the Wazuh Indexer 5.x..."
   local run_id
@@ -256,8 +256,7 @@ function get_indexer_artifact() {
   #  - Si artifact_name empieza con "wazuh-indexer-setup-5.0", lo guardamos como "wazuh-indexer-setup-5.0.0.0.zip"
   fetch_artifacts_with_prefixes \
     "$repo" "$run_id" "wazuh-indexer" \
-    "wazuh-indexer-command-manager-5.0::wazuh-indexer-command-manager-5.0.0.0.zip" \
-    "wazuh-indexer-setup-5.0::wazuh-indexer-setup-5.0.0.0.zip"
+    "wazuh-indexer_5.0.0-latest_amd64.deb::wazuh-indexer_5.0.0-latest_amd64.deb" 
 }
 
 
@@ -302,9 +301,9 @@ gh_token
 
 # Download the last version of the Wazuh Indexer and Dashboard
 get_indexer_artifact
-get_dashboard_artifact
+# get_dashboard_artifact
 
 # Init certs
-upsert_certs
+# upsert_certs
 
 exit 0
