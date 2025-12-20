@@ -305,7 +305,7 @@ def build_integration_yaml_for_policy(name: str,
         "id": "...",
         "title": "...",
         "enabled": true,
-        "category": "Other",
+        "category": "other",
         "default_parent": "...",
         "decoders": [ "<decoder_uuid>" ],
         "kvdbs": []
@@ -315,7 +315,7 @@ def build_integration_yaml_for_policy(name: str,
 id: {integ_uuid}
 title: {name}
 enabled: true
-category: Other
+category: other
 default_parent: {default_parent}
 decoders:
   - "{decoder_uuid}"

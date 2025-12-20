@@ -59,7 +59,7 @@ wazuh-indexer:
 | index | string | yes | Data Stream name where the alerts will be indexed. Should be a valid wazuh-indexer data stream name and start with `wazuh-events-v5-`. |
 
 Index name can be expanded with placeholders like `index-name-${PH1}-${PH2}`. If PHX results in an existing string reference to the event it will be replaced in runtime if not will be fail and the alert will not be sent to the indexer.
-The placeholders are sanitized to avoid invalid index names, spaces will be replaced with dashes and uppercase letters will be converted to lowercase.
+The replacement text is not sanitized, so referenced field values must already contain only valid index characters.
 
 ### Asset example
 

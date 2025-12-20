@@ -441,7 +441,7 @@ def create_helpers_integration(api_client: APIClient):
 id: {HELPERS_INTEG_UUID}
 title: helpers-test
 enabled: true
-category: Other
+category: other
 default_parent: {HELPERS_DECODER_UUID}
 decoders:
   - "{HELPERS_DECODER_UUID}"

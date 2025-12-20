@@ -9,35 +9,6 @@
 namespace builder::builders
 {
 
-namespace
-{
-
-// lowercase field conversion and spaces replacement with hyphens
-auto sanitizeField = [](const std::string_view& field, const base::Event& event) -> std::string
-{
-    auto opt = event->getString(field);
-    if (!opt)
-    {
-        throw std::runtime_error("Missing field");
-    }
-
-    std::string s = std::move(*opt);
-    for (char& c : s)
-    {
-        if (c >= 'A' && c <= 'Z')
-        {
-            c += 'a' - 'A';
-        }
-        else if (c == ' ')
-        {
-            c = '-';
-        }
-    }
-    return s;
-};
-
-} // namespace
-
 base::Expression indexerOutputBuilder(const json::Json& definition,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx,
                                       const std::weak_ptr<wiconnector::IWIndexerConnector>& iConnector)
@@ -121,26 +92,24 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
          failureTrace,
          failureTrace2,
          failureTrace3,
-         sanitizeField,
          runState = buildCtx->runState()](base::Event event) -> base::result::Result<base::Event>
         {
             std::string finalIndexName = indexName;
             for (const auto& [placeholder, jsonPath] : placeholderMap)
             {
-                try
-                {
-                    std::string sanitized = sanitizeField(jsonPath, event);
-                    // Replace all occurrences of the placeholder in the indexName
-                    size_t pos = 0;
-                    while ((pos = finalIndexName.find(placeholder, pos)) != std::string::npos)
-                    {
-                        finalIndexName.replace(pos, placeholder.length(), sanitized);
-                        pos += sanitized.length();
-                    }
-                }
-                catch (const std::exception& e)
+                auto opt = event->getString(jsonPath);
+                if (!opt)
                 {
                     RETURN_FAILURE(runState, event, fmt::format(failureTrace2, jsonPath));
+                }
+                std::string fieldValue = std::move(*opt);
+
+                // Replace all occurrences of the placeholder in the indexName
+                size_t pos = 0;
+                while ((pos = finalIndexName.find(placeholder, pos)) != std::string::npos)
+                {
+                    finalIndexName.replace(pos, placeholder.length(), fieldValue);
+                    pos += fieldValue.length();
                 }
             }
 
