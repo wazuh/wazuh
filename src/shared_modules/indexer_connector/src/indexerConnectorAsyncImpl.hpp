@@ -536,4 +536,109 @@ public:
     {
         return m_dispatcher->size();
     }
+
+    std::unique_ptr<PointInTime> createPointInTime(const std::vector<std::string>& indices,
+                                                    const std::string& keepAlive,
+                                                    bool expandWildcards)
+    {
+        if (indices.empty())
+        {
+            throw IndexerConnectorException("Indices list cannot be empty for PIT creation");
+        }
+
+        if (keepAlive.empty())
+        {
+            throw IndexerConnectorException("keepAlive parameter cannot be empty for PIT creation");
+        }
+
+        // Build the indices string (comma-separated)
+        std::string indicesStr;
+        auto reservedSize = [&]() -> std::size_t
+        {
+            std::size_t size = 0;
+            for (const auto& index : indices)
+            {
+                size += index.size();
+            }
+            size += indices.size() - 1; // for commas
+            return size;
+        }();
+        indicesStr.reserve(reservedSize);
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            if (i > 0)
+            {
+                indicesStr += ",";
+            }
+            indicesStr += indices[i];
+        }
+
+        // Build the URL with query parameters
+        std::string url {m_selector->getNext()};
+        url += "/" + indicesStr + "/_search/point_in_time?keep_alive=" + keepAlive;
+
+        if (expandWildcards)
+        {
+            url += "&expand_wildcards=all";
+        }
+
+        // Variables to capture the response
+        std::string pitId;
+        uint64_t creationTime = 0;
+        bool success = false;
+        std::string errorMessage;
+
+        const auto onSuccess = [&pitId, &creationTime, &success, &errorMessage](std::string&& response)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(response);
+
+                if (!jsonResponse.contains("pit_id"))
+                {
+                    errorMessage = "Response does not contain 'pit_id' field";
+                    return;
+                }
+
+                if (!jsonResponse.contains("creation_time"))
+                {
+                    errorMessage = "Response does not contain 'creation_time' field";
+                    return;
+                }
+
+                pitId = jsonResponse["pit_id"].get<std::string>();
+                creationTime = jsonResponse["creation_time"].get<uint64_t>();
+                success = true;
+
+                logDebug2(IC_NAME, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
+            }
+            catch (const std::exception& e)
+            {
+                errorMessage = std::string("Failed to parse PIT response: ") + e.what();
+                logDebug1(IC_NAME, "%s", errorMessage.c_str());
+            }
+        };
+
+        const auto onError = [&errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
+                          ", Response: " + responseBody;
+            logDebug1(IC_NAME, "%s", errorMessage.c_str());
+        };
+
+        // Execute the POST request synchronously
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
+                           PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                           {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+        }
+
+        // Create and return the PointInTime object
+        // Pass raw pointers to selector, secureCommunication, and httpRequest for cleanup
+        return std::make_unique<PointInTime>(
+            std::move(pitId), creationTime, m_selector.get(), &m_secureCommunication, m_httpRequest);
+    }
 };

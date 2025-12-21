@@ -25,6 +25,57 @@
 #endif
 
 /**
+ * @brief PointInTime class - Manages wazuh-indexer Point In Time lifecycle.
+ *
+ */
+class EXPORTED PointInTime final
+{
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
+
+public:
+    /**
+     * @brief Constructor for PointInTime.
+     *
+     * @param pitId The PIT identifier returned by the indexer.
+     * @param creationTime The creation time of the PIT.
+     * @param selector Server selector to use for cleanup.
+     * @param secureCommunication Security configuration for HTTP requests.
+     * @param httpRequest HTTP request handler.
+     */
+    explicit PointInTime(std::string pitId,
+                        uint64_t creationTime,
+                        void* selector,
+                        void* secureCommunication,
+                        void* httpRequest);
+
+    ~PointInTime();
+
+    // Delete copy constructor and assignment operator
+    PointInTime(const PointInTime&) = delete;
+    PointInTime& operator=(const PointInTime&) = delete;
+
+    // Move constructor and assignment operator
+    PointInTime(PointInTime&&) noexcept;
+    PointInTime& operator=(PointInTime&&) noexcept;
+
+    /**
+     * @brief Get the PIT identifier.
+     *
+     * @return The PIT identifier string.
+     */
+    const std::string& getPitId() const;
+
+    /**
+     * @brief Get the creation time.
+     *
+     * @return The creation time as a uint64_t timestamp.
+     */
+    uint64_t getCreationTime() const;
+};
+
+/**
  * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
  */
@@ -253,6 +304,27 @@ public:
      * @return The number of pending indexing operations in the queue.
      */
     uint64_t getQueueSize() const;
+
+    /**
+     * @brief Create a Point In Time (PIT) for the specified indices.
+     *
+     * Creates a PIT context that can be used for consistent pagination across multiple search requests.
+     * The PIT will be automatically deleted when the returned unique_ptr is destroyed.
+     *
+     * @param indices List of index names or patterns to include in the PIT.
+     * @param keepAlive Time to keep the PIT alive (e.g., "5m" for 5 minutes, "1h" for 1 hour).
+     * @param expandWildcards If true, expands wildcard patterns to match indices.
+     * @return A unique_ptr to a PointInTime object containing the PIT ID and creation time.
+     * @throws IndexerConnectorException if the PIT creation fails.
+     *
+     * Example:
+     * auto pit = connector.createPointInTime({".cti-kvdbs", ".cti-decoders"}, "5m", true);
+     * std::string pitId = pit->getPitId(); // Use for subsequent searches
+     * // PIT is automatically deleted when pit goes out of scope
+     */
+    std::unique_ptr<PointInTime> createPointInTime(const std::vector<std::string>& indices,
+                                                    const std::string& keepAlive,
+                                                    bool expandWildcards = false);
 };
 
 class IndexerConnectorException : public std::exception
