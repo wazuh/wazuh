@@ -537,9 +537,9 @@ public:
         return m_dispatcher->size();
     }
 
-    std::unique_ptr<PointInTime> createPointInTime(const std::vector<std::string>& indices,
-                                                    const std::string& keepAlive,
-                                                    bool expandWildcards)
+    PointInTime createPointInTime(const std::vector<std::string>& indices,
+                                  const std::string& keepAlive,
+                                  bool expandWildcards)
     {
         if (indices.empty())
         {
@@ -636,9 +636,52 @@ public:
             throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
         }
 
-        // Create and return the PointInTime object
-        // Pass raw pointers to selector, secureCommunication, and httpRequest for cleanup
-        return std::make_unique<PointInTime>(
-            std::move(pitId), creationTime, m_selector.get(), &m_secureCommunication, m_httpRequest);
+        // Return the PointInTime object
+        return PointInTime(std::move(pitId), creationTime);
+    }
+
+    void deletePointInTime(const PointInTime& pit)
+    {
+        try
+        {
+            const std::string& pitId = pit.getPitId();
+            if (pitId.empty())
+            {
+                throw IndexerConnectorException("PIT ID is empty, cannot delete PIT");
+            }
+
+            std::string url {m_selector->getNext()};
+            url += "/_search/point_in_time";
+
+            nlohmann::json deleteBody;
+            deleteBody["pit_id"] = pitId;
+
+            const auto onSuccess = [](std::string&& response)
+            {
+                logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
+            };
+
+            const auto onError = [&pitId](const std::string& error, const long statusCode, const std::string& responseBody)
+            {
+                throw IndexerConnectorException("Failed to delete PIT " + pitId + ". Error: " + error +
+                                                ", Status: " + std::to_string(statusCode) +
+                                                ", Response: " + responseBody);
+            };
+
+            m_httpRequest->delete_(
+                RequestParameters {.url = HttpURL(url),
+                                  .data = deleteBody.dump(),
+                                  .secureCommunication = m_secureCommunication},
+                PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                {});
+        }
+        catch (const std::exception& e)
+        {
+            throw IndexerConnectorException(std::string("Error deleting PIT: ") + e.what());
+        }
+        catch (...)
+        {
+            throw IndexerConnectorException("Unknown error deleting PIT");
+        }
     }
 };

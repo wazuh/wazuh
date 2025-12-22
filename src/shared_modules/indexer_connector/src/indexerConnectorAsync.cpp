@@ -14,117 +14,8 @@
 #include "indexerConnectorAsyncImpl.hpp"
 #include "loggerHelper.h"
 #include "serverSelector.hpp"
-#include <sstream>
 
 // LCOV_EXCL_START
-// Implementation of PointInTime class
-class PointInTime::Impl
-{
-private:
-    std::string m_pitId;
-    uint64_t m_creationTime;
-    TServerSelector<HTTPRequest>* m_selector;
-    SecureCommunication* m_secureCommunication;
-    HTTPRequest* m_httpRequest;
-
-public:
-    Impl(std::string pitId,
-         uint64_t creationTime,
-         void* selector,
-         void* secureCommunication,
-         void* httpRequest)
-        : m_pitId(std::move(pitId))
-        , m_creationTime(creationTime)
-        , m_selector(static_cast<TServerSelector<HTTPRequest>*>(selector))
-        , m_secureCommunication(static_cast<SecureCommunication*>(secureCommunication))
-        , m_httpRequest(static_cast<HTTPRequest*>(httpRequest))
-    {
-    }
-
-    ~Impl()
-    {
-        // Delete the PIT - this operation should not throw exceptions
-        try
-        {
-            if (!m_pitId.empty() && m_selector && m_httpRequest)
-            {
-                std::string url {m_selector->getNext()};
-                url += "/_pit";
-
-                nlohmann::json deleteBody;
-                deleteBody["id"] = m_pitId;
-
-                const auto onSuccess = [](std::string&& response)
-                {
-                    logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
-                };
-
-                const auto onError = [this](const std::string& error, const long statusCode, const std::string& responseBody)
-                {
-                    // Log but don't throw - destructors should not throw
-                    logWarn(IC_NAME,
-                            "Failed to delete PIT %s. Error: %s, Status: %ld, Response: %s",
-                            m_pitId.c_str(),
-                            error.c_str(),
-                            statusCode,
-                            responseBody.c_str());
-                };
-
-                m_httpRequest->delete_(
-                    RequestParameters {.url = HttpURL(url),
-                                      .data = deleteBody.dump(),
-                                      .secureCommunication = *m_secureCommunication},
-                    PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                    {});
-            }
-        }
-        catch (const std::exception& e)
-        {
-            // Log but don't rethrow - destructors should not throw
-            logError(IC_NAME, "Exception while deleting PIT: %s", e.what());
-        }
-        catch (...)
-        {
-            // Log but don't rethrow - destructors should not throw
-            logError(IC_NAME, "Unknown exception while deleting PIT");
-        }
-    }
-
-    const std::string& getPitId() const
-    {
-        return m_pitId;
-    }
-
-    uint64_t getCreationTime() const
-    {
-        return m_creationTime;
-    }
-};
-
-PointInTime::PointInTime(std::string pitId,
-                         uint64_t creationTime,
-                         void* selector,
-                         void* secureCommunication,
-                         void* httpRequest)
-    : m_impl(std::make_unique<Impl>(std::move(pitId), creationTime, selector, secureCommunication, httpRequest))
-{
-}
-
-PointInTime::~PointInTime() = default;
-
-PointInTime::PointInTime(PointInTime&&) noexcept = default;
-PointInTime& PointInTime::operator=(PointInTime&&) noexcept = default;
-
-const std::string& PointInTime::getPitId() const
-{
-    return m_impl->getPitId();
-}
-
-uint64_t PointInTime::getCreationTime() const
-{
-    return m_impl->getCreationTime();
-}
-
 // Implementation of the facade IndexerConnectorAsync
 class IndexerConnectorAsync::Impl
 {
@@ -169,11 +60,16 @@ public:
         return m_impl.getQueueSize();
     }
 
-    std::unique_ptr<PointInTime> createPointInTime(const std::vector<std::string>& indices,
-                                                    const std::string& keepAlive,
-                                                    bool expandWildcards)
+    PointInTime createPointInTime(const std::vector<std::string>& indices,
+                                  const std::string& keepAlive,
+                                  bool expandWildcards)
     {
         return m_impl.createPointInTime(indices, keepAlive, expandWildcards);
+    }
+
+    void deletePointInTime(const PointInTime& pit)
+    {
+        m_impl.deletePointInTime(pit);
     }
 };
 
@@ -217,11 +113,16 @@ uint64_t IndexerConnectorAsync::getQueueSize() const
     return m_impl->getQueueSize();
 }
 
-std::unique_ptr<PointInTime> IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,
-                                                                       const std::string& keepAlive,
-                                                                       bool expandWildcards)
+PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,
+                                                      const std::string& keepAlive,
+                                                      bool expandWildcards)
 {
     return m_impl->createPointInTime(indices, keepAlive, expandWildcards);
+}
+
+void IndexerConnectorAsync::deletePointInTime(const PointInTime& pit)
+{
+    m_impl->deletePointInTime(pit);
 }
 
 // LCOV_EXCL_STOP
