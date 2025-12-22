@@ -281,7 +281,7 @@ class DistributedAPI:
                                           self.nodes, self.current_user, self.origin_module)
 
                 else:
-                    loop = asyncio.get_event_loop()
+                    loop = asyncio.get_running_loop()
                     if 'thread_pool' in pools:
                         pool = pools.get('thread_pool')
                     elif self.f.__name__ in authentication_funcs:
