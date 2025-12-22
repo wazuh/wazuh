@@ -1,8 +1,9 @@
 {
   "Start": {
-    "agentid": "020",
-    "mode": "delta",
-    "option": "VDSync",
+    "agentid": "030",
+    "mode": "full",
+    "option": "VDFirst",
+    "module": "syscollector_vd",
     "agentname": "ubuntu22",
     "agentversion": "v5.0.0",
     "architecture": "aarch64",
@@ -15,122 +16,92 @@
       "default"
     ],
     "indices": [
+      "wazuh-states-inventory-system",
       "wazuh-states-inventory-packages"
     ],
-    "size": 3
+    "size": 4
   },
-  "data_values": [
-    {
-      "id": "pkg-zlib1g-001",
-      "operation": "upsert",
-      "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "4444444444444444444444444444444444444444"
-          }
-        },
-        "package": {
-          "category": "libs",
-          "installed": null,
-          "path": null,
-          "priority": "required",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1:1.2.11.dfsg-2ubuntu1.5",
-          "architecture": "amd64",
-          "description": "zlib1g - compression library - runtime",
-          "name": "zlib1g",
-          "size": 512,
-          "multiarch": "foreign"
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T12:31:07.733Z"
-        }
-      }
-    },
-    {
-      "id": "pkg-zlib1g-002",
-      "operation": "upsert",
-      "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "5555555555555555555555555555555555555555"
-          }
-        },
-        "package": {
-          "category": "libs",
-          "installed": null,
-          "path": null,
-          "priority": "required",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1.2.11",
-          "architecture": "amd64",
-          "description": "zlib1g - compression library runtime",
-          "name": "zlib1g",
-          "size": 512,
-          "multiarch": "foreign",
-          "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*"
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T12:31:07.733Z"
-        }
-      }
-    },
-    {
-      "id": "pkg-zlib1g-doc-001",
-      "operation": "delete",
-      "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "6666666666666666666666666666666666666666"
-          }
-        },
-        "package": {
-          "category": "doc",
-          "installed": null,
-          "path": "/usr/share/doc/zlib1g-doc",
-          "priority": "optional",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1:1.2.11.dfsg-2ubuntu1.5",
-          "architecture": "amd64",
-          "description": "zlib1g-doc - compression library - documentation",
-          "name": "zlib1g-doc",
-          "size": 256,
-          "multiarch": "foreign"
-        },
-        "state": {
-          "document_version": 2,
-          "modified_at": "2025-11-27T13:05:00.000Z"
-        }
-      }
-    }
-  ],
+  "data_values": [],
   "data_context": [
     {
-      "id": "ctx-os-ubuntu24-001",
+      "index": "wazuh-states-inventory-system",
+      "id": "ctx-os-ubuntu22-22045",
       "payload": {
         "architecture": "aarch64",
-        "checksum": "996d7206f3c607c7aa377702d65c1b53a80d2a84",
-        "hostname": "ubuntu24",
-        "os_codename": "noble",
+        "checksum": "f1375d9c1cb555734830677ef7f529e175395812",
+        "hostname": "ubuntu22",
+        "os_codename": "jammy",
         "os_kernel_name": "Linux",
-        "os_kernel_release": "6.8.0-71-generic",
-        "os_kernel_version": "#71-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 16:44:45 UTC 2025",
-        "os_major": "24",
+        "os_kernel_release": "5.15.0-151-generic",
+        "os_kernel_version": "#161-Ubuntu SMP Tue Jul 22 14:29:26 UTC 2025",
+        "os_major": "22",
         "os_minor": "04",
         "os_name": "Ubuntu",
-        "os_patch": "2",
+        "os_patch": "5",
         "os_platform": "ubuntu",
         "os_type": "linux",
-        "os_version": "24.04.2 LTS (Noble Numbat)",
+        "os_version": "22.04.5 LTS (Jammy Jellyfish)",
         "version": 1
+      }
+    },
+    {
+      "index": "wazuh-states-inventory-packages",
+      "id": "ctx-linux-image-5-15-151",
+      "payload": {
+        "architecture": "arm64",
+        "category": "kernel",
+        "checksum": "1111111111111111111111111111111111111111",
+        "description": "Signed kernel image generic",
+        "installed": null,
+        "name": "linux-image-5.15.0-151-generic",
+        "path": "/boot/vmlinuz-5.15.0-151-generic",
+        "priority": "optional",
+        "size": 15266816,
+        "source": "linux-signed",
+        "type": "deb",
+        "vendor": "Canonical Kernel Team <kernel-team@lists.ubuntu.com>",
+        "version": 1,
+        "version_": "5.15.0-151.161"
+      }
+    },
+    {
+      "index": "wazuh-states-inventory-packages",
+      "id": "ctx-zlib1g-ubuntu22",
+      "payload": {
+        "architecture": "arm64",
+        "category": "libs",
+        "checksum": "2222222222222222222222222222222222222222",
+        "description": "zlib1g - compression library - runtime",
+        "installed": null,
+        "name": "zlib1g",
+        "path": "",
+        "priority": "required",
+        "size": 512,
+        "source": "zlib",
+        "type": "deb",
+        "vendor": "Ubuntu Developers",
+        "version": 1,
+        "version_": "1:1.2.11.dfsg-2ubuntu1.5"
+      }
+    },
+    {
+      "index": "wazuh-states-inventory-packages",
+      "id": "ctx-openssl-ubuntu22",
+      "payload": {
+        "architecture": "arm64",
+        "category": "libs",
+        "checksum": "3333333333333333333333333333333333333333",
+        "description": "Secure Sockets Layer toolkit - shared libraries",
+        "installed": null,
+        "name": "libssl3",
+        "path": "",
+        "priority": "required",
+        "size": 1851392,
+        "source": "openssl",
+        "type": "deb",
+        "vendor": "Ubuntu Developers",
+        "version": 1,
+        "version_": "3.0.2-0ubuntu1.10"
       }
     }
   ]
