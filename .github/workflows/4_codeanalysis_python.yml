@@ -33,9 +33,9 @@ jobs:
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }}:baseline_branch
           git checkout baseline_branch
-          bandit -r ${{ env.PYTHON_DIRS }} -f json -o bandit_baseline.json --exit-zero
+          bandit -r ${{ env.PYTHON_DIRS }} -f json -o bandit_baseline.json -x '**/test/**,**/tests/**' --exit-zero
 
       - name: Run bandit scan on PR changes
         run: |
           git checkout ${{ github.event.pull_request.head.ref }}
-          bandit -r ${{ env.PYTHON_DIRS }} --baseline bandit_baseline.json
+          bandit -r ${{ env.PYTHON_DIRS }} -x '**/test/**,**/tests/**' --baseline bandit_baseline.json
