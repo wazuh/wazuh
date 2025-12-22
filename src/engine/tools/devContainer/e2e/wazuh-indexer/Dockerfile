@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 # Update and install dependencies
 RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* \
     && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
-ENV LANG en_US.utf8
+ENV LANG=en_US.utf8
 
 # Copy all files to a temporary location for installation
 WORKDIR /tmp/wazuh-install
@@ -24,14 +24,11 @@ EOF
 # Create certs directory (will be populated by volume mount at runtime)
 RUN mkdir -p /etc/wazuh-indexer/certs/
 
-# Copy entrypoint script
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
 # Clean up installation files
 RUN rm -rf /tmp/wazuh-install
 
 # Set working directory
 WORKDIR /root
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Wait for interactive debugging
+#CMD [ "sleep", "infinity" ]

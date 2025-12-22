@@ -7,39 +7,36 @@ services:
     image: dev-wazuh-indexer
     hostname: wazuh-indexer
     container_name: wazuh-indexer
+    entrypoint: ["/entrypoint.sh"]
     volumes:
-      - ./certs/node-1-key.pem:/etc/wazuh-indexer/certs/indexer-key.pem
-      - ./certs/node-1.pem:/etc/wazuh-indexer/certs/indexer.pem
-      - ./certs/root-ca.pem:/etc/wazuh-indexer/certs/root-ca.pem
-      - ./certs/admin.pem:/etc/wazuh-indexer/certs/admin.pem
-      - ./certs/admin-key.pem:/etc/wazuh-indexer/certs/admin-key.pem
+      - ./wazuh-indexer/entrypoint.sh:/entrypoint.sh:ro
+      - ./certs:/certs:ro
       # Persistent data volume
-      - wazuh-indexer-data:/var/lib/wazuh-indexer
-      # Security initialization flag
-      - wazuh-indexer-config:/etc/wazuh-indexer-init
+      # - wazuh-indexer-data:/var/lib/wazuh-indexer
+      # # Security initialization flag
+      # - wazuh-indexer-config:/etc/wazuh-indexer-init
     ports:
       - 9200:9200
 
-volumes:
-  wazuh-indexer-data:
-    driver: local
-  wazuh-indexer-config:
-    driver: local
+  wazuh-dashboard:
+    build:
+        context: ./wazuh-dashboard
+    image: dev-wazuh-dashboard
+    hostname: wazuh-dashboard
+    container_name: wazuh-dashboard
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - ./wazuh-dashboard/entrypoint.sh:/entrypoint.sh:ro
+      - ./certs:/certs:ro
+    ports:
+      - 443:443
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - wazuh-indexer
 
-
-  #wazuh-dashboard:
-  #  build:
-  #      context: ./wazuh-dashboard
-  #  image: dev-wazuh-dashboard
-  #  hostname: wazuh-dashboard
-  #  # container_name: wazuh-dashboard
-  #  volumes:
-  #    - ./wazuh-dashboard/config.yml:/etc/wazuh-dashboard/opensearch_dashboards_custom.yml
-  #    # User worker 1 certificates
-  #    - ./certs/root-ca.pem:/etc/wazuh-dashboard/certs/root-ca.pem
-  #    - ./certs/wazuh-worker1.pem:/etc/wazuh-dashboard/certs/dashboard.pem
-  #    - ./certs/wazuh-worker1-key.pem:/etc/wazuh-dashboard/certs/dashboard-key.pem
-  #  ports:
-  #    - 4040:443
-  #  depends_on:
-  #    - wazuh-indexer
+# volumes:
+#   wazuh-indexer-data:
+#     driver: local
+#   wazuh-indexer-config:
+#     driver: local
