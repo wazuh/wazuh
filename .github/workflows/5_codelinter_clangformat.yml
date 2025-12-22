@@ -17,41 +17,79 @@ jobs:
           cancel_others: 'true'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_after_successful_duplicate: 'false'
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      # Router
       - name: Router - Coding style
         id: router_style
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
           path: src/shared_modules/router
-      
-      - name: Content manager - Coding style 
+          id: router
+
+      # Indexer Connector
+      - name: Indexer connector - Coding style
+        id: indexer_connector_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          path: src/shared_modules/indexer_connector
+          id: indexer_connector
+
+      # Content Manager
+      - name: Content manager - Coding style
         id: content_manager_style
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
           path: src/shared_modules/content_manager
+          id: content_manager
 
+      # Inventory Sync
       - name: Inventory sync - Coding style
         id: inventory_sync_style
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
           path: src/wazuh_modules/inventory_sync
+          id: inventory_sync
+
+      # Vulnerability Scanner
+      - name: Vulnerability scanner - Coding style
+        id: vulnerability_scanner_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          path: src/wazuh_modules/vulnerability_scanner
+          id: vulnerability_scanner
+
+      # Utils
+      - name: Utils - Coding style
+        id: utils_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          path: src/shared_modules/utils
+          id: utils
 
       - name: Check all coding style results
         if: always()
         run: |
           FAILED_STEPS=""
-          
+
           if [ "${{ steps.router_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS Router"
           fi
-          
+
+          if [ "${{ steps.indexer_connector_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS IndexerConnector"
+          fi
+
           if [ "${{ steps.content_manager_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS ContentManager"
           fi
@@ -59,7 +97,15 @@ jobs:
           if [ "${{ steps.inventory_sync_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS InventorySync"
           fi
-          
+
+          if [ "${{ steps.vulnerability_scanner_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS VulnerabilityScanner"
+          fi
+
+          if [ "${{ steps.utils_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Utils"
+          fi
+
           if [ -n "$FAILED_STEPS" ]; then
             echo "❌ The following modules failed coding style verification:$FAILED_STEPS"
             exit 1
