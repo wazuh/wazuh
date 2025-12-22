@@ -179,10 +179,7 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     original_string = generate_string(test_metadata.get('original_size'), '0')
     write_file_write(test_file_path, content=original_string)
 
-    start_time = time.time()
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
-    elapsed_time = time.time() - start_time
-    print(f"Elapsed time to detect added event: {elapsed_time:.2f} seconds.")
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
 
     # Modify the file with new content
