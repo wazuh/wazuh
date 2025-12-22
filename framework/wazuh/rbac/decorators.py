@@ -6,6 +6,7 @@ import asyncio
 import re
 from collections import defaultdict
 from functools import wraps
+from typing import Awaitable, Any
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
@@ -372,7 +373,7 @@ def _get_denied(original: dict, allowed: list, target_param: str, res_id: int, r
         return {res.split(':')[2] for res in resources} if resources is not None else {}
 
 
-async def async_list_handler(result: asyncio.coroutine, **kwargs):
+async def async_list_handler(result: Awaitable[Any], **kwargs):
     """This function makes list_handler async."""
     result = await result
     return list_handler(result, **kwargs)

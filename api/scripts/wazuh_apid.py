@@ -153,10 +153,18 @@ def start(params: dict):
 
     # Log the pool creation to force processes creation
     if 'thread_pool' not in common.mp_pools.get():
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            asyncio.wait([loop.run_in_executor(pool, logger.debug2, f"Creating '{name}' process pool")
-                            for name, pool in common.mp_pools.get().items()]))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(
+                asyncio.wait([
+                    loop.run_in_executor(pool, logger.debug2, f"Creating '{name}' process pool")
+                    for name, pool in common.mp_pools.get().items()
+                ])
+            )
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
 
     # Set up API
     app = AsyncApp(
