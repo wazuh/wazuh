@@ -66,6 +66,14 @@ class policyPost_Request(_message.Message):
     ymlContent: str
     def __init__(self, space: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
 
+class policyValidate_Request(_message.Message):
+    __slots__ = ["jsonContent", "load_in_tester"]
+    JSONCONTENT_FIELD_NUMBER: _ClassVar[int]
+    LOAD_IN_TESTER_FIELD_NUMBER: _ClassVar[int]
+    jsonContent: str
+    load_in_tester: bool
+    def __init__(self, jsonContent: _Optional[str] = ..., load_in_tester: bool = ...) -> None: ...
+
 class resourceDelete_Request(_message.Message):
     __slots__ = ["space", "uuid"]
     SPACE_FIELD_NUMBER: _ClassVar[int]

@@ -55,7 +55,8 @@ message namespaceDelete_Request
 /***************************************************
  * Import a full namespace from JSON
  *
- * endpoint: POST content/namespace/import (<resource>/<action>)
+ * endpoint: POST content/namespace/import
+ *
  * Imports a complete namespace definition provided as a JSON payload.
  * This operation may create all resources within the target namespace.
  * When `force` is enabled, validation checks are skipped.
@@ -91,6 +92,21 @@ message policyDelete_Request
     string space = 1; // Namespace name
 }
 // message policyDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Validate a policy JSON payload
+ *
+ * endpoint: POST content/policy/validate
+ *
+ * It allows you to validate a complete policy and
+ * if successful, the possibility of leaving a ready-to-use testing session loaded
+ **************************************************/
+message policyValidate_Request
+{
+    string jsonContent = 1;  // Full policy JSON payload
+    bool load_in_tester = 2; // If true, load testing policies into the Tester environment.
+}
+// message policyValidate_Response -> Return a GenericStatus_Response
 
 /******************** Resource catalog operations ********************/
 /***************************************************

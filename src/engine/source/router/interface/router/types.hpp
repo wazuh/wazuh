@@ -202,6 +202,7 @@ public:
 
     // Setters and getters
     const std::string& name() const { return m_name; }
+    void name(std::string name) { m_name = std::move(name); }
     const cm::store::NamespaceId& namespaceId() const { return m_namespace; }
 
     const std::optional<std::string>& description() const { return m_description; }

@@ -117,7 +117,7 @@ build_pep517 tools/api-communication
 if ! build_pep517 tools/engine-suite; then
   echo "[build] PEP517 failed for engine-suite; falling back to legacy mode..."
   build_legacy_from_copy tools/engine-suite engine-suite \
-    "engine_cm engine_archiver engine_router engine_schema engine_ns engine_geo engine_test engine_test_utils helper_test integration_test"
+    "engine_public engine_archiver engine_decoder engine_router engine_schema engine_private engine_geo engine_test engine_test_utils helper_test health_test integration_test"
 fi
 
 build_pep517 test/engine-test-utils  || build_legacy_from_copy test/engine-test-utils  engine-test-utils   "engine_test_utils"
@@ -227,11 +227,11 @@ EOF
   chmod 0755 "%{buildroot}%{_bindir}/${name}"
 }
 
-mk_wrapper engine-cm           engine_ns
+mk_wrapper engine-public       engine_public
 mk_wrapper engine-archiver     engine_archiver
 mk_wrapper engine-router       engine_router
 mk_wrapper engine-schema       engine_schema
-mk_wrapper engine-ns           engine_ns
+mk_wrapper engine-private      engine_private
 mk_wrapper engine-geo          engine_geo
 mk_wrapper engine-test         engine_test
 mk_wrapper engine-test-utils   engine_test_utils
@@ -350,8 +350,8 @@ echo "[post] pip list (summary):"
 [ -x "$VENV/bin/python3" ] || ln -sf python "$VENV/bin/python3" 2>/dev/null || true
 
 # Smoke test (non-fatal)
-"$PY" - <<'PY' >/dev/null 2>&1 || echo "[post] WARNING: engine_cm import failed."
-import importlib; importlib.import_module("engine_cm")
+"$PY" - <<'PY' >/dev/null 2>&1 || echo "[post] WARNING: engine_public import failed."
+import importlib; importlib.import_module("engine_public")
 PY
 exit 0
 
@@ -397,11 +397,11 @@ exit 0
 # == FILES ============
 # =====================
 %files
-%{_bindir}/engine-cm
+%{_bindir}/engine-public
 %{_bindir}/engine-archiver
 %{_bindir}/engine-router
 %{_bindir}/engine-schema
-%{_bindir}/engine-ns
+%{_bindir}/engine-private
 %{_bindir}/engine-geo
 %{_bindir}/engine-test
 %{_bindir}/engine-test-utils

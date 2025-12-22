@@ -48,6 +48,15 @@ public:
     virtual base::OptError rebuildEntry(const std::string& name) = 0;
 
     /**
+     * @brief Renames the entry with the specified entry name.
+     *
+     * @param from The current name of the entry to be renamed.
+     * @param to The new name of the entry.
+     * @return An optional error if the operation failed.
+     */
+    virtual base::OptError renameEntry(const std::string& from, const std::string& to) = 0;
+
+    /**
      * @brief Enables the environment if it is builded.
      *
      * @param name The name of the environment to be enabled

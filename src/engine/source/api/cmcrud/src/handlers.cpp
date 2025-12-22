@@ -162,7 +162,7 @@ adapter::RouteHandler namespaceImport(std::shared_ptr<cm::crud::ICrudService> cr
 {
     return [wCrud = std::weak_ptr<cm::crud::ICrudService>(crud)](const auto& req, auto& res)
     {
-        using RequestType  = eContent::namespaceImport_Request;
+        using RequestType = eContent::namespaceImport_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
         auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::cm::crud::ICrudService>(req, wCrud);
@@ -188,9 +188,7 @@ adapter::RouteHandler namespaceImport(std::shared_ptr<cm::crud::ICrudService> cr
 
         try
         {
-            service->importNamespace(protoReq.space(),
-                                     protoReq.jsoncontent(),
-                                     protoReq.force());
+            service->importNamespace(protoReq.space(), protoReq.jsoncontent(), protoReq.force());
         }
         catch (const std::exception& ex)
         {
@@ -287,6 +285,206 @@ adapter::RouteHandler policyDelete(std::shared_ptr<cm::crud::ICrudService> crud)
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
+    };
+}
+
+adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> crud,
+                                     const std::shared_ptr<::router::ITesterAPI>& tester)
+{
+    return [wCrud = std::weak_ptr<cm::crud::ICrudService>(crud),
+            wTester = std::weak_ptr<::router::ITesterAPI>(tester)](const auto& req, auto& res)
+    {
+        using RequestType = eContent::policyValidate_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::cm::crud::ICrudService>(req, wCrud);
+        if (adapter::isError(result))
+        {
+            res = adapter::getErrorResp(result);
+            return;
+        }
+
+        auto [service, protoReq] = adapter::getRes(result);
+
+        auto testerLocked = wTester.lock();
+        if (!testerLocked)
+        {
+            res = adapter::userErrorResponse<ResponseType>("Tester API is not available");
+            return;
+        }
+
+        const std::string nsJsonDoc = protoReq.jsoncontent();
+        const bool loadInTester = protoReq.load_in_tester();
+
+        if (nsJsonDoc.empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Missing jsoncontent");
+            return;
+        }
+
+        // Strongly unique nonce: time + thread id hash + monotonic counter.
+        static std::atomic<uint64_t> seq {0};
+        const auto t = std::chrono::steady_clock::now().time_since_epoch().count();
+        const auto tid = std::hash<std::thread::id> {}(std::this_thread::get_id());
+        const auto s = seq.fetch_add(1, std::memory_order_relaxed);
+        const auto nonce = fmt::format("{}_{}_{}", t, tid, s);
+
+        const std::string tmpNsName = fmt::format("policy_validate_{}", nonce);
+        const std::string tmpSessionName = fmt::format("policy_validate_{}", nonce);
+        const std::string finalSessionName = "testing";
+
+        bool tmpNamespaceCreated = false;
+        bool tmpSessionCreated = false;
+
+        auto cleanupSession = [&](const std::string& name, bool shouldRun) -> base::OptError
+        {
+            if (!shouldRun)
+            {
+                return std::nullopt;
+            }
+
+            auto err = testerLocked->deleteTestEntry(name);
+            if (base::isError(err))
+            {
+                return base::Error {
+                    fmt::format("Cleanup: failed deleting session '{}': {}", name, base::getError(err).message)};
+            }
+            return std::nullopt;
+        };
+
+        auto cleanupNamespace = [&](const std::string& name, bool shouldRun) -> base::OptError
+        {
+            if (!shouldRun)
+            {
+                return std::nullopt;
+            }
+
+            try
+            {
+                service->deleteNamespace(name);
+                return std::nullopt;
+            }
+            catch (const std::exception& e)
+            {
+                return base::Error {fmt::format("Cleanup: failed deleting namespace '{}': {}", name, e.what())};
+            }
+        };
+
+        // Best-effort cleanup: never writes to `res`.
+        auto bestEffortCleanup = [&](bool cleanupTmpSession,
+                                     bool cleanupTmpNamespace,
+                                     const std::optional<std::string>& extraNamespaceToDelete = std::nullopt) noexcept
+        {
+            (void)cleanupSession(tmpSessionName, cleanupTmpSession);
+            (void)cleanupNamespace(tmpNsName, cleanupTmpNamespace);
+
+            if (extraNamespaceToDelete)
+            {
+                (void)cleanupNamespace(*extraNamespaceToDelete, /*shouldRun=*/true);
+            }
+        };
+
+        try
+        {
+            // Import into temp namespace
+            service->importNamespace(tmpNsName, nsJsonDoc, /*force=*/true);
+            tmpNamespaceCreated = true;
+
+            // Create a tester entry to validate tester-loading path.
+            const int lifetime = 0;
+            ::router::test::EntryPost entryPost(tmpSessionName, cm::store::NamespaceId(tmpNsName), lifetime);
+            entryPost.description("wazuh-indexer auto created session");
+
+            // Post temp entry
+            {
+                auto err = testerLocked->postTestEntry(entryPost);
+                if (base::isError(err))
+                {
+                    bestEffortCleanup(/*cleanupTmpSession=*/tmpSessionCreated,
+                                      /*cleanupTmpNamespace=*/true);
+                    res = adapter::userErrorResponse<ResponseType>(base::getError(err).message);
+                    return;
+                }
+                tmpSessionCreated = true;
+            }
+
+            if (loadInTester)
+            {
+                std::optional<std::string> oldNsToDelete;
+
+                // If "testing" exists, delete it first (it references old namespace).
+                auto entry = testerLocked->getTestEntry(finalSessionName);
+                if (!base::isError(entry))
+                {
+                    oldNsToDelete = base::getResponse(entry).namespaceId().toStr();
+
+                    // Strict: if we can't delete the old session, abort.
+                    if (auto serr = cleanupSession(finalSessionName, /*shouldRun=*/true))
+                    {
+                        bestEffortCleanup(/*cleanupTmpSession=*/tmpSessionCreated,
+                                          /*cleanupTmpNamespace=*/true);
+                        res = adapter::userErrorResponse<ResponseType>(serr->message);
+                        return;
+                    }
+                }
+
+                // Promote temp session to "testing" (now points to tmpNsName).
+                auto rerr = testerLocked->renameTestEntry(tmpSessionName, finalSessionName);
+                if (base::isError(rerr))
+                {
+                    bestEffortCleanup(/*cleanupTmpSession=*/tmpSessionCreated,
+                                      /*cleanupTmpNamespace=*/true);
+                    res = adapter::userErrorResponse<ResponseType>(base::getError(rerr).message);
+                    return;
+                }
+
+                // After rename, temp session no longer exists.
+                tmpSessionCreated = false;
+
+                // Now it's safe to delete the old namespace (if any).
+                if (oldNsToDelete)
+                {
+                    // Strict: if we can't delete old namespace, abort.
+                    if (auto nerr = cleanupNamespace(*oldNsToDelete, /*shouldRun=*/true))
+                    {
+                        res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                        return;
+                    }
+                }
+
+                ResponseType eResponse;
+                eResponse.set_status(eEngine::ReturnStatus::OK);
+                res = adapter::userResponse(eResponse);
+                return;
+            }
+
+            // Not testing: cleanup must succeed, otherwise do NOT return OK.
+            if (auto serr = cleanupSession(tmpSessionName, /*shouldRun=*/tmpSessionCreated))
+            {
+                (void)cleanupNamespace(tmpNsName, /*shouldRun=*/true); // best-effort follow-up
+                res = adapter::userErrorResponse<ResponseType>(serr->message);
+                return;
+            }
+
+            if (auto nerr = cleanupNamespace(tmpNsName, /*shouldRun=*/true))
+            {
+                res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                return;
+            }
+
+            ResponseType eResponse;
+            eResponse.set_status(eEngine::ReturnStatus::OK);
+            res = adapter::userResponse(eResponse);
+            return;
+        }
+        catch (const std::exception& ex)
+        {
+            // Best-effort cleanup; preserve the primary failure cause.
+            bestEffortCleanup(/*cleanupTmpSession=*/tmpSessionCreated,
+                              /*cleanupTmpNamespace=*/tmpNamespaceCreated);
+            res = adapter::userErrorResponse<ResponseType>(ex.what());
+            return;
+        }
     };
 }
 

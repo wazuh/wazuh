@@ -89,6 +89,11 @@ public:
     base::OptError rebuildEntry(const std::string& name) override;
 
     /**
+     * @copydoc ITester::renameEntry
+     */
+    base::OptError renameEntry(const std::string& from, const std::string& to) override;
+
+    /**
      * @copydoc ITester::enableEntry
      */
     base::OptError enableEntry(const std::string& name) override;

@@ -106,19 +106,6 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 {
     const cm::store::NamespaceId nsId {nsName};
 
-    auto existsNS = [this](const cm::store::NamespaceId& id) -> bool
-    {
-        try
-        {
-            (void)m_store->getNSReader(id);
-            return true;
-        }
-        catch (const std::exception& ex)
-        {
-            return false;
-        }
-    };
-
     auto bestEffortDelete = [this, functionName = logging::getLambdaName(__FUNCTION__, "bestEffortDelete")](
                                 const cm::store::NamespaceId& id)
     {
@@ -137,7 +124,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
     try
     {
         // Reject if destination namespace already exists
-        if (existsNS(nsId))
+        if (m_store->existsNamespace(nsId))
         {
             throw std::runtime_error(fmt::format(
                 "Namespace '{}' already exists. Import is only allowed into a new namespace.", nsName));
@@ -147,8 +134,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
         json::Json nsJson;
         try
         {
-            std::string jsonStr {jsonDocument};
-            nsJson = json::Json {jsonStr.c_str()};
+            nsJson = json::Json {jsonDocument.data()};
         }
         catch (const std::exception& e)
         {
@@ -232,12 +218,12 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
             };
 
             // Required order
-            importResources(cm::store::ResourceType::KVDB, "kvdb");
-            importResources(cm::store::ResourceType::FILTER, "filter");
-            importResources(cm::store::ResourceType::DECODER, "decoder");
-            importResources(cm::store::ResourceType::RULE, "rule");
-            importResources(cm::store::ResourceType::OUTPUT, "output");
-            importResources(cm::store::ResourceType::INTEGRATION, "integration");
+            importResources(cm::store::ResourceType::KVDB, "kvdbs");
+            importResources(cm::store::ResourceType::FILTER, "filters");
+            importResources(cm::store::ResourceType::DECODER, "decoders");
+            importResources(cm::store::ResourceType::RULE, "rules");
+            importResources(cm::store::ResourceType::OUTPUT, "outputs");
+            importResources(cm::store::ResourceType::INTEGRATION, "integrations");
 
             // Policy
             if (auto policyObjOpt = nsJson.getJson("/policy"))

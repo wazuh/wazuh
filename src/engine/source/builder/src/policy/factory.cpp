@@ -39,12 +39,24 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         for (const auto& decUUID : integration.getDecodersByUUID())
         {
             const auto decoder = cmStoreNsReader->getAssetByUUID(decUUID);
+            auto assetName = decoder.getString(json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY));
             if (!decoder.getBool(json::Json::formatJsonPath(builder::syntax::asset::ENABLED_KEY)).value_or(false))
             {
                 continue;
             }
 
-            Asset asset = (*assetBuilder)(decoder);
+            Asset asset;
+            try
+            {
+                asset = (*assetBuilder)(decoder);
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format("Error building decoder {} from integration '{}': {}",
+                                                     assetName.value(),
+                                                     integration.getName(),
+                                                     e.what()));
+            }
 
             const auto isRootDefault =
                 (asset.name() == std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder())));

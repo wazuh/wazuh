@@ -339,6 +339,13 @@ public:
     virtual void renameNamespace(const NamespaceId& from, const NamespaceId& to) = 0;
 
     /**
+     * @brief Check if a namespace exists
+     * @param nsId NamespaceId of the namespace to check
+     * @return true if the namespace exists, false otherwise
+     */
+    virtual bool existsNamespace(const NamespaceId& nsId) const = 0;
+
+    /**
      * @brief Get all existing namespaces
      * @return std::vector<NamespaceId> Vector of NamespaceId
      */
