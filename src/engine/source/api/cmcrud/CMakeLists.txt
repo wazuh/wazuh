@@ -20,6 +20,7 @@ target_link_libraries(api_cmcrud
     api::adapter
     router::irouter
     cmcrud::icmcrud
+    api::shared
 )
 
 add_library(api::cmcrud ALIAS api_cmcrud)

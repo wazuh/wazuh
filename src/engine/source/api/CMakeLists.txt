@@ -5,6 +5,7 @@ add_subdirectory(tester)
 add_subdirectory(event)
 add_subdirectory(archiver)
 add_subdirectory(cmcrud)
+add_subdirectory(shared)
 
 add_library(api INTERFACE)
 target_include_directories(api INTERFACE
@@ -17,4 +18,5 @@ target_link_libraries(api INTERFACE
   api::event
   api::archiver
   api::cmcrud
+  api::shared
 )

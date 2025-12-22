@@ -5,6 +5,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <api/adapter/helpers.hpp>
+#include <api/shared/constants.hpp>
 #include <api/tester/handlers.hpp>
 
 #include <base/hostInfo.hpp>
@@ -453,7 +454,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         if (traceLevel != OTraceLavel::NONE)
         {
             // Get the assets of the policy filtered by namespaces
-            auto resPolicyAssets = tester->getAssets("testing");
+            auto resPolicyAssets = tester->getAssets(SESSION_NAME);
             if (base::isError(resPolicyAssets))
             {
                 res = adapter::userErrorResponse<ResponseType>(base::getError(resPolicyAssets).message);
@@ -465,7 +466,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         // Run the test
-        auto opt = ::router::test::Options(traceLevel, assetToTrace, "testing");
+        auto opt = ::router::test::Options(traceLevel, assetToTrace, SESSION_NAME);
 
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;

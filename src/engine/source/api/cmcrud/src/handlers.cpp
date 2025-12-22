@@ -12,6 +12,7 @@
 
 #include <api/adapter/helpers.hpp>
 #include <api/cmcrud/handlers.hpp>
+#include <api/shared/constants.hpp>
 
 namespace api::cmcrud::handlers
 {
@@ -331,7 +332,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
         const std::string tmpNsName = fmt::format("policy_validate_{}", nonce);
         const std::string tmpSessionName = fmt::format("policy_validate_{}", nonce);
-        const std::string finalSessionName = "testing";
+        const std::string finalSessionName = SESSION_NAME;
 
         bool tmpNamespaceCreated = false;
         bool tmpSessionCreated = false;
@@ -412,7 +413,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             {
                 std::optional<std::string> oldNsToDelete;
 
-                // If "testing" exists, delete it first (it references old namespace).
+                // If SESSION_NAME exists, delete it first (it references old namespace).
                 auto entry = testerLocked->getTestEntry(finalSessionName);
                 if (!base::isError(entry))
                 {
@@ -428,7 +429,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
                     }
                 }
 
-                // Promote temp session to "testing" (now points to tmpNsName).
+                // Promote temp session to SESSION_NAME (now points to tmpNsName).
                 auto rerr = testerLocked->renameTestEntry(tmpSessionName, finalSessionName);
                 if (base::isError(rerr))
                 {
