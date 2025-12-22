@@ -65,7 +65,7 @@ void populateTestDb()
         "INSERT INTO dbsync_packages (name, version_, architecture, type, path, checksum) VALUES ('pkg1', '1.0', 'arch', 'type', 'path', 'sum');",
         "INSERT INTO dbsync_processes (pid, name, checksum) VALUES ('123', 'proc1', 'sum');",
         "INSERT INTO dbsync_hwinfo (serial_number, checksum) VALUES ('sn1', 'sum');",
-        "INSERT INTO dbsync_osinfo (os_name, checksum) VALUES ('os1', 'sum');",
+        "INSERT INTO dbsync_osinfo (os_name, os_version, checksum) VALUES ('os1', 'version1', 'sum');",
         "INSERT INTO dbsync_ports (file_inode, network_transport, source_ip, source_port, checksum) VALUES (1, 'tcp', '127.0.0.1', 80, 'sum');",
         "INSERT INTO dbsync_network_iface (interface_name, interface_alias, interface_type, checksum) VALUES ('eth0', 'alias', 'ethernet', 'sum');",
         "INSERT INTO dbsync_network_protocol (interface_name, network_type, checksum) VALUES ('eth0', 'ipv4', 'sum');",
