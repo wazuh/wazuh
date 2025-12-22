@@ -2,7 +2,7 @@
   "Start": {
     "agentid": "032",
     "mode": "full",
-    "option": "VDSync",
+    "option": "VDFirst",
     "module": "syscollector_vd",
     "agentname": "ubuntu22",
     "agentversion": "v5.0.0",
@@ -11,7 +11,7 @@
     "osname": "Ubuntu",
     "osplatform": "ubuntu",
     "ostype": "linux",
-    "osversion": "24.04.3 LTS (Noble Numbat)",
+    "osversion": "22.04.5 LTS (Jammy Jellyfish)",
     "groups": [
       "default"
     ],
@@ -19,55 +19,16 @@
       "wazuh-states-inventory-system",
       "wazuh-states-inventory-packages"
     ],
-    "size": 8
+    "size": 4
   },
   "data_values": [
     {
-      "id": "os-upsert-ubuntu24-24043",
+      "id": "os-upsert-ubuntu22-22045",
       "operation": "upsert",
       "payload": {
         "checksum": {
           "hash": {
-            "sha1": "608c860eaa724d2a8837239fc382b010648fa69c"
-          }
-        },
-        "host": {
-          "architecture": "aarch64",
-          "hostname": "ubuntu22",
-          "os": {
-            "build": null,
-            "codename": "noble",
-            "distribution": {
-              "release": null
-            },
-            "full": null,
-            "kernel": {
-              "name": "Linux",
-              "release": "6.8.0-90-generic",
-              "version": "#91-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 18 13:53:54 UTC 2025"
-            },
-            "major": "24",
-            "minor": "04",
-            "name": "Ubuntu",
-            "patch": "3",
-            "platform": "ubuntu",
-            "type": "linux",
-            "version": "24.04.3 LTS (Noble Numbat)"
-          }
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-12-19T16:53:12.446Z"
-        }
-      }
-    },
-    {
-      "id": "os-delete-ubuntu22-22045",
-      "operation": "delete",
-      "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "d93449d17e48b80d0239553812d9926326afb0a8"
+            "sha1": "f1375d9c1cb555734830677ef7f529e175395812"
           }
         },
         "host": {
@@ -96,17 +57,17 @@
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-12-19T16:53:12.449Z"
+          "modified_at": "2025-12-18T18:32:21.118Z"
         }
       }
     },
     {
       "id": "pkg-linux-image-5.15.0-151-generic",
-      "operation": "delete",
+      "operation": "upsert",
       "payload": {
         "checksum": {
           "hash": {
-            "sha1": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            "sha1": "59e14b9b2d0af5669798f379ef795f3bffcf3d25"
           }
         },
         "package": {
@@ -126,122 +87,70 @@
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-12-19T16:53:12.860Z"
+          "modified_at": "2025-12-18T18:32:21.200Z"
         }
       }
     },
     {
-      "id": "pkg-linux-image-6.8.0-90-generic",
+      "id": "pkg-zlib1g-ubuntu22",
       "operation": "upsert",
       "payload": {
         "checksum": {
           "hash": {
-            "sha1": "ffffffffffffffffffffffffffffffffffffffff"
+            "sha1": "2222222222222222222222222222222222222222"
           }
         },
         "package": {
           "architecture": "arm64",
-          "category": "kernel",
-          "description": "Signed kernel image generic",
+          "category": "libs",
+          "description": "zlib1g - compression library - runtime",
           "installed": null,
-          "multiarch": "same",
-          "name": "linux-image-6.8.0-90-generic",
-          "path": "/boot/vmlinuz-6.8.0-90-generic",
-          "priority": "optional",
-          "size": 15418368,
-          "source": "linux-signed",
+          "multiarch": "foreign",
+          "name": "zlib1g",
+          "path": null,
+          "priority": "required",
+          "size": 512,
+          "source": "zlib",
           "type": "deb",
-          "vendor": "Canonical Kernel Team <kernel-team@lists.ubuntu.com>",
-          "version": "6.8.0-90.91"
+          "vendor": "Ubuntu Developers",
+          "version": "1:1.2.11.dfsg-2ubuntu1.5"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-12-19T16:53:13.100Z"
+          "modified_at": "2025-12-18T18:32:21.240Z"
+        }
+      }
+    },
+    {
+      "id": "pkg-libssl3-ubuntu22",
+      "operation": "upsert",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "3333333333333333333333333333333333333333"
+          }
+        },
+        "package": {
+          "architecture": "arm64",
+          "category": "libs",
+          "description": "Secure Sockets Layer toolkit - shared libraries",
+          "installed": null,
+          "multiarch": "foreign",
+          "name": "libssl3",
+          "path": null,
+          "priority": "required",
+          "size": 1851392,
+          "source": "openssl",
+          "type": "deb",
+          "vendor": "Ubuntu Developers",
+          "version": "3.0.2-0ubuntu1.10"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-18T18:32:21.280Z"
         }
       }
     }
   ],
-  "data_context": [
-    {
-      "index": "wazuh-states-inventory-system",
-      "id": "ctx-os-ubuntu24-24043",
-      "payload": {
-        "architecture": "aarch64",
-        "checksum": "608c860eaa724d2a8837239fc382b010648fa69c",
-        "hostname": "ubuntu22",
-        "os_codename": "noble",
-        "os_kernel_name": "Linux",
-        "os_kernel_release": "6.8.0-90-generic",
-        "os_kernel_version": "#91-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 18 13:53:54 UTC 2025",
-        "os_major": "24",
-        "os_minor": "04",
-        "os_name": "Ubuntu",
-        "os_patch": "3",
-        "os_platform": "ubuntu",
-        "os_type": "linux",
-        "os_version": "24.04.3 LTS (Noble Numbat)",
-        "version": 1
-      }
-    },
-    {
-      "index": "wazuh-states-inventory-packages",
-      "id": "ctx-linux-image-6-8-0-90",
-      "payload": {
-        "architecture": "arm64",
-        "category": "kernel",
-        "checksum": "7777777777777777777777777777777777777777",
-        "description": "Signed kernel image generic",
-        "installed": null,
-        "name": "linux-image-6.8.0-90-generic",
-        "path": "/boot/vmlinuz-6.8.0-90-generic",
-        "priority": "optional",
-        "size": 15418368,
-        "source": "linux-signed",
-        "type": "deb",
-        "vendor": "Canonical Kernel Team <kernel-team@lists.ubuntu.com>",
-        "version": 1,
-        "version_": "6.8.0-90.91"
-      }
-    },
-    {
-      "index": "wazuh-states-inventory-packages",
-      "id": "ctx-zlib1g-ubuntu24",
-      "payload": {
-        "architecture": "arm64",
-        "category": "libs",
-        "checksum": "8888888888888888888888888888888888888888",
-        "description": "zlib1g - compression library - runtime",
-        "installed": null,
-        "name": "zlib1g",
-        "path": "",
-        "priority": "required",
-        "size": 512,
-        "source": "zlib",
-        "type": "deb",
-        "vendor": "Ubuntu Developers",
-        "version": 1,
-        "version_": "1:1.2.11.dfsg-2ubuntu1.5"
-      }
-    },
-    {
-      "index": "wazuh-states-inventory-packages",
-      "id": "ctx-ubuntu-pro-client",
-      "payload": {
-        "architecture": null,
-        "category": null,
-        "checksum": "9999999999999999999999999999999999999999",
-        "description": "Manage Ubuntu Pro support entitlements",
-        "installed": null,
-        "name": "ubuntu-pro-client",
-        "path": "/usr/lib/python3/dist-packages/ubuntu_pro_client-8001.egg-info/PKG-INFO",
-        "priority": null,
-        "size": 0,
-        "source": "https://ubuntu.com/support",
-        "type": "pypi",
-        "vendor": "Ubuntu Server Team",
-        "version": 1,
-        "version_": "8001"
-      }
-    }
-  ]
+  "data_context": []
 }

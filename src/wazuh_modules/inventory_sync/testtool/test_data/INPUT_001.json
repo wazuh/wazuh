@@ -18,69 +18,109 @@
     "indices": [
       "wazuh-states-inventory-packages"
     ],
-    "size": 2
+    "size": 3
   },
   "data_values": [
     {
-      "id": "pkg-adduser-ubuntu24-new",
+      "id": "pkg-libssl3-ubuntu24-new",
       "operation": "upsert",
       "payload": {
         "checksum": {
           "hash": {
-            "sha1": "b073874ddf4ebe05c8ada6dcc04a6c4bbca8a9db"
+            "sha1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
           }
         },
         "package": {
-          "architecture": "all",
-          "category": "admin",
-          "description": "add and remove users and groups",
+          "architecture": "arm64",
+          "category": "libs",
+          "description": "Secure Sockets Layer toolkit - shared libraries",
           "installed": null,
-          "multiarch": "foreign",
-          "name": "adduser",
+          "multiarch": "same",
+          "name": "libssl3",
           "path": null,
-          "priority": "important",
-          "size": 462848,
-          "source": null,
+          "priority": "required",
+          "size": 1851392,
+          "source": "openssl",
           "type": "deb",
-          "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
-          "version": "3.137ubuntu1"
+          "vendor": "Ubuntu Developers",
+          "version": "3.0.2-0ubuntu1.10"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-12-19T16:53:12.459Z"
+          "modified_at": "2025-12-19T16:54:12.459Z"
         }
       }
     },
     {
-      "id": "pkg-adduser-ubuntu24-old",
+      "id": "pkg-libssl3-ubuntu24-old",
       "operation": "delete",
       "payload": {
         "checksum": {
           "hash": {
-            "sha1": "c6f81bc5858952f8a9a94c7f07ad643b64f4ef16"
+            "sha1": "cccccccccccccccccccccccccccccccccccccccc"
           }
         },
         "package": {
-          "architecture": "all",
-          "category": "admin",
-          "description": "add and remove users and groups",
+          "architecture": "arm64",
+          "category": "libs",
+          "description": "Secure Sockets Layer toolkit - shared libraries",
           "installed": null,
-          "multiarch": "foreign",
-          "name": "adduser",
+          "multiarch": "same",
+          "name": "libssl3",
           "path": null,
-          "priority": "important",
-          "size": 622592,
-          "source": null,
+          "priority": "required",
+          "size": 1800000,
+          "source": "openssl",
           "type": "deb",
-          "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
-          "version": "3.118ubuntu5"
+          "vendor": "Ubuntu Developers",
+          "version": "3.0.2-0ubuntu1.8"
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-12-19T16:53:12.860Z"
+          "modified_at": "2025-12-19T16:54:12.860Z"
         }
       }
     }
   ],
-  "data_context": []
+  "data_context": [
+    {
+      "index": "wazuh-states-inventory-system",
+      "id": "ctx-os-ubuntu24-24043",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "608c860eaa724d2a8837239fc382b010648fa69c"
+          }
+        },
+        "host": {
+          "architecture": "aarch64",
+          "hostname": "ubuntu24",
+          "os": {
+            "build": null,
+            "codename": "noble",
+            "distribution": {
+              "release": null
+            },
+            "full": null,
+            "kernel": {
+              "name": "Linux",
+              "release": "6.8.0-90-generic",
+              "version": "#91-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 18 13:53:54 UTC 2025"
+            },
+            "major": "24",
+            "minor": "04",
+            "name": "Ubuntu",
+            "patch": "3",
+            "platform": "ubuntu",
+            "type": "linux",
+            "version": "24.04.3 LTS (Noble Numbat)"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:54:13.100Z"
+        }
+      }
+    }
+  ]
 }
