@@ -2191,6 +2191,11 @@ void Syscollector::deleteDatabase()
         m_spSyncProtocol->deleteDatabase();
     }
 
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->deleteDatabase();
+    }
+
     if (m_spDBSync)
     {
         m_spDBSync->closeAndDeleteDatabase();

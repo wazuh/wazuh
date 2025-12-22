@@ -28,9 +28,10 @@ typedef struct callback_ctx
  *
  * @param key Path to seek in the directories array
  * @param notify_not_found If true, a debug message is logged when the path is not found
+ * @param directories_list The OSList of directory_t objects to search in (must not be NULL)
  * @return Returns a pointer to the configuration associated with the provided path, NULL if the path is not found
  */
-directory_t* fim_configuration_directory(const char* key, bool notify_not_found);
+directory_t* fim_configuration_directory(const char* key, bool notify_not_found, const OSList *directories_list);
 
 /**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
@@ -234,9 +235,10 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
  * @param sha1_hash SHA1 hash of the file
  * @param document_version Version number of the document stored in the db
  * @param db_sync_event Data returned by dbsync in JSON format from where fim attributes will get extracted if no file_data is passed in.
- * @param  file_data file_data structure from where the fim attributes will get extracted (Optional) 
+ * @param file_data file_data structure from where the fim attributes will get extracted (Optional)
+ * @param directories_list The OSList of directory_t objects to use for configuration lookup (must not be NULL)
  * @return Complete stateful event cJSON object (must be freed by caller)
  */
-cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data);
+cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data, const OSList *directories_list);
 
 #endif

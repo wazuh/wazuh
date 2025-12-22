@@ -39,8 +39,8 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data){
-    const directory_t* config = fim_configuration_directory(path, true);
+cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data, const OSList *directories_list){
+    const directory_t* config = fim_configuration_directory(path, true, directories_list);
 
     // If config is NULL, we cannot proceed as fim_attributes_json requires it
     if (config == NULL) {
@@ -256,7 +256,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
 
     if (txn_context->config == NULL) {
         // For DELETE events, don't log "not found" since path may have been removed from config
-        txn_context->config = fim_configuration_directory(path, resultType != DELETED);
+        txn_context->config = fim_configuration_directory(path, resultType != DELETED, syscheck.directories);
         if (txn_context->config == NULL) {
             // For DELETE events of orphaned files (path removed from config),
             // generate minimal delete events without requiring configuration
@@ -402,7 +402,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
-    cJSON* stateful_event = build_stateful_event_file(path, sha1_checksum, document_version, result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL);
+    cJSON* stateful_event = build_stateful_event_file(path, sha1_checksum, document_version, result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, syscheck.directories);
     if (!stateful_event) {
         merror("Couldn't create stateful event for %s", path);
         goto end; // LCOV_EXCL_LINE
@@ -440,7 +440,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     char *path = (char *)data;
     struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
-    directory_t *validated_configuration = fim_configuration_directory(path, true);
+    directory_t *validated_configuration = fim_configuration_directory(path, true, syscheck.directories);
 
     if (validated_configuration == ctx_data->config)
     {
@@ -448,7 +448,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     }
 }
 
-directory_t *fim_configuration_directory(const char *key, bool notify_not_found) {
+directory_t *fim_configuration_directory(const char *key, bool notify_not_found, const OSList *directories_list) {
     char full_path[OS_SIZE_4096 + 1] = {'\0'};
     char full_entry[OS_SIZE_4096 + 1] = {'\0'};
     directory_t *dir_it = NULL;
@@ -459,6 +459,11 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found)
     char *pathname = NULL;
 
     if (!key || *key == '\0') {
+        return NULL;
+    }
+
+    if (!directories_list) {
+        merror("fim_configuration_directory called with NULL directories_list");
         return NULL;
     }
 
@@ -473,7 +478,7 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found)
 
     trail_path_separator(full_path, pathname, sizeof(full_path));
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, (OSList *)directories_list) {
         dir_it = node_it->data;
         char *real_path = fim_get_real_path(dir_it);
 
@@ -807,7 +812,7 @@ void fim_checker(const char *path,
     }
 #endif
 
-    configuration = fim_configuration_directory(path, true);
+    configuration = fim_configuration_directory(path, true, syscheck.directories);
     if (configuration == NULL) {
         return;
     }
@@ -1018,7 +1023,7 @@ void fim_file(const char *path,
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     directory_t *configuration = NULL;
 
-    configuration = fim_configuration_directory(pathname, true);
+    configuration = fim_configuration_directory(pathname, true, syscheck.directories);
     if (NULL == configuration) {
         return;
     }

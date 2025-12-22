@@ -10,10 +10,10 @@ A key feature of the `agent_info` module is its **coordination protocol**. When 
 
 ## Configuration
 
-The module is configured in the `ossec.conf` file within an `<agent_info>` block.
+The module is configured in the `ossec.conf` file within an `<agent-info>` block.
 
 ```xml
-<agent_info>
+<agent-info>
   <interval>60</interval>
   <integrity_interval>86400</integrity_interval>
   <synchronization>
@@ -23,7 +23,7 @@ The module is configured in the `ossec.conf` file within an `<agent_info>` block
     <retries>5</retries>
     <max_eps>10</max_eps>
   </synchronization>
-</agent_info>
+</agent-info>
 ```
 
 - More information about each configuration option can be found in the [Configuration Reference](configuration.md).

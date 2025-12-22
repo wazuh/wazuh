@@ -7,7 +7,7 @@ The `agent_info` module is configured in the `ossec.conf` file. It defines the s
 ## Example Configuration
 
 ```xml
-<agent_info>
+<agent-info>
   <interval>60</interval>
   <integrity_interval>86400</integrity_interval>
   <synchronization>
@@ -17,7 +17,7 @@ The `agent_info` module is configured in the `ossec.conf` file. It defines the s
     <retries>5</retries>
     <max_eps>10</max_eps>
   </synchronization>
-</agent_info>
+</agent-info>
 ```
 
 ---

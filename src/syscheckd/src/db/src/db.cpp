@@ -260,6 +260,7 @@ void fim_db_update_last_sync_time(const char* table_name)
     {
         // Log error but don't exit - this is not critical
         // The worst case is the integrity check runs again sooner than expected
+        FIMDB::instance().logFunction(LOG_ERROR, ex.what());
     }
 }
 
