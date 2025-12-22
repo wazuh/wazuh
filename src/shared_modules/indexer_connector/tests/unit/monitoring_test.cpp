@@ -75,7 +75,8 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Connection failed", 503, "");
                     }
                 }
                 else if (url.find("localhost:9200") != std::string::npos)
@@ -181,7 +182,8 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Connection failed", 503, "");
                     }
                 }
                 else
@@ -353,13 +355,13 @@ TEST_F(MonitoringTest, TestDifferentHTTPStatusCodes)
                     // 500 Internal Server Error
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                            std::get<TPostRequestParameters<const std::string&>>(postParams)
-                                .onError("Internal Server Error", 500, "");
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Internal Server Error", 500, "");
                     }
                     else
                     {
-                            std::get<TPostRequestParameters<std::string&&>>(postParams)
-                                .onError("Internal Server Error", 500, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Internal Server Error", 500, "");
                     }
                 }
             }));

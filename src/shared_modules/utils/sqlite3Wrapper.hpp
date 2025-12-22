@@ -28,6 +28,7 @@ namespace SQLite3Wrapper
     class Sqlite3Error : public std::exception
     {
         const char* m_errorMessage;
+
     public:
         explicit Sqlite3Error(const char* errorMessage)
             : m_errorMessage(errorMessage)
@@ -308,6 +309,6 @@ namespace SQLite3Wrapper
         const int m_bindParametersCount;
         int m_bindParametersIndex {0};
     };
-} // namespace SQLite
+} // namespace SQLite3Wrapper
 
 #endif // _SQLITE3_WRAPPER_HPP

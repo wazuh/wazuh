@@ -26,7 +26,7 @@ namespace Utils
     static void expandAbsolutePath(const std::string& path, std::deque<std::string>& output)
     {
         // Find the first * or ? from path.
-        std::array<char, 2> wildcards { '*', '?' };
+        std::array<char, 2> wildcards {'*', '?'};
         size_t wildcardPos = std::string::npos;
 
         for (const auto& wildcard : wildcards)
@@ -43,15 +43,16 @@ namespace Utils
 
         if (wildcardPos != std::string::npos)
         {
-            const auto parentDirectoryPos { path.find_last_of(std::filesystem::path::preferred_separator, wildcardPos) };
+            const auto parentDirectoryPos {path.find_last_of(std::filesystem::path::preferred_separator, wildcardPos)};
 
             // The parent directory is the part of the path before the first wildcard.
             // If the wildcard is the first character, then the parent directory is the root directory.
-            const auto nextDirectoryPos { wildcardPos == 0 ? 0 : path.find_first_of(std::filesystem::path::preferred_separator, wildcardPos) };
+            const auto nextDirectoryPos {
+                wildcardPos == 0 ? 0 : path.find_first_of(std::filesystem::path::preferred_separator, wildcardPos)};
 
             if (parentDirectoryPos == std::string::npos)
             {
-                throw std::runtime_error { "Invalid path: " + path };
+                throw std::runtime_error {"Invalid path: " + path};
             }
 
             // The base directory is the part of the path before the first wildcard.
@@ -72,19 +73,17 @@ namespace Utils
             // If the wildcard is the last character, then the pattern is the rest of the string.
             // If the wildcard is the first character, then the pattern is the rest of the string, minus the next '\'.
             // If there is no next '\', then the pattern is the rest of the string.
-            const auto pattern
-            {
+            const auto pattern {
                 path.substr(parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1,
-                            nextDirectoryPos == std::string::npos ?
-                            std::string::npos :
-                            nextDirectoryPos - (parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1))
-            };
+                            nextDirectoryPos == std::string::npos
+                                ? std::string::npos
+                                : nextDirectoryPos - (parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1))};
 
             if (std::filesystem::exists(baseDir))
             {
                 for (const auto& entry : std::filesystem::directory_iterator(baseDir))
                 {
-                    const auto entryName { entry.path().filename().string()};
+                    const auto entryName {entry.path().filename().string()};
 
                     if (patternMatch(entryName, pattern))
                     {
@@ -92,8 +91,7 @@ namespace Utils
                         nextPath += baseDir;
                         nextPath += std::filesystem::path::preferred_separator;
                         nextPath += entryName;
-                        nextPath += nextDirectoryPos == std::string::npos ? "" :
-                                    path.substr(nextDirectoryPos);
+                        nextPath += nextDirectoryPos == std::string::npos ? "" : path.substr(nextDirectoryPos);
 
                         expandAbsolutePath(nextPath, output);
                     }
@@ -106,7 +104,6 @@ namespace Utils
         }
     }
 #pragma GCC diagnostic pop
-};
-
+}; // namespace Utils
 
 #endif // _STD_FILESYSTEM_HELPER_HPP
