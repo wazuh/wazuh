@@ -1505,7 +1505,9 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
 
     if (table == OS_TABLE)
     {
-        ret = data.contains("os_name") ? data["os_name"].get<std::string>() : "";
+        std::string osName = data.contains("os_name") ? data["os_name"].get<std::string>() : "";
+        std::string osVersion = data.contains("os_version") ? data["os_version"].get<std::string>() : "";
+        ret = osName + ":" + osVersion;
     }
     else if (table == HW_TABLE)
     {
@@ -2131,12 +2133,15 @@ void Syscollector::processVDDataContext()
             {
                 try
                 {
+                    const auto ecsPair = ecsData(item, tableName);
+                    const auto statefulToSend{ecsPair.first.dump()};
+
                     // Calculate ID the same way as done during scan for DataValue
                     std::string itemId = calculateHashId(item, tableName);
 
                     // Submit as DataContext (isDataContext=true)
                     // Note: operation and version parameters are not used for DataContext
-                    m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, item.dump(), 0, true);
+                    m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, statefulToSend, 0, true);
                     totalDataContextItems++;
                 }
                 catch (const std::exception& e)
@@ -3071,4 +3076,3 @@ void Syscollector::runRecoveryProcess()
         }
     }
 }
-

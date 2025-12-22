@@ -87,6 +87,66 @@ namespace InventorySyncQueryBuilder
         return updateQuery;
     }
 
+    /// @brief Build update query to refresh host.os fields in vulnerability documents
+    /// @param agentId Agent ID to match
+    /// @param osname OS name
+    /// @param osplatform OS platform
+    /// @param ostype OS type
+    /// @param osversion OS version (major.minor.patch.build)
+    /// @param osfull OS full name
+    /// @param oskernel OS kernel release
+    /// @return JSON update_by_query request body with conditional update script
+    inline nlohmann::json buildVulnerabilitiesHostOsUpdateQuery(const std::string& agentId,
+                                                                const std::string& osname,
+                                                                const std::string& osplatform,
+                                                                const std::string& ostype,
+                                                                const std::string& osversion,
+                                                                const std::string& osfull,
+                                                                const std::string& oskernel)
+    {
+        nlohmann::json updateQuery;
+
+        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+
+        const auto timestamp = Utils::getCurrentISO8601();
+
+        std::string script = "boolean needsUpdate = false; "
+                             "def host = ctx._source.host; "
+                             "def os = host != null ? host.os : null; "
+                             "if (os == null) { needsUpdate = true; } else { "
+                             "  if (os.name != params.osname) { needsUpdate = true; } "
+                             "  if (os.platform != params.osplatform) { needsUpdate = true; } "
+                             "  if (os.type != params.ostype) { needsUpdate = true; } "
+                             "  if (os.version != params.osversion) { needsUpdate = true; } "
+                             "  if (os.full != params.osfull) { needsUpdate = true; } "
+                             "  if (os.kernel != params.oskernel) { needsUpdate = true; } "
+                             "} "
+                             "if (!needsUpdate) { ctx.op = 'noop'; } else { "
+                             "  if (ctx._source.host == null) { ctx._source.host = [:]; } "
+                             "  if (ctx._source.host.os == null) { ctx._source.host.os = [:]; } "
+                             "  ctx._source.host.os.name = params.osname; "
+                             "  ctx._source.host.os.platform = params.osplatform; "
+                             "  ctx._source.host.os.type = params.ostype; "
+                             "  ctx._source.host.os.version = params.osversion; "
+                             "  ctx._source.host.os.full = params.osfull; "
+                             "  ctx._source.host.os.kernel = params.oskernel; "
+                             "  if (ctx._source.state == null) { ctx._source.state = [:]; } "
+                             "  ctx._source.state.modified_at = params.timestamp; "
+                             "}";
+
+        updateQuery["script"]["source"] = script;
+        updateQuery["script"]["lang"] = "painless";
+        updateQuery["script"]["params"]["osname"] = osname;
+        updateQuery["script"]["params"]["osplatform"] = osplatform;
+        updateQuery["script"]["params"]["ostype"] = ostype;
+        updateQuery["script"]["params"]["osversion"] = osversion;
+        updateQuery["script"]["params"]["osfull"] = osfull;
+        updateQuery["script"]["params"]["oskernel"] = oskernel;
+        updateQuery["script"]["params"]["timestamp"] = timestamp;
+
+        return updateQuery;
+    }
+
     /// @brief Build update query for agent groups across all documents
     /// @param agentId Agent ID to match
     /// @param groups New groups array
@@ -295,13 +355,26 @@ namespace InventorySyncQueryBuilder
     inline nlohmann::json
     buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
     {
-        nlohmann::json query = {
-            {"query", {{"term", {{"agent.id", agentId}}}}}, {"size", size}, {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+        nlohmann::json query = {{"_source", nlohmann::json::array({"vulnerability.id"})},
+                                {"query", {{"term", {{"agent.id", agentId}}}}},
+                                {"size", size},
+                                {"sort", {{{"_id", {{"order", "asc"}}}}}}};
 
         if (!searchAfter.empty())
         {
             query["search_after"] = {searchAfter};
         }
+
+        return query;
+    }
+
+    /// @brief Build GET query for a vulnerability document by _id (package only).
+    /// @details Returns only the package object to enrich missing package context.
+    inline nlohmann::json buildVulnerabilityPackageGetByIdQuery(const std::string& detectionId)
+    {
+        nlohmann::json query = {{"_source", nlohmann::json::array({"package"})},
+                                {"query", {{"ids", {{"values", nlohmann::json::array({detectionId})}}}}},
+                                {"size", 1}};
 
         return query;
     }

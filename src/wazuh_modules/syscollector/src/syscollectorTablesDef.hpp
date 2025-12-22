@@ -30,7 +30,7 @@ constexpr auto OS_SQL_STATEMENT
     os_full TEXT,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (os_name)) WITHOUT ROWID;)"
+    PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;)"
 };
 
 constexpr auto HW_SQL_STATEMENT

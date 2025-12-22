@@ -1,8 +1,9 @@
 {
   "Start": {
-    "agentid": "001",
-    "mode": "delta",
+    "agentid": "030",
+    "mode": "full",
     "option": "VDSync",
+    "module": "syscollector_vd",
     "agentname": "ubuntu22",
     "agentversion": "v5.0.0",
     "architecture": "aarch64",
@@ -10,123 +11,29 @@
     "osname": "Ubuntu",
     "osplatform": "ubuntu",
     "ostype": "linux",
-    "osversion": "22.04.5 LTS (Jammy Jellyfish)",
+    "osversion": "24.04.3 LTS (Noble Numbat)",
     "groups": [
       "default"
     ],
     "indices": [
+      "wazuh-states-inventory-system",
       "wazuh-states-inventory-packages"
     ],
-    "size": 3
+    "size": 8
   },
   "data_values": [
     {
-      "id": "pkg-zlib1g-001",
+      "id": "os-upsert-ubuntu24-24043",
       "operation": "upsert",
       "payload": {
         "checksum": {
           "hash": {
-            "sha1": "4444444444444444444444444444444444444444"
-          }
-        },
-        "package": {
-          "category": "libs",
-          "installed": null,
-          "path": null,
-          "priority": "required",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1:1.2.11.dfsg-2ubuntu1.5",
-          "architecture": "amd64",
-          "description": "zlib1g - compression library - runtime",
-          "name": "zlib1g",
-          "size": 512,
-          "multiarch": "foreign",
-          "groups": "compression"
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T12:31:07.733Z"
-        }
-      }
-    },
-    {
-      "id": "pkg-zlib1g-002",
-      "operation": "upsert",
-      "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "5555555555555555555555555555555555555555"
-          }
-        },
-        "package": {
-          "category": "libs",
-          "installed": null,
-          "path": null,
-          "priority": "required",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1.2.11",
-          "architecture": "amd64",
-          "description": "zlib1g - compression library runtime",
-          "name": "zlib1g",
-          "size": 512,
-          "multiarch": "foreign",
-          "groups": "compression",
-          "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*"
-        },
-        "state": {
-          "document_version": 1,
-          "modified_at": "2025-11-27T12:31:07.733Z"
-        }
-      }
-    },
-    {
-      "id": "pkg-zlib1g-doc-001",
-      "operation": "delete",
-      "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "6666666666666666666666666666666666666666"
-          }
-        },
-        "package": {
-          "category": "doc",
-          "installed": null,
-          "path": "/usr/share/doc/zlib1g-doc",
-          "priority": "optional",
-          "source": "zlib",
-          "type": "deb",
-          "vendor": "Ubuntu Developers",
-          "version": "1:1.2.11.dfsg-2ubuntu1.5",
-          "architecture": "amd64",
-          "description": "zlib1g-doc - compression library - documentation",
-          "name": "zlib1g-doc",
-          "size": 256,
-          "multiarch": "foreign",
-          "groups": "compression"
-        },
-        "state": {
-          "document_version": 2,
-          "modified_at": "2025-11-27T13:05:00.000Z"
-        }
-      }
-    }
-  ],
-  "data_context": [
-    {
-      "id": "ctx-os-ubuntu24-001",
-      "payload": {
-        "checksum": {
-          "hash": {
-            "sha1": "996d7206f3c607c7aa377702d65c1b53a80d2a84"
+            "sha1": "608c860eaa724d2a8837239fc382b010648fa69c"
           }
         },
         "host": {
           "architecture": "aarch64",
-          "hostname": "ubuntu24",
+          "hostname": "ubuntu22",
           "os": {
             "build": null,
             "codename": "noble",
@@ -136,21 +43,242 @@
             "full": null,
             "kernel": {
               "name": "Linux",
-              "release": "6.8.0-71-generic",
-              "version": "#71-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 16:44:45 UTC 2025"
+              "release": "6.8.0-90-generic",
+              "version": "#91-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 18 13:53:54 UTC 2025"
             },
             "major": "24",
             "minor": "04",
             "name": "Ubuntu",
-            "patch": "2",
+            "patch": "3",
             "platform": "ubuntu",
             "type": "linux",
-            "version": "24.04.2 LTS (Noble Numbat)"
+            "version": "24.04.3 LTS (Noble Numbat)"
           }
         },
         "state": {
           "document_version": 1,
-          "modified_at": "2025-11-27T11:57:48.873Z"
+          "modified_at": "2025-12-19T16:53:12.446Z"
+        }
+      }
+    },
+    {
+      "id": "os-delete-ubuntu22-22045",
+      "operation": "delete",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "d93449d17e48b80d0239553812d9926326afb0a8"
+          }
+        },
+        "host": {
+          "architecture": "aarch64",
+          "hostname": "ubuntu22",
+          "os": {
+            "build": null,
+            "codename": "jammy",
+            "distribution": {
+              "release": null
+            },
+            "full": null,
+            "kernel": {
+              "name": "Linux",
+              "release": "5.15.0-151-generic",
+              "version": "#161-Ubuntu SMP Tue Jul 22 14:29:26 UTC 2025"
+            },
+            "major": "22",
+            "minor": "04",
+            "name": "Ubuntu",
+            "patch": "5",
+            "platform": "ubuntu",
+            "type": "linux",
+            "version": "22.04.5 LTS (Jammy Jellyfish)"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:53:12.449Z"
+        }
+      }
+    },
+    {
+      "id": "pkg-adduser-ubuntu24-new",
+      "operation": "upsert",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "b073874ddf4ebe05c8ada6dcc04a6c4bbca8a9db"
+          }
+        },
+        "package": {
+          "architecture": "all",
+          "category": "admin",
+          "description": "add and remove users and groups",
+          "installed": null,
+          "multiarch": "foreign",
+          "name": "adduser",
+          "path": null,
+          "priority": "important",
+          "size": 462848,
+          "source": null,
+          "type": "deb",
+          "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+          "version": "3.137ubuntu1"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:53:12.459Z"
+        }
+      }
+    },
+    {
+      "id": "pkg-adduser-ubuntu24-old",
+      "operation": "delete",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "c6f81bc5858952f8a9a94c7f07ad643b64f4ef16"
+          }
+        },
+        "package": {
+          "architecture": "all",
+          "category": "admin",
+          "description": "add and remove users and groups",
+          "installed": null,
+          "multiarch": "foreign",
+          "name": "adduser",
+          "path": null,
+          "priority": "important",
+          "size": 622592,
+          "source": null,
+          "type": "deb",
+          "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+          "version": "3.118ubuntu5"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:53:12.860Z"
+        }
+      }
+    }
+  ],
+  "data_context": [
+    {
+      "index": "wazuh-states-inventory-packages",
+      "id": "ctx-linux-image-6-8-0-90",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "7777777777777777777777777777777777777777"
+          }
+        },
+        "package": {
+          "architecture": "arm64",
+          "category": "kernel",
+          "description": "Signed kernel image generic",
+          "installed": null,
+          "multiarch": "same",
+          "name": "linux-image-6.8.0-90-generic",
+          "path": "/boot/vmlinuz-6.8.0-90-generic",
+          "priority": "optional",
+          "size": 15418368,
+          "source": "linux-signed",
+          "type": "deb",
+          "vendor": "Canonical Kernel Team <kernel-team@lists.ubuntu.com>",
+          "version": "6.8.0-90.91"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:53:13.100Z"
+        }
+      }
+    },
+    {
+      "index": "wazuh-states-inventory-packages",
+      "id": "ctx-zlib1g-ubuntu24",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "8888888888888888888888888888888888888888"
+          }
+        },
+        "package": {
+          "architecture": "arm64",
+          "category": "libs",
+          "description": "zlib1g - compression library - runtime",
+          "installed": null,
+          "multiarch": "foreign",
+          "name": "zlib1g",
+          "path": "",
+          "priority": "required",
+          "size": 512,
+          "source": "zlib",
+          "type": "deb",
+          "vendor": "Ubuntu Developers",
+          "version": "1:1.2.11.dfsg-2ubuntu1.5"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:53:13.160Z"
+        }
+      }
+    },
+    {
+      "index": "wazuh-states-inventory-packages",
+      "id": "ctx-libssl3-ubuntu24",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "9999999999999999999999999999999999999999"
+          }
+        },
+        "package": {
+          "architecture": "arm64",
+          "category": "libs",
+          "description": "Secure Sockets Layer toolkit - shared libraries",
+          "installed": null,
+          "multiarch": "same",
+          "name": "libssl3",
+          "path": "",
+          "priority": "required",
+          "size": 1851392,
+          "source": "openssl",
+          "type": "deb",
+          "vendor": "Ubuntu Developers",
+          "version": "3.0.2-0ubuntu1.10"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:53:13.220Z"
+        }
+      }
+    },
+    {
+      "index": "wazuh-states-inventory-packages",
+      "id": "ctx-ubuntu-pro-client",
+      "payload": {
+        "checksum": {
+          "hash": {
+            "sha1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        },
+        "package": {
+          "architecture": null,
+          "category": null,
+          "description": "Manage Ubuntu Pro support entitlements",
+          "installed": null,
+          "multiarch": null,
+          "name": "ubuntu-pro-client",
+          "path": "/usr/lib/python3/dist-packages/ubuntu_pro_client-8001.egg-info/PKG-INFO",
+          "priority": null,
+          "size": 0,
+          "source": "https://ubuntu.com/support",
+          "type": "pypi",
+          "vendor": "Ubuntu Server Team",
+          "version": "8001"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2025-12-19T16:53:13.463Z"
         }
       }
     }

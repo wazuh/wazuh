@@ -54,12 +54,12 @@ CREATE TABLE dbsync_osinfo (
     os_distribution_release TEXT,
     os_full TEXT,
     checksum TEXT,
-    PRIMARY KEY (os_name)
+    PRIMARY KEY (os_name, os_version)
 ) WITHOUT ROWID;
 ```
 
 **Key Fields:**
-- `os_name`: Primary key identifying the operating system
+- `os_name`, `os_version`: Composite primary key identifying the operating system
 - `checksum`: Hash for change detection
 - Various OS-specific version and build information
 
