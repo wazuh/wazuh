@@ -14,7 +14,7 @@
 
 #include "gtest/gtest.h"
 
-template <typename T>
+template<typename T>
 class SocketTest : public ::testing::Test
 {
 protected:
