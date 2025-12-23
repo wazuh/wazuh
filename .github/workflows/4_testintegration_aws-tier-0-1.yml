@@ -149,86 +149,95 @@ jobs:
         if: steps.filter.outputs.parser == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_parser.py
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_parser.py --html=results.html --self-contained-html
 
       - name: Run every test due to base WazuhIntegration class change or manual dispatch
         if: steps.filter.outputs.integration == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/ --html=results.html --self-contained-html
 
       - name: Run Custom Buckets tests
         if: steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k kms test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k macie test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k trusted_advisor test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k kms test_aws/ --html=results.html --self-contained-html
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k macie test_aws/ --html=results.html --self-contained-html
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k trusted_advisor test_aws/ --html=results.html --self-contained-html
 
       - name: Run Config tests
         if: steps.filter.outputs.config == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k config test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k config test_aws/ --html=results.html --self-contained-html
 
       - name: Run GuardDuty tests
         if: steps.filter.outputs.guardduty == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k guardduty test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k guardduty test_aws/ --html=results.html --self-contained-html
 
       - name: Run CloudTrail tests
         if: steps.filter.outputs.cloudtrail == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k cloudtrail test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudtrail test_aws/ --html=results.html --self-contained-html
 
       - name: Run Load Balancers tests
         if: steps.filter.outputs.loadbalancers == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k alb test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k clb test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k nlb test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k alb test_aws/ --html=results.html --self-contained-html
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k clb test_aws/ --html=results.html --self-contained-html
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k nlb test_aws/ --html=results.html --self-contained-html
 
       - name: Run Server Access tests
         if: steps.filter.outputs.serveraccess == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k server_access test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k server_access test_aws/ --html=results.html --self-contained-html
 
       - name: Run Umbrella tests
         if: steps.filter.outputs.umbrella == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k cisco test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cisco test_aws/ --html=results.html --self-contained-html
 
       - name: Run VPC Flow tests
         if: steps.filter.outputs.vpcflow == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/ --html=results.html --self-contained-html
 
       - name: Run WAF tests
         if: steps.filter.outputs.waf == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k waf test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k waf test_aws/ --html=results.html --self-contained-html
 
       - name: Run CloudWatch tests
         if: steps.filter.outputs.cloudwatch == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k cloudwatch test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudwatch test_aws/ --html=results.html --self-contained-html
 
       - name: Run Inspector tests
         if: steps.filter.outputs.inspector == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k inspector test_aws/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k inspector test_aws/ --html=results.html --self-contained-html
 
       - name: Run Custom Bucket tests
         if: steps.filter.outputs.custom_bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_custom_bucket.py
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_custom_bucket.py --html=results.html --self-contained-html
+
+      # Upload the tests result html as an artifact
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-test-results-${{ github.run_id }}
+          path: ./tests/integration/results.html
+          retention-days: 7

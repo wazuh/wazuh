@@ -93,4 +93,12 @@ jobs:
       - name: Run sca integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_sca/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_sca/ --html=results.html --self-contained-html
+      # Upload the tests result html as an artifact
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-test-results-${{ github.run_id }}
+          path: ./tests/integration/results.html
+          retention-days: 7
