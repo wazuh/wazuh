@@ -383,7 +383,11 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;
 
-        futureResult.wait_for(std::chrono::seconds(5));
+        if (futureResult.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+        {
+            res = adapter::userErrorResponse<ResponseType>("Timeout waiting for ingestTest");
+            return;
+        }
         auto response = futureResult.get();
 
         if (base::isError(response))
@@ -436,12 +440,24 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        // Create The event to test
-        base::Event event;
-        const auto hostInfo = base::hostInfo::toJson();
+        json::Json agentMetadata;
         try
         {
-            event = protocolHandler(queue, protoReq.location(), protoReq.event(), hostInfo);
+            agentMetadata = json::Json(protoReq.agent_metadata().c_str());
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error parsing agent_metadata JSON: {}", e.what()));
+            return;
+        }
+
+        // Create The event to test
+        base::Event event;
+        auto location = protoReq.location();
+        try
+        {
+            event = protocolHandler(queue, location, protoReq.event(), agentMetadata);
         }
         catch (const std::exception& e)
         {
@@ -454,7 +470,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         if (traceLevel != OTraceLavel::NONE)
         {
             // Get the assets of the policy filtered by namespaces
-            auto resPolicyAssets = tester->getAssets(SESSION_NAME);
+            auto resPolicyAssets = tester->getAssets(api::shared::constants::SESSION_NAME);
             if (base::isError(resPolicyAssets))
             {
                 res = adapter::userErrorResponse<ResponseType>(base::getError(resPolicyAssets).message);
@@ -466,12 +482,16 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         // Run the test
-        auto opt = ::router::test::Options(traceLevel, assetToTrace, SESSION_NAME);
+        auto opt = ::router::test::Options(traceLevel, assetToTrace, api::shared::constants::SESSION_NAME);
 
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;
 
-        futureResult.wait_for(std::chrono::seconds(5));
+        if (futureResult.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+        {
+            res = adapter::userErrorResponse<ResponseType>("Timeout waiting for ingestTest");
+            return;
+        }
         auto response = futureResult.get();
 
         if (base::isError(response))

@@ -222,6 +222,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 PROTOBUF_CONSTEXPR PublicRunPost_Request::PublicRunPost_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.location_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.agent_metadata_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.event_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.trace_level_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.queue_)*/0u
@@ -385,6 +386,7 @@ const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.queue_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.location_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.agent_metadata_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.event_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.trace_level_),
 };
@@ -459,20 +461,21 @@ const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(
   ".api.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH"
   "\000\210\001\001\0228\n\006result\030\003 \001(\0132#.com.wazuh.api.eng"
   "ine.tester.ResultH\001\210\001\001B\010\n\006_errorB\t\n\007_res"
-  "ult\"\\\n\025PublicRunPost_Request\022\r\n\005queue\030\001 "
-  "\001(\r\022\020\n\010location\030\002 \001(\t\022\r\n\005event\030\003 \001(\t\022\023\n\013"
-  "trace_level\030\004 \001(\t*5\n\005State\022\021\n\rSTATE_UNKN"
-  "OWN\020\000\022\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync"
-  "\022\020\n\014SYNC_UNKNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDA"
-  "TED\020\002\022\t\n\005ERROR\020\003*/\n\nTraceLevel\022\010\n\004NONE\020\000"
-  "\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002b\006proto3"
+  "ult\"t\n\025PublicRunPost_Request\022\r\n\005queue\030\001 "
+  "\001(\r\022\020\n\010location\030\002 \001(\t\022\026\n\016agent_metadata\030"
+  "\003 \001(\t\022\r\n\005event\030\004 \001(\t\022\023\n\013trace_level\030\005 \001("
+  "\t*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISABLE"
+  "D\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UNKNOWN"
+  "\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ERROR\020\003"
+  "*/\n\nTraceLevel\022\010\n\004NONE\020\000\022\016\n\nASSET_ONLY\020\001"
+  "\022\007\n\003ALL\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_tester_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_tester_2eproto = {
-    false, false, 1713, descriptor_table_protodef_tester_2eproto,
+    false, false, 1737, descriptor_table_protodef_tester_2eproto,
     "tester.proto",
     &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 1, 14,
     schemas, file_default_instances, TableStruct_tester_2eproto::offsets,
@@ -3898,6 +3901,7 @@ PublicRunPost_Request::PublicRunPost_Request(const PublicRunPost_Request& from)
   PublicRunPost_Request* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.location_){}
+    , decltype(_impl_.agent_metadata_){}
     , decltype(_impl_.event_){}
     , decltype(_impl_.trace_level_){}
     , decltype(_impl_.queue_){}
@@ -3910,6 +3914,14 @@ PublicRunPost_Request::PublicRunPost_Request(const PublicRunPost_Request& from)
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_location().empty()) {
     _this->_impl_.location_.Set(from._internal_location(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.agent_metadata_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.agent_metadata_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_agent_metadata().empty()) {
+    _this->_impl_.agent_metadata_.Set(from._internal_agent_metadata(), 
       _this->GetArenaForAllocation());
   }
   _impl_.event_.InitDefault();
@@ -3938,6 +3950,7 @@ inline void PublicRunPost_Request::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.location_){}
+    , decltype(_impl_.agent_metadata_){}
     , decltype(_impl_.event_){}
     , decltype(_impl_.trace_level_){}
     , decltype(_impl_.queue_){0u}
@@ -3946,6 +3959,10 @@ inline void PublicRunPost_Request::SharedCtor(
   _impl_.location_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.location_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.agent_metadata_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.agent_metadata_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.event_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3969,6 +3986,7 @@ PublicRunPost_Request::~PublicRunPost_Request() {
 inline void PublicRunPost_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.location_.Destroy();
+  _impl_.agent_metadata_.Destroy();
   _impl_.event_.Destroy();
   _impl_.trace_level_.Destroy();
 }
@@ -3984,6 +4002,7 @@ void PublicRunPost_Request::Clear() {
   (void) cached_has_bits;
 
   _impl_.location_.ClearToEmpty();
+  _impl_.agent_metadata_.ClearToEmpty();
   _impl_.event_.ClearToEmpty();
   _impl_.trace_level_.ClearToEmpty();
   _impl_.queue_ = 0u;
@@ -4014,9 +4033,19 @@ const char* PublicRunPost_Request::_InternalParse(const char* ptr, ::_pbi::Parse
         } else
           goto handle_unusual;
         continue;
-      // string event = 3;
+      // string agent_metadata = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_agent_metadata();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string event = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
           auto str = _internal_mutable_event();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -4024,9 +4053,9 @@ const char* PublicRunPost_Request::_InternalParse(const char* ptr, ::_pbi::Parse
         } else
           goto handle_unusual;
         continue;
-      // string trace_level = 4;
-      case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+      // string trace_level = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
           auto str = _internal_mutable_trace_level();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -4079,24 +4108,34 @@ uint8_t* PublicRunPost_Request::_InternalSerialize(
         2, this->_internal_location(), target);
   }
 
-  // string event = 3;
+  // string agent_metadata = 3;
+  if (!this->_internal_agent_metadata().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_agent_metadata().data(), static_cast<int>(this->_internal_agent_metadata().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_agent_metadata(), target);
+  }
+
+  // string event = 4;
   if (!this->_internal_event().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_event().data(), static_cast<int>(this->_internal_event().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "com.wazuh.api.engine.tester.PublicRunPost_Request.event");
     target = stream->WriteStringMaybeAliased(
-        3, this->_internal_event(), target);
+        4, this->_internal_event(), target);
   }
 
-  // string trace_level = 4;
+  // string trace_level = 5;
   if (!this->_internal_trace_level().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_trace_level().data(), static_cast<int>(this->_internal_trace_level().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level");
     target = stream->WriteStringMaybeAliased(
-        4, this->_internal_trace_level(), target);
+        5, this->_internal_trace_level(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -4122,14 +4161,21 @@ size_t PublicRunPost_Request::ByteSizeLong() const {
         this->_internal_location());
   }
 
-  // string event = 3;
+  // string agent_metadata = 3;
+  if (!this->_internal_agent_metadata().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_agent_metadata());
+  }
+
+  // string event = 4;
   if (!this->_internal_event().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_event());
   }
 
-  // string trace_level = 4;
+  // string trace_level = 5;
   if (!this->_internal_trace_level().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
@@ -4162,6 +4208,9 @@ void PublicRunPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, 
   if (!from._internal_location().empty()) {
     _this->_internal_set_location(from._internal_location());
   }
+  if (!from._internal_agent_metadata().empty()) {
+    _this->_internal_set_agent_metadata(from._internal_agent_metadata());
+  }
   if (!from._internal_event().empty()) {
     _this->_internal_set_event(from._internal_event());
   }
@@ -4193,6 +4242,10 @@ void PublicRunPost_Request::InternalSwap(PublicRunPost_Request* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.location_, lhs_arena,
       &other->_impl_.location_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.agent_metadata_, lhs_arena,
+      &other->_impl_.agent_metadata_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.event_, lhs_arena,

@@ -16,7 +16,7 @@ namespace base::eventParsers
 namespace
 {
 
-constexpr size_t LOCATION_OFFSET = 2;         // Given the "q:" prefix.
+constexpr size_t LOCATION_OFFSET = 2; // Given the "q:" prefix.
 
 /**
  * @brief If `location` has the form "[$agentID] ($agentName) $registerIP->$module", extract
@@ -168,10 +168,7 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
     return parseEvent;
 }
 
-Event parsePublicEvent(uint32_t queue,
-                       std::string location,
-                       std::string_view message,
-                       const json::Json& hostInfo)
+Event parsePublicEvent(uint32_t queue, std::string& location, std::string_view message, const json::Json& agentMetadata)
 {
     auto parseEvent = std::make_shared<json::Json>();
 
@@ -185,16 +182,15 @@ Event parsePublicEvent(uint32_t queue,
 
     // If the location is in the legacy agent format "[ID] (Name) IP->Module", parse it.
     // This will also rewrite `location` to just `Module`.
-    if (!parseLegacyLocation(location, parseEvent))
+    parseLegacyLocation(location, parseEvent);
+
+    try
     {
-        try
-        {
-            parseEvent->merge(true, hostInfo);
-        }
-        catch (const std::exception& ex)
-        {
-            throw std::runtime_error(fmt::format("merge failed: {}", ex.what()));
-        }
+        parseEvent->merge(true, agentMetadata);
+    }
+    catch (const std::exception& ex)
+    {
+        throw std::runtime_error(fmt::format("merge failed: {}", ex.what()));
     }
 
     parseEvent->setString(location, EVENT_LOCATION_ID);

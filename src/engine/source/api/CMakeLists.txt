@@ -18,5 +18,4 @@ target_link_libraries(api INTERFACE
   api::event
   api::archiver
   api::cmcrud
-  api::shared
 )

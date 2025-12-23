@@ -2632,8 +2632,9 @@ class PublicRunPost_Request final :
 
   enum : int {
     kLocationFieldNumber = 2,
-    kEventFieldNumber = 3,
-    kTraceLevelFieldNumber = 4,
+    kAgentMetadataFieldNumber = 3,
+    kEventFieldNumber = 4,
+    kTraceLevelFieldNumber = 5,
     kQueueFieldNumber = 1,
   };
   // string location = 2;
@@ -2650,7 +2651,21 @@ class PublicRunPost_Request final :
   std::string* _internal_mutable_location();
   public:
 
-  // string event = 3;
+  // string agent_metadata = 3;
+  void clear_agent_metadata();
+  const std::string& agent_metadata() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_agent_metadata(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_agent_metadata();
+  PROTOBUF_NODISCARD std::string* release_agent_metadata();
+  void set_allocated_agent_metadata(std::string* agent_metadata);
+  private:
+  const std::string& _internal_agent_metadata() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_agent_metadata(const std::string& value);
+  std::string* _internal_mutable_agent_metadata();
+  public:
+
+  // string event = 4;
   void clear_event();
   const std::string& event() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -2664,7 +2679,7 @@ class PublicRunPost_Request final :
   std::string* _internal_mutable_event();
   public:
 
-  // string trace_level = 4;
+  // string trace_level = 5;
   void clear_trace_level();
   const std::string& trace_level() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -2696,6 +2711,7 @@ class PublicRunPost_Request final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr location_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr agent_metadata_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr event_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr trace_level_;
     uint32_t queue_;
@@ -4427,7 +4443,57 @@ inline void PublicRunPost_Request::set_allocated_location(std::string* location)
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.location)
 }
 
-// string event = 3;
+// string agent_metadata = 3;
+inline void PublicRunPost_Request::clear_agent_metadata() {
+  _impl_.agent_metadata_.ClearToEmpty();
+}
+inline const std::string& PublicRunPost_Request::agent_metadata() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+  return _internal_agent_metadata();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void PublicRunPost_Request::set_agent_metadata(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.agent_metadata_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+}
+inline std::string* PublicRunPost_Request::mutable_agent_metadata() {
+  std::string* _s = _internal_mutable_agent_metadata();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+  return _s;
+}
+inline const std::string& PublicRunPost_Request::_internal_agent_metadata() const {
+  return _impl_.agent_metadata_.Get();
+}
+inline void PublicRunPost_Request::_internal_set_agent_metadata(const std::string& value) {
+  
+  _impl_.agent_metadata_.Set(value, GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::_internal_mutable_agent_metadata() {
+  
+  return _impl_.agent_metadata_.Mutable(GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::release_agent_metadata() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+  return _impl_.agent_metadata_.Release();
+}
+inline void PublicRunPost_Request::set_allocated_agent_metadata(std::string* agent_metadata) {
+  if (agent_metadata != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.agent_metadata_.SetAllocated(agent_metadata, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.agent_metadata_.IsDefault()) {
+    _impl_.agent_metadata_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+}
+
+// string event = 4;
 inline void PublicRunPost_Request::clear_event() {
   _impl_.event_.ClearToEmpty();
 }
@@ -4477,7 +4543,7 @@ inline void PublicRunPost_Request::set_allocated_event(std::string* event) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.event)
 }
 
-// string trace_level = 4;
+// string trace_level = 5;
 inline void PublicRunPost_Request::clear_trace_level() {
   _impl_.trace_level_.ClearToEmpty();
 }

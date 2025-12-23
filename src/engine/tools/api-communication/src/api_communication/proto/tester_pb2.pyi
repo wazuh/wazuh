@@ -18,16 +18,18 @@ SYNC_UNKNOWN: Sync
 UPDATED: Sync
 
 class PublicRunPost_Request(_message.Message):
-    __slots__ = ["event", "location", "queue", "trace_level"]
+    __slots__ = ["agent_metadata", "event", "location", "queue", "trace_level"]
+    AGENT_METADATA_FIELD_NUMBER: _ClassVar[int]
     EVENT_FIELD_NUMBER: _ClassVar[int]
     LOCATION_FIELD_NUMBER: _ClassVar[int]
     QUEUE_FIELD_NUMBER: _ClassVar[int]
     TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    agent_metadata: str
     event: str
     location: str
     queue: int
     trace_level: str
-    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
+    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., agent_metadata: _Optional[str] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
 
 class Result(_message.Message):
     __slots__ = ["asset_traces", "output"]

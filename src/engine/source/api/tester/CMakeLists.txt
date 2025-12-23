@@ -17,6 +17,8 @@ target_link_libraries(api_tester
     router::irouter
     cmstore::icmstore
     api::event
+
+    PRIVATE
     api::shared
 )
 add_library(api::tester ALIAS api_tester)

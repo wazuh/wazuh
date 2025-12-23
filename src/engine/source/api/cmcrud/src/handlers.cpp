@@ -332,7 +332,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
         const std::string tmpNsName = fmt::format("policy_validate_{}", nonce);
         const std::string tmpSessionName = fmt::format("policy_validate_{}", nonce);
-        const std::string finalSessionName = SESSION_NAME;
+        const std::string finalSessionName = api::shared::constants::SESSION_NAME;
 
         bool tmpNamespaceCreated = false;
         bool tmpSessionCreated = false;

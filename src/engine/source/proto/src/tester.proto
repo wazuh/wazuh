@@ -154,7 +154,7 @@ message RunPost_Response
 /***************************************************
  * Run a logtest event using an existing testing session
  *
- * endpoint: POST logtest/run
+ * endpoint: POST logtest/post
  *
  * Sends a single event to the engine using a previously created testing session.
  * This endpoint does NOT validate or create policies/sessions; it only injects
@@ -172,12 +172,15 @@ message PublicRunPost_Request
     // Event source/location label (e.g., file path, agent name, or custom identifier).
     string location = 2;
 
+    // Metadata about the agent sending the event.
+    string agent_metadata = 3;
+
     // Raw event payload to test.
-    string event = 3;
+    string event = 4;
 
     // Trace verbosity level (e.g., NONE, ASSET_ONLY, ALL).
     // Recommended: treat it as case-insensitive.
-    string trace_level = 4;
+    string trace_level = 5;
 }
 
 // MessageTestPost_Response -> returns a RunPost_Response

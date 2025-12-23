@@ -254,11 +254,12 @@ paths:
         from the active testing session and uses them as the trace filter.
 
         Notes about event parsing:
-        - `queue` is stored as the event queue id.
+        - `queue` indicates the queue to which the event will be sent.
         - `location` cannot be empty.
         - If `location` matches the legacy agent format (`"[ID] (Name) IP->Module"`), it is parsed and may
           rewrite the final stored location to just the module.
         - If not legacy, host metadata is merged into the event before setting location/message.
+        - `agent_metadata` It's a JSON object that contains information about the agent. It's automatically merged with the event. It can be an empty JSON object.
 
       requestBody:
         required: true
@@ -3278,7 +3279,7 @@ components:
 
     PublicRunPost_Request:
       type: object
-      required: [queue, location, event, trace_level]
+      required: [queue, location, agent_metadata, event, trace_level]
       properties:
         queue:
           type: uint8
@@ -3286,6 +3287,9 @@ components:
         location:
           type: string
           description: "Event source/location label (e.g., file path, agent name, or custom identifier)"
+        agent_metadata:
+          type: object
+          description: "Metadata about the agent sending the event"
         event:
           type: string
           description: "Raw event payload to test"
