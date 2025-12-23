@@ -381,6 +381,8 @@ class InventorySyncFacadeImpl final
         logDebug2(LOGGER_DEFAULT_TAG, "Calculated checksum of checksums: %s", finalChecksum.c_str());
 
         return finalChecksum;
+    }
+
     void initializeKeystoreSocket()
     {
         m_keystoreSocketServer = std::make_unique<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(
