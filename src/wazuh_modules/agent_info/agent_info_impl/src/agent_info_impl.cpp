@@ -200,7 +200,6 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
             {
                 m_logFunction(LOG_DEBUG, "First run detected for agent-metadata, skipping synchronization.");
                 resetSyncFlag(AGENT_METADATA_TABLE);
-                return;
             }
             else
             {
@@ -216,7 +215,6 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
             {
                 m_logFunction(LOG_DEBUG, "First groups run detected for agent-groups, skipping synchronization.");
                 resetSyncFlag(AGENT_GROUPS_TABLE);
-                return;
             }
             else
             {
