@@ -2682,3 +2682,243 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMultipleRealFailures)
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
     EXPECT_TRUE(postCalled);
 }
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMissingErrorsField)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Response without 'errors' field - should be treated as success
+                std::string noErrorsFieldResponse = R"({
+                    "took": 10,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(noErrorsFieldResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(noErrorsFieldResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should not throw - missing 'errors' field treated as success
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationErrorsTrueButMissingItems)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // errors=true but no 'items' array - should fail
+                std::string missingItemsResponse = R"({
+                    "took": 10,
+                    "errors": true
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(missingItemsResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(missingItemsResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should throw - errors=true but items array missing
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationEmptyItem)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Empty item in items array
+                std::string emptyItemResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {},
+                        {"index": {"_id": "3", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(emptyItemResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(emptyItemResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
+
+    // Should throw - empty item counts as failure
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationItemMissingStatus)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Item missing 'status' field
+                std::string missingStatusResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {"index": {"_id": "2"}},
+                        {"index": {"_id": "3", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(missingStatusResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(missingStatusResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
+
+    // Should throw - item missing status field
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationInvalidJSON)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Invalid JSON - should trigger parse exception
+                std::string invalidJSON = R"({"took": 10, "errors": false, invalid json})";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(invalidJSON);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(invalidJSON));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should throw - invalid JSON triggers parse exception
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationErrorAsString)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Error as simple string instead of object
+                std::string errorStringResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {
+                            "_id": "1",
+                            "status": 500,
+                            "error": "Internal server error"
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(errorStringResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(errorStringResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should throw - error as string still counts as failure
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
