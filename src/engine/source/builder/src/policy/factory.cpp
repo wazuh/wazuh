@@ -2,6 +2,8 @@
 
 #include <numeric> // std::accumulate
 #include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -210,6 +212,7 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
 
         const auto subgraphName = std::string(resourceTypeToString(rtype)) + GRAPH_INPUT_SUFFIX;
         auto subgraph = buildSubgraph(subgraphName, data, filters);
+        subgraph.validateAcyclic(std::string(resourceTypeToString(rtype)));
         graph.subgraphs.emplace(rtype, std::move(subgraph));
     }
 

@@ -25,6 +25,83 @@ private:
     K m_root;
     std::unordered_map<K, T> m_nodes;
 
+    // Enum for DFS visit state used in cycle detection
+    enum class VisitState : std::uint8_t
+    {
+        NotVisited,
+        Visiting,
+        Visited
+    };
+
+    /**
+     * @brief Helper method to detect cycles using DFS.
+     *
+     * @param node Current node being visited.
+     * @param states Map of visit states for each node.
+     * @param stack Current path stack for cycle reconstruction.
+     * @param label Label for error messages.
+     *
+     * @throw std::runtime_error If a cycle is detected.
+     */
+    void detectCycle(const K& node,
+                     std::unordered_map<K, VisitState>& states,
+                     std::vector<K>& stack,
+                     const std::string& label) const
+    {
+        auto& currentState = states[node];
+        if (currentState == VisitState::Visiting)
+        {
+            // Cycle detected - reconstruct the cycle path
+            auto it = std::find(stack.begin(), stack.end(), node);
+            std::vector<std::string> cycle;
+            if (it != stack.end())
+            {
+                std::transform(it, stack.end(), std::back_inserter(cycle), [](const K& name)
+                {
+                    if constexpr (std::is_convertible_v<K, std::string>)
+                    {
+                        return std::string(name);
+                    }
+                    else
+                    {
+                        return name.toStr();
+                    }
+                });
+            }
+
+            if constexpr (std::is_convertible_v<K, std::string>)
+            {
+                cycle.emplace_back(std::string(node));
+            }
+            else
+            {
+                cycle.emplace_back(node.toStr());
+            }
+
+            throw std::runtime_error(
+                fmt::format("Circular {} reference detected: {}", label, fmt::join(cycle, " -> ")));
+        }
+
+        if (currentState == VisitState::Visited)
+        {
+            return;
+        }
+
+        currentState = VisitState::Visiting;
+        stack.push_back(node);
+
+        if (hasChildren(node))
+        {
+            for (const auto& child : children(node))
+            {
+                detectCycle(child, states, stack, label);
+            }
+        }
+
+        stack.pop_back();
+        currentState = VisitState::Visited;
+    }
+
     void _addNode(K key, T&& value)
     {
         if (m_nodes.end() != m_nodes.find(key))
@@ -233,6 +310,32 @@ public:
      * @return false
      */
     bool empty() const { return m_nodes.empty(); }
+
+    /**
+     * @brief Validate that the graph is acyclic (Directed Acyclic Graph).
+     *
+     * Performs a depth-first search to detect cycles in the graph. If a cycle is found,
+     * throws an exception with the cycle path in the error message.
+     *
+     * @param label Optional label for error messages to identify the graph type (e.g., "decoder", "rule").
+     *
+     * @throw std::runtime_error If a cycle is detected, with message format:
+     *        "Circular {label} reference detected: node1 -> node2 -> ... -> node1"
+     */
+    void validateAcyclic(const std::string& label = "graph") const
+    {
+        std::unordered_map<K, VisitState> states;
+        std::vector<K> stack;
+
+        for (const auto& [name, _] : m_nodes)
+        {
+            if (states[name] == VisitState::Visited)
+            {
+                continue;
+            }
+            detectCycle(name, states, stack, label);
+        }
+    }
 
     /**
      * @brief Preorder traversal of the graph.

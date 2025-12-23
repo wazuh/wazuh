@@ -182,7 +182,7 @@ def init_cm_resources(api_client: APIClient):
     other_core_yaml = build_integration_yaml(
         integ_uuid=INTEG_OTHER_WAZUH_CORE_UUID,
         integ_title="other-wazuh-core-test",
-        default_parent=DECODER_OTHER_UUID,
+        default_parent=DECODER_TEST_UUID,
         decoder_uuid=DECODER_OTHER_UUID,
     )
 
