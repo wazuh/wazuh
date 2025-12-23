@@ -7,7 +7,7 @@
  * @brief Interface for connecting to and indexing data in a wazuh-indexer.
  *
  * The IWIndexerConnector interface provides a contract for implementing
- * indexer connector classes that can send data to wazuh-indexer.
+ * indexer connector classes that can send/recive data to wazuh-indexer.
  */
 namespace wiconnector
 {

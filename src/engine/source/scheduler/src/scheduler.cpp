@@ -166,12 +166,12 @@ void Scheduler::workerThread()
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             if (m_tasks.find(task.name) == m_tasks.end())
             {
-                LOG_DEBUG("Task '%s' was removed before execution", task.name.c_str());
+                LOG_DEBUG("Task '{}' was removed before execution", task.name);
                 continue;
             }
         }
 
-        LOG_DEBUG("Executing task '%s'", task.name.c_str());
+        LOG_DEBUG("Executing task '{}'", task.name);
 
         // Execute the task
         executeTask(task);
@@ -179,7 +179,7 @@ void Scheduler::workerThread()
         // Reschedule if it's a recurring task, otherwise remove it from task map
         if (!task.isOneTime && task.config.interval > 0)
         {
-            LOG_DEBUG("Rescheduling recurring task '%s'", task.name.c_str());
+            LOG_DEBUG("Rescheduling recurring task '{}'", task.name);
 
             // Create updated task with new next run time
             auto updatedTask = task; // Copy the task
@@ -194,7 +194,7 @@ void Scheduler::workerThread()
             // One-time task, remove from task map
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             m_tasks.erase(task.name);
-            LOG_DEBUG("Removed one-time task '%s' after execution", task.name.c_str());
+            LOG_DEBUG("Removed one-time task '{}' after execution", task.name);
         }
     }
 }
@@ -218,11 +218,11 @@ void Scheduler::executeTask(const TaskQueue::TaskItem& task)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("Error executing task '%s': %s", task.name.c_str(), e.what());
+        LOG_WARNING("Error executing task '{}': {}", task.name, e.what());
     }
     catch (...)
     {
-        LOG_WARNING("Unknown error executing task '%s'", task.name.c_str());
+        LOG_WARNING("Unknown error executing task '{}'", task.name);
     }
 
     // Restore default priority

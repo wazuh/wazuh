@@ -8,6 +8,61 @@
 namespace wiconnector
 {
 
+namespace
+{
+// Helpers
+
+nlohmann::json getQueryFilter(std::string_view space)
+{
+    if (space.empty())
+    {
+        throw std::invalid_argument("Space name cannot be empty");
+    }
+    nlohmann::json query = R"({"bool": {"filter": [{ "term": { "space.name": "" }}]}})"_json;
+    query["bool"]["filter"][0]["term"]["space.name"] = space;
+    return query;
+}
+
+nlohmann::json getSortCriteria()
+{
+    nlohmann::json sort = R"([{"_shard_doc": "asc"}, {"_id": "asc"}])"_json;
+    return sort;
+}
+
+nlohmann::json getSearchAfter(const nlohmann::json& hits)
+{
+    if (!hits.contains("hits") || !hits["hits"].is_array() || hits["hits"].empty())
+    {
+        throw std::invalid_argument("Hits object is invalid or empty");
+    }
+
+    return hits["hits"].back().at("sort");
+}
+
+size_t getTotalHits(const nlohmann::json& hits)
+{
+    if (!hits.contains("total") || !hits["total"].is_object())
+    {
+        throw std::invalid_argument("Hits object is invalid or does not contain total hits");
+    }
+
+    const auto& total = hits["total"];
+    if (total.is_object() && total.contains("value"))
+    {
+        return total["value"].get<size_t>();
+    }
+    else if (total.is_number())
+    {
+        return total.get<size_t>();
+    }
+    else
+    {
+        throw std::invalid_argument("Total hits format is unrecognized");
+    }
+}
+
+} // namespace
+
 /****************************************************************************************
  * Config class implementation
  ****************************************************************************************/
@@ -104,21 +159,87 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
     std::shared_lock lock(m_mutex);
     if (m_indexerConnectorAsync)
     {
-        try {
+        try
+        {
             m_indexerConnectorAsync->indexDataStream(index, data);
         }
-        catch (const IndexerConnectorException& e) {
-            LOG_WARNING("Error indexing data: %s", e.what());
+        catch (const IndexerConnectorException& e)
+        {
+            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
             return;
         }
-        catch (const std::exception& e) {
-            LOG_WARNING("Error indexing data: %s", e.what());
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
             return;
         }
     }
     else
     {
-        LOG_DEBUG("IndexerConnectorAsync shutdown, cannot index data");
+        LOG_DEBUG("[indexer-connector] IndexerConnectorAsync shutdown, cannot index data");
     }
 }
+
+std::unordered_map<std::string, std::vector<std::string>>
+WIndexerConnector::getPolicy(std::string_view space, std::size_t retryCount, std::size_t retryDelayMs)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    std::unordered_map<std::string, std::vector<std::string>> policyMap;
+
+    // Create Point In Time (PIT) - Can throw IndexerConnectorException
+    auto pit = m_indexerConnectorAsync->createPointInTime(
+        {".cti-kvdbs", ".cti-decoders", ".cti-integration-decoders", ".cti-policies"}, "5m", true);
+    LOG_TRACE("[indexer-connector] PIT created successfully. PIT ID: {}", pit.getPitId());
+
+    // Prepare query and sort criteria
+    nlohmann::json query = getQueryFilter(space);
+    nlohmann::json sort = getSortCriteria();
+    std::optional<nlohmann::json> searchAfter = std::nullopt;
+
+    size_t total_hits = 0;
+    size_t retrievedSoFar = 0;
+    bool moreHits = true;
+
+    do
+    {
+        nlohmann::json hits = m_indexerConnectorAsync->search(pit, m_maxHitsPerRequest, query, sort, searchAfter);
+
+        if (!searchAfter.has_value())
+        {
+            total_hits = getTotalHits(hits);
+            LOG_TRACE("[indexer-connector] Total hits to retrieve: {}", total_hits);
+        }
+
+        const auto& hitArray = hits["hits"];
+
+        if (!hitArray.is_array() || hitArray.empty())
+        {
+            LOG_TRACE("[indexer-connector] No more hits retrieved, ending pagination");
+            break;
+        }
+
+        retrievedSoFar += hitArray.size();
+        for (const auto& hit : hitArray)
+        {
+            std::string indexName = hit["_index"].get<std::string>();
+            // Can throw runtime_error if json is invalid
+            policyMap[indexName].emplace_back(hit["_source"].dump());
+        }
+
+        moreHits = retrievedSoFar < total_hits;
+        searchAfter = getSearchAfter(hits);
+        LOG_TRACE("[indexer-connector] Retrieved {} / {} hits so far", retrievedSoFar, total_hits);
+
+    } while (moreHits);
+
+    m_indexerConnectorAsync->deletePointInTime(pit); // Clean up when done
+
+    return policyMap;
+}
+
 }; // namespace wiconnector
