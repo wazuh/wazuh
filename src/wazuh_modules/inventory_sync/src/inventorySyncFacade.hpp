@@ -493,28 +493,28 @@ public:
 
                         if (remainingSessions > 0)
                         {
-                            // Timeout: cannot proceed with metadata/groups update safely - agent will retry later
-                            res.context->ownsAgentLock = false;
-                            unlockAgent(res.context->agentId);
+                            // Timeout: sessions still active after 60s
+                            // These are zombie sessions - agent already validated no active syncs on its side
+                            // Manager-side validation failed because of orphaned sessions
+                            logWarn(
+                                LOGGER_DEFAULT_TAG,
+                                "Metadata/groups update for agent %s: %zu session(s) still active after 60s timeout. "
+                                "Detecting as zombie sessions (agent already validated no active syncs). "
+                                "Cleaning up zombie sessions automatically.",
+                                res.context->agentId.c_str(),
+                                remainingSessions);
 
-                            logDebug1(LOGGER_DEFAULT_TAG,
-                                      "Metadata/groups update failed for agent %s: %zu session(s) still active after "
-                                      "timeout. "
-                                      "Agent will retry later.",
-                                      res.context->agentId.c_str(),
-                                      remainingSessions);
+                            // Clean up zombie sessions
+                            size_t cleanedCount = cleanupZombieSessions(res.context->agentId, res.context->sessionId);
 
-                            // Notify agent of failure and cleanup session
-                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                             res.context->agentId,
-                                                             res.context->sessionId,
-                                                             res.context->moduleName);
-
-                            m_agentSessions.erase(res.context->sessionId);
-                            return;
+                            logInfo(LOGGER_DEFAULT_TAG,
+                                    "Cleaned up %zu zombie session(s) for agent %s - proceeding with metadata/groups "
+                                    "update",
+                                    cleanedCount,
+                                    res.context->agentId.c_str());
                         }
 
-                        // All sessions completed - safe to proceed with metadata/groups update
+                        // All sessions completed (or zombies cleaned) - safe to proceed with metadata/groups update
                     }
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
@@ -1190,6 +1190,68 @@ public:
             }
         }
         return count;
+    }
+
+    /**
+     * @brief Clean up zombie sessions for an agent
+     * @param agentId Agent ID to clean up sessions for
+     * @param excludeSessionId Session ID to exclude from cleanup (e.g., the current session)
+     * @return Number of zombie sessions cleaned up
+     */
+    size_t cleanupZombieSessions(const std::string& agentId, uint64_t excludeSessionId = 0)
+    {
+        std::unique_lock lock(m_agentSessionsMutex);
+        size_t cleanedCount = 0;
+
+        std::vector<uint64_t> sessionsToRemove;
+
+        // Collect zombie sessions for this agent
+        for (const auto& [sessionId, session] : m_agentSessions)
+        {
+            if (sessionId == excludeSessionId)
+            {
+                continue;
+            }
+
+            const auto& context = session.getContext();
+            if (agentId.empty() || context->agentId == agentId)
+            {
+                sessionsToRemove.push_back(sessionId);
+            }
+        }
+
+        // Remove zombie sessions
+        for (const auto& sessionId : sessionsToRemove)
+        {
+            auto it = m_agentSessions.find(sessionId);
+            if (it != m_agentSessions.end())
+            {
+                const auto& context = it->second.getContext();
+
+                logWarn(LOGGER_DEFAULT_TAG,
+                        "Cleaning up zombie session %llu for agent %s (module: %s)",
+                        sessionId,
+                        context->agentId.c_str(),
+                        context->moduleName.c_str());
+
+                // Delete data from database
+                m_dataStore->deleteByPrefix(std::to_string(sessionId));
+
+                // Remove session
+                m_agentSessions.erase(it);
+                cleanedCount++;
+            }
+        }
+
+        if (cleanedCount > 0)
+        {
+            logInfo(LOGGER_DEFAULT_TAG,
+                    "Cleaned up %zu zombie session(s) for agent %s",
+                    cleanedCount,
+                    agentId.empty() ? "ALL" : agentId.c_str());
+        }
+
+        return cleanedCount;
     }
 
     /**
