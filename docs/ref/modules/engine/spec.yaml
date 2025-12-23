@@ -15,6 +15,8 @@ tags:
     description: "Operations for managing environments and routing"
   - name: Tester
     description: "Operations for testing and validating policies"
+  - name: Geo
+    description: "Operations for geo databases"
   - name: Archiver
     description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
   - name: Content
@@ -1346,6 +1348,134 @@ paths:
                 $ref: "#/components/responses/BadRequest_400"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
+  ################################
+  # Content Validate
+  ################################
+  /content/validate:
+    post:
+      tags:
+        - Content
+      summary: Validate a content resource
+      description: |
+        This endpoint validates a content resource payload before storing it.
+        It validates the request shape, parses the payload using the provided format,
+        and performs type-specific validation.
+
+        The validation is performed without requiring the full namespace context, so a resource can be checked
+        independently from other assets.
+
+        The request body must be a JSON object and the resource must include a valid UUIDv4.
+
+        - **Integrations**:
+          - Validate schema.
+          - Validate `decoders[]` as UUIDv4 values.
+          - Validate `kvdbs[]` as UUIDv4 values.
+          - Validate category existence and validity.
+          - Validate `default_parent` as UUIDv4 (if present).
+        - **KVDB**:
+          - Validate schema.
+          - Require `content` to be a JSON object.
+          - Enforce a maximum content size (limit defined by the server configuration).
+        - **Decoders**:
+          - Attempt decoder construction/compilation.
+          - Validation must not fail if referenced KVDBs are not present at validation time.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentValidate_Request"
+            examples:
+              kvdb_validate:
+                summary: Validate a KVDB resource
+                value:
+                  type: kvdb
+                  jsonContent: |
+                    {
+                      "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+                      "date": "2025-10-06T13:32:19Z",
+                      "title": "windows_kerberos_status_code_to_code_name",
+                      "author": "Wazuh Inc.",
+                      "content": {
+                        "0x0": "KDC_ERR_NONE",
+                        "0x1": "KDC_ERR_NAME_EXP",
+                        "0x2": "KDC_ERR_SERVICE_EXP",
+                        "0x3": "KDC_ERR_BAD_PVNO",
+                        "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+                        "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+                        "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+                      },
+                      "enabled": true
+                    }
+
+              integration_validate_with_parent:
+                summary: Validate an Integration resource (with optional default_parent)
+                value:
+                  type: integration
+                  jsonContent: |
+                    {
+                      "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+                      "title": "windows",
+                      "enabled": true,
+                      "category": "Security",
+                      "default_parent": "85853f26-5779-469b-86c4-c47ee7d400b4",
+                      "decoders": [
+                        "85853f26-5779-469b-86c4-c47ee7d400b4",
+                        "4aa06596-5ba9-488c-8354-2475705e1257",
+                        "4da71af3-fff5-4b67-90d6-51db9e15bc47",
+                        "6f8bd7d2-8516-4b2b-a6f1-cc924513c404"
+                      ],
+                      "kvdbs": []
+                    }
+
+              integration_validate_no_parent:
+                summary: Validate an Integration resource (no default_parent)
+                value:
+                  type: integration
+                  jsonContent: |
+                    {
+                      "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+                      "title": "windows",
+                      "enabled": false,
+                      "category": "Security",
+                      "decoders": [
+                        "85853f26-5779-469b-86c4-c47ee7d400b4"
+                      ],
+                      "kvdbs": []
+                    }
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_type:
+                  summary: Missing /type
+                  value:
+                    status: "ERROR"
+                    error: "Field /type is required"
+                unsupported_type:
+                  summary: Unsupported /type
+                  value:
+                    status: "ERROR"
+                    error: "Unsupported value for /type"
+                invalid_json:
+                  summary: Invalid JSON payload
+                  value:
+                    status: "ERROR"
+                    error: "Invalid JSON payload"
+                integration_invalid_category:
+                  summary: Integration invalid category
+                  value:
+                    status: "ERROR"
+                    error: "Category 'ossec' is not a valid category for integration 'windows'."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
 
 #################################################################################
 # Components
@@ -1739,6 +1869,19 @@ components:
       properties:
         session:
           $ref: "#/components/schemas/TesterSessionPost"
+
+    ################################
+    # Content Validate
+    ################################
+    ContentValidate_Request:
+      type: object
+      required: [type, jsonContent]
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceType"
+        jsonContent:
+          type: string
+          description: "Content of the resource to validate in JSON"
 
     #################################
     # Geo
