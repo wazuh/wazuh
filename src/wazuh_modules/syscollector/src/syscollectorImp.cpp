@@ -1858,11 +1858,11 @@ bool Syscollector::syncModule(Mode mode)
 
     if (success)
     {
-        m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
+        m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
     }
     else
     {
-        m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
+        m_logFunction(LOG_WARNING, "Syscollector synchronization process failed.");
     }
 
     return success;

@@ -71,7 +71,7 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
         // Null check like MQueue checks m_queue < 0
         if (!m_provider)
         {
-            m_logger(LOG_ERROR, "Cannot send: RouterProvider not initialized");
+            m_logger(LOG_DEBUG, "Failed to send message, RouterProvider not initialized");
             return false;
         }
 
@@ -91,7 +91,7 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
     }
     catch (const std::exception& e)
     {
-        m_logger(LOG_ERROR, std::string("Failed to publish sync message: ") + e.what());
+        m_logger(LOG_DEBUG, std::string("Failed to send message: ") + e.what());
         return false;
     }
 }

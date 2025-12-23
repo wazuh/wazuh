@@ -247,8 +247,6 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         }
         else
         {
-            m_logger(LOG_WARNING, "Synchronization failed.");
-
             if (mode == Mode::FULL)
             {
                 m_inMemoryData.clear();
@@ -487,7 +485,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // If metadata not available, abort synchronization
         if (!has_metadata)
         {
-            m_logger(LOG_DEBUG,
+            m_logger(LOG_WARNING,
                      "Metadata not available from provider. Agent-info may not be initialized yet. Cannot proceed with "
                      "synchronization.");
             return false;
@@ -507,7 +505,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 #if CLIENT
         else
         {
-            m_logger(LOG_DEBUG, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
+            m_logger(LOG_WARNING, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
 
             if (has_metadata)
             {
@@ -587,7 +585,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         {
             if (!sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_ERROR, "Failed to send Start message.");
+                m_logger(LOG_WARNING, "Failed to send Start message.");
                 continue;
             }
 
@@ -619,7 +617,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 return true;
             }
 
-            m_logger(LOG_DEBUG, "Timed out waiting for StartAck. Retrying...");
+            m_logger(LOG_WARNING, "Timed out waiting for StartAck. Retrying...");
         }
 
         // Clean up metadata if we successfully retrieved it
@@ -627,6 +625,8 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         {
             metadata_provider_free_metadata(&metadata);
         }
+
+        m_logger(LOG_ERROR, "Exceeded maximum retries for Start message. Exiting...");
 
         return false;
     }
@@ -697,6 +697,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
 
             if (!sendFlatBufferMessageAsString(messageVector))
             {
+                m_logger(LOG_ERROR, "Failed to send Data message.");
                 return false;
             }
         }
@@ -747,6 +748,7 @@ bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
 
             if (!sendFlatBufferMessageAsString(messageVector))
             {
+                m_logger(LOG_ERROR, "Failed to send Data context message.");
                 return false;
             }
         }
@@ -786,6 +788,7 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
 
         if (!sendFlatBufferMessageAsString(messageVector))
         {
+            m_logger(LOG_ERROR, "Failed to send Checksum message.");
             return false;
         }
 
@@ -824,6 +827,7 @@ bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
 
             if (!sendFlatBufferMessageAsString(messageVector))
             {
+                m_logger(LOG_ERROR, "Failed to send Dataclean message.");
                 return false;
             }
         }
@@ -870,13 +874,13 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         {
             if (sendEnd && !sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_ERROR, "Failed to send End message.");
+                m_logger(LOG_WARNING, "Failed to send End message.");
                 continue;
             }
 
             if (!receiveEndAck(m_timeout))
             {
-                m_logger(LOG_DEBUG, "Timeout waiting for EndAck or ReqRet. Retrying...");
+                m_logger(LOG_WARNING, "Timeout waiting for EndAck or ReqRet. Retrying...");
                 continue;
             }
 
@@ -945,6 +949,8 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                 }
             }
         }
+
+        m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
 
         return false;
     }
