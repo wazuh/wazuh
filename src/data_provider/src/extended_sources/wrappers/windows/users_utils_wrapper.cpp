@@ -14,10 +14,22 @@
 #include <iostream>
 #include <thread>
 
-thread_local std::vector<User> UsersHelper::s_cachedLocalUsers;
-thread_local std::vector<User> UsersHelper::s_cachedRoamingUsers;
-thread_local std::chrono::steady_clock::time_point UsersHelper::s_cacheTimestamp;
-thread_local bool UsersHelper::s_cacheValid = false;
+namespace
+{
+    struct UsersCacheState final
+    {
+        std::vector<User> cachedLocalUsers;
+        std::vector<User> cachedRoamingUsers;
+        std::chrono::steady_clock::time_point cacheTimestamp{};
+        bool cacheValid = false;
+    };
+
+    UsersCacheState& getCacheState()
+    {
+        thread_local auto* state = new UsersCacheState();
+        return *state;
+    }
+}
 
 UsersHelper::UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper)
     : m_winapiWrapper(std::move(winapiWrapper))
@@ -258,12 +270,14 @@ std::vector<User> UsersHelper::processLocalAccounts(std::set<std::string>& proce
     loadUsers(processed_sids);
 
     // Update processed_sids with cached local users
-    for (const auto& user : s_cachedLocalUsers)
+    auto& cache = getCacheState();
+
+    for (const auto& user : cache.cachedLocalUsers)
     {
         processed_sids.insert(user.sid);
     }
 
-    return s_cachedLocalUsers;
+    return cache.cachedLocalUsers;
 }
 
 // Internal method to load both local and roaming users together
@@ -273,7 +287,9 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
     validateCache();
 
     // If cache is still valid, nothing to do
-    if (s_cacheValid)
+    auto& cache = getCacheState();
+
+    if (cache.cacheValid)
     {
         return;
     }
@@ -364,7 +380,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
     while (ret == ERROR_MORE_DATA);
 
     // Cache local users
-    s_cachedLocalUsers = users;
+    cache.cachedLocalUsers = users;
 
     // Now load roaming profiles in the same cache cycle
     std::vector<User> roamingUsers;
@@ -462,7 +478,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
     }
 
     // Cache roaming users
-    s_cachedRoamingUsers = roamingUsers;
+    cache.cachedRoamingUsers = roamingUsers;
 
     // Mark cache as valid and update timestamp
     updateCacheTimestamp();
@@ -476,7 +492,7 @@ std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& pro
     // Ensure both local and roaming users are loaded together
     loadUsers(processed_sids);
 
-    return s_cachedRoamingUsers;
+    return getCacheState().cachedRoamingUsers;
 }
 
 std::unique_ptr<BYTE[]> UsersHelper::getSidFromAccountName(const std::wstring& accountNameInput)
@@ -570,24 +586,28 @@ void UsersHelper::validateCache()
 {
     auto now = std::chrono::steady_clock::now();
 
-    if (s_cacheValid && (now - s_cacheTimestamp) >= s_cacheTimeout)
+    auto& cache = getCacheState();
+
+    if (cache.cacheValid && (now - cache.cacheTimestamp) >= s_cacheTimeout)
     {
         // Cache expired, clear it
-        s_cachedLocalUsers.clear();
-        s_cachedRoamingUsers.clear();
-        s_cacheValid = false;
+        cache.cachedLocalUsers.clear();
+        cache.cachedRoamingUsers.clear();
+        cache.cacheValid = false;
     }
 }
 
 void UsersHelper::updateCacheTimestamp()
 {
-    s_cacheTimestamp = std::chrono::steady_clock::now();
-    s_cacheValid = true;
+    auto& cache = getCacheState();
+    cache.cacheTimestamp = std::chrono::steady_clock::now();
+    cache.cacheValid = true;
 }
 
 void UsersHelper::resetCache()
 {
-    s_cachedLocalUsers.clear();
-    s_cachedRoamingUsers.clear();
-    s_cacheValid = false;
+    auto& cache = getCacheState();
+    cache.cachedLocalUsers.clear();
+    cache.cachedRoamingUsers.clear();
+    cache.cacheValid = false;
 }
