@@ -1915,6 +1915,7 @@ def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
     mock_agents_versions.assert_not_called()
     mock_check_indexer.assert_not_called()
     mock_virus_total_integration.assert_not_called()
+    mock_unchanged_limits.assert_not_called()
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file, config_file=True)
@@ -1922,6 +1923,7 @@ def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
     mock_agents_versions.assert_called_once()
     mock_check_indexer.assert_called_once()
     mock_virus_total_integration.assert_called_once()
+    mock_unchanged_limits.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
@@ -2070,13 +2072,14 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
     """
     api_conf = utils.configuration.api_conf
     api_conf['upload_configuration']['limits'].update(limits_conf)
-
+    xml_new_conf = utils.load_wazuh_xml(None, new_conf)
+    xml_original_conf = utils.load_wazuh_xml(None, original_conf)
     with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
         if limits_conf['eps']['allow'] or unchanged_limits_conf:
-            utils.check_wazuh_limits_unchanged(new_conf, original_conf)
+            utils.check_wazuh_limits_unchanged(xml_new_conf, xml_original_conf)
         else:
             with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_wazuh_limits_unchanged(new_conf, original_conf)
+                utils.check_wazuh_limits_unchanged(xml_new_conf, xml_original_conf)
 
 
 @pytest.mark.parametrize("new_conf", [
@@ -2174,11 +2177,13 @@ def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed
     api_conf['upload_configuration']['indexer']['allow'] = indexer_allowed
 
     with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
+        xml_new_conf = utils.load_wazuh_xml(None, new_conf)
+        xml_original_conf = utils.load_wazuh_xml(None, original_conf)
         if indexer_allowed:
-            utils.check_indexer(new_conf, original_conf)
+            utils.check_indexer(xml_new_conf, xml_original_conf)
         elif indexer_changed:
             with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_indexer(new_conf, original_conf)
+                utils.check_indexer(xml_new_conf, xml_original_conf)
 
 
 @pytest.mark.parametrize(
