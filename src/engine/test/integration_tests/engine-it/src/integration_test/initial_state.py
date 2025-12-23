@@ -111,7 +111,7 @@ def build_integration_yaml(
         "id": "...",
         "title": "...",
         "enabled": true,
-        "category": "Other",
+        "category": "other",
         "default_parent": "...",
         "decoders": [ "<decoder_uuid>" ],
         "kvdbs": []
@@ -121,7 +121,7 @@ def build_integration_yaml(
 id: {integ_uuid}
 title: {integ_title}
 enabled: true
-category: Other
+category: other
 default_parent: {default_parent}
 decoders:
   - "{decoder_uuid}"
