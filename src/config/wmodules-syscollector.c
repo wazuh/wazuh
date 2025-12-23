@@ -125,7 +125,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->sync.sync_interval = 300;
         syscollector->sync.sync_end_delay = 1;
         syscollector->sync.sync_response_timeout = 60;
-        syscollector->sync.sync_max_eps = 10;
+        syscollector->sync.sync_max_eps = 50;
         syscollector->sync.integrity_interval = 86400;  // Integrity check every 24 hours (86400 seconds)
 
         syscollector->max_eps = 50;

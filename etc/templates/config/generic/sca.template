@@ -8,6 +8,6 @@
       <enabled>yes</enabled>
       <interval>5m</interval>
       <integrity_interval>24h</integrity_interval>
-      <max_eps>10</max_eps>
+      <max_eps>50</max_eps>
     </synchronization>
   </sca>

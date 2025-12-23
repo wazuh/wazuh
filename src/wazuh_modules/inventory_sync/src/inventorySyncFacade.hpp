@@ -221,13 +221,26 @@ class InventorySyncFacadeImpl final
             }
             else
             {
-                // Generate random number for session ID.
-                std::random_device rd;
-                std::mt19937 gen(rd());
-                std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
-                const auto sessionId = dis(gen);
+                // Check session limit before creating new session
+                std::unique_lock lock(m_agentSessionsMutex);
+                if (m_agentSessions.size() >= static_cast<size_t>(m_maxSessions))
                 {
-                    std::unique_lock lock(m_agentSessionsMutex);
+                    logWarn(LOGGER_DEFAULT_TAG,
+                            "InventorySyncFacade::start: Session limit reached (%zu/%d active sessions). "
+                            "Rejecting new session for agent %s - agent will retry later",
+                            m_agentSessions.size(),
+                            m_maxSessions,
+                            std::string(agentId).c_str());
+                    m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
+                }
+                else
+                {
+                    // Generate random number for session ID.
+                    std::random_device rd;
+                    std::mt19937 gen(rd());
+                    std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
+                    const auto sessionId = dis(gen);
+
                     // Check if session already exists.
                     if (m_agentSessions.contains(sessionId))
                     {
@@ -399,6 +412,13 @@ public:
         }
 
         m_clusterName = Utils::toLowerCase(configuration.at("clusterName").get_ref<const std::string&>());
+
+        // Get max sessions from configuration, default to 1000 if not specified
+        if (configuration.contains("maxSessions"))
+        {
+            m_maxSessions = configuration.at("maxSessions").get<int>();
+        }
+        logInfo(LOGGER_DEFAULT_TAG, "InventorySync session limit: %d", m_maxSessions);
 
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
@@ -1384,6 +1404,7 @@ private:
     }
 
     std::string m_clusterName;
+    int m_maxSessions {1000}; // Maximum concurrent sessions (configured from internal_options)
     mutable std::shared_mutex m_agentSessionsMutex;
     std::mutex m_sessionTimeoutMutex;
     std::condition_variable m_sessionTimeoutCv;

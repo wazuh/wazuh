@@ -165,7 +165,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->sync.sync_interval = 300;
         sca->sync.sync_end_delay = 1;
         sca->sync.sync_response_timeout = 60;
-        sca->sync.sync_max_eps = 10;
+        sca->sync.sync_max_eps = 50;
         sca->sync.integrity_interval = 86400;
     }
 
