@@ -176,6 +176,9 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
         m_spSyncProtocol->reset();
     }
 
+    // Initial delay before first run to allow other modules to start
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+
     // Run at least once
     do
     {
@@ -265,11 +268,15 @@ void AgentInfoImpl::stop()
 
     m_cv.notify_one(); // Wake up the sleeping thread immediately
 
-    // Reset DBSync FIRST to flush any pending callbacks before stopping sync protocol
-    // This prevents callbacks from triggering new sync operations during shutdown
-    if (m_dBSync)
     {
-        m_dBSync.reset();
+        std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
+
+        if (m_dBSync)
+        {
+            m_logFunction(LOG_DEBUG, "Closing DBSync connection...");
+            m_dBSync.reset();
+            m_logFunction(LOG_DEBUG, "DBSync connection closed");
+        }
     }
 
     // Signal sync protocol to stop any ongoing operations AFTER DBSync is cleaned up
@@ -419,7 +426,7 @@ void AgentInfoImpl::populateAgentMetadata()
     updateMetadataProvider(agentMetadata, groups);
 
     // Update agent metadata using dbsync to detect changes and emit events
-    updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
+    bool metadataChanged = updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
 
     auto logMsg = std::string("Agent metadata populated successfully");
     m_logFunction(LOG_DEBUG, logMsg);
@@ -436,7 +443,7 @@ void AgentInfoImpl::populateAgentMetadata()
     }
 
     // Update agent groups using dbsync to detect changes and emit events
-    updateChanges(AGENT_GROUPS_TABLE, groupsData);
+    bool groupsChanged = updateChanges(AGENT_GROUPS_TABLE, groupsData);
 
     std::string groupLogMsg;
 
@@ -450,6 +457,16 @@ void AgentInfoImpl::populateAgentMetadata()
     }
 
     m_logFunction(LOG_DEBUG, groupLogMsg);
+
+    if (metadataChanged)
+    {
+        setSyncFlag(AGENT_METADATA_TABLE, true);
+    }
+
+    if (groupsChanged)
+    {
+        setSyncFlag(AGENT_GROUPS_TABLE, true);
+    }
 }
 
 void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups)
@@ -664,18 +681,29 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
     return groups;
 }
 
-void AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json& values)
+bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json& values)
 {
-    const auto callback = [this, table](ReturnTypeCallback result, const nlohmann::json & data)
+    bool hasChanges = false;
+
+    const auto callback = [this, table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
     {
         if (result == INSERTED || result == MODIFIED || result == DELETED)
         {
+            hasChanges = true;
             processEvent(result, data, table);
         }
     };
 
     try
     {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (!m_dBSync)
+        {
+            m_logFunction(LOG_WARNING, "DBSync not available for table " + table);
+            return false;
+        }
+
         DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{table}, 0, QUEUE_SIZE, callback};
 
         nlohmann::json input;
@@ -685,11 +713,14 @@ void AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         txn.syncTxnRow(input);
         txn.getDeletedRows(callback);
+
+        return hasChanges;
     }
     catch (const std::exception& e)
     {
         std::string errorMsg = "Error updating changes for table " + table + ": " + e.what();
         m_logFunction(LOG_ERROR, errorMsg);
+        return false;
     }
 }
 
@@ -741,13 +772,9 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 
                 m_reportDiffFunction(statelessEvent.dump());
 
-                std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result) + " (sync flag set)";
+                std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result);
                 m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
             }
-
-            // Mark that synchronization is needed for this table
-            // The actual coordination will be done in the main loop after populateAgentMetadata
-            setSyncFlag(table, true);
         }
     }
     catch (const std::exception& e)
@@ -1467,27 +1494,23 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
 void AgentInfoImpl::updateDbMetadata()
 {
-    // Capture a local copy of the shared_ptr to prevent race condition with stop()
-    // If stop() calls m_dBSync.reset() after this point, the object won't be destroyed
-    // until our local copy goes out of scope
-    auto dbSync = m_dBSync;
-
-    if (!dbSync)
-    {
-        return;
-    }
-
-    // Verify that handle is valid before creating DBSyncTxn
-    // A null handle indicates DBSync is not properly initialized
-    auto handle = dbSync->handle();
-
-    if (!handle)
-    {
-        return;
-    }
-
     try
     {
+        // Lock m_dbSyncMutex to prevent race condition with stop()
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (!m_dBSync)
+        {
+            return;
+        }
+
+        auto handle = m_dBSync->handle();
+
+        if (!handle)
+        {
+            return;
+        }
+
         auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
         DBSyncTxn txn{handle, nlohmann::json{"db_metadata"}, 0, QUEUE_SIZE, callback};
 
@@ -1515,15 +1538,20 @@ void AgentInfoImpl::updateDbMetadata()
 
 void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 {
-    if (!m_dBSync)
-    {
-        m_logFunction(LOG_WARNING, "Cannot set sync flag: DBSync not available");
-        return;
-    }
-
     try
     {
         std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Check m_dBSync availability within a separate scope
+        {
+            std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
+
+            if (!m_dBSync)
+            {
+                m_logFunction(LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                return;
+            }
+        }
 
         // Update in-memory flag
         if (table == AGENT_METADATA_TABLE)
@@ -1546,15 +1574,23 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
 void AgentInfoImpl::loadSyncFlags()
 {
-    if (!m_dBSync)
-    {
-        m_logFunction(LOG_WARNING, "Cannot load sync flags: DBSync not available");
-        return;
-    }
-
     try
     {
         std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Capture shared_ptr with mutex protection
+        std::shared_ptr<IDBSync> dbSync;
+        {
+            std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
+
+            if (!m_dBSync)
+            {
+                m_logFunction(LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                return;
+            }
+
+            dbSync = m_dBSync;
+        }
 
         bool rowFound = false;
 
@@ -1604,7 +1640,7 @@ void AgentInfoImpl::loadSyncFlags()
         input["query"]["count_opt"] = 100;
 
         // Try to select from db_metadata
-        m_dBSync->selectRows(input, callback);
+        dbSync->selectRows(input, callback);
 
         // If no row was found, this is the first run
         if (!rowFound)
@@ -1628,15 +1664,20 @@ void AgentInfoImpl::loadSyncFlags()
 
 void AgentInfoImpl::resetSyncFlag(const std::string& table)
 {
-    if (!m_dBSync)
-    {
-        m_logFunction(LOG_WARNING, "Cannot reset sync flag: DBSync not available");
-        return;
-    }
-
     try
     {
         std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Check m_dBSync availability within a separate scope
+        {
+            std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
+
+            if (!m_dBSync)
+            {
+                m_logFunction(LOG_WARNING, "Cannot reset sync flag: DBSync not available");
+                return;
+            }
+        }
 
         // Determine which flag to reset
         if (table == AGENT_METADATA_TABLE)
@@ -1709,15 +1750,20 @@ bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int in
 
 void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 {
-    if (!m_dBSync)
-    {
-        m_logFunction(LOG_WARNING, "Cannot update last integrity time: DBSync not available");
-        return;
-    }
-
     try
     {
         std::lock_guard<std::mutex> lock(m_syncFlagsMutex);
+
+        // Check m_dBSync availability within a separate scope
+        {
+            std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
+
+            if (!m_dBSync)
+            {
+                m_logFunction(LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                return;
+            }
+        }
 
         // Get current time in seconds since epoch
         auto now = std::chrono::system_clock::now();
@@ -1749,6 +1795,17 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
 bool AgentInfoImpl::performDeltaSync(const std::string& table)
 {
+    // Check if module is stopping or DB unavailable
+    {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (!m_dBSync || m_stopped)
+        {
+            m_logFunction(LOG_DEBUG, "Skipping delta sync for " + table + " (module stopping or DB unavailable)");
+            return false;
+        }
+    }
+
     try
     {
         m_logFunction(LOG_DEBUG, "Synchronization needed for " + table);
@@ -1775,6 +1832,17 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
 
 bool AgentInfoImpl::performIntegritySync(const std::string& table)
 {
+    // Check if module is stopping or DB unavailable
+    {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (!m_dBSync || m_stopped)
+        {
+            m_logFunction(LOG_DEBUG, "Skipping integrity sync for " + table + " (module stopping or DB unavailable)");
+            return false;
+        }
+    }
+
     try
     {
         m_logFunction(LOG_INFO, "Starting integrity check for " + table);
