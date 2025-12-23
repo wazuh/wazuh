@@ -143,6 +143,9 @@ class APIClient:
             if not response.text:
                 return f'Error {response.status_code} while sending request', {}
 
+            if response.status_code == 413:
+                return f'Payload too large: {response.text}', {}
+
         # Response from server endpoint handler
         try:
             json_response = json.loads(response.text)

@@ -421,12 +421,12 @@ INSTANTIATE_TEST_SUITE_P(
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeUnsupportedMsg); },
             [](auto&) {}),
 
-        // Defined but not allowed in phase-1 validate (e.g. output)
+        // Defined but not allowed in phase-1 validate (e.g. undefined)
         CmCrudHandlerT(
             []()
             {
                 eContent::resourceValidate_Request protoReq;
-                protoReq.set_type("output");
+                protoReq.set_type("undefined");
                 protoReq.set_jsoncontent(R"({"id":"11111111-1111-4111-8111-111111111111"})");
                 return createRequest<eContent::resourceValidate_Request>(protoReq);
             },

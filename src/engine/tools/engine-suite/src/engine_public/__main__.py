@@ -4,7 +4,7 @@ from importlib.metadata import metadata
 
 from shared.default_settings import Constants as DefaultSettings
 from engine_public.cmds.cm.policy_validate import configure as configure_policy_validate
-
+from engine_public.cmds.cm.validate import configure as configure_validate
 
 def parse_args():
     meta = metadata('engine-suite')
@@ -48,6 +48,7 @@ def parse_args():
     )
 
     configure_policy_validate(cm_subparsers)
+    configure_validate(cm_subparsers)
 
     return parser.parse_args()
 
