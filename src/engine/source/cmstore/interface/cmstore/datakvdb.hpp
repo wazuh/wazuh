@@ -6,7 +6,6 @@
 #include <vector>
 
 #include <base/json.hpp>
-#include <base/name.hpp>
 #include <base/utils/generator.hpp>
 #include <base/utils/hash.hpp>
 
@@ -62,18 +61,24 @@ private:
 public:
     KVDB() = delete;
 
-    KVDB(std::string uuid, std::string name, json::Json&& data, bool enabled)
+    KVDB(std::string uuid, std::string name, json::Json&& data, bool enabled, bool requireUUID = true)
         : m_uuid(std::move(uuid))
         , m_name(std::move(name))
         , m_enabled(enabled)
     {
         if (m_uuid.empty())
         {
-            throw std::runtime_error("KVDB UUID cannot be empty");
+            if (requireUUID)
+            {
+                throw std::runtime_error("KVDB UUID cannot be empty");
+            }
         }
-        if (!base::utils::generators::isValidUUIDv4(m_uuid))
+        else
         {
-            throw std::runtime_error("KVDB UUID must be a valid UUIDv4: " + m_uuid);
+            if (!base::utils::generators::isValidUUIDv4(m_uuid))
+            {
+                throw std::runtime_error("KVDB UUID must be a valid UUIDv4: " + m_uuid);
+            }
         }
         if (m_name.empty())
         {
@@ -88,24 +93,27 @@ public:
         updateHash();
     }
 
-    static KVDB fromJson(const json::Json& kvdbJson, bool validateUUID)
+    static KVDB fromJson(const json::Json& kvdbJson, bool requireUUID)
     {
-        if (validateUUID)
+        const auto uuidOpt = kvdbJson.getString(jsonkvdb::PATH_KEY_ID);
+        std::string uuid {};
+
+        if (!uuidOpt.has_value())
         {
-            auto uuidOpt = kvdbJson.getString(jsonkvdb::PATH_KEY_ID);
-            if (!uuidOpt.has_value())
+            if (requireUUID)
             {
                 throw std::runtime_error("KVDB JSON must have a valid id");
             }
-            if (!base::utils::generators::isValidUUIDv4(*uuidOpt))
-            {
-                throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + *uuidOpt);
-            }
+            // requireUUID == false => uuid remains empty
         }
-        auto uuidOpt = kvdbJson.getString(jsonkvdb::PATH_KEY_ID);
-        if (!uuidOpt.has_value())
+        else
         {
-            throw std::runtime_error("KVDB JSON must have a valid id");
+            uuid = *uuidOpt;
+
+            if (!base::utils::generators::isValidUUIDv4(uuid))
+            {
+                throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + uuid);
+            }
         }
 
         auto nameOpt = kvdbJson.getString(jsonkvdb::PATH_KEY_NAME);
@@ -126,14 +134,18 @@ public:
             throw std::runtime_error("KVDB JSON must have a valid enabled field");
         }
 
-        return {std::move(uuidOpt.value()), std::move(nameOpt.value()), std::move(contentOpt.value()), *enabledOpt};
+        return {std::move(uuid), std::move(nameOpt.value()), std::move(contentOpt.value()), *enabledOpt, requireUUID};
     }
 
     json::Json toJson() const
     {
         json::Json kvdbJson;
 
-        kvdbJson.setString(m_uuid, jsonkvdb::PATH_KEY_ID);
+        if (!m_uuid.empty())
+        {
+            kvdbJson.setString(m_uuid, jsonkvdb::PATH_KEY_ID);
+        }
+
         kvdbJson.setString(m_name, jsonkvdb::PATH_KEY_NAME);
         kvdbJson.setBool(m_enabled, jsonkvdb::PATH_KEY_ENABLED);
         kvdbJson.set(jsonkvdb::PATH_KEY_CONTENT, m_data);

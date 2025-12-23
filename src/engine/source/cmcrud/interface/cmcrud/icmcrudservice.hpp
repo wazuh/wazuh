@@ -197,7 +197,7 @@ public:
      * Notes:
      *  - For DECODER validation, missing KVDB references must NOT be treated as an error.
      *
-     * @param type         Resource type to validate (expected: DECODER | INTEGRATION | KVDB).
+     * @param type         Resource type to validate.
      * @param document Resource document as JSON string.
      *
      * @throws std::runtime_error on parse errors or validation failures.

@@ -2,8 +2,8 @@
 #define _CMSTORE_ICMSTORE_CATEGORIES
 
 #include <algorithm>
+#include <array>
 #include <string_view>
-#include <vector>
 namespace cm::store::categories
 {
 
@@ -13,14 +13,14 @@ namespace cm::store::categories
  * This map defines the available categories
  * in the CMStore system. Any integration or asset should belong to one of these categories.
  */
-inline const std::vector<std::string_view> AVAILABLE_CATEGORIES = {
+inline constexpr std::array<std::string_view, 7> AVAILABLE_CATEGORIES = {
     "access-management", "applications", "cloud-services", "network-activity", "other", "security", "system-activity"};
 
 /**
  * @brief Get all available categories and their indexes in the namespace
  * @return const std::vector<std::string_view>& Vector of Category
  */
-static const std::vector<std::string_view>& getAvailableCategories()
+constexpr const auto& getAvailableCategories()
 {
     return AVAILABLE_CATEGORIES;
 }
@@ -30,9 +30,16 @@ static const std::vector<std::string_view>& getAvailableCategories()
  * @param category Category name to check (key sensitive)
  * @return true if the category exists, false otherwise
  */
-static bool exists(std::string_view category)
+constexpr bool exists(std::string_view category)
 {
-    return std::find(AVAILABLE_CATEGORIES.begin(), AVAILABLE_CATEGORIES.end(), category) != AVAILABLE_CATEGORIES.end();
+    for (auto c : AVAILABLE_CATEGORIES)
+    {
+        if (c == category)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace cm::store::categories

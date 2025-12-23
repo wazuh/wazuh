@@ -311,7 +311,7 @@ TEST_F(CMStoreCTITest, GetPolicy_EmptyPolicyList_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByName_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", "Other", true);
+    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", "other", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
         .WillOnce(Return(integrationDoc));
@@ -320,7 +320,7 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_Success_ReturnsIntegration)
 
     EXPECT_EQ(integration.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "windows");
-    EXPECT_EQ(integration.getCategory(), "Other");
+    EXPECT_EQ(integration.getCategory(), "other");
     EXPECT_TRUE(integration.isEnabled());
 }
 
@@ -334,7 +334,7 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_NotFound_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByUUID_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "linux", "Security", true);
+    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "linux", "security", true);
 
     EXPECT_CALL(*mockReader, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"))
         .WillOnce(Return("linux"));
@@ -345,7 +345,7 @@ TEST_F(CMStoreCTITest, GetIntegrationByUUID_Success_ReturnsIntegration)
 
     EXPECT_EQ(integration.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "linux");
-    EXPECT_EQ(integration.getCategory(), "Security");
+    EXPECT_EQ(integration.getCategory(), "security");
     EXPECT_TRUE(integration.isEnabled());
 }
 
@@ -389,14 +389,14 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_MissingDocument_ThrowsException)
 TEST_F(CMStoreCTITest, GetIntegrationByName_EnableDecodersFalse)
 {
     // Create integration document with enable_decoders = false
-    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "disabled", "Other", false);
+    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "disabled", "other", false);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("disabled")))
         .WillOnce(Return(integrationDoc));
 
     dataType::Integration integration = storeCTI->getIntegrationByName("disabled");
 
-    EXPECT_EQ(integration.getCategory(), "Other");
+    EXPECT_EQ(integration.getCategory(), "other");
     EXPECT_FALSE(integration.isEnabled());
 }
 
