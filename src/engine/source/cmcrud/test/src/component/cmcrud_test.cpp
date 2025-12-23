@@ -47,7 +47,7 @@ static constexpr const char* kIntegrationYAML = R"(
 id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
 title: "windows"
 enabled: true
-category: "Security"
+category: "security"
 default_parent: "3f086ce2-32a4-42b0-be7e-40dcfb9c6160"
 decoders:
   - "85853f26-5779-469b-86c4-c47ee7d400b4"
@@ -486,7 +486,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValida
     id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
     title: "windows"
     enabled: true
-    category: "Security"
+    category: "security"
     decoders:
       - "not-a-uuid"   # <-- invalid
     kvdbs: []
@@ -522,7 +522,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
     id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
     title: "windows"
     enabled: true
-    category: "Security"
+    category: "security"
     decoders: []
     kvdbs:
       - "not-a-uuid"   # <-- invalid

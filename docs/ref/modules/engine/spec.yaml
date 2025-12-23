@@ -1375,7 +1375,6 @@ paths:
         - **KVDB**:
           - Validate schema.
           - Require `content` to be a JSON object.
-          - Enforce a maximum content size (limit defined by the server configuration).
         - **Decoders**:
           - Attempt decoder construction/compilation.
           - Validation must not fail if referenced KVDBs are not present at validation time.

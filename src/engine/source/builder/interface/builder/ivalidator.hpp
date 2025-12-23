@@ -17,7 +17,7 @@ public:
     virtual ~IValidator() = default;
 
     /**
-     * @brief Validate an Integration against the namespace.
+     * @brief Validate an Integration.
      *
      * Implementation may:
      *  - Check that all referenced decoders and KVDBs exist in the namespace.

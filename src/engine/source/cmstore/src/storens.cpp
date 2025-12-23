@@ -598,7 +598,7 @@ dataType::Integration CMStoreNS::getIntegrationByName(const std::string& name) c
     const auto path = getResourcePaths(name, ResourceType::INTEGRATION);
     auto json = fileutils::readYMLFileAsJson(path);
 
-    return dataType::Integration::fromJson(json, /*validateUUID:*/ true);
+    return dataType::Integration::fromJson(json, /*requireUUID:*/ true);
 }
 
 dataType::Integration CMStoreNS::getIntegrationByUUID(const std::string& uuid) const
@@ -620,7 +620,7 @@ dataType::Integration CMStoreNS::getIntegrationByUUID(const std::string& uuid) c
     // Load integration from disk
     const auto path = getResourcePaths(name, ResourceType::INTEGRATION);
     auto json = fileutils::readYMLFileAsJson(path);
-    return dataType::Integration::fromJson(json, /*validateUUID:*/ true);
+    return dataType::Integration::fromJson(json, /*requireUUID:*/ true);
 }
 
 const std::vector<json::Json> CMStoreNS::getDefaultOutputs() const
@@ -679,7 +679,7 @@ dataType::KVDB CMStoreNS::getKVDBByName(const std::string& name) const
     // Load KVDB from disk
     auto resourcePath = getResourcePaths(name, ResourceType::KVDB);
     auto json = fileutils::readYMLFileAsJson(resourcePath);
-    return dataType::KVDB::fromJson(json, /*validateUUID:*/ true);
+    return dataType::KVDB::fromJson(json, /*requireUUID:*/ true);
 }
 
 dataType::KVDB CMStoreNS::getKVDBByUUID(const std::string& uuid) const
@@ -703,7 +703,7 @@ dataType::KVDB CMStoreNS::getKVDBByUUID(const std::string& uuid) const
     // Load KVDB from disk
     auto resourcePath = getResourcePaths(name, ResourceType::KVDB);
     auto json = fileutils::readYMLFileAsJson(resourcePath);
-    return dataType::KVDB::fromJson(json, /*validateUUID:*/ true);
+    return dataType::KVDB::fromJson(json, /*requireUUID:*/ true);
 }
 
 /**************************************** ASSETS ****************************************/

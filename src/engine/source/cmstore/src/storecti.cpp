@@ -359,7 +359,7 @@ dataType::Integration CMStoreCTI::getIntegrationByName(const std::string& name) 
         }
 
         // Pass the document to Integration::fromJson
-        return dataType::Integration::fromJson(document, /*validateUUID:*/ true);
+        return dataType::Integration::fromJson(document, /*requireUUID:*/ true);
     }
     catch (const std::exception& e)
     {
@@ -429,7 +429,7 @@ dataType::KVDB CMStoreCTI::getKVDBByName(const std::string& name) const
         }
 
         // Pass the document to KVDB::fromJson
-        return dataType::KVDB::fromJson(document, /*validateUUID:*/ true);
+        return dataType::KVDB::fromJson(document, /*requireUUID:*/ true);
     }
     catch (const std::exception& e)
     {

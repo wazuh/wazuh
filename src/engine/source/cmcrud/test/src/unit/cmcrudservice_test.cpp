@@ -35,7 +35,7 @@ static constexpr const char* kIntegrationYAML = R"(
 id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
 title: "windows"
 enabled: true
-category: "Security"
+category: "security"
 default_parent: "3f086ce2-32a4-42b0-be7e-40dcfb9c6160"
 decoders:
   - "85853f26-5779-469b-86c4-c47ee7d400b4"
@@ -370,7 +370,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
       "enabled": true,
-      "category": "Security",
+      "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
       "decoders": [
         "85853f26-5779-469b-86c4-c47ee7d400b4"
@@ -378,7 +378,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
       "kvdbs": []
     })"};
 
-    auto integ = cm::store::dataType::Integration::fromJson(integrationJson, /*validateUUID:*/ true);
+    auto integ = cm::store::dataType::Integration::fromJson(integrationJson, /*requireUUID:*/ true);
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
@@ -422,7 +422,7 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
       "enabled": true
     })"};
 
-    auto kvdb = cm::store::dataType::KVDB::fromJson(kvdbJson, /*validateUUID:*/ true);
+    auto kvdb = cm::store::dataType::KVDB::fromJson(kvdbJson, /*requireUUID:*/ true);
 
     EXPECT_CALL(*nsReader, getKVDBByUUID(uuid)).Times(1).WillOnce(Return(kvdb));
 
@@ -705,7 +705,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
       "enabled": true,
-      "category": "Security",
+      "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
       "decoders": [
         "85853f26-5779-469b-86c4-c47ee7d400b4"
@@ -838,7 +838,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
       "enabled": true,
-      "category": "Security",
+      "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
       "decoders": [ "NOT-A-UUID" ],
       "kvdbs": []
@@ -868,7 +868,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
       "enabled": true,
-      "category": "Security",
+      "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
       "decoders": [
         "85853f26-5779-469b-86c4-c47ee7d400b4"

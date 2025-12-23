@@ -101,7 +101,8 @@ public:
                 std::optional<std::string> defaultParent,
                 std::vector<std::string> kvdbsByUUID,
                 std::vector<std::string> decodersByUUID,
-                std::vector<std::string> outputsByUUID = {})
+                std::vector<std::string> outputsByUUID = {},
+                bool requireUUID = true)
         : m_uuid(std::move(uuid))
         , m_name(std::move(name))
         , m_enabled(enabled)
@@ -113,11 +114,17 @@ public:
     {
         if (m_uuid.empty())
         {
-            throw std::runtime_error("Integration UUID cannot be empty");
+            if (requireUUID)
+            {
+                throw std::runtime_error("Integration UUID cannot be empty");
+            }
         }
-        if (!base::utils::generators::isValidUUIDv4(m_uuid))
+        else
         {
-            throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + m_uuid);
+            if (!base::utils::generators::isValidUUIDv4(m_uuid))
+            {
+                throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + m_uuid);
+            }
         }
         if (m_name.empty())
         {
@@ -134,10 +141,6 @@ public:
 
         if (m_defaultParent.has_value())
         {
-            if (m_defaultParent->empty())
-            {
-                throw std::runtime_error("Integration default parent cannot be empty");
-            }
             if (!base::utils::generators::isValidUUIDv4(*m_defaultParent))
             {
                 throw std::runtime_error("Integration default parent is not a valid UUIDv4: " + *m_defaultParent);
@@ -171,12 +174,28 @@ public:
         updateHash();
     }
 
-    static Integration fromJson(const json::Json& integrationJson, bool validateUUID)
+    static Integration fromJson(const json::Json& integrationJson, bool requireUUID)
     {
-        auto uuidOpt = integrationJson.getString(jsonintegration::PATH_KEY_ID);
+
+        const auto uuidOpt = integrationJson.getString(jsonintegration::PATH_KEY_ID);
+        std::string uuid {};
+
         if (!uuidOpt.has_value())
         {
-            throw std::runtime_error("Integration JSON must have a valid id");
+            if (requireUUID)
+            {
+                throw std::runtime_error("Integration JSON must have a valid id");
+            }
+            // requireUUID == false => uuid does not exist, will be generated later
+        }
+        else
+        {
+            uuid = *uuidOpt;
+
+            if (!base::utils::generators::isValidUUIDv4(uuid))
+            {
+                throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + uuid);
+            }
         }
 
         if (validateUUID && !base::utils::generators::isValidUUIDv4(*uuidOpt))
@@ -268,14 +287,15 @@ public:
             defaultParent = defaultParentOpt.value();
         }
 
-        return {std::move(*uuidOpt),
+        return {std::move(uuid),
                 std::move(*nameOpt),
                 *enabledOpt,
                 std::move(*categoryOpt),
                 std::move(defaultParent),
                 std::move(kvdbs),
                 std::move(decoders),
-                std::move(outputs)};
+                std::move(outputs),
+                requireUUID};
     }
 
     json::Json toJson() const

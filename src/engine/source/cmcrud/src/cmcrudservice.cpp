@@ -62,12 +62,12 @@ cm::store::dataType::Policy policyFromDocument(std::string_view policyDocument)
 
 cm::store::dataType::Integration integrationFromDocument(std::string_view integrationDocument)
 {
-    return cm::store::dataType::Integration::fromJson(yamlToJson(integrationDocument), /*validateUUID:*/ false);
+    return cm::store::dataType::Integration::fromJson(yamlToJson(integrationDocument), /*requireUUID:*/ false);
 }
 
 cm::store::dataType::KVDB kvdbFromDocument(std::string_view kvdbDocument)
 {
-    return cm::store::dataType::KVDB::fromJson(yamlToJson(kvdbDocument), /*validateUUID:*/ false);
+    return cm::store::dataType::KVDB::fromJson(yamlToJson(kvdbDocument), /*requireUUID:*/ false);
 }
 
 base::Name assetNameFromJson(const json::Json& jsonDoc)
@@ -197,7 +197,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
                     {
                         case cm::store::ResourceType::INTEGRATION:
                         {
-                            auto integ = cm::store::dataType::Integration::fromJson(itemJson, /*validateUUID:*/ true);
+                            auto integ = cm::store::dataType::Integration::fromJson(itemJson, /*requireUUID:*/ true);
                             if (!force)
                             {
                                 validateIntegration(nsReader, integ);
@@ -211,7 +211,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 
                         case cm::store::ResourceType::KVDB:
                         {
-                            auto kvdb = cm::store::dataType::KVDB::fromJson(itemJson, /*validateUUID:*/ true);
+                            auto kvdb = cm::store::dataType::KVDB::fromJson(itemJson, /*requireUUID:*/ true);
 
                             const std::string& name = kvdb.getName();
                             const std::string yml = jsonToYaml(kvdb.toJson());
@@ -537,13 +537,13 @@ void CrudService::validateResource(cm::store::ResourceType type, std::string_vie
 
             case cm::store::ResourceType::INTEGRATION:
             {
-                (void)cm::store::dataType::Integration::fromJson(payload, /*validateUUID:*/ true);
+                (void)cm::store::dataType::Integration::fromJson(payload, /*requireUUID:*/ true);
                 return;
             }
 
             case cm::store::ResourceType::KVDB:
             {
-                (void)cm::store::dataType::KVDB::fromJson(payload, /*validateUUID:*/ true);
+                (void)cm::store::dataType::KVDB::fromJson(payload, /*requireUUID:*/ true);
                 return;
             }
 

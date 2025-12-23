@@ -74,7 +74,7 @@ TEST_F(KVDB_Component, BuildOnceThenCache_NoRefetch_SamePointer)
         .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(
             json::Json {
                 R"({"id":"82e215c4-988a-4f64-8d15-b98b2fc03a4f","title":"kv","content":{"k":"v1"},"enabled":true})"},
-            /*validateUUID:*/ true)));
+            /*requireUUID:*/ true)));
 
     // First build
     auto h1 = mgr.getKVDBHandler(seed, "kv");
@@ -109,7 +109,7 @@ TEST_F(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
         .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(
             json::Json {
                 R"({"id":"82e215c4-988a-4f64-8d15-b98b2fc03a4f","title":"kv","content":{"k":"v1"},"enabled":true})"},
-            /*validateUUID:*/ true)));
+            /*requireUUID:*/ true)));
 
     // Build and drop
     auto h1 = mgr.getKVDBHandler(r1, "kv");
@@ -122,7 +122,7 @@ TEST_F(KVDB_Component, ExpireAllHandlers_RebuildWithNewContent)
         .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(
             json::Json {
                 R"({"id":"82e215c4-988a-4f64-8d15-b98b2fc03a4f","title":"kv","content":{"k":"v2"},"enabled":true})"},
-            /*validateUUID:*/ true)));
+            /*requireUUID:*/ true)));
 
     auto h2 = mgr.getKVDBHandler(r2, "kv");
     ASSERT_NE(h2, nullptr);
@@ -146,19 +146,19 @@ TEST_F(KVDB_Component, CrossNamespaceAndDb_IsolatedCaches)
         .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(
             json::Json {
                 R"({"id":"82e215c4-988a-4f64-8d15-b98b2fc03a4f","title":"db1","content":{"k":"A1"},"enabled":true})"},
-            /*validateUUID:*/ true)));
+            /*requireUUID:*/ true)));
     EXPECT_CALL(a2, getKVDBByName("db2"))
         .Times(1)
         .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(
             json::Json {
                 R"({"id":"85853f26-5779-469b-86c4-c47ee7d400b4","title":"db2","content":{"k":"A2"},"enabled":true})"},
-            /*validateUUID:*/ true)));
+            /*requireUUID:*/ true)));
     EXPECT_CALL(b1, getKVDBByName("db1"))
         .Times(1)
         .WillOnce(::testing::Return(cm::store::dataType::KVDB::fromJson(
             json::Json {
                 R"({"id":"4aa06596-5ba9-488c-8354-2475705e1257","title":"db1","content":{"k":"B1"},"enabled":true})"},
-            /*validateUUID:*/ true)));
+            /*requireUUID:*/ true)));
     auto hA1 = mgr.getKVDBHandler(a1, "db1");
     auto hA2 = mgr.getKVDBHandler(a2, "db2");
     auto hB1 = mgr.getKVDBHandler(b1, "db1");
@@ -198,7 +198,7 @@ TEST_F(KVDB_Component, ConcurrentColdRace_EventualConvergence)
                 return cm::store::dataType::KVDB::fromJson(
                     json::Json {
                         R"({"id":"4aa06596-5ba9-488c-8354-2475705e1257","title":"kv","content":{"k":"v"},"enabled":true})"},
-                    /*validateUUID:*/ true);
+                    /*requireUUID:*/ true);
             }));
 
     // Parallel cold start (no pre-warm)
@@ -291,7 +291,7 @@ TEST_F(KVDB_Component, NestedValues_AccessAndEquality)
                     "nil":null
                 }
             })"},
-            /*validateUUID:*/ true)));
+            /*requireUUID:*/ true)));
 
     auto h = mgr.getKVDBHandler(ns, "kv");
     ASSERT_NE(h, nullptr);
