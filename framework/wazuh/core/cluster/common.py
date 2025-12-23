@@ -16,9 +16,11 @@ import re
 import struct
 import time
 import traceback
+import posixpath
 from importlib import import_module
 from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
 from uuid import uuid4
+from pathlib import PurePosixPath
 
 import cryptography.fernet
 
@@ -32,6 +34,9 @@ from wazuh.core.wdb_http import get_wdb_http_client
 
 IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
 
+_ALLOWED_PREFIXES = (
+    "/queue/cluster/",
+)
 
 class Response:
     """
@@ -955,7 +960,32 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        self.in_file[data] = {'fd': open(common.WAZUH_PATH + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
+        # Decode path requested by peer node
+        rel = data.decode()
+
+        # Paths must be absolute within WAZUH_PATH
+        if not rel.startswith("/"):
+            return b"err", b"Invalid path format"
+
+        # Normalize path and block traversal
+        rel_norm = posixpath.normpath(rel)
+        if ".." in PurePosixPath(rel_norm).parts:
+            return b"err", b"Path traversal detected"
+
+        # Allowlist: only permit cluster data directories
+        if not any(rel_norm.startswith(p) for p in _ALLOWED_PREFIXES):
+            return b"err", b"Write path not allowed"
+
+        # Resolve final destination and ensure it stays inside WAZUH_PATH
+        dst = os.path.realpath(os.path.join(common.WAZUH_PATH, rel_norm.lstrip("/")))
+        wazuh_root = os.path.realpath(common.WAZUH_PATH)
+
+        if os.path.commonpath([dst, wazuh_root]) != wazuh_root:
+            return b"err", b"Write path escapes WAZUH_PATH"
+
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256()}
+
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
