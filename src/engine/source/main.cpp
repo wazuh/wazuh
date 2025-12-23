@@ -22,7 +22,6 @@
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
-#include <cmcrud/cmcontentvalidator.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
 #include <conf/conf.hpp>
@@ -516,9 +515,7 @@ int main(int argc, char* argv[])
 
         // Crud Service
         {
-            std::shared_ptr<cm::crud::IContentValidator> contentValidator =
-                std::make_shared<cm::crud::ContentValidator>(builder);
-            cmCrudService = std::make_shared<cm::crud::CrudService>(cmStore, contentValidator);
+            cmCrudService = std::make_shared<cm::crud::CrudService>(cmStore, builder);
             LOG_INFO("Content Manager CRUD Service initialized.");
         }
 

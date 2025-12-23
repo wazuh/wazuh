@@ -241,6 +241,20 @@ struct resourceDelete_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 resourceDelete_RequestDefaultTypeInternal _resourceDelete_Request_default_instance_;
+PROTOBUF_CONSTEXPR resourceValidate_Request::resourceValidate_Request(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.type_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.jsoncontent_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct resourceValidate_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR resourceValidate_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~resourceValidate_RequestDefaultTypeInternal() {}
+  union {
+    resourceValidate_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 resourceValidate_RequestDefaultTypeInternal _resourceValidate_Request_default_instance_;
 }  // namespace content
 }  // namespace engine
 }  // namespace api
@@ -388,6 +402,14 @@ const uint32_t TableStruct_crud_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceDelete_Request, _impl_.space_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceDelete_Request, _impl_.uuid_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceValidate_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceValidate_Request, _impl_.type_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceValidate_Request, _impl_.jsoncontent_),
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 9, -1, sizeof(::com::wazuh::api::engine::content::ResourceSummary)},
@@ -405,6 +427,7 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 108, 117, -1, sizeof(::com::wazuh::api::engine::content::resourceGet_Response)},
   { 120, -1, -1, sizeof(::com::wazuh::api::engine::content::resourcePost_Request)},
   { 129, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceDelete_Request)},
+  { 137, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceValidate_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -423,6 +446,7 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::content::_resourceGet_Response_default_instance_._instance,
   &::com::wazuh::api::engine::content::_resourcePost_Request_default_instance_._instance,
   &::com::wazuh::api::engine::content::_resourceDelete_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::content::_resourceValidate_Request_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_crud_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -457,7 +481,9 @@ const char descriptor_table_protodef_crud_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "\n\006_errorB\n\n\010_content\"G\n\024resourcePost_Req"
   "uest\022\r\n\005space\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\022\022\n\nyml"
   "Content\030\003 \001(\t\"5\n\026resourceDelete_Request\022"
-  "\r\n\005space\030\001 \001(\t\022\014\n\004uuid\030\002 \001(\tb\006proto3"
+  "\r\n\005space\030\001 \001(\t\022\014\n\004uuid\030\002 \001(\t\"=\n\030resource"
+  "Validate_Request\022\014\n\004type\030\001 \001(\t\022\023\n\013jsonCo"
+  "ntent\030\002 \001(\tb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_crud_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -465,9 +491,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_crud_2eproto_deps[2
 };
 static ::_pbi::once_flag descriptor_table_crud_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_crud_2eproto = {
-    false, false, 1276, descriptor_table_protodef_crud_2eproto,
+    false, false, 1339, descriptor_table_protodef_crud_2eproto,
     "crud.proto",
-    &descriptor_table_crud_2eproto_once, descriptor_table_crud_2eproto_deps, 2, 15,
+    &descriptor_table_crud_2eproto_once, descriptor_table_crud_2eproto_deps, 2, 16,
     schemas, file_default_instances, TableStruct_crud_2eproto::offsets,
     file_level_metadata_crud_2eproto, file_level_enum_descriptors_crud_2eproto,
     file_level_service_descriptors_crud_2eproto,
@@ -4207,6 +4233,259 @@ void resourceDelete_Request::InternalSwap(resourceDelete_Request* other) {
       file_level_metadata_crud_2eproto[14]);
 }
 
+// ===================================================================
+
+class resourceValidate_Request::_Internal {
+ public:
+};
+
+resourceValidate_Request::resourceValidate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.content.resourceValidate_Request)
+}
+resourceValidate_Request::resourceValidate_Request(const resourceValidate_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  resourceValidate_Request* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.type_){}
+    , decltype(_impl_.jsoncontent_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.type_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.type_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_type().empty()) {
+    _this->_impl_.type_.Set(from._internal_type(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.jsoncontent_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.jsoncontent_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_jsoncontent().empty()) {
+    _this->_impl_.jsoncontent_.Set(from._internal_jsoncontent(), 
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.content.resourceValidate_Request)
+}
+
+inline void resourceValidate_Request::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.type_){}
+    , decltype(_impl_.jsoncontent_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.type_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.type_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.jsoncontent_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.jsoncontent_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+resourceValidate_Request::~resourceValidate_Request() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.content.resourceValidate_Request)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void resourceValidate_Request::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.type_.Destroy();
+  _impl_.jsoncontent_.Destroy();
+}
+
+void resourceValidate_Request::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void resourceValidate_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.content.resourceValidate_Request)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.type_.ClearToEmpty();
+  _impl_.jsoncontent_.ClearToEmpty();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* resourceValidate_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string type = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_type();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.content.resourceValidate_Request.type"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string jsonContent = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_jsoncontent();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.content.resourceValidate_Request.jsonContent"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* resourceValidate_Request::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.content.resourceValidate_Request)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string type = 1;
+  if (!this->_internal_type().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_type().data(), static_cast<int>(this->_internal_type().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.content.resourceValidate_Request.type");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_type(), target);
+  }
+
+  // string jsonContent = 2;
+  if (!this->_internal_jsoncontent().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_jsoncontent().data(), static_cast<int>(this->_internal_jsoncontent().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.content.resourceValidate_Request.jsonContent");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_jsoncontent(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.content.resourceValidate_Request)
+  return target;
+}
+
+size_t resourceValidate_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.content.resourceValidate_Request)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string type = 1;
+  if (!this->_internal_type().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_type());
+  }
+
+  // string jsonContent = 2;
+  if (!this->_internal_jsoncontent().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_jsoncontent());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData resourceValidate_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    resourceValidate_Request::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*resourceValidate_Request::GetClassData() const { return &_class_data_; }
+
+
+void resourceValidate_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<resourceValidate_Request*>(&to_msg);
+  auto& from = static_cast<const resourceValidate_Request&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.content.resourceValidate_Request)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_type().empty()) {
+    _this->_internal_set_type(from._internal_type());
+  }
+  if (!from._internal_jsoncontent().empty()) {
+    _this->_internal_set_jsoncontent(from._internal_jsoncontent());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void resourceValidate_Request::CopyFrom(const resourceValidate_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.content.resourceValidate_Request)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool resourceValidate_Request::IsInitialized() const {
+  return true;
+}
+
+void resourceValidate_Request::InternalSwap(resourceValidate_Request* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.type_, lhs_arena,
+      &other->_impl_.type_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.jsoncontent_, lhs_arena,
+      &other->_impl_.jsoncontent_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata resourceValidate_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_crud_2eproto_getter, &descriptor_table_crud_2eproto_once,
+      file_level_metadata_crud_2eproto[15]);
+}
+
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace content
 }  // namespace engine
@@ -4273,6 +4552,10 @@ Arena::CreateMaybeMessage< ::com::wazuh::api::engine::content::resourcePost_Requ
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::content::resourceDelete_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::content::resourceDelete_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::content::resourceDelete_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::content::resourceValidate_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::content::resourceValidate_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::content::resourceValidate_Request >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

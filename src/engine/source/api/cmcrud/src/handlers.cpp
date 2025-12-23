@@ -1,4 +1,3 @@
-
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -715,6 +714,61 @@ adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> cru
         try
         {
             service->deleteResourceByUUID(protoReq.space(), protoReq.uuid());
+        }
+        catch (const std::exception& ex)
+        {
+            res = adapter::userErrorResponse<ResponseType>(ex.what());
+            return;
+        }
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        res = adapter::userResponse(eResponse);
+    };
+}
+
+/*********************************************
+ * Resource handler – validate (public, no namespace)
+ *********************************************/
+
+adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> crud)
+{
+    return [wCrud = std::weak_ptr<cm::crud::ICrudService>(crud)](const auto& req, auto& res)
+    {
+        using RequestType = eContent::resourceValidate_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::cm::crud::ICrudService>(req, wCrud);
+        if (adapter::isError(result))
+        {
+            res = adapter::getErrorResp(result);
+            return;
+        }
+
+        auto [service, protoReq] = adapter::getRes(result);
+
+        if (protoReq.type().empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_REQUIRED);
+            return;
+        }
+
+        if (protoReq.jsoncontent().empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_JSON_REQUIRED);
+            return;
+        }
+
+        const auto rType = cm::store::resourceTypeFromString(protoReq.type());
+        if (rType == cm::store::ResourceType::UNDEFINED)
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_UNSUPPORTED);
+            return;
+        }
+
+        try
+        {
+            service->validateResource(rType, protoReq.jsoncontent());
         }
         catch (const std::exception& ex)
         {

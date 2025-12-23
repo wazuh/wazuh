@@ -3,8 +3,6 @@
 #include <gmock/gmock.h>
 
 #include <cmcrud/icmcrudservice.hpp>
-#include <cmcrud/icontentvalidator.hpp>
-
 namespace cm::crud
 {
 
@@ -38,32 +36,7 @@ public:
                 (override));
 
     MOCK_METHOD(void, deleteResourceByUUID, (std::string_view nsName, const std::string& uuid), (override));
-};
-
-class MockContentValidator : public IContentValidator
-{
-public:
-    MOCK_METHOD(void,
-                validatePolicy,
-                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                 const cm::store::dataType::Policy& policy),
-                (const, override));
-
-    MOCK_METHOD(void,
-                validateIntegration,
-                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
-                 const cm::store::dataType::Integration& integration),
-                (const, override));
-
-    MOCK_METHOD(void,
-                validateKVDB,
-                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, const cm::store::dataType::KVDB& kvdb),
-                (const, override));
-
-    MOCK_METHOD(void,
-                validateAsset,
-                (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, const json::Json& asset),
-                (const, override));
+    MOCK_METHOD(void, validateResource, (cm::store::ResourceType type, std::string_view document), (override));
 };
 
 } // namespace cm::crud

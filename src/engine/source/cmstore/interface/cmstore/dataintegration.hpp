@@ -1,25 +1,30 @@
 #ifndef _ICMSTORE_DATA_INTEGRATION
 #define _ICMSTORE_DATA_INTEGRATION
 
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
 
+#include <fmt/format.h>
+
 #include <base/json.hpp>
-#include <base/name.hpp>
 #include <base/utils/generator.hpp>
 #include <base/utils/hash.hpp>
+
+#include <cmstore/categories.hpp>
 
 /**
  * @brief DataIntegration class to represent a content manager data integration. Its the definition of an integration.
  *
- * Expexted JSON format:
+ * Expected JSON format:
  * {
  *   "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
  *   "title": "windows",
- *   "enable_decoders": true|false,
+ *   "enabled": true|false,
  *   "category": "ossec",
- *   "default_parent": "docoder/windows/0", --> Optional
+ *   "default_parent": "85853f26-5779-469b-86c4-c47ee7d400b4", --> Optional
  *   "decoders":
  *   [
  *     "85853f26-5779-469b-86c4-c47ee7d400b4",
@@ -109,7 +114,10 @@ public:
         if (m_uuid.empty())
         {
             throw std::runtime_error("Integration UUID cannot be empty");
-            // TODO CHECK LENGHT
+        }
+        if (!base::utils::generators::isValidUUIDv4(m_uuid))
+        {
+            throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + m_uuid);
         }
         if (m_name.empty())
         {
@@ -119,15 +127,61 @@ public:
         {
             throw std::runtime_error("Integration category cannot be empty");
         }
+        if (!cm::store::categories::exists(m_category))
+        {
+            throw std::runtime_error("Integration category is not valid: " + m_category);
+        }
+
+        if (m_defaultParent.has_value())
+        {
+            if (m_defaultParent->empty())
+            {
+                throw std::runtime_error("Integration default parent cannot be empty");
+            }
+            if (!base::utils::generators::isValidUUIDv4(*m_defaultParent))
+            {
+                throw std::runtime_error("Integration default parent is not a valid UUIDv4: " + *m_defaultParent);
+            }
+        }
+
+        for (const auto& uuid : m_decodersByUUID)
+        {
+            if (!base::utils::generators::isValidUUIDv4(uuid))
+            {
+                throw std::runtime_error("Decoder UUID is not a valid UUIDv4: " + uuid);
+            }
+        }
+
+        for (const auto& uuid : m_kvdbsByUUID)
+        {
+            if (!base::utils::generators::isValidUUIDv4(uuid))
+            {
+                throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + uuid);
+            }
+        }
+
+        for (const auto& uuid : m_outputsByUUID)
+        {
+            if (!base::utils::generators::isValidUUIDv4(uuid))
+            {
+                throw std::runtime_error("Output UUID is not a valid UUIDv4: " + uuid);
+            }
+        }
+
         updateHash();
     }
 
-    static Integration fromJson(const json::Json& integrationJson)
+    static Integration fromJson(const json::Json& integrationJson, bool validateUUID)
     {
         auto uuidOpt = integrationJson.getString(jsonintegration::PATH_KEY_ID);
         if (!uuidOpt.has_value())
         {
             throw std::runtime_error("Integration JSON must have a valid id");
+        }
+
+        if (validateUUID && !base::utils::generators::isValidUUIDv4(*uuidOpt))
+        {
+            throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + *uuidOpt);
         }
 
         auto nameOpt = integrationJson.getString(jsonintegration::PATH_KEY_NAME);
@@ -176,7 +230,7 @@ public:
             kvdbs.push_back(kvdbOpt.value());
         }
 
-        std::size_t outputCount;
+        std::size_t outputCount = 0;
         try
         {
             outputCount = integrationJson.size(jsonintegration::PATH_KEY_OUTPUTS);
@@ -185,6 +239,7 @@ public:
         {
             outputCount = 0;
         }
+
         std::vector<std::string> outputs;
         outputs.reserve(outputCount);
 
@@ -198,18 +253,19 @@ public:
             outputs.push_back(outputOpt.value());
         }
 
-        std::optional<base::Name> defaultParent = std::nullopt;
-        try
+        std::optional<std::string> defaultParent = std::nullopt;
+        if (auto defaultParentOpt = integrationJson.getString(jsonintegration::PATH_KEY_DEFAULT_PARENT);
+            defaultParentOpt.has_value())
         {
-            if (auto defaultParentOpt = integrationJson.getString(jsonintegration::PATH_KEY_DEFAULT_PARENT);
-                defaultParentOpt.has_value())
+            if (defaultParentOpt->empty())
             {
-                defaultParent = base::Name(defaultParentOpt.value());
+                throw std::runtime_error("Integration default parent cannot be empty");
             }
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(fmt::format("Error getting integration default parent: {}", e.what()));
+            if (!base::utils::generators::isValidUUIDv4(*defaultParentOpt))
+            {
+                throw std::runtime_error("Integration default parent is not a valid UUIDv4: " + *defaultParentOpt);
+            }
+            defaultParent = defaultParentOpt.value();
         }
 
         return {std::move(*uuidOpt),
@@ -272,4 +328,4 @@ public:
 
 } // namespace cm::store::dataType
 
-#endif // _ICMSTORE_DATA_KVDB
+#endif // _ICMSTORE_DATA_INTEGRATION

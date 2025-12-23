@@ -26,6 +26,8 @@ private:
 
     std::shared_ptr<cm::store::ICMStoreNSReader> m_storeNSReader; ///< Store namespace reader
 
+    bool m_allowMissingDependencies {false}; ///< Allow missing dependencies flag
+
 public:
     BuildCtx()
     {
@@ -36,6 +38,7 @@ public:
         m_schemaValidator = nullptr;
         m_allowedFields = nullptr;
         m_storeNSReader = nullptr;
+        m_allowMissingDependencies = false;
     }
 
     ~BuildCtx() = default;
@@ -56,7 +59,8 @@ public:
              const std::shared_ptr<const defs::IDefinitions>& definitions,
              const std::shared_ptr<const schemf::IValidator>& schemaValidator,
              const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
-             const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader)
+             const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader,
+             bool allowMissingDependencies = false)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
@@ -64,6 +68,7 @@ public:
         , m_schemaValidator(schemaValidator)
         , m_allowedFields(allowedFields)
         , m_storeNSReader(storeNSReader)
+        , m_allowMissingDependencies(allowMissingDependencies)
     {
     }
 
@@ -74,8 +79,14 @@ public:
      */
     inline std::shared_ptr<IBuildCtx> clone() const override
     {
-        return std::make_shared<BuildCtx>(
-            m_runState, m_context, m_registry, m_definitions, m_schemaValidator, m_allowedFields, m_storeNSReader);
+        return std::make_shared<BuildCtx>(m_runState,
+                                          m_context,
+                                          m_registry,
+                                          m_definitions,
+                                          m_schemaValidator,
+                                          m_allowedFields,
+                                          m_storeNSReader,
+                                          m_allowMissingDependencies);
     }
 
     /**
@@ -176,6 +187,16 @@ public:
     {
         m_storeNSReader = std::move(nsReader);
     }
+
+    /**
+     * @copydoc IBuildCtx::allowMissingDependencies
+     */
+    inline bool allowMissingDependencies() const override { return m_allowMissingDependencies; }
+
+    /**
+     * @copydoc IBuildCtx::setAllowMissingDependencies
+     */
+    inline void setAllowMissingDependencies(bool allow) override { m_allowMissingDependencies = allow; }
 };
 
 } // namespace builder::builders

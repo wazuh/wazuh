@@ -6,7 +6,6 @@
 #include <builder/mockValidator.hpp>
 #include <cmstore/mockcmstore.hpp>
 
-#include <cmcrud/cmcontentvalidator.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 
 using ::testing::_;
@@ -21,11 +20,9 @@ namespace cm::crud::test
 {
 
 using builder::mocks::MockValidator;
-using cm::crud::ContentValidator;
 using cm::crud::CrudService;
 using cm::store::MockICMstore;
 using cm::store::MockICMstoreNS;
-using cm::store::MockICMStoreNSReader;
 using cm::store::NamespaceId;
 using cm::store::ResourceType;
 
@@ -50,8 +47,8 @@ static constexpr const char* kIntegrationYAML = R"(
 id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
 title: "windows"
 enabled: true
-category: "ossec"
-default_parent: "decoder/windows/0"
+category: "Security"
+default_parent: "3f086ce2-32a4-42b0-be7e-40dcfb9c6160"
 decoders:
   - "85853f26-5779-469b-86c4-c47ee7d400b4"
   - "4aa06596-5ba9-488c-8354-2475705e1257"
@@ -90,21 +87,19 @@ normalize:
 )";
 
 // ---------------------------------------------------------------------
-// Helper: build a CrudService + ContentValidator + MockValidator stack
+// Helper: build a CrudService + MockValidator + Mock store
 // ---------------------------------------------------------------------
 
 struct CmCrudStack
 {
-    std::shared_ptr<NiceMock<MockValidator>> builderValidator;
+    std::shared_ptr<NiceMock<MockValidator>> validator;
     std::shared_ptr<NiceMock<MockICMstore>> store;
-    std::shared_ptr<ContentValidator> contentValidator;
     CrudService service;
 
     CmCrudStack()
-        : builderValidator(std::make_shared<NiceMock<MockValidator>>())
+        : validator(std::make_shared<NiceMock<MockValidator>>())
         , store(std::make_shared<NiceMock<MockICMstore>>())
-        , contentValidator(std::make_shared<ContentValidator>(builderValidator))
-        , service(store, contentValidator)
+        , service(store, validator)
     {
     }
 };
@@ -118,24 +113,23 @@ TEST(CrudService_Component, UpsertPolicy_Success_EndToEnd)
     CmCrudStack stack;
 
     const std::string nsName {"dev"};
+    NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    // Store must resolve the namespace
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
+
     EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // Builder validator is invoked via ContentValidator
-    EXPECT_CALL(*stack.builderValidator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
-
-    // Once policy is validated, it must be written to the namespace
+    EXPECT_CALL(*stack.validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
     EXPECT_NO_THROW(stack.service.upsertPolicy(nsName, kPolicyYAML));
 }
 
 // ---------------------------------------------------------------------
-// Policy: builder error propagates through ContentValidator and CrudService
+// Policy: builder error propagates through CrudService
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
@@ -146,18 +140,16 @@ TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
     NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
+
     EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // ContentValidator will ask for the namespace id when building the error message
-    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
+    EXPECT_CALL(*stack.validator, softPolicyValidate(_, _))
+        .Times(1)
+        .WillOnce(Return(base::Error {"policy failed at builder"}));
 
-    base::OptError builderErr = base::Error {"policy failed at builder"};
-
-    EXPECT_CALL(*stack.builderValidator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(builderErr));
-
-    // When validation fails, no write should be performed
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
 
     try
@@ -170,7 +162,6 @@ TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
         const std::string msg {ex.what()};
         EXPECT_THAT(msg, HasSubstr("Failed to upsert policy in namespace 'dev'"));
         EXPECT_THAT(msg, HasSubstr("policy failed at builder"));
-        EXPECT_THAT(msg, HasSubstr("Policy validation failed in namespace 'dev'"));
     }
 }
 
@@ -183,16 +174,17 @@ TEST(CrudService_Component, UpsertIntegration_Success_EndToEnd)
     CmCrudStack stack;
 
     const std::string nsName {"dev"};
+    NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
     EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // Builder validation goes through ContentValidator
-    EXPECT_CALL(*stack.builderValidator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
-    // Integration YAML has a UUID; if it does not exist, we must create it
     EXPECT_CALL(*nsPtr, assetExistsByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).Times(1).WillOnce(Return(false));
 
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
@@ -202,7 +194,7 @@ TEST(CrudService_Component, UpsertIntegration_Success_EndToEnd)
 }
 
 // ---------------------------------------------------------------------
-// Integration: builder error is propagated with integration name + namespace
+// Integration: builder error is propagated
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
@@ -213,18 +205,16 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
     NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
+
     EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // Namespace id used by ContentValidator to enrich the error
-    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
+    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _))
+        .Times(1)
+        .WillOnce(Return(base::Error {"integration failed at builder"}));
 
-    base::OptError builderErr = base::Error {"integration failed at builder"};
-
-    EXPECT_CALL(*stack.builderValidator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(builderErr));
-
-    // No resource mutation should happen when validation fails
     EXPECT_CALL(*nsPtr, assetExistsByUUID(_)).Times(0);
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
@@ -239,13 +229,12 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
         const std::string msg {ex.what()};
         EXPECT_THAT(msg, HasSubstr("Failed to upsert resource of type"));
         EXPECT_THAT(msg, HasSubstr("namespace 'dev'"));
-        EXPECT_THAT(msg, HasSubstr("windows")); // integration title
         EXPECT_THAT(msg, HasSubstr("integration failed at builder"));
     }
 }
 
 // ---------------------------------------------------------------------
-// KVDB: success path (ContentValidator currently does no validation)
+// KVDB: success path (validation is done by KVDB::fromJson in service path)
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
@@ -259,9 +248,6 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    // ContentValidator::validateKVDB is a no-op, builder is not called here.
-    // We only need to check the storage behavior: create when UUID does not exist.
-
     EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(false));
 
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
@@ -271,7 +257,7 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
 }
 
 // ---------------------------------------------------------------------
-// Decoder asset: builder error is propagated through ContentValidator + CrudService
+// Decoder asset: builder error is propagated
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Component, UpsertDecoder_BuilderAssetErrorIsPropagated)
@@ -282,15 +268,15 @@ TEST(CrudService_Component, UpsertDecoder_BuilderAssetErrorIsPropagated)
     NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
+
     EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
-
-    base::OptError builderErr = base::Error {"asset validation failed at builder"};
-
-    EXPECT_CALL(*stack.builderValidator, validateAsset(_, _)).Times(1).WillOnce(Return(builderErr));
+    EXPECT_CALL(*stack.validator, validateAsset(_, _))
+        .Times(1)
+        .WillOnce(Return(base::Error {"asset validation failed at builder"}));
 
     EXPECT_CALL(*nsPtr, assetExistsByName(_)).Times(0);
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
@@ -318,13 +304,16 @@ TEST(CrudService_Component, UpsertDecoder_Success_CreateByName)
     CmCrudStack stack;
 
     const std::string nsName {"dev"};
+    NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
     EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*stack.builderValidator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*stack.validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByName(_)).Times(1).WillOnce(Return(false));
 
@@ -339,13 +328,16 @@ TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
     CmCrudStack stack;
 
     const std::string nsName {"dev"};
+    NamespaceId nsId {nsName};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
     EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
-    EXPECT_CALL(*stack.builderValidator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*stack.validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByName(_)).Times(1).WillOnce(Return(true));
 
@@ -353,6 +345,198 @@ TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
 
     EXPECT_NO_THROW(stack.service.upsertResource(nsName, ResourceType::DECODER, kDecoderYAML));
+}
+
+// ---------------------------------------------------------------------
+// KVDB: validation failures prevent store mutation
+// ---------------------------------------------------------------------
+
+TEST(CrudService_Component, UpsertKVDB_ContentNotObject_Throws_NoMutation)
+{
+    CmCrudStack stack;
+
+    const std::string nsName {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    // In case the service resolves NS before parsing/validating
+    ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
+
+    // No builder validator should be touched for KVDB
+    EXPECT_CALL(*stack.validator, validateAssetShallow(_)).Times(0);
+    EXPECT_CALL(*stack.validator, validateAsset(_, _)).Times(0);
+    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _)).Times(0);
+    EXPECT_CALL(*stack.validator, softPolicyValidate(_, _)).Times(0);
+
+    // No store mutation should happen if schema fails
+    EXPECT_CALL(*nsPtr, assetExistsByUUID(_)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+
+    static constexpr const char* kBadKvdbYaml = R"(
+    id: "82e215c4-988a-4f64-8d15-b98b2fc03a4f"
+    title: "windows_kerberos_status_code_to_code_name"
+    content: [ "0x0", "0x1" ]   # <-- invalid: must be an object
+    enabled: true
+    )";
+
+    try
+    {
+        stack.service.upsertResource(nsName, ResourceType::KVDB, kBadKvdbYaml);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& ex)
+    {
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("KVDB content must be a JSON object"));
+    }
+}
+
+TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
+{
+    CmCrudStack stack;
+
+    const std::string nsName {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
+
+    EXPECT_CALL(*stack.validator, validateAssetShallow(_)).Times(0);
+    EXPECT_CALL(*stack.validator, validateAsset(_, _)).Times(0);
+    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _)).Times(0);
+    EXPECT_CALL(*stack.validator, softPolicyValidate(_, _)).Times(0);
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID(_)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+
+    static constexpr const char* kBadKvdbUuidYaml = R"(
+    id: "not-a-uuid"
+    title: "windows_kerberos_status_code_to_code_name"
+    content:
+      "0x0": "KDC_ERR_NONE"
+    enabled: true
+    )";
+
+    try
+    {
+        stack.service.upsertResource(nsName, ResourceType::KVDB, kBadKvdbUuidYaml);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& ex)
+    {
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("UUIDv4"));
+    }
+}
+
+// ---------------------------------------------------------------------
+// Integration: validation failures prevent store mutation
+// ---------------------------------------------------------------------
+
+TEST(CrudService_Component, UpsertIntegration_InvalidCategory_Throws_NoValidator_NoMutation)
+{
+    CmCrudStack stack;
+
+    const std::string nsName {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
+
+    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _)).Times(0);
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID(_)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+
+    static constexpr const char* kBadCategoryIntegrationYaml = R"(
+    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
+    title: "windows"
+    enabled: true
+    category: "ossec"  # <-- invalid
+    decoders: []
+    kvdbs: []
+    )";
+
+    try
+    {
+        stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kBadCategoryIntegrationYaml);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& ex)
+    {
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("category"));
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("not valid"));
+    }
+}
+
+TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValidator_NoMutation)
+{
+    CmCrudStack stack;
+
+    const std::string nsName {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
+
+    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _)).Times(0);
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID(_)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+
+    static constexpr const char* kBadDecoderUuidIntegrationYaml = R"(
+    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
+    title: "windows"
+    enabled: true
+    category: "Security"
+    decoders:
+      - "not-a-uuid"   # <-- invalid
+    kvdbs: []
+    )";
+
+    try
+    {
+        stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kBadDecoderUuidIntegrationYaml);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& ex)
+    {
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("UUIDv4"));
+    }
+}
+
+TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator_NoMutation)
+{
+    CmCrudStack stack;
+
+    const std::string nsName {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
+
+    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _)).Times(0);
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID(_)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+
+    static constexpr const char* kBadKvdbUuidIntegrationYaml = R"(
+    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
+    title: "windows"
+    enabled: true
+    category: "Security"
+    decoders: []
+    kvdbs:
+      - "not-a-uuid"   # <-- invalid
+    )";
+
+    try
+    {
+        stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kBadKvdbUuidIntegrationYaml);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& ex)
+    {
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("UUIDv4"));
+    }
 }
 
 } // namespace cm::crud::test

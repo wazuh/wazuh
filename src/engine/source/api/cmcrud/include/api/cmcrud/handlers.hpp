@@ -29,6 +29,9 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud);
 adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> crud);
 adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> crud);
 
+/*************** Public Resources ***************/
+adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> crud);
+
 /*************** Registration helper ***************/
 inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
                              const std::shared_ptr<::router::ITesterAPI>& tester,
@@ -45,11 +48,14 @@ inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
     server->addRoute(httpsrv::Method::POST, "/_internal/content/policy/delete", policyDelete(crud));
     server->addRoute(httpsrv::Method::POST, "/content/validate/policy", policyValidate(crud, tester));
 
-    // Resources
+    // Resources (internal)
     server->addRoute(httpsrv::Method::POST, "/_internal/content/list", resourceList(crud));
     server->addRoute(httpsrv::Method::POST, "/_internal/content/get", resourceGet(crud));
     server->addRoute(httpsrv::Method::POST, "/_internal/content/upsert", resourceUpsert(crud));
     server->addRoute(httpsrv::Method::POST, "/_internal/content/delete", resourceDelete(crud));
+
+    // Resources (public)
+    server->addRoute(httpsrv::Method::POST, "/content/validate", resourceValidate(crud));
 }
 
 } // namespace api::cmcrud::handlers

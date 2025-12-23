@@ -28,6 +28,8 @@ public:
     MOCK_METHOD((std::shared_ptr<cm::store::ICMStoreNSReader>), storeNSReaderPtr, (), (const));
     MOCK_METHOD((const cm::store::ICMStoreNSReader&), getStoreNSReader, (), (const));
     MOCK_METHOD(void, setStoreNSReader, (const std::shared_ptr<cm::store::ICMStoreNSReader> nsReader), ());
+    MOCK_METHOD(bool, allowMissingDependencies, (), (const));
+    MOCK_METHOD(void, setAllowMissingDependencies, (bool allow), ());
 };
 
 } // namespace builder::builders::mocks
