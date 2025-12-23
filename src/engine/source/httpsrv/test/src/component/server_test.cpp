@@ -19,6 +19,11 @@ std::filesystem::path uniquePath()
     ss << pid << "_" << tid; // Unique path per thread and process
     return std::filesystem::path("/tmp") / (ss.str());
 }
+
+std::string makePayload(size_t n)
+{
+    return std::string(n, 'a');
+}
 } // namespace
 
 /*******************************************************************************
@@ -113,6 +118,10 @@ public:
             res.set_content("OK", "text/plain");
         };
     }
+};
+
+class BodyRouteTest : public RouteTest
+{
 };
 
 TEST_P(RouteTest, AddRouteNotStarted)
@@ -297,6 +306,165 @@ TEST_P(RouteTest, ServeUnhandledException)
     ASSERT_EQ(res->body, "Internal server error");
 }
 
+TEST_P(BodyRouteTest, PayloadAtLimitIsAccepted)
+{
+    auto [method, route, /*cliReq*/ _] = GetParam();
+
+    if (method != httpsrv::Method::POST && method != httpsrv::Method::PUT)
+    {
+        GTEST_SKIP() << "No request body for this method in current parametrization.";
+    }
+
+    constexpr size_t kLimitBytes = 16;
+
+    // Replace the default server instance with a limited one (minimal change to fixture)
+    m_srv->stop();
+    m_srv.reset();
+    m_srv = std::make_shared<httpsrv::Server>("test", kLimitBytes);
+
+    std::atomic<int> handlerCalls {0};
+    std::atomic<size_t> receivedSize {0};
+
+    auto handler = [&](const httplib::Request& req, httplib::Response& res)
+    {
+        handlerCalls++;
+        receivedSize = req.body.size();
+        res.status = 200;
+        res.set_content("OK", "text/plain");
+    };
+
+    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    httplib::Headers headers {{"Content-Type", "text/plain"}};
+    const auto body = makePayload(kLimitBytes);
+
+    httplib::Result res;
+    if (method == httpsrv::Method::POST)
+    {
+        res = cli.Post(route.c_str(), headers, body, "text/plain");
+    }
+    else // PUT
+    {
+        res = cli.Put(route.c_str(), headers, body, "text/plain");
+    }
+
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 200);
+    ASSERT_EQ(res->body, "OK");
+    ASSERT_EQ(handlerCalls.load(), 1);
+    ASSERT_EQ(receivedSize.load(), kLimitBytes);
+}
+
+TEST_P(BodyRouteTest, PayloadOverLimitReturns413)
+{
+    auto [method, route, /*cliReq*/ _] = GetParam();
+
+    if (method != httpsrv::Method::POST && method != httpsrv::Method::PUT)
+    {
+        GTEST_SKIP() << "No request body for this method in current parametrization.";
+    }
+
+    constexpr size_t kLimitBytes = 16;
+
+    m_srv->stop();
+    m_srv.reset();
+    m_srv = std::make_shared<httpsrv::Server>("test", kLimitBytes);
+
+    std::atomic<int> handlerCalls {0};
+
+    auto handler = [&](const httplib::Request&, httplib::Response& res)
+    {
+        handlerCalls++;
+        res.status = 200;
+        res.set_content("OK", "text/plain");
+    };
+
+    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    httplib::Headers headers {{"Content-Type", "text/plain"}};
+    const auto body = makePayload(kLimitBytes + 1);
+
+    httplib::Result res;
+    if (method == httpsrv::Method::POST)
+    {
+        res = cli.Post(route.c_str(), headers, body, "text/plain");
+    }
+    else // PUT
+    {
+        res = cli.Put(route.c_str(), headers, body, "text/plain");
+    }
+
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 413);
+    ASSERT_NE(res->body.find("Payload too large"), std::string::npos);
+    // Optional: ensure it mentions the configured limit (if your handler formats it)
+    ASSERT_NE(res->body.find(std::to_string(kLimitBytes)), std::string::npos);
+
+    ASSERT_EQ(handlerCalls.load(), 0);
+}
+
+TEST_P(BodyRouteTest, PayloadUnlimitedAcceptsLargePayload)
+{
+    auto [method, route, /*cliReq*/ _] = GetParam();
+
+    if (method != httpsrv::Method::POST && method != httpsrv::Method::PUT)
+    {
+        GTEST_SKIP() << "No request body for this method in current parametrization.";
+    }
+
+    // 0 => unlimited
+    constexpr size_t kUnlimited = 0;
+    constexpr size_t kBigPayload = 64 * 1024;
+
+    m_srv->stop();
+    m_srv.reset();
+    m_srv = std::make_shared<httpsrv::Server>("test", kUnlimited);
+
+    std::atomic<int> handlerCalls {0};
+    std::atomic<size_t> receivedSize {0};
+
+    auto handler = [&](const httplib::Request& req, httplib::Response& res)
+    {
+        handlerCalls++;
+        receivedSize = req.body.size();
+        res.status = 200;
+        res.set_content("OK", "text/plain");
+    };
+
+    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    httplib::Headers headers {{"Content-Type", "text/plain"}};
+    const auto body = makePayload(kBigPayload);
+
+    httplib::Result res;
+    if (method == httpsrv::Method::POST)
+    {
+        res = cli.Post(route.c_str(), headers, body, "text/plain");
+    }
+    else // PUT
+    {
+        res = cli.Put(route.c_str(), headers, body, "text/plain");
+    }
+
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 200);
+    ASSERT_EQ(res->body, "OK");
+    ASSERT_EQ(handlerCalls.load(), 1);
+    ASSERT_EQ(receivedSize.load(), kBigPayload);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ServerP,
     RouteTest,
@@ -316,3 +484,15 @@ INSTANTIATE_TEST_SUITE_P(
                               "/test",
                               [](httplib::Client& cli, const std::string& route, const httplib::Headers&)
                               { return cli.Delete(route.c_str()); })));
+
+INSTANTIATE_TEST_SUITE_P(
+    ServerPayloadP,
+    BodyRouteTest,
+    ::testing::Values(RoutesT(httpsrv::Method::POST,
+                              "/test",
+                              [](httplib::Client& cli, const std::string& route, const httplib::Headers& headers)
+                              { return cli.Post(route.c_str(), headers, "test", "text/plain"); }),
+                      RoutesT(httpsrv::Method::PUT,
+                              "/test",
+                              [](httplib::Client& cli, const std::string& route, const httplib::Headers& headers)
+                              { return cli.Put(route.c_str(), headers, "test", "text/plain"); })));

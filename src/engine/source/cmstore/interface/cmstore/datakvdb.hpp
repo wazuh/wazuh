@@ -13,7 +13,7 @@
 /**
  * @brief DataKVDB class to represent a content manager data key-value database. Its the definition of a KVDB.
  *
- * Expexted JSON format:
+ * Expected JSON format:
  * {
  *   "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
  *   "date": "2025-10-06T13:32:19Z",
@@ -65,23 +65,43 @@ public:
     KVDB(std::string uuid, std::string name, json::Json&& data, bool enabled)
         : m_uuid(std::move(uuid))
         , m_name(std::move(name))
-        , m_data(std::move(data))
         , m_enabled(enabled)
     {
         if (m_uuid.empty())
         {
             throw std::runtime_error("KVDB UUID cannot be empty");
-            // TODO CHECK LENGHT
+        }
+        if (!base::utils::generators::isValidUUIDv4(m_uuid))
+        {
+            throw std::runtime_error("KVDB UUID must be a valid UUIDv4: " + m_uuid);
         }
         if (m_name.empty())
         {
             throw std::runtime_error("KVDB name cannot be empty");
         }
+        if (!data.isObject())
+        {
+            throw std::runtime_error(fmt::format("KVDB content must be a JSON object but got '{}'", data.typeName()));
+        }
+        m_data = std::move(data);
+
         updateHash();
     }
 
-    static KVDB fromJson(const json::Json& kvdbJson)
+    static KVDB fromJson(const json::Json& kvdbJson, bool validateUUID)
     {
+        if (validateUUID)
+        {
+            auto uuidOpt = kvdbJson.getString(jsonkvdb::PATH_KEY_ID);
+            if (!uuidOpt.has_value())
+            {
+                throw std::runtime_error("KVDB JSON must have a valid id");
+            }
+            if (!base::utils::generators::isValidUUIDv4(*uuidOpt))
+            {
+                throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + *uuidOpt);
+            }
+        }
         auto uuidOpt = kvdbJson.getString(jsonkvdb::PATH_KEY_ID);
         if (!uuidOpt.has_value())
         {

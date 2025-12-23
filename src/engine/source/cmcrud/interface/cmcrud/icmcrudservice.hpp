@@ -30,7 +30,7 @@ struct ResourceSummary
  *  - Resolving namespaces using cm::store::ICMStore.
  *  - Parsing resource documents (typically YAML) into the corresponding
  *    data types (Policy, Integration, KVDB, assets).
- *  - Delegating structural checks to an IContentValidator before mutating
+ *  - Delegating structural checks to an builder::IValidator before mutating
  *    the underlying store.
  *  - Applying the cm::store mutations on success.
  *
@@ -186,6 +186,23 @@ public:
      *         or the deletion cannot be performed.
      */
     virtual void deleteResourceByUUID(std::string_view nsName, const std::string& uuid) = 0;
+
+    /**
+     * @brief Validate a resource payload (isolated, no namespace).
+     *
+     * The implementation must:
+     *  - Parse @p document as JSON.
+     *  - Validate the resource structure according to @p type.
+     *
+     * Notes:
+     *  - For DECODER validation, missing KVDB references must NOT be treated as an error.
+     *
+     * @param type         Resource type to validate (expected: DECODER | INTEGRATION | KVDB).
+     * @param document Resource document as JSON string.
+     *
+     * @throws std::runtime_error on parse errors or validation failures.
+     */
+    virtual void validateResource(cm::store::ResourceType type, std::string_view document) = 0;
 };
 
 } // namespace cm::crud

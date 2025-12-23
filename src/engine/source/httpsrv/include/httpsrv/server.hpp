@@ -21,7 +21,15 @@ private:
     std::shared_ptr<httplib::Server> m_srv; ///< Httplib Server instance
     std::thread m_thread;                   ///< Server thread
     std::string m_id;                       ///< Server identifier
-    std::filesystem::path m_socketPath;    ///< Socket path where the server is listening
+    std::filesystem::path m_socketPath;     ///< Socket path where the server is listening
+    size_t m_payloadMaxBytes {0};           ///< Maximum allowed payload size in bytes. 0 means unlimited.
+
+    /**
+     * @brief Apply the payload size limit to the server.
+     *
+     * @note If m_payloadMaxBytes is 0, the payload size is unlimited.
+     */
+    void applyPayloadLimit();
 
     /**
      * @brief Binds the server to a socket and starts listening for incoming connections.
@@ -38,8 +46,9 @@ public:
      * @brief Construct a new Server object
      *
      * @param id Server string identifier
+     * @param payloadMaxBytes Maximum allowed payload size in bytes. 0 means unlimited.
      */
-    Server(const std::string& id);
+    explicit Server(const std::string& id, size_t payloadMaxBytes = 0);
 
     /**
      * @brief Destroy the Server object
@@ -80,6 +89,13 @@ public:
      * @return false Otherwise.
      */
     bool isRunning() const { return m_srv->is_running(); }
+
+    /**
+     * @brief Get the maximum allowed payload size in bytes.
+     *
+     * @return size_t Maximum allowed payload size in bytes.
+     */
+    size_t getPayloadMaxBytes() const noexcept { return m_payloadMaxBytes; }
 };
 } // namespace httpsrv
 

@@ -311,16 +311,16 @@ TEST_F(CMStoreCTITest, GetPolicy_EmptyPolicyList_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByName_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("uuid-int-1", "windows", "test-category", true);
+    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", "Other", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
         .WillOnce(Return(integrationDoc));
 
     dataType::Integration integration = storeCTI->getIntegrationByName("windows");
 
-    EXPECT_EQ(integration.getUUID(), "uuid-int-1");
+    EXPECT_EQ(integration.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "windows");
-    EXPECT_EQ(integration.getCategory(), "test-category");
+    EXPECT_EQ(integration.getCategory(), "Other");
     EXPECT_TRUE(integration.isEnabled());
 }
 
@@ -334,18 +334,18 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_NotFound_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByUUID_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("uuid-int-2", "linux", "linux-category", true);
+    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "linux", "Security", true);
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-int-2"))
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"))
         .WillOnce(Return("linux"));
     EXPECT_CALL(*mockReader, getAsset(base::Name("linux")))
         .WillOnce(Return(integrationDoc));
 
-    dataType::Integration integration = storeCTI->getIntegrationByUUID("uuid-int-2");
+    dataType::Integration integration = storeCTI->getIntegrationByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
 
-    EXPECT_EQ(integration.getUUID(), "uuid-int-2");
+    EXPECT_EQ(integration.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "linux");
-    EXPECT_EQ(integration.getCategory(), "linux-category");
+    EXPECT_EQ(integration.getCategory(), "Security");
     EXPECT_TRUE(integration.isEnabled());
 }
 
@@ -389,14 +389,14 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_MissingDocument_ThrowsException)
 TEST_F(CMStoreCTITest, GetIntegrationByName_EnableDecodersFalse)
 {
     // Create integration document with enable_decoders = false
-    json::Json integrationDoc = createIntegrationJson("uuid-disabled", "disabled", "disabled-category", false);
+    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "disabled", "Other", false);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("disabled")))
         .WillOnce(Return(integrationDoc));
 
     dataType::Integration integration = storeCTI->getIntegrationByName("disabled");
 
-    EXPECT_EQ(integration.getCategory(), "disabled-category");
+    EXPECT_EQ(integration.getCategory(), "Other");
     EXPECT_FALSE(integration.isEnabled());
 }
 
@@ -408,13 +408,13 @@ TEST_F(CMStoreCTITest, GetKVDBByName_Success_ReturnsKVDB)
 {
     // Build full KVDB document structure
     json::Json kvdbDoc;
-    kvdbDoc.setString("uuid-kvdb-1", "/name");
+    kvdbDoc.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/name");
 
     json::Json payload;
     payload.setString("kvdb", "/type");
 
     json::Json document;
-    document.setString("uuid-kvdb-1", "/id");
+    document.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/id");
     document.setString("test_kvdb", "/title");
     document.setBool(true, "/enabled");
 
@@ -433,7 +433,7 @@ TEST_F(CMStoreCTITest, GetKVDBByName_Success_ReturnsKVDB)
 
     auto kvdbJson = kvdb.toJson();
     EXPECT_EQ(kvdbJson.getString("/title").value_or(""), "test_kvdb");
-    EXPECT_EQ(kvdbJson.getString("/id").value_or(""), "uuid-kvdb-1");
+    EXPECT_EQ(kvdbJson.getString("/id").value_or(""), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(kvdbJson.getJson("/content").value_or(json::Json()).getString("/key1").value_or(""), "value1");
 }
 
@@ -449,13 +449,13 @@ TEST_F(CMStoreCTITest, GetKVDBByUUID_Success_ReturnsKVDB)
 {
     // Build full KVDB document structure
     json::Json kvdbDoc;
-    kvdbDoc.setString("uuid-kvdb-2", "/name");
+    kvdbDoc.setString("4aa06596-5ba9-488c-8354-2475705e1257", "/name");
 
     json::Json payload;
     payload.setString("kvdb", "/type");
 
     json::Json document;
-    document.setString("uuid-kvdb-2", "/id");
+    document.setString("4aa06596-5ba9-488c-8354-2475705e1257", "/id");
     document.setString("another_kvdb", "/title");
     document.setBool(true, "/enabled");
 
@@ -467,27 +467,27 @@ TEST_F(CMStoreCTITest, GetKVDBByUUID_Success_ReturnsKVDB)
     payload.set("/document", document);
     kvdbDoc.set("/payload", payload);
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-kvdb-2"))
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("4aa06596-5ba9-488c-8354-2475705e1257"))
         .WillOnce(Return("another_kvdb"));
     EXPECT_CALL(*mockReader, kvdbDump("another_kvdb"))
         .WillOnce(Return(kvdbDoc));
 
-    dataType::KVDB kvdb = storeCTI->getKVDBByUUID("uuid-kvdb-2");
+    dataType::KVDB kvdb = storeCTI->getKVDBByUUID("4aa06596-5ba9-488c-8354-2475705e1257");
 
-    EXPECT_EQ(kvdb.getUUID(), "uuid-kvdb-2");
+    EXPECT_EQ(kvdb.getUUID(), "4aa06596-5ba9-488c-8354-2475705e1257");
 }
 
 TEST_F(CMStoreCTITest, GetKVDBByName_EmptyContent_ReturnsValidKVDB)
 {
     // Build full KVDB document structure with empty content
     json::Json kvdbDoc;
-    kvdbDoc.setString("uuid-empty-kvdb", "/name");
+    kvdbDoc.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/name");
 
     json::Json payload;
     payload.setString("kvdb", "/type");
 
     json::Json document;
-    document.setString("uuid-empty-kvdb", "/id");
+    document.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/id");
     document.setString("empty_kvdb", "/title");
     document.setBool(true, "/enabled");
 
@@ -502,14 +502,14 @@ TEST_F(CMStoreCTITest, GetKVDBByName_EmptyContent_ReturnsValidKVDB)
         .WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb = storeCTI->getKVDBByName("empty_kvdb");
-    EXPECT_EQ(kvdb.getUUID(), "uuid-empty-kvdb");
+    EXPECT_EQ(kvdb.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
 }
 
 TEST_F(CMStoreCTITest, GetKVDBByName_MissingDocument_ThrowsException)
 {
     // kvdbDump returns document missing /payload/document section
     json::Json malformedDoc;
-    malformedDoc.setString("uuid-malformed", "/name");
+    malformedDoc.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/name");
     json::Json payload;
     payload.setString("kvdb", "/type");
     malformedDoc.set("/payload", payload);
