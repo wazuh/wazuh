@@ -379,6 +379,24 @@ namespace InventorySyncQueryBuilder
         return query;
     }
 
+    /// @brief Build GET query for vulnerability documents by _id list (package only).
+    /// @details Returns only the package object to enrich missing package context.
+    inline nlohmann::json buildVulnerabilityPackagesGetByIdsQuery(const std::vector<std::string>& detectionIds)
+    {
+        nlohmann::json ids = nlohmann::json::array();
+        ids.reserve(detectionIds.size());
+        for (const auto& id : detectionIds)
+        {
+            ids.push_back(id);
+        }
+
+        nlohmann::json query = {{"_source", nlohmann::json::array({"package"})},
+                                {"query", {{"ids", {{"values", ids}}}}},
+                                {"size", detectionIds.size()}};
+
+        return query;
+    }
+
 } // namespace InventorySyncQueryBuilder
 
 #endif // _INVENTORY_SYNC_QUERY_BUILDER_HPP
