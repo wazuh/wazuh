@@ -16,6 +16,7 @@
 #include <json.hpp>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string_view>
 
 #if __GNUC__ >= 4
@@ -33,6 +34,7 @@ class EXPORTED PointInTime final
 private:
     std::string m_pitId;
     uint64_t m_creationTime;
+    std::string m_keepAlive;
 
 public:
     /**
@@ -40,10 +42,12 @@ public:
      *
      * @param pitId The PIT identifier returned by the indexer.
      * @param creationTime The creation time of the PIT.
+     * @param keepAlive The keep alive duration (e.g., "5m", "1h").
      */
-    PointInTime(std::string pitId, uint64_t creationTime)
+    PointInTime(std::string pitId, uint64_t creationTime, std::string keepAlive)
         : m_pitId(std::move(pitId))
         , m_creationTime(creationTime)
+        , m_keepAlive(std::move(keepAlive))
     {
     }
 
@@ -65,6 +69,16 @@ public:
     uint64_t getCreationTime() const
     {
         return m_creationTime;
+    }
+
+    /**
+     * @brief Get the keep alive duration.
+     *
+     * @return The keep alive string (e.g., "5m", "1h").
+     */
+    const std::string& getKeepAlive() const
+    {
+        return m_keepAlive;
     }
 };
 
@@ -327,6 +341,31 @@ public:
      * @throws IndexerConnectorException if the PIT deletion fails.
      */
     void deletePointInTime(const PointInTime& pit);
+
+    /**
+     * @brief Execute a search query using Point In Time.
+     *
+     * @param pit The PointInTime object to use for the search.
+     * @param size Maximum number of documents to return.
+     * @param query The query object (must be valid JSON).
+     * @param sort The sort array (must be valid JSON array).
+     * @param searchAfter Optional search_after array for pagination (must be valid JSON array).
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     *
+     * Example:
+     * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
+     * nlohmann::json sort = {{{{"_shard_doc", "asc"}}, {{"_id", "asc"}}}};
+     * auto hits = connector.search(pit, 10, query, sort);
+     * // For pagination:
+     * nlohmann::json searchAfter = {2, "c66cd2fc-c612-4192-822d-c4da93f17cec"};
+     * auto nextHits = connector.search(pit, 10, query, sort, searchAfter);
+     */
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt);
 };
 
 class IndexerConnectorException : public std::exception

@@ -71,6 +71,15 @@ public:
     {
         m_impl.deletePointInTime(pit);
     }
+
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter)
+    {
+        return m_impl.search(pit, size, query, sort, searchAfter);
+    }
 };
 
 IndexerConnectorAsync::IndexerConnectorAsync(
@@ -123,6 +132,15 @@ PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::stri
 void IndexerConnectorAsync::deletePointInTime(const PointInTime& pit)
 {
     m_impl->deletePointInTime(pit);
+}
+
+nlohmann::json IndexerConnectorAsync::search(const PointInTime& pit,
+                                              std::size_t size,
+                                              const nlohmann::json& query,
+                                              const nlohmann::json& sort,
+                                              const std::optional<nlohmann::json>& searchAfter)
+{
+    return m_impl->search(pit, size, query, sort, searchAfter);
 }
 
 // LCOV_EXCL_STOP
