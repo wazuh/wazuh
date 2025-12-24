@@ -469,13 +469,8 @@ public:
                 queue->push(std::move(const_cast<std::vector<char>&>(message)));
             });
 
-        const auto preIndexerAction = []()
-        {
-            logDebug2(LOGGER_DEFAULT_TAG, "Pre-indexer action...");
-        };
-
         m_indexerQueue = std::make_unique<IndexerQueue>(
-            [this, &preIndexerAction](const Response& res)
+            [this](const Response& res)
             {
                 logDebug2(LOGGER_DEFAULT_TAG, "Indexer queue action...");
                 if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
@@ -488,9 +483,6 @@ public:
 
                 try
                 {
-                    // VD ?
-                    preIndexerAction();
-
                     // CRITICAL: For metadata/groups operations, lock agent and wait for active sessions
                     // to prevent race conditions with concurrent inventory data
                     if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta ||
@@ -934,28 +926,41 @@ public:
                         if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
-                            logDebug2(LOGGER_DEFAULT_TAG,
-                                      "InventorySyncFacade: Running vulnerability scanner for agent %s...",
-                                      res.context->agentId.c_str());
-
-                            // Run vulnerability scanner
-                            try
+                            // Check if vulnerability scanner is initialized before attempting to run scan
+                            if (VulnerabilityScannerFacade::instance().isInitialized())
                             {
-                                VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade: Running vulnerability scanner for agent %s...",
+                                          res.context->agentId.c_str());
+
+                                // Run vulnerability scanner
+                                try
+                                {
+                                    VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    logError(LOGGER_DEFAULT_TAG,
+                                             "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
+                                             res.context->agentId.c_str(),
+                                             e.what());
+                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                     res.context->agentId,
+                                                                     res.context->sessionId,
+                                                                     res.context->moduleName);
+                                    m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+
+                                    m_agentSessions.erase(res.context->sessionId);
+                                }
                             }
-                            catch (const std::exception& e)
+                            else
                             {
-                                logError(LOGGER_DEFAULT_TAG,
-                                         "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
-                                         res.context->agentId.c_str(),
-                                         e.what());
-                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                 res.context->agentId,
-                                                                 res.context->sessionId,
-                                                                 res.context->moduleName);
-                                m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
-
-                                m_agentSessions.erase(res.context->sessionId);
+                                // VD is disabled or not initialized - skip scan and continue with normal flow
+                                logDebug1(
+                                    LOGGER_DEFAULT_TAG,
+                                    "InventorySyncFacade: Vulnerability scanner is disabled or not initialized for "
+                                    "agent %s - skipping scan",
+                                    res.context->agentId.c_str());
                             }
                         }
 

@@ -169,7 +169,7 @@ bool notifyDataClean(const std::vector<std::string>& indices,
                      size_t maxEps)
 ```
 
-Notifies the manager about data cleaning for specified indices. This method sends DataClean messages for each index in the provided vector. The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck. Upon receiving Ok/PartialOk, it clears the local database and returns true.
+Notifies the manager about data cleaning for specified indices. This method sends DataClean messages for each index in the provided vector. The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck. Upon receiving Ok, it clears the local database and returns true.
 
 **Parameters:**
 - `indices`: Vector of index names to clean
@@ -385,7 +385,7 @@ bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                            size_t max_eps)
 ```
 
-C wrapper for `notifyDataClean()`. Notifies the manager about data cleaning for specified indices. This function sends DataClean messages for each index in the provided array. The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck. Upon receiving Ok/PartialOk, it clears the local database and returns true.
+C wrapper for `notifyDataClean()`. Notifies the manager about data cleaning for specified indices. This function sends DataClean messages for each index in the provided array. The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck. Upon receiving Ok, it clears the local database and returns true.
 
 **Parameters:**
 - `handle`: Protocol handle

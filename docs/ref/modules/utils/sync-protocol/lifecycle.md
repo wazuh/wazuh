@@ -288,7 +288,7 @@ Agent                                   Manager
   |             (session_id)               |
   |                                        |
   |<------------- EndAck ----------------- |
-  |         (status: Ok/PartialOk)         |
+  |         (status: Ok)                   |
   |                                        |
   | clearItemsByIndex() for each index     |
   | (cleanup local database entries)       |
