@@ -6,7 +6,7 @@ from logging import Logger
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.wazuh_socket import create_wazuh_socket_message, WazuhSocket
+from wazuh.core.wazuh_socket import create_wazuh_socket_message, WazuhAsyncSocket
 
 RELOAD_RULESET_COMMAND = "reload-ruleset"
 
@@ -138,7 +138,7 @@ def log_ruleset_reload_response(logger: Logger, response: RulesetReloadResponse)
         )
 
 
-def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
+async def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     """Send the reload ruleset command to Analysisd socket.
 
     Parameters
@@ -153,15 +153,16 @@ def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     """
     msg = create_wazuh_socket_message(origin=origin, command=RELOAD_RULESET_COMMAND)
 
-    socket = WazuhSocket(common.ANALYSISD_SOCKET)
-    socket.send(dumps(msg).encode())
+    socket = WazuhAsyncSocket()
+    await socket.connect(common.ANALYSISD_SOCKET)
+    await socket.send(dumps(msg).encode())
 
-    data = loads(socket.receive().decode())
-    socket.close()
+    data = loads((await socket.receive()).decode())
+    await socket.close()
 
     return RulesetReloadResponse(data)
 
-def send_reload_ruleset_and_get_results(node_id: str, results: AffectedItemsWazuhResult) -> AffectedItemsWazuhResult:
+async def send_reload_ruleset_and_get_results(node_id: str, results: AffectedItemsWazuhResult) -> AffectedItemsWazuhResult:
     """
     Send a reload ruleset command and update the results object with the outcome.
 
@@ -181,7 +182,7 @@ def send_reload_ruleset_and_get_results(node_id: str, results: AffectedItemsWazu
     AffectedItemsWazuhResult
         The updated results object.
     """
-    socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
+    socket_response = await send_reload_ruleset_msg(origin={'module': 'api'})
     if socket_response.is_ok():
         affected_item = {'name': node_id, 'msg': ''}
         if socket_response.has_warnings():
