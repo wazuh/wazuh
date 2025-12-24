@@ -1467,7 +1467,7 @@ void fim_registry_free_entry(fim_entry *entry) {
  *         returns the original buffer cast to char* (no allocation). Returns NULL if
  *         UTF-16 to UTF-8 conversion fails.
  */
-static char *fim_registry_convert_value_for_diff(const BYTE *data_buffer, DWORD data_type) {
+STATIC char *fim_registry_convert_value_for_diff(const BYTE *data_buffer, DWORD data_type) {
     char *value_data_for_diff = NULL;
 
     if (data_type == REG_SZ || data_type == REG_EXPAND_SZ) {

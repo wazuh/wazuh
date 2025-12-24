@@ -1330,7 +1330,7 @@ static void test_fim_read_values_single_dword_value(void **state) {
 
     assert_non_null(txn_ctx.data);
     assert_string_equal(txn_ctx.data->path, path);
-    assert_int_equal(txn_ctx.data->arch, arch);
+    assert_int_equal(txn_ctx.data->architecture, arch);
     assert_int_equal(txn_ctx.data->type, REG_DWORD);
     assert_int_equal(txn_ctx.data->size, value_size);
 }
@@ -1485,7 +1485,7 @@ static void test_fim_read_values_arch_32bit(void **state) {
                     mock_txn_handler, &txn_ctx);
 
     assert_non_null(txn_ctx.data);
-    assert_int_equal(txn_ctx.data->arch, ARCH_32BIT);
+    assert_int_equal(txn_ctx.data->architecture, ARCH_32BIT);
 
     syscheck.registry[0].arch = ARCH_64BIT;
 }
