@@ -72,13 +72,13 @@ def test_log_ruleset_reload_response(response_dict, expected_log_method, expecte
         ({"error": 1, "message": "due", "data": ["(1226): Error reading XML file"]}, 0, 1, "(1226): Error reading XML file"),
     ]
 )
-def test_send_reload_ruleset_and_get_results(socket_response_dict, expected_affected, expected_failed, expected_msg):
+async def test_send_reload_ruleset_and_get_results(socket_response_dict, expected_affected, expected_failed, expected_msg):
     """Test send_reload_ruleset_and_get_results updates results as expected."""
     node_id = "test-node"
     results = AffectedItemsWazuhResult(all_msg="test")
     with patch("wazuh.core.analysis.send_reload_ruleset_msg") as mock_send:
         mock_send.return_value = RulesetReloadResponse(socket_response_dict)
-        updated_results = send_reload_ruleset_and_get_results(node_id, results)
+        updated_results = await send_reload_ruleset_and_get_results(node_id, results)
         assert len(updated_results.affected_items) == expected_affected
         assert len(updated_results.failed_items) == expected_failed
         if expected_affected:

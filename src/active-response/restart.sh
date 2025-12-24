@@ -42,7 +42,7 @@ if [ "$TYPE" = "manager" ]; then
     fi
 fi
 
-if command -v systemctl >/dev/null 2>&1; then
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then
     # If reload is requested, wait for service to be fully active first
     if [ "$PARAM_ACTION" = "reload" ]; then
         # Wait up to 60 seconds for service to be active
