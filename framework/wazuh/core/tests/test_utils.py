@@ -2035,20 +2035,53 @@ def test_get_utc_strptime():
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
 
 
-@pytest.mark.parametrize("new_conf, unchanged_limits_conf", [
-    ("<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>no</logall></global><global><limits><eps><test>yes</test></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config>", True),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config><ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
-     False)
-])
-@pytest.mark.parametrize("original_conf", [
-    "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
-])
+@pytest.mark.parametrize(
+    "new_conf, original_conf, unchanged_limits_conf",
+    [
+        # Same limits + adding a new eps option. Should be considered changed.
+        (
+            "<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
+            "</ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        # Different limits + adding a new eps option + unrelated configuration. Should be considered changed.
+        (
+            "<ossec_config><global><logall>no</logall></global>"
+            "<global><limits><eps><test>yes</test></eps></limits></global>"
+            "</ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        #  Same limits, only adding misc unrelated configurations. Should be considered unchanged.
+        (
+            "<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            True,
+        ),
+        # Same limits (last config applies) but new section added. Should be considered changed.
+        (
+            "<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        # Same limits but different order. Should be considered changed due to XML precedence.
+        (
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
+            "<ossec_config><global><limits><eps><maximum>100</maximum></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>100</maximum></eps></limits></global></ossec_config>"
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        # Same limits options and values but internally shuffled. Should be considered unchanged.
+        (
+            "<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><timeframe>5</timeframe><maximum>300</maximum></eps></limits></global></ossec_config>",
+            True,
+        ),
+    ],
+)
 @pytest.mark.parametrize("limits_conf", [
     ({'eps': {'allow': True}}),
     ({'eps': {'allow': False}})
@@ -2128,6 +2161,21 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         True,
      ),
     (
+        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config><ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config><ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
+        True,
+     ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config><ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        True,
+     ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config><ossec_config><indexer><host>https://0.0.0.0:9200/</host></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        True,
+     ),
+    (
         "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
         "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
         False,
@@ -2154,6 +2202,18 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         "<ossec_config><auth><disabled>yes</disabled></auth></ossec_config>",
         False,
     ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>"
+        "<ossec_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        False,
+    ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>"
+        "<ossec_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></ossec_config>",
+        False,
+    )
 ])
 @pytest.mark.parametrize("indexer_allowed", [
     True,

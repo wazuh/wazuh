@@ -942,14 +942,34 @@ def xml_to_dict(root, section_path: list):
     return matched_configurations
 
 
-def normalize(data):
+def normalize(data, preserve_root_order=True):
     """Normalize data structures for comparison.
+
+    Parameters
+    ----------
+    data : Any
+        Data to normalize.
+    preserve_root_order : bool, optional
+        Preserve the order of root-level lists.
     """
-    if isinstance(data, list):
-        return sorted((normalize(i) for i in data), key=str)
-    if isinstance(data, dict):
-        return {k: normalize(v) for k, v in sorted(data.items())}
-    return data
+    def _normalize(value, is_root):
+        if isinstance(value, list):
+            items = [_normalize(i, False) for i in value]
+
+            if preserve_root_order and is_root:
+                return items
+
+            return sorted(items, key=str)
+
+        if isinstance(value, dict):
+            return {
+                k: _normalize(v, False)
+                for k, v in sorted(value.items())
+            }
+
+        return value
+
+    return _normalize(data, True)
 
 
 def check_wazuh_limits_unchanged(new_conf, original_conf):
