@@ -32,14 +32,22 @@ const std::set<ST> ALLSCHEMATYPES = {ST::BOOLEAN,
                                      ST::DOUBLE,
                                      ST::KEYWORD,
                                      ST::TEXT,
+                                     ST::MATCH_ONLY_TEXT,
                                      ST::WILDCARD,
+                                     ST::CONSTANT_KEYWORD,
                                      ST::DATE,
                                      ST::DATE_NANOS,
                                      ST::IP,
                                      ST::BINARY,
                                      ST::OBJECT,
                                      ST::NESTED,
-                                     ST::GEO_POINT};
+                                     ST::FLAT_OBJECT,
+                                     ST::GEO_POINT,
+                                     ST::UNSIGNED_LONG,
+                                     ST::COMPLETION,
+                                     ST::SEARCH_AS_YOU_TYPE,
+                                     ST::TOKEN_COUNT,
+                                     ST::SEMANTIC};
 
 const std::set<JT> ALLJTYPES = {JT::Boolean, JT::Number, JT::String, JT::Object};
 
@@ -54,14 +62,22 @@ const json::Json J_SCALED_FLOAT {"1.0"};
 const json::Json J_DOUBLE {std::to_string(double(std::numeric_limits<float_t>::max()) + 1).c_str()};
 const json::Json J_KEYWORD {"\"keyword\""};
 const json::Json J_TEXT {"\"text\""};
+const json::Json J_MATCH_ONLY_TEXT {"\"match_only_text\""};
 const json::Json J_WILDCARD {"\"wildcard\""};
+const json::Json J_CONSTANT_KEYWORD {"\"constant_keyword\""};
 const json::Json J_DATE {"\"2020-01-01T01:00:00Z\""};
 const json::Json J_DATE_NANOS {"\"2020-01-01T00:00:00.000000000Z\""};
 const json::Json J_IP {"\"192.168.0.1\""};
 const json::Json J_BINARY {"\"SGksIEkgYW0gTWFyaWFubyBLb3JlbWJsdW0sIGFuZCBJIGFtIGEgV2F6dWggc29mdHdhcmUgZW5naW5lZXI=\""};
 const json::Json J_OBJECT {"{}"};
 const json::Json J_NESTED {"{}"};
+const json::Json J_FLAT_OBJECT {"{}"};
 const json::Json J_GEO_POINT {"{}"};
+const json::Json J_UNSIGNED_LONG {"1"};
+const json::Json J_COMPLETION {"\"completion\""};
+const json::Json J_SEARCH_AS_YOU_TYPE {"\"search_as_you_type\""};
+const json::Json J_TOKEN_COUNT {"1"};
+const json::Json J_SEMANTIC {"\"semantic\""};
 
 const std::map<ST, json::Json> SCHEMA_JSON = {
     {ST::BOOLEAN, J_BOOL},
@@ -75,14 +91,22 @@ const std::map<ST, json::Json> SCHEMA_JSON = {
     {ST::DOUBLE, J_DOUBLE},
     {ST::KEYWORD, J_KEYWORD},
     {ST::TEXT, J_TEXT},
+    {ST::MATCH_ONLY_TEXT, J_MATCH_ONLY_TEXT},
     {ST::WILDCARD, J_WILDCARD},
+    {ST::CONSTANT_KEYWORD, J_CONSTANT_KEYWORD},
     {ST::DATE, J_DATE},
     {ST::DATE_NANOS, J_DATE_NANOS},
     {ST::IP, J_IP},
     {ST::BINARY, J_BINARY},
     {ST::OBJECT, J_OBJECT},
     {ST::NESTED, J_NESTED},
+    {ST::FLAT_OBJECT, J_FLAT_OBJECT},
     {ST::GEO_POINT, J_GEO_POINT},
+    {ST::UNSIGNED_LONG, J_UNSIGNED_LONG},
+    {ST::COMPLETION, J_COMPLETION},
+    {ST::SEARCH_AS_YOU_TYPE, J_SEARCH_AS_YOU_TYPE},
+    {ST::TOKEN_COUNT, J_TOKEN_COUNT},
+    {ST::SEMANTIC, J_SEMANTIC}
 };
 
 DotPath getField(ST stype)
@@ -285,15 +309,33 @@ INSTANTIATE_TEST_SUITE_P(
            BuildT(ST::SCALED_FLOAT, {ST::FLOAT, ST::HALF_FLOAT, ST::SCALED_FLOAT}, {ST::DOUBLE}, {JT::Number}),
            BuildT(ST::DOUBLE, {ST::FLOAT, ST::HALF_FLOAT, ST::SCALED_FLOAT, ST::DOUBLE}, {}, {JT::Number}),
            BuildT(ST::KEYWORD,
-                  {ST::TEXT, ST::KEYWORD, ST::WILDCARD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY},
+                  {ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
+                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
+                    ST::SEMANTIC, ST::WILDCARD},
+                  {},
+                  {JT::String}),
+           BuildT(ST::MATCH_ONLY_TEXT,
+                  {ST::MATCH_ONLY_TEXT, ST::TEXT, ST::KEYWORD, ST::CONSTANT_KEYWORD, ST::WILDCARD,
+                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
+                    ST::SEMANTIC, ST::WILDCARD},
+                  {},
+                  {JT::String}),
+           BuildT(ST::CONSTANT_KEYWORD,
+                  {ST::CONSTANT_KEYWORD, ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::WILDCARD,
+                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
+                    ST::SEMANTIC, ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::TEXT,
-                  {ST::TEXT, ST::KEYWORD, ST::WILDCARD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY},
+                  {ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
+                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
+                    ST::SEMANTIC, ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::WILDCARD,
-                  {ST::WILDCARD, ST::TEXT, ST::KEYWORD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY},
+                  {ST::WILDCARD, ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD,
+                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
+                    ST::SEMANTIC},
                   {},
                   {JT::String}),
            BuildT(ST::DATE, {ST::DATE}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
@@ -302,6 +344,22 @@ INSTANTIATE_TEST_SUITE_P(
            BuildT(ST::BINARY, {ST::BINARY}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
            BuildT(ST::OBJECT, {ST::OBJECT}, {}, {JT::Object}),
            BuildT(ST::NESTED, {ST::NESTED}, {}, {JT::Object}),
+           BuildT(ST::FLAT_OBJECT, {ST::FLAT_OBJECT}, {}, {JT::Object}),
+           BuildT(ST::TOKEN_COUNT, {ST::TOKEN_COUNT}, {}, {JT::Number}),
+           BuildT(ST::SEMANTIC, {ST::SEMANTIC}, {}, {JT::String}),
+           BuildT(ST::UNSIGNED_LONG, {ST::UNSIGNED_LONG}, {ST::LONG}, {JT::Number}),
+           BuildT(ST::COMPLETION,
+                  {ST::COMPLETION, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
+                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::TEXT, ST::SEARCH_AS_YOU_TYPE,
+                    ST::SEMANTIC, ST::WILDCARD},
+                  {},
+                  {JT::String}),
+           BuildT(ST::SEARCH_AS_YOU_TYPE,
+                   {ST::SEARCH_AS_YOU_TYPE, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
+                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::TEXT,
+                    ST::SEMANTIC, ST::WILDCARD},
+                  {},
+                  {JT::String}),
            BuildT(ST::GEO_POINT, {ST::GEO_POINT}, {}, {JT::Object})),
     [](const testing::TestParamInfo<BuildValidation::ParamType>& info)
     {

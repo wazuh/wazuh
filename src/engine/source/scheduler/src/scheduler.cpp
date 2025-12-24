@@ -171,7 +171,7 @@ void Scheduler::workerThread()
             }
         }
 
-        LOG_DEBUG("Executing task '{}'", task.name);
+        LOG_DEBUG(fmt::format("Executing task '{}'", task.name));
 
         // Execute the task
         executeTask(task);
@@ -179,8 +179,7 @@ void Scheduler::workerThread()
         // Reschedule if it's a recurring task, otherwise remove it from task map
         if (!task.isOneTime && task.config.interval > 0)
         {
-            LOG_DEBUG("Rescheduling recurring task '{}'", task.name);
-
+            LOG_DEBUG(fmt::format("Rescheduling recurring task '{}'", task.name));
             // Create updated task with new next run time
             auto updatedTask = task; // Copy the task
             // Update next run time manually since TaskItem doesn't have updateNextRun anymore

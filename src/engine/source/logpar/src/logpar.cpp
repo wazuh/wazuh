@@ -354,7 +354,12 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
                      {schemf::Type::BINARY, ParserType::P_BINARY},
                      {schemf::Type::OBJECT, ParserType::ERROR_TYPE},
                      {schemf::Type::NESTED, ParserType::ERROR_TYPE},
-                     {schemf::Type::GEO_POINT, ParserType::ERROR_TYPE}};
+                     {schemf::Type::GEO_POINT, ParserType::ERROR_TYPE},
+                     {schemf::Type::UNSIGNED_LONG, ParserType::P_UNSIGNED_LONG},
+                     {schemf::Type::MATCH_ONLY_TEXT, ParserType::P_TEXT},
+                     {schemf::Type::COMPLETION, ParserType::P_TEXT},
+                     {schemf::Type::SEARCH_AS_YOU_TYPE, ParserType::P_TEXT},
+                     {schemf::Type::TOKEN_COUNT, ParserType::P_UNSIGNED_LONG}};
 
     m_parserBuilders = {};
 }
