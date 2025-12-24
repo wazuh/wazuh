@@ -242,14 +242,9 @@ FIMDBErrorCode fim_db_init(
     // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
-<<<<<<< HEAD
         auto errorMessage {std::string("Error, id: ") + ex.what()};
-        log_callback(LOG_ERROR_EXIT, errorMessage.c_str());
-=======
-        auto errorMessage { std::string("Error, id: ") + ex.what() };
         log_callback(LOG_ERROR, errorMessage.c_str());
         retVal = FIMDBErrorCode::FIMDB_ERR;
->>>>>>> 4.14.3
     }
 
     // LCOV_EXCL_STOP

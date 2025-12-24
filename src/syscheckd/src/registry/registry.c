@@ -1607,10 +1607,6 @@ void fim_read_values(HKEY key_handle,
         fim_registry_get_checksum_value(new.registry_entry.value);
 
         if (configuration->opts & CHECK_SEECHANGES) {
-<<<<<<< HEAD
-            diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->value,
-                                       (char *)data_buffer, new.registry_entry.value->type, configuration);
-=======
             char *value_data_for_diff = fim_registry_convert_value_for_diff(data_buffer, data_type);
 
             if (value_data_for_diff) {
@@ -1622,7 +1618,6 @@ void fim_read_values(HKEY key_handle,
             if (data_type == REG_SZ || data_type == REG_EXPAND_SZ || data_type == REG_MULTI_SZ) {
                 os_free(value_data_for_diff);
             }
->>>>>>> 4.14.3
         }
         txn_ctx_regval->diff = diff;
         txn_ctx_regval->data = new.registry_entry.value;
