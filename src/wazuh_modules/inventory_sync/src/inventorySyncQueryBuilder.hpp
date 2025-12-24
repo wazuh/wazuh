@@ -384,7 +384,6 @@ namespace InventorySyncQueryBuilder
     inline nlohmann::json buildVulnerabilityPackagesGetByIdsQuery(const std::vector<std::string>& detectionIds)
     {
         nlohmann::json ids = nlohmann::json::array();
-        ids.reserve(detectionIds.size());
         for (const auto& id : detectionIds)
         {
             ids.push_back(id);
