@@ -49,7 +49,6 @@ static sqlite3* openSQLiteDb(const std::string& path, const int flags = SQLITE_O
 
     if (SQLITE_OK != result)
     {
-<<<<<<< HEAD
         std::string errorMsg = "Failed to open SQLite database at path '" + path + "': ";
         errorMsg += sqlite3_errstr(result);
 
@@ -64,16 +63,6 @@ static sqlite3* openSQLiteDb(const std::string& path, const int flags = SQLITE_O
         {
             std::make_pair(result, errorMsg)
         };
-=======
-        std::string errorMsg = "Error opening SQLite database '" + path + "' (SQLite error code: " + std::to_string(result) + ")";
-
-        if (pDb)
-        {
-            errorMsg += ": " + std::string(sqlite3_errmsg(pDb));
-        }
-
-        checkSqliteResult(result, errorMsg);
->>>>>>> 4.14.3
     }
 
     return pDb;
