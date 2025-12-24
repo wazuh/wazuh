@@ -2211,7 +2211,7 @@ bool Syscollector::pause()
 {
     if (m_logFunction)
     {
-        m_logFunction(LOG_INFO, "Pausing Syscollector module - waiting for ongoing operations to complete");
+        m_logFunction(LOG_DEBUG, "Syscollector module pause requested");
     }
 
     // Set the pause flag first to prevent new operations from starting

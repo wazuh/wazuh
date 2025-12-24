@@ -536,7 +536,7 @@ int SecurityConfigurationAssessment::setVersion(int version)
 
 void SecurityConfigurationAssessment::pause()
 {
-    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA pause requested");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module pause requested");
 
     // Set pause flag to prevent new operations from starting
     m_paused.store(true);
@@ -550,7 +550,14 @@ void SecurityConfigurationAssessment::pause()
         return (scanDone && syncDone) || !m_keepRunning;
     });
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module paused - all operations completed");
+    if (!m_keepRunning)
+    {
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA module pause interrupted by shutdown");
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA module paused - all operations completed");
+    }
 }
 
 int SecurityConfigurationAssessment::flush()
