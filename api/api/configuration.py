@@ -253,7 +253,7 @@ def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        datetime.datetime.now(datetime.timezone.utc)
     ).not_valid_after(
         # Our certificate will be valid for one year
         core_utils.get_utc_now() + datetime.timedelta(days=365)
