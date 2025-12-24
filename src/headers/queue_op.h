@@ -149,4 +149,14 @@ void * queue_pop_ex(w_queue_t * queue);
  * */
 void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime);
 
+
+/**
+ * @brief Tries to retrieve next item in the queue without blocking
+ *
+ * @param queue the queue
+ * @return element if queue has a next
+ *         NULL if queue is empty
+ * */
+void * try_queue_pop_ex(w_queue_t * queue);
+
 #endif // QUEUE_OP_H

@@ -120,7 +120,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
         }
     };
 
-    const auto filterPyhtonFiles
+    const auto filterPythonFiles
     {
         [&pythonPackages](const std::vector<std::string>& pFiles)
         {
@@ -199,6 +199,6 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
 
     if (!pythonFiles.empty())
     {
-        filterPyhtonFiles(pythonFiles);
+        filterPythonFiles(pythonFiles);
     }
 }

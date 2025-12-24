@@ -150,64 +150,79 @@ class WazuhAsyncSocket:
         if not self.transport.is_closing():
             self.transport.close()
 
-    async def send(self, msg_bytes: bytes, header_format: str = None) -> bytes:
-        """Add a header to the message and sends it to the socket. Returns that message.
+    async def send(self, msg_bytes: bytes, header_format: str = "<I") -> int:
+        """Add a header to the message and sends it to the socket. Returns the number of bytes sent.
 
         Parameters
         ----------
         msg_bytes : bytes
             A set of bytes to be send.
         header_format : str, optional
-            Format of the header to be packed in the message.
+            Format of the header to be packed in the message. Defaults to "<I".
 
         Raises
         ------
         WazuhException(1105)
             If the `msg_bytes` type is not bytes.
         WazuhException(1014)
-            If the message length was 0.
+            If the message length was 0 or socket connection was closed.
 
         Returns
         -------
-        bytes
-            Bytes sent.
+        int
+            Number of bytes sent.
         """
         if not isinstance(msg_bytes, bytes):
             raise WazuhException(1105, "Type must be bytes")
 
-        msg_length = len(msg_bytes)
-        data = pack(header_format, msg_length) + msg_bytes if header_format else msg_bytes
-        self.transport.write(data)
+        try:
+            msg_length = len(msg_bytes)
+            data = pack(header_format, msg_length) + msg_bytes
+            self.transport.write(data)
 
-        if self.is_connection_lost():
-            await self.close()
-            raise WazuhException(1014, "Socket connection was closed")
+            if self.is_connection_lost():
+                await self.close()
+                raise WazuhException(1014, "Socket connection was closed")
 
-        if msg_length == 0:
-            raise WazuhException(1014, "Number of sent bytes is 0")
-        return data
+            if msg_length == 0:
+                raise WazuhException(1014, "Number of sent bytes is 0")
 
-    async def receive(self, header_size: int = None) -> bytes:
-        """Return the content of the socket.
+            return len(data)
+        except Exception as e:
+            raise WazuhException(1014, str(e))
+
+    async def receive(self, header_format: str = "<I", header_size: int = 4) -> bytes:
+        """Return the content of the socket after reading the header to get the message size.
 
         Parameters
         ----------
-        header_size : int
-            Size of the header to be extracted from the message received.
+        header_format : str, optional
+            Format of the header to unpack. Defaults to "<I".
+        header_size : int, optional
+            Size of the header to be extracted from the message received. Defaults to 4.
 
         Raises
         ------
         WazuhException(1014)
-            If there is no connection with the socket.
+            If there is no connection with the socket or error receiving data.
 
         Returns
         -------
         bytes
-            Bytes received.
+            Bytes received (without header).
         """
         try:
             await self.protocol.on_data_received
-            return self.protocol.get_data()[header_size:] if header_size else self.protocol.get_data()
+            full_data = self.protocol.get_data()
+
+            # Extract and validate message size from header
+            size = unpack(header_format, full_data[:header_size])[0]
+            message_data = full_data[header_size:]
+
+            if len(message_data) != size:
+                raise WazuhException(1014, f"Expected {size} bytes but received {len(message_data)}")
+
+            return message_data
         except Exception as e:
             self.transport.close()
             raise WazuhException(1014, str(e))
@@ -236,13 +251,17 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
         """
         return await WazuhAsyncSocket.send(self, dumps(msg).encode(), header_format)
 
-    async def receive(self, header_size: int = None) -> dict:
+    async def receive(self, header_format: str = "<I", header_size: int = 4, raw: bool = False) -> dict:
         """Get the data from the socket and converts it to JSON.
 
         Parameters
         ----------
-        header_size : int
-            Size of the header to be extracted from the message received.
+        header_format : str, optional
+            Format of the header to unpack. Defaults to "<I".
+        header_size : int, optional
+            Size of the header to be extracted from the message received. Defaults to 4.
+        raw : bool, optional
+            If True, return the full response. If False, return only the data field. Defaults to False.
 
         Raises
         ------
@@ -252,16 +271,18 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
         Returns
         -------
         dict
-            Data received.
+            Data received or full response based on raw parameter.
         """
-        response = await WazuhAsyncSocket.receive(self, header_size)
-        response = loads(response.decode())
+        response_bytes = await WazuhAsyncSocket.receive(self, header_format, header_size)
+        response = loads(response_bytes.decode())
 
-        if 'error' in response.keys():
-            if response['error'] != 0:
-                raise WazuhException(response['error'], response['message'], cmd_error=True)
-            else:
-                return response['data']
+        if not raw:
+            if 'error' in response.keys():
+                if response['error'] != 0:
+                    raise WazuhException(response['error'], response['message'], cmd_error=True)
+            return response['data']
+        else:
+            return response
 
 
 daemons = {
