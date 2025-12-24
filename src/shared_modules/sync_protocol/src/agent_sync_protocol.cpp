@@ -62,7 +62,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
 
         if (!m_transport)
         {
-            m_logger(LOG_ERROR_EXIT, "Failed to initialize transport for module: " + moduleName);
+            m_logger(LOG_ERROR_EXIT, "Failed to initialize transport.");
         }
     }
     // LCOV_EXCL_START
@@ -170,7 +170,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     if (dataToSync.empty())
     {
         const std::string modeStr = (mode == Mode::FULL) ? "FULL" : "DELTA";
-        m_logger(LOG_DEBUG, "No items to synchronize for module " + m_moduleName + " in " + modeStr + " mode");
+        m_logger(LOG_DEBUG, "No items to synchronize in " + modeStr + " mode");
         return true;
     }
 
@@ -796,7 +796,7 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
     }
     catch (const std::exception& e)
     {
-        m_logger(LOG_ERROR, std::string("Exception when sending ChecksumModule message: ") + e.what());
+        m_logger(LOG_ERROR, std::string("Exception when sending Checksum message: ") + e.what());
     }
 
     return false;
@@ -1278,13 +1278,13 @@ void AgentSyncProtocol::stop()
         m_syncState.cv.notify_all();
     }
 
-    m_logger(LOG_DEBUG, "Stop requested for sync protocol module: " + m_moduleName);
+    m_logger(LOG_DEBUG, "Stop requested for sync protocol.");
 }
 
 void AgentSyncProtocol::reset()
 {
     m_stopRequested.store(false, std::memory_order_release);
-    m_logger(LOG_DEBUG, "Reset stop flag for sync protocol module: " + m_moduleName);
+    m_logger(LOG_DEBUG, "Reset stop flag for sync protocol.");
 }
 
 bool AgentSyncProtocol::shouldStop() const

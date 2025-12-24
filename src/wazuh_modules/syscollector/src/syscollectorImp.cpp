@@ -1765,6 +1765,11 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         this->m_logFunction(level, msg);
     };
 
+    auto logger_func_vd = [moduleName, this](modules_log_level_t level, const std::string & msg)
+    {
+        this->m_logFunction(level, moduleName + "_vd: " + msg);
+    };
+
     try
     {
         // Initialize regular sync protocol
@@ -1773,7 +1778,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 
         // Initialize VD sync protocol with different module name to avoid routing conflicts
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func_vd, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         m_logFunction(LOG_DEBUG, "Integrity interval set to " + std::to_string(integrityInterval) + " seconds");
