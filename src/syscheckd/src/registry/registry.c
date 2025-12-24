@@ -1610,7 +1610,7 @@ void fim_read_values(HKEY key_handle,
             char *value_data_for_diff = fim_registry_convert_value_for_diff(data_buffer, data_type);
 
             if (value_data_for_diff) {
-                diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->name,
+                diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->value,
                                            value_data_for_diff, new.registry_entry.value->type, configuration);
             }
 
