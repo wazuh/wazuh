@@ -34,7 +34,11 @@ enum class Type
     NESTED,
     FLAT_OBJECT,
     GEO_POINT,
-    UNSIGNED_LONG
+    UNSIGNED_LONG,
+    COMPLETION,
+    SEARCH_AS_YOU_TYPE,
+    TOKEN_COUNT,
+    SEMANTIC
 };
 
 inline constexpr bool hasProperties(Type type)
@@ -75,6 +79,10 @@ inline constexpr auto typeToStr(Type type)
         case Type::FLAT_OBJECT: return "flat_object";
         case Type::GEO_POINT: return "geo_point";
         case Type::UNSIGNED_LONG: return "unsigned_long";
+        case Type::COMPLETION: return "completion";
+        case Type::SEARCH_AS_YOU_TYPE: return "search_as_you_type";
+        case Type::TOKEN_COUNT: return "token_count";
+        case Type::SEMANTIC: return "semantic";
         default: return "error";
     }
 }
@@ -127,6 +135,14 @@ inline constexpr auto strToType(std::string_view strType)
         return Type::GEO_POINT;
     if (typeToStr(Type::UNSIGNED_LONG) == strType)
         return Type::UNSIGNED_LONG;
+    if (typeToStr(Type::COMPLETION) == strType)
+        return Type::COMPLETION;
+    if (typeToStr(Type::SEARCH_AS_YOU_TYPE) == strType)
+        return Type::SEARCH_AS_YOU_TYPE;
+    if (typeToStr(Type::TOKEN_COUNT) == strType)
+        return Type::TOKEN_COUNT;
+    if (typeToStr(Type::SEMANTIC) == strType)
+        return Type::SEMANTIC;
     return Type::ERROR;
 }
 
@@ -157,6 +173,10 @@ inline constexpr auto typeToJType(Type type)
         case Type::NESTED: return json::Json::Type::Object;
         case Type::FLAT_OBJECT: return json::Json::Type::Object;
         case Type::GEO_POINT: return json::Json::Type::Array;
+        case Type::COMPLETION: return json::Json::Type::String;
+        case Type::SEARCH_AS_YOU_TYPE: return json::Json::Type::String;
+        case Type::TOKEN_COUNT: return json::Json::Type::Number;
+        case Type::SEMANTIC: return json::Json::Type::String;
         default: return json::Json::Type::Null;
     }
 }
