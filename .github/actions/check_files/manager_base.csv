@@ -70,7 +70,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/etc/lists/security-eventchannel,wazuh,wazuh,660,file,-rw-rw----,,
 /var/ossec/etc/local_internal_options.conf,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/etc/localtime,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/etc/ossec.conf,root,wazuh,660,file,-rw-rw----,,
+/var/ossec/etc/ossec.conf,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/etc/rootcheck/cis_apache2224_rcl.txt,root,wazuh,660,file,-rw-rw----,,
 /var/ossec/etc/rootcheck/cis_debian_linux_rcl.txt,root,wazuh,660,file,-rw-rw----,,
 /var/ossec/etc/rootcheck/cis_mysql5-6_community_rcl.txt,root,wazuh,660,file,-rw-rw----,,

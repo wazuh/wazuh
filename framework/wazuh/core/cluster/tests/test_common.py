@@ -1036,11 +1036,24 @@ def test_handler_receive_file():
     """Test if a descriptor file is created for an incoming file."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
-    assert handler.receive_file(b"data") == (b"ok ", b"Ready to receive new file")
-    assert "fd" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["fd"], _io.BufferedWriter)
-    assert "checksum" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["checksum"], _hashlib.HASH)
+    path = b"/queue/cluster/testfile"
+
+    assert handler.receive_file(path) == (b"ok ", b"Ready to receive new file")
+    assert "fd" in handler.in_file[path]
+    assert isinstance(handler.in_file[path]["fd"], _io.BufferedWriter)
+    assert "checksum" in handler.in_file[path]
+    assert isinstance(handler.in_file[path]["checksum"], _hashlib.HASH)
+
+
+def test_handler_receive_file_rejects_invalid_and_disallowed_paths():
+    """Ensure receive_file rejects invalid paths and writes outside allowed cluster directories."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    # Invalid path format (does not start with '/')
+    assert handler.receive_file(b"data") == (b"err", b"Invalid path format")
+    
+    # Disallowed path (attempt to write into /etc)
+    assert handler.receive_file(b"/etc/ossec.conf") == (b"err", b"Write path not allowed")
 
 
 def test_handler_update_file():
