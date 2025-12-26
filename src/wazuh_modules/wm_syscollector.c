@@ -91,7 +91,7 @@ unsigned int enable_synchronization = 1;     // Database synchronization enabled
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
 uint32_t sync_end_delay = 1;                 // Database synchronization end delay in seconds (default value)
 uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
-long sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
+long sync_max_eps = 50;                     // Database synchronization number of events per second (default value)
 uint32_t integrity_interval = 86400;         // Integrity check interval in seconds (default value)
 
 long syscollector_max_eps = 50;          // Number of events per second (default value)

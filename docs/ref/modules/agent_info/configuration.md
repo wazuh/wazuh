@@ -15,7 +15,7 @@ The `agent_info` module is configured in the `ossec.conf` file. It defines the s
     <sync_end_delay>1s</sync_end_delay>
     <response_timeout>30s</response_timeout>
     <retries>5</retries>
-    <max_eps>10</max_eps>
+    <max_eps>50</max_eps>
   </synchronization>
 </agent-info>
 ```
@@ -41,7 +41,7 @@ The `<synchronization>` block configures the coordination protocol used when age
 | `sync_end_delay`   |  time   | `1s`    | Delay in seconds before sending the synchronization end message.                                  |
 | `response_timeout` |  time   | `30s`   | Timeout in seconds to wait for a response from other modules during coordination.                 |
 | `retries`          | integer | `5`     | Number of retry attempts when a coordination command fails.                                       |
-| `max_eps`          | integer | `10`    | Maximum events per second to send during synchronization.                                         |
+| `max_eps`          | integer | `50`   | Maximum events per second to send during synchronization.                                         |
 
 ---
 

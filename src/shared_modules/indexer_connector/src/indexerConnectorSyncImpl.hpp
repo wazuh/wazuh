@@ -35,6 +35,8 @@ constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
 
+constexpr auto HTTP_OK {200};
+constexpr auto HTTP_CREATED {201};
 constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_CONTENT_LENGTH {413};
@@ -73,6 +75,164 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
     else
     {
         bulkData.append(id);
+    }
+}
+
+/**
+ * @brief Validates bulk API response at document level
+ * @param response The bulk API response JSON string
+ * @return true if all operations succeeded (or had acceptable version conflicts), false otherwise
+ * @throws std::exception if response parsing fails
+ *
+ * This function validates each document in the bulk response individually.
+ * It treats version conflicts where the same document version already exists as success.
+ * Memory-safe: uses nlohmann::json which handles large documents efficiently.
+ */
+inline bool validateBulkResponse(const std::string& response)
+{
+    try
+    {
+        // Parse response - nlohmann::json handles large documents efficiently
+        auto responseJson = nlohmann::json::parse(response);
+
+        // Check if response has errors flag
+        if (!responseJson.contains("errors"))
+        {
+            logDebug2(IC_NAME, "Bulk response missing 'errors' field, treating as success");
+            return true;
+        }
+
+        // If no errors reported, success
+        if (!responseJson["errors"].get<bool>())
+        {
+            logDebug2(IC_NAME, "Bulk operation completed with no errors");
+            return true;
+        }
+
+        // Errors were reported, validate each item
+        if (!responseJson.contains("items") || !responseJson["items"].is_array())
+        {
+            logError(IC_NAME, "Bulk response has errors but missing 'items' array");
+            return false;
+        }
+
+        size_t totalItems = responseJson["items"].size();
+        size_t successCount = 0;
+        size_t versionConflictAcceptedCount = 0;
+        size_t realFailureCount = 0;
+
+        // Validate each item individually
+        for (const auto& item : responseJson["items"])
+        {
+            // Each item is an object with one key (operation type: index, delete, update, create)
+            if (item.empty())
+            {
+                realFailureCount++;
+                continue;
+            }
+
+            // Get the first (and only) key-value pair
+            auto it = item.begin();
+            const auto& operation = it.key(); // "index", "delete", etc.
+            const auto& result = it.value();
+
+            // Check status code
+            if (!result.contains("status"))
+            {
+                logError(IC_NAME, "Item missing status field");
+                realFailureCount++;
+                continue;
+            }
+
+            int status = result["status"].get<int>();
+
+            // Success statuses
+            if (status == HTTP_OK || status == HTTP_CREATED)
+            {
+                successCount++;
+                continue;
+            }
+
+            // Version conflict - check if it's the acceptable type
+            if (status == HTTP_VERSION_CONFLICT)
+            {
+                bool isAcceptableConflict = false;
+
+                // Check if this is a version_conflict_engine_exception
+                if (result.contains("error"))
+                {
+                    const auto& error = result["error"];
+                    if (error.contains("type") && error["type"].is_string())
+                    {
+                        std::string errorType = error["type"].get<std::string>();
+                        // version_conflict_engine_exception means document version already exists
+                        // This is acceptable for inventory sync - treat as success
+                        if (errorType == "version_conflict_engine_exception")
+                        {
+                            isAcceptableConflict = true;
+                            versionConflictAcceptedCount++;
+                            logDebug2(IC_NAME,
+                                      "Document version conflict (same version already indexed) for %s operation - "
+                                      "treating as success",
+                                      operation.c_str());
+                        }
+                    }
+                }
+
+                if (!isAcceptableConflict)
+                {
+                    // Version conflict without the expected error type - treat as failure
+                    logWarn(IC_NAME,
+                            "Version conflict without version_conflict_engine_exception for %s operation",
+                            operation.c_str());
+                    realFailureCount++;
+                }
+                continue;
+            }
+
+            // Any other error status is a real failure
+            std::string errorMsg = "Unknown error";
+            if (result.contains("error"))
+            {
+                const auto& error = result["error"];
+                if (error.is_string())
+                {
+                    errorMsg = error.get<std::string>();
+                }
+                else if (error.is_object() && error.contains("reason"))
+                {
+                    errorMsg = error["reason"].get<std::string>();
+                }
+            }
+
+            logError(IC_NAME,
+                     "Indexing failure for %s operation (status %d): %s",
+                     operation.c_str(),
+                     status,
+                     errorMsg.c_str());
+            realFailureCount++;
+        }
+
+        // Log summary
+        logInfo(IC_NAME,
+                "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu failures",
+                totalItems,
+                successCount,
+                versionConflictAcceptedCount,
+                realFailureCount);
+
+        // Return success only if no real failures occurred
+        return realFailureCount == 0;
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        logError(IC_NAME, "Failed to parse bulk response: %s", e.what());
+        return false;
+    }
+    catch (const std::exception& e)
+    {
+        logError(IC_NAME, "Error validating bulk response: %s", e.what());
+        return false;
     }
 }
 
@@ -161,6 +321,18 @@ class IndexerConnectorSyncImpl final
         const auto onSuccess = [this, &needToRetry](const std::string& response)
         {
             logDebug2(IC_NAME, "Response: %s", response.c_str());
+
+            // Validate bulk response at document level
+            if (!validateBulkResponse(response))
+            {
+                logError(IC_NAME, "Bulk operation had indexing failures");
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw IndexerConnectorException("Bulk operation had indexing failures");
+            }
+
+            // All documents processed successfully (including acceptable version conflicts)
             for (const auto& notify : m_notify)
             {
                 notify();
@@ -325,6 +497,13 @@ class IndexerConnectorSyncImpl final
         const auto onSuccess = [](const std::string& response)
         {
             logDebug2(IC_NAME, "Chunk processed successfully: %s", response.c_str());
+
+            // Validate bulk response at document level
+            if (!validateBulkResponse(response))
+            {
+                logError(IC_NAME, "Bulk chunk operation had indexing failures");
+                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+            }
         };
         const auto onError = [this, &needToRetry, boundaries](
                                  const std::string& error, const long statusCode, const std::string& responseBody)

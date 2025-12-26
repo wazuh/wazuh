@@ -36,7 +36,7 @@ Syscollector is configured in the agent's `ossec.conf` file using the `<wodle na
         <enabled>yes</enabled>                    <!-- Enable/disable persistence -->
         <interval>300</interval>                  <!-- Sync interval in seconds -->
         <response_timeout>60</response_timeout>   <!-- Response timeout in seconds -->
-        <max_eps>10</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
+        <max_eps>50</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
         <integrity_interval>86400</integrity_interval>  <!-- Integrity check interval in seconds (24 hours) -->
     </synchronization>
 </wodle>
@@ -89,7 +89,7 @@ The synchronization feature enables persistent inventory state management throug
 | `enabled` | Boolean | `yes` | `yes`/`no` | Enable or disable Syscollector synchronization persistence |
 | `interval` | Integer | `300` | `1` - `∞` | How often to trigger synchronization with the manager (seconds) |
 | `response_timeout` | Integer | `60` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
-| `max_eps` | Integer | `10` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
+| `max_eps` | Integer | `50` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
 | `integrity_interval` | Integer | `86400` | `60` - `∞` | Time between integrity checks for each inventory table (seconds) |
 
 ---
@@ -160,7 +160,7 @@ Controls the rate of synchronization messages sent to the manager:
 
 ```xml
 <synchronization>
-    <max_eps>10</max_eps>
+    <max_eps>50</max_eps>
 </synchronization>
 ```
 
@@ -266,7 +266,7 @@ Syscollector implements separate rate controls for different event types:
 
 ```xml
 <synchronization>
-    <max_eps>10</max_eps>  <!-- Inside synchronization block -->
+    <max_eps>50</max_eps>  <!-- Inside synchronization block -->
 </synchronization>
 ```
 

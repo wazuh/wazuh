@@ -78,7 +78,7 @@ class IAgentSyncProtocol
         ///
         /// This method sends DataClean messages for each index in the provided vector.
         /// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
-        /// Upon receiving Ok/PartialOk, it clears the local database and returns true.
+        /// Upon receiving Ok, it clears the local database and returns true.
         /// @param indices Vector of index names to clean
         /// @param option Synchronization option.
         /// @return true if notification completed successfully and database was cleared, false otherwise

@@ -118,7 +118,7 @@ bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
 ///
 /// This function sends DataClean messages for each index in the provided array.
 /// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
-/// Upon receiving Ok/PartialOk, it clears the local database and returns true.
+/// Upon receiving Ok, it clears the local database and returns true.
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param indices Array of index name strings to clean.
 /// @param indices_count Number of indices in the array.
