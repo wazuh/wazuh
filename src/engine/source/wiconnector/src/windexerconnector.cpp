@@ -247,7 +247,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
             }
             catch (const IndexerConnectorException& e)
             {
-                LOG_WARNING("[indexer-connector] Error deleting Point In Time (PIT): %s", e.what());
+                LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
             }
         });
 

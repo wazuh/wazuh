@@ -80,6 +80,14 @@ public:
     {
         return m_impl.search(pit, size, query, sort, searchAfter);
     }
+
+    nlohmann::json search(const std::string& index,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const std::optional<nlohmann::json>& source)
+    {
+        return m_impl.search(index, size, query, source);
+    }
 };
 
 IndexerConnectorAsync::IndexerConnectorAsync(
@@ -141,6 +149,14 @@ nlohmann::json IndexerConnectorAsync::search(const PointInTime& pit,
                                               const std::optional<nlohmann::json>& searchAfter)
 {
     return m_impl->search(pit, size, query, sort, searchAfter);
+}
+
+nlohmann::json IndexerConnectorAsync::search(const std::string& index,
+                                              std::size_t size,
+                                              const nlohmann::json& query,
+                                              const std::optional<nlohmann::json>& source)
+{
+    return m_impl->search(index, size, query, source);
 }
 
 // LCOV_EXCL_STOP

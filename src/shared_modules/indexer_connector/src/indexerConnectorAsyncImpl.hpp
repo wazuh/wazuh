@@ -760,4 +760,83 @@ public:
 
         return hitsResult;
     }
+
+    /**
+     * @brief Execute a search query on an index or alias without PIT.
+     *
+     * @param index Index or alias name.
+     * @param size Maximum number of documents to return.
+     * @param query Query object.
+     * @param source Optional source filtering configuration.
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     */
+    nlohmann::json search(const std::string& index,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const std::optional<nlohmann::json>& source)
+    {
+        // Build the search request body
+        nlohmann::json requestBody;
+        requestBody["size"] = size;
+        requestBody["track_total_hits"] = true;
+        requestBody["stored_fields"] = nlohmann::json::array();
+        requestBody["query"] = query;
+
+        // Add source filtering if provided
+        if (source.has_value())
+        {
+            requestBody["_source"] = source.value();
+        }
+
+        // Build the URL
+        const std::string url = "/" + index + "/_search";
+
+        // Variables to capture the response
+        bool success = false;
+        nlohmann::json hitsResult;
+
+        // Define success callback
+        auto onSuccess = [&success, &hitsResult](const std::string& responseBody)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(responseBody);
+                
+                // Check if the response contains hits
+                if (!jsonResponse.contains("hits"))
+                {
+                    throw IndexerConnectorException("Search response does not contain 'hits' field");
+                }
+
+                hitsResult = jsonResponse["hits"];
+                success = true;
+            }
+            catch (const nlohmann::json::exception& e)
+            {
+                throw IndexerConnectorException("Failed to parse search response: " + std::string(e.what()));
+            }
+        };
+
+        // Define error callback
+        auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
+                                            ": " + error + ". Response: " + responseBody);
+        };
+
+        // Execute the POST request synchronously
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                              .data = requestBody.dump(),
+                                              .secureCommunication = m_secureCommunication},
+                           PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                           {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException("Search request failed");
+        }
+
+        return hitsResult;
+    }
 };

@@ -366,6 +366,29 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter = std::nullopt);
+
+    /**
+     * @brief Execute a search query on an index or alias.
+     *
+     * Performs a simple search without using Point In Time. Useful for one-off queries
+     * where you don't need consistent pagination across multiple requests.
+     *
+     * @param index Index or alias name to search.
+     * @param size Maximum number of documents to return.
+     * @param query The query object (must be valid JSON).
+     * @param source Optional source filtering configuration (includes/excludes fields).
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     *
+     * Example:
+     * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
+     * nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
+     * auto hits = connector.search(".cti-policies", 10, query, source);
+     */
+    nlohmann::json search(const std::string& index,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const std::optional<nlohmann::json>& source = std::nullopt);
 };
 
 class IndexerConnectorException : public std::exception
