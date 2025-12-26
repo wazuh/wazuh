@@ -22,6 +22,7 @@ from pyexpat import ExpatError
 from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
+from xml.etree.ElementTree import Element
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -861,13 +862,20 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def check_remote_commands(new_conf, original_conf):
-    """Check if remote commands are allowed. If not, it will check if the found command is in the list of exceptions.
+def check_remote_commands(new_conf: Element, original_conf: Element):
+    """Check if higher version agents are allowed.
 
     Parameters
     ----------
-    data : str
-        Configuration file
+    new_conf : Element
+        New configuration file.
+    original_conf : Element
+        Original configuration file.
+
+    Raises
+    ------
+    WazuhError(1127)
+        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
 
     def _filter_remote_commands(commands: list, exceptions: list) -> list:
@@ -1039,32 +1047,36 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
             raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
-def check_agents_allow_higher_versions(data: str):
+def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element):
     """Check if higher version agents are allowed.
 
     Parameters
     ----------
-    data : str
-        Configuration file content.
+    new_conf : Element
+        New configuration file.
+    original_conf : Element
+        Original configuration file.
+
+    Raises
+    ------
+    WazuhError(1127)
+        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
 
-    def check_section(agents_regex, split_section):
-        try:
-            for line in agents_regex.findall(data)[0].split(split_section):
-                tag_matches = re.match(r".*<allow_higher_versions>(.*)</allow_higher_versions>.*",
-                                            line, flags=re.MULTILINE | re.DOTALL)
-                if tag_matches and (tag_matches.group(1) == 'yes'):
-                    raise WazuhError(1129)
-        except IndexError:
-            pass
+    AUTH_HIERACHY = ['ossec_config', 'auth', 'allow_higher_versions']
+    REMOTE_HIERACHY = ['ossec_config', 'remote', 'allow_higher_versions']
+    upload_configuration = configuration.api_conf['upload_configuration']
 
-    if not blocked_configurations['agents']['allow_higher_versions']['allow']:
-        remote_section = re.compile(r"<remote>(.*)</remote>", flags=re.MULTILINE | re.DOTALL)
-        check_section(remote_section, split_section='</remote>')
+    if not upload_configuration['agents']['allow_higher_versions']['allow']:
+        new_auth = xml_to_dict(new_conf, AUTH_HIERACHY)
+        original_auth = xml_to_dict(original_conf, AUTH_HIERACHY)
+        if normalize(new_auth) != normalize(original_auth):
+            raise WazuhError(1127, extra_message='auth > allow_higher_versions')
 
-        auth_section = re.compile(r"<auth>(.*)</auth>", flags=re.MULTILINE | re.DOTALL)
-        check_section(auth_section, split_section='</auth>')
+        new_remote = xml_to_dict(new_conf, REMOTE_HIERACHY)
+        original_remote = xml_to_dict(original_conf, REMOTE_HIERACHY)
+        if normalize(new_remote) != normalize(original_remote):
+            raise WazuhError(1127, extra_message='remote > allow_higher_versions')
 
 
 def check_indexer(new_conf, original_conf):
@@ -2134,7 +2146,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         if config_file:
             current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
             check_remote_commands(incoming_xml, current_xml)
-            check_agents_allow_higher_versions(final_xml)
+            check_agents_allow_higher_versions(incoming_xml, current_xml)
             check_virustotal_integration(final_xml)
             check_indexer(incoming_xml, current_xml)
             check_wazuh_limits_unchanged(incoming_xml, current_xml)
