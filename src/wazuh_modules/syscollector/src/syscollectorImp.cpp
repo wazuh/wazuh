@@ -3074,10 +3074,11 @@ void Syscollector::runRecoveryProcess()
                     m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
                 }
 
-                // Update the last sync time regardless of whether full sync was required
-                // This ensures the integrity check doesn't run again until integrity_interval has elapsed
-                updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
             }
+
+            // Update the last sync time regardless of whether full sync was required
+            // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+            updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
         }
     }
 }
