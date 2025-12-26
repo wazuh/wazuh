@@ -325,6 +325,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         std::unique_ptr<SQLite::ITransaction> m_transaction;
         std::mutex m_maxRowsMutex;
         std::map<std::string, MaxRows> m_maxRows;
+        std::string m_lastCleanDBError;
 };
 
 #endif // _SQLITE_DBENGINE_H

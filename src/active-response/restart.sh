@@ -35,7 +35,7 @@ PWD=`pwd`
 # Logging the call
 echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
-if command -v systemctl >/dev/null 2>&1; then
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then
     # If reload is requested, wait for service to be fully active first
     if [ "$PARAM_ACTION" = "reload" ]; then
         # Wait up to 60 seconds for service to be active

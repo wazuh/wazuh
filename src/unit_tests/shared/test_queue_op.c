@@ -348,6 +348,55 @@ void test_queue_pop_ex_timedwait_no_timeout(void **state) {
     assert_ptr_not_equal(ptr, NULL);
     os_free(ptr);
 }
+
+void test_try_queue_pop_ex_empty(void** state)
+{
+    w_queue_t* queue = *state;
+    void* ptr = NULL;
+
+    // Test popping from empty queue - should return NULL without blocking
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+
+    ptr = try_queue_pop_ex(queue);
+    assert_ptr_equal(ptr, NULL);
+}
+
+void test_try_queue_pop_ex_with_elements(void** state)
+{
+    w_queue_t* queue = *state;
+    int i;
+    int* ptr = NULL;
+
+    // First, add some elements to the queue
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
+        ptr = malloc(sizeof(int));
+        *ptr = i;
+        queue_push(queue, ptr);
+    }
+
+    // Test popping elements from queue with data
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE - 1);
+    expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE - 1);
+    expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available_not_empty, QUEUE_SIZE - 1);
+
+    // Pop all elements and verify they are correct
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
+        ptr = try_queue_pop_ex(queue);
+        assert_ptr_not_equal(ptr, NULL);
+        assert_int_equal(*ptr, i);
+        os_free(ptr);
+    }
+
+    // Now queue should be empty, so next pop should return NULL
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+
+    ptr = try_queue_pop_ex(queue);
+    assert_ptr_equal(ptr, NULL);
+}
 /************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -362,6 +411,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_queue_pop_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop_ex_timedwait_timeout, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop_ex_timedwait_no_timeout, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_try_queue_pop_ex_empty, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_try_queue_pop_ex_with_elements, setup_queue, teardown_queue),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

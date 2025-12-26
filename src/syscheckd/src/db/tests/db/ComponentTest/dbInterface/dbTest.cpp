@@ -151,7 +151,7 @@ TEST(DBTest, TestInvalidFimLimit)
     mockLog = new MockLoggingCall();
 
     EXPECT_CALL(*mockLog,
-                loggingFunction(LOG_ERROR_EXIT, "Error, id: dbEngine: Invalid row limit, values below 0 not allowed."))
+                loggingFunction(LOG_ERROR, "Error, id: dbEngine: Invalid row limit, values below 0 not allowed."))
         .Times(1);
     auto result {fim_db_init(FIM_DB_MEMORY, mockLoggingFunction, -1, -1, nullptr)};
     ASSERT_EQ(result, FIMDB_ERR);

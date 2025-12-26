@@ -19,7 +19,7 @@
 #include "commonDefs.h"
 
 using namespace std::chrono_literals;
-auto constexpr MAX_TRIES = 5;
+auto constexpr MAX_TRIES = 10;
 
 SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
                                const std::string&                     path,
@@ -571,7 +571,9 @@ void SQLiteDBEngine::initialize(const std::string&              path,
     {
         if (!cleanDB(path))
         {
-            throw dbengine_error {DELETE_OLD_DB_ERROR};
+            // Use detailed error message if available, otherwise use default
+            auto errorMsg = m_lastCleanDBError.empty() ? DELETE_OLD_DB_ERROR.second : m_lastCleanDBError;
+            throw dbengine_error {std::make_pair(DELETE_OLD_DB_ERROR.first, errorMsg)};
         }
 
         m_sqliteConnection = m_sqliteFactory->createConnection(path);
@@ -641,6 +643,7 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
 {
     auto ret { true };
     auto isRemoved {0};
+    auto lastErrno {0};
 
     if (path.compare(":memory") != 0)
     {
@@ -658,16 +661,27 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
             if (std::ifstream(file))
             {
                 isRemoved = std::remove(file.c_str());
+                lastErrno = errno;
 
                 for (uint8_t amountTries = 0; amountTries < MAX_TRIES && isRemoved; amountTries++)
                 {
                     std::this_thread::sleep_for(1s); //< Sleep for 1s
-                    std::cerr << "Sleep for 1s and try to delete database file again: " << file << "\n";
+                    std::cerr << "Failed to delete database file '" << file
+                              << "' (errno: " << lastErrno << "). Retry attempt "
+                              << static_cast<int>(amountTries + 1) << "/" << MAX_TRIES << ".\n";
                     isRemoved = std::remove(file.c_str());
+                    lastErrno = errno;
                 }
 
                 if (isRemoved)
                 {
+                    std::cerr << "Failed to delete database file '" << file
+                              << "' after " << MAX_TRIES << " attempts (errno: " << lastErrno << ").\n";
+
+                    // Store detailed error message for exception
+                    m_lastCleanDBError = "Error deleting old db file '" + file +
+                                         "' after " + std::to_string(MAX_TRIES) +
+                                         " attempts (errno: " + std::to_string(lastErrno) + ")";
                     ret = false;
                 }
             }
