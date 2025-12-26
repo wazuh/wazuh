@@ -422,9 +422,15 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         auto [tester, protoReq] = adapter::getRes(result);
 
         const uint32_t q = protoReq.queue();
+        if (q == 0)
+        {
+            res = adapter::userErrorResponse<ResponseType>("queue is required and must be non-zero (1..255)");
+            return;
+        }
+
         if (q > std::numeric_limits<uint8_t>::max())
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid queue: {} (must be 0..255)", q));
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid queue: {} (must be 1..255)", q));
             return;
         }
 
@@ -440,10 +446,27 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
+        if (!protoReq.has_agent_metadata())
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                "agent_metadata is required and must be a JSON object");
+            return;
+        }
+
+        auto jsonOrErr = eMessage::eMessageToJson(protoReq.agent_metadata(), /*printPrimitiveFields=*/true);
+        if (std::holds_alternative<base::Error>(jsonOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+            return;
+        }
+
+        const auto& agentMetadataStr = std::get<std::string>(jsonOrErr);
+
         json::Json agentMetadata;
         try
         {
-            agentMetadata = json::Json(protoReq.agent_metadata().c_str());
+            agentMetadata = json::Json(agentMetadataStr.c_str());
         }
         catch (const std::exception& e)
         {
@@ -452,12 +475,19 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
+        const std::string eventStr = protoReq.event();
+        if (eventStr.empty() || std::all_of(eventStr.begin(), eventStr.end(), [](unsigned char c){ return std::isspace(c); }))
+        {
+            res = adapter::userErrorResponse<ResponseType>("event is required and cannot be empty");
+            return;
+        }
+
         // Create The event to test
         base::Event event;
         auto location = protoReq.location();
         try
         {
-            event = protocolHandler(queue, location, protoReq.event(), agentMetadata);
+            event = protocolHandler(queue, location, eventStr, agentMetadata);
         }
         catch (const std::exception& e)
         {

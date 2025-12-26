@@ -168,7 +168,7 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
     return parseEvent;
 }
 
-Event parsePublicEvent(uint32_t queue, std::string& location, std::string_view message, const json::Json& agentMetadata)
+Event parsePublicEvent(uint8_t queue, std::string& location, std::string_view message, const json::Json& agentMetadata)
 {
     auto parseEvent = std::make_shared<json::Json>();
 

@@ -37,7 +37,7 @@ Event parseLegacyEvent(std::string_view event, const json::Json& hostInfo);
  * @throw std::runtime_error if the message is not a valid Wazuh public message
  * @note The message must be in the format: "queue:location:message"
  */
-Event parsePublicEvent(uint32_t queue,
+Event parsePublicEvent(uint8_t queue,
                        std::string& location,
                        std::string_view message,
                        const json::Json& agentMetadata);

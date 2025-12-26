@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "engine.proto";
+import "google/protobuf/struct.proto";
 
 package com.wazuh.api.engine.tester;
 
@@ -173,7 +174,7 @@ message PublicRunPost_Request
     string location = 2;
 
     // Metadata about the agent sending the event.
-    string agent_metadata = 3;
+    google.protobuf.Struct agent_metadata = 3;
 
     // Raw event payload to test.
     string event = 4;
