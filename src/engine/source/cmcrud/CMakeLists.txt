@@ -12,7 +12,6 @@ add_library(cmcrud::icmcrud ALIAS cmcrud_icmcrud)
 # Implementation
 add_library(cmcrud_cmcrud STATIC
     ${SRC_DIR}/cmcrudservice.cpp
-    ${SRC_DIR}/cmcontentvalidator.cpp
 )
 
 target_include_directories(cmcrud_cmcrud
@@ -49,7 +48,6 @@ add_library(cmcrud::mocks ALIAS cmcrud_mocks)
 # Unit tests
 add_executable(cmcrud_utest
     ${UNIT_SRC_DIR}/cmcrudservice_test.cpp
-    ${UNIT_SRC_DIR}/cmcontentvalidator_test.cpp
 )
 target_link_libraries(cmcrud_utest
     PRIVATE

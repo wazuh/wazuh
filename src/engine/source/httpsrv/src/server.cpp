@@ -15,10 +15,11 @@
 namespace httpsrv
 {
 
-Server::Server(const std::string& id)
+Server::Server(const std::string& id, size_t payloadMaxBytes)
     : m_srv(std::make_shared<httplib::Server>())
     , m_id(id)
     , m_socketPath()
+    , m_payloadMaxBytes(payloadMaxBytes)
 {
     // General exception handler for routes handlers, handlers must not throw exceptions.
     auto excptFnName = fmt::format("Server::Server({})::set_exception_handler", id);
@@ -41,6 +42,30 @@ Server::Server(const std::string& id)
 
             res.status = httplib::StatusCode::InternalServerError_500;
             res.set_content("Internal server error", "text/plain");
+        });
+
+    // Apply payload limit
+    applyPayloadLimit();
+
+    m_srv->set_error_handler(
+        [this](const httplib::Request&, httplib::Response& res) -> httplib::Server::HandlerResponse
+        {
+            if (res.status == httplib::StatusCode::PayloadTooLarge_413)
+            {
+                const auto maxBytes = m_payloadMaxBytes;
+                if (maxBytes == 0)
+                {
+                    res.set_content("Payload too large.", "text/plain");
+                }
+                else
+                {
+                    res.set_content(
+                        fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024),
+                        "text/plain");
+                }
+                return httplib::Server::HandlerResponse::Handled;
+            }
+            return httplib::Server::HandlerResponse::Unhandled;
         });
 
     // TODO: Add Metrics
@@ -70,6 +95,13 @@ void Server::addRoute(Method method,
     }
 
     LOG_DEBUG("Server {} added route: {} {}", m_id, methodToStr(method), route);
+}
+
+void Server::applyPayloadLimit()
+{
+    const auto maxLen = (m_payloadMaxBytes == 0) ? std::numeric_limits<size_t>::max() : m_payloadMaxBytes;
+
+    m_srv->set_payload_max_length(maxLen);
 }
 
 bool Server::bindAndListen()

@@ -9,11 +9,11 @@
 #include <base/json.hpp>
 #include <base/name.hpp>
 
+#include <builder/ivalidator.hpp>
 #include <cmstore/icmstore.hpp>
 #include <cmstore/types.hpp>
 
 #include <cmcrud/icmcrudservice.hpp>
-#include <cmcrud/icontentvalidator.hpp>
 
 namespace cm::crud
 {
@@ -21,7 +21,8 @@ namespace cm::crud
 class CrudService final : public ICrudService
 {
 public:
-    CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<IContentValidator> validator);
+    CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator);
+
     ~CrudService() override = default;
 
     /******************************* Namespaces *******************************/
@@ -40,9 +41,18 @@ public:
     void upsertResource(std::string_view nsName, cm::store::ResourceType type, std::string_view document) override;
     void deleteResourceByUUID(std::string_view nsName, const std::string& uuid) override;
 
+    // Public validate
+    void validateResource(cm::store::ResourceType type, std::string_view document) override;
+
 private:
     std::shared_ptr<cm::store::ICMStore> m_store;
-    std::shared_ptr<IContentValidator> m_validator;
+    std::shared_ptr<builder::IValidator> m_validator;
+
+    void validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                        const cm::store::dataType::Policy& policy) const;
+    void validateIntegration(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                             const cm::store::dataType::Integration& integration) const;
+    void validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, const json::Json& asset) const;
 
     // Namespace helpers
     std::shared_ptr<cm::store::ICMStoreNSReader> getNamespaceStoreView(const cm::store::NamespaceId& nsId) const;

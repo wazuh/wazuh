@@ -30,6 +30,7 @@ public:
                 validateAsset,
                 (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader, const json::Json& assetJson),
                 (const, override));
+    MOCK_METHOD(base::OptError, validateAssetShallow, (const json::Json& assetJson), (const, override));
     MOCK_METHOD(base::OptError,
                 softPolicyValidate,
                 (const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,

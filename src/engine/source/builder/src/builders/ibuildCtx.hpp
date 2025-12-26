@@ -159,6 +159,21 @@ public:
      * @param nsReader
      */
     virtual void setStoreNSReader(const std::shared_ptr<cm::store::ICMStoreNSReader> nsReader) = 0;
+
+    /**
+     * @brief Get the allow missing dependencies flag
+     *
+     * @return true
+     * @return false
+     */
+    virtual bool allowMissingDependencies() const = 0;
+
+    /**
+     * @brief Set the allow missing dependencies flag
+     *
+     * @param allow
+     */
+    virtual void setAllowMissingDependencies(bool allow) = 0;
 };
 
 } // namespace builder::builders

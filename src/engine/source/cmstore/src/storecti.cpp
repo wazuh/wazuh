@@ -30,7 +30,8 @@ std::vector<std::tuple<std::string, std::string>> CMStoreCTI::getCollection(Reso
     {
         switch (rType)
         {
-            case ResourceType::DECODER: {
+            case ResourceType::DECODER:
+            {
                 auto assetList = reader->getAssetList(cti::store::AssetType::DECODER);
                 for (const auto& name : assetList)
                 {
@@ -47,7 +48,8 @@ std::vector<std::tuple<std::string, std::string>> CMStoreCTI::getCollection(Reso
                 }
                 break;
             }
-            case ResourceType::INTEGRATION: {
+            case ResourceType::INTEGRATION:
+            {
                 auto assetList = reader->getAssetList(cti::store::AssetType::INTEGRATION);
                 for (const auto& name : assetList)
                 {
@@ -64,7 +66,8 @@ std::vector<std::tuple<std::string, std::string>> CMStoreCTI::getCollection(Reso
                 }
                 break;
             }
-            case ResourceType::KVDB: {
+            case ResourceType::KVDB:
+            {
                 auto kvdbList = reader->listKVDB();
                 for (const auto& name : kvdbList)
                 {
@@ -81,15 +84,13 @@ std::vector<std::tuple<std::string, std::string>> CMStoreCTI::getCollection(Reso
                 }
                 break;
             }
-            default:
-                throw std::runtime_error(fmt::format("Unsupported resource type: {}",
-                                                    static_cast<int>(rType)));
+            default: throw std::runtime_error(fmt::format("Unsupported resource type: {}", static_cast<int>(rType)));
         }
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Failed to get collection for type '{}': {}",
-                                            static_cast<int>(rType), e.what()));
+        throw std::runtime_error(
+            fmt::format("Failed to get collection for type '{}': {}", static_cast<int>(rType), e.what()));
     }
 
     return collection;
@@ -153,26 +154,18 @@ std::string CMStoreCTI::resolveUUIDFromName(const std::string& name, ResourceTyp
         std::string typeStr;
         switch (type)
         {
-            case ResourceType::DECODER:
-                typeStr = "decoder";
-                break;
-            case ResourceType::INTEGRATION:
-                typeStr = "integration";
-                break;
-            case ResourceType::KVDB:
-                typeStr = "kvdb";
-                break;
-            default:
-                throw std::runtime_error(fmt::format("Unsupported resource type: {}",
-                                                    static_cast<int>(type)));
+            case ResourceType::DECODER: typeStr = "decoder"; break;
+            case ResourceType::INTEGRATION: typeStr = "integration"; break;
+            case ResourceType::KVDB: typeStr = "kvdb"; break;
+            default: throw std::runtime_error(fmt::format("Unsupported resource type: {}", static_cast<int>(type)));
         }
 
         return reader->resolveUUIDFromName(base::Name(name), typeStr);
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Failed to resolve UUID for name '{}' of type '{}': {}",
-                                            name, static_cast<int>(type), e.what()));
+        throw std::runtime_error(fmt::format(
+            "Failed to resolve UUID for name '{}' of type '{}': {}", name, static_cast<int>(type), e.what()));
     }
 }
 
@@ -359,13 +352,14 @@ dataType::Integration CMStoreCTI::getIntegrationByName(const std::string& name) 
             auto uuidOpt = rawDoc.getString("/name");
             if (!uuidOpt.has_value())
             {
-                throw std::runtime_error("Integration document missing both /payload/document/id and /name (UUID) fields");
+                throw std::runtime_error(
+                    "Integration document missing both /payload/document/id and /name (UUID) fields");
             }
             document.setString(*uuidOpt, "/id");
         }
 
         // Pass the document to Integration::fromJson
-        return dataType::Integration::fromJson(document);
+        return dataType::Integration::fromJson(document, /*requireUUID:*/ true);
     }
     catch (const std::exception& e)
     {
@@ -435,7 +429,7 @@ dataType::KVDB CMStoreCTI::getKVDBByName(const std::string& name) const
         }
 
         // Pass the document to KVDB::fromJson
-        return dataType::KVDB::fromJson(document);
+        return dataType::KVDB::fromJson(document, /*requireUUID:*/ true);
     }
     catch (const std::exception& e)
     {
