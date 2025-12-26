@@ -146,9 +146,9 @@ def test_generate_keypair_cache(mock_exists, mock_open,
     assert mock_exists.call_count == 2
     assert mock_open.call_count == 2
 
-
+@patch('api.authentication.generate_keypair.cache_clear')
 @patch('builtins.open')
-def test_change_keypair(mock_open):
+def test_change_keypair(mock_open, mock_generate_keypair_cache):
     """Verify correct params when calling open method inside change_keypair"""
     result = authentication.change_keypair()
     assert isinstance(result[0], str)
@@ -156,6 +156,7 @@ def test_change_keypair(mock_open):
     calls = [call(authentication._private_key_path, mode='w'),
              call(authentication._public_key_path, mode='w')]
     mock_open.assert_has_calls(calls, any_order=True)
+    mock_generate_keypair_cache.assert_called_once()
 
 
 def test_get_security_conf():

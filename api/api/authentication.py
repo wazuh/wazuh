@@ -141,6 +141,8 @@ def change_keypair():
     with open(_public_key_path, mode='w') as key_file:
         key_file.write(public_key)
 
+    generate_keypair.cache_clear()
+
     return private_key, public_key
 
 
