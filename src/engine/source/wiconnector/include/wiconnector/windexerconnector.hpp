@@ -1,14 +1,14 @@
 #ifndef _WINDEXER_CONNECTOR_HPP
 #define _WINDEXER_CONNECTOR_HPP
 
+#include <functional>
+#include <memory>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
-#include <functional>
-#include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include <wiconnector/iwindexerconnector.hpp>
 
@@ -86,6 +86,16 @@ public:
      * @copydoc IWIndexerConnector::getPolicy
      */
     PolicyResources getPolicy(std::string_view space) override;
+
+    /**
+     * @copydoc IWIndexerConnector::getPolicyHash
+     */
+    std::string getPolicyHash(std::string_view space) override;
+
+    /**
+     * @copydoc IWIndexerConnector::existsPolicy
+     */
+    bool existsPolicy(std::string_view space) override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.

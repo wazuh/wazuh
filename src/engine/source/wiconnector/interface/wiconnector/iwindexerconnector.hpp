@@ -53,6 +53,33 @@ public:
      * @throws std::exception for other unexpected errors
      */
     virtual PolicyResources getPolicy(std::string_view space) = 0;
+
+    /**
+     * @brief Retrieves the policy hash for the specified space.
+     *
+     * Queries the .cti-policies index to retrieve the SHA-256 hash stored in
+     * the space.hash.sha256 field for the given space name.
+     *
+     * @param space The name of the space to retrieve the hash for
+     * @return The SHA-256 hash as a string
+     * @throws std::invalid_argument if the space name is empty
+     * @throws IndexerConnectorException if the query returns zero or more than one result
+     * @throws std::exception for other unexpected errors
+     */
+    virtual std::string getPolicyHash(std::string_view space) = 0;
+
+    /**
+     * @brief Checks if a policy exists for the specified space.
+     *
+     * Queries the .cti-policies index to determine if at least one policy
+     * exists for the given space name.
+     *
+     * @param space The name of the space to check
+     * @return true if at least one policy exists, false otherwise
+     * @throws std::invalid_argument if the space name is empty
+     * @throws IndexerConnectorException if there is an error during the query
+     */
+    virtual bool existsPolicy(std::string_view space) = 0;
 };
 
 } // namespace wiconnector

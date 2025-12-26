@@ -537,9 +537,8 @@ public:
         return m_dispatcher->size();
     }
 
-    PointInTime createPointInTime(const std::vector<std::string>& indices,
-                                  std::string_view keepAlive,
-                                  bool expandWildcards)
+    PointInTime
+    createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
     {
         if (indices.empty())
         {
@@ -610,7 +609,8 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                logDebug2(IC_NAME, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
+                logDebug2(
+                    IC_NAME, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
             }
             catch (const std::exception& e)
             {
@@ -619,17 +619,18 @@ public:
             }
         };
 
-        const auto onError = [&errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
+        const auto onError =
+            [&errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
-                          ", Response: " + responseBody;
+                           ", Response: " + responseBody;
             logDebug1(IC_NAME, "%s", errorMessage.c_str());
         };
 
         // Execute the POST request synchronously
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
-                           PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                           {});
+                            PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                            {});
 
         if (!success)
         {
@@ -661,19 +662,18 @@ public:
                 logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
             };
 
-            const auto onError = [&pitId](const std::string& error, const long statusCode, const std::string& responseBody)
+            const auto onError =
+                [&pitId](const std::string& error, const long statusCode, const std::string& responseBody)
             {
-                throw IndexerConnectorException("Failed to delete PIT " + pitId + ". Error: " + error +
-                                                ", Status: " + std::to_string(statusCode) +
-                                                ", Response: " + responseBody);
+                throw IndexerConnectorException("Failed to delete PIT " + pitId + ". Error: " + error + ", Status: " +
+                                                std::to_string(statusCode) + ", Response: " + responseBody);
             };
 
-            m_httpRequest->delete_(
-                RequestParameters {.url = HttpURL(url),
-                                  .data = deleteBody.dump(),
-                                  .secureCommunication = m_secureCommunication},
-                PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                {});
+            m_httpRequest->delete_(RequestParameters {.url = HttpURL(url),
+                                                      .data = deleteBody.dump(),
+                                                      .secureCommunication = m_secureCommunication},
+                                   PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                                   {});
         }
         catch (const std::exception& e)
         {
@@ -693,10 +693,7 @@ public:
         // Build the search request body
         nlohmann::json requestBody;
         requestBody["size"] = size;
-        requestBody["pit"] = {
-            {"id", pit.getPitId()},
-            {"keep_alive", pit.getKeepAlive()}
-        };
+        requestBody["pit"] = {{"id", pit.getPitId()}, {"keep_alive", pit.getKeepAlive()}};
         requestBody["query"] = query;
         requestBody["sort"] = sort;
 
@@ -742,16 +739,16 @@ public:
 
         const auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
         {
-            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
-                                            ": " + error + ". Response: " + responseBody);
+            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
+                                            error + ". Response: " + responseBody);
         };
 
         // Execute the POST request synchronously
         m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                              .data = requestBody.dump(),
-                                              .secureCommunication = m_secureCommunication},
-                           PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                           {});
+                                               .data = requestBody.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                            {});
 
         if (!success)
         {
@@ -790,7 +787,8 @@ public:
         }
 
         // Build the URL
-        const std::string url = "/" + index + "/_search";
+        std::string url {m_selector->getNext()};
+        url += "/" + index + "/_search";
 
         // Variables to capture the response
         bool success = false;
@@ -802,7 +800,7 @@ public:
             try
             {
                 auto jsonResponse = nlohmann::json::parse(responseBody);
-                
+
                 // Check if the response contains hits
                 if (!jsonResponse.contains("hits"))
                 {
@@ -821,16 +819,16 @@ public:
         // Define error callback
         auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
         {
-            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
-                                            ": " + error + ". Response: " + responseBody);
+            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
+                                            error + ". Response: " + responseBody);
         };
 
         // Execute the POST request synchronously
         m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                              .data = requestBody.dump(),
-                                              .secureCommunication = m_secureCommunication},
-                           PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                           {});
+                                               .data = requestBody.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                            {});
 
         if (!success)
         {

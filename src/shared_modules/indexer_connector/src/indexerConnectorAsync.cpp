@@ -60,9 +60,8 @@ public:
         return m_impl.getQueueSize();
     }
 
-    PointInTime createPointInTime(const std::vector<std::string>& indices,
-                                  std::string_view keepAlive,
-                                  bool expandWildcards)
+    PointInTime
+    createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
     {
         return m_impl.createPointInTime(indices, keepAlive, expandWildcards);
     }
@@ -105,7 +104,10 @@ void IndexerConnectorAsync::index(std::string_view id, std::string_view index, s
     m_impl->index(id, index, data);
 }
 
-void IndexerConnectorAsync::index(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+void IndexerConnectorAsync::index(std::string_view id,
+                                  std::string_view index,
+                                  std::string_view data,
+                                  std::string_view version)
 {
     m_impl->index(id, index, data, version);
 }
@@ -131,8 +133,8 @@ uint64_t IndexerConnectorAsync::getQueueSize() const
 }
 
 PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,
-                                                      std::string_view keepAlive,
-                                                      bool expandWildcards)
+                                                     std::string_view keepAlive,
+                                                     bool expandWildcards)
 {
     return m_impl->createPointInTime(indices, keepAlive, expandWildcards);
 }
@@ -143,18 +145,18 @@ void IndexerConnectorAsync::deletePointInTime(const PointInTime& pit)
 }
 
 nlohmann::json IndexerConnectorAsync::search(const PointInTime& pit,
-                                              std::size_t size,
-                                              const nlohmann::json& query,
-                                              const nlohmann::json& sort,
-                                              const std::optional<nlohmann::json>& searchAfter)
+                                             std::size_t size,
+                                             const nlohmann::json& query,
+                                             const nlohmann::json& sort,
+                                             const std::optional<nlohmann::json>& searchAfter)
 {
     return m_impl->search(pit, size, query, sort, searchAfter);
 }
 
 nlohmann::json IndexerConnectorAsync::search(const std::string& index,
-                                              std::size_t size,
-                                              const nlohmann::json& query,
-                                              const std::optional<nlohmann::json>& source)
+                                             std::size_t size,
+                                             const nlohmann::json& query,
+                                             const std::optional<nlohmann::json>& source)
 {
     return m_impl->search(index, size, query, source);
 }

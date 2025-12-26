@@ -333,4 +333,81 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
     return policyMap;
 }
 
+std::string WIndexerConnector::getPolicyHash(std::string_view space)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // Prepare query filter for the space
+    nlohmann::json query = getQueryFilter(space);
+
+    // Prepare source filter to only retrieve space.hash.sha256
+    nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
+
+    // Execute search query
+    nlohmann::json hits = m_indexerConnectorAsync->search(".cti-policies", 10, query, source);
+
+    // Check total hits
+    size_t totalHits = getTotalHits(hits);
+
+    if (totalHits == 0)
+    {
+        throw IndexerConnectorException("No policy found for space: " + std::string(space));
+    }
+
+    if (totalHits > 1)
+    {
+        throw IndexerConnectorException("Multiple policies found for space: " + std::string(space)
+                                        + " (expected 1, got " + std::to_string(totalHits) + ")");
+    }
+
+    // Extract the hash from the first (and only) hit
+    const auto& hitArray = hits["hits"];
+    if (!hitArray.is_array() || hitArray.empty())
+    {
+        throw IndexerConnectorException("No hits returned despite total_hits > 0 for space: " + std::string(space));
+    }
+
+    const auto& firstHit = hitArray[0];
+    if (!firstHit.contains("_source"))
+    {
+        throw IndexerConnectorException("Hit does not contain _source field for space: " + std::string(space));
+    }
+
+    const auto& source_data = firstHit["_source"];
+    if (!source_data.contains("space") || !source_data["space"].contains("hash")
+        || !source_data["space"]["hash"].contains("sha256"))
+    {
+        throw IndexerConnectorException("space.hash.sha256 field not found for space: " + std::string(space));
+    }
+
+    return source_data["space"]["hash"]["sha256"].get<std::string>();
+}
+
+bool WIndexerConnector::existsPolicy(std::string_view space)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // Prepare query filter for the space
+    nlohmann::json query = getQueryFilter(space);
+
+    // Prepare source filter to only retrieve space.name field
+    nlohmann::json source = {{"includes", {"space.name"}}, {"excludes", nlohmann::json::array()}};
+
+    // Execute search query with size=1 (we only need to know if at least one exists)
+    nlohmann::json hits = m_indexerConnectorAsync->search(".cti-policies", 1, query, source);
+
+    // Check total hits
+    size_t totalHits = getTotalHits(hits);
+
+    return totalHits > 0;
+}
+
 }; // namespace wiconnector
