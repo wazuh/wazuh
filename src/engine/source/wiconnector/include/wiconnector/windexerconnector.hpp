@@ -56,9 +56,7 @@ class WIndexerConnector : public IWIndexerConnector
 private:
     std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
-    std::size_t m_retryCount {3};
-    std::size_t m_retryDelayMs {1000};
-    std::size_t m_maxHitsPerRequest {10};
+    std::size_t m_maxHitsPerRequest {100};
 
 public:
     WIndexerConnector() = delete;
@@ -80,26 +78,14 @@ public:
     WIndexerConnector(std::string_view jsonOssecConfig);
 
     /**
-     * @brief Indexes data into the specified index.
-     *
-     * @param index The name of the index where the data will be stored
-     * @param data The data content to be indexed as a string view
-     *
-     * @throws std::invalid_argument If index name is empty or invalid
+     * @copydoc IWIndexerConnector::index
      */
     void index(std::string_view index, std::string_view data) override;
 
     /**
-     * @brief Gets the policy associated with the specified namespace.
-     *
-     * @param space The namespace for which to retrieve the policy.
-     * @param retryCount The number of times to retry the operation in case of failure. Default is 3.
-     * @param retryDelayMs The delay in milliseconds between retries. Default is 1000 ms.
-     * @return std::unordered_map<std::string, std::vector<::json::Json>>
-     * @throws std::runtime_error If there is an error retrieving the policy.
+     * @copydoc IWIndexerConnector::getPolicy
      */
-    std::unordered_map<std::string, std::vector<std::string>>
-    getPolicy(std::string_view space, std::size_t retryCount = 3, std::size_t retryDelayMs = 1000);
+    PolicyResources getPolicy(std::string_view space) override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.

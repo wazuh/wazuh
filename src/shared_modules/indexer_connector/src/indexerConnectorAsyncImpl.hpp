@@ -538,7 +538,7 @@ public:
     }
 
     PointInTime createPointInTime(const std::vector<std::string>& indices,
-                                  const std::string& keepAlive,
+                                  std::string_view keepAlive,
                                   bool expandWildcards)
     {
         if (indices.empty())
@@ -575,7 +575,7 @@ public:
 
         // Build the URL with query parameters
         std::string url {m_selector->getNext()};
-        url += "/" + indicesStr + "/_search/point_in_time?keep_alive=" + keepAlive;
+        url += "/" + indicesStr + "/_search/point_in_time?keep_alive=" + std::string(keepAlive);
 
         if (expandWildcards)
         {

@@ -44,10 +44,10 @@ public:
      * @param creationTime The creation time of the PIT.
      * @param keepAlive The keep alive duration (e.g., "5m", "1h").
      */
-    PointInTime(std::string pitId, uint64_t creationTime, std::string keepAlive)
+    PointInTime(std::string pitId, uint64_t creationTime, std::string_view keepAlive)
         : m_pitId(std::move(pitId))
         , m_creationTime(creationTime)
-        , m_keepAlive(std::move(keepAlive))
+        , m_keepAlive(keepAlive)
     {
     }
 
@@ -331,7 +331,7 @@ public:
      * connector.deletePointInTime(pit); // Clean up when done
      */
     PointInTime createPointInTime(const std::vector<std::string>& indices,
-                                  const std::string& keepAlive,
+                                  std::string_view keepAlive,
                                   bool expandWildcards = false);
 
     /**

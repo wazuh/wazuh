@@ -61,7 +61,7 @@ public:
     }
 
     PointInTime createPointInTime(const std::vector<std::string>& indices,
-                                  const std::string& keepAlive,
+                                  std::string_view keepAlive,
                                   bool expandWildcards)
     {
         return m_impl.createPointInTime(indices, keepAlive, expandWildcards);
@@ -123,7 +123,7 @@ uint64_t IndexerConnectorAsync::getQueueSize() const
 }
 
 PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,
-                                                      const std::string& keepAlive,
+                                                      std::string_view keepAlive,
                                                       bool expandWildcards)
 {
     return m_impl->createPointInTime(indices, keepAlive, expandWildcards);
