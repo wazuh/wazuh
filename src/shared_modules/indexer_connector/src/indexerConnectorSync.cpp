@@ -120,10 +120,9 @@ nlohmann::json IndexerConnectorSync::executeSearchQuery(const std::string& index
     return m_impl->executeSearchQuery(index, searchQuery);
 }
 
-void IndexerConnectorSync::executeSearchQueryWithPagination(
-    const std::string& index,
-    const nlohmann::json& query,
-    std::function<void(const nlohmann::json&)> onResponse)
+void IndexerConnectorSync::executeSearchQueryWithPagination(const std::string& index,
+                                                            const nlohmann::json& query,
+                                                            std::function<void(const nlohmann::json&)> onResponse)
 {
     m_impl->executeSearchQueryWithPagination(index, query, onResponse);
 }

@@ -190,7 +190,8 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Server not found", 404, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Server not found", 404, "");
                     }
                 }
             }));

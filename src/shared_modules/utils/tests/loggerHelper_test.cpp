@@ -40,8 +40,8 @@ void debugVerboseTestFunction(
     char buffer[MAXLEN];
     vsnprintf(buffer, MAXLEN, msg, args);
 
-    ssOutput << "debug_verbose" << " " << tag << " " << file << " " << line << " " << func << " " << buffer
-             << std::endl;
+    ssOutput << "debug_verbose"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
 void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
@@ -49,7 +49,8 @@ void debugTestFunction(const char* tag, const char* file, int line, const char* 
     char buffer[MAXLEN];
     vsnprintf(buffer, MAXLEN, msg, args);
 
-    ssOutput << "debug" << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
+    ssOutput << "debug"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
 void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
@@ -57,7 +58,8 @@ void infoTestFunction(const char* tag, const char* file, int line, const char* f
     char buffer[MAXLEN];
     vsnprintf(buffer, MAXLEN, msg, args);
 
-    ssOutput << "info" << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
+    ssOutput << "info"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
 void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
@@ -65,7 +67,8 @@ void warningTestFunction(const char* tag, const char* file, int line, const char
     char buffer[MAXLEN];
     vsnprintf(buffer, MAXLEN, msg, args);
 
-    ssOutput << "warning" << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
+    ssOutput << "warning"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
 void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
@@ -73,7 +76,8 @@ void errorTestFunction(const char* tag, const char* file, int line, const char* 
     char buffer[MAXLEN];
     vsnprintf(buffer, MAXLEN, msg, args);
 
-    ssOutput << "error" << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
+    ssOutput << "error"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
 void logFunctionWrapper(

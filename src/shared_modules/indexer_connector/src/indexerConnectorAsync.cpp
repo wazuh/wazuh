@@ -75,7 +75,10 @@ void IndexerConnectorAsync::index(std::string_view id, std::string_view index, s
     m_impl->index(id, index, data);
 }
 
-void IndexerConnectorAsync::index(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+void IndexerConnectorAsync::index(std::string_view id,
+                                  std::string_view index,
+                                  std::string_view data,
+                                  std::string_view version)
 {
     m_impl->index(id, index, data, version);
 }
