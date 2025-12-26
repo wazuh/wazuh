@@ -385,7 +385,7 @@ public:
      * nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
      * auto hits = connector.search(".cti-policies", 10, query, source);
      */
-    nlohmann::json search(const std::string& index,
+    nlohmann::json search(std::string_view index,
                           std::size_t size,
                           const nlohmann::json& query,
                           const std::optional<nlohmann::json>& source = std::nullopt);

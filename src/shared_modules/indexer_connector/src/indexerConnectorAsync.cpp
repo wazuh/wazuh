@@ -80,7 +80,7 @@ public:
         return m_impl.search(pit, size, query, sort, searchAfter);
     }
 
-    nlohmann::json search(const std::string& index,
+    nlohmann::json search(std::string_view index,
                           std::size_t size,
                           const nlohmann::json& query,
                           const std::optional<nlohmann::json>& source)
@@ -153,7 +153,7 @@ nlohmann::json IndexerConnectorAsync::search(const PointInTime& pit,
     return m_impl->search(pit, size, query, sort, searchAfter);
 }
 
-nlohmann::json IndexerConnectorAsync::search(const std::string& index,
+nlohmann::json IndexerConnectorAsync::search(std::string_view index,
                                              std::size_t size,
                                              const nlohmann::json& query,
                                              const std::optional<nlohmann::json>& source)

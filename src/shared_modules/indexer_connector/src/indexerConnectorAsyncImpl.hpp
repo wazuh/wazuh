@@ -573,8 +573,15 @@ public:
         }
 
         // Build the URL with query parameters
-        std::string url {m_selector->getNext()};
-        url += "/" + indicesStr + "/_search/point_in_time?keep_alive=" + std::string(keepAlive);
+        const std::string baseUrl {m_selector->getNext()};
+        std::string url;
+        // Pre-reserve: base_url + '/' + indices + '/_search/point_in_time?keep_alive=' + keepAlive + potential '&expand_wildcards=all'
+        url.reserve(baseUrl.size() + 1 + indicesStr.size() + 35 + keepAlive.size() + 25);
+        url = baseUrl;
+        url += "/";
+        url += indicesStr;
+        url += "/_search/point_in_time?keep_alive=";
+        url += keepAlive;
 
         if (expandWildcards)
         {
@@ -651,13 +658,16 @@ public:
                 throw IndexerConnectorException("PIT ID is empty, cannot delete PIT");
             }
 
-            std::string url {m_selector->getNext()};
+            const std::string baseUrl {m_selector->getNext()};
+            std::string url;
+            url.reserve(baseUrl.size() + 25); // base_url + '/_search/point_in_time'
+            url = baseUrl;
             url += "/_search/point_in_time";
 
             nlohmann::json deleteBody;
             deleteBody["pit_id"] = pitId;
 
-            const auto onSuccess = [](std::string&& response)
+            const auto onSuccess = [](const std::string& response)
             {
                 logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
             };
@@ -693,7 +703,8 @@ public:
         // Build the search request body
         nlohmann::json requestBody;
         requestBody["size"] = size;
-        requestBody["pit"] = {{"id", pit.getPitId()}, {"keep_alive", pit.getKeepAlive()}};
+        requestBody["pit"]["id"] = pit.getPitId();
+        requestBody["pit"]["keep_alive"] = pit.getKeepAlive();
         requestBody["query"] = query;
         requestBody["sort"] = sort;
 
@@ -708,7 +719,10 @@ public:
         }
 
         // Build the URL
-        std::string url {m_selector->getNext()};
+        const std::string baseUrl {m_selector->getNext()};
+        std::string url;
+        url.reserve(baseUrl.size() + 10); // base_url + '/_search'
+        url = baseUrl;
         url += "/_search";
 
         // Variables to capture the response
@@ -768,7 +782,7 @@ public:
      * @return The hits object from the search response.
      * @throws IndexerConnectorException if the search fails.
      */
-    nlohmann::json search(const std::string& index,
+    nlohmann::json search(std::string_view index,
                           std::size_t size,
                           const nlohmann::json& query,
                           const std::optional<nlohmann::json>& source)
@@ -787,8 +801,12 @@ public:
         }
 
         // Build the URL
-        std::string url {m_selector->getNext()};
-        url += "/" + index + "/_search";
+        std::string url {};
+        url.reserve(128);
+        url = m_selector->getNext();
+        url += "/";
+        url += index;
+        url += "/_search";
 
         // Variables to capture the response
         bool success = false;

@@ -24,7 +24,10 @@ namespace
 const std::vector<std::string> POLICY_ALIASES = {
     ".cti-kvdbs", ".cti-decoders", ".cti-integration-decoders", ".cti-policies"};
 
-const std::string_view PIT_KEEP_ALIVE {"5m"}; ///< Keep alive duration for Point In Time
+constexpr std::string_view PIT_KEEP_ALIVE {"5m"};          ///< Keep alive duration for Point In Time
+constexpr std::string_view POLICY_INDEX {".cti-policies"}; ///< Policy index name
+constexpr std::size_t SINGLE_RESULT_SIZE {1};              ///< Size for single result queries
+constexpr std::size_t HASH_QUERY_SIZE {1};                 ///< Size for hash query (expecting single result)
 
 /// @brief Types of indexer resources
 enum class IndexResourceType
@@ -296,7 +299,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
     } while (moreHits);
 
     // Organize resources into PolicyResources structure
-    PolicyResources policyMap;
+    PolicyResources policyMap {};
 
     // Avoid memory reallocations
     {
@@ -348,7 +351,7 @@ std::string WIndexerConnector::getPolicyHash(std::string_view space)
     nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
 
     // Execute search query
-    nlohmann::json hits = m_indexerConnectorAsync->search(".cti-policies", 10, query, source);
+    nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, HASH_QUERY_SIZE, query, source);
 
     // Check total hits
     size_t totalHits = getTotalHits(hits);
@@ -402,7 +405,7 @@ bool WIndexerConnector::existsPolicy(std::string_view space)
     nlohmann::json source = {{"includes", {"space.name"}}, {"excludes", nlohmann::json::array()}};
 
     // Execute search query with size=1 (we only need to know if at least one exists)
-    nlohmann::json hits = m_indexerConnectorAsync->search(".cti-policies", 1, query, source);
+    nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, SINGLE_RESULT_SIZE, query, source);
 
     // Check total hits
     size_t totalHits = getTotalHits(hits);
