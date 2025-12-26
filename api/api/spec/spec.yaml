@@ -4194,8 +4194,6 @@ components:
           type: string
           enum:
           - conf
-          - rootkit_files
-          - rootkit_trojans
           - rcl
     allow_run_as:
       in: query
@@ -6812,10 +6810,6 @@ paths:
                       hash: 76d8be9b97d8eae4c239e530ee7e71c8
                     - filename: merged.mg
                       hash: f8d49771911ed9d5c45b03a40babd065
-                    - filename: rootkit_files.txt
-                      hash: e5ddcac443143cef6237d5f9b8d48585
-                    - filename:  rootkit_trojans.txt
-                      hash: 6bcf7016d3e6b4c7faa62cf265c24dcc
                     - filename: system_audit_rcl.txt
                       hash: be69b84dd5ee73200bb903a46270e18c
                     - filename: system_audit_ssh.txt
@@ -6826,7 +6820,7 @@ paths:
                       hash: 92d8011facc8b921ece301ea4ce6a616
                     - filename: win_malware_rcl.txt
                       hash: f5e0305e248bd00e05445f329bd1dd5e
-                  total_affected_items: 10
+                  total_affected_items: 8
                   total_failed_items: 0
                   failed_items: []
                 message: 'All selected groups files were returned'
@@ -6871,8 +6865,7 @@ paths:
                     oneOf:
                       - type: array
                       - type: object
-                        description: "The output format depends on the type of file that has been requested: rootkit
-                        file, rootkit trojans or rcl"
+                        description: "The output format depends on the type of file that has been requested: conf or rcl"
               example:
                 data:
                   vars:
@@ -7562,18 +7555,12 @@ paths:
                         queue_size: 131072
                       rootcheck:
                         disabled: no
-                        check_files: yes
-                        check_trojans: yes
                         check_dev: yes
                         check_sys: yes
                         check_pids: yes
                         check_ports: yes
                         check_if: yes
                         frequency: 43200
-                        rootkit_files:
-                          - etc/rootcheck/rootkit_files.txt
-                        rootkit_trojans:
-                          - etc/rootcheck/rootkit_trojans.txt
                         skip_nfs: yes
                       syscollector:
                         disabled: no
