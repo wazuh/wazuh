@@ -83,7 +83,11 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
             labels[i].value);
 
         if (z + l >= size) {
-            snprintf(str + z, 50, "%s\n", "Not all labels are being shown in this message");
+            const char *msg = "Not all labels are being shown in this message\n";
+            size_t remaining = size > z ? size - z : 0;
+            if (remaining > 0) {
+                snprintf(str + z, remaining, "%s", msg);
+            }
             return -1;
         }
 
