@@ -53,8 +53,7 @@ CONF_SECTIONS = MappingProxyType({
     },
     'rootcheck': {
         'type': 'merge',
-        'list_options': ['rootkit_files', 'rootkit_trojans', 'windows_audit', 'system_audit', 'windows_apps',
-                         'windows_malware']
+        'list_options': ['windows_audit', 'system_audit', 'windows_apps', 'windows_malware']
     },
     'syscheck': {
         'type': 'merge',
@@ -447,98 +446,6 @@ def _rcl2json(filepath: str) -> dict:
     return data
 
 
-def _rootkit_files2json(filepath: str) -> dict:
-    """Return the rootkit file as dictionary.
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the rootkit file.
-
-    Raises
-    ------
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        Rootkit file as dictionary.
-    """
-
-    data = []
-
-    # file_name ! Name ::Link to it
-    regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^(.+)!(.+)::(.+)")
-
-    try:
-        with open(filepath) as f:
-            for line in f:
-                if re.search(regex_comment, line):
-                    continue
-
-                if match_check := re.search(regex_check, line):
-                    new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(),
-                                 'link': match_check.group(3).strip()}
-                    data.append(new_check)
-
-    except Exception as e:
-        raise WazuhError(1101, str(e))
-
-    return data
-
-
-def _rootkit_trojans2json(filepath: str) -> dict:
-    """Return the rootkit trojans file as dictionary.
-
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the rootkit trojans file.
-
-    Raises
-    ------
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        Rootkit trojans file as dictionary.
-    """
-
-    data = []
-
-    # file_name !string_to_search!Description
-    regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^(.+)!(.+)!(.+)")
-    regex_binary_check = re.compile(r"^(.+)!(.+)!")
-
-    try:
-        with open(filepath) as f:
-            for line in f:
-                if re.search(regex_comment, line):
-                    continue
-
-                match_check = re.search(regex_check, line)
-                match_binary_check = re.search(regex_binary_check, line)
-                if match_check:
-                    new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(),
-                                 'description': match_check.group(3).strip()}
-                    data.append(new_check)
-                elif match_binary_check:
-                    new_check = {'filename': match_binary_check.group(1).strip(),
-                                 'name': match_binary_check.group(2).strip()}
-                    data.append(new_check)
-
-    except Exception as e:
-        raise WazuhError(1101, str(e))
-
-    return data
-
-
 def _ar_conf2json(file_path: str) -> dict:
     """Return the lines of the ar.conf file.
 
@@ -825,8 +732,6 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
     types = {
         'conf': get_agent_conf,
-        'rootkit_files': _rootkit_files2json,
-        'rootkit_trojans': _rootkit_trojans2json,
         'rcl': _rcl2json
     }
 
@@ -841,10 +746,6 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     else:
         if filename == 'agent.conf':
             data = get_agent_conf(group_id, limit=None, filename=filename, raw=raw)
-        elif filename == 'rootkit_files.txt':
-            data = _rootkit_files2json(file_path)
-        elif filename == 'rootkit_trojans.txt':
-            data = _rootkit_trojans2json(file_path)
         elif filename == 'ar.conf':
             data = _ar_conf2json(file_path)
         elif filename == 'merged.mg':
