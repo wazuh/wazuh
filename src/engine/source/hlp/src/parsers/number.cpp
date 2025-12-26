@@ -30,9 +30,35 @@ void setNumber(std::string_view targetField, json::Json& doc, double_t val)
     doc.setDouble(val, targetField);
 }
 
+void setNumber(std::string_view targetField, json::Json& doc, uint64_t val)
+{
+    doc.setUint64(val, targetField);
+}
+
+void setNumber(std::string_view targetField, json::Json& doc, int32_t val)
+{
+    doc.setInt(val, targetField);
+}
+
+void setNumber(std::string_view targetField, json::Json& doc, int16_t val)
+{
+    doc.setInt(val, targetField);
+}
+
 std::from_chars_result from_chars(const char* first, const char* last, int8_t& val)
 {
-    return std::from_chars(first, last, val);
+    int temp;
+    auto result = std::from_chars(first, last, temp);
+    if (result.ec == std::errc {} && temp >= INT8_MIN && temp <= INT8_MAX)
+    {
+        val = static_cast<int8_t>(temp);
+    }
+    else if (result.ec == std::errc {})
+    {
+        result.ec = std::errc::result_out_of_range;
+    }
+
+    return result;
 }
 
 std::from_chars_result from_chars(const char* first, const char* last, int64_t& val)
@@ -50,6 +76,21 @@ std::from_chars_result from_chars(const char* first, const char* last, double& v
 {
     fast_float::from_chars_result v = fast_float::from_chars(first, last, val);
     return std::from_chars_result {v.ptr, v.ec};
+}
+
+std::from_chars_result from_chars(const char* first, const char* last, uint64_t& val)
+{
+    return std::from_chars(first, last, val);
+}
+
+std::from_chars_result from_chars(const char* first, const char* last, int32_t& val)
+{
+    return std::from_chars(first, last, val);
+}
+
+std::from_chars_result from_chars(const char* first, const char* last, int16_t& val)
+{
+    return std::from_chars(first, last, val);
 }
 
 } // namespace utils
@@ -80,6 +121,21 @@ Parser getDoubleParser(const Params& params)
 Parser getScaledFloatParser(const Params& params)
 {
     return getNumericParser<double_t>(params);
+}
+
+Parser getUnsignedLongParser(const Params& params)
+{
+    return getNumericParser<uint64_t>(params);
+}
+
+Parser getIntegerParser(const Params& params)
+{
+    return getNumericParser<int32_t>(params);
+}
+
+Parser getShortParser(const Params& params)
+{
+    return getNumericParser<int16_t>(params);
 }
 
 } // namespace hlp::parsers
