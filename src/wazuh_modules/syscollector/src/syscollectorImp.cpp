@@ -2963,12 +2963,43 @@ void Syscollector::updateLastSyncTime(const std::string& tableName, int64_t time
 {
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
-    auto syncQuery = SyncRowQuery::builder()
-                     .table("table_metadata")
-    .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
-    .build();
+    // Read all current last_sync_time values from table_metadata
+    // We need to sync ALL rows to prevent DBSyncTxn from deleting unsynced rows
+    std::map<std::string, int64_t> allTimestamps;
 
-    m_spDBSync->syncRow(syncQuery.query(), emptyCallback);
+    for (const auto& [table, index] : INDEX_MAP)
+    {
+        allTimestamps[table] = getLastSyncTime(table);
+    }
+
+    // Update the one that changed
+    allTimestamps[tableName] = timestamp;
+
+    // Use DBSyncTxn to ensure transaction is committed immediately
+    // getDeletedRows() commits m_transaction and creates a new one
+    DBSyncTxn txn
+    {
+        m_spDBSync->handle(),
+        nlohmann::json{"table_metadata"},
+        0,
+        QUEUE_SIZE,
+        emptyCallback
+    };
+
+    // Build data array with ALL table timestamps to prevent deletion
+    nlohmann::json allData = nlohmann::json::array();
+
+    for (const auto& [table, ts] : allTimestamps)
+    {
+        allData.push_back({{"table_name", table}, {"last_sync_time", ts}});
+    }
+
+    nlohmann::json input;
+    input["table"] = "table_metadata";
+    input["data"] = allData;
+
+    txn.syncTxnRow(input);
+    txn.getDeletedRows(emptyCallback);  // Commits the transaction here
 }
 
 bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval)
@@ -3074,10 +3105,11 @@ void Syscollector::runRecoveryProcess()
                     m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
                 }
 
-                // Update the last sync time regardless of whether full sync was required
-                // This ensures the integrity check doesn't run again until integrity_interval has elapsed
-                updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
             }
+
+            // Update the last sync time regardless of whether full sync was required
+            // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+            updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
         }
     }
 }
