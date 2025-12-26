@@ -15,4 +15,6 @@
 
 int __wrap_parse_agent_update_msg(char *msg, __attribute__((unused)) agent_info_data *agent_data);
 
+int __wrap_parse_json_keepalive(const char *json_str, __attribute__((unused)) agent_info_data *agent_data);
+
 #endif

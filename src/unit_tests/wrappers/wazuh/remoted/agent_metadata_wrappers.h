@@ -16,7 +16,7 @@
 
 void __wrap_agent_metadata_init(void);
 
-agent_meta_t* __wrap_agent_meta_from_agent_info(const char* id_str, const struct agent_info_data* ai);
+agent_meta_t* __wrap_agent_meta_from_agent_info(const char* id_str, const char* agent_name, const struct agent_info_data* ai);
 
 int __wrap_agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh);
 

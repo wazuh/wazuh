@@ -54,6 +54,8 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
             os_free(agent_data->osd->os_build);
             os_free(agent_data->osd->os_uname);
             os_free(agent_data->osd->os_arch);
+            os_free(agent_data->osd->os_type);
+            os_free(agent_data->osd->hostname);
             os_free(agent_data->osd);
         }
         os_free(agent_data);

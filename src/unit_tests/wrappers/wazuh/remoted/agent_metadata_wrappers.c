@@ -20,8 +20,10 @@ void __wrap_agent_metadata_init(void) {
 }
 
 agent_meta_t* __wrap_agent_meta_from_agent_info(const char* id_str,
+                                                const char* agent_name,
                                                 const struct agent_info_data* ai) {
     check_expected(id_str);
+    check_expected(agent_name);
     check_expected(ai);
 
     return mock_ptr_type(agent_meta_t*);

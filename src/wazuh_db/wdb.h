@@ -216,6 +216,8 @@ typedef struct os_data {
     char *os_build;
     char *os_uname;
     char *os_arch;
+    char *os_type;
+    char *hostname;
 } os_data;
 
 typedef struct agent_info_data {

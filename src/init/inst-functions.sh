@@ -727,6 +727,11 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libagent_sync_protocol.dylib
         fi
+        if [ -f shared_modules/agent_metadata/build/lib/libagent_metadata.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/agent_metadata/build/lib/libagent_metadata.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_metadata.dylib ${INSTALLDIR}/lib/libagent_metadata.dylib
+        fi
     elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${INSTALLDIR}/lib
@@ -741,6 +746,14 @@ InstallCommon()
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_sync_protocol.so
+        fi
+    fi
+    if [ -f shared_modules/agent_metadata/build/lib/libagent_metadata.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/agent_metadata/build/lib/libagent_metadata.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_metadata.so
         fi
     fi
 
