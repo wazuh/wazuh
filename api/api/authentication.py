@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+from functools import cache
 import hashlib
 import json
 import jwt
@@ -93,7 +94,7 @@ JWT_ALGORITHM = 'ES512'
 _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
-
+@cache
 def generate_keypair():
     """Generate key files to keep safe or load existing public and private keys.
 
@@ -139,6 +140,8 @@ def change_keypair():
         key_file.write(private_key)
     with open(_public_key_path, mode='w') as key_file:
         key_file.write(public_key)
+
+    generate_keypair.cache_clear()
 
     return private_key, public_key
 
