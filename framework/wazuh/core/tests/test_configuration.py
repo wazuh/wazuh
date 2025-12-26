@@ -167,26 +167,6 @@ def test_rcl2json():
         parent_directory, tmp_path, 'configuration/trojan.txt'))['vars'] == {'trojan': 'trojan'}
 
 
-def test_rootkit_files2json():
-    with patch('builtins.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1101 .*"):
-            configuration._rootkit_files2json(filepath=os.path.join(
-                parent_directory, tmp_path, 'configuration/trojan.txt'))
-
-    assert configuration._rootkit_files2json(filepath=os.path.join(
-        parent_directory, tmp_path, 'configuration/trojan.txt'))[0]['filename'] == 'trojan'
-
-
-def test_rootkit_trojans2json():
-    with patch('builtins.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1101 .*"):
-            configuration._rootkit_trojans2json(filepath=os.path.join(
-                parent_directory, tmp_path, 'configuration/trojan.txt'))
-
-    assert configuration._rootkit_trojans2json(filepath=os.path.join(
-        parent_directory, tmp_path, 'configuration/trojan.txt'))[0]['filename'] == 'trojan'
-
-
 def test_merged_mg2json():
     """Checks that _merged_mg2json parses the file content correctly."""
     with patch('builtins.open', return_value=Exception):
@@ -288,10 +268,6 @@ def test_get_file_conf():
                           dict)
         assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default',
                                                       raw=True), str)
-        rootkit_files = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'link': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_files.txt', group_id='default') == rootkit_files
-        rootkit_trojans = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'description': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',) == rootkit_trojans
         ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0',
                    'restart-wazuh0 - restart-ossec.sh - 0', 'restart-wazuh0 - restart-ossec.cmd - 0',
                    'restart-wazuh0 - restart-wazuh - 0', 'restart-wazuh0 - restart-wazuh.exe - 0']
