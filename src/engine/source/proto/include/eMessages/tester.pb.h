@@ -33,6 +33,7 @@
 #include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "engine.pb.h"
+#include <google/protobuf/struct.pb.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_tester_2eproto
@@ -52,6 +53,9 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace tester {
+class PublicRunPost_Request;
+struct PublicRunPost_RequestDefaultTypeInternal;
+extern PublicRunPost_RequestDefaultTypeInternal _PublicRunPost_Request_default_instance_;
 class Result;
 struct ResultDefaultTypeInternal;
 extern ResultDefaultTypeInternal _Result_default_instance_;
@@ -97,6 +101,7 @@ extern TableGet_ResponseDefaultTypeInternal _TableGet_Response_default_instance_
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
+template<> ::com::wazuh::api::engine::tester::PublicRunPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::PublicRunPost_Request>(Arena*);
 template<> ::com::wazuh::api::engine::tester::Result* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result>(Arena*);
 template<> ::com::wazuh::api::engine::tester::Result_AssetTrace* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result_AssetTrace>(Arena*);
 template<> ::com::wazuh::api::engine::tester::RunPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::RunPost_Request>(Arena*);
@@ -2504,6 +2509,222 @@ class RunPost_Response final :
   union { Impl_ _impl_; };
   friend struct ::TableStruct_tester_2eproto;
 };
+// -------------------------------------------------------------------
+
+class PublicRunPost_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.tester.PublicRunPost_Request) */ {
+ public:
+  inline PublicRunPost_Request() : PublicRunPost_Request(nullptr) {}
+  ~PublicRunPost_Request() override;
+  explicit PROTOBUF_CONSTEXPR PublicRunPost_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  PublicRunPost_Request(const PublicRunPost_Request& from);
+  PublicRunPost_Request(PublicRunPost_Request&& from) noexcept
+    : PublicRunPost_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline PublicRunPost_Request& operator=(const PublicRunPost_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline PublicRunPost_Request& operator=(PublicRunPost_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const PublicRunPost_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const PublicRunPost_Request* internal_default_instance() {
+    return reinterpret_cast<const PublicRunPost_Request*>(
+               &_PublicRunPost_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    13;
+
+  friend void swap(PublicRunPost_Request& a, PublicRunPost_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(PublicRunPost_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(PublicRunPost_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  PublicRunPost_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<PublicRunPost_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const PublicRunPost_Request& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const PublicRunPost_Request& from) {
+    PublicRunPost_Request::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(PublicRunPost_Request* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.tester.PublicRunPost_Request";
+  }
+  protected:
+  explicit PublicRunPost_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kLocationFieldNumber = 2,
+    kEventFieldNumber = 4,
+    kTraceLevelFieldNumber = 5,
+    kAgentMetadataFieldNumber = 3,
+    kQueueFieldNumber = 1,
+  };
+  // string location = 2;
+  void clear_location();
+  const std::string& location() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_location(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_location();
+  PROTOBUF_NODISCARD std::string* release_location();
+  void set_allocated_location(std::string* location);
+  private:
+  const std::string& _internal_location() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_location(const std::string& value);
+  std::string* _internal_mutable_location();
+  public:
+
+  // string event = 4;
+  void clear_event();
+  const std::string& event() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_event(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_event();
+  PROTOBUF_NODISCARD std::string* release_event();
+  void set_allocated_event(std::string* event);
+  private:
+  const std::string& _internal_event() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_event(const std::string& value);
+  std::string* _internal_mutable_event();
+  public:
+
+  // string trace_level = 5;
+  void clear_trace_level();
+  const std::string& trace_level() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_trace_level(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_trace_level();
+  PROTOBUF_NODISCARD std::string* release_trace_level();
+  void set_allocated_trace_level(std::string* trace_level);
+  private:
+  const std::string& _internal_trace_level() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_trace_level(const std::string& value);
+  std::string* _internal_mutable_trace_level();
+  public:
+
+  // .google.protobuf.Struct agent_metadata = 3;
+  bool has_agent_metadata() const;
+  private:
+  bool _internal_has_agent_metadata() const;
+  public:
+  void clear_agent_metadata();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& agent_metadata() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_agent_metadata();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_agent_metadata();
+  void set_allocated_agent_metadata(::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_agent_metadata() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_agent_metadata();
+  public:
+  void unsafe_arena_set_allocated_agent_metadata(
+      ::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_agent_metadata();
+
+  // uint32 queue = 1;
+  void clear_queue();
+  uint32_t queue() const;
+  void set_queue(uint32_t value);
+  private:
+  uint32_t _internal_queue() const;
+  void _internal_set_queue(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.PublicRunPost_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr location_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr event_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr trace_level_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata_;
+    uint32_t queue_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_tester_2eproto;
+};
 // ===================================================================
 
 
@@ -4153,9 +4374,270 @@ inline void RunPost_Response::set_allocated_result(::com::wazuh::api::engine::te
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Response.result)
 }
 
+// -------------------------------------------------------------------
+
+// PublicRunPost_Request
+
+// uint32 queue = 1;
+inline void PublicRunPost_Request::clear_queue() {
+  _impl_.queue_ = 0u;
+}
+inline uint32_t PublicRunPost_Request::_internal_queue() const {
+  return _impl_.queue_;
+}
+inline uint32_t PublicRunPost_Request::queue() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.PublicRunPost_Request.queue)
+  return _internal_queue();
+}
+inline void PublicRunPost_Request::_internal_set_queue(uint32_t value) {
+  
+  _impl_.queue_ = value;
+}
+inline void PublicRunPost_Request::set_queue(uint32_t value) {
+  _internal_set_queue(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.PublicRunPost_Request.queue)
+}
+
+// string location = 2;
+inline void PublicRunPost_Request::clear_location() {
+  _impl_.location_.ClearToEmpty();
+}
+inline const std::string& PublicRunPost_Request::location() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.PublicRunPost_Request.location)
+  return _internal_location();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void PublicRunPost_Request::set_location(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.location_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.PublicRunPost_Request.location)
+}
+inline std::string* PublicRunPost_Request::mutable_location() {
+  std::string* _s = _internal_mutable_location();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.PublicRunPost_Request.location)
+  return _s;
+}
+inline const std::string& PublicRunPost_Request::_internal_location() const {
+  return _impl_.location_.Get();
+}
+inline void PublicRunPost_Request::_internal_set_location(const std::string& value) {
+  
+  _impl_.location_.Set(value, GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::_internal_mutable_location() {
+  
+  return _impl_.location_.Mutable(GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::release_location() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.PublicRunPost_Request.location)
+  return _impl_.location_.Release();
+}
+inline void PublicRunPost_Request::set_allocated_location(std::string* location) {
+  if (location != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.location_.SetAllocated(location, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.location_.IsDefault()) {
+    _impl_.location_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.location)
+}
+
+// .google.protobuf.Struct agent_metadata = 3;
+inline bool PublicRunPost_Request::_internal_has_agent_metadata() const {
+  return this != internal_default_instance() && _impl_.agent_metadata_ != nullptr;
+}
+inline bool PublicRunPost_Request::has_agent_metadata() const {
+  return _internal_has_agent_metadata();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& PublicRunPost_Request::_internal_agent_metadata() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.agent_metadata_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& PublicRunPost_Request::agent_metadata() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+  return _internal_agent_metadata();
+}
+inline void PublicRunPost_Request::unsafe_arena_set_allocated_agent_metadata(
+    ::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.agent_metadata_);
+  }
+  _impl_.agent_metadata_ = agent_metadata;
+  if (agent_metadata) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* PublicRunPost_Request::release_agent_metadata() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.agent_metadata_;
+  _impl_.agent_metadata_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* PublicRunPost_Request::unsafe_arena_release_agent_metadata() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.agent_metadata_;
+  _impl_.agent_metadata_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* PublicRunPost_Request::_internal_mutable_agent_metadata() {
+  
+  if (_impl_.agent_metadata_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.agent_metadata_ = p;
+  }
+  return _impl_.agent_metadata_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* PublicRunPost_Request::mutable_agent_metadata() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_agent_metadata();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+  return _msg;
+}
+inline void PublicRunPost_Request::set_allocated_agent_metadata(::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.agent_metadata_);
+  }
+  if (agent_metadata) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(agent_metadata));
+    if (message_arena != submessage_arena) {
+      agent_metadata = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, agent_metadata, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.agent_metadata_ = agent_metadata;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.agent_metadata)
+}
+
+// string event = 4;
+inline void PublicRunPost_Request::clear_event() {
+  _impl_.event_.ClearToEmpty();
+}
+inline const std::string& PublicRunPost_Request::event() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.PublicRunPost_Request.event)
+  return _internal_event();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void PublicRunPost_Request::set_event(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.event_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.PublicRunPost_Request.event)
+}
+inline std::string* PublicRunPost_Request::mutable_event() {
+  std::string* _s = _internal_mutable_event();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.PublicRunPost_Request.event)
+  return _s;
+}
+inline const std::string& PublicRunPost_Request::_internal_event() const {
+  return _impl_.event_.Get();
+}
+inline void PublicRunPost_Request::_internal_set_event(const std::string& value) {
+  
+  _impl_.event_.Set(value, GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::_internal_mutable_event() {
+  
+  return _impl_.event_.Mutable(GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::release_event() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.PublicRunPost_Request.event)
+  return _impl_.event_.Release();
+}
+inline void PublicRunPost_Request::set_allocated_event(std::string* event) {
+  if (event != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.event_.SetAllocated(event, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.event_.IsDefault()) {
+    _impl_.event_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.event)
+}
+
+// string trace_level = 5;
+inline void PublicRunPost_Request::clear_trace_level() {
+  _impl_.trace_level_.ClearToEmpty();
+}
+inline const std::string& PublicRunPost_Request::trace_level() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level)
+  return _internal_trace_level();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void PublicRunPost_Request::set_trace_level(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.trace_level_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level)
+}
+inline std::string* PublicRunPost_Request::mutable_trace_level() {
+  std::string* _s = _internal_mutable_trace_level();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level)
+  return _s;
+}
+inline const std::string& PublicRunPost_Request::_internal_trace_level() const {
+  return _impl_.trace_level_.Get();
+}
+inline void PublicRunPost_Request::_internal_set_trace_level(const std::string& value) {
+  
+  _impl_.trace_level_.Set(value, GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::_internal_mutable_trace_level() {
+  
+  return _impl_.trace_level_.Mutable(GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::release_trace_level() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level)
+  return _impl_.trace_level_.Release();
+}
+inline void PublicRunPost_Request::set_allocated_trace_level(std::string* trace_level) {
+  if (trace_level != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.trace_level_.SetAllocated(trace_level, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.trace_level_.IsDefault()) {
+    _impl_.trace_level_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

@@ -257,8 +257,38 @@ public:
     {
         NONE = 0,
         ASSET_ONLY,
-        ALL
+        ALL,
+        UNKNOWN
     };
+
+    static std::string_view traceLevelToString(TraceLevel tl) noexcept
+    {
+        switch (tl)
+        {
+            case TraceLevel::NONE:       return "NONE";
+            case TraceLevel::ASSET_ONLY: return "ASSET_ONLY";
+            case TraceLevel::ALL:        return "ALL";
+            default:                     return "UNKNOWN";
+        }
+    }
+
+    static TraceLevel stringToTraceLevel(const std::string& str) noexcept
+    {
+        std::string normalized;
+        normalized.reserve(str.size());
+
+        std::transform(
+            str.begin(), str.end(),
+            std::back_inserter(normalized),
+            [](unsigned char c) { return std::toupper(c); }
+        );
+
+        if (normalized == traceLevelToString(TraceLevel::NONE))       return TraceLevel::NONE;
+        if (normalized == traceLevelToString(TraceLevel::ASSET_ONLY)) return TraceLevel::ASSET_ONLY;
+        if (normalized == traceLevelToString(TraceLevel::ALL))        return TraceLevel::ALL;
+
+        return TraceLevel::UNKNOWN;
+    }
 
 private:
     TraceLevel m_traceLevel;                  ///< Tracing level for testing

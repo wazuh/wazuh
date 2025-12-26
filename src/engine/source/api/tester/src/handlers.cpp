@@ -5,6 +5,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <api/adapter/helpers.hpp>
+#include <api/shared/constants.hpp>
 #include <api/tester/handlers.hpp>
 
 #include <base/hostInfo.hpp>
@@ -35,7 +36,7 @@ eTester::Sync getHashStatus(const ::router::test::Entry& entry, const std::weak_
         auto nsId = store->getNSReader(entry.namespaceId());
         hash = nsId->getPolicy().getHash();
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         return eTester::Sync::ERROR;
     }
@@ -199,9 +200,11 @@ adapter::RouteHandler sessionDelete(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester, const std::shared_ptr<cm::store::ICMStore>& store)
+adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester,
+                                 const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eTester::SessionGet_Request;
         using ResponseType = eTester::SessionGet_Response;
@@ -270,9 +273,11 @@ adapter::RouteHandler sessionReload(const std::shared_ptr<::router::ITesterAPI>&
     };
 }
 
-adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester, const std::shared_ptr<cm::store::ICMStore>& store)
+adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester,
+                               const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eTester::TableGet_Request;
         using ResponseType = eTester::TableGet_Response;
@@ -303,8 +308,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                               const base::eventParsers::ProtocolHandler& protocolHandler)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
-            protocolHandler](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), protocolHandler](const auto& req, auto& res)
     {
         using RequestType = eTester::RunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -379,7 +383,145 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;
 
-        futureResult.wait_for(std::chrono::seconds(5));
+        if (futureResult.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+        {
+            res = adapter::userErrorResponse<ResponseType>("Timeout waiting for ingestTest");
+            return;
+        }
+        auto response = futureResult.get();
+
+        if (base::isError(response))
+        {
+            res = adapter::userErrorResponse<ResponseType>(base::getError(response).message);
+            return;
+        }
+
+        ResponseType eResponse {};
+        eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(response)));
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        res = adapter::userResponse(eResponse);
+    };
+}
+
+adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
+                                    const base::eventParsers::PublicProtocolHandler& protocolHandler)
+{
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), protocolHandler](const auto& req, auto& res)
+    {
+        using RequestType = eTester::PublicRunPost_Request;
+        using ResponseType = eTester::RunPost_Response;
+
+        // Validate request
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::router::ITesterAPI>(req, wTester);
+        if (adapter::isError(result))
+        {
+            res = adapter::getErrorResp(result);
+            return;
+        }
+
+        auto [tester, protoReq] = adapter::getRes(result);
+
+        const uint32_t q = protoReq.queue();
+        if (q == 0)
+        {
+            res = adapter::userErrorResponse<ResponseType>("queue is required and must be non-zero (1..255)");
+            return;
+        }
+
+        if (q > std::numeric_limits<uint8_t>::max())
+        {
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid queue: {} (must be 1..255)", q));
+            return;
+        }
+
+        const auto queue = static_cast<uint8_t>(q);
+
+        // Checks params
+        using OTraceLavel = ::router::test::Options::TraceLevel;
+        OTraceLavel traceLevel = ::router::test::Options::stringToTraceLevel(protoReq.trace_level());
+        if (traceLevel == OTraceLavel::UNKNOWN)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Invalid trace level: {}. Only support: NONE, ASSET_ONLY, ALL", protoReq.trace_level()));
+            return;
+        }
+
+        if (!protoReq.has_agent_metadata())
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                "agent_metadata is required and must be a JSON object");
+            return;
+        }
+
+        auto jsonOrErr = eMessage::eMessageToJson(protoReq.agent_metadata(), /*printPrimitiveFields=*/true);
+        if (std::holds_alternative<base::Error>(jsonOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+            return;
+        }
+
+        const auto& agentMetadataStr = std::get<std::string>(jsonOrErr);
+
+        json::Json agentMetadata;
+        try
+        {
+            agentMetadata = json::Json(agentMetadataStr.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error parsing agent_metadata JSON: {}", e.what()));
+            return;
+        }
+
+        const std::string eventStr = protoReq.event();
+        if (eventStr.empty() || std::all_of(eventStr.begin(), eventStr.end(), [](unsigned char c){ return std::isspace(c); }))
+        {
+            res = adapter::userErrorResponse<ResponseType>("event is required and cannot be empty");
+            return;
+        }
+
+        // Create The event to test
+        base::Event event;
+        auto location = protoReq.location();
+        try
+        {
+            event = protocolHandler(queue, location, eventStr, agentMetadata);
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Error parsing event: {}", e.what()));
+            return;
+        }
+
+        // Find the list of assets to trace
+        std::unordered_set<std::string> assetToTrace {};
+        if (traceLevel != OTraceLavel::NONE)
+        {
+            // Get the assets of the policy filtered by namespaces
+            auto resPolicyAssets = tester->getAssets(api::shared::constants::SESSION_NAME);
+            if (base::isError(resPolicyAssets))
+            {
+                res = adapter::userErrorResponse<ResponseType>(base::getError(resPolicyAssets).message);
+                return;
+            }
+
+            auto& policyAssets = base::getResponse(resPolicyAssets);
+            assetToTrace = std::move(policyAssets);
+        }
+
+        // Run the test
+        auto opt = ::router::test::Options(traceLevel, assetToTrace, api::shared::constants::SESSION_NAME);
+
+        auto futureResult = tester->ingestTest(std::move(event), opt);
+        event = nullptr;
+
+        if (futureResult.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+        {
+            res = adapter::userErrorResponse<ResponseType>("Timeout waiting for ingestTest");
+            return;
+        }
         auto response = futureResult.get();
 
         if (base::isError(response))

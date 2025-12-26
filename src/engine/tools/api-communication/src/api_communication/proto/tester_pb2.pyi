@@ -1,4 +1,5 @@
 import engine_pb2 as _engine_pb2
+from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -16,6 +17,20 @@ OUTDATED: Sync
 STATE_UNKNOWN: State
 SYNC_UNKNOWN: Sync
 UPDATED: Sync
+
+class PublicRunPost_Request(_message.Message):
+    __slots__ = ["agent_metadata", "event", "location", "queue", "trace_level"]
+    AGENT_METADATA_FIELD_NUMBER: _ClassVar[int]
+    EVENT_FIELD_NUMBER: _ClassVar[int]
+    LOCATION_FIELD_NUMBER: _ClassVar[int]
+    QUEUE_FIELD_NUMBER: _ClassVar[int]
+    TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    agent_metadata: _struct_pb2.Struct
+    event: str
+    location: str
+    queue: int
+    trace_level: str
+    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., agent_metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
 
 class Result(_message.Message):
     __slots__ = ["asset_traces", "output"]

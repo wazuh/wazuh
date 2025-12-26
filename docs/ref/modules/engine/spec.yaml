@@ -25,6 +25,8 @@ tags:
     description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
   - name: Content
     description: "Operations for management content."
+  - name: Logtest
+    description: "Operations for testing of events."
 
 #################################################################################
 # Paths
@@ -230,6 +232,174 @@ paths:
                   value:
                     status: "ERROR"
                     error: "Cleanup: failed deleting namespace 'policy_validate_<nonce>': <details>"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Logtest
+  ################################
+  /logtest/post:
+    post:
+      tags:
+        - Logtest
+      summary: Inject an event into an existing testing session
+      description: |
+        Injects a single event into the engine using a previously created and loaded testing session.
+
+        This endpoint **does not** validate policies and **does not** create sessions.
+        It only validates request parameters, parses/builds the event payload, and runs the test ingestion
+        against the already-loaded session (currently hardcoded as `"testing"`).
+
+        If tracing is enabled (trace_level != NONE), the endpoint retrieves the list of policy assets
+        from the active testing session and uses them as the trace filter.
+
+        Notes about event parsing:
+        - `queue` indicates the queue to which the event will be sent.
+        - `location` cannot be empty.
+        - If `location` matches the legacy agent format (`"[ID] (Name) IP->Module"`), it is parsed and may
+          rewrite the final stored location to just the module.
+        - If not legacy, host metadata is merged into the event before setting location/message.
+        - `agent_metadata` is **required** and must be a **JSON object** (not a JSON-encoded string).
+          It is automatically merged with the event. It can be an empty JSON object (`{}`).
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicRunPost_Request"
+            examples:
+              basic:
+                summary: Basic run using queue 1
+                value:
+                  queue: 1
+                  location: "/var/log/auth.log"
+                  agent_metadata: {}
+                  event: "Dec 19 12:00:00 host sshd[123]: Failed password for root from 10.0.0.1 port 12345 ssh2"
+                  trace_level: "NONE"
+
+              with_trace:
+                summary: Run with tracing enabled
+                value:
+                  queue: 1
+                  location: "[001] (my-agent) 192.168.1.10->syslog"
+                  agent_metadata: {}
+                  event: "<34>Dec 19 12:00:00 my-agent myapp: something happened"
+                  trace_level: "ALL"
+
+              agent_metadata_object_ok:
+                summary: agent_metadata as object (merged at root)
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  agent_metadata:
+                    name: "nahuel"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              agent_metadata_nested_event_ok:
+                summary: agent_metadata can provide nested fields (merged into event)
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  agent_metadata:
+                    event:
+                      kind: "test"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              agent_metadata_as_string_invalid:
+                summary: INVALID - agent_metadata is a JSON-encoded string (Struct expects an object)
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  agent_metadata: "{\"name\": \"nahuel\"}"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              missing_agent_metadata_invalid:
+                summary: INVALID - missing required agent_metadata
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterRunPost_Response"
+              examples:
+                ok_with_agent_metadata_root_merge:
+                  summary: OK - agent_metadata merged into output root
+                  value:
+                    status: "OK"
+                    result:
+                      output: "{\"wazuh\":{\"protocol\":{\"queue\":1,\"location\":\"syscheck\"},\"integration\":{\"category\":\"Security\",\"name\":\"integration/wazuh-core/0\",\"decoders\":[\"core-wazuh-message\",\"integrations\"]}},\"name\":\"nahuel\",\"event\":{\"original\":\"File /etc/passwd modified\"},\"@timestamp\":\"2025-12-26T17:33:22Z\"}"
+                      asset_traces:
+                        - asset: "decoder/core-wazuh-message/0"
+                          success: true
+                          traces:
+                            - "@timestamp: get_date -> Success"
+
+                ok_with_agent_metadata_event_merge:
+                  summary: OK - agent_metadata.event merged into event object
+                  value:
+                    status: "OK"
+                    result:
+                      output: "{\"wazuh\":{\"protocol\":{\"queue\":1,\"location\":\"syscheck\"},\"integration\":{\"category\":\"Security\",\"name\":\"integration/wazuh-core/0\",\"decoders\":[\"core-wazuh-message\",\"integrations\"]}},\"event\":{\"kind\":\"test\",\"original\":\"File /etc/passwd modified\"},\"@timestamp\":\"2025-12-26T17:34:18Z\"}"
+                      asset_traces:
+                        - asset: "decoder/core-wazuh-message/0"
+                          success: true
+                          traces:
+                            - "@timestamp: get_date -> Success"
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                invalid_queue:
+                  summary: Queue out of allowed range (1..255)
+                  value:
+                    status: "ERROR"
+                    error: "Invalid queue: 300 (must be 1..255)"
+
+                invalid_trace_level:
+                  summary: Unsupported trace level
+                  value:
+                    status: "ERROR"
+                    error: "Invalid trace level: \"VERBOSE\". Supported: NONE, ASSET_ONLY, ALL"
+
+                empty_location:
+                  summary: Location cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing event: Invalid format: location cannot be empty"
+
+                event_parse_error:
+                  summary: Protocol parsing failed
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing event: <details>"
+
+                agent_metadata_required:
+                  summary: agent_metadata is required
+                  value:
+                    status: "ERROR"
+                    error: "agent_metadata is required and must be a JSON object"
+
+                agent_metadata_wrong_type_struct:
+                  summary: agent_metadata must be an object (Struct); a string is invalid
+                  value:
+                    status: "ERROR"
+                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(agent_metadata): invalid value \"{\\\"name\\\": \\\"nahuel\\\"}\" for type type.googleapis.com/google.protobuf.Struct"
+
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -3069,6 +3239,20 @@ components:
               items:
                 $ref: "#/components/schemas/KVDBEntry"
               description: "List of entries if status is OK"
+
+    #################################
+    # Content
+    #################################
+    policyValidate_Request:
+      type: object
+      required: [jsonContent]
+      properties:
+        jsonContent:
+          type: string
+          description: "Full policy JSON payload"
+        load_in_tester:
+          type: bool
+          description: "If true, load testing policies into the Tester environment."
     #################################
     # Tester
     #################################
@@ -3173,6 +3357,32 @@ components:
           properties:
             result:
               $ref: "#/components/schemas/TesterResult"
+
+    PublicRunPost_Request:
+      type: object
+      required: [queue, location, agent_metadata, event, trace_level]
+      properties:
+        queue:
+          type: uint8
+          minimum: 1
+          maximum: 255
+          description: "Queue number where the event will be injected (engine/input queue)"
+        location:
+          type: string
+          description: "Event source/location label (e.g., file path, agent name, or custom identifier)"
+        agent_metadata:
+          type: object
+          description: "Metadata about the agent sending the event"
+        event:
+          type: string
+          description: "Raw event payload to test"
+        trace_level:
+          type: string
+          enum:
+            - NONE
+            - ASSET_ONLY
+            - ALL
+          description: "Level of traces"
 
     TesterTableGet_Response:
       allOf:

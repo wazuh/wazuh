@@ -12,45 +12,48 @@ _sym_db = _symbol_database.Default()
 
 
 import api_communication.proto.engine_pb2 as _engine_pb2
+from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0ctester.proto\x12\x1b\x63om.wazuh.api.engine.tester\x1a\x0c\x65ngine.proto\"l\n\x0bSessionPost\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x10\n\x08lifetime\x18\x03 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x04 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_description\"\xef\x01\n\x07Session\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x10\n\x08lifetime\x18\x03 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x04 \x01(\tH\x00\x88\x01\x01\x12\x39\n\x0enamespace_sync\x18\x06 \x01(\x0e\x32!.com.wazuh.api.engine.tester.Sync\x12\x38\n\x0c\x65ntry_status\x18\x07 \x01(\x0e\x32\".com.wazuh.api.engine.tester.State\x12\x10\n\x08last_use\x18\x08 \x01(\rB\x0e\n\x0c_description\"\x9c\x01\n\x06Result\x12\x0e\n\x06output\x18\x01 \x01(\t\x12\x44\n\x0c\x61sset_traces\x18\x02 \x03(\x0b\x32..com.wazuh.api.engine.tester.Result.AssetTrace\x1a<\n\nAssetTrace\x12\r\n\x05\x61sset\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\x0e\n\x06traces\x18\x03 \x03(\t\"a\n\x13SessionPost_Request\x12>\n\x07session\x18\x01 \x01(\x0b\x32(.com.wazuh.api.engine.tester.SessionPostH\x00\x88\x01\x01\x42\n\n\x08_session\"%\n\x15SessionDelete_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\"\n\x12SessionGet_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\xaf\x01\n\x13SessionGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12:\n\x07session\x18\x03 \x01(\x0b\x32$.com.wazuh.api.engine.tester.SessionH\x01\x88\x01\x01\x42\x08\n\x06_errorB\n\n\x08_session\"%\n\x15SessionReload_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x12\n\x10TableGet_Request\"\x9d\x01\n\x11TableGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x36\n\x08sessions\x18\x03 \x03(\x0b\x32$.com.wazuh.api.engine.tester.SessionB\x08\n\x06_error\"\x81\x01\n\x0fRunPost_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x65vent\x18\x02 \x01(\t\x12<\n\x0btrace_level\x18\x05 \x01(\x0e\x32\'.com.wazuh.api.engine.tester.TraceLevel\x12\x13\n\x0b\x61sset_trace\x18\x06 \x03(\t\"\xa9\x01\n\x10RunPost_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x38\n\x06result\x18\x03 \x01(\x0b\x32#.com.wazuh.api.engine.tester.ResultH\x01\x88\x01\x01\x42\x08\n\x06_errorB\t\n\x07_result*5\n\x05State\x12\x11\n\rSTATE_UNKNOWN\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\x12\x0b\n\x07\x45NABLED\x10\x02*>\n\x04Sync\x12\x10\n\x0cSYNC_UNKNOWN\x10\x00\x12\x0b\n\x07UPDATED\x10\x01\x12\x0c\n\x08OUTDATED\x10\x02\x12\t\n\x05\x45RROR\x10\x03*/\n\nTraceLevel\x12\x08\n\x04NONE\x10\x00\x12\x0e\n\nASSET_ONLY\x10\x01\x12\x07\n\x03\x41LL\x10\x02\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0ctester.proto\x12\x1b\x63om.wazuh.api.engine.tester\x1a\x0c\x65ngine.proto\x1a\x1cgoogle/protobuf/struct.proto\"l\n\x0bSessionPost\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x10\n\x08lifetime\x18\x03 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x04 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_description\"\xef\x01\n\x07Session\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x10\n\x08lifetime\x18\x03 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x04 \x01(\tH\x00\x88\x01\x01\x12\x39\n\x0enamespace_sync\x18\x06 \x01(\x0e\x32!.com.wazuh.api.engine.tester.Sync\x12\x38\n\x0c\x65ntry_status\x18\x07 \x01(\x0e\x32\".com.wazuh.api.engine.tester.State\x12\x10\n\x08last_use\x18\x08 \x01(\rB\x0e\n\x0c_description\"\x9c\x01\n\x06Result\x12\x0e\n\x06output\x18\x01 \x01(\t\x12\x44\n\x0c\x61sset_traces\x18\x02 \x03(\x0b\x32..com.wazuh.api.engine.tester.Result.AssetTrace\x1a<\n\nAssetTrace\x12\r\n\x05\x61sset\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\x0e\n\x06traces\x18\x03 \x03(\t\"a\n\x13SessionPost_Request\x12>\n\x07session\x18\x01 \x01(\x0b\x32(.com.wazuh.api.engine.tester.SessionPostH\x00\x88\x01\x01\x42\n\n\x08_session\"%\n\x15SessionDelete_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\"\n\x12SessionGet_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\xaf\x01\n\x13SessionGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12:\n\x07session\x18\x03 \x01(\x0b\x32$.com.wazuh.api.engine.tester.SessionH\x01\x88\x01\x01\x42\x08\n\x06_errorB\n\n\x08_session\"%\n\x15SessionReload_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x12\n\x10TableGet_Request\"\x9d\x01\n\x11TableGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x36\n\x08sessions\x18\x03 \x03(\x0b\x32$.com.wazuh.api.engine.tester.SessionB\x08\n\x06_error\"\x81\x01\n\x0fRunPost_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x65vent\x18\x02 \x01(\t\x12<\n\x0btrace_level\x18\x05 \x01(\x0e\x32\'.com.wazuh.api.engine.tester.TraceLevel\x12\x13\n\x0b\x61sset_trace\x18\x06 \x03(\t\"\xa9\x01\n\x10RunPost_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x38\n\x06result\x18\x03 \x01(\x0b\x32#.com.wazuh.api.engine.tester.ResultH\x01\x88\x01\x01\x42\x08\n\x06_errorB\t\n\x07_result\"\x8d\x01\n\x15PublicRunPost_Request\x12\r\n\x05queue\x18\x01 \x01(\r\x12\x10\n\x08location\x18\x02 \x01(\t\x12/\n\x0e\x61gent_metadata\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\r\n\x05\x65vent\x18\x04 \x01(\t\x12\x13\n\x0btrace_level\x18\x05 \x01(\t*5\n\x05State\x12\x11\n\rSTATE_UNKNOWN\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\x12\x0b\n\x07\x45NABLED\x10\x02*>\n\x04Sync\x12\x10\n\x0cSYNC_UNKNOWN\x10\x00\x12\x0b\n\x07UPDATED\x10\x01\x12\x0c\n\x08OUTDATED\x10\x02\x12\t\n\x05\x45RROR\x10\x03*/\n\nTraceLevel\x12\x08\n\x04NONE\x10\x00\x12\x0e\n\nASSET_ONLY\x10\x01\x12\x07\n\x03\x41LL\x10\x02\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'tester_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _STATE._serialized_start=1445
-  _STATE._serialized_end=1498
-  _SYNC._serialized_start=1500
-  _SYNC._serialized_end=1562
-  _TRACELEVEL._serialized_start=1564
-  _TRACELEVEL._serialized_end=1611
-  _SESSIONPOST._serialized_start=59
-  _SESSIONPOST._serialized_end=167
-  _SESSION._serialized_start=170
-  _SESSION._serialized_end=409
-  _RESULT._serialized_start=412
-  _RESULT._serialized_end=568
-  _RESULT_ASSETTRACE._serialized_start=508
-  _RESULT_ASSETTRACE._serialized_end=568
-  _SESSIONPOST_REQUEST._serialized_start=570
-  _SESSIONPOST_REQUEST._serialized_end=667
-  _SESSIONDELETE_REQUEST._serialized_start=669
-  _SESSIONDELETE_REQUEST._serialized_end=706
-  _SESSIONGET_REQUEST._serialized_start=708
-  _SESSIONGET_REQUEST._serialized_end=742
-  _SESSIONGET_RESPONSE._serialized_start=745
-  _SESSIONGET_RESPONSE._serialized_end=920
-  _SESSIONRELOAD_REQUEST._serialized_start=922
-  _SESSIONRELOAD_REQUEST._serialized_end=959
-  _TABLEGET_REQUEST._serialized_start=961
-  _TABLEGET_REQUEST._serialized_end=979
-  _TABLEGET_RESPONSE._serialized_start=982
-  _TABLEGET_RESPONSE._serialized_end=1139
-  _RUNPOST_REQUEST._serialized_start=1142
-  _RUNPOST_REQUEST._serialized_end=1271
-  _RUNPOST_RESPONSE._serialized_start=1274
-  _RUNPOST_RESPONSE._serialized_end=1443
+  _STATE._serialized_start=1619
+  _STATE._serialized_end=1672
+  _SYNC._serialized_start=1674
+  _SYNC._serialized_end=1736
+  _TRACELEVEL._serialized_start=1738
+  _TRACELEVEL._serialized_end=1785
+  _SESSIONPOST._serialized_start=89
+  _SESSIONPOST._serialized_end=197
+  _SESSION._serialized_start=200
+  _SESSION._serialized_end=439
+  _RESULT._serialized_start=442
+  _RESULT._serialized_end=598
+  _RESULT_ASSETTRACE._serialized_start=538
+  _RESULT_ASSETTRACE._serialized_end=598
+  _SESSIONPOST_REQUEST._serialized_start=600
+  _SESSIONPOST_REQUEST._serialized_end=697
+  _SESSIONDELETE_REQUEST._serialized_start=699
+  _SESSIONDELETE_REQUEST._serialized_end=736
+  _SESSIONGET_REQUEST._serialized_start=738
+  _SESSIONGET_REQUEST._serialized_end=772
+  _SESSIONGET_RESPONSE._serialized_start=775
+  _SESSIONGET_RESPONSE._serialized_end=950
+  _SESSIONRELOAD_REQUEST._serialized_start=952
+  _SESSIONRELOAD_REQUEST._serialized_end=989
+  _TABLEGET_REQUEST._serialized_start=991
+  _TABLEGET_REQUEST._serialized_end=1009
+  _TABLEGET_RESPONSE._serialized_start=1012
+  _TABLEGET_RESPONSE._serialized_end=1169
+  _RUNPOST_REQUEST._serialized_start=1172
+  _RUNPOST_REQUEST._serialized_end=1301
+  _RUNPOST_RESPONSE._serialized_start=1304
+  _RUNPOST_RESPONSE._serialized_end=1473
+  _PUBLICRUNPOST_REQUEST._serialized_start=1476
+  _PUBLICRUNPOST_REQUEST._serialized_end=1617
 # @@protoc_insertion_point(module_scope)
