@@ -645,10 +645,7 @@ void* wm_sync_module(__attribute__((unused)) void* args)
             bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
 
             if (sync_result) {
-                mtdebug1(WM_SYS_LOGTAG, "Synchronization succeeded");
                 syscollector_run_recovery_process_ptr();
-            } else {
-                mtdebug1(WM_SYS_LOGTAG, "Synchronization failed");
             }
 
             syscollector_unlock_scan_mutex_ptr();
