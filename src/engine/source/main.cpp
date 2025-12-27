@@ -270,18 +270,7 @@ int main(int argc, char* argv[])
         if (!base::process::isStandaloneModeEnable())
         {
             // Get executable file name
-            std::string exePath {};
-            {
-                try
-                {
-                    exePath = std::filesystem::read_symlink("/proc/self/exe").filename().string();
-                }
-                catch (const std::exception& e)
-                {
-                    LOG_DEBUG("Could not get executable name: {}", e.what());
-                    exePath = "wazuh-analysisd";
-                }
-            }
+            std::string exePath {"wazuh-analysisd"};
 
             const auto pidError =
                 base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());

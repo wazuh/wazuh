@@ -145,7 +145,7 @@
         "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src",
         "${env:ENGINE_SRC}/test/integration_tests/engine-it/src"
     ],
-    "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+    "python.defaultInterpreterPath": "${env:TMP_PY_VENV}/bin/python",
     "remote.localPortHost": "allInterfaces",
     "remote.autoForwardPorts": true,
     "testMate.cpp.test.executables": "${env:ENGINE_BUILD}/**/*{test,Test,TEST,_benchmark}*",

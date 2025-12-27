@@ -16,6 +16,11 @@ EXCLUDED_FILES=(
     "README.md"
 )
 
+EXCLUDE_FOLDER=(
+    "scripts"
+    "e2e"
+)
+
 download_repo() {
     # Clone the minimal repository
     rm -rf "$TMP_DIR"
@@ -35,6 +40,11 @@ copy_devContainer() {
     # Remove the excluded files
     for file in "${EXCLUDED_FILES[@]}"; do
         rm -f "$DEV_CONTAINER_DESTINATION/$file"
+    done
+
+    # Remove the excluded folders
+    for folder in "${EXCLUDE_FOLDER[@]}"; do
+        rm -rf "$DEV_CONTAINER_DESTINATION/$folder"
     done
 }
 

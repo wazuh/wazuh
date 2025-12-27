@@ -536,4 +536,323 @@ public:
     {
         return m_dispatcher->size();
     }
+
+    PointInTime
+    createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
+    {
+        if (indices.empty())
+        {
+            throw IndexerConnectorException("Indices list cannot be empty for PIT creation");
+        }
+
+        if (keepAlive.empty())
+        {
+            throw IndexerConnectorException("keepAlive parameter cannot be empty for PIT creation");
+        }
+
+        // Build the indices string (comma-separated)
+        std::string indicesStr;
+        auto reservedSize = [&]() -> std::size_t
+        {
+            std::size_t size = 0;
+            for (const auto& index : indices)
+            {
+                size += index.size();
+            }
+            size += indices.size() - 1; // for commas
+            return size;
+        }();
+        indicesStr.reserve(reservedSize);
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            if (i > 0)
+            {
+                indicesStr += ",";
+            }
+            indicesStr += indices[i];
+        }
+
+        // Build the URL with query parameters
+        const std::string baseUrl {m_selector->getNext()};
+        std::string url;
+        // Pre-reserve: base_url + '/' + indices + '/_search/point_in_time?keep_alive=' + keepAlive + potential '&expand_wildcards=all'
+        url.reserve(baseUrl.size() + 1 + indicesStr.size() + 35 + keepAlive.size() + 25);
+        url = baseUrl;
+        url += "/";
+        url += indicesStr;
+        url += "/_search/point_in_time?keep_alive=";
+        url += keepAlive;
+
+        if (expandWildcards)
+        {
+            url += "&expand_wildcards=all";
+        }
+
+        // Variables to capture the response
+        std::string pitId;
+        uint64_t creationTime = 0;
+        bool success = false;
+        std::string errorMessage;
+
+        const auto onSuccess = [&pitId, &creationTime, &success, &errorMessage](std::string&& response)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(response);
+
+                if (!jsonResponse.contains("pit_id"))
+                {
+                    errorMessage = "Response does not contain 'pit_id' field";
+                    return;
+                }
+
+                if (!jsonResponse.contains("creation_time"))
+                {
+                    errorMessage = "Response does not contain 'creation_time' field";
+                    return;
+                }
+
+                pitId = jsonResponse["pit_id"].get<std::string>();
+                creationTime = jsonResponse["creation_time"].get<uint64_t>();
+                success = true;
+
+                logDebug2(
+                    IC_NAME, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
+            }
+            catch (const std::exception& e)
+            {
+                errorMessage = std::string("Failed to parse PIT response: ") + e.what();
+                logDebug1(IC_NAME, "%s", errorMessage.c_str());
+            }
+        };
+
+        const auto onError =
+            [&errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
+                           ", Response: " + responseBody;
+            logDebug1(IC_NAME, "%s", errorMessage.c_str());
+        };
+
+        // Execute the POST request synchronously
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
+                            PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+        }
+
+        // Return the PointInTime object
+        return PointInTime(std::move(pitId), creationTime, keepAlive);
+    }
+
+    void deletePointInTime(const PointInTime& pit)
+    {
+        try
+        {
+            const std::string& pitId = pit.getPitId();
+            if (pitId.empty())
+            {
+                throw IndexerConnectorException("PIT ID is empty, cannot delete PIT");
+            }
+
+            const std::string baseUrl {m_selector->getNext()};
+            std::string url;
+            url.reserve(baseUrl.size() + 25); // base_url + '/_search/point_in_time'
+            url = baseUrl;
+            url += "/_search/point_in_time";
+
+            nlohmann::json deleteBody;
+            deleteBody["pit_id"] = pitId;
+
+            const auto onSuccess = [](const std::string& response)
+            {
+                logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
+            };
+
+            const auto onError =
+                [&pitId](const std::string& error, const long statusCode, const std::string& responseBody)
+            {
+                throw IndexerConnectorException("Failed to delete PIT " + pitId + ". Error: " + error + ", Status: " +
+                                                std::to_string(statusCode) + ", Response: " + responseBody);
+            };
+
+            m_httpRequest->delete_(RequestParameters {.url = HttpURL(url),
+                                                      .data = deleteBody.dump(),
+                                                      .secureCommunication = m_secureCommunication},
+                                   PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                                   {});
+        }
+        catch (const std::exception& e)
+        {
+            throw IndexerConnectorException(std::string("Error deleting PIT: ") + e.what());
+        }
+        catch (...)
+        {
+            throw IndexerConnectorException("Unknown error deleting PIT");
+        }
+    }
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter)
+    {
+        // Build the search request body
+        nlohmann::json requestBody;
+        requestBody["size"] = size;
+        requestBody["pit"]["id"] = pit.getPitId();
+        requestBody["pit"]["keep_alive"] = pit.getKeepAlive();
+        requestBody["query"] = query;
+        requestBody["sort"] = sort;
+
+        // Add track_total_hits only if searchAfter is not provided
+        if (!searchAfter.has_value())
+        {
+            requestBody["track_total_hits"] = true;
+        }
+        else
+        {
+            requestBody["search_after"] = searchAfter.value();
+        }
+
+        // Build the URL
+        const std::string baseUrl {m_selector->getNext()};
+        std::string url;
+        url.reserve(baseUrl.size() + 10); // base_url + '/_search'
+        url = baseUrl;
+        url += "/_search";
+
+        // Variables to capture the response
+        nlohmann::json hitsResult;
+        bool success = false;
+        std::string errorMessage;
+
+        const auto onSuccess = [&hitsResult, &success](std::string&& response)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(response);
+
+                // Check if the response contains hits
+                if (!jsonResponse.contains("hits"))
+                {
+                    throw IndexerConnectorException("Response does not contain 'hits' field");
+                }
+
+                hitsResult = std::move(jsonResponse["hits"]);
+                success = true;
+            }
+            catch (const nlohmann::json::exception& e)
+            {
+                throw IndexerConnectorException(std::string("Failed to parse search response: ") + e.what());
+            }
+        };
+
+        const auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
+                                            error + ". Response: " + responseBody);
+        };
+
+        // Execute the POST request synchronously
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = requestBody.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException("Search request failed");
+        }
+
+        return hitsResult;
+    }
+
+    /**
+     * @brief Execute a search query on an index or alias without PIT.
+     *
+     * @param index Index or alias name.
+     * @param size Maximum number of documents to return.
+     * @param query Query object.
+     * @param source Optional source filtering configuration.
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     */
+    nlohmann::json search(std::string_view index,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const std::optional<nlohmann::json>& source)
+    {
+        // Build the search request body
+        nlohmann::json requestBody;
+        requestBody["size"] = size;
+        requestBody["track_total_hits"] = true;
+        requestBody["stored_fields"] = nlohmann::json::array();
+        requestBody["query"] = query;
+
+        // Add source filtering if provided
+        if (source.has_value())
+        {
+            requestBody["_source"] = source.value();
+        }
+
+        // Build the URL
+        std::string url {};
+        url.reserve(128);
+        url = m_selector->getNext();
+        url += "/";
+        url += index;
+        url += "/_search";
+
+        // Variables to capture the response
+        bool success = false;
+        nlohmann::json hitsResult;
+
+        // Define success callback
+        auto onSuccess = [&success, &hitsResult](const std::string& responseBody)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(responseBody);
+
+                // Check if the response contains hits
+                if (!jsonResponse.contains("hits"))
+                {
+                    throw IndexerConnectorException("Search response does not contain 'hits' field");
+                }
+
+                hitsResult = jsonResponse["hits"];
+                success = true;
+            }
+            catch (const nlohmann::json::exception& e)
+            {
+                throw IndexerConnectorException("Failed to parse search response: " + std::string(e.what()));
+            }
+        };
+
+        // Define error callback
+        auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
+                                            error + ". Response: " + responseBody);
+        };
+
+        // Execute the POST request synchronously
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = requestBody.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException("Search request failed");
+        }
+
+        return hitsResult;
+    }
 };

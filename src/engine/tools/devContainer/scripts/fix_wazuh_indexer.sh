@@ -39,9 +39,9 @@ exit 0
 #   </hosts>
 #   <ssl>
 #     <certificate_authorities>
-#       <ca>/etc/wazuh-indexer/certs/root-ca.pem</ca>
+#       <ca>/workspaces/wazuh-5.x/wazuh/src/engine/tools/devContainer/e2e/certs/root-ca.pem</ca>
 #     </certificate_authorities>
-#     <certificate>/etc/wazuh-indexer/certs/admin.pem</certificate>
-#     <key>/etc/wazuh-indexer/certs/admin-key.pem</key>
+#     <certificate>/workspaces/wazuh-5.x/wazuh/src/engine/tools/devContainer/e2e/certs/admin.pem</certificate>
+#     <key>/workspaces/wazuh-5.x/wazuh/src/engine/tools/devContainer/e2e/certs/admin-key.pem</key>
 #   </ssl>
 # </indexer>

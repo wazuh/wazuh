@@ -1,10 +1,13 @@
 #ifndef _WINDEXER_CONNECTOR_HPP
 #define _WINDEXER_CONNECTOR_HPP
 
+#include <functional>
+#include <memory>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <wiconnector/iwindexerconnector.hpp>
@@ -53,6 +56,7 @@ class WIndexerConnector : public IWIndexerConnector
 private:
     std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
+    std::size_t m_maxHitsPerRequest {100};
 
 public:
     WIndexerConnector() = delete;
@@ -74,14 +78,24 @@ public:
     WIndexerConnector(std::string_view jsonOssecConfig);
 
     /**
-     * @brief Indexes data into the specified index.
-     *
-     * @param index The name of the index where the data will be stored
-     * @param data The data content to be indexed as a string view
-     *
-     * @throws std::invalid_argument If index name is empty or invalid
+     * @copydoc IWIndexerConnector::index
      */
     void index(std::string_view index, std::string_view data) override;
+
+    /**
+     * @copydoc IWIndexerConnector::getPolicy
+     */
+    PolicyResources getPolicy(std::string_view space) override;
+
+    /**
+     * @copydoc IWIndexerConnector::getPolicyHash
+     */
+    std::string getPolicyHash(std::string_view space) override;
+
+    /**
+     * @copydoc IWIndexerConnector::existsPolicy
+     */
+    bool existsPolicy(std::string_view space) override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.

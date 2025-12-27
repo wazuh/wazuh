@@ -194,7 +194,7 @@ function fetch_artifacts_with_prefixes() {
   raw_kv_art=$(
     gh api "repos/$repo/actions/runs/$run_id/artifacts" \
       -q ".artifacts[]
-          | select($jq_filter)
+          | select($jq_filter and (.name | test(\"\\\\.(sha512|sha256|md5)$\") | not))
           | \"\(.name) \(.archive_download_url)\"" \
     | cat
   )
@@ -232,8 +232,8 @@ function fetch_artifacts_with_prefixes() {
 # ==============================================================================
 function get_indexer_artifact() {
   local repo="wazuh/wazuh-indexer"
-  local workflow_file="build.yml"
-  local run_name_prefix='Build [ \"deb\" ] Wazuh Indexer on [ \"x64\" ] | main'
+  local workflow_file="5_builderpackage_indexer.yml"
+  local run_name_prefix='Build [ \"deb\" ] Wazuh Indexer on [ \"x64\" ] | main_'
 
   echo "==> Searching for the first successful build for the Wazuh Indexer 5.x..."
   local run_id
@@ -251,13 +251,12 @@ function get_indexer_artifact() {
   echo "==> Artifacts:"
   list_run_artifacts "$repo" "$run_id"
 
-  # Descargamos:
-  #  - Si artifact_name empieza con "wazuh-indexer-command-manager-5.0", lo guardamos como "wazuh-indexer-command-manager-5.0.0.0.zip"
-  #  - Si artifact_name empieza con "wazuh-indexer-setup-5.0", lo guardamos como "wazuh-indexer-setup-5.0.0.0.zip"
+  # Download:
+  #  - If artifact_name starts with "wazuh-indexer_5.0.0-latest_amd64.deb",
+  #    save it as "wazuh-indexer_5.0.0-latest_amd64.deb"
   fetch_artifacts_with_prefixes \
     "$repo" "$run_id" "wazuh-indexer" \
-    "wazuh-indexer-command-manager-5.0::wazuh-indexer-command-manager-5.0.0.0.zip" \
-    "wazuh-indexer-setup-5.0::wazuh-indexer-setup-5.0.0.0.zip"
+    "wazuh-indexer_5.0.0-latest_amd64.deb::wazuh-indexer_5.0.0-latest_amd64.deb"
 }
 
 
@@ -267,7 +266,7 @@ function get_indexer_artifact() {
 function get_dashboard_artifact() {
   local repo="wazuh/wazuh-dashboard"
   local workflow_file="5_builderpackage_dashboard.yml"
-  local run_name_prefix='Build deb wazuh-dashboard on amd64'
+  local run_name_prefix='Build deb wazuh-dashboard on amd64 - is stage - checksum main_'
 
   echo "==> Searching for the first successful build for the Wazuh Dashboard..."
   local run_id
@@ -285,9 +284,9 @@ function get_dashboard_artifact() {
   echo "==> Artifacts:"
   list_run_artifacts "$repo" "$run_id"
 
-  # Descargamos:
-  #  - Si artifact_name empieza con "wazuh-dashboard_5.0.0-latest_amd64.deb", 
-  #    lo guardamos como "wazuh-dashboard_5.0.0-latest_amd64.deb"
+  # Download:
+  #  - If artifact_name starts with "wazuh-dashboard_5.0.0-latest_amd64.deb",
+  #    save it as "wazuh-dashboard_5.0.0-latest_amd64.deb"
   fetch_artifacts_with_prefixes \
     "$repo" "$run_id" "wazuh-dashboard" \
     "wazuh-dashboard_5.0.0-latest_amd64.deb::wazuh-dashboard_5.0.0-latest_amd64.deb"
@@ -301,10 +300,10 @@ function get_dashboard_artifact() {
 gh_token
 
 # Download the last version of the Wazuh Indexer and Dashboard
-get_indexer_artifact
+# get_indexer_artifact
 get_dashboard_artifact
 
 # Init certs
-upsert_certs
+# upsert_certs
 
 exit 0

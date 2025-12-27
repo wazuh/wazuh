@@ -12,6 +12,7 @@
 #include "HTTPRequest.hpp"
 #include "indexerConnector.hpp"
 #include "indexerConnectorAsyncImpl.hpp"
+#include "loggerHelper.h"
 #include "serverSelector.hpp"
 
 // LCOV_EXCL_START
@@ -58,6 +59,34 @@ public:
     {
         return m_impl.getQueueSize();
     }
+
+    PointInTime
+    createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
+    {
+        return m_impl.createPointInTime(indices, keepAlive, expandWildcards);
+    }
+
+    void deletePointInTime(const PointInTime& pit)
+    {
+        m_impl.deletePointInTime(pit);
+    }
+
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter)
+    {
+        return m_impl.search(pit, size, query, sort, searchAfter);
+    }
+
+    nlohmann::json search(std::string_view index,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const std::optional<nlohmann::json>& source)
+    {
+        return m_impl.search(index, size, query, source);
+    }
 };
 
 IndexerConnectorAsync::IndexerConnectorAsync(
@@ -75,7 +104,10 @@ void IndexerConnectorAsync::index(std::string_view id, std::string_view index, s
     m_impl->index(id, index, data);
 }
 
-void IndexerConnectorAsync::index(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+void IndexerConnectorAsync::index(std::string_view id,
+                                  std::string_view index,
+                                  std::string_view data,
+                                  std::string_view version)
 {
     m_impl->index(id, index, data, version);
 }
@@ -98,6 +130,35 @@ bool IndexerConnectorAsync::isAvailable() const
 uint64_t IndexerConnectorAsync::getQueueSize() const
 {
     return m_impl->getQueueSize();
+}
+
+PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,
+                                                     std::string_view keepAlive,
+                                                     bool expandWildcards)
+{
+    return m_impl->createPointInTime(indices, keepAlive, expandWildcards);
+}
+
+void IndexerConnectorAsync::deletePointInTime(const PointInTime& pit)
+{
+    m_impl->deletePointInTime(pit);
+}
+
+nlohmann::json IndexerConnectorAsync::search(const PointInTime& pit,
+                                             std::size_t size,
+                                             const nlohmann::json& query,
+                                             const nlohmann::json& sort,
+                                             const std::optional<nlohmann::json>& searchAfter)
+{
+    return m_impl->search(pit, size, query, sort, searchAfter);
+}
+
+nlohmann::json IndexerConnectorAsync::search(std::string_view index,
+                                             std::size_t size,
+                                             const nlohmann::json& query,
+                                             const std::optional<nlohmann::json>& source)
+{
+    return m_impl->search(index, size, query, source);
 }
 
 // LCOV_EXCL_STOP

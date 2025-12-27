@@ -6,44 +6,37 @@ services:
       context: ./wazuh-indexer
     image: dev-wazuh-indexer
     hostname: wazuh-indexer
-    # container_name: wazuh-indexer
+    container_name: wazuh-indexer
+    entrypoint: ["/entrypoint.sh"]
     volumes:
-      - ./certs/root-ca.pem:/usr/share/opensearch/config/root-ca.pem
-      - ./certs/wazuh-indexer.pem:/usr/share/opensearch/config/indexer.pem
-      - ./certs/wazuh-indexer.key:/usr/share/opensearch/config/indexer.key
-      - ./certs/wazuh-indexer-key.pem:/usr/share/opensearch/config/indexer-key.pem
+      - ./wazuh-indexer/entrypoint.sh:/entrypoint.sh:ro
+      - ./certs:/certs:ro
+      # Persistent data volume
+      # - wazuh-indexer-data:/var/lib/wazuh-indexer
+      # # Security initialization flag
+      # - wazuh-indexer-config:/etc/wazuh-indexer-init
     ports:
       - 9200:9200
-    environment:
-      - node.name=wazuh-indexer
-      - discovery.type=single-node
-      - plugins.security.ssl.transport.pemcert_filepath=indexer.pem
-      - plugins.security.ssl.transport.pemkey_filepath=indexer-key.pem
-      - plugins.security.ssl.transport.pemtrustedcas_filepath=root-ca.pem
-      - plugins.security.ssl.http.enabled=true
-      - plugins.security.ssl.http.pemcert_filepath=indexer.pem
-      - plugins.security.ssl.http.pemkey_filepath=indexer-key.pem
-      - plugins.security.ssl.http.pemtrustedcas_filepath=root-ca.pem
-      # Allow using server certificates to authenticate
-      - plugins.security.ssl.http.clientauth_mode=NONE
-      - plugins.security.allow_default_init_securityindex=true
-      - cluster.blocks.create_index=false
-      # Prevent execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
-      - DISABLE_INSTALL_DEMO_CONFIG=true
 
   wazuh-dashboard:
     build:
         context: ./wazuh-dashboard
     image: dev-wazuh-dashboard
     hostname: wazuh-dashboard
-    # container_name: wazuh-dashboard
+    container_name: wazuh-dashboard
+    entrypoint: ["/entrypoint.sh"]
     volumes:
-      - ./wazuh-dashboard/config.yml:/etc/wazuh-dashboard/opensearch_dashboards_custom.yml
-      # User worker 1 certificates
-      - ./certs/root-ca.pem:/etc/wazuh-dashboard/certs/root-ca.pem
-      - ./certs/wazuh-worker1.pem:/etc/wazuh-dashboard/certs/dashboard.pem
-      - ./certs/wazuh-worker1-key.pem:/etc/wazuh-dashboard/certs/dashboard-key.pem
+      - ./wazuh-dashboard/entrypoint.sh:/entrypoint.sh:ro
+      - ./certs:/certs:ro
     ports:
-      - 4040:443
+      - 443:443
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - wazuh-indexer
+
+# volumes:
+#   wazuh-indexer-data:
+#     driver: local
+#   wazuh-indexer-config:
+#     driver: local
