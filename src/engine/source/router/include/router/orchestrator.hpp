@@ -1,6 +1,7 @@
 #ifndef _ROUTER_ORCHESTATOR_HPP
 #define _ROUTER_ORCHESTATOR_HPP
 
+#include <atomic>
 #include <list>
 #include <memory>
 #include <shared_mutex>
@@ -43,6 +44,7 @@ protected:
     std::list<std::shared_ptr<IWorker<IRouter>>> m_routerWorkers;
     std::shared_ptr<IWorker<ITester>> m_testerWorker;
     mutable std::shared_mutex m_syncMutex; ///< Mutex for the Workers synchronization (1 query at a time)
+    std::atomic<bool> m_isShutdown{false}; ///< Flag to indicate orchestrator has been shutdown
 
     // Workers configuration
     std::shared_ptr<ProdQueueType> m_eventQueue;      ///< The event queue
@@ -60,6 +62,10 @@ protected:
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker<T>>&)>;
     base::OptError forEachRouterWorker(const WorkerOp<IRouter>& f);
     base::OptError forTesterWorker(const WorkerOp<ITester>& f);
+
+    void dumpTestersInternal() const;                                        ///< Dump testers (lock must be held)
+    void dumpRoutersInternal() const;                                        ///< Dump routers (lock must be held)
+    void dumpEpsInternal() const;                                            ///< Dump EPS (lock must be held)
 
     void dumpTesters() const;                                                ///< Dump the testers to the store
     void dumpRouters() const;                                                ///< Dump the routers to the store
