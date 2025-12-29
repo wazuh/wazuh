@@ -16,7 +16,7 @@ namespace base::eventParsers
 namespace
 {
 
-constexpr size_t LOCATION_OFFSET = 2;         // Given the "q:" prefix.
+constexpr size_t LOCATION_OFFSET = 2; // Given the "q:" prefix.
 
 /**
  * @brief If `location` has the form "[$agentID] ($agentName) $registerIP->$module", extract
@@ -167,4 +167,38 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
 
     return parseEvent;
 }
+
+Event parsePublicEvent(uint8_t queue, std::string& location, std::string_view message, const json::Json& agentMetadata)
+{
+    auto parseEvent = std::make_shared<json::Json>();
+
+    // Queue comes already parsed.
+    parseEvent->setInt(static_cast<int>(queue), EVENT_QUEUE_ID);
+
+    if (location.empty())
+    {
+        throw std::runtime_error("Invalid format: location cannot be empty");
+    }
+
+    // If the location is in the legacy agent format "[ID] (Name) IP->Module", parse it.
+    // This will also rewrite `location` to just `Module`.
+    parseLegacyLocation(location, parseEvent);
+
+    try
+    {
+        parseEvent->merge(true, agentMetadata);
+    }
+    catch (const std::exception& ex)
+    {
+        throw std::runtime_error(fmt::format("merge failed: {}", ex.what()));
+    }
+
+    parseEvent->setString(location, EVENT_LOCATION_ID);
+
+    // Raw message/payload.
+    parseEvent->setString(message, EVENT_MESSAGE_ID);
+
+    return parseEvent;
+}
+
 } // namespace base::eventParsers

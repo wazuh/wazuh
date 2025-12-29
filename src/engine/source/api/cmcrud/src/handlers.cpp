@@ -12,6 +12,7 @@
 
 #include <api/adapter/helpers.hpp>
 #include <api/cmcrud/handlers.hpp>
+#include <api/shared/constants.hpp>
 
 namespace api::cmcrud::handlers
 {
@@ -313,12 +314,32 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
-        const std::string nsJsonDoc = protoReq.jsoncontent();
         const bool loadInTester = protoReq.load_in_tester();
 
-        if (nsJsonDoc.empty())
+        auto jsonOrErr = eMessage::eMessageToJson(protoReq.full_policy(), /*printPrimitiveFields=*/true);
+        if (std::holds_alternative<base::Error>(jsonOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>("Missing jsoncontent");
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error converting full_policy to JSON object: {}", std::get<base::Error>(jsonOrErr).message));
+            return;
+        }
+
+        const auto& fullPolicyStr = std::get<std::string>(jsonOrErr);
+        json::Json fullPolicy;
+        try
+        {
+            fullPolicy = json::Json(fullPolicyStr.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error parsing full policy JSON object: {}", e.what()));
+            return;
+        }
+
+        if (fullPolicy.isEmpty())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Missing full policy");
             return;
         }
 
@@ -331,7 +352,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
         const std::string tmpNsName = fmt::format("policy_validate_{}", nonce);
         const std::string tmpSessionName = fmt::format("policy_validate_{}", nonce);
-        const std::string finalSessionName = "testing";
+        const std::string finalSessionName = api::shared::constants::SESSION_NAME;
 
         bool tmpNamespaceCreated = false;
         bool tmpSessionCreated = false;
@@ -387,7 +408,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         try
         {
             // Import into temp namespace
-            service->importNamespace(tmpNsName, nsJsonDoc, /*force=*/true);
+            service->importNamespace(tmpNsName, fullPolicyStr, /*force=*/true);
             tmpNamespaceCreated = true;
 
             // Create a tester entry to validate tester-loading path.
@@ -412,7 +433,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             {
                 std::optional<std::string> oldNsToDelete;
 
-                // If "testing" exists, delete it first (it references old namespace).
+                // If SESSION_NAME exists, delete it first (it references old namespace).
                 auto entry = testerLocked->getTestEntry(finalSessionName);
                 if (!base::isError(entry))
                 {
@@ -428,7 +449,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
                     }
                 }
 
-                // Promote temp session to "testing" (now points to tmpNsName).
+                // Promote temp session to SESSION_NAME (now points to tmpNsName).
                 auto rerr = testerLocked->renameTestEntry(tmpSessionName, finalSessionName);
                 if (base::isError(rerr))
                 {

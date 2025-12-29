@@ -43,7 +43,7 @@ inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
     // Policy
     server->addRoute(httpsrv::Method::POST, "/_internal/content/policy/upsert", policyUpsert(crud));
     server->addRoute(httpsrv::Method::POST, "/_internal/content/policy/delete", policyDelete(crud));
-    server->addRoute(httpsrv::Method::POST, "/content/policy/validate", policyValidate(crud, tester));
+    server->addRoute(httpsrv::Method::POST, "/content/validate/policy", policyValidate(crud, tester));
 
     // Resources
     server->addRoute(httpsrv::Method::POST, "/_internal/content/list", resourceList(crud));

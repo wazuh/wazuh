@@ -94,6 +94,37 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 
             decodersData.assets.emplace(asset.name(), std::move(asset));
         }
+
+        for (const auto& outUUID : integration.getOutputsByUUID())
+        {
+            const auto output = cmStoreNsReader->getAssetByUUID(outUUID);
+            auto assetName = output.getString(json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY));
+            if (!output.getBool(json::Json::formatJsonPath(builder::syntax::asset::ENABLED_KEY)).value_or(false))
+            {
+                continue;
+            }
+
+            Asset asset;
+            try
+            {
+                asset = (*assetBuilder)(output);
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format("Error building output {} from integration '{}': {}",
+                                                     assetName.value(),
+                                                     integration.getName(),
+                                                     e.what()));
+            }
+
+            auto& outputsData = builtAssets[cm::store::ResourceType::OUTPUT];
+            if (outputsData.assets.find(asset.name()) == outputsData.assets.end())
+            {
+                outputsData.orderedAssets.push_back(asset.name());
+            }
+
+            outputsData.assets.emplace(asset.name(), std::move(asset));
+        }
     }
 
     // Only available for produccion

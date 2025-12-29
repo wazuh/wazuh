@@ -1,4 +1,5 @@
 import engine_pb2 as _engine_pb2
+from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -67,12 +68,12 @@ class policyPost_Request(_message.Message):
     def __init__(self, space: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
 
 class policyValidate_Request(_message.Message):
-    __slots__ = ["jsonContent", "load_in_tester"]
-    JSONCONTENT_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ["full_policy", "load_in_tester"]
+    FULL_POLICY_FIELD_NUMBER: _ClassVar[int]
     LOAD_IN_TESTER_FIELD_NUMBER: _ClassVar[int]
-    jsonContent: str
+    full_policy: _struct_pb2.Struct
     load_in_tester: bool
-    def __init__(self, jsonContent: _Optional[str] = ..., load_in_tester: bool = ...) -> None: ...
+    def __init__(self, load_in_tester: bool = ..., full_policy: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
 
 class resourceDelete_Request(_message.Message):
     __slots__ = ["space", "uuid"]

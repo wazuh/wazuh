@@ -20,6 +20,8 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 // Use of session
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                               const base::eventParsers::ProtocolHandler& protocolHandler);
+adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
+                                    const base::eventParsers::PublicProtocolHandler& protocolHandler);
 
 inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester,
                              const std::shared_ptr<cm::store::ICMStore>& store,
@@ -33,8 +35,9 @@ inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester
     server->addRoute(httpsrv::Method::POST, "/tester/table/get", tableGet(tester, store));
 
     // Add Legacy Event parser
-    server->addRoute(
-        httpsrv::Method::POST, "/tester/run/post", runPost(tester, base::eventParsers::parseLegacyEvent));
+    server->addRoute(httpsrv::Method::POST, "/tester/run/post", runPost(tester, base::eventParsers::parseLegacyEvent));
+
+    server->addRoute(httpsrv::Method::POST, "/logtest", publicRunPost(tester, base::eventParsers::parsePublicEvent));
 }
 
 } // namespace api::tester::handlers
