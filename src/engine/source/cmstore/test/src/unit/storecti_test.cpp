@@ -603,7 +603,6 @@ TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
     json::Json document;
     document.setObject();
     document.setString("decoder/test-extract/0", "/name");
-    document.setString("test-metadata", "/metadata");
     document.setString("test-value", "/test_field");
 
     payload.set("/document", document);
@@ -616,7 +615,6 @@ TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
 
     // Verify result contains ONLY the /payload/document section
     EXPECT_TRUE(result.exists("/name"));
-    EXPECT_TRUE(result.exists("/metadata"));
 
     // Verify envelope fields are NOT present
     EXPECT_FALSE(result.exists("/offset"));
@@ -628,10 +626,6 @@ TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
     auto nameOpt = result.getString("/name");
     EXPECT_TRUE(nameOpt.has_value());
     EXPECT_EQ(nameOpt.value(), "decoder/test-extract/0");
-
-    auto metadataOpt = result.getString("/metadata");
-    EXPECT_TRUE(metadataOpt.has_value());
-    EXPECT_EQ(metadataOpt.value(), "test-metadata");
 }
 
 TEST_F(CMStoreCTITest, GetAssetByUUID_MissingPayloadDocument_ThrowsException)
@@ -681,7 +675,6 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_ReturnsOnlyPayloadDocument)
     json::Json document;
     document.setObject();
     document.setString("decoder/test-uuid-extract/0", "/name");
-    document.setString("uuid-test-metadata", "/metadata");
     document.setString("uuid-test-value", "/custom_field");
 
     payload.set("/document", document);
@@ -696,7 +689,6 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_ReturnsOnlyPayloadDocument)
 
     // Verify result contains ONLY the /payload/document section
     EXPECT_TRUE(result.exists("/name"));
-    EXPECT_TRUE(result.exists("/metadata"));
 
     // Verify envelope fields are NOT present
     EXPECT_FALSE(result.exists("/offset"));

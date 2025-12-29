@@ -42,7 +42,7 @@ public:
     void deleteResourceByUUID(std::string_view nsName, const std::string& uuid) override;
 
     // Public validate
-    void validateResource(cm::store::ResourceType type, std::string_view document) override;
+    void validateResource(cm::store::ResourceType type, const json::Json& payload) override;
 
 private:
     std::shared_ptr<cm::store::ICMStore> m_store;

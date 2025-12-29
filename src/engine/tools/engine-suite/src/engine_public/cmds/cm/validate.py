@@ -1,28 +1,37 @@
-# validate.py
 import sys
+import json
 from api_communication.client import APIClient
 import api_communication.proto.engine_pb2 as engine
 import api_communication.proto.crud_pb2 as crud
 
 
+def _read_resource_json(args) -> dict:
+    raw = args.get("resource", "") or args.get("jsonContent", "") or ""
+    if not raw:
+        raw = sys.stdin.read()
+
+    try:
+        obj = json.loads(raw)
+    except json.JSONDecodeError as e:
+        sys.exit(f"Invalid JSON input: {e.msg} (line {e.lineno}, col {e.colno})")
+
+    if not isinstance(obj, dict):
+        sys.exit("Resource must be a JSON object (top-level must be an object).")
+
+    return obj
+
+
 def run(args):
-    # Get the params
     api_socket: str = args["api_socket"]
 
-    json_request = dict()
-    json_request["type"] = args["type"]
+    json_request = {
+        "type": args["type"],
+        "resource": _read_resource_json(args),
+    }
 
-    content = args["jsonContent"]
-    # Read all content from stdin
-    if not content:
-        content = sys.stdin.read()
-
-    json_request["jsonContent"] = content
-
-    # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.jsend(
+        error, _ = client.jsend(
             json_request,
             crud.resourceValidate_Request(),
             engine.GenericStatus_Response()
@@ -42,9 +51,9 @@ def configure(subparsers):
     parser.add_argument("type", type=str, help="Type of resource to validate.")
     parser.add_argument(
         "-c",
-        "--jsonContent",
+        "--resource",
         type=str,
-        help="JSON content of the resource to validate. If omitted, it is read from stdin.",
+        help="JSON object of the resource to validate. If omitted, it is read from stdin.",
         default="",
     )
 

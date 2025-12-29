@@ -202,7 +202,7 @@ public:
      *
      * @throws std::runtime_error on parse errors or validation failures.
      */
-    virtual void validateResource(cm::store::ResourceType type, std::string_view document) = 0;
+    virtual void validateResource(cm::store::ResourceType type, const json::Json& payload) = 0;
 };
 
 } // namespace cm::crud

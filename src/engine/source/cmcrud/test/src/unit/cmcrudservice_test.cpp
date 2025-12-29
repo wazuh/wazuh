@@ -647,7 +647,7 @@ TEST(CrudService_Unit, DeleteResourceByUUID_Success)
 }
 
 // ---------------------------------------------------------------------
-// validateResource (new public endpoint) - tests for "validateAssetShallow"
+// validateResource
 // ---------------------------------------------------------------------
 
 TEST(CrudService_Unit, ValidateResource_Decoder_CallsValidateAssetShallow)
@@ -656,16 +656,18 @@ TEST(CrudService_Unit, ValidateResource_Decoder_CallsValidateAssetShallow)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kDecoderJson = R"(
+    static constexpr const char* kDecoderJsonStr = R"(
     {
       "name": "decoder/syslog/0",
       "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
       "metadata": { "module": "syslog" }
     })";
 
+    json::Json payload {kDecoderJsonStr};
+
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::noError()));
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::DECODER, kDecoderJson));
+    EXPECT_NO_THROW(service.validateResource(ResourceType::DECODER, payload));
 }
 
 TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
@@ -674,18 +676,20 @@ TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kDecoderJson = R"(
+    static constexpr const char* kDecoderJsonStr = R"(
     {
       "name": "decoder/syslog/0",
       "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
       "metadata": { "module": "syslog" }
     })";
 
+    json::Json payload {kDecoderJsonStr};
+
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::Error {"bad asset"}));
 
     try
     {
-        service.validateResource(ResourceType::DECODER, kDecoderJson);
+        service.validateResource(ResourceType::DECODER, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -700,7 +704,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kIntegrationJson = R"(
+    static constexpr const char* kIntegrationJsonStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
@@ -713,12 +717,14 @@ TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator
       "kvdbs": []
     })";
 
+    json::Json payload {kIntegrationJsonStr};
+
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(0);
     EXPECT_CALL(*validator, validateAsset(_, _)).Times(0);
     EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(0);
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::INTEGRATION, kIntegrationJson));
+    EXPECT_NO_THROW(service.validateResource(ResourceType::INTEGRATION, payload));
 }
 
 TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
@@ -727,7 +733,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kKvdbJson = R"(
+    static constexpr const char* kKvdbJsonStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
       "title": "windows_kerberos_status_code_to_code_name",
@@ -738,9 +744,11 @@ TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
       "enabled": true
     })";
 
+    json::Json payload {kKvdbJsonStr};
+
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(0);
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::KVDB, kKvdbJson));
+    EXPECT_NO_THROW(service.validateResource(ResourceType::KVDB, payload));
 }
 
 // ---------------------------------------------------------------------
@@ -753,16 +761,18 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kKvdbMissingId = R"(
+    static constexpr const char* kKvdbMissingIdStr = R"(
     {
       "title": "windows_kerberos_status_code_to_code_name",
       "content": { "0x0": "KDC_ERR_NONE" },
       "enabled": true
     })";
 
+    json::Json payload {kKvdbMissingIdStr};
+
     try
     {
-        service.validateResource(ResourceType::KVDB, kKvdbMissingId);
+        service.validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -778,7 +788,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kKvdbBadContent = R"(
+    static constexpr const char* kKvdbBadContentStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
       "title": "windows_kerberos_status_code_to_code_name",
@@ -786,9 +796,11 @@ TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
       "enabled": true
     })";
 
+    json::Json payload {kKvdbBadContentStr};
+
     try
     {
-        service.validateResource(ResourceType::KVDB, kKvdbBadContent);
+        service.validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -804,16 +816,18 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kKvdbMissingEnabled = R"(
+    static constexpr const char* kKvdbMissingEnabledStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
       "title": "windows_kerberos_status_code_to_code_name",
       "content": { "0x0": "KDC_ERR_NONE" }
     })";
 
+    json::Json payload {kKvdbMissingEnabledStr};
+
     try
     {
-        service.validateResource(ResourceType::KVDB, kKvdbMissingEnabled);
+        service.validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -833,7 +847,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kIntegrationBadDecoderUUID = R"(
+    static constexpr const char* kIntegrationBadDecoderUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
@@ -844,14 +858,15 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
       "kvdbs": []
     })";
 
+    json::Json payload {kIntegrationBadDecoderUUIDStr};
+
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, kIntegrationBadDecoderUUID);
+        service.validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
     {
-        // Mantener esto amplio por si cambia el texto exacto del error
         EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("Decoder"));
         EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("UUID"));
     }
@@ -863,7 +878,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kIntegrationBadKVDBUUID = R"(
+    static constexpr const char* kIntegrationBadKVDBUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
@@ -876,9 +891,11 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
       "kvdbs": [ "NOT-A-UUID" ]
     })";
 
+    json::Json payload {kIntegrationBadKVDBUUIDStr};
+
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, kIntegrationBadKVDBUUID);
+        service.validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -894,7 +911,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    static constexpr const char* kIntegrationBadCategory = R"(
+    static constexpr const char* kIntegrationBadCategoryStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "title": "windows",
@@ -907,9 +924,11 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
       "kvdbs": []
     })";
 
+    json::Json payload {kIntegrationBadCategoryStr};
+
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, kIntegrationBadCategory);
+        service.validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)

@@ -26,6 +26,7 @@ constexpr auto MESSAGE_JSON_REQUIRED = "Field /jsonContent cannot be empty";
 constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
 constexpr auto MESSAGE_TYPE_REQUIRED = "Field /type is required";
 constexpr auto MESSAGE_TYPE_UNSUPPORTED = "Unsupported value for /type";
+constexpr auto MESSAGE_RESOURCE_REQUIRED = "Field /resource cannot be empty";
 
 /*********************************************
  * Namespace handlers
@@ -738,6 +739,8 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
         using RequestType = eContent::resourceValidate_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
+        constexpr auto MESSAGE_RESOURCE_REQUIRED = "Field /resource cannot be empty";
+
         auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::cm::crud::ICrudService>(req, wCrud);
         if (adapter::isError(result))
         {
@@ -753,9 +756,10 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             return;
         }
 
-        if (protoReq.jsoncontent().empty())
+        // In proto3, Struct presence is best checked via fields_size()
+        if (protoReq.resource().fields_size() == 0)
         {
-            res = adapter::userErrorResponse<ResponseType>(MESSAGE_JSON_REQUIRED);
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_RESOURCE_REQUIRED);
             return;
         }
 
@@ -766,9 +770,20 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             return;
         }
 
+        // Convert Struct -> json::Json without JSON stringify/parse
+        auto payloadOrErr = eMessage::eStructToJson(protoReq.resource());
+        if (std::holds_alternative<base::Error>(payloadOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error converting /resource to JSON: {}", std::get<base::Error>(payloadOrErr).message));
+            return;
+        }
+
+        const auto& payload = std::get<json::Json>(payloadOrErr);
+
         try
         {
-            service->validateResource(rType, protoReq.jsoncontent());
+            service->validateResource(rType, payload);
         }
         catch (const std::exception& ex)
         {

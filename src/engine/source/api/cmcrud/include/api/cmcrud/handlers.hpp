@@ -55,7 +55,7 @@ inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
     server->addRoute(httpsrv::Method::POST, "/_internal/content/delete", resourceDelete(crud));
 
     // Resources (public)
-    server->addRoute(httpsrv::Method::POST, "/content/validate", resourceValidate(crud));
+    server->addRoute(httpsrv::Method::POST, "/content/validate/resource", resourceValidate(crud));
 }
 
 } // namespace api::cmcrud::handlers

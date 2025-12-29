@@ -7,10 +7,10 @@
 
 #include <base/json.hpp>
 
-namespace
+namespace cm::store::detail
 {
 
-json::Json adaptDecoder(const json::Json& document)
+inline json::Json adaptDecoder(const json::Json& document)
 {
     json::Json result;
     result.setObject();

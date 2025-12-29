@@ -193,13 +193,13 @@ message resourceDelete_Request
 /***************************************************
  * Validate a resource payload (isolated, no namespace)
  *
- * endpoint: POST /content/validate
+ * endpoint: POST /content/validate/resource
  *
  * validate a resource payload without persisting it
  **************************************************/
 message resourceValidate_Request
 {
-    string type = 1;        // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
-    string jsonContent = 2; // JSON payload as string
+    string type = 1;                     // "decoder" | "filter" | "integration" | "kvdb"
+    google.protobuf.Struct resource = 2; // JSON object payload
 }
 // message resourceValidate_Response -> Return a GenericStatus_Response

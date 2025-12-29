@@ -198,7 +198,7 @@ public:
             }
         }
 
-        if (validateUUID && !base::utils::generators::isValidUUIDv4(*uuidOpt))
+        if (requireUUID && !base::utils::generators::isValidUUIDv4(*uuidOpt))
         {
             throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + *uuidOpt);
         }

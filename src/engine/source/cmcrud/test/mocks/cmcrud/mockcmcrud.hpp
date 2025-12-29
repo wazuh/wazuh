@@ -36,7 +36,7 @@ public:
                 (override));
 
     MOCK_METHOD(void, deleteResourceByUUID, (std::string_view nsName, const std::string& uuid), (override));
-    MOCK_METHOD(void, validateResource, (cm::store::ResourceType type, std::string_view document), (override));
+    MOCK_METHOD(void, validateResource, (cm::store::ResourceType type, const json::Json& resource), (override));
 };
 
 } // namespace cm::crud

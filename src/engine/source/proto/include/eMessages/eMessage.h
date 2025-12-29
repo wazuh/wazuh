@@ -5,6 +5,7 @@
 #include <variant>
 
 #include <base/error.hpp>
+#include <base/json.hpp>
 #include <google/protobuf/message.h>
 #include <google/protobuf/struct.pb.h>
 #include <google/protobuf/stubs/common.h>
@@ -12,6 +13,63 @@
 
 namespace eMessage
 {
+namespace detail
+{
+inline rapidjson::Value toRapidValue(const google::protobuf::Value& v, rapidjson::Document::AllocatorType& alloc);
+
+inline rapidjson::Value toRapidObject(const google::protobuf::Struct& s, rapidjson::Document::AllocatorType& alloc)
+{
+    rapidjson::Value obj(rapidjson::kObjectType);
+
+    for (const auto& [k, vv] : s.fields())
+    {
+        rapidjson::Value key(k.c_str(), static_cast<rapidjson::SizeType>(k.size()), alloc);
+        obj.AddMember(key, toRapidValue(vv, alloc), alloc);
+    }
+
+    return obj;
+}
+
+inline rapidjson::Value toRapidArray(const google::protobuf::ListValue& l, rapidjson::Document::AllocatorType& alloc)
+{
+    rapidjson::Value arr(rapidjson::kArrayType);
+    for (const auto& item : l.values())
+    {
+        arr.PushBack(toRapidValue(item, alloc), alloc);
+    }
+    return arr;
+}
+
+inline rapidjson::Value toRapidValue(const google::protobuf::Value& v, rapidjson::Document::AllocatorType& alloc)
+{
+    rapidjson::Value out;
+
+    switch (v.kind_case())
+    {
+        case google::protobuf::Value::kNullValue: out.SetNull(); break;
+
+        case google::protobuf::Value::kNumberValue: out.SetDouble(v.number_value()); break;
+
+        case google::protobuf::Value::kStringValue:
+        {
+            const auto& s = v.string_value();
+            out.SetString(s.c_str(), static_cast<rapidjson::SizeType>(s.size()), alloc);
+            break;
+        }
+
+        case google::protobuf::Value::kBoolValue: out.SetBool(v.bool_value()); break;
+
+        case google::protobuf::Value::kStructValue: out = toRapidObject(v.struct_value(), alloc); break;
+
+        case google::protobuf::Value::kListValue: out = toRapidArray(v.list_value(), alloc); break;
+
+        case google::protobuf::Value::KIND_NOT_SET:
+        default: out.SetNull(); break;
+    }
+
+    return out;
+}
+} // namespace detail
 
 /**
 * @brief Parse a JSON string into a google::protobuf::Message.
@@ -116,6 +174,34 @@ eRepeatedFieldToJson(const google::protobuf::RepeatedPtrField<T>& repeatedPtrFie
 inline void ShutdownEMessageLibrary()
 {
     google::protobuf::ShutdownProtobufLibrary();
+}
+
+/**
+ * @brief Convert a google::protobuf::Struct into a json::Json object.
+ *
+ * @param s The Struct to convert.
+ * @return A variant object with either an error message or the json::Json object.
+ */
+inline std::variant<base::Error, json::Json> eStructToJson(const google::protobuf::Struct& s)
+{
+    try
+    {
+        rapidjson::Document doc;
+        doc.SetObject();
+        auto& alloc = doc.GetAllocator();
+
+        for (const auto& [k, vv] : s.fields())
+        {
+            rapidjson::Value key(k.c_str(), static_cast<rapidjson::SizeType>(k.size()), alloc);
+            doc.AddMember(key, detail::toRapidValue(vv, alloc), alloc);
+        }
+
+        return json::Json {std::move(doc)};
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
 }
 
 } // namespace eMessage

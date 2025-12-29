@@ -221,7 +221,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 
                         case cm::store::ResourceType::DECODER:
                         {
-                            auto assetJson = adaptDecoder(itemJson);
+                            auto assetJson = cm::store::detail::adaptDecoder(itemJson);
                             auto name = assetNameFromJson(assetJson);
 
                             (void)assetUuidFromJson(assetJson, name);
@@ -505,22 +505,19 @@ void CrudService::deleteResourceByUUID(std::string_view nsName, const std::strin
     }
 }
 
-void CrudService::validateResource(cm::store::ResourceType type, std::string_view document)
+void CrudService::validateResource(cm::store::ResourceType type, const json::Json& payload)
 {
     try
     {
-        const json::Json payload {document.data()};
-
         switch (type)
         {
             case cm::store::ResourceType::DECODER:
-            case cm::store::ResourceType::RULE:
             case cm::store::ResourceType::FILTER:
-            case cm::store::ResourceType::OUTPUT:
             {
-                auto name = assetNameFromJson(payload);
+                auto adaptedPayload = cm::store::detail::adaptDecoder(payload);
+                auto name = assetNameFromJson(adaptedPayload);
 
-                (void)assetUuidFromJson(payload, name);
+                (void)assetUuidFromJson(adaptedPayload, name);
 
                 const auto resourceStr = cm::store::resourceTypeToString(type);
 
@@ -530,7 +527,7 @@ void CrudService::validateResource(cm::store::ResourceType type, std::string_vie
                         fmt::format("Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
                 }
 
-                throwIfError(m_validator->validateAssetShallow(payload),
+                throwIfError(m_validator->validateAssetShallow(adaptedPayload),
                              fmt::format("Validation failed for '{}'", cm::store::resourceTypeToString(type)));
                 return;
             }
