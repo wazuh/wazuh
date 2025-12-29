@@ -972,16 +972,18 @@ class Handler(asyncio.Protocol):
         if ".." in PurePosixPath(rel_norm).parts:
             return b"err", b"Path traversal detected"
 
-        # Allowlist: only permit cluster data directories
-        if not any(rel_norm.startswith(p) for p in _ALLOWED_PREFIXES):
-            return b"err", b"Write path not allowed"
-
-        # Resolve final destination and ensure it stays inside WAZUH_PATH
-        dst = os.path.realpath(os.path.join(common.WAZUH_PATH, rel_norm.lstrip("/")))
+        # Resolve final destination (real path) under WAZUH_PATH
         wazuh_root = os.path.realpath(common.WAZUH_PATH)
+        dst = os.path.realpath(os.path.join(wazuh_root, rel_norm.lstrip("/")))
 
-        if os.path.commonpath([dst, wazuh_root]) != wazuh_root:
-            return b"err", b"Write path escapes WAZUH_PATH"
+        # Only allow writes under WAZUH_PATH + allowed prefixes (real paths)
+        allowed_roots = [
+            os.path.realpath(os.path.join(wazuh_root, p.lstrip("/")))
+            for p in _ALLOWED_PREFIXES
+        ]
+
+        if not any(os.path.commonpath([dst, root]) == root for root in allowed_roots):
+            return b"err", b"Write path not allowed"
 
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256()}
