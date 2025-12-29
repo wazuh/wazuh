@@ -359,7 +359,22 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
                      {schemf::Type::MATCH_ONLY_TEXT, ParserType::P_TEXT},
                      {schemf::Type::COMPLETION, ParserType::P_TEXT},
                      {schemf::Type::SEARCH_AS_YOU_TYPE, ParserType::P_TEXT},
-                     {schemf::Type::TOKEN_COUNT, ParserType::P_UNSIGNED_LONG}};
+                     {schemf::Type::TOKEN_COUNT, ParserType::P_UNSIGNED_LONG},
+                     {schemf::Type::FLAT_OBJECT, ParserType::ERROR_TYPE},
+                     {schemf::Type::FLATTENED, ParserType::ERROR_TYPE},
+                     {schemf::Type::JOIN, ParserType::ERROR_TYPE},
+                     {schemf::Type::KNN_VECTOR, ParserType::ERROR_TYPE},
+                     {schemf::Type::SPARSE_VECTOR, ParserType::ERROR_TYPE},
+                     {schemf::Type::RANK_FEATURES, ParserType::ERROR_TYPE},
+                     {schemf::Type::PERCOLATOR, ParserType::ERROR_TYPE},
+                     {schemf::Type::STAR_TREE, ParserType::ERROR_TYPE},
+                     {schemf::Type::DERIVED, ParserType::ERROR_TYPE},
+                     {schemf::Type::INTEGER_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::LONG_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::FLOAT_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::DOUBLE_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::DATE_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::IP_RANGE, ParserType::ERROR_TYPE}};
 
     m_parserBuilders = {};
 }

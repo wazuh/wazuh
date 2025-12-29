@@ -38,7 +38,7 @@ public:
         String,
         Number,
         Boolean,
-        Unknow
+        Unknown
     };
 
     friend std::ostream& operator<<(std::ostream& os, Type type)

@@ -72,20 +72,6 @@ void Schema::Validator::registerCompatibles()
                                            {Type::COMPLETION, false},
                                            {Type::SEARCH_AS_YOU_TYPE, false},
                                            {Type::SEMANTIC, false}}});
-    m_compatibles.emplace(Type::WILDCARD,
-                          ValidationInfo {json::Json::Type::String,
-                                          validators::getStringValidator(),
-                                          {{Type::KEYWORD, false},
-                                           {Type::TEXT, false},
-                                           {Type::MATCH_ONLY_TEXT, false},
-                                           {Type::CONSTANT_KEYWORD, false},
-                                           {Type::DATE, false},
-                                           {Type::DATE_NANOS, false},
-                                           {Type::IP, false},
-                                           {Type::BINARY, false},
-                                           {Type::COMPLETION, false},
-                                           {Type::SEARCH_AS_YOU_TYPE, false},
-                                           {Type::SEMANTIC, false}}});
     m_compatibles.emplace(Type::MATCH_ONLY_TEXT,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),
@@ -100,6 +86,20 @@ void Schema::Validator::registerCompatibles()
                                            {Type::SEMANTIC, false},
                                            {Type::COMPLETION, false},
                                            {Type::SEARCH_AS_YOU_TYPE, false}}});
+    m_compatibles.emplace(Type::WILDCARD,
+                          ValidationInfo {json::Json::Type::String,
+                                          validators::getStringValidator(),
+                                          {{Type::KEYWORD, false},
+                                           {Type::TEXT, false},
+                                           {Type::MATCH_ONLY_TEXT, false},
+                                           {Type::CONSTANT_KEYWORD, false},
+                                           {Type::DATE, false},
+                                           {Type::DATE_NANOS, false},
+                                           {Type::IP, false},
+                                           {Type::BINARY, false},
+                                           {Type::COMPLETION, false},
+                                           {Type::SEARCH_AS_YOU_TYPE, false},
+                                           {Type::SEMANTIC, false}}});
     m_compatibles.emplace(Type::CONSTANT_KEYWORD,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),
@@ -138,24 +138,25 @@ void Schema::Validator::registerCompatibles()
                           ValidationInfo {json::Json::Type::Object, validators::getObjectValidator(), {}});
     m_compatibles.emplace(Type::GEO_POINT,
                           ValidationInfo {json::Json::Type::Object, validators::getObjectValidator(), {}});
-    m_compatibles.emplace(Type::UNSIGNED_LONG,
-                          ValidationInfo {json::Json::Type::Number,
-                                          validators::getLongValidator(),
-                                          {{Type::LONG, true}}});
+    m_compatibles.emplace(
+        Type::UNSIGNED_LONG,
+        ValidationInfo {json::Json::Type::Number, validators::getLongValidator(), {{Type::LONG, true}}});
     m_compatibles.emplace(Type::COMPLETION,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),
-                                          {{Type::TEXT, false},
-                                           {Type::KEYWORD, false},
-                                           {Type::MATCH_ONLY_TEXT, false},
-                                           {Type::CONSTANT_KEYWORD, false},
-                                           {Type::DATE, false},
-                                           {Type::DATE_NANOS, false},
-                                           {Type::IP, false},
-                                           {Type::BINARY, false},
-                                           {Type::SEARCH_AS_YOU_TYPE, false},
-                                           {Type::SEMANTIC, false},
-                                           {Type::WILDCARD, false},}});
+                                          {
+                                              {Type::TEXT, false},
+                                              {Type::KEYWORD, false},
+                                              {Type::MATCH_ONLY_TEXT, false},
+                                              {Type::CONSTANT_KEYWORD, false},
+                                              {Type::DATE, false},
+                                              {Type::DATE_NANOS, false},
+                                              {Type::IP, false},
+                                              {Type::BINARY, false},
+                                              {Type::SEARCH_AS_YOU_TYPE, false},
+                                              {Type::SEMANTIC, false},
+                                              {Type::WILDCARD, false},
+                                          }});
     m_compatibles.emplace(Type::SEARCH_AS_YOU_TYPE,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),
@@ -171,9 +172,37 @@ void Schema::Validator::registerCompatibles()
                                            {Type::SEMANTIC, false},
                                            {Type::WILDCARD, false}}});
     m_compatibles.emplace(Type::TOKEN_COUNT,
-                          ValidationInfo {json::Json::Type::Number, validators::getIntegerValidator(), {}});
+                          ValidationInfo {json::Json::Type::Number, validators::getUnsignedLongValidator(), {}});
     m_compatibles.emplace(Type::SEMANTIC,
                           ValidationInfo {json::Json::Type::String, validators::getStringValidator(), {}});
+    m_compatibles.emplace(Type::JOIN, ValidationInfo {json::Json::Type::Object, validators::getObjectValidator(), {}});
+    // Incompatible types
+    m_compatibles.emplace(Type::KNN_VECTOR,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::SPARSE_VECTOR,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::RANK_FEATURE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::RANK_FEATURES,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::PERCOLATOR,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::STAR_TREE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::DERIVED,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::INTEGER_RANGE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::LONG_RANGE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::FLOAT_RANGE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::DOUBLE_RANGE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::DATE_RANGE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
+    m_compatibles.emplace(Type::IP_RANGE,
+                          ValidationInfo {json::Json::Type::Unknown, validators::getIncompatibleValidator(), {}});
 }
 
 base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& name, const JTypeToken& token) const
@@ -234,7 +263,10 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
 
         if (base::isError(res))
         {
-            return base::Error {fmt::format("Field '{}' value validation failed: {}", name, res.value().message)};
+            return base::Error {fmt::format("Field '{}' of type '{}' value validation failed: {}",
+                                            name,
+                                            typeToStr(m_schema.getType(name)),
+                                            res.value().message)};
         }
     }
 
