@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
+#include <cmstore/adapter.hpp>
 #include <cmstore/types.hpp>
 #include <yml/yml.hpp>
 
@@ -189,11 +190,8 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
                         }
 
                         case cm::store::ResourceType::DECODER:
-                        case cm::store::ResourceType::OUTPUT:
-                        case cm::store::ResourceType::RULE:
-                        case cm::store::ResourceType::FILTER:
                         {
-                            auto assetJson = itemJson;
+                            auto assetJson = adaptDecoder(itemJson);
                             auto name = assetNameFromJson(assetJson);
                             const auto resourceStr = cm::store::resourceTypeToString(type);
 
@@ -219,10 +217,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 
             // Required order
             importResources(cm::store::ResourceType::KVDB, "kvdbs");
-            importResources(cm::store::ResourceType::FILTER, "filters");
             importResources(cm::store::ResourceType::DECODER, "decoders");
-            importResources(cm::store::ResourceType::RULE, "rules");
-            importResources(cm::store::ResourceType::OUTPUT, "outputs");
             importResources(cm::store::ResourceType::INTEGRATION, "integrations");
 
             // Policy

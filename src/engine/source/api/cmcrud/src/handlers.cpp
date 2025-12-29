@@ -314,12 +314,32 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
-        const std::string nsJsonDoc = protoReq.jsoncontent();
         const bool loadInTester = protoReq.load_in_tester();
 
-        if (nsJsonDoc.empty())
+        auto jsonOrErr = eMessage::eMessageToJson(protoReq.full_policy(), /*printPrimitiveFields=*/true);
+        if (std::holds_alternative<base::Error>(jsonOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>("Missing jsoncontent");
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error converting full_policy to JSON object: {}", std::get<base::Error>(jsonOrErr).message));
+            return;
+        }
+
+        const auto& fullPolicyStr = std::get<std::string>(jsonOrErr);
+        json::Json fullPolicy;
+        try
+        {
+            fullPolicy = json::Json(fullPolicyStr.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error parsing full policy JSON object: {}", e.what()));
+            return;
+        }
+
+        if (fullPolicy.isEmpty())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Missing full policy");
             return;
         }
 
@@ -388,7 +408,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         try
         {
             // Import into temp namespace
-            service->importNamespace(tmpNsName, nsJsonDoc, /*force=*/true);
+            service->importNamespace(tmpNsName, fullPolicyStr, /*force=*/true);
             tmpNamespaceCreated = true;
 
             // Create a tester entry to validate tester-loading path.

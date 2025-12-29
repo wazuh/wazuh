@@ -32,6 +32,7 @@
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
 #include <google/protobuf/unknown_field_set.h>
 #include "engine.pb.h"
+#include <google/protobuf/struct.pb.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_crud_2eproto
@@ -1566,24 +1567,28 @@ class policyValidate_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kJsonContentFieldNumber = 1,
-    kLoadInTesterFieldNumber = 2,
+    kFullPolicyFieldNumber = 2,
+    kLoadInTesterFieldNumber = 1,
   };
-  // string jsonContent = 1;
-  void clear_jsoncontent();
-  const std::string& jsoncontent() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_jsoncontent(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_jsoncontent();
-  PROTOBUF_NODISCARD std::string* release_jsoncontent();
-  void set_allocated_jsoncontent(std::string* jsoncontent);
+  // .google.protobuf.Struct full_policy = 2;
+  bool has_full_policy() const;
   private:
-  const std::string& _internal_jsoncontent() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_jsoncontent(const std::string& value);
-  std::string* _internal_mutable_jsoncontent();
+  bool _internal_has_full_policy() const;
   public:
+  void clear_full_policy();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& full_policy() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_full_policy();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_full_policy();
+  void set_allocated_full_policy(::PROTOBUF_NAMESPACE_ID::Struct* full_policy);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_full_policy() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_full_policy();
+  public:
+  void unsafe_arena_set_allocated_full_policy(
+      ::PROTOBUF_NAMESPACE_ID::Struct* full_policy);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_full_policy();
 
-  // bool load_in_tester = 2;
+  // bool load_in_tester = 1;
   void clear_load_in_tester();
   bool load_in_tester() const;
   void set_load_in_tester(bool value);
@@ -1600,7 +1605,7 @@ class policyValidate_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr jsoncontent_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* full_policy_;
     bool load_in_tester_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
@@ -3473,57 +3478,7 @@ inline void policyDelete_Request::set_allocated_space(std::string* space) {
 
 // policyValidate_Request
 
-// string jsonContent = 1;
-inline void policyValidate_Request::clear_jsoncontent() {
-  _impl_.jsoncontent_.ClearToEmpty();
-}
-inline const std::string& policyValidate_Request::jsoncontent() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.policyValidate_Request.jsonContent)
-  return _internal_jsoncontent();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void policyValidate_Request::set_jsoncontent(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.jsoncontent_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.policyValidate_Request.jsonContent)
-}
-inline std::string* policyValidate_Request::mutable_jsoncontent() {
-  std::string* _s = _internal_mutable_jsoncontent();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.policyValidate_Request.jsonContent)
-  return _s;
-}
-inline const std::string& policyValidate_Request::_internal_jsoncontent() const {
-  return _impl_.jsoncontent_.Get();
-}
-inline void policyValidate_Request::_internal_set_jsoncontent(const std::string& value) {
-  
-  _impl_.jsoncontent_.Set(value, GetArenaForAllocation());
-}
-inline std::string* policyValidate_Request::_internal_mutable_jsoncontent() {
-  
-  return _impl_.jsoncontent_.Mutable(GetArenaForAllocation());
-}
-inline std::string* policyValidate_Request::release_jsoncontent() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.policyValidate_Request.jsonContent)
-  return _impl_.jsoncontent_.Release();
-}
-inline void policyValidate_Request::set_allocated_jsoncontent(std::string* jsoncontent) {
-  if (jsoncontent != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.jsoncontent_.SetAllocated(jsoncontent, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.jsoncontent_.IsDefault()) {
-    _impl_.jsoncontent_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.policyValidate_Request.jsonContent)
-}
-
-// bool load_in_tester = 2;
+// bool load_in_tester = 1;
 inline void policyValidate_Request::clear_load_in_tester() {
   _impl_.load_in_tester_ = false;
 }
@@ -3541,6 +3496,91 @@ inline void policyValidate_Request::_internal_set_load_in_tester(bool value) {
 inline void policyValidate_Request::set_load_in_tester(bool value) {
   _internal_set_load_in_tester(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.policyValidate_Request.load_in_tester)
+}
+
+// .google.protobuf.Struct full_policy = 2;
+inline bool policyValidate_Request::_internal_has_full_policy() const {
+  return this != internal_default_instance() && _impl_.full_policy_ != nullptr;
+}
+inline bool policyValidate_Request::has_full_policy() const {
+  return _internal_has_full_policy();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& policyValidate_Request::_internal_full_policy() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.full_policy_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& policyValidate_Request::full_policy() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.policyValidate_Request.full_policy)
+  return _internal_full_policy();
+}
+inline void policyValidate_Request::unsafe_arena_set_allocated_full_policy(
+    ::PROTOBUF_NAMESPACE_ID::Struct* full_policy) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.full_policy_);
+  }
+  _impl_.full_policy_ = full_policy;
+  if (full_policy) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.content.policyValidate_Request.full_policy)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyValidate_Request::release_full_policy() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.full_policy_;
+  _impl_.full_policy_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyValidate_Request::unsafe_arena_release_full_policy() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.policyValidate_Request.full_policy)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.full_policy_;
+  _impl_.full_policy_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyValidate_Request::_internal_mutable_full_policy() {
+  
+  if (_impl_.full_policy_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.full_policy_ = p;
+  }
+  return _impl_.full_policy_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyValidate_Request::mutable_full_policy() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_full_policy();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.policyValidate_Request.full_policy)
+  return _msg;
+}
+inline void policyValidate_Request::set_allocated_full_policy(::PROTOBUF_NAMESPACE_ID::Struct* full_policy) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.full_policy_);
+  }
+  if (full_policy) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(full_policy));
+    if (message_arena != submessage_arena) {
+      full_policy = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, full_policy, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.full_policy_ = full_policy;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.policyValidate_Request.full_policy)
 }
 
 // -------------------------------------------------------------------

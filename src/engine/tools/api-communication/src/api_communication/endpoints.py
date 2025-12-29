@@ -54,7 +54,7 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
     if isinstance(message, crud.policyDelete_Request):
         return None, '_internal/content/policy/delete'
     if isinstance(message, crud.policyValidate_Request):
-        return None, 'content/policy/validate'
+        return None, 'content/validate/policy'
 
     # Router
     if isinstance(message, router.RoutePost_Request):

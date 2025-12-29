@@ -138,7 +138,7 @@ struct policyDelete_RequestDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 policyDelete_RequestDefaultTypeInternal _policyDelete_Request_default_instance_;
 PROTOBUF_CONSTEXPR policyValidate_Request::policyValidate_Request(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.jsoncontent_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+    /*decltype(_impl_.full_policy_)*/nullptr
   , /*decltype(_impl_.load_in_tester_)*/false
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct policyValidate_RequestDefaultTypeInternal {
@@ -325,8 +325,8 @@ const uint32_t TableStruct_crud_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::policyValidate_Request, _impl_.jsoncontent_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::policyValidate_Request, _impl_.load_in_tester_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::policyValidate_Request, _impl_.full_policy_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceList_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -427,45 +427,47 @@ static const ::_pb::Message* const file_default_instances[] = {
 
 const char descriptor_table_protodef_crud_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\ncrud.proto\022\034com.wazuh.api.engine.conte"
-  "nt\032\014engine.proto\"e\n\017ResourceSummary\022\021\n\004u"
-  "uid\030\001 \001(\tH\000\210\001\001\022\021\n\004name\030\002 \001(\tH\001\210\001\001\022\021\n\004has"
-  "h\030\003 \001(\tH\002\210\001\001B\007\n\005_uuidB\007\n\005_nameB\007\n\005_hash\""
-  "\026\n\024namespaceGet_Request\"y\n\025namespaceGet_"
-  "Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.api"
-  ".engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001"
-  "\022\016\n\006spaces\030\003 \003(\tB\010\n\006_error\"&\n\025namespaceP"
-  "ost_Request\022\r\n\005space\030\001 \001(\t\"(\n\027namespaceD"
-  "elete_Request\022\r\n\005space\030\001 \001(\t\"L\n\027namespac"
-  "eImport_Request\022\r\n\005space\030\001 \001(\t\022\023\n\013jsonCo"
-  "ntent\030\002 \001(\t\022\r\n\005force\030\003 \001(\010\"7\n\022policyPost"
-  "_Request\022\r\n\005space\030\001 \001(\t\022\022\n\nymlContent\030\002 "
-  "\001(\t\"%\n\024policyDelete_Request\022\r\n\005space\030\001 \001"
-  "(\t\"E\n\026policyValidate_Request\022\023\n\013jsonCont"
-  "ent\030\001 \001(\t\022\026\n\016load_in_tester\030\002 \001(\010\"3\n\024res"
-  "ourceList_Request\022\r\n\005space\030\001 \001(\t\022\014\n\004type"
-  "\030\002 \001(\t\"\253\001\n\025resourceList_Response\0222\n\006stat"
-  "us\030\001 \001(\0162\".com.wazuh.api.engine.ReturnSt"
-  "atus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022@\n\tresources\030\003 "
-  "\003(\0132-.com.wazuh.api.engine.content.Resou"
-  "rceSummaryB\010\n\006_error\"R\n\023resourceGet_Requ"
-  "est\022\r\n\005space\030\001 \001(\t\022\014\n\004uuid\030\002 \001(\t\022\023\n\006asJs"
-  "on\030\003 \001(\010H\000\210\001\001B\t\n\007_asJson\"\212\001\n\024resourceGet"
-  "_Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.ap"
-  "i.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001"
-  "\001\022\024\n\007content\030\003 \001(\tH\001\210\001\001B\010\n\006_errorB\n\n\010_co"
-  "ntent\"G\n\024resourcePost_Request\022\r\n\005space\030\001"
-  " \001(\t\022\014\n\004type\030\002 \001(\t\022\022\n\nymlContent\030\003 \001(\t\"5"
-  "\n\026resourceDelete_Request\022\r\n\005space\030\001 \001(\t\022"
-  "\014\n\004uuid\030\002 \001(\tb\006proto3"
+  "nt\032\014engine.proto\032\034google/protobuf/struct"
+  ".proto\"e\n\017ResourceSummary\022\021\n\004uuid\030\001 \001(\tH"
+  "\000\210\001\001\022\021\n\004name\030\002 \001(\tH\001\210\001\001\022\021\n\004hash\030\003 \001(\tH\002\210"
+  "\001\001B\007\n\005_uuidB\007\n\005_nameB\007\n\005_hash\"\026\n\024namespa"
+  "ceGet_Request\"y\n\025namespaceGet_Response\0222"
+  "\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.Re"
+  "turnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\016\n\006spaces"
+  "\030\003 \003(\tB\010\n\006_error\"&\n\025namespacePost_Reques"
+  "t\022\r\n\005space\030\001 \001(\t\"(\n\027namespaceDelete_Requ"
+  "est\022\r\n\005space\030\001 \001(\t\"L\n\027namespaceImport_Re"
+  "quest\022\r\n\005space\030\001 \001(\t\022\023\n\013jsonContent\030\002 \001("
+  "\t\022\r\n\005force\030\003 \001(\010\"7\n\022policyPost_Request\022\r"
+  "\n\005space\030\001 \001(\t\022\022\n\nymlContent\030\002 \001(\t\"%\n\024pol"
+  "icyDelete_Request\022\r\n\005space\030\001 \001(\t\"^\n\026poli"
+  "cyValidate_Request\022\026\n\016load_in_tester\030\001 \001"
+  "(\010\022,\n\013full_policy\030\002 \001(\0132\027.google.protobu"
+  "f.Struct\"3\n\024resourceList_Request\022\r\n\005spac"
+  "e\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\"\253\001\n\025resourceList_R"
+  "esponse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api."
+  "engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022"
+  "@\n\tresources\030\003 \003(\0132-.com.wazuh.api.engin"
+  "e.content.ResourceSummaryB\010\n\006_error\"R\n\023r"
+  "esourceGet_Request\022\r\n\005space\030\001 \001(\t\022\014\n\004uui"
+  "d\030\002 \001(\t\022\023\n\006asJson\030\003 \001(\010H\000\210\001\001B\t\n\007_asJson\""
+  "\212\001\n\024resourceGet_Response\0222\n\006status\030\001 \001(\016"
+  "2\".com.wazuh.api.engine.ReturnStatus\022\022\n\005"
+  "error\030\002 \001(\tH\000\210\001\001\022\024\n\007content\030\003 \001(\tH\001\210\001\001B\010"
+  "\n\006_errorB\n\n\010_content\"G\n\024resourcePost_Req"
+  "uest\022\r\n\005space\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\022\022\n\nyml"
+  "Content\030\003 \001(\t\"5\n\026resourceDelete_Request\022"
+  "\r\n\005space\030\001 \001(\t\022\014\n\004uuid\030\002 \001(\tb\006proto3"
   ;
-static const ::_pbi::DescriptorTable* const descriptor_table_crud_2eproto_deps[1] = {
+static const ::_pbi::DescriptorTable* const descriptor_table_crud_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
+  &::descriptor_table_google_2fprotobuf_2fstruct_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_crud_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_crud_2eproto = {
-    false, false, 1221, descriptor_table_protodef_crud_2eproto,
+    false, false, 1276, descriptor_table_protodef_crud_2eproto,
     "crud.proto",
-    &descriptor_table_crud_2eproto_once, descriptor_table_crud_2eproto_deps, 1, 15,
+    &descriptor_table_crud_2eproto_once, descriptor_table_crud_2eproto_deps, 2, 15,
     schemas, file_default_instances, TableStruct_crud_2eproto::offsets,
     file_level_metadata_crud_2eproto, file_level_enum_descriptors_crud_2eproto,
     file_level_service_descriptors_crud_2eproto,
@@ -2288,8 +2290,19 @@ void policyDelete_Request::InternalSwap(policyDelete_Request* other) {
 
 class policyValidate_Request::_Internal {
  public:
+  static const ::PROTOBUF_NAMESPACE_ID::Struct& full_policy(const policyValidate_Request* msg);
 };
 
+const ::PROTOBUF_NAMESPACE_ID::Struct&
+policyValidate_Request::_Internal::full_policy(const policyValidate_Request* msg) {
+  return *msg->_impl_.full_policy_;
+}
+void policyValidate_Request::clear_full_policy() {
+  if (GetArenaForAllocation() == nullptr && _impl_.full_policy_ != nullptr) {
+    delete _impl_.full_policy_;
+  }
+  _impl_.full_policy_ = nullptr;
+}
 policyValidate_Request::policyValidate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
@@ -2300,18 +2313,13 @@ policyValidate_Request::policyValidate_Request(const policyValidate_Request& fro
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   policyValidate_Request* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_.jsoncontent_){}
+      decltype(_impl_.full_policy_){nullptr}
     , decltype(_impl_.load_in_tester_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.jsoncontent_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.jsoncontent_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_jsoncontent().empty()) {
-    _this->_impl_.jsoncontent_.Set(from._internal_jsoncontent(), 
-      _this->GetArenaForAllocation());
+  if (from._internal_has_full_policy()) {
+    _this->_impl_.full_policy_ = new ::PROTOBUF_NAMESPACE_ID::Struct(*from._impl_.full_policy_);
   }
   _this->_impl_.load_in_tester_ = from._impl_.load_in_tester_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.content.policyValidate_Request)
@@ -2322,14 +2330,10 @@ inline void policyValidate_Request::SharedCtor(
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_.jsoncontent_){}
+      decltype(_impl_.full_policy_){nullptr}
     , decltype(_impl_.load_in_tester_){false}
     , /*decltype(_impl_._cached_size_)*/{}
   };
-  _impl_.jsoncontent_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.jsoncontent_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
 policyValidate_Request::~policyValidate_Request() {
@@ -2343,7 +2347,7 @@ policyValidate_Request::~policyValidate_Request() {
 
 inline void policyValidate_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.jsoncontent_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.full_policy_;
 }
 
 void policyValidate_Request::SetCachedSize(int size) const {
@@ -2356,7 +2360,10 @@ void policyValidate_Request::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.jsoncontent_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.full_policy_ != nullptr) {
+    delete _impl_.full_policy_;
+  }
+  _impl_.full_policy_ = nullptr;
   _impl_.load_in_tester_ = false;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -2367,20 +2374,18 @@ const char* policyValidate_Request::_InternalParse(const char* ptr, ::_pbi::Pars
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // string jsonContent = 1;
+      // bool load_in_tester = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_jsoncontent();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.load_in_tester_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.content.policyValidate_Request.jsonContent"));
         } else
           goto handle_unusual;
         continue;
-      // bool load_in_tester = 2;
+      // .google.protobuf.Struct full_policy = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
-          _impl_.load_in_tester_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_full_policy(), ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -2414,20 +2419,17 @@ uint8_t* policyValidate_Request::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // string jsonContent = 1;
-  if (!this->_internal_jsoncontent().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_jsoncontent().data(), static_cast<int>(this->_internal_jsoncontent().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.content.policyValidate_Request.jsonContent");
-    target = stream->WriteStringMaybeAliased(
-        1, this->_internal_jsoncontent(), target);
-  }
-
-  // bool load_in_tester = 2;
+  // bool load_in_tester = 1;
   if (this->_internal_load_in_tester() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_load_in_tester(), target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(1, this->_internal_load_in_tester(), target);
+  }
+
+  // .google.protobuf.Struct full_policy = 2;
+  if (this->_internal_has_full_policy()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, _Internal::full_policy(this),
+        _Internal::full_policy(this).GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -2446,14 +2448,14 @@ size_t policyValidate_Request::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // string jsonContent = 1;
-  if (!this->_internal_jsoncontent().empty()) {
+  // .google.protobuf.Struct full_policy = 2;
+  if (this->_internal_has_full_policy()) {
     total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_jsoncontent());
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.full_policy_);
   }
 
-  // bool load_in_tester = 2;
+  // bool load_in_tester = 1;
   if (this->_internal_load_in_tester() != 0) {
     total_size += 1 + 1;
   }
@@ -2476,8 +2478,9 @@ void policyValidate_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg,
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (!from._internal_jsoncontent().empty()) {
-    _this->_internal_set_jsoncontent(from._internal_jsoncontent());
+  if (from._internal_has_full_policy()) {
+    _this->_internal_mutable_full_policy()->::PROTOBUF_NAMESPACE_ID::Struct::MergeFrom(
+        from._internal_full_policy());
   }
   if (from._internal_load_in_tester() != 0) {
     _this->_internal_set_load_in_tester(from._internal_load_in_tester());
@@ -2498,14 +2501,13 @@ bool policyValidate_Request::IsInitialized() const {
 
 void policyValidate_Request::InternalSwap(policyValidate_Request* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.jsoncontent_, lhs_arena,
-      &other->_impl_.jsoncontent_, rhs_arena
-  );
-  swap(_impl_.load_in_tester_, other->_impl_.load_in_tester_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(policyValidate_Request, _impl_.load_in_tester_)
+      + sizeof(policyValidate_Request::_impl_.load_in_tester_)
+      - PROTOBUF_FIELD_OFFSET(policyValidate_Request, _impl_.full_policy_)>(
+          reinterpret_cast<char*>(&_impl_.full_policy_),
+          reinterpret_cast<char*>(&other->_impl_.full_policy_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata policyValidate_Request::GetMetadata() const {

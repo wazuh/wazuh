@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "engine.proto";
+import "google/protobuf/struct.proto";
 
 package com.wazuh.api.engine.content;
 
@@ -96,15 +97,15 @@ message policyDelete_Request
 /***************************************************
  * Validate a policy JSON payload
  *
- * endpoint: POST content/policy/validate
+ * endpoint: POST content/validate/policy
  *
  * It allows you to validate a complete policy and
  * if successful, the possibility of leaving a ready-to-use testing session loaded
  **************************************************/
 message policyValidate_Request
 {
-    string jsonContent = 1;  // Full policy JSON payload
-    bool load_in_tester = 2; // If true, load testing policies into the Tester environment.
+    bool load_in_tester = 1;                // If true, load testing policies into the Tester environment.
+    google.protobuf.Struct full_policy = 2; // Full policy JSON payload
 }
 // message policyValidate_Response -> Return a GenericStatus_Response
 

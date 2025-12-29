@@ -37,8 +37,7 @@ inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester
     // Add Legacy Event parser
     server->addRoute(httpsrv::Method::POST, "/tester/run/post", runPost(tester, base::eventParsers::parseLegacyEvent));
 
-    server->addRoute(
-        httpsrv::Method::POST, "/logtest/post", publicRunPost(tester, base::eventParsers::parsePublicEvent));
+    server->addRoute(httpsrv::Method::POST, "/logtest", publicRunPost(tester, base::eventParsers::parsePublicEvent));
 }
 
 } // namespace api::tester::handlers

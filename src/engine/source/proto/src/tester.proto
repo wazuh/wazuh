@@ -155,7 +155,7 @@ message RunPost_Response
 /***************************************************
  * Run a logtest event using an existing testing session
  *
- * endpoint: POST logtest/post
+ * endpoint: POST logtest
  *
  * Sends a single event to the engine using a previously created testing session.
  * This endpoint does NOT validate or create policies/sessions; it only injects
