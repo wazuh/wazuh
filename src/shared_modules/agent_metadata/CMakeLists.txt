@@ -13,6 +13,11 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Address/UB sanitizer (optional)
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif()
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
@@ -47,10 +52,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     COMMAND cp "libagent_metadata.lib" "${CMAKE_BINARY_DIR}/bin/libagent_metadata.lib"
     COMMENT "Creating delayed load library for agent_metadata.")
 elseif(UNIX AND NOT APPLE)
-  target_link_libraries(agent_metadata pthread)
+  target_link_libraries(agent_metadata PRIVATE pthread)
   string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
   add_subdirectory(tests)
+
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(agent_metadata PRIVATE -fprofile-arcs -ftest-coverage)
+    target_link_libraries(agent_metadata PRIVATE -fprofile-arcs)
+  else()
+    target_compile_options(agent_metadata PRIVATE --coverage)
+    target_link_libraries(agent_metadata PRIVATE --coverage)
+  endif()
 endif()
