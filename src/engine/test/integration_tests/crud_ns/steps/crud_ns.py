@@ -15,7 +15,7 @@ SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api.socket"
 api_client = APIClient(SOCKET_PATH)
 
 # Namespaces that are read-only / forbidden in CMStore
-FORBIDDEN_NAMESPACES = {"output", "system", "default", "cti"}
+FORBIDDEN_NAMESPACES = {"output", "system", "default"}
 
 
 # ============================================================

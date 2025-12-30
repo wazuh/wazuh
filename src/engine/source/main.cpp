@@ -26,7 +26,6 @@
 #include <cmstore/cmstore.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
-#include <ctistore/cm.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -109,14 +108,10 @@ int main(int argc, char* argv[])
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
-    const bool isRunningStandAlone = base::process::isStandaloneModeEnable();
     const bool cliDebug = (opts.debugCount > 0);
-    auto ctiSyncRequested = std::make_shared<std::atomic_bool>(false);
-    const cm::store::NamespaceId ctiNs {"cti"};
-    const std::string CTI_ROUTE_NAME {"default"};
 
     // Loggin initialization
-    if (isRunningStandAlone)
+    if (base::process::isStandaloneModeEnable())
     {
         // Standalone logging
         if (opts.testConfig)
@@ -234,14 +229,13 @@ int main(int argc, char* argv[])
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
-    std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
 
     try
     {
-        // Changing user and group
-        if (!confManager.get<bool>(conf::key::SKIP_GROUP_CHANGE))
+        // Changing group only if not in standalone mode
+        if (!confManager.get<bool>(conf::key::SKIP_GROUP_CHANGE) && !base::process::isStandaloneModeEnable())
         {
             /* Check if the user/group given are valid */
             const auto group = confManager.get<std::string>(conf::key::GROUP);
@@ -251,7 +245,7 @@ int main(int argc, char* argv[])
 
         // Set new log level if it is different from the default
         {
-            if (isRunningStandAlone)
+            if (base::process::isStandaloneModeEnable())
             {
                 auto verbosity = confManager.get<std::string>(conf::key::STANDALONE_LOGGING_LEVEL);
                 auto level = logging::strToLevel(verbosity);
@@ -288,59 +282,10 @@ int main(int argc, char* argv[])
             LOG_INFO("Store initialized.");
         }
 
-        // CTI Store
-        if (confManager.get<bool>(conf::key::CTI_ENABLED))
-        {
-            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
-            cti::store::ContentManagerConfig ctiCfg;
-            ctiCfg.basePath = baseCtiPath;
-
-            try
-            {
-                std::vector<std::string> indexerHosts;
-
-                if (isRunningStandAlone)
-                {
-                    indexerHosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-                }
-                else
-                {
-                    auto indexerConfig = json::Json(base::libwazuhshared::getJsonIndexerCnf().c_str());
-                    if (auto hostsArray = indexerConfig.getArray("/hosts"); hostsArray.has_value())
-                    {
-                        for (const auto& host : hostsArray.value())
-                        {
-                            if (host.isString())
-                            {
-                                indexerHosts.push_back(host.getString().value());
-                            }
-                        }
-                    }
-                }
-
-                if (!indexerHosts.empty())
-                {
-                    ctiCfg.oauth.indexer.url = indexerHosts[0];
-                }
-            }
-            catch (const std::exception& e)
-            {
-                LOG_WARNING("Could not retrieve indexer configuration for CTI Store: '{}'. OAuth will be disabled.",
-                            e.what());
-            }
-
-            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, ctiSyncRequested);
-            LOG_INFO("CTI Store initialized");
-
-            ctiStoreManager->startSync();
-            exitHandler.add([ctiStoreManager]() { ctiStoreManager->shutdown(); });
-        }
-
         // Content Manager
         {
             cmStore = std::make_shared<cm::store::CMStore>(confManager.get<std::string>(conf::key::CM_RULESET_PATH),
-                                                           confManager.get<std::string>(conf::key::OUTPUTS_PATH),
-                                                           ctiStoreManager);
+                                                           confManager.get<std::string>(conf::key::OUTPUTS_PATH));
             LOG_INFO("Content Manager initialized.");
         }
 
@@ -420,8 +365,9 @@ int main(int argc, char* argv[])
 
             try
             {
-                const auto jsonCnf =
-                    isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
+                const auto jsonCnf = base::process::isStandaloneModeEnable()
+                                         ? standAloneConfig()
+                                         : base::libwazuhshared::getJsonIndexerCnf();
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
                 LOG_INFO("Indexer Connector initialized.");
             }
@@ -565,54 +511,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Router initialized.");
         }
 
-        // CTISync
-        {
-            scheduler::TaskConfig cfg {};
-            cfg.interval = 5;
-            cfg.CPUPriority = 0;
-            cfg.taskFunction = [CTI_ROUTE_NAME, ctiSyncRequested, orchestrator, ctiNs]()
-            {
-                try
-                {
-                    // If the orchestrator has no entries, we create the route for the first time.
-                    if (orchestrator->getEntries().empty())
-                    {
-                        router::prod::EntryPost entry {
-                            CTI_ROUTE_NAME, ctiNs, base::Name({"filter", "allow-all", "0"}), 100};
-
-                        if (auto err = orchestrator->postEntry(entry))
-                        {
-                            LOG_ERROR("Failed to create CTI default route: {}", base::getError(err).message);
-                        }
-                        else
-                        {
-                            LOG_INFO("CTI '{}' route created.", CTI_ROUTE_NAME);
-                        }
-                    }
-
-                    // If there are already entries and CTI requested a sync, we reload the route
-                    if (ctiSyncRequested->exchange(false, std::memory_order_acq_rel))
-                    {
-                        if (auto err = orchestrator->reloadEntry(CTI_ROUTE_NAME))
-                        {
-                            LOG_ERROR(
-                                "Failed to reload CTI route '{}': {}", CTI_ROUTE_NAME, base::getError(err).message);
-                        }
-                        else
-                        {
-                            LOG_DEBUG("CTI route '{}' reloaded after CTI sync.", CTI_ROUTE_NAME);
-                        }
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    LOG_ERROR("Error in CTI sync route task: {}", e.what());
-                }
-            };
-
-            scheduler->scheduleTask("cti_sync_route", std::move(cfg));
-        }
-
         // Archiver
         {
             archiver =
@@ -732,7 +630,7 @@ int main(int argc, char* argv[])
             LOG_INFO("Remote engine's HTTP event server DISABLED - events will not be received via HTTP.");
         }
 
-        if (isRunningStandAlone)
+        if (base::process::isStandaloneModeEnable())
         {
             LOG_INFO("Engine started in standalone mode.");
         }

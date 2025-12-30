@@ -110,10 +110,6 @@
                 },
                 // Standalone mode
                 {
-                    "name": "WAZUH_SKIP_GROUP_CHANGE",
-                    "value": "true"
-                },
-                {
                     "name": "WAZUH_ENGINE_STANDALONE",
                     "value": "true"
                 }

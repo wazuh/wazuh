@@ -17,10 +17,6 @@ constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 
 constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
 
-constexpr std::string_view CTI_PATH = "analysisd.cti_path";
-constexpr std::string_view CTI_FORCE_IF_EMPTY = "analysisd.cti_force_if_empty";
-constexpr std::string_view CTI_ENABLED = "analysisd.cti_enabled";
-
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
 constexpr std::string_view INDEXER_PASSWORD = "analysisd.indexer_password";

@@ -300,7 +300,7 @@ function get_dashboard_artifact() {
 gh_token
 
 # Download the last version of the Wazuh Indexer and Dashboard
-# get_indexer_artifact
+get_indexer_artifact
 get_dashboard_artifact
 
 # Init certs
