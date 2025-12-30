@@ -8,7 +8,7 @@ import re
 import subprocess
 import time
 from base64 import b64decode
-from datetime import datetime
+from datetime import datetime, timezone
 from json import loads
 
 from box import Box
@@ -397,7 +397,7 @@ def check_agentd_started(response, agents_list, restarted=True):
         return datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
 
     # Save the time when the restart command was sent
-    restart_request_time = datetime.utcnow().replace(microsecond=0) - response.elapsed
+    restart_request_time = datetime.now(timezone.utc).replace(microsecond=0) - response.elapsed
 
     for agent_id in agents_list:
         tries = 0
