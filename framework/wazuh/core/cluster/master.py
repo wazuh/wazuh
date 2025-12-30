@@ -26,6 +26,7 @@ from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 from wazuh.core.indexer.disconnected_agents import DisconnectedAgentGroupSyncTask
+from wazuh.core.indexer.credential_manager import KeystoreClient
 
 
 DEFAULT_DATE: str = 'n/a'
@@ -1030,8 +1031,9 @@ class Master(server.AbstractServer):
             try:
                 # Get configuration from environment variables (standard in Wazuh Docker env)
                 indexer_url = os.environ.get('INDEXER_URL', '')
-                indexer_user = os.environ.get('INDEXER_USERNAME', 'admin')
-                indexer_pass = os.environ.get('INDEXER_PASSWORD', 'admin')
+                client = KeystoreClient()
+                indexer_user = client.get("credentials", "username")
+                indexer_pass = client.get("credentials", "password")
 
                 if indexer_url:
                     self.logger.info(f"Initializing Indexer client for disconnected agent sync (URL: {indexer_url})")
