@@ -193,6 +193,7 @@ extern keystore keys;
 extern remoted logr;
 extern w_indexed_queue_t *control_msg_queue;
 extern char* node_name;
+extern char* cluster_name;
 extern int pass_empty_keyfile;
 extern int sender_pool;
 extern int rto_sec;

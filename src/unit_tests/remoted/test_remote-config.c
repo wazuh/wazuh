@@ -258,8 +258,9 @@ static void test_remoted_internal_options_config(void **state) {
     expect_string(__wrap_ReadConfig, cfgfile, "test_ossec.conf");
     will_return(__wrap_ReadConfig, 0);
 
-    // Mock get_node_name call
+    // Mock get_node_name and get_cluster_name calls
     will_return(__wrap_get_node_name, NULL);
+    will_return(__wrap_get_cluster_name, NULL);
 
     // Call RemotedConfig to load all internal options
     int ret = RemotedConfig("test_ossec.conf", &logr);

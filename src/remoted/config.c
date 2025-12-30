@@ -111,8 +111,9 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
         mwarn("Queue size is very high. The application may run out of memory.");
     }
 
-    /* Get node name of the manager in cluster */
+    /* Get node name and cluster name of the manager */
     node_name = get_node_name();
+    cluster_name = get_cluster_name();
 
     return (1);
 }

@@ -1358,6 +1358,22 @@ static int append_header(dispatch_ctx_t *ctx) {
     // agent.host.hostname (only for Linux/macOS, empty for Windows)
     if (have_meta && snap.hostname) cJSON_AddStringToObject(host, "hostname", snap.hostname);
 
+    // Add wazuh.cluster.name and wazuh.cluster.node from manager
+    if (cluster_name || node_name) {
+        cJSON *wazuh = cJSON_CreateObject();
+        cJSON *cluster = cJSON_CreateObject();
+        if (wazuh && cluster) {
+            if (cluster_name && strcmp(cluster_name, "undefined") != 0) {
+                cJSON_AddStringToObject(cluster, "name", cluster_name);
+            }
+            if (node_name && strcmp(node_name, "undefined") != 0) {
+                cJSON_AddStringToObject(cluster, "node", node_name);
+            }
+            cJSON_AddItemToObject(wazuh, "cluster", cluster);
+            cJSON_AddItemToObject(root, "wazuh", wazuh);
+        }
+    }
+
     // Emit header line
     char *json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
