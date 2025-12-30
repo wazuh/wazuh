@@ -9,17 +9,26 @@
 #include <unordered_set>
 
 #include <base/json.hpp>
+#include <base/utils/generator.hpp>
+
+#include <cmstore/detail.hpp>
 
 namespace cm::store::detail
 {
 
-inline std::optional<std::string> findDuplicateUUID(const std::vector<std::string>& uuids, bool caseInsensitive = true)
+inline void
+findDuplicateOrInvalidUUID(const std::vector<std::string>& uuids, const std::string& type, bool caseInsensitive = true)
 {
     std::unordered_set<std::string> seen;
     seen.reserve(uuids.size());
 
     for (const auto& original : uuids)
     {
+        if (!base::utils::generators::isValidUUIDv4(original))
+        {
+            throw std::runtime_error(type + " UUID is not a valid UUIDv4: " + original);
+        }
+
         std::string key = original;
         if (caseInsensitive)
         {
@@ -31,11 +40,9 @@ inline std::optional<std::string> findDuplicateUUID(const std::vector<std::strin
 
         if (!seen.insert(key).second)
         {
-            return original;
+            throw std::runtime_error("Duplicate " + type + " UUID: " + original);
         }
     }
-
-    return std::nullopt;
 }
 
 inline json::Json adaptDecoder(const json::Json& document)

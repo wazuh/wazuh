@@ -148,44 +148,11 @@ public:
             }
         }
 
-        for (const auto& uuid : m_decodersByUUID)
-        {
-            if (!base::utils::generators::isValidUUIDv4(uuid))
-            {
-                throw std::runtime_error("Decoder UUID is not a valid UUIDv4: " + uuid);
-            }
-        }
+        cm::store::detail::findDuplicateOrInvalidUUID(m_decodersByUUID, "Decoder");
 
-        for (const auto& uuid : m_kvdbsByUUID)
-        {
-            if (!base::utils::generators::isValidUUIDv4(uuid))
-            {
-                throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + uuid);
-            }
-        }
+        cm::store::detail::findDuplicateOrInvalidUUID(m_kvdbsByUUID, "KVDB");
 
-        for (const auto& uuid : m_outputsByUUID)
-        {
-            if (!base::utils::generators::isValidUUIDv4(uuid))
-            {
-                throw std::runtime_error("Output UUID is not a valid UUIDv4: " + uuid);
-            }
-        }
-
-        if (auto dup = cm::store::detail::findDuplicateUUID(m_decodersByUUID); dup.has_value())
-        {
-            throw std::runtime_error("Duplicate decoder UUID: " + *dup);
-        }
-
-        if (auto dup = cm::store::detail::findDuplicateUUID(m_kvdbsByUUID); dup.has_value())
-        {
-            throw std::runtime_error("Duplicate KVDB UUID: " + *dup);
-        }
-
-        if (auto dup = cm::store::detail::findDuplicateUUID(m_outputsByUUID); dup.has_value())
-        {
-            throw std::runtime_error("Duplicate output UUID: " + *dup);
-        }
+        cm::store::detail::findDuplicateOrInvalidUUID(m_outputsByUUID, "Output");
 
         updateHash();
     }
@@ -209,9 +176,9 @@ public:
             uuid = *uuidOpt;
         }
 
-        if (requireUUID && !base::utils::generators::isValidUUIDv4(*uuidOpt))
+        if (requireUUID && !base::utils::generators::isValidUUIDv4(uuid))
         {
-            throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + *uuidOpt);
+            throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + uuid);
         }
 
         auto nameOpt = integrationJson.getString(jsonintegration::PATH_KEY_NAME);

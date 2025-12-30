@@ -6,7 +6,7 @@ import api_communication.proto.crud_pb2 as crud
 
 
 def _read_resource_json(args) -> dict:
-    raw = args.get("resource", "") or args.get("jsonContent", "") or ""
+    raw = args.get("resource", "") or ""
     if not raw:
         raw = sys.stdin.read()
 

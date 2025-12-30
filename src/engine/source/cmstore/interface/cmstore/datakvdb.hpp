@@ -109,11 +109,11 @@ public:
         else
         {
             uuid = *uuidOpt;
+        }
 
-            if (!base::utils::generators::isValidUUIDv4(uuid))
-            {
-                throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + uuid);
-            }
+        if (requireUUID && !base::utils::generators::isValidUUIDv4(uuid))
+        {
+            throw std::runtime_error("KVDB UUID is not a valid UUIDv4: " + uuid);
         }
 
         auto nameOpt = kvdbJson.getString(jsonkvdb::PATH_KEY_NAME);
