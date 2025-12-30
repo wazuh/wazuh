@@ -11,10 +11,10 @@
 # Center for Internet Security Ubuntu Linux 20.04 LTS Benchmark v2.0.0 - 05-30-2023
 
 policy:
-  id: "cis_ubuntu20-04"
-  file: "cis_ubuntu20-04.yml"
-  name: "CIS Ubuntu Linux 20.04 LTS Benchmark v2.0.0"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 20.04 LTS."
+  id: "cis_ubuntu20-04_custom"
+  file: "cis_ubuntu20-04_custom.yml"
+  name: "CIS Ubuntu 20.04 LTS Benchmark v2.0.0 (Custom Fixed v2)"
+  description: "This policy is a customized version with fixes for identified errors in the default Wazuh SCA rules."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
@@ -257,7 +257,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c: findmnt -kn /var/tmp -> r:\s*/var/tmp\s && r:nodev'
+      - 'c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s && r:nodev'
 
   # 1.1.4.3 Ensure noexec option set on /var/tmp partition. (Automated)
   - id: 19009
@@ -661,8 +661,8 @@ checks:
       - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
     condition: any
     rules:
-      - "c: dpkg -s autofs -> r:package 'autofs' is not installed"
-      - "c: systemctl is-enabled autofs -> r:No such file or directory|disabled"
+      - "c:dpkg -s autofs -> r:package 'autofs' is not installed"
+      - "c:systemctl is-enabled autofs -> r:No such file or directory|disabled"
 
   # 1.1.10 Disable USB Storage. (Automated) - Not Implemented
 
@@ -788,7 +788,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:^root:\p:'
+      - 'f:/etc/shadow -> r:^root:[!*]?:'
 
   # 1.5.1 Ensure prelink is not installed. (Automated)
   - id: 19031
@@ -1073,7 +1073,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "c:dpkg -s gdm3 -> r: package 'gdm3' is not installed"
+      - "c:dpkg -s gdm3 -> r:package 'gdm3' is not installed"
 
   # 1.8.2 Ensure GDM login banner is configured. (Automated) - Not Implemented
   # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated) - Not Implemented
@@ -1716,9 +1716,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: none
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.*LISTEN|::1:25\.*LISTEN'
+      - 'c:ss -lntu -> r:LISTEN.*:25 && !r:127.0.0.1:25 && !r:::1:25'
 
   # 2.2.17 Ensure rsync service is either not installed or is masked. (Automated)
   - id: 19071
@@ -2203,9 +2203,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*.*0.0.0.0/0.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*.*.*127.0.0.0/8.*0.0.0.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*.*lo.*0.0.0.0/0.*0.0.0.0/0'
 
   # 3.4.2.7 Ensure nftables outbound and established connections are configured. (Manual) - Not Implemented
 
@@ -2398,9 +2398,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*.*0.0.0.0/0.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*.*.*127.0.0.0/8.*0.0.0.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*.*lo.*0.0.0.0/0.*0.0.0.0/0'
 
   # 3.4.3.2.3 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
 
@@ -2452,9 +2452,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
-      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*.*::/0.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*DROP.*all.*.*.*::1.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*.*lo.*::/0.*::/0'
 
   # 3.4.3.3.3 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
   # 3.4.3.3.4 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
@@ -2473,7 +2473,7 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> r:^enabled"
-      - "c:systemctl status cron -> r:^active"
+      - "c:systemctl status cron -> r:Active: active "
 
   # 4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 19101
@@ -2643,7 +2643,7 @@ checks:
     rules:
       - "f:/etc/cron.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:640\s*\t*-rw-r-----\s*\t*0\s*\t*root\s*\t*0\s*\t*crontab'
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:640\s+-rw-r-----\s+0\s+root\s+\d+\s+crontab'
 
   # 4.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 19108
@@ -2693,8 +2693,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/ssh/sshd_config -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
-      - 'c:sh -c "stat -L /etc/ssh/sshd_config.d/*.conf" -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/ssh/sshd_config -> r:600\s*-rw-------\s*0\s*root\s*0\s*root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/sshd_config.d/*.conf -> r:^600\s+-rw-------\s+0\s+root\s+0\s+root$|No such file or directory'
 
   # 4.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
 
@@ -2720,7 +2720,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:sh -c "find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat {} \;" -> r:Access:\s*\( && !r:-rw-r--r--'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_*_key.pub" -exec stat -Lc "%a %A %u %U %g %G" {} \; -> r:^644\s+-rw-r--r--\s+0\s+root\s+0\s+root$'
 
   # 4.2.4 Ensure SSH access is limited. (Automated)
   - id: 19111
@@ -2744,7 +2744,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'c:sshd -T -> r:^\s*allowusers\s+\w+|^\s*allowgroups\s+\w+|^\s*denyusers\s+\w+|^\s*denygroups\s+\w+'
       - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
       - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf$ -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
@@ -2770,7 +2770,7 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
+      - 'c:sshd -T -> r:^\s*loglevel\s+INFO|^\s*LogLevel\s+VERBOSE'
       - 'not f:/etc/ssh/sshd_config -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
       - 'not d:/etc/ssh/sshd_config.d/ -> r:\.*.conf$ -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
 
@@ -2817,7 +2817,7 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*PermitRootLogin\s+no'
+      - 'c:sshd -T -> r:^\s*permitrootlogin\s+no'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+yes'
       - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf$ -> r:^\s*PermitRootLogin\s+yes'
 
@@ -2921,7 +2921,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*X11Forwarding\s+no'
+      - 'c:sshd -T -> r:^\s*x11forwarding\s+no'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+yes'
       - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf$ -> r:^\s*X11Forwarding\s+yes'
 
@@ -2975,7 +2975,7 @@ checks:
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: all
     rules:
-      - "not c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com"
+      - "not c:sshd -T -> r:macs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com"
 
   # 4.2.15 Ensure only strong Key Exchange algorithms are used. (Automated)
   - id: 19122
@@ -3016,7 +3016,7 @@ checks:
       - mitre_techniques: ["T1048", "T1048.002", "T1572"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
+      - 'c:sshd -T -> r:^\s*allowtcpforwarding\s+no'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
       - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf$ -> r:^\s*AllowTcpForwarding\s+yes'
 
@@ -3054,7 +3054,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'c:sshd -T -> n:^maxauthtries\s*\t*(\d+) compare <= 4'
       - 'not f:/etc/ssh/sshd_config -> n:^MaxAuthTries\s*\t*(\d+) compare > 4'
       - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf$ -> r:^MaxAuthTries\s*\t*([5-9]|[1-9][0-9]+)'
 
@@ -3130,7 +3130,7 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:clientaliveinterval\s*\t*(\d+) compare > 0'
       - 'c:sshd -T -> n:clientalivecountmax\s*\t*(\d+) compare > 0'
 
   # 4.3.1 Ensure sudo is installed. (Automated)
@@ -3676,9 +3676,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "10.2", "10.3", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "2.2.4", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
       - "c:systemctl is-enabled systemd-journal-remote.socket -> r:^disabled"
+      - "c:systemctl is-enabled systemd-journal-remote.socket -> r:Failed to get unit file state"
+      - "c:systemctl is-enabled systemd-journal-remote.socket -> r:No such file"
 
   # 5.1.1.2 Ensure journald service is enabled. (Automated)
   - id: 19154
@@ -3952,7 +3954,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' auditd -> r: install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' auditd -> r:install ok installed"
 
   # 5.2.1.2 Ensure auditd service is enabled and active. (Automated)
   - id: 19165
@@ -4118,10 +4120,10 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
-      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
-      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k \S+|-F key=\S+'
 
   # 5.2.3.2 Ensure actions as another user are always logged. (Automated)
   - id: 19172
@@ -4146,10 +4148,10 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k \S+|-F key=\S+'
 
   # 5.2.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not Implemented
 
@@ -4174,14 +4176,30 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d"
+      # Check audit rules directory and files exist
+      - 'd:/etc/audit/rules.d'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
-      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
+      # Check rules files for each syscall with arch=b64
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:settimeofday'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:clock_settime'
+      # Check rules files for each syscall with arch=b32
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:settimeofday'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:clock_settime'
+      # Check rules files for file watches
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa'
+      # Check active loaded rules - each syscall with arch=b64
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:settimeofday"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:clock_settime"
+      # Check active loaded rules - each syscall with arch=b32
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:settimeofday"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:clock_settime"
+      # Check active loaded rules - file watches
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa"
+
 
   # 5.2.3.5 Ensure events that modify the system's network environment are collected. (Automated)
   - id: 19174
@@ -4204,22 +4222,33 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d"
+      # Check audit rules directory and files exist
+      - 'd:/etc/audit/rules.d'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks/ && r:-p wa && r:-k system-locale|key=system-locale'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale"
+      # Check rules files for each syscall with arch=b64
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:setdomainname'
+      # Check rules files for each syscall with arch=b32
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:setdomainname'
+      # Check rules files for file watches
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks && r:-p wa'
+      # Check active loaded rules - each syscall with arch=b64
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:setdomainname"
+      # Check active loaded rules - each syscall with arch=b32
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:setdomainname"
+      # Check active loaded rules - file watches
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa"
+      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa"
+      - "c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa"
 
   # 5.2.3.6 Ensure use of privileged commands are collected. (Automated) - Not Implemented
   # 5.2.3.7 Ensure unsuccessful file access attempts are collected. (Automated) - Not Implemented
@@ -4247,16 +4276,16 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity'
-      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k \S+|-F key=\S+'
 
   # 5.2.3.9 Ensure discretionary access control permission modification events are collected. (Automated) - Not Implemented
 
@@ -4281,12 +4310,15 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d"
+      # Check audit rules directory and files exist
+      - 'd:/etc/audit/rules.d'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      # Check rules files for mount syscall
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset'
+      # Check active loaded rules
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset'
 
   # 5.2.3.11 Ensure session initiation information is collected. (Automated)
   - id: 19177
@@ -4311,12 +4343,12 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
-      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
-      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
-      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k \S+|-F key=\S+'
 
   # 5.2.3.12 Ensure login and logout events are collected. (Automated)
   - id: 19178
@@ -4341,10 +4373,10 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins'
-      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins"
-      - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k \S+|-F key=\S+'
 
   # 5.2.3.13 Ensure file deletion events by users are collected. (Automated)
   - id: 19179
@@ -4367,12 +4399,29 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d"
+      # Check audit rules directory and files exist
+      - 'd:/etc/audit/rules.d'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      # Check rules files for each syscall with arch=b64
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:unlink'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:unlinkat'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:rename'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:renameat'
+      # Check rules files for each syscall with arch=b32
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:unlink'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:unlinkat'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:rename'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:renameat'
+      # Check active loaded rules - each syscall with arch=b64
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:unlink"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:unlinkat"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:rename"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:renameat"
+      # Check active loaded rules - each syscall with arch=b32
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:unlink"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:unlinkat"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:rename"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:renameat"
 
   # 5.2.3.14 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
   - id: 19180
@@ -4397,10 +4446,10 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor && r:-p wa && r:-k MAC-policy|key=MAC-policy'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d && r:-p wa && r:-k MAC-policy|key=MAC-policy'
-      - "c:auditctl -l -> r:^-w && r:/etc/apparmor && r:-p wa && r:-k MAC-policy|key=MAC-policy"
-      - "c:auditctl -l -> r:^-w && r:/etc/apparmor.d && r:-p wa && r:-k MAC-policy|key=MAC-policy"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/apparmor && r:-p wa && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-w && r:/etc/apparmor.d && r:-p wa && r:-k \S+|-F key=\S+'
 
   # 5.2.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded. (Automated)
   - id: 19181
@@ -4451,8 +4500,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k \S+|-F key=\S+'
 
   # 5.2.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded. (Automated)
   - id: 19183
@@ -4477,8 +4526,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k \S+|-F key=\S+'
 
   # 5.2.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded. (Automated)
   - id: 19184
@@ -4503,8 +4552,8 @@ checks:
     rules:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k \S+|-F key=\S+'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k \S+|-F key=\S+'
 
   # 5.2.3.19 Ensure kernel module loading unloading and modification is collected. (Automated)
   - id: 19185
@@ -4527,18 +4576,45 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d"
+      # Check audit rules directory and files exist
+      - 'd:/etc/audit/rules.d'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      # Check rules files for each syscall with arch=b64
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:init_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:finit_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:delete_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:create_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:query_module'
+      # Check rules files for each syscall with arch=b32
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:init_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:finit_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:delete_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:create_module'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:query_module'
+      # Check rules files for kmod path monitoring
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/bin/kmod|/usr/bin/kmod && r:-p x'
+      # Check active loaded rules - each syscall with arch=b64
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:init_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:finit_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:delete_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:create_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:query_module"
+      # Check active loaded rules - each syscall with arch=b32
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:init_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:finit_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:delete_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:create_module"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:query_module"
+      # Check active loaded rules for kmod path monitoring
+      - "c:auditctl -l -> r:^-w && r:/bin/kmod|/usr/bin/kmod && r:-p x"
+      # Check kmod symlinks
       - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/modinfo -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/modprobe -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/depmod -> r:/bin/kmod"
+    
 
   # 5.2.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 19186
@@ -4908,7 +4984,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root \d+ shadow|0 root 0 root && r: r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root \d+ shadow|0 root 0 root && r:640|600|400'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 19201
@@ -4932,7 +5008,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:0 root \d+ shadow|0 root 0 root && r: r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:0 root \d+ shadow|0 root 0 root && r:640|600|400'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 19202
@@ -4956,7 +5032,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:0 root \d+ shadow|0 root 0 root && r: r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:0 root \d+ shadow|0 root 0 root && r:640|600|400'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 19203
@@ -4980,7 +5056,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:0 root \d+ shadow|0 root 0 root && r: r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:0 root \d+ shadow|0 root 0 root && r:640|600|400'
 
   # 6.1.9 Ensure permissions on /etc/shells are configured. (Automated)
   - id: 19204
@@ -5004,11 +5080,11 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells- -> r:0 root 0 root && r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.10 Ensure permissions on /etc/opasswd are configured. (Automated)
+  # 6.1.10 Ensure permissions on /etc/security/opasswd are configured. (Automated)
   - id: 19205
-    title: "Ensure permissions on /etc/opasswd are configured."
+    title: "Ensure permissions on /etc/security/opasswd are configured."
     description: "/etc/security/opasswd and it's backup /etc/security/opasswd.old hold user's previous passwords if pam_unix or pam_pwhistory is in use on the system."
     rationale: "It is critical to ensure that /etc/security/opasswd is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: 'Run the following commands to remove excess permissions, set owner, and set group on /etc/security/opasswd and /etc/security/opasswd.old is they exist: # [ -e "/etc/security/opasswd" ] && chmod u-x,go-rwx /etc/security/opasswd # [ -e "/etc/security/opasswd" ] && chown root:root /etc/security/opasswd # [ -e "/etc/security/opasswd.old" ] && chmod u-x,go-rwx /etc/security/opasswd.old # [ -e "/etc/security/opasswd.old" ] && chown root:root /etc/security/opasswd.old.'
@@ -5028,7 +5104,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswds -> r:0 root 0 root && r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswd -> r:0 root 0 root && r:600|400'
 
   # 6.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 6.1.12 Ensure no unowned or ungrouped files or directories exist. (Automated) - Not Implemented
@@ -5054,9 +5130,11 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: none
     rules:
-      - 'not f:/etc/passwd -> !r:^\w+:x:'
+      - 'f:/etc/passwd -> r:^[^:]+:[^x:]'
+      - 'f:/etc/passwd -> r:^[^:]+:x[^:]'
+      - 'f:/etc/passwd -> r:^[^:]+::+'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 19207
