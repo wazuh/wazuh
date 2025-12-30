@@ -14,6 +14,7 @@
 #include <base/utils/hash.hpp>
 
 #include <cmstore/categories.hpp>
+#include <cmstore/detail.hpp>
 
 /**
  * @brief DataIntegration class to represent a content manager data integration. Its the definition of an integration.
@@ -171,6 +172,21 @@ public:
             }
         }
 
+        if (auto dup = cm::store::detail::findDuplicateUUID(m_decodersByUUID); dup.has_value())
+        {
+            throw std::runtime_error("Duplicate decoder UUID: " + *dup);
+        }
+
+        if (auto dup = cm::store::detail::findDuplicateUUID(m_kvdbsByUUID); dup.has_value())
+        {
+            throw std::runtime_error("Duplicate KVDB UUID: " + *dup);
+        }
+
+        if (auto dup = cm::store::detail::findDuplicateUUID(m_outputsByUUID); dup.has_value())
+        {
+            throw std::runtime_error("Duplicate output UUID: " + *dup);
+        }
+
         updateHash();
     }
 
@@ -191,11 +207,6 @@ public:
         else
         {
             uuid = *uuidOpt;
-
-            if (!base::utils::generators::isValidUUIDv4(uuid))
-            {
-                throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + uuid);
-            }
         }
 
         if (requireUUID && !base::utils::generators::isValidUUIDv4(*uuidOpt))
@@ -249,27 +260,21 @@ public:
             kvdbs.push_back(kvdbOpt.value());
         }
 
-        std::size_t outputCount = 0;
-        try
-        {
-            outputCount = integrationJson.size(jsonintegration::PATH_KEY_OUTPUTS);
-        }
-        catch (const std::exception&)
-        {
-            outputCount = 0;
-        }
-
         std::vector<std::string> outputs;
-        outputs.reserve(outputCount);
-
-        for (std::size_t i = 0; i < outputCount; ++i)
+        if (integrationJson.exists(jsonintegration::PATH_KEY_OUTPUTS))
         {
-            auto outputOpt = integrationJson.getString(fmt::format("{}/{}", jsonintegration::PATH_KEY_OUTPUTS, i));
-            if (!outputOpt.has_value())
+            std::size_t outputCount = integrationJson.size(jsonintegration::PATH_KEY_OUTPUTS);
+            outputs.reserve(outputCount);
+
+            for (std::size_t i = 0; i < outputCount; ++i)
             {
-                throw std::runtime_error(fmt::format("Output at index {} is not a valid string", i));
+                auto outputOpt = integrationJson.getString(fmt::format("{}/{}", jsonintegration::PATH_KEY_OUTPUTS, i));
+                if (!outputOpt.has_value())
+                {
+                    throw std::runtime_error(fmt::format("Output at index {} is not a valid string", i));
+                }
+                outputs.push_back(outputOpt.value());
             }
-            outputs.push_back(outputOpt.value());
         }
 
         std::optional<std::string> defaultParent = std::nullopt;
@@ -301,8 +306,10 @@ public:
     json::Json toJson() const
     {
         json::Json integrationJson;
-
-        integrationJson.setString(m_uuid, jsonintegration::PATH_KEY_ID);
+        if (!m_uuid.empty())
+        {
+            integrationJson.setString(m_uuid, jsonintegration::PATH_KEY_ID);
+        }
         integrationJson.setString(m_name, jsonintegration::PATH_KEY_NAME);
         integrationJson.setString(m_category, jsonintegration::PATH_KEY_CATEGORY);
 

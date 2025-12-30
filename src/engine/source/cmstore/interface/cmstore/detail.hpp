@@ -1,21 +1,49 @@
-#ifndef _CMSTORE_ICMSTORE_ADAPTER
-#define _CMSTORE_ICMSTORE_ADAPTER
+#ifndef _CMSTORE_ICMSTORE_DETAIL
+#define _CMSTORE_ICMSTORE_DETAIL
 
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <optional>
 #include <string>
+#include <unordered_set>
 
 #include <base/json.hpp>
 
 namespace cm::store::detail
 {
 
+inline std::optional<std::string> findDuplicateUUID(const std::vector<std::string>& uuids, bool caseInsensitive = true)
+{
+    std::unordered_set<std::string> seen;
+    seen.reserve(uuids.size());
+
+    for (const auto& original : uuids)
+    {
+        std::string key = original;
+        if (caseInsensitive)
+        {
+            std::transform(key.begin(),
+                           key.end(),
+                           key.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        }
+
+        if (!seen.insert(key).second)
+        {
+            return original;
+        }
+    }
+
+    return std::nullopt;
+}
+
 inline json::Json adaptDecoder(const json::Json& document)
 {
     json::Json result;
     result.setObject();
 
-    // Order: name, metadata, parent, definitions, parse|${XX}, normalize
+    // Order: name, parent, definitions, parse|${XX}, normalize
 
     // 1. name (from /payload/document/name)
     // TODO: In the future this will be from /payload/document/metadata/title
@@ -32,16 +60,6 @@ inline json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-    // 2. metadata
-    if (document.exists("/metadata"))
-    {
-        auto metadataOpt = document.getJson("/metadata");
-        if (metadataOpt.has_value())
-        {
-            result.set("/metadata", *metadataOpt);
-        }
-    }
-
     // parents
     if (document.exists("/parents"))
     {
@@ -52,7 +70,7 @@ inline json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-    // 3. definitions
+    // 2. definitions
     if (auto defJsonOpt = document.getJson("/definitions"); defJsonOpt.has_value())
     {
         result.set("/definitions", *defJsonOpt);
@@ -68,25 +86,38 @@ inline json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-
-    // 4. parse|${XXX} (from /parse|\W+)
+    // 3. parse|${XXX} (from /parse|\W+)
     {
         const auto fullDocOpt = document.getObject();
         if (!fullDocOpt.has_value())
         {
             throw std::runtime_error("Decoder document is not a valid JSON object");
         }
+
+        size_t parseKeyCount = 0;
+        std::string parseKey;
+
         for (const auto& [key, value] : *fullDocOpt)
         {
             if (key.find("parse|") == 0)
             {
-                result.set(fmt::format("/{}", key), value);
-                break; // Only one parse|XXX expected
+                ++parseKeyCount;
+                if (parseKeyCount == 1)
+                {
+                    parseKey = key;
+                    result.set(fmt::format("/{}", key), value);
+                }
             }
+        }
+
+        if (parseKeyCount > 1)
+        {
+            throw std::runtime_error(
+                fmt::format("Decoder document contains multiple parse| keys ({}). Only one is allowed", parseKeyCount));
         }
     }
 
-    // 5. normalize
+    // 4. normalize
     if (const auto normalizeOpt = document.getArray("/normalize"); normalizeOpt.has_value())
     {
         result.setArray("/normalize");
@@ -143,28 +174,26 @@ inline json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-    // 6. enabled
-    if (document.exists("/enabled"))
+    // 5. enabled
+    auto enabledOpt = document.getBool("/enabled");
+    if (!enabledOpt.has_value())
     {
-        auto enabledOpt = document.getJson("/enabled");
-        if (enabledOpt.has_value())
-        {
-            result.set("/enabled", *enabledOpt);
-        }
+        throw std::runtime_error("Decoder document /enabled is not a boolean or does not exist");
     }
+    result.setBool(*enabledOpt, "/enabled");
 
-    // 7. id
+    // 6. id
     if (document.exists("/id"))
     {
-        auto idOpt = document.getJson("/id");
-        if (idOpt.has_value())
+        auto idOpt = document.getString("/id");
+        if (!idOpt.has_value())
         {
-            result.set("/id", *idOpt);
+            throw std::runtime_error("Decoder document /id is not a string");
         }
+        result.setString(*idOpt, "/id");
     }
-
     return result;
 }
-} // namespace
+} // namespace cm::store::detail
 
-#endif // _CMSTORE_ICMSTORE_ADAPTER
+#endif // _CMSTORE_ICMSTORE_DETAIL

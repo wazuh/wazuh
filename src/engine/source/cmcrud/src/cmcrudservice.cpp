@@ -1,7 +1,7 @@
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
-#include <cmstore/adapter.hpp>
+#include <cmstore/detail.hpp>
 #include <cmstore/types.hpp>
 #include <yml/yml.hpp>
 

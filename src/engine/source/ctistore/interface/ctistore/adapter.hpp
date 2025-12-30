@@ -54,7 +54,7 @@ json::Json adaptDecoder(const json::Json& document)
     json::Json result;
     result.setObject();
 
-    // Order: name, metadata, parent, definitions, parse|${XX}, normalize, enabled
+    // Order: name, parent, definitions, parse|${XX}, normalize
 
     // 1. name (from /payload/document/name)
     // TODO: In the future this will be from /payload/document/metadata/title
@@ -96,7 +96,6 @@ json::Json adaptDecoder(const json::Json& document)
             result.set("/check", *checkOpt);
         }
     }
-
 
     // 3. parse|${XXX} (from /parse|\W+)
     {
@@ -141,6 +140,7 @@ json::Json adaptDecoder(const json::Json& document)
                 json::Json orderedObj;
                 orderedObj.setObject();
 
+                // Order keys check, parse|.*, map
                 if (element.exists("/check"))
                 {
                     auto checkOpt = element.getJson("/check");
@@ -156,26 +156,13 @@ json::Json adaptDecoder(const json::Json& document)
                     {
                         throw std::runtime_error("Decoder normalize array contains invalid element, not an object");
                     }
-
-                    size_t parseKeyCount = 0;
-
                     for (const auto& [key, value] : *fullElemOpt)
                     {
                         if (key.find("parse|") == 0)
                         {
-                            ++parseKeyCount;
-                            if (parseKeyCount == 1)
-                            {
-                                orderedObj.set(fmt::format("/{}", key), value);
-                            }
+                            orderedObj.set(fmt::format("/{}", key), value);
+                            break; // Only one parse|XXX expected
                         }
-                    }
-
-                    if (parseKeyCount > 1)
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "Decoder normalize element contains multiple parse| keys ({}). Only one is allowed",
-                            parseKeyCount));
                     }
                 }
 
@@ -199,15 +186,23 @@ json::Json adaptDecoder(const json::Json& document)
     }
 
     // 5. enabled
-    if (document.exists("/enabled"))
+    auto enabledOpt = document.getBool("/enabled");
+    if (!enabledOpt.has_value())
     {
-        auto enabledOpt = document.getJson("/enabled");
-        if (enabledOpt.has_value())
-        {
-            result.set("/enabled", *enabledOpt);
-        }
+        throw std::runtime_error("Decoder document /enabled is not a boolean or does not exist");
     }
+    result.setBool(*enabledOpt, "/enabled");
 
+    // 6. id
+    if (document.exists("/id"))
+    {
+        auto idOpt = document.getString("/id");
+        if (!idOpt.has_value())
+        {
+            throw std::runtime_error("Decoder document /id is not a string");
+        }
+        result.setString(*idOpt, "/id");
+    }
     return result;
 }
 } // namespace

@@ -10,6 +10,8 @@
 #include <base/utils/generator.hpp>
 #include <base/utils/hash.hpp>
 
+#include <cmstore/detail.hpp>
+
 /**
  * @brief DataPolicy class to represent a content manager data policy. Its the definition of a policy.
  *
@@ -74,6 +76,12 @@ public:
         , m_defaultParent(std::move(defaultParent))
         , m_rootDecoder(std::move(rootDecoder))
     {
+        auto dup = cm::store::detail::findDuplicateUUID(m_integrationsUUIDs);
+        if (dup.has_value())
+        {
+            throw std::runtime_error("Duplicate integration UUID: " + *dup);
+        }
+
         updateHash();
     }
 
@@ -106,6 +114,13 @@ public:
             {
                 throw std::runtime_error(fmt::format("Integration at index {} is not a valid string", i));
             }
+
+            const auto& id = integrationOpt.value();
+            if (!base::utils::generators::isValidUUIDv4(id))
+            {
+                throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + id);
+            }
+
             integrations.push_back(integrationOpt.value());
         }
 
