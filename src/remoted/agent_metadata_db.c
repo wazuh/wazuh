@@ -34,6 +34,15 @@ void agent_meta_clear(agent_meta_t *m) {
     os_free(m->os_type);
     os_free(m->arch);
     os_free(m->hostname);
+
+    // Free groups array
+    if (m->groups) {
+        for (size_t i = 0; i < m->groups_count; i++) {
+            os_free(m->groups[i]);
+        }
+        os_free(m->groups);
+    }
+
     memset(m, 0, sizeof(*m));
 }
 
@@ -113,6 +122,19 @@ int agent_meta_snapshot_str(const char *agent_id_str, agent_meta_t *out) {
     if (m->os_type)       { os_strdup(m->os_type,       tmp.os_type);       if (!tmp.os_type)       goto oom_unlock; }
     if (m->arch)          { os_strdup(m->arch,          tmp.arch);          if (!tmp.arch)          goto oom_unlock; }
     if (m->hostname)      { os_strdup(m->hostname,      tmp.hostname);      if (!tmp.hostname)      goto oom_unlock; }
+
+    // Deep copy groups array
+    if (m->groups && m->groups_count > 0) {
+        os_calloc(m->groups_count, sizeof(char*), tmp.groups);
+        if (!tmp.groups) goto oom_unlock;
+        tmp.groups_count = m->groups_count;
+        for (size_t i = 0; i < m->groups_count; i++) {
+            if (m->groups[i]) {
+                os_strdup(m->groups[i], tmp.groups[i]);
+                if (!tmp.groups[i]) goto oom_unlock;
+            }
+        }
+    }
 
     pthread_rwlock_unlock(&agent_meta_lock);
 

@@ -884,9 +884,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                     // Detect JSON format (5.0+ agent) vs text format (4.x agent)
                     int result;
+                    char **groups = NULL;
+                    size_t groups_count = 0;
+
                     if (tmp_msg[0] == '{') {
-                        // JSON keepalive from 5.0+ agent
-                        result = parse_json_keepalive(tmp_msg, agent_data);
+                        // JSON keepalive from 5.0+ agent - extract groups during parsing
+                        result = parse_json_keepalive(tmp_msg, agent_data, &groups, &groups_count);
                         if (result == OS_SUCCESS) {
                             mdebug2("Parsed JSON keepalive from agent %s", key->id);
                         } else {
@@ -901,11 +904,29 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                         // Build metadata from parsed agent_info_data and upsert in the global map
                         agent_meta_t *fresh = agent_meta_from_agent_info(key->id, key->name, agent_data);
                         if (fresh) {
+                            // Add groups if available (5.0+ agents only)
+                            if (groups) {
+                                fresh->groups = groups;
+                                fresh->groups_count = groups_count;
+                                groups = NULL;  // Transfer ownership to fresh
+                            }
                             if (agent_meta_upsert_locked(key->id, fresh) != 0) {
                                 mwarn("Error upsert metadata from agent ID '%s'.", key->id);
                                 agent_meta_free(fresh);
                             }
+                        } else if (groups) {
+                            // Free groups if agent_meta creation failed
+                            for (size_t i = 0; i < groups_count; i++) {
+                                os_free(groups[i]);
+                            }
+                            os_free(groups);
                         }
+                    } else if (groups) {
+                        // Free groups if parsing failed
+                        for (size_t i = 0; i < groups_count; i++) {
+                            os_free(groups[i]);
+                        }
+                        os_free(groups);
                     }
 
                     wdb_free_agent_info_data(agent_data);
@@ -1303,6 +1324,19 @@ static int append_header(dispatch_ctx_t *ctx) {
     }
     if (have_meta && snap.agent_version) {
         cJSON_AddStringToObject(agent, "version", snap.agent_version);
+    }
+
+    // agent.groups (array)
+    if (have_meta && snap.groups && snap.groups_count > 0) {
+        cJSON *groups_array = cJSON_CreateArray();
+        if (groups_array) {
+            for (size_t i = 0; i < snap.groups_count; i++) {
+                if (snap.groups[i]) {
+                    cJSON_AddItemToArray(groups_array, cJSON_CreateString(snap.groups[i]));
+                }
+            }
+            cJSON_AddItemToObject(agent, "groups", groups_array);
+        }
     }
 
     // agent.host.os.*

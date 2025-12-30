@@ -261,7 +261,7 @@ int parse_agent_update_msg (char *msg,
 }
 
 /* Parse JSON keepalive message (5.0+ agents) */
-int parse_json_keepalive(const char *json_str, agent_info_data *agent_data) {
+int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char ***groups_out, size_t *groups_count_out) {
     cJSON *root = cJSON_Parse(json_str);
     if (!root) {
         return OS_INVALID;
@@ -363,6 +363,28 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data) {
         if (hostname && cJSON_IsString(hostname)) {
             os_free(agent_data->osd->hostname);
             os_strdup(hostname->valuestring, agent_data->osd->hostname);
+        }
+    }
+
+    // Extract groups if requested
+    if (groups_out && groups_count_out) {
+        *groups_out = NULL;
+        *groups_count_out = 0;
+
+        cJSON *groups = cJSON_GetObjectItem(agent, "groups");
+        if (groups && cJSON_IsArray(groups)) {
+            int group_count = cJSON_GetArraySize(groups);
+            if (group_count > 0) {
+                os_calloc(group_count, sizeof(char*), *groups_out);
+
+                for (int i = 0; i < group_count; i++) {
+                    cJSON *group_item = cJSON_GetArrayItem(groups, i);
+                    if (group_item && cJSON_IsString(group_item) && group_item->valuestring[0]) {
+                        os_strdup(group_item->valuestring, (*groups_out)[*groups_count_out]);
+                        (*groups_count_out)++;
+                    }
+                }
+            }
         }
     }
 

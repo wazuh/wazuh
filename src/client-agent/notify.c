@@ -108,6 +108,18 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
     const char *uname_str = getuname();
     if (uname_str) cJSON_AddStringToObject(agent, "uname", uname_str);
     if (labels && labels[0]) cJSON_AddStringToObject(agent, "labels", labels);
+
+    // Add groups array if available
+    if (metadata.groups_count > 0 && metadata.groups) {
+        cJSON *groups_array = cJSON_CreateArray();
+        for (size_t i = 0; i < metadata.groups_count; i++) {
+            if (metadata.groups[i] && metadata.groups[i][0]) {
+                cJSON_AddItemToArray(groups_array, cJSON_CreateString(metadata.groups[i]));
+            }
+        }
+        cJSON_AddItemToObject(agent, "groups", groups_array);
+    }
+
     cJSON_AddItemToObject(root, "agent", agent);
 
     // Host fields

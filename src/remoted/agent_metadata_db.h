@@ -24,6 +24,8 @@ typedef struct agent_meta
     char* os_type;
     char* arch;
     char* hostname;
+    char** groups;
+    size_t groups_count;
 } agent_meta_t;
 
 /* Forward declaration is OK in the header (we only need the pointer type here) */

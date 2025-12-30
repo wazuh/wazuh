@@ -533,7 +533,7 @@ void test_parse_json_keepalive_invalid_json(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
 
     assert_int_equal(OS_INVALID, result);
 
@@ -547,7 +547,7 @@ void test_parse_json_keepalive_missing_agent(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
 
     assert_int_equal(OS_INVALID, result);
 
@@ -567,7 +567,7 @@ void test_parse_json_keepalive_linux_complete(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -599,7 +599,7 @@ void test_parse_json_keepalive_windows(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -625,7 +625,7 @@ void test_parse_json_keepalive_minimal(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -634,6 +634,81 @@ void test_parse_json_keepalive_minimal(void **state)
     assert_null(agent_data->agent_ip);
     assert_null(agent_data->labels);
     assert_non_null(agent_data->osd);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_with_groups(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"groups\":[\"group1\",\"group2\",\"group3\"]}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    // Check groups were parsed
+    assert_non_null(groups);
+    assert_int_equal(3, groups_count);
+    assert_string_equal("group1", groups[0]);
+    assert_string_equal("group2", groups[1]);
+    assert_string_equal("group3", groups[2]);
+
+    // Free groups
+    for (size_t i = 0; i < groups_count; i++) {
+        os_free(groups[i]);
+    }
+    os_free(groups);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_empty_groups(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"groups\":[]}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    // Empty array should result in NULL groups
+    assert_null(groups);
+    assert_int_equal(0, groups_count);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_no_groups(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\"}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    // No groups field should result in NULL groups
+    assert_null(groups);
+    assert_int_equal(0, groups_count);
 
     wdb_free_agent_info_data(agent_data);
 }
@@ -670,7 +745,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_missing_agent, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_linux_complete, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_windows, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_minimal, setup_remoted_op, teardown_remoted_op)
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_minimal, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_groups, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_empty_groups, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_no_groups, setup_remoted_op, teardown_remoted_op)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

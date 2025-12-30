@@ -522,8 +522,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
             // Detect JSON format (5.0+ agent) vs text format (4.x agent)
             if (msg[0] == '{') {
-                // JSON keepalive from 5.0+ agent
-                result = parse_json_keepalive(msg, agent_data);
+                // JSON keepalive from 5.0+ agent (groups not needed here, only for cache)
+                result = parse_json_keepalive(msg, agent_data, NULL, NULL);
             } else {
                 // Text keepalive from 4.x agent
                 result = parse_agent_update_msg(msg, agent_data);
