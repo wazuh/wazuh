@@ -183,8 +183,11 @@ protected:
 TEST_F(CMStoreCTIComponentTest, FullPolicyWorkflow_GetPolicyWithIntegrations)
 {
     // Create a policy with integrations
-    std::vector<std::string> integrationUUIDs = {"int-uuid-1", "int-uuid-2", "int-uuid-3"};
-    json::Json policyDoc = createCompletePolicyDoc("policy-uuid-1", "Development 0.0.1", integrationUUIDs);
+    std::vector<std::string> integrationUUIDs = {"82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+                                                 "82e215c4-988a-4f64-8d15-b98b2fc03a42",
+                                                 "82e215c4-988a-4f64-ad15-b98b2fc03a4f"};
+    json::Json policyDoc =
+        createCompletePolicyDoc("82e215c4-988a-4f64-8d15-123b2fc03a4f", "Development 0.0.1", integrationUUIDs);
 
     std::vector<base::Name> policyList = {base::Name("policy1")};
     EXPECT_CALL(*mockReader, getPolicyList()).WillOnce(Return(policyList));
@@ -203,10 +206,11 @@ TEST_F(CMStoreCTIComponentTest, FullPolicyWorkflow_GetPolicyWithIntegrations)
 TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByNameThenResolveUUID)
 {
     // Create integration document
-    std::vector<std::string> decoderUUIDs = {"85853f26-5779-469b-86c4-c47ee7d400b4", "4aa06596-5ba9-488c-8354-2475705e1257"};
+    std::vector<std::string> decoderUUIDs = {"85853f26-5779-469b-86c4-c47ee7d400b4",
+                                             "4aa06596-5ba9-488c-8354-2475705e1257"};
     std::vector<std::string> kvdbUUIDs = {"82e215c4-988a-4f64-8d15-b98b2fc03a4f"};
-    json::Json integrationDoc =
-        createCompleteIntegrationDoc("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", decoderUUIDs, kvdbUUIDs, "security", true);
+    json::Json integrationDoc = createCompleteIntegrationDoc(
+        "5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", decoderUUIDs, kvdbUUIDs, "security", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows"))).WillOnce(Return(integrationDoc));
 
@@ -227,7 +231,8 @@ TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByNameThenResolveUUID
 
 TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByUUIDChain)
 {
-    json::Json integrationDoc = createCompleteIntegrationDoc("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "linux", {}, {}, "applications", true);
+    json::Json integrationDoc =
+        createCompleteIntegrationDoc("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "linux", {}, {}, "applications", true);
 
     EXPECT_CALL(*mockReader, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).WillOnce(Return("linux"));
     EXPECT_CALL(*mockReader, getAsset(base::Name("linux"))).WillOnce(Return(integrationDoc));
@@ -351,7 +356,8 @@ TEST_F(CMStoreCTIComponentTest, KVDBOperations_GetByNameAndUUID)
 
     dataType::KVDB kvdb1 = storeCTI->getKVDBByName("kerberos_status_codes");
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).WillOnce(Return("kerberos_status_codes"));
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f"))
+        .WillOnce(Return("kerberos_status_codes"));
     EXPECT_CALL(*mockReader, kvdbDump("kerberos_status_codes")).WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb2 = storeCTI->getKVDBByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f");

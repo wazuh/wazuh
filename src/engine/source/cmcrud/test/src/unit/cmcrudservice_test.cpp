@@ -4,6 +4,7 @@
 #include <base/json.hpp>
 #include <builder/ivalidator.hpp>
 #include <builder/mockValidator.hpp>
+#include <cmstore/detail.hpp>
 #include <cmstore/mockcmstore.hpp>
 
 #include <cmcrud/cmcrudservice.hpp>
@@ -660,11 +661,12 @@ TEST(CrudService_Unit, ValidateResource_Decoder_CallsValidateAssetShallow)
     {
       "name": "decoder/syslog/0",
       "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "enabled": true,
       "metadata": { "module": "syslog" }
     })";
 
     json::Json payload {kDecoderJsonStr};
-
+    payload = cm::store::detail::adaptDecoder(payload);
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_NO_THROW(service.validateResource(ResourceType::DECODER, payload));
@@ -680,11 +682,12 @@ TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
     {
       "name": "decoder/syslog/0",
       "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "enabled": true,
       "metadata": { "module": "syslog" }
     })";
 
     json::Json payload {kDecoderJsonStr};
-
+    payload = cm::store::detail::adaptDecoder(payload);
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::Error {"bad asset"}));
 
     try
