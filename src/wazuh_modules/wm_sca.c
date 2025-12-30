@@ -521,7 +521,6 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         bool sync_result = false;
         if (sca_sync_module_ptr)
         {
-            mdebug1("Running SCA synchronization.");
             sync_result = sca_sync_module_ptr(MODE_DELTA);
         }
         else

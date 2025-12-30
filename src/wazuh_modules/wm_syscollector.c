@@ -640,7 +640,6 @@ void* wm_sync_module(__attribute__((unused)) void* args)
     while (sync_module_running) {
         if (syscollector_sync_module_ptr) {
             syscollector_lock_scan_mutex_ptr();
-            mtinfo(WM_SYS_LOGTAG, "Starting inventory synchronization.");
 
             bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
 

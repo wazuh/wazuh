@@ -352,7 +352,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     if (m_spSyncProtocol)
     {
         // Log
-        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA synchronization started.");
+        LoggingHelper::getInstance().log(LOG_INFO, "Starting SCA synchronization.");
 
         // Mark sync as in progress
         m_syncInProgress.store(true);
@@ -552,11 +552,11 @@ void SecurityConfigurationAssessment::pause()
 
     if (!m_keepRunning)
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA module pause interrupted by shutdown");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module pause interrupted by shutdown");
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA module paused - all operations completed");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module paused successfully");
     }
 }
 
