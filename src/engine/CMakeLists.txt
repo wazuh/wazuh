@@ -29,7 +29,6 @@ option(ENGINE_ENABLE_TSAN "Enable ThreadSanitizer for all targets" OFF)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
-option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE "Enable reverse order decoders" OFF)
 
 
 ####################################################################################################
@@ -291,8 +290,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
 add_subdirectory(${ENGINE_SOURCE_DIR}/streamlog)
 add_subdirectory(${ENGINE_SOURCE_DIR}/scheduler)
-# TODO: Until the indexer connector is unified with the rest of wazuh-manager
-# add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
@@ -301,6 +298,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
 
 
 target_link_libraries(wazuh-engine
@@ -317,7 +315,6 @@ target_link_libraries(wazuh-engine
     api
     kvdbstore::kvdb
     eMessages
-    # metrics # TODO: Comment until indexerconnector is unified with the old one
     geo
     schemf
     geo::igeo
