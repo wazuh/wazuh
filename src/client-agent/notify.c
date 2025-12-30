@@ -81,17 +81,21 @@ void clear_merged_hash_cache() {
 static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
                                    const char *merged_sum, const char *labels) {
     agent_metadata_t metadata = {0};
+    bool has_metadata = false;
 
-    // Get metadata from shared memory
-    if (metadata_provider_get(&metadata) != 0) {
-        mdebug1("No metadata available from agent_info module");
-        return NULL;
+    // Get metadata from shared memory (may not be available yet)
+    if (metadata_provider_get(&metadata) == 0) {
+        has_metadata = true;
+    } else {
+        mdebug2("Metadata not yet available, using minimal keepalive");
     }
 
     // Build JSON
     cJSON *root = cJSON_CreateObject();
     if (!root) {
-        metadata_provider_free_metadata(&metadata);
+        if (has_metadata) {
+            metadata_provider_free_metadata(&metadata);
+        }
         return NULL;
     }
 
@@ -99,18 +103,36 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
 
     // Agent fields
     cJSON *agent = cJSON_CreateObject();
-    if (metadata.agent_id[0]) cJSON_AddStringToObject(agent, "id", metadata.agent_id);
-    if (metadata.agent_name[0]) cJSON_AddStringToObject(agent, "name", metadata.agent_name);
-    if (metadata.agent_version[0]) cJSON_AddStringToObject(agent, "version", metadata.agent_version);
-    if (config_sum && config_sum[0]) cJSON_AddStringToObject(agent, "config_sum", config_sum);
-    if (merged_sum && merged_sum[0]) cJSON_AddStringToObject(agent, "merged_sum", merged_sum);
-    if (agent_ip && agent_ip[0]) cJSON_AddStringToObject(agent, "ip", agent_ip);
+    if (has_metadata) {
+        if (metadata.agent_id[0]) {
+            cJSON_AddStringToObject(agent, "id", metadata.agent_id);
+        }
+        if (metadata.agent_name[0]) {
+            cJSON_AddStringToObject(agent, "name", metadata.agent_name);
+        }
+        if (metadata.agent_version[0]) {
+            cJSON_AddStringToObject(agent, "version", metadata.agent_version);
+        }
+    }
+    if (config_sum && config_sum[0]) {
+        cJSON_AddStringToObject(agent, "config_sum", config_sum);
+    }
+    if (merged_sum && merged_sum[0]) {
+        cJSON_AddStringToObject(agent, "merged_sum", merged_sum);
+    }
+    if (agent_ip && agent_ip[0]) {
+        cJSON_AddStringToObject(agent, "ip", agent_ip);
+    }
     const char *uname_str = getuname();
-    if (uname_str) cJSON_AddStringToObject(agent, "uname", uname_str);
-    if (labels && labels[0]) cJSON_AddStringToObject(agent, "labels", labels);
+    if (uname_str) {
+        cJSON_AddStringToObject(agent, "uname", uname_str);
+    }
+    if (labels && labels[0]) {
+        cJSON_AddStringToObject(agent, "labels", labels);
+    }
 
     // Add groups array if available
-    if (metadata.groups_count > 0 && metadata.groups) {
+    if (has_metadata && metadata.groups_count > 0 && metadata.groups) {
         cJSON *groups_array = cJSON_CreateArray();
         for (size_t i = 0; i < metadata.groups_count; i++) {
             if (metadata.groups[i] && metadata.groups[i][0]) {
@@ -122,24 +144,40 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
 
     cJSON_AddItemToObject(root, "agent", agent);
 
-    // Host fields
-    cJSON *host = cJSON_CreateObject();
-    if (metadata.hostname[0]) cJSON_AddStringToObject(host, "hostname", metadata.hostname);
-    if (metadata.architecture[0]) cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+    // Host fields (only if metadata available)
+    if (has_metadata) {
+        cJSON *host = cJSON_CreateObject();
+        if (metadata.hostname[0]) {
+            cJSON_AddStringToObject(host, "hostname", metadata.hostname);
+        }
+        if (metadata.architecture[0]) {
+            cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+        }
 
-    // Host OS fields
-    cJSON *os = cJSON_CreateObject();
-    if (metadata.os_name[0]) cJSON_AddStringToObject(os, "name", metadata.os_name);
-    if (metadata.os_version[0]) cJSON_AddStringToObject(os, "version", metadata.os_version);
-    if (metadata.os_platform[0]) cJSON_AddStringToObject(os, "platform", metadata.os_platform);
-    if (metadata.os_type[0]) cJSON_AddStringToObject(os, "type", metadata.os_type);
-    cJSON_AddItemToObject(host, "os", os);
-    cJSON_AddItemToObject(root, "host", host);
+        // Host OS fields
+        cJSON *os = cJSON_CreateObject();
+        if (metadata.os_name[0]) {
+            cJSON_AddStringToObject(os, "name", metadata.os_name);
+        }
+        if (metadata.os_version[0]) {
+            cJSON_AddStringToObject(os, "version", metadata.os_version);
+        }
+        if (metadata.os_platform[0]) {
+            cJSON_AddStringToObject(os, "platform", metadata.os_platform);
+        }
+        if (metadata.os_type[0]) {
+            cJSON_AddStringToObject(os, "type", metadata.os_type);
+        }
+        cJSON_AddItemToObject(host, "os", os);
+        cJSON_AddItemToObject(root, "host", host);
+    }
 
     // Convert to string
     char *json_str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
-    metadata_provider_free_metadata(&metadata);
+    if (has_metadata) {
+        metadata_provider_free_metadata(&metadata);
+    }
 
     return json_str;
 }
@@ -243,7 +281,7 @@ void run_notify()
         tmp_labels[0] ? tmp_labels : NULL
     );
     if (!json_keepalive) {
-        merror("Failed to build JSON keepalive (metadata not available)");
+        merror("Failed to build JSON keepalive");
         return;
     }
 
