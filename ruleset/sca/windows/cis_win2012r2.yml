@@ -291,7 +291,7 @@ checks:
       - soc_2: ["CC6.3"]
     condition: all
     rules:
-      - 'not c:net user -> r:Admin|Администратор|Amministratore|Beheerder|Järjestelmänvalvoja|Správce|Rendszergazda|Yönetici |Διαχειριστής|管理者|管理员|系統管理員|관리자|مسؤول | מנהל |ผู้ดูแลระบบ'
+      - "not c:net user -> r:Admin|Администратор|Amministratore|Beheerder|Järjestelmänvalvoja|Správce|Rendszergazda|Yönetici |Διαχειριστής|管理者|管理员|系統管理員|관리자|مسؤول | מנהל |ผู้ดูแลระบบ"
 
   # 2.3.1.5 (L1) Configure 'Accounts: Rename guest account'. (Automated)
   - id: 15011
@@ -310,7 +310,7 @@ checks:
       - soc_2: ["CC6.3"]
     condition: all
     rules:
-      - 'not c:net user -> r:guest|Guest|Gast|Invité|Invitado|Ospite|Convidado|Gäst |Gjest|Gæst|Vieras|Гость|Gość|Vendég|Host |Misafir|Επισκέπτης|ゲスト|来宾|來賓|게스트|ضيف|אורח|บัญชีผู้ใช้ทั่วไป'
+      - "not c:net user -> r:guest|Guest|Gast|Invité|Invitado|Ospite|Convidado|Gäst |Gjest|Gæst|Vieras|Гость|Gość|Vendég|Host |Misafir|Επισκέπτης|ゲスト|来宾|來賓|게스트|ضيف|אורח|บัญชีผู้ใช้ทั่วไป"
 
   # 2.3.2.1 (L1) Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled' (Automated)
   - id: 15012
@@ -415,7 +415,7 @@ checks:
       - cis: ["2.3.5.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> VulnerableChannelAllowList'
 
   # 2.3.5.3 (L1) Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only). (Automated)
@@ -437,6 +437,7 @@ checks:
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LdapEnforceChannelBinding'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LdapEnforceChannelBinding -> 2'
@@ -458,7 +459,7 @@ checks:
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity -> 2'
 
@@ -972,6 +973,7 @@ checks:
       - cis: ["2.3.10.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:LSARPC'
@@ -1414,6 +1416,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
 
   # 5.2 (L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only). (Automated)
@@ -2076,6 +2079,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'c:auditpol.exe /get /subcategory:"Kerberos Authentication Service" -> r:Success and Failure'
 
   # 17.1.3 (L1) Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only). (Automated)
@@ -2097,6 +2101,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'c:auditpol.exe /get /subcategory:"Kerberos Service Ticket Operations" -> r:Success and Failure'
 
   # 17.2.1 (L1) Ensure 'Audit Application Group Management' is set to 'Success and Failure'. (Automated)
@@ -2139,6 +2144,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'c:auditpol.exe /get /subcategory:"Computer Account Management" -> r:Success'
 
   # 17.2.3 (L1) Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only). (Automated)
@@ -2160,6 +2166,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'c:auditpol.exe /get /subcategory:"Distribution Group Management" -> r:Success'
 
   # 17.2.4 (L1) Ensure 'Audit Other Account Management Events' is set to include 'Success' (DC only). (Automated)
@@ -2181,6 +2188,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'c:auditpol.exe /get /subcategory:"Other Account Management Events" -> r:Success'
 
   # 17.2.5 (L1) Ensure 'Audit Security Group Management' is set to include 'Success'. (Automated)
@@ -2265,6 +2273,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'c:auditpol.exe /get /subcategory:"Directory Service Access" -> r:Failure'
 
   # 17.4.2 (L1) Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only). (Automated)
@@ -2286,6 +2295,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> DSA Database file'
       - 'c:auditpol.exe /get /subcategory:"Directory Service Changes" -> r:Success'
 
   # 17.5.1 (L1) Ensure 'Audit Account Lockout' is set to include 'Failure'. (Automated)
