@@ -963,18 +963,9 @@ class Handler(asyncio.Protocol):
         # Decode path requested by peer node
         rel = data.decode()
 
-        # Paths must be absolute within WAZUH_PATH
-        if not rel.startswith("/"):
-            return b"err", b"Invalid path format"
-
-        # Normalize path and block traversal
-        rel_norm = posixpath.normpath(rel)
-        if ".." in PurePosixPath(rel_norm).parts:
-            return b"err", b"Path traversal detected"
-
         # Resolve final destination (real path) under WAZUH_PATH
         wazuh_root = os.path.realpath(common.WAZUH_PATH)
-        dst = os.path.realpath(os.path.join(wazuh_root, rel_norm.lstrip("/")))
+        dst = os.path.realpath(os.path.join(wazuh_root, rel.lstrip("/")))
 
         # Only allow writes under WAZUH_PATH + allowed prefixes (real paths)
         allowed_roots = [
