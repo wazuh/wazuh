@@ -837,7 +837,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             // Acknowledge pause (atomic write, no mutex needed)
             atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
 
-            minfo("Running FIM synchronization requested by agent-info.");
+            minfo("Starting FIM synchronization requested by agent-info.");
 
             bool sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
@@ -869,12 +869,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             #ifdef WIN32
             w_mutex_lock(&syscheck.fim_registry_scan_mutex);
             #endif
-            mdebug1("Running FIM synchronization.");
+            minfo("Starting FIM synchronization.");
 
             bool sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
             if (sync_result) {
-                mdebug1("Synchronization succeeded");
+                minfo("FIM synchronization finished successfully.");
 
                 for (int i = 0; i < table_count; i++) {
                     if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
@@ -892,7 +892,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     }
                 }
             } else {
-                mdebug1("Synchronization failed");
+                mwarn("FIM synchronization failed.");
             }
 
             // Clean up the directories snapshot

@@ -1803,7 +1803,7 @@ bool Syscollector::syncModule(Mode mode)
         return false;
     }
 
-    m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
+    m_logFunction(LOG_INFO, "Starting inventory synchronization.");
 
     // RAII guard ensures m_syncing is set to false even if function exits early
     ScanGuard syncGuard(m_syncing, m_pauseCv);
@@ -2230,11 +2230,11 @@ bool Syscollector::pause()
     {
         if (m_stopping)
         {
-            m_logFunction(LOG_WARNING, "Syscollector module pause interrupted by shutdown");
+            m_logFunction(LOG_DEBUG, "Syscollector module pause interrupted by shutdown");
         }
         else
         {
-            m_logFunction(LOG_INFO, "Syscollector module paused successfully");
+            m_logFunction(LOG_DEBUG, "Syscollector module paused successfully");
         }
     }
 
