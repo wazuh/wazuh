@@ -12,6 +12,7 @@
 #include <base/libwazuhshared.hpp>
 
 #include <spdlog/pattern_formatter.h>
+#include <spdlog/sinks/base_sink.h>
 
 namespace Log
 {
@@ -22,59 +23,33 @@ std::function<void(const int, const char*, const char*, const int, const char*, 
 namespace logging
 {
 
-class CustomSink : public spdlog::sinks::sink
+class CustomSink : public spdlog::sinks::base_sink<std::mutex>
 {
 public:
-    CustomSink()
-        : m_upFormatter(std::make_unique<spdlog::pattern_formatter>())
-    {
-    }
+    CustomSink() = default;
 
-    void log(const spdlog::details::log_msg& message) override
+protected:
+    void sink_it_(const spdlog::details::log_msg& message) override
     {
-        if (should_log(message.level))
+        spdlog::memory_buf_t buf;
+        this->formatter_->format(message, buf);
+        std::string formatted_message(buf.data(), buf.size());
+
+        if (message.level >= spdlog::level::warn)
         {
-            m_level = message.level;
-            spdlog::memory_buf_t buf;
-            m_upFormatter->format(message, buf);
-            std::string formatted_message(buf.data(), buf.size());
-
-            if (message.level >= spdlog::level::warn)
-            {
-                std::cerr << formatted_message;
-            }
-            else
-            {
-                std::cout << formatted_message;
-            }
-        }
-    }
-
-    void flush() override
-    {
-        if (m_level >= spdlog::level::warn)
-        {
-            std::cerr << std::flush;
+            std::cerr << formatted_message;
         }
         else
         {
-            std::cout << std::flush;
+            std::cout << formatted_message;
         }
     }
 
-    void set_pattern(const std::string& pattern) override
+    void flush_() override
     {
-        m_upFormatter = std::make_unique<spdlog::pattern_formatter>(pattern, spdlog::pattern_time_type::local);
+        std::cerr << std::flush;
+        std::cout << std::flush;
     }
-
-    void set_formatter(std::unique_ptr<spdlog::formatter> sink_formatter) override
-    {
-        m_upFormatter = std::move(sink_formatter);
-    }
-
-private:
-    spdlog::level::level_enum m_level;
-    std::unique_ptr<spdlog::formatter> m_upFormatter;
 };
 
 std::shared_ptr<spdlog::logger> getDefaultLogger()
@@ -104,15 +79,6 @@ Level getLevel()
 void setLevel(Level level)
 {
     getDefaultLogger()->set_level(SEVERITY_LEVEL.at(level));
-
-    if (level <= Level::Debug)
-    {
-        getDefaultLogger()->set_pattern(LOG_DEBUG_HEADER);
-    }
-    else
-    {
-        getDefaultLogger()->set_pattern(DEFAULT_LOG_HEADER);
-    }
 }
 
 void start(const LoggingConfig& cfg)
@@ -136,7 +102,16 @@ void start(const LoggingConfig& cfg)
         logger = spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
     }
 
-    setLevel(cfg.level);
+    if (cfg.level <= Level::Debug)
+    {
+        logger->set_pattern(LOG_DEBUG_HEADER);
+    }
+    else
+    {
+        logger->set_pattern(DEFAULT_LOG_HEADER);
+    }
+
+    logger->set_level(SEVERITY_LEVEL.at(cfg.level));
     logger->flush_on(spdlog::level::trace);
 }
 
