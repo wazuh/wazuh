@@ -39,9 +39,10 @@ link_directories(${SRC_FOLDER}/external/simdjson/build)
 link_directories(${SHARED_MODULES}/http-request/build)
 link_directories(${SHARED_MODULES}/keystore/build)
 
-file(GLOB INDEXER_CONNECTOR_SRC
-    "src/*.cpp"
-    )
+set(INDEXER_CONNECTOR_SRC
+    src/indexerConnectorAsync.cpp
+    src/indexerConnectorSync.cpp
+)
 
 add_library(indexer_connector SHARED
     ${INDEXER_CONNECTOR_SRC}
