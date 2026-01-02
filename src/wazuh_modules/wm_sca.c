@@ -52,6 +52,7 @@ static DWORD WINAPI wm_sca_main(void *arg);         // Module main function. It 
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 #endif
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
+static void wm_sca_stop(wm_sca_t * data);   // Stop callback
 static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
@@ -112,6 +113,14 @@ static int wm_sca_test_key(char * subkey, char * full_key_name, unsigned long ar
 static int wm_sca_winreg_querykey(HKEY hKey, const char * full_key_name, char * reg_option, char * reg_value, char ** reason, w_expression_t * regex_engine);
 #endif
 
+// To allow module stop
+static volatile int wm_sca_chk_stop = 0;
+
+static void wm_sca_stop(wm_sca_t * data) {
+    (void)data;
+    wm_sca_chk_stop = 1;
+}
+
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
 const wm_context WM_SCA_CONTEXT = {
@@ -120,7 +129,7 @@ const wm_context WM_SCA_CONTEXT = {
     .destroy = (void(*)(void *))wm_sca_destroy,
     .dump = (cJSON * (*)(const void *))wm_sca_dump,
     .sync = NULL,
-    .stop = NULL,
+    .stop = (void(*)(void *))wm_sca_stop,
     .query = NULL,
 };
 
@@ -139,6 +148,8 @@ cJSON **last_summary_json = NULL;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t dump_rwlock;
+
+
 
 // Module main function. It won't return
 #ifdef WIN32
@@ -324,8 +335,19 @@ static int wm_sca_start(wm_sca_t * data) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_SCA_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            
+            // Interruptible sleep
+            time_t i = 0;
+            while(i < time_sleep && !wm_sca_chk_stop) {
+                sleep(1);
+                i++;
+            }
         }
+        
+        if (wm_sca_chk_stop) {
+            break;
+        }
+
         mtinfo(WM_SCA_LOGTAG,"Starting Security Configuration Assessment scan.");
         time_start = time(NULL);
 
@@ -338,7 +360,7 @@ static int wm_sca_start(wm_sca_t * data) {
         duration = time(NULL) - time_start;
         mtinfo(WM_SCA_LOGTAG, "Security Configuration Assessment scan finished. Duration: %d seconds.", (int)duration);
 
-    } while(FOREVER());
+    } while(FOREVER() && !wm_sca_chk_stop);
 
     return 0;
 }

@@ -475,10 +475,14 @@ void Syscollector::destroy()
     m_cv.notify_all();
 
     // Wait for syncLoop to finish completely, including cleanup of resources
-    m_cv.wait(lock, [this]()
-    {
+    if (!m_cv.wait_for(lock, std::chrono::seconds{10}, [this]() {
         return m_syncLoopFinished;
-    });
+    })) {
+        m_logFunction(LOG_WARNING, "Syscollector shutdown timeout - forcing exit...");
+        m_spRsync.reset(nullptr);
+        m_spDBSync.reset(nullptr);
+    }
+
     lock.unlock();
 }
 

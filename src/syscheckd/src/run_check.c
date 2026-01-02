@@ -358,6 +358,10 @@ void start_daemon()
 
     // Check every SYSCHECK_WAIT
     while (1) {
+        if (fim_shutdown_process_on()) {
+            break;
+        }
+
         int run_now = 0;
         curr_time = time(0);
 
@@ -437,6 +441,9 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
     }
 
     while (FOREVER()) {
+        if (fim_shutdown_process_on()) {
+            break;
+        }
 
 #ifdef WIN_WHODATA
         if (syscheck.realtime_change) {
@@ -473,6 +480,9 @@ void *fim_run_realtime(__attribute__((unused)) void * args) {
     fim_realtime_print_watches();
 
     while (FOREVER()) {
+        if (fim_shutdown_process_on()) {
+            break;
+        }
         w_mutex_lock(&syscheck.fim_realtime_mutex);
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
             nfds = syscheck.realtime->fd;
