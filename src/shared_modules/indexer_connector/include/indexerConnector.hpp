@@ -16,6 +16,7 @@
 #include <json.hpp>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string_view>
 
 #if __GNUC__ >= 4
@@ -23,6 +24,63 @@
 #else
 #define EXPORTED
 #endif
+
+/**
+ * @brief PointInTime class - Holds wazuh-indexer Point In Time data.
+ *
+ */
+class EXPORTED PointInTime final
+{
+private:
+    std::string m_pitId;
+    uint64_t m_creationTime;
+    std::string m_keepAlive;
+
+public:
+    /**
+     * @brief Constructor for PointInTime.
+     *
+     * @param pitId The PIT identifier returned by the indexer.
+     * @param creationTime The creation time of the PIT.
+     * @param keepAlive The keep alive duration (e.g., "5m", "1h").
+     */
+    PointInTime(std::string pitId, uint64_t creationTime, std::string_view keepAlive)
+        : m_pitId(std::move(pitId))
+        , m_creationTime(creationTime)
+        , m_keepAlive(keepAlive)
+    {
+    }
+
+    /**
+     * @brief Get the PIT identifier.
+     *
+     * @return The PIT identifier string.
+     */
+    const std::string& getPitId() const
+    {
+        return m_pitId;
+    }
+
+    /**
+     * @brief Get the creation time.
+     *
+     * @return The creation time as a uint64_t timestamp.
+     */
+    uint64_t getCreationTime() const
+    {
+        return m_creationTime;
+    }
+
+    /**
+     * @brief Get the keep alive duration.
+     *
+     * @return The keep alive string (e.g., "5m", "1h").
+     */
+    const std::string& getKeepAlive() const
+    {
+        return m_keepAlive;
+    }
+};
 
 /**
  * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
@@ -91,6 +149,23 @@ public:
      * @return JSON response from the indexer containing search results.
      */
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery);
+
+    /**
+     * @brief Execute a search query with automatic pagination.
+     *
+     * This method performs a search query and automatically handles pagination using
+     * the 'search_after' mechanism of the indexer. It retrieves all results
+     * by making multiple search requests if necessary.
+     *
+     * @param index Index name to search.
+     * @param query JSON object containing the initial search query.
+     *              The query MUST include a "sort" field for pagination to work correctly.
+     * @param onResponse Callback function executed for each page of results.
+     *                   The function receives a JSON object with the response for one page.
+     */
+    void executeSearchQueryWithPagination(const std::string& index,
+                                          const nlohmann::json& query,
+                                          std::function<void(const nlohmann::json&)> onResponse);
 
     /**
      * @brief Bulk delete.
@@ -216,11 +291,104 @@ public:
     void index(std::string_view index, std::string_view data);
 
     /**
+     * @brief Index a document to a data stream.
+     *
+     * @param index Data stream name.
+     * @param data Data.
+     */
+    void indexDataStream(std::string_view index, std::string_view data);
+
+    /**
      * @brief Check have a server available.
      *
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Get the current size of the indexing queue.
+     *
+     * @return The number of pending indexing operations in the queue.
+     */
+    uint64_t getQueueSize() const;
+
+    /**
+     * @brief Create a Point In Time (PIT) for the specified indices.
+     *
+     * Creates a PIT context that can be used for consistent pagination across multiple search requests.
+     * You must call deletePointInTime() when done to release the PIT on the server.
+     *
+     * @param indices List of index names or patterns to include in the PIT.
+     * @param keepAlive Time to keep the PIT alive (e.g., "5m" for 5 minutes, "1h" for 1 hour).
+     * @param expandWildcards If true, expands wildcard patterns to match indices.
+     * @return A PointInTime object containing the PIT ID and creation time.
+     * @throws IndexerConnectorException if the PIT creation fails.
+     *
+     * Example:
+     * auto pit = connector.createPointInTime({".cti-kvdbs", ".cti-decoders"}, "5m", true);
+     * std::string pitId = pit.getPitId(); // Use for subsequent searches
+     * // ... perform searches ...
+     * connector.deletePointInTime(pit); // Clean up when done
+     */
+    PointInTime createPointInTime(const std::vector<std::string>& indices,
+                                  std::string_view keepAlive,
+                                  bool expandWildcards = false);
+
+    /**
+     * @brief Delete a Point In Time (PIT) on the server.
+     *
+     * @param pit The PointInTime object to delete.
+     * @throws IndexerConnectorException if the PIT deletion fails.
+     */
+    void deletePointInTime(const PointInTime& pit);
+
+    /**
+     * @brief Execute a search query using Point In Time.
+     *
+     * @param pit The PointInTime object to use for the search.
+     * @param size Maximum number of documents to return.
+     * @param query The query object (must be valid JSON).
+     * @param sort The sort array (must be valid JSON array).
+     * @param searchAfter Optional search_after array for pagination (must be valid JSON array).
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     *
+     * Example:
+     * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
+     * nlohmann::json sort = {{{{"_shard_doc", "asc"}}, {{"_id", "asc"}}}};
+     * auto hits = connector.search(pit, 10, query, sort);
+     * // For pagination:
+     * nlohmann::json searchAfter = {2, "c66cd2fc-c612-4192-822d-c4da93f17cec"};
+     * auto nextHits = connector.search(pit, 10, query, sort, searchAfter);
+     */
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt);
+
+    /**
+     * @brief Execute a search query on an index or alias.
+     *
+     * Performs a simple search without using Point In Time. Useful for one-off queries
+     * where you don't need consistent pagination across multiple requests.
+     *
+     * @param index Index or alias name to search.
+     * @param size Maximum number of documents to return.
+     * @param query The query object (must be valid JSON).
+     * @param source Optional source filtering configuration (includes/excludes fields).
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     *
+     * Example:
+     * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
+     * nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
+     * auto hits = connector.search(".cti-policies", 10, query, source);
+     */
+    nlohmann::json search(std::string_view index,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const std::optional<nlohmann::json>& source = std::nullopt);
 };
 
 class IndexerConnectorException : public std::exception

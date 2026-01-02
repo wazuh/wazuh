@@ -2,6 +2,14 @@
 
 The SCA module uses SQLite database to store policy metadata and check results. The database maintains the state of security configuration assessments and enables change detection between scans.
 
+## Wazuh Common Schema (WCS)
+
+The schema according to the Wazuh Common Schema (WCS) is available in `src/external/indexer-plugins` and is downloaded during the agent build process as part of external dependencies (`make deps`):
+
+- `sca.json`
+
+This schema defines the standardized format for SCA data that is sent to the Wazuh indexer.
+
 ---
 
 ## Tables
@@ -120,6 +128,32 @@ INSERT INTO sca_check VALUES (
 - **Description**: Each policy contains multiple checks
 - **Foreign Key**: `sca_check.policy_id` references `sca_policy.id`
 - **Cascade**: When a policy is deleted, all associated checks are deleted
+
+---
+
+### Metadata Table
+
+```sql
+CREATE TABLE IF NOT EXISTS sca_metadata (
+    key TEXT PRIMARY KEY,
+    value INTEGER
+);
+```
+
+This table stores module-level metadata for tracking operational state, such as the last integrity check timestamp.
+
+| Mandatory | Column  | Data Type | Description                                     |
+| :-------: | ------- | --------- | ----------------------------------------------- |
+|     ✔️    | `key`   | TEXT      | Unique identifier for the metadata entry        |
+|           | `value` | INTEGER   | Numeric value associated with the key           |
+
+**Current Keys:**
+- `last_integrity_check`: Unix timestamp (seconds since epoch) of the last integrity check
+
+**Example Data:**
+```sql
+INSERT INTO sca_metadata VALUES ('last_integrity_check', 1733316000);
+```
 
 ---
 

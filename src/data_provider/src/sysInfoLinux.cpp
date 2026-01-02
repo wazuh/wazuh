@@ -30,6 +30,7 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
+#include "timeHelper.h"
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
 #include "logged_in_users_linux.hpp"
@@ -128,7 +129,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["command_line"] = commandLine;
     jsProcessInfo["args"]         = commandLineArgs;
     jsProcessInfo["args_count"]   = commandLineCount;
-    jsProcessInfo["start"]        = Utils::timeTick2unixTime(process->start_time);
+    jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(Utils::timeTick2unixTime(process->start_time)));
     return jsProcessInfo;
 }
 
@@ -262,9 +263,9 @@ static void getMemory(nlohmann::json& info)
     }
 
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };
-    info["memory_total"] = ramTotal;
-    info["memory_free"] = memFree;
-    info["memory_used"] = 100 - (100 * memFree / ramTotal);
+    info["memory_total"] = ramTotal * 1024;
+    info["memory_free"] = memFree * 1024;
+    info["memory_used"] = (ramTotal - memFree) * 1024;
 }
 
 nlohmann::json SysInfo::getHardware() const
@@ -465,12 +466,12 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
         for (const auto& procFile : procFiles)
         {
             // Only directories that represent a PID are inspected.
-            const std::string procFilePath {procPath / procFile};
+            std::string procFileName = procFile.filename().string();
 
-            if (Utils::isNumber(procFile) && fs.is_directory(procFilePath))
+            if (Utils::isNumber(procFileName) && fs.is_directory(procFile))
             {
                 // Only fd directory is inspected.
-                const std::string pidFilePath {procFilePath + "/fd"};
+                const std::filesystem::path pidFilePath = procFile / "fd";
 
                 if (fs.is_directory(pidFilePath))
                 {
@@ -480,9 +481,10 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
                     for (const auto& fdFile : fdFiles)
                     {
                         // Only sysmlinks that represent a socket are read.
-                        const std::string fdFilePath {pidFilePath / fdFile};
+                        const std::string fdFilePath = fdFile.string();
+                        const std::string fdFileName = fdFile.filename().string();
 
-                        if (!Utils::startsWith(fdFile, ".") && fs.is_socket(fdFilePath))
+                        if (!Utils::startsWith(fdFileName, ".") && fs.is_socket(fdFilePath))
                         {
                             try
                             {
@@ -493,9 +495,9 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
                                 return it == inode;
                             }))
                                 {
-                                    std::string statPath {procFilePath + "/" + "stat"};
+                                    std::string statPath = (procFile / "stat").string();
                                     std::string processName = getProcessName(statPath);
-                                    int32_t pid { std::stoi(procFile) };
+                                    int32_t pid { std::stoi(procFileName) };
 
                                     ret.emplace(std::make_pair(inode, std::make_pair(pid, processName)));
                                 }
@@ -733,9 +735,9 @@ nlohmann::json SysInfo::getUsers() const
 
         // Macos
         userItem["user_is_hidden"] = 0;
-        userItem["user_created"] = 0;
+        userItem["user_created"] = UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = 0;
-        userItem["user_auth_failed_timestamp"] = 0;
+        userItem["user_auth_failed_timestamp"] = UNKNOWN_VALUE;
 
         auto matched = false;
         auto lastLogin = 0;
@@ -759,7 +761,7 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = newDate;
+                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -782,7 +784,7 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
+            userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
         matched = false;
@@ -793,10 +795,12 @@ nlohmann::json SysInfo::getUsers() const
             if (singleShadow["username"] == username)
             {
                 matched = true;
-                userItem["user_password_expiration_date"] = singleShadow["expire"];
+                auto expireTimestamp = singleShadow["expire"].get<int64_t>();
+                auto lastChangeTimestamp = singleShadow["last_change"].get<int64_t>();
+                userItem["user_password_expiration_date"] = expireTimestamp > 0 ? Utils::rawTimestampToISO8601(static_cast<uint32_t>(expireTimestamp)) : UNKNOWN_VALUE;
                 userItem["user_password_hash_algorithm"] = singleShadow["hash_alg"];
                 userItem["user_password_inactive_days"] = singleShadow["inactive"];
-                userItem["user_password_last_change"] = singleShadow["last_change"];
+                userItem["user_password_last_change"] = lastChangeTimestamp > 0 ? lastChangeTimestamp : 0;
                 userItem["user_password_max_days_between_changes"] = singleShadow["max"];
                 userItem["user_password_min_days_between_changes"] = singleShadow["min"];
                 userItem["user_password_status"] = singleShadow["password_status"];
@@ -806,7 +810,7 @@ nlohmann::json SysInfo::getUsers() const
 
         if (!matched)
         {
-            userItem["user_password_expiration_date"] = 0;
+            userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
             userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
             userItem["user_password_inactive_days"] = 0;
             userItem["user_password_last_change"] = 0;

@@ -1814,6 +1814,159 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     EXPECT_THAT(doc2_metadata, ::testing::Not(::testing::HasSubstr("version")));
 }
 
+// Test escaping special characters in document IDs for bulkIndex
+TEST_F(IndexerConnectorSyncTest, BulkIndexEscapesSpecialCharactersInId)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test various special characters that need escaping
+    connector.bulkIndex("001_dum\\amy", "test_index", R"({"group":"dum\\amy"})");
+    connector.bulkIndex("002_tab\tchar", "test_index", R"({"name":"tab\tchar"})");
+    connector.bulkIndex("003_quote\"char", "test_index", R"({"name":"quote\"char"})");
+    connector.bulkIndex("004_newline\nchar", "test_index", R"({"name":"newline\nchar"})");
+
+    connector.flush();
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for escape test processing";
+
+    // Verify backslash is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"001_dum\\amy")"));
+
+    // Verify tab is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"002_tab\tchar")"));
+
+    // Verify quote is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"003_quote\"char")"));
+
+    // Verify newline is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"004_newline\nchar")"));
+
+    // Verify the bulk data is valid (no JSON parse errors would occur)
+    EXPECT_FALSE(capturedBulkData.empty());
+}
+
+// Test escaping special characters in document IDs for bulkDelete
+TEST_F(IndexerConnectorSyncTest, BulkDeleteEscapesSpecialCharactersInId)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test special characters in delete operations
+    connector.bulkDelete("001_dum\\amy", "test_index");
+    connector.bulkDelete("002_tab\tchar", "test_index");
+
+    connector.flush();
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for delete escape test processing";
+
+    // Verify backslash is properly escaped in delete ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"001_dum\\amy")"));
+
+    // Verify tab is properly escaped in delete ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"002_tab\tchar")"));
+}
+
+// Test that IDs without special characters are not unnecessarily escaped
+TEST_F(IndexerConnectorSyncTest, BulkIndexDoesNotEscapeNormalIds)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test normal IDs that don't need escaping
+    connector.bulkIndex("001_normal_id", "test_index", R"({"field":"value"})");
+    connector.bulkIndex("002-another-normal-id_123", "test_index", R"({"field":"value"})");
+
+    connector.flush();
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for normal ID test processing";
+
+    // Verify normal IDs are passed through unchanged
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"001_normal_id")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"002-another-normal-id_123")"));
+}
+
 // Test error handling for invalid input with version in sync connector
 TEST_F(IndexerConnectorSyncTest, ErrorHandlingForInvalidInputWithVersion)
 {
@@ -2127,4 +2280,645 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryEmptyResults)
     EXPECT_TRUE(result.contains("hits"));
     EXPECT_EQ(result["hits"]["total"]["value"], 0);
     EXPECT_EQ(result["hits"]["hits"].size(), 0);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationEmptyResults)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [](auto, const auto& postParams, auto)
+            {
+                std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0}}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }));
+
+    nlohmann::json query;
+    query["size"] = 1000;
+    query["query"]["term"]["package.name"] = "test-package";
+
+    // Execute with callback (required by new signature)
+    EXPECT_NO_THROW(connector.executeSearchQueryWithPagination("test-index", query, [](const nlohmann::json&) {}));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithCallbackTwoPages)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    int callbackCount = 0;
+    int postCallCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&postCallCount](auto, const auto& postParams, auto)
+            {
+                postCallCount++;
+                // First page with data, hits has an ID and sort field for pagination
+                // NOTE: Returns 1 hit.
+                std::string mockResponse =
+                    R"({"took":1,"hits":{"total":{"value":2},"hits":[{"_id":"1","sort":["1"]}]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }))
+        .WillOnce(Invoke(
+            [&postCallCount](auto, const auto& postParams, auto)
+            {
+                postCallCount++;
+                // Second page empty, hits is empty
+                std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mockResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mockResponse));
+                }
+            }));
+
+    nlohmann::json query;
+    query["size"] = 1;
+    query["query"]["term"]["package.name"] = "test-package";
+    query["sort"][0]["_id"] = "asc";
+
+    auto callback = [&callbackCount](const nlohmann::json& response)
+    {
+        callbackCount++;
+    };
+
+    EXPECT_NO_THROW(connector.executeSearchQueryWithPagination("test-index", query, callback));
+
+    EXPECT_EQ(postCallCount, 2) << "Should have made 2 POST requests (2 pages)";
+    EXPECT_EQ(callbackCount, 2) << "Callback should have been invoked 2 times (first page + empty page)";
+}
+
+// ==================== Document-Level Bulk Response Validation Tests ====================
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationAllSuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Simulate successful bulk response with no errors
+                std::string successResponse = R"({
+                    "took": 10,
+                    "errors": false,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {"index": {"_id": "2", "status": 201}},
+                        {"delete": {"_id": "3", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(successResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(successResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+    connector.bulkDelete("3", "test-index");
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictAccepted)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Simulate bulk response with version conflict (same version already indexed)
+                std::string versionConflictResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {"index": {
+                            "_id": "2",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[2]: version conflict, current version [5] is higher or equal to the one provided [5]"
+                            }
+                        }},
+                        {"index": {"_id": "3", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(versionConflictResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(versionConflictResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})", "5");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})", "5");
+
+    // Should not throw - version conflicts are acceptable
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationRealFailure)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Simulate bulk response with real indexing failure (e.g., 400 bad request)
+                std::string failureResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {"index": {
+                            "_id": "2",
+                            "status": 400,
+                            "error": {
+                                "type": "mapper_parsing_exception",
+                                "reason": "failed to parse field [timestamp] of type [date]"
+                            }
+                        }},
+                        {"index": {"_id": "3", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(failureResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(failureResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"timestamp":"invalid"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
+
+    // Should throw - real indexing failure
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMixedOperations)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Simulate bulk response with mixed operations and version conflicts
+                std::string mixedResponse = R"({
+                    "took": 15,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 201}},
+                        {"delete": {"_id": "2", "status": 200}},
+                        {"index": {
+                            "_id": "3",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[3]: version conflict, current version [3] is higher or equal to the one provided [3]"
+                            }
+                        }},
+                        {"index": {"_id": "4", "status": 200}},
+                        {"delete": {
+                            "_id": "5",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "version conflict on delete"
+                            }
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mixedResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mixedResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "1");
+    connector.bulkDelete("2", "test-index");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})", "3");
+    connector.bulkIndex("4", "test-index", R"({"field":"value4"})", "4");
+    connector.bulkDelete("5", "test-index");
+
+    // Should not throw - all are either success or acceptable version conflicts
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictWithoutErrorType)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Simulate version conflict without proper error details - should be treated as failure
+                std::string badConflictResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {"index": {
+                            "_id": "2",
+                            "status": 409,
+                            "error": "Some generic error string"
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(badConflictResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(badConflictResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+
+    // Should throw - version conflict without proper error type
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMultipleRealFailures)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Simulate multiple real failures
+                std::string multiFailureResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {"index": {
+                            "_id": "2",
+                            "status": 400,
+                            "error": {
+                                "type": "mapper_parsing_exception",
+                                "reason": "failed to parse"
+                            }
+                        }},
+                        {"index": {
+                            "_id": "3",
+                            "status": 500,
+                            "error": {
+                                "type": "internal_error",
+                                "reason": "internal server error"
+                            }
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(multiFailureResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(multiFailureResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"bad":"data"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
+
+    // Should throw - multiple real failures
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationMissingErrorsField)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Response without 'errors' field - should be treated as success
+                std::string noErrorsFieldResponse = R"({
+                    "took": 10,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(noErrorsFieldResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(noErrorsFieldResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should not throw - missing 'errors' field treated as success
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationErrorsTrueButMissingItems)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // errors=true but no 'items' array - should fail
+                std::string missingItemsResponse = R"({
+                    "took": 10,
+                    "errors": true
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(missingItemsResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(missingItemsResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should throw - errors=true but items array missing
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationEmptyItem)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Empty item in items array
+                std::string emptyItemResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {},
+                        {"index": {"_id": "3", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(emptyItemResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(emptyItemResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
+
+    // Should throw - empty item counts as failure
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationItemMissingStatus)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Item missing 'status' field
+                std::string missingStatusResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {"_id": "1", "status": 200}},
+                        {"index": {"_id": "2"}},
+                        {"index": {"_id": "3", "status": 200}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(missingStatusResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(missingStatusResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
+
+    // Should throw - item missing status field
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationInvalidJSON)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Invalid JSON - should trigger parse exception
+                std::string invalidJSON = R"({"took": 10, "errors": false, invalid json})";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(invalidJSON);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(invalidJSON));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should throw - invalid JSON triggers parse exception
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationErrorAsString)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    bool postCalled = false;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&postCalled](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                postCalled = true;
+                // Error as simple string instead of object
+                std::string errorStringResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"index": {
+                            "_id": "1",
+                            "status": 500,
+                            "error": "Internal server error"
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(errorStringResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(std::move(errorStringResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+
+    // Should throw - error as string still counts as failure
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_TRUE(postCalled);
 }

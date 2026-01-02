@@ -50,6 +50,7 @@ public:
     virtual base::RespOrError<test::Entry> getTestEntry(const std::string& name) const = 0;
 
     virtual base::OptError reloadTestEntry(const std::string& name) = 0;
+    virtual base::OptError renameTestEntry(const std::string& from, const std::string& to) = 0;
 
     // Testing: Table
     virtual std::list<test::Entry> getTestEntries() const = 0;

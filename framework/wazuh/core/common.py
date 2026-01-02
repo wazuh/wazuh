@@ -176,13 +176,6 @@ DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DECIMALS_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
-# ============================================ Wazuh constants - Extensions ============================================
-RULES_EXTENSION = '.xml'
-DECODERS_EXTENSION = '.xml'
-LISTS_EXTENSION = ''
-COMPILED_LISTS_EXTENSION = '.cdb'
-
-
 # ========================================= Wazuh constants - Size and limits ==========================================
 MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB.
 MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFER_SIZE - 4KB.
@@ -235,7 +228,6 @@ AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
 EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
 WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
-LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
 UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
 REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
 TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
@@ -243,19 +235,6 @@ WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
 WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
 QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
-
-
-# ================================================ Wazuh path - Ruleset ================================================
-RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
-RULES_PATH = os.path.join(RULESET_PATH, 'rules')
-DECODERS_PATH = os.path.join(RULESET_PATH, 'decoders')
-LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
-USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
-USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
-USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
-
-USER_ASSETS_PATH = os.path.join(WAZUH_PATH, 'etc', 'ruleset', 'assets')
-USER_KVDB_BASE_PATH = os.path.join(WAZUH_PATH, 'etc', 'ruleset', 'kvdb')
 
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')

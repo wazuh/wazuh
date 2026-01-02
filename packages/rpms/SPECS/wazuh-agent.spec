@@ -35,13 +35,11 @@ hosts at an operating system and application level. It provides the following ca
 log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring
 
 # Build debuginfo package
-%ifnarch ppc64le
 %package -n wazuh-agent-debuginfo
 Requires: wazuh-agent = %{_version}-%{_release}
 Summary: Debug information for package %{name}.
 %description -n wazuh-agent-debuginfo
 This package provides debug information for package %{name}.
-%endif
 
 %prep
 %setup -q
@@ -199,9 +197,14 @@ if ! getent passwd wazuh > /dev/null 2>&1; then
   useradd -g wazuh -G wazuh -d %{_localstatedir} -r -s /sbin/nologin wazuh
 fi
 
-# Get version information
-OLD_VERSION=`%{_localstatedir}/bin/wazuh-control info -v`
-MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+# Get version information (only for old installations)
+if [ -f "%{_localstatedir}/bin/wazuh-control" ]; then
+  OLD_VERSION=`%{_localstatedir}/bin/wazuh-control info -v 2>/dev/null`
+  MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+elif [ -f %{_localstatedir}/VERSION.json ]; then
+  OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' %{_localstatedir}/VERSION.json 2>/dev/null`
+  MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
+fi
 
 # Stop the services to upgrade the package
 if [ $1 = 2 ]; then
@@ -226,7 +229,7 @@ if [ $1 = 2 ]; then
 fi
 
 # Remove old databases if upgrading from pre 5.X to 5.X
-if [ $MAJOR -lt 5 ]; then
+if [ -n "$MAJOR" ] && [ "$MAJOR" -lt 5 ]; then
   if [ -f %{_localstatedir}/queue/syscollector/db/local.db ]; then
     rm -f %{_localstatedir}/queue/syscollector/db/local.db
   fi
@@ -750,14 +753,14 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}/wodles
 %attr(750, root, wazuh) %{_localstatedir}/wodles/*
 
-%ifnarch ppc64le
 %files -n wazuh-agent-debuginfo -f debugfiles.list
-%endif
 
 %changelog
-* Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
+* Wed Thu 29 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
-* Wed Dec 17 2025 support <info@wazuh.com> - 4.14.2
+* Wed Jan 28 2026 support <info@wazuh.com> - 4.14.3
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-3.html
+* Wed Jan 07 2026 support <info@wazuh.com> - 4.14.2
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-2.html
 * Wed Nov 12 2025 support <info@wazuh.com> - 4.14.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html

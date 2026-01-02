@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+import "engine.proto";
+import "google/protobuf/struct.proto";
+
+package com.wazuh.api.engine.content;
+
+/* Small summary of a catalog item */
+message ResourceSummary
+{
+    optional string uuid = 1; // Resource UUID (unique within namespace)
+    optional string name = 2; // Logical name (e.g. decoder/apache_access)
+    optional string hash = 3; // Content hash (YAML or canonical representation)
+}
+
+/******************** Namespace operations ********************/
+/***************************************************
+ * List all namespaces
+ *
+ * command: content.namespace/get (<resource>/<action>)
+ **************************************************/
+message namespaceGet_Request
+{
+    // Empty request: list all namespaces.
+}
+
+message namespaceGet_Response
+{
+    ReturnStatus status = 1;    // Status of the query
+    optional string error = 2;  // Error message if status is ERROR
+    repeated string spaces = 3; // List of namespaces if status is OK (empty on error)
+}
+
+/***************************************************
+ * Create / ensure a namespace exists
+ *
+ * command: content.namespace/post (<resource>/<action>)
+ **************************************************/
+message namespacePost_Request
+{
+    string space = 1; // Namespace name to create/ensure (e.g. draft, testing, custom, wazuh)
+}
+// message namespacePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a namespace
+ *
+ * command: content.namespace/delete (<resource>/<action>)
+ **************************************************/
+message namespaceDelete_Request
+{
+    string space = 1; // Namespace name to delete
+}
+// message namespaceDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Import a full namespace from JSON
+ *
+ * endpoint: POST content/namespace/import
+ *
+ * Imports a complete namespace definition provided as a JSON payload.
+ * This operation may create all resources within the target namespace.
+ * When `force` is enabled, validation checks are skipped.
+ **************************************************/
+message namespaceImport_Request
+{
+    string space = 1;       // Namespace name to import into
+    string jsonContent = 2; // Full namespace JSON payload
+    bool force = 3;         // If true, skip validation
+}
+// message namespaceImport_Response -> Return a GenericStatus_Response
+
+/******************** Policy operations ********************/
+/***************************************************
+ * Upsert policy for a namespace
+ *
+ * command: content.policy/post (<resource>/<action>)
+ **************************************************/
+message policyPost_Request
+{
+    string space = 1;      // Namespace name (draft, testing, custom, wazuh)
+    string ymlContent = 2; // Policy payload as YAML string
+}
+// message policyPost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete policy from a namespace
+ *
+ * command: content.policy/delete (<resource>/<action>)
+ **************************************************/
+message policyDelete_Request
+{
+    string space = 1; // Namespace name
+}
+// message policyDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Validate a policy JSON payload
+ *
+ * endpoint: POST content/validate/policy
+ *
+ * It allows you to validate a complete policy and
+ * if successful, the possibility of leaving a ready-to-use testing session loaded
+ **************************************************/
+message policyValidate_Request
+{
+    bool load_in_tester = 1;                // If true, load testing policies into the Tester environment.
+    google.protobuf.Struct full_policy = 2; // Full policy JSON payload
+}
+// message policyValidate_Response -> Return a GenericStatus_Response
+
+/******************** Resource catalog operations ********************/
+/***************************************************
+ * List resources in a namespace by type
+ *
+ * command: content.resource/list (<resource>/<action>)
+ **************************************************/
+message resourceList_Request
+{
+    string space = 1; // Namespace name (draft, testing, custom, wazuh)
+    string type = 2;  // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+}
+
+message resourceList_Response
+{
+    ReturnStatus status = 1;                // Status of the query
+    optional string error = 2;              // Error message if status is ERROR
+    repeated ResourceSummary resources = 3; // List of resources if status is OK (Empty on error)
+}
+
+/***************************************************
+ * Get a resource YAML by UUID
+ *
+ * command: content.resource/get (<resource>/<action>)
+ **************************************************/
+message resourceGet_Request
+{
+    string space = 1;         // Namespace name
+    string uuid = 2;          // UUID of the resource to retrieve
+    optional bool asJson = 3; // If true, return the resource in JSON format
+}
+
+message resourceGet_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string content = 3; // YAML or JSON representation of the resource (asset/integration/kvdb)
+}
+
+/***************************************************
+ * Upsert a resource (asset / integration / kvdb)
+ *
+ * command: content.resource/post (<resource>/<action>)
+ **************************************************/
+message resourcePost_Request
+{
+    string space = 1;      // Namespace name (must be writable, e.g. draft)
+    string type = 2;       // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    string ymlContent = 3; // Raw YAML payload of the resource
+}
+// message resourcePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a resource by UUID
+ *
+ * command: content.resource/delete (<resource>/<action>)
+ **************************************************/
+message resourceDelete_Request
+{
+    string space = 1; // Namespace name (must be writable, e.g. draft)
+    string uuid = 2;  // UUID of the resource to delete
+}
+// message resourceDelete_Response -> Return a GenericStatus_Response

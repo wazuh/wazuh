@@ -9,6 +9,7 @@ import pytest
 import sys
 from typing import List
 
+from py.xml import html
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.platforms import WINDOWS
@@ -112,6 +113,24 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
 
     config.hook.pytest_deselected(items=deselected_tests)
     items[:] = selected_tests
+
+
+@pytest.hookimpl(optionalhook=True)
+def pytest_html_results_summary(prefix, summary, postfix):
+    """Add custom information to the HTML report summary section.
+
+    Args:
+        prefix: Content to be added before the summary table
+        summary: The summary table element
+        postfix: Content to be added after the summary table
+    """
+    commit_sha = os.getenv('GITHUB_SHA', os.getenv('GIT_COMMIT', 'unknown'))
+    branch_name = os.getenv('GITHUB_REF_NAME', os.getenv('GIT_BRANCH', 'unknown'))
+
+    prefix.extend([
+        html.p(html.strong("Branch: "), branch_name),
+        html.p(html.strong("Commit SHA: "), commit_sha)
+    ])
 
 
 # - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -

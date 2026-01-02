@@ -13,6 +13,7 @@
 #include <base/baseTypes.hpp>
 #include <base/error.hpp>
 #include <base/name.hpp>
+#include <cmstore/types.hpp>
 
 namespace router
 {
@@ -29,9 +30,9 @@ enum class State : std::uint8_t
 enum class Sync : std::uint8_t
 {
     UNKNOWN,  ///< Unset sync status
-    UPDATED,  ///< Policy is updated
-    OUTDATED, ///< Policy is outdated respect to the store
-    ERROR     ///< Error, can't get the policy status
+    UPDATED,  ///< Namespace is updated
+    OUTDATED, ///< Namespace is outdated respect to the store
+    ERROR     ///< Error, can't get the namespace status
 };
 } // namespace env
 
@@ -47,7 +48,7 @@ class EntryPost
 {
 private:
     std::string m_name;                       ///< Name of the environment
-    base::Name m_policy;                      ///< Policy of the environment
+    cm::store::NamespaceId m_namespace;          ///< Namespace of the environment
     base::Name m_filter;                      ///< Filter of the environment
     std::size_t m_priority;                   ///< Priority of the environment
     std::optional<std::string> m_description; ///< Description of the environment
@@ -61,13 +62,13 @@ public:
      * @brief New entry in production
      *
      * @param name Name of environment
-     * @param policy Policy of the environment
+     * @param namespace Namespace of the environment
      * @param filter Filter of the environment
      * @param priority Priority of the environment
      */
-    EntryPost(std::string name, base::Name policy, base::Name filter, std::size_t priority)
+    EntryPost(std::string name, cm::store::NamespaceId namespaceId, base::Name filter, std::size_t priority)
         : m_name {std::move(name)}
-        , m_policy {std::move(policy)}
+        , m_namespace {std::move(namespaceId)}
         , m_description {}
         , m_filter {std::move(filter)}
         , m_priority {priority}
@@ -84,10 +85,6 @@ public:
         if (m_name.empty())
         {
             return base::Error {"Name cannot be empty"};
-        }
-        if (m_policy.parts().size() == 0)
-        {
-            return base::Error {"Policy name is empty"};
         }
         if (m_filter.parts().size() == 0)
         {
@@ -106,7 +103,7 @@ public:
 
     // Setters and getters
     const std::string& name() const { return m_name; }
-    const base::Name& policy() const { return m_policy; }
+    const cm::store::NamespaceId& namespaceId() const { return m_namespace; }
 
     const std::optional<std::string>& description() const { return m_description; }
     void description(std::string_view description) { m_description = description; }
@@ -126,24 +123,24 @@ public:
 class Entry : public EntryPost
 {
 private:
-    env::Sync m_policySync;     ///< Policy sync status
+    env::Sync m_namespaceSync;     ///< Namespace sync status
     env::State m_status;        ///< Status of the environment
     std::uint64_t m_lastUpdate; /// Last update of the environment [TODO: Review this metadata]
-    std::string m_hash;         /// Hash of the policy
+    std::string m_hash;         /// Hash of the namespace
 
 public:
     Entry(const EntryPost& entryPost)
         : EntryPost {entryPost}
         , m_lastUpdate {0}
-        , m_policySync {env::Sync::UNKNOWN}
+        , m_namespaceSync {env::Sync::UNKNOWN}
         , m_status {env::State::UNKNOWN} {};
 
     // Setters and getters
     std::uint64_t lastUpdate() const { return m_lastUpdate; }
     void lastUpdate(std::uint64_t lastUpdate) { m_lastUpdate = lastUpdate; }
 
-    env::Sync policySync() const { return m_policySync; }
-    void policySync(env::Sync policySync) { m_policySync = policySync; }
+    env::Sync namespaceSync() const { return m_namespaceSync; }
+    void namespaceSync(env::Sync namespaceSync) { m_namespaceSync = namespaceSync; }
 
     env::State status() const { return m_status; }
     void status(env::State status) { m_status = status; }
@@ -167,7 +164,7 @@ class EntryPost
 {
 private:
     std::string m_name;                       ///< Name of the environment
-    base::Name m_policy;                      ///< Policy of the environment
+    cm::store::NamespaceId m_namespace;     ///< Namespace of the environment
     std::optional<std::string> m_description; ///< Description of the environment
     std::size_t m_lifetime;                   ///< Lifetime of the environment
 
@@ -178,12 +175,12 @@ public:
      * @brief New entry in production
      *
      * @param name Name of environment
-     * @param policy Policy of the environment
+     * @param namespace Namespace of the environment
      * @param lifetime Lifetime of the testing environment
      */
-    EntryPost(std::string name, base::Name policy, std::size_t lifetime)
+    EntryPost(std::string name, cm::store::NamespaceId namespaceId, std::size_t lifetime)
         : m_name {std::move(name)}
-        , m_policy {std::move(policy)}
+        , m_namespace {std::move(namespaceId)}
         , m_description {}
         , m_lifetime {lifetime}
     {
@@ -200,16 +197,13 @@ public:
         {
             return base::Error {"Name cannot be empty"};
         }
-        if (m_policy.parts().size() == 0)
-        {
-            return base::Error {"Policy name is empty"};
-        }
         return base::OptError {};
     }
 
     // Setters and getters
     const std::string& name() const { return m_name; }
-    const base::Name& policy() const { return m_policy; }
+    void name(std::string name) { m_name = std::move(name); }
+    const cm::store::NamespaceId& namespaceId() const { return m_namespace; }
 
     const std::optional<std::string>& description() const { return m_description; }
     void description(std::string_view description) { m_description = description; }
@@ -224,24 +218,24 @@ public:
 class Entry : public EntryPost
 {
 private:
-    env::Sync m_policySync;  ///< Policy sync status
+    env::Sync m_namespaceSync;  ///< Namespace sync status
     env::State m_status;     ///< Status of the environment
     std::uint64_t m_lastUse; /// Last use of the entry.
-    std::string m_hash;      /// Hash of the policy
+    std::string m_hash;      /// Hash of the namespace
 
 public:
     Entry(const EntryPost& entryPost)
         : EntryPost {entryPost}
         , m_lastUse {0}
-        , m_policySync {env::Sync::UNKNOWN}
+        , m_namespaceSync {env::Sync::UNKNOWN}
         , m_status {env::State::UNKNOWN} {};
 
     // Setters and getters
     std::uint64_t lastUse() const { return m_lastUse; }
     void lastUse(std::uint64_t lastUse) { m_lastUse = lastUse; }
 
-    env::Sync policySync() const { return m_policySync; }
-    void policySync(env::Sync policySync) { m_policySync = policySync; }
+    env::Sync namespaceSync() const { return m_namespaceSync; }
+    void namespaceSync(env::Sync namespaceSync) { m_namespaceSync = namespaceSync; }
 
     env::State status() const { return m_status; }
     void status(env::State status) { m_status = status; }
@@ -263,8 +257,38 @@ public:
     {
         NONE = 0,
         ASSET_ONLY,
-        ALL
+        ALL,
+        UNKNOWN
     };
+
+    static std::string_view traceLevelToString(TraceLevel tl) noexcept
+    {
+        switch (tl)
+        {
+            case TraceLevel::NONE:       return "NONE";
+            case TraceLevel::ASSET_ONLY: return "ASSET_ONLY";
+            case TraceLevel::ALL:        return "ALL";
+            default:                     return "UNKNOWN";
+        }
+    }
+
+    static TraceLevel stringToTraceLevel(const std::string& str) noexcept
+    {
+        std::string normalized;
+        normalized.reserve(str.size());
+
+        std::transform(
+            str.begin(), str.end(),
+            std::back_inserter(normalized),
+            [](unsigned char c) { return std::toupper(c); }
+        );
+
+        if (normalized == traceLevelToString(TraceLevel::NONE))       return TraceLevel::NONE;
+        if (normalized == traceLevelToString(TraceLevel::ASSET_ONLY)) return TraceLevel::ASSET_ONLY;
+        if (normalized == traceLevelToString(TraceLevel::ALL))        return TraceLevel::ALL;
+
+        return TraceLevel::UNKNOWN;
+    }
 
 private:
     TraceLevel m_traceLevel;                  ///< Tracing level for testing

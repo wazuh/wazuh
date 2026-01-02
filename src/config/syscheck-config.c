@@ -116,7 +116,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->sync_interval                   = 300;
     syscheck->sync_end_delay                  = 1;
     syscheck->sync_response_timeout           = 60;
-    syscheck->sync_max_eps                    = 10;
+    syscheck->sync_max_eps                    = 50;
     syscheck->integrity_interval              = 24 * 60 * 60;  // 24 hours
     syscheck->max_eps                         = 50;
     syscheck->notify_first_scan               = 0; // Default value, no notification on first scan
@@ -182,6 +182,47 @@ directory_t *fim_copy_directory(const directory_t *_dir) {
 
     return fim_create_directory(_dir->path, _dir->options, filerestrict, _dir->recursion_level,
                                 _dir->tag, _dir->diff_size_limit, _dir->is_wildcard);
+}
+
+OSList *fim_copy_directory_list(const OSList *source) {
+    if (source == NULL) {
+        return NULL;
+    }
+
+    OSList *dest = OSList_Create();
+    if (dest == NULL) {
+        return NULL;
+    }
+
+    // Set the same free_data_function as the source list
+    OSList_SetFreeDataPointer(dest, source->free_data_function);
+
+    // Iterate through source list and copy each directory
+    OSListNode *node_it;
+    w_rwlock_rdlock((pthread_rwlock_t *)&source->wr_mutex);
+
+    for (node_it = source->first_node; node_it != NULL; node_it = node_it->next) {
+        directory_t *dir = (directory_t *)node_it->data;
+        directory_t *dir_copy = fim_copy_directory(dir);
+
+        if (dir_copy == NULL) {
+            // Failed to copy directory, clean up and return NULL
+            w_rwlock_unlock((pthread_rwlock_t *)&source->wr_mutex);
+            OSList_Destroy(dest);
+            return NULL;
+        }
+
+        if (OSList_AddData(dest, dir_copy) == NULL) {
+            // Failed to add to list, clean up and return NULL
+            free_directory(dir_copy);
+            w_rwlock_unlock((pthread_rwlock_t *)&source->wr_mutex);
+            OSList_Destroy(dest);
+            return NULL;
+        }
+    }
+
+    w_rwlock_unlock((pthread_rwlock_t *)&source->wr_mutex);
+    return dest;
 }
 
 #ifdef WIN32

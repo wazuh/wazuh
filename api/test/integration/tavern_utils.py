@@ -384,7 +384,7 @@ def check_agentd_started(response, agents_list, restarted=True):
         tries = 0
         agentd_started_regex = (
             re.compile(r"agentd.+Started")
-            if restarted or agent_id in ["005", "006", "007", "008"]
+            if restarted
             else re.compile(r"agentd.+(Reload|Started)")
         )
         while tries < 80:
@@ -499,47 +499,3 @@ def validate_update_check_response(response, current_version, update_check):
         if available_update_data != {}:
             for key, value_type in keys_to_check:
                 assert isinstance(available_update_data[key], value_type)
-
-
-def validate_kvdb(response, **kw):
-    """Validate a KVDB API response.
-
-    Parameters
-    ----------
-    response : requests.Response
-        Response to validate.
-    **kw : dict
-        Optional expectations as described above.
-    """
-    body = response.json()
-    assert response.status_code == 200
-    assert body.get("error") == 0
-
-    data = body.get("data", {})
-    items = data.get("affected_items", [])
-
-    if "expected_total_items" in kw:
-        assert data.get("total_affected_items") == kw["expected_total_items"]
-
-    if "expected_page_len" in kw:
-        assert len(items) == kw["expected_page_len"]
-
-    if "expected_ids_order" in kw:
-        assert [it.get("id") for it in items] == kw["expected_ids_order"]
-
-    if items:
-        first = items[0]
-        if "expected_first_id" in kw:
-            assert first.get("id") == kw["expected_first_id"]
-        if "expected_id" in kw:
-            assert first.get("id") == kw["expected_id"]
-        if "expected_name" in kw:
-            assert first.get("name") == kw["expected_name"]
-        if "absent_fields" in kw:
-            for f in kw["absent_fields"]:
-                assert f not in first or first[f] in (None, "")
-    else:
-        assert not any(k in kw for k in ("expected_first_id", "expected_id", "expected_name", "absent_fields"))
-
-    if "expected_names" in kw:
-        assert {it.get("name") for it in items} == set(kw["expected_names"])

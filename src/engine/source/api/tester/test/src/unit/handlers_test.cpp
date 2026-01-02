@@ -35,7 +35,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::tester::SessionPost_Request protoReq;
                 protoReq.mutable_session()->set_name("name");
-                protoReq.mutable_session()->set_policy("policy");
+                protoReq.mutable_session()->set_namespaceid("policy");
                 protoReq.mutable_session()->set_lifetime(10);
                 protoReq.mutable_session()->set_description("some_description");
                 return createRequest<eEngine::tester::SessionPost_Request>(protoReq);
@@ -55,7 +55,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::tester::SessionPost_Request protoReq;
                 protoReq.mutable_session()->set_name("name");
-                protoReq.mutable_session()->set_policy("policy");
+                protoReq.mutable_session()->set_namespaceid("policy");
                 protoReq.mutable_session()->set_lifetime(10);
                 return createRequest<eEngine::tester::SessionPost_Request>(protoReq);
             },
@@ -108,7 +108,10 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Name cannot be empty"); },
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Invalid policy name: Invalid namespace ID: ");
+            },
             [](auto&) {}),
         // Invalid filter
         HandlerT(
@@ -116,7 +119,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/session");
-                jsonReq.setString("", "/session/policy");
+                jsonReq.setString("not-valid", "/session/namespaceId");
                 jsonReq.setInt(10, "/session/lifetime");
                 httplib::Request req;
                 req.body = jsonReq.str();
@@ -125,7 +128,10 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid policy name: Name cannot be empty"); },
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Invalid policy name: Invalid namespace ID: not-valid");
+            },
             [](auto&) {}),
         // Route with description
         HandlerT(
@@ -133,7 +139,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eEngine::tester::SessionPost_Request protoReq;
                 protoReq.mutable_session()->set_name("name");
-                protoReq.mutable_session()->set_policy("policy");
+                protoReq.mutable_session()->set_namespaceid("policy");
                 protoReq.mutable_session()->set_lifetime(10);
                 protoReq.mutable_session()->set_description("description");
                 return createRequest<eEngine::tester::SessionPost_Request>(protoReq);

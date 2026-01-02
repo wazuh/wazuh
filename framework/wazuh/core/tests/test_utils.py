@@ -1902,22 +1902,17 @@ def test_validate_wazuh_xml(mock_check_indexer,
                             mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
-    with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
+    with open(os.path.join(test_files_path, 'test_config.xml')) as f:
         xml_file = f.read()
 
     m = mock_open(read_data=xml_file)
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file)
-    mock_remote_commands.assert_not_called()
-    mock_agents_versions.assert_not_called()
-    mock_check_indexer.assert_not_called()
-
-    with patch('builtins.open', m):
-        utils.validate_wazuh_xml(xml_file, config_file=True)
     mock_remote_commands.assert_called_once()
     mock_agents_versions.assert_called_once()
     mock_check_indexer.assert_called_once()
+    mock_unchanged_limits.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
@@ -1932,7 +1927,7 @@ def test_validate_wazuh_xml_ko(effect, expected_exception):
     expected_exception
         Expected code when triggering the exception.
     """
-    input_file = os.path.join(test_files_path, 'test_rules.xml')
+    input_file = os.path.join(test_files_path, 'test_config.xml')
 
     with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
         with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):

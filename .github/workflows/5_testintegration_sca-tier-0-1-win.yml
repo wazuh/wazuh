@@ -109,4 +109,12 @@ jobs:
       - name: Run sca integration tests
         run: |
           cd C:\wazuh\tests\integration
-          python -m pytest -m win32 --tier 0 --tier 1 test_sca\
+          $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest -m win32 --tier 0 --tier 1 test_sca\ --html=results.html --self-contained-html
+      # Upload the tests result html as an artifact
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-tier-0-1-win-test-results-${{ github.run_id }}
+          path: C:\wazuh\tests\integration\results.html
+          retention-days: 7

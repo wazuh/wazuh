@@ -117,11 +117,10 @@ build_pep517 tools/api-communication
 if ! build_pep517 tools/engine-suite; then
   echo "[build] PEP517 failed for engine-suite; falling back to legacy mode..."
   build_legacy_from_copy tools/engine-suite engine-suite \
-    "engine_catalog engine_archiver engine_decoder engine_router engine_schema engine_policy engine_geo engine_test engine_test_utils helper_test health_test integration_test"
+    "engine_public engine_archiver engine_decoder engine_router engine_schema engine_private engine_geo engine_test engine_test_utils helper_test health_test integration_test"
 fi
 
 build_pep517 test/engine-test-utils  || build_legacy_from_copy test/engine-test-utils  engine-test-utils   "engine_test_utils"
-build_pep517 test/health_test/engine-health-test  || build_legacy_from_copy test/health_test/engine-health-test  engine-health-test  "health_test"
 build_pep517 test/helper_tests/engine-helper-test || build_legacy_from_copy test/helper_tests/engine-helper-test engine-helper-test "helper_test"
 build_pep517 test/integration_tests/engine-it     || build_legacy_from_copy test/integration_tests/engine-it     engine-it          "integration_test"
 
@@ -228,17 +227,15 @@ EOF
   chmod 0755 "%{buildroot}%{_bindir}/${name}"
 }
 
-mk_wrapper engine-catalog      engine_catalog
+mk_wrapper engine-public       engine_public
 mk_wrapper engine-archiver     engine_archiver
-mk_wrapper engine-decoder      engine_decoder
 mk_wrapper engine-router       engine_router
 mk_wrapper engine-schema       engine_schema
-mk_wrapper engine-policy       engine_policy
+mk_wrapper engine-private      engine_private
 mk_wrapper engine-geo          engine_geo
 mk_wrapper engine-test         engine_test
 mk_wrapper engine-test-utils   engine_test_utils
 mk_wrapper engine-helper-test  helper_test
-mk_wrapper engine-health-test  health_test
 mk_wrapper engine-it           integration_test
 
 # =====================
@@ -284,7 +281,6 @@ PY
     for f in "$W"/api_communication-*.whl \
              "$W"/engine_suite-*.whl \
              "$W"/engine_test_utils-*.whl \
-             "$W"/engine_health_test-*.whl \
              "$W"/engine_helper_test-*.whl \
              "$W"/engine_it-*.whl; do
       [ -e "$f" ] && files+=("$f")
@@ -354,8 +350,8 @@ echo "[post] pip list (summary):"
 [ -x "$VENV/bin/python3" ] || ln -sf python "$VENV/bin/python3" 2>/dev/null || true
 
 # Smoke test (non-fatal)
-"$PY" - <<'PY' >/dev/null 2>&1 || echo "[post] WARNING: engine_catalog import failed."
-import importlib; importlib.import_module("engine_catalog")
+"$PY" - <<'PY' >/dev/null 2>&1 || echo "[post] WARNING: engine_public import failed."
+import importlib; importlib.import_module("engine_public")
 PY
 exit 0
 
@@ -401,17 +397,15 @@ exit 0
 # == FILES ============
 # =====================
 %files
-%{_bindir}/engine-catalog
+%{_bindir}/engine-public
 %{_bindir}/engine-archiver
-%{_bindir}/engine-decoder
 %{_bindir}/engine-router
 %{_bindir}/engine-schema
-%{_bindir}/engine-policy
+%{_bindir}/engine-private
 %{_bindir}/engine-geo
 %{_bindir}/engine-test
 %{_bindir}/engine-test-utils
 %{_bindir}/engine-helper-test
-%{_bindir}/engine-health-test
 %{_bindir}/engine-it
 %dir %{prefix}
 %dir %{wheelsd}

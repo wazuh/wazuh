@@ -18,6 +18,7 @@
     <synchronization>
       <enabled>yes</enabled>
       <interval>5m</interval>
-      <max_eps>10</max_eps>
+      <max_eps>50</max_eps>
+      <integrity_interval>24h</integrity_interval>
     </synchronization>
   </wodle>

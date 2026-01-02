@@ -1738,6 +1738,248 @@ TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
 }
 
 // ============================================================================
+// Payload-Level Field Updates Tests (Bug Fix Validation)
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, UpdateAssetRemoveIntegrationId)
+{
+    // Create decoder with integration_id at payload level
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_with_integration", "/name");
+    decoder.setInt(1, "/offset");
+    decoder.setInt(1, "/version");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("test_integration_id", "/integration_id");  // Payload-level field
+
+    json::Json document;
+    document.setObject();
+    document.setString("Test Decoder", "/name");
+    document.setBool(true, "/enabled");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Verify integration_id exists before removal
+    auto beforeUpdate = m_storage->getAsset(base::Name("Test Decoder"), "decoder");
+    EXPECT_TRUE(beforeUpdate.exists("/payload/integration_id"));
+    EXPECT_EQ(beforeUpdate.getString("/payload/integration_id").value_or(""), "test_integration_id");
+
+    // Remove integration_id using JSON Patch
+    json::Json operations;
+    operations.setArray();
+
+    json::Json removeOp;
+    removeOp.setObject();
+    removeOp.setString("remove", "/op");
+    removeOp.setString("/integration_id", "/path");  // Relative path (will be adjusted to /payload/integration_id)
+    operations.appendJson(removeOp);
+
+    // Apply update - should succeed after fix
+    bool updated = m_storage->updateAsset("decoder_with_integration", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify integration_id was removed
+    auto afterUpdate = m_storage->getAsset(base::Name("Test Decoder"), "decoder");
+    EXPECT_FALSE(afterUpdate.exists("/payload/integration_id"));
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetModifyPayloadLevelCustomField)
+{
+    // Create decoder with a custom field at payload level
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_with_custom", "/name");
+    decoder.setInt(1, "/offset");
+    decoder.setInt(1, "/version");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("original_value", "/custom_payload_field");  // Custom payload-level field
+
+    json::Json document;
+    document.setObject();
+    document.setString("Custom Decoder", "/name");
+    document.setBool(true, "/enabled");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Modify the custom field at payload level
+    json::Json operations;
+    operations.setArray();
+
+    json::Json replaceOp;
+    replaceOp.setObject();
+    replaceOp.setString("replace", "/op");
+    replaceOp.setString("/custom_payload_field", "/path");  // Payload-level field
+    replaceOp.setString("modified_value", "/value");
+    operations.appendJson(replaceOp);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("decoder_with_custom", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify custom field was modified at payload level
+    auto afterUpdate = m_storage->getAsset(base::Name("Custom Decoder"), "decoder");
+    EXPECT_EQ(afterUpdate.getString("/payload/custom_payload_field").value_or(""), "modified_value");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetRemoveIntegrationIdAsFirstOperation)
+{
+    // This test specifically validates the bug scenario where removing integration_id
+    // as the FIRST operation caused the entire update to fail
+
+    // Create decoder with integration_id
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_complex", "/name");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("old_integration", "/integration_id");
+
+    json::Json document;
+    document.setObject();
+    document.setString("Complex Decoder", "/name");
+    document.setString("old_value", "/some_field");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Create operations: remove integration_id FIRST, then modify document field
+    json::Json operations;
+    operations.setArray();
+
+    // FIRST operation: remove integration_id (this was causing the bug)
+    json::Json removeOp;
+    removeOp.setObject();
+    removeOp.setString("remove", "/op");
+    removeOp.setString("/integration_id", "/path");
+    operations.appendJson(removeOp);
+
+    // SECOND operation: modify document field
+    json::Json replaceOp;
+    replaceOp.setObject();
+    replaceOp.setString("replace", "/op");
+    replaceOp.setString("/document/some_field", "/path");
+    replaceOp.setString("new_value", "/value");
+    operations.appendJson(replaceOp);
+
+    // Apply both operations - should succeed with fix
+    bool updated = m_storage->updateAsset("decoder_complex", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify both operations were applied
+    auto afterUpdate = m_storage->getAsset(base::Name("Complex Decoder"), "decoder");
+    EXPECT_FALSE(afterUpdate.exists("/payload/integration_id"));  // Removed
+    EXPECT_EQ(afterUpdate.getString("/payload/document/some_field").value_or(""), "new_value");  // Modified
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetAddPayloadLevelField)
+{
+    // Store integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Add a new field at payload level
+    json::Json operations;
+    operations.setArray();
+
+    json::Json addOp;
+    addOp.setObject();
+    addOp.setString("add", "/op");
+    addOp.setString("/custom_field", "/path");  // Payload-level field
+    addOp.setString("custom_value", "/value");
+    operations.appendJson(addOp);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("integration_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify new field was added at payload level
+    auto afterUpdate = m_storage->getAsset(base::Name("Test Integration"), "integration");
+    EXPECT_TRUE(afterUpdate.exists("/payload/custom_field"));
+    EXPECT_EQ(afterUpdate.getString("/payload/custom_field").value_or(""), "custom_value");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetMixedPayloadAndDocumentOperations)
+{
+    // Create decoder with both payload-level and document-level fields
+    json::Json decoder;
+    decoder.setObject();
+    decoder.setString("decoder_mixed", "/name");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder", "/type");
+    payload.setString("integration_123", "/integration_id");
+
+    json::Json document;
+    document.setObject();
+    document.setString("Mixed Decoder", "/name");
+    document.setString("original_check", "/check");
+
+    payload.set("/document", document);
+    decoder.set("/payload", payload);
+
+    m_storage->storeDecoder(decoder);
+
+    // Create mixed operations: payload-level and document-level
+    json::Json operations;
+    operations.setArray();
+
+    // Payload-level: remove integration_id
+    json::Json removeOp;
+    removeOp.setObject();
+    removeOp.setString("remove", "/op");
+    removeOp.setString("/integration_id", "/path");
+    operations.appendJson(removeOp);
+
+    // Document-level: modify check field
+    json::Json replaceOp;
+    replaceOp.setObject();
+    replaceOp.setString("replace", "/op");
+    replaceOp.setString("/document/check", "/path");
+    replaceOp.setString("updated_check", "/value");
+    operations.appendJson(replaceOp);
+
+    // Payload-level: add new field
+    json::Json addOp;
+    addOp.setObject();
+    addOp.setString("add", "/op");
+    addOp.setString("/version", "/path");
+    addOp.setString("2.0", "/value");
+    operations.appendJson(addOp);
+
+    // Apply all operations
+    bool updated = m_storage->updateAsset("decoder_mixed", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify all operations were applied correctly
+    auto afterUpdate = m_storage->getAsset(base::Name("Mixed Decoder"), "decoder");
+
+    // Payload-level changes
+    EXPECT_FALSE(afterUpdate.exists("/payload/integration_id"));  // Removed
+    EXPECT_TRUE(afterUpdate.exists("/payload/version"));  // Added
+    EXPECT_EQ(afterUpdate.getString("/payload/version").value_or(""), "2.0");
+
+    // Document-level changes
+    EXPECT_EQ(afterUpdate.getString("/payload/document/check").value_or(""), "updated_check");  // Modified
+}
+
+// ============================================================================
 // Policy Access Tests
 // ============================================================================
 
@@ -2028,4 +2270,465 @@ TEST_F(CTIStorageDBTest, PolicyDeleteBothFormats)
     EXPECT_FALSE(m_storage->policyExists(base::Name("Wazuh 5.0")));
     EXPECT_FALSE(m_storage->policyExists(base::Name("Flat Policy")));
     EXPECT_EQ(m_storage->getPolicyList().size(), 0);
+}
+
+// ============================
+// resolveUUIDFromName Tests
+// ============================
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_Integration)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration-uuid-123", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Resolve UUID from name
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Test Integration"), "integration");
+
+    EXPECT_EQ(uuid, "integration-uuid-123");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_Decoder)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder-uuid-456", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Resolve UUID from name
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("test_decoder"), "decoder");
+
+    EXPECT_EQ(uuid, "decoder-uuid-456");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_Policy)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy-uuid-789");
+    m_storage->storePolicy(policy);
+
+    // Resolve UUID from name (policies use title)
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Wazuh 5.0"), "policy");
+
+    EXPECT_EQ(uuid, "policy-uuid-789");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_KVDB)
+{
+    // Create and store KVDB
+    json::Json kvdb;
+    kvdb.setObject();
+    kvdb.setString("kvdb-uuid-abc", "/name");
+    kvdb.setInt(1, "/offset");
+    kvdb.setInt(1, "/version");
+    kvdb.setString("2025-09-19T14:35:57.830144Z", "/inserted_at");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("kvdb", "/type");
+    payload.setString("test-integration", "/integration_id");
+
+    json::Json document;
+    document.setObject();
+    document.setString("test_kvdb", "/title");
+
+    json::Json content;
+    content.setObject();
+    content.setString("value1", "/key1");
+    content.setString("value2", "/key2");
+    document.set("/content", content);
+
+    payload.set("/document", document);
+    kvdb.set("/payload", payload);
+
+    m_storage->storeKVDB(kvdb);
+
+    // Resolve UUID from name
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("test_kvdb"), "kvdb");
+
+    EXPECT_EQ(uuid, "kvdb-uuid-abc");
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_NotFound)
+{
+    // Try to resolve UUID for non-existent integration
+    EXPECT_THROW(
+        m_storage->resolveUUIDFromName(base::Name("NonExistent"), "integration"),
+        std::runtime_error
+    );
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_InvalidType)
+{
+    // Try to resolve UUID with invalid asset type
+    EXPECT_THROW(
+        m_storage->resolveUUIDFromName(base::Name("SomeName"), "invalid_type"),
+        std::invalid_argument
+    );
+}
+
+TEST_F(CTIStorageDBTest, ResolveUUIDFromName_MultipleAssetsOfSameType)
+{
+    // Store multiple integrations
+    auto integration1 = createSampleIntegration("int-uuid-1", "Integration One");
+    auto integration2 = createSampleIntegration("int-uuid-2", "Integration Two");
+    auto integration3 = createSampleIntegration("int-uuid-3", "Integration Three");
+
+    m_storage->storeIntegration(integration1);
+    m_storage->storeIntegration(integration2);
+    m_storage->storeIntegration(integration3);
+
+    // Resolve UUIDs individually
+    std::string uuid1 = m_storage->resolveUUIDFromName(base::Name("Integration One"), "integration");
+    std::string uuid2 = m_storage->resolveUUIDFromName(base::Name("Integration Two"), "integration");
+    std::string uuid3 = m_storage->resolveUUIDFromName(base::Name("Integration Three"), "integration");
+
+    EXPECT_EQ(uuid1, "int-uuid-1");
+    EXPECT_EQ(uuid2, "int-uuid-2");
+    EXPECT_EQ(uuid3, "int-uuid-3");
+}
+
+// ============================
+// resolveNameAndTypeFromUUID Tests
+// ============================
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_Integration)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration-uuid-123", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Resolve name and type from UUID
+    auto [name, type] = m_storage->resolveNameAndTypeFromUUID("integration-uuid-123");
+
+    EXPECT_EQ(name, "Test Integration");
+    EXPECT_EQ(type, "integration");
+}
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_Decoder)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder-uuid-456", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Resolve name and type from UUID
+    auto [name, type] = m_storage->resolveNameAndTypeFromUUID("decoder-uuid-456");
+
+    EXPECT_EQ(name, "test_decoder");
+    EXPECT_EQ(type, "decoder");
+}
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_Policy)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy-uuid-789");
+    m_storage->storePolicy(policy);
+
+    // Resolve name and type from UUID (policies use title)
+    auto [name, type] = m_storage->resolveNameAndTypeFromUUID("policy-uuid-789");
+
+    EXPECT_EQ(name, "Wazuh 5.0");
+    EXPECT_EQ(type, "policy");
+}
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_KVDB)
+{
+    // Create and store KVDB
+    json::Json kvdb;
+    kvdb.setObject();
+    kvdb.setString("kvdb-uuid-abc", "/name");
+    kvdb.setInt(1, "/offset");
+    kvdb.setInt(1, "/version");
+    kvdb.setString("2025-09-19T14:35:57.830144Z", "/inserted_at");
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("kvdb", "/type");
+    payload.setString("test-integration", "/integration_id");
+
+    json::Json document;
+    document.setObject();
+    document.setString("test_kvdb", "/title");
+
+    json::Json content;
+    content.setObject();
+    content.setString("value1", "/key1");
+    content.setString("value2", "/key2");
+    document.set("/content", content);
+
+    payload.set("/document", document);
+    kvdb.set("/payload", payload);
+
+    m_storage->storeKVDB(kvdb);
+
+    // Resolve name and type from UUID
+    auto [name, type] = m_storage->resolveNameAndTypeFromUUID("kvdb-uuid-abc");
+
+    EXPECT_EQ(name, "test_kvdb");
+    EXPECT_EQ(type, "kvdb");
+}
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_NotFound)
+{
+    // Try to resolve name and type for non-existent UUID
+    EXPECT_THROW(
+        m_storage->resolveNameAndTypeFromUUID("non-existent-uuid"),
+        std::runtime_error
+    );
+}
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_RoundTrip)
+{
+    // Store multiple assets of different types
+    auto integration = createSampleIntegration("int-uuid-1", "Test Integration");
+    auto decoder = createSampleDecoder("dec-uuid-2", "test_decoder");
+    auto policy = createSamplePolicy("pol-uuid-3");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeDecoder(decoder);
+    m_storage->storePolicy(policy);
+
+    // Test round-trip: name→UUID→name for integration
+    std::string uuid1 = m_storage->resolveUUIDFromName(base::Name("Test Integration"), "integration");
+    auto [name1, type1] = m_storage->resolveNameAndTypeFromUUID(uuid1);
+    EXPECT_EQ(name1, "Test Integration");
+    EXPECT_EQ(type1, "integration");
+    EXPECT_EQ(uuid1, "int-uuid-1");
+
+    // Test round-trip: name→UUID→name for decoder
+    std::string uuid2 = m_storage->resolveUUIDFromName(base::Name("test_decoder"), "decoder");
+    auto [name2, type2] = m_storage->resolveNameAndTypeFromUUID(uuid2);
+    EXPECT_EQ(name2, "test_decoder");
+    EXPECT_EQ(type2, "decoder");
+    EXPECT_EQ(uuid2, "dec-uuid-2");
+
+    // Test round-trip: name→UUID→name for policy
+    std::string uuid3 = m_storage->resolveUUIDFromName(base::Name("Wazuh 5.0"), "policy");
+    auto [name3, type3] = m_storage->resolveNameAndTypeFromUUID(uuid3);
+    EXPECT_EQ(name3, "Wazuh 5.0");
+    EXPECT_EQ(type3, "policy");
+    EXPECT_EQ(uuid3, "pol-uuid-3");
+}
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_MultipleAssets)
+{
+    // Store multiple assets of different types
+    auto integration1 = createSampleIntegration("int-uuid-1", "Integration One");
+    auto integration2 = createSampleIntegration("int-uuid-2", "Integration Two");
+    auto decoder1 = createSampleDecoder("dec-uuid-1", "decoder_one");
+    auto decoder2 = createSampleDecoder("dec-uuid-2", "decoder_two");
+
+    m_storage->storeIntegration(integration1);
+    m_storage->storeIntegration(integration2);
+    m_storage->storeDecoder(decoder1);
+    m_storage->storeDecoder(decoder2);
+
+    // Resolve each UUID and verify correct name and type
+    auto [name1, type1] = m_storage->resolveNameAndTypeFromUUID("int-uuid-1");
+    EXPECT_EQ(name1, "Integration One");
+    EXPECT_EQ(type1, "integration");
+
+    auto [name2, type2] = m_storage->resolveNameAndTypeFromUUID("int-uuid-2");
+    EXPECT_EQ(name2, "Integration Two");
+    EXPECT_EQ(type2, "integration");
+
+    auto [name3, type3] = m_storage->resolveNameAndTypeFromUUID("dec-uuid-1");
+    EXPECT_EQ(name3, "decoder_one");
+    EXPECT_EQ(type3, "decoder");
+
+    auto [name4, type4] = m_storage->resolveNameAndTypeFromUUID("dec-uuid-2");
+    EXPECT_EQ(name4, "decoder_two");
+    EXPECT_EQ(type4, "decoder");
+}
+
+TEST_F(CTIStorageDBTest, ResolveNameAndTypeFromUUID_UpdateAsset)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("int-uuid-1", "Original Name");
+    m_storage->storeIntegration(integration);
+
+    // Verify initial state
+    auto [name1, type1] = m_storage->resolveNameAndTypeFromUUID("int-uuid-1");
+    EXPECT_EQ(name1, "Original Name");
+    EXPECT_EQ(type1, "integration");
+
+    // Update the integration with a new name
+    auto updatedIntegration = createSampleIntegration("int-uuid-1", "Updated Name");
+    m_storage->storeIntegration(updatedIntegration);
+
+    // Verify the index was updated
+    auto [name2, type2] = m_storage->resolveNameAndTypeFromUUID("int-uuid-1");
+    EXPECT_EQ(name2, "Updated Name");
+    EXPECT_EQ(type2, "integration");
+}
+
+// ============================
+// updateAsset Metadata Alias Tests
+// ============================
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_Integration)
+{
+    // Store an integration with original title
+    auto integration = createSampleIntegration("integration-uuid-123", "Original Integration");
+    m_storage->storeIntegration(integration);
+
+    // Verify initial state
+    EXPECT_NO_THROW(m_storage->getAsset(base::Name("Original Integration"), "integration"));
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Original Integration"), "integration");
+    EXPECT_EQ(uuid, "integration-uuid-123");
+
+    // Update the integration title (payload/document/title) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/title", "/path");
+    op.setString("Renamed Integration", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("integration-uuid-123", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the document was updated
+    auto updatedDoc = m_storage->getAsset(base::Name("integration-uuid-123"), "integration");
+    auto newTitle = updatedDoc.getString("/payload/document/title");
+    EXPECT_TRUE(newTitle.has_value());
+    EXPECT_EQ(*newTitle, "Renamed Integration");
+
+    // Old name should no longer resolve to UUID
+    EXPECT_THROW({
+        m_storage->resolveUUIDFromName(base::Name("Original Integration"), "integration");
+    }, std::runtime_error);
+
+    // New name should resolve to UUID
+    std::string newUuid = m_storage->resolveUUIDFromName(base::Name("Renamed Integration"), "integration");
+    EXPECT_EQ(newUuid, "integration-uuid-123");
+
+    // Should be able to retrieve by new name
+    EXPECT_NO_THROW(m_storage->getAsset(base::Name("Renamed Integration"), "integration"));
+
+    // Should not be able to retrieve by old name
+    EXPECT_THROW({
+        m_storage->getAsset(base::Name("Original Integration"), "integration");
+    }, std::runtime_error);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_Decoder)
+{
+    // Store a decoder with original name
+    auto decoder = createSampleDecoder("decoder-uuid-456", "original_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Verify initial state
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("original_decoder"), "decoder");
+    EXPECT_EQ(uuid, "decoder-uuid-456");
+
+    // Update the decoder name (payload/document/name) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/name", "/path");
+    op.setString("renamed_decoder", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("decoder-uuid-456", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify document was updated
+    auto updatedDoc = m_storage->getAsset(base::Name("decoder-uuid-456"), "decoder");
+    auto newName = updatedDoc.getString("/payload/document/name");
+    EXPECT_TRUE(newName.has_value());
+    EXPECT_EQ(*newName, "renamed_decoder");
+
+    // Old name should not resolve
+    EXPECT_THROW({
+        m_storage->resolveUUIDFromName(base::Name("original_decoder"), "decoder");
+    }, std::runtime_error);
+
+    // New name should resolve
+    std::string newUuid = m_storage->resolveUUIDFromName(base::Name("renamed_decoder"), "decoder");
+    EXPECT_EQ(newUuid, "decoder-uuid-456");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_Policy)
+{
+    // Store a policy with original title
+    auto policy = createSamplePolicy("policy-uuid-789", 1);
+    m_storage->storePolicy(policy);
+
+    // Verify initial state
+    std::string uuid = m_storage->resolveUUIDFromName(base::Name("Wazuh 5.0"), "policy");
+    EXPECT_EQ(uuid, "policy-uuid-789");
+
+    // Update the policy title (payload/document/title) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/title", "/path");
+    op.setString("Wazuh 6.0", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("policy-uuid-789", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify document was updated
+    auto updatedDoc = m_storage->getPolicy(base::Name("policy-uuid-789"));
+    auto newTitle = updatedDoc.getString("/payload/document/title");
+    EXPECT_TRUE(newTitle.has_value());
+    EXPECT_EQ(*newTitle, "Wazuh 6.0");
+
+    // Old title should not resolve
+    EXPECT_THROW({
+        m_storage->resolveUUIDFromName(base::Name("Wazuh 5.0"), "policy");
+    }, std::runtime_error);
+
+    // New title should resolve
+    std::string newUuid = m_storage->resolveUUIDFromName(base::Name("Wazuh 6.0"), "policy");
+    EXPECT_EQ(newUuid, "policy-uuid-789");
+
+    // Policy list should show new title
+    auto policyList = m_storage->getPolicyList();
+    EXPECT_EQ(policyList.size(), 1);
+    EXPECT_EQ(policyList[0].fullName(), "Wazuh 6.0");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAsset_ShouldRefreshMetadataAlias_KVDB)
+{
+    // Store a KVDB with original title
+    auto kvdb = createSampleKVDB("kvdb-uuid-999", "Original KVDB");
+    m_storage->storeKVDB(kvdb);
+
+    // Verify initial state
+    EXPECT_TRUE(m_storage->kvdbExists("Original KVDB"));
+
+    // Update the KVDB title (payload/document/title) using JSON Patch
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/title", "/path");
+    op.setString("Renamed KVDB", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("kvdb-uuid-999", operations);
+    EXPECT_TRUE(updated);
+
+    // Old name should not exist
+    EXPECT_FALSE(m_storage->kvdbExists("Original KVDB"));
+
+    // New name should exist
+    EXPECT_TRUE(m_storage->kvdbExists("Renamed KVDB"));
+
+    // kvdbDump by new name should work
+    EXPECT_NO_THROW(m_storage->kvdbDump("Renamed KVDB"));
+
+    // kvdbDump by old name should fail
+    EXPECT_THROW({
+        m_storage->kvdbDump("Original KVDB");
+    }, std::runtime_error);
 }

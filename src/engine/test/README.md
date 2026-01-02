@@ -6,7 +6,6 @@ This directory contains a comprehensive suite of end-to-end tests for the Wazuh-
 
 - **Acceptance Tests**: Located in the `acceptance/` directory. These tests focus on performance comparisons between Wazuh-Engine and Wazuh-Analysisd.
 - **Integration Tests**: Located in the `integration/` directory. These tests cover the integration aspects of the Wazuh-Engine components.
-- **Health Tests**: Located in the `health/` directory. These tests verify the expected versus actual outputs of the Wazuh-Engine and check the correctness of the Wazuh-Engine rulesets.
 - **Helper Functions Tests**: Located in the `helpers/` directory. These tests validate the functionality of helper functions used within the assets.
 
 
@@ -30,7 +29,6 @@ First, ensure that you have Python and pip installed on your system. Then, insta
 pip3 install tools/api-communication
 pip3 install test/engine-test-utils
 pip3 install tools/engine-suite
-pip3 install test/health_test/engine-health-test
 pip3 install test/integration_tests/engine-it
 pip3 install test/helper_tests/engine_helper_test
 ```
@@ -60,7 +58,6 @@ This command sets up the testing environment in the `/tmp/engine` directory.
 
 To run tests, follow the specific instructions provided in the README.md of each directory. Ensure the environment is set up using `setupEnvironment.py` before running any tests to avoid conflicts and ensure accurate results.
 
-- [Health test](./health_test/README.md)
 - [Integration test](./integration_tests/README.md)
 - [Helper test](./helper_tests/README.md)
 - [Acceptance test](./acceptance_test/README.md)

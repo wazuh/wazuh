@@ -38,7 +38,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -64,7 +64,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationLibRpm)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -125,7 +125,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -149,7 +149,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochNoReleaseLibRpm)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("4.16", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -174,7 +174,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochLibRpm)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1:4.16", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -194,7 +194,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonRelease)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -214,7 +214,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonRelease)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -234,7 +234,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochWithNone)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5-24.el5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -254,7 +254,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonReleaseWithNone)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
@@ -274,7 +274,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonReleaseWith
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("2015-03-04T12:38:58.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5", jsPackageInfo["version_"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);

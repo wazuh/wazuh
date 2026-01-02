@@ -67,8 +67,7 @@ enum Mode: byte {
 enum Option: byte {
     Sync,
     VDFirst,
-    VDSync,
-    VDClean
+    VDSync
 }
 ```
 
@@ -238,7 +237,6 @@ table StartAck {
 
 enum Status: byte {
     Ok,
-    PartialOk,
     Error,
     Offline
 }
@@ -249,7 +247,7 @@ enum Status: byte {
 - `status`: Result of session creation
   - `Ok`: Session created successfully
   - `Error`: Session creation failed
-  - `PartialOk`, `Offline`: Reserved for future use
+  - `Offline`: Reserved for future use
 - `session`: Unique session identifier assigned by the manager
 
 Sent by the manager in response to a Start message. The agent uses this session ID for all subsequent data messages.
@@ -271,7 +269,6 @@ table EndAck {
 
 - `status`: Final synchronization result
   - `Ok`: All data successfully indexed
-  - `PartialOk`: Some data indexed, some failed
   - `Error`: Synchronization failed
   - `Offline`: Indexer unavailable
 - `session`: Session identifier

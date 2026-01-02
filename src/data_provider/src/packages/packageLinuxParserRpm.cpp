@@ -27,7 +27,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
     {
         [](std::function<void(nlohmann::json&)> cb)
         {
-            const auto rawRpmPackagesInfo{ UtilsWrapperLinux::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'") };
+            const auto rawRpmPackagesInfo{ UtilsWrapperLinux::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime}\t%{group}\t\n'") };
 
             if (!rawRpmPackagesInfo.empty())
             {
@@ -120,7 +120,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
         }
     };
 
-    const auto filterPyhtonFiles
+    const auto filterPythonFiles
     {
         [&pythonPackages](const std::vector<std::string>& pFiles)
         {
@@ -199,6 +199,6 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
 
     if (!pythonFiles.empty())
     {
-        filterPyhtonFiles(pythonFiles);
+        filterPythonFiles(pythonFiles);
     }
 }

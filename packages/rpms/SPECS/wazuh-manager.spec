@@ -120,7 +120,7 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/{applications,generic}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/{1,2,2023}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/{10,9,8,7,6}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/{15,16,17,18,19,20,21,22,23,24}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/{15,16,17,18,19,20,21,22,23,24,25}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/debian/{7,8,9,10,11,12,13}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/{9,10}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ubuntu/{12,14,16,18,20,22,24}/04
@@ -726,13 +726,13 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libfim_recovery.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/modern.bpf.o
 %attr(750, root, wazuh) %{_localstatedir}/lib/libcontent_manager.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libindexer_connector.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libinventory_sync.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libvulnerability_scanner.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/librocksdb.so.8
 %attr(750, root, wazuh) %{_localstatedir}/lib/librouter.so
 %{_localstatedir}/lib/libpython3.10.so.1.0
@@ -741,9 +741,6 @@ rm -fr %{buildroot}
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/api.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
-%dir %attr(440, root, wazuh) %{_localstatedir}/templates
-%attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts
@@ -793,16 +790,10 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/tzdb
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production/decoders
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing/decoders
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production/integrations
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing/integrations
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb/production
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb/testing
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/draft
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/testing
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/custom
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
@@ -856,6 +847,8 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/23/*
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/24
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/24/*
+%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/25
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/25/*
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/debian
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/debian/*
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9
@@ -918,9 +911,11 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
-* Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
+* Thu Jan 29 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
-* Wed Dec 17 2025 support <info@wazuh.com> - 4.14.2
+* Wed Jan 28 2026 support <info@wazuh.com> - 4.14.3
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-3.html
+* Wed Jan 07 2026 support <info@wazuh.com> - 4.14.2
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-2.html
 * Wed Nov 12 2025 support <info@wazuh.com> - 4.14.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html

@@ -25,11 +25,10 @@ def _collect_types(mapping: Dict[str, Any], types: Set[str]) -> None:
 
 def update_types_file(mappings_wrapper: Dict[str, Any], output_path: Union[Path, str]) -> None:
     """Persist the list of field types extracted from the generated mappings."""
-
     output_path = Path(output_path)
-    mappings = mappings_wrapper.get('template', {}).get('mappings', {}).get('properties')
+    mappings = mappings_wrapper.get('properties')
     if not isinstance(mappings, dict):
-        print('Warning: cannot update ecs_types.json (missing template.mappings.properties)')
+        print('Warning: cannot update ecs_types.json (missing root "properties")')
         return
 
     types: Set[str] = set()

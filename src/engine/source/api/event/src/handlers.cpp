@@ -42,7 +42,8 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
 
         while (!events.empty())
         {
-            LOG_TRACE_L(lambdaName.c_str(), "Posting event to orchestrator: {}", events.front()->str());
+            // TODO: Import isDebug function for neccesity of event printing, avoid unnecesary json serialization
+            // LOG_TRACE_L(lambdaName.c_str(), "Posting event to orchestrator: {}", singleEvent->str());
             orchestrator->postEvent(std::move(events.front()));
             events.pop();
         }

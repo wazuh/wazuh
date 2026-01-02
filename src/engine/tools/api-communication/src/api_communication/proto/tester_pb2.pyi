@@ -1,4 +1,5 @@
 import engine_pb2 as _engine_pb2
+from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -16,6 +17,20 @@ OUTDATED: Sync
 STATE_UNKNOWN: State
 SYNC_UNKNOWN: Sync
 UPDATED: Sync
+
+class PublicRunPost_Request(_message.Message):
+    __slots__ = ["agent_metadata", "event", "location", "queue", "trace_level"]
+    AGENT_METADATA_FIELD_NUMBER: _ClassVar[int]
+    EVENT_FIELD_NUMBER: _ClassVar[int]
+    LOCATION_FIELD_NUMBER: _ClassVar[int]
+    QUEUE_FIELD_NUMBER: _ClassVar[int]
+    TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    agent_metadata: _struct_pb2.Struct
+    event: str
+    location: str
+    queue: int
+    trace_level: str
+    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., agent_metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
 
 class Result(_message.Message):
     __slots__ = ["asset_traces", "output"]
@@ -35,18 +50,16 @@ class Result(_message.Message):
     def __init__(self, output: _Optional[str] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
 
 class RunPost_Request(_message.Message):
-    __slots__ = ["asset_trace", "event", "name", "namespaces", "trace_level"]
+    __slots__ = ["asset_trace", "event", "name", "trace_level"]
     ASSET_TRACE_FIELD_NUMBER: _ClassVar[int]
     EVENT_FIELD_NUMBER: _ClassVar[int]
-    NAMESPACES_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
     asset_trace: _containers.RepeatedScalarFieldContainer[str]
     event: str
     name: str
-    namespaces: _containers.RepeatedScalarFieldContainer[str]
     trace_level: TraceLevel
-    def __init__(self, name: _Optional[str] = ..., event: _Optional[str] = ..., trace_level: _Optional[_Union[TraceLevel, str]] = ..., asset_trace: _Optional[_Iterable[str]] = ..., namespaces: _Optional[_Iterable[str]] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., event: _Optional[str] = ..., trace_level: _Optional[_Union[TraceLevel, str]] = ..., asset_trace: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class RunPost_Response(_message.Message):
     __slots__ = ["error", "result", "status"]
@@ -59,22 +72,22 @@ class RunPost_Response(_message.Message):
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., result: _Optional[_Union[Result, _Mapping]] = ...) -> None: ...
 
 class Session(_message.Message):
-    __slots__ = ["description", "entry_status", "last_use", "lifetime", "name", "policy", "policy_sync"]
+    __slots__ = ["description", "entry_status", "last_use", "lifetime", "name", "namespaceId", "namespace_sync"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     ENTRY_STATUS_FIELD_NUMBER: _ClassVar[int]
     LAST_USE_FIELD_NUMBER: _ClassVar[int]
     LIFETIME_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACE_SYNC_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
-    POLICY_FIELD_NUMBER: _ClassVar[int]
-    POLICY_SYNC_FIELD_NUMBER: _ClassVar[int]
     description: str
     entry_status: State
     last_use: int
     lifetime: int
     name: str
-    policy: str
-    policy_sync: Sync
-    def __init__(self, name: _Optional[str] = ..., policy: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ..., policy_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., last_use: _Optional[int] = ...) -> None: ...
+    namespaceId: str
+    namespace_sync: Sync
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ..., namespace_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., last_use: _Optional[int] = ...) -> None: ...
 
 class SessionDelete_Request(_message.Message):
     __slots__ = ["name"]
@@ -99,16 +112,16 @@ class SessionGet_Response(_message.Message):
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., session: _Optional[_Union[Session, _Mapping]] = ...) -> None: ...
 
 class SessionPost(_message.Message):
-    __slots__ = ["description", "lifetime", "name", "policy"]
+    __slots__ = ["description", "lifetime", "name", "namespaceId"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     LIFETIME_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
-    POLICY_FIELD_NUMBER: _ClassVar[int]
     description: str
     lifetime: int
     name: str
-    policy: str
-    def __init__(self, name: _Optional[str] = ..., policy: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
+    namespaceId: str
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
 
 class SessionPost_Request(_message.Message):
     __slots__ = ["session"]

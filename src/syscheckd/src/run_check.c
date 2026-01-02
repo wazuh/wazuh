@@ -83,6 +83,191 @@ bool fim_shutdown_process_on() {
 }
 
 /**
+ * @brief Check if there are any configured directories to monitor
+ *
+ * @return true if there are configured directories (non-wildcard), false otherwise
+ */
+STATIC bool fim_has_configured_directories(void) {
+    if (syscheck.directories == NULL) {
+        return false;
+    }
+
+    OSListNode *node_it;
+    directory_t *dir_it;
+
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        // Count non-wildcard directories (explicitly configured)
+        if (!dir_it->is_wildcard) {
+            w_rwlock_unlock(&syscheck.directories_lock);
+            return true;
+        }
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    return false;
+}
+
+#ifdef WIN32
+/**
+ * @brief Check if there are any configured registries to monitor
+ *
+ * @return true if there are configured registries, false otherwise
+ */
+STATIC bool fim_has_configured_registries(void) {
+    if (syscheck.registry == NULL) {
+        return false;
+    }
+
+    return syscheck.registry[0].entry != NULL;
+}
+#endif
+
+/**
+ * @brief Check if there are any configured paths (directories or registries) to monitor
+ *
+ * @return true if there are configured paths, false otherwise
+ */
+STATIC bool fim_has_configured_paths(void) {
+    bool has_directories = fim_has_configured_directories();
+
+#ifdef WIN32
+    bool has_registries = fim_has_configured_registries();
+    return has_directories || has_registries;
+#else
+    return has_directories;
+#endif
+}
+
+/**
+ * @brief Check if the FIM database has any entries
+ *
+ * @return true if database has entries, false otherwise
+ */
+STATIC bool fim_has_data_in_database(void) {
+    int files_count = fim_db_get_count_file_entry();
+    if (files_count > 0) {
+        return true;
+    }
+
+#ifdef WIN32
+    int registry_keys_count = fim_db_get_count_registry_key();
+    int registry_values_count = fim_db_get_count_registry_data();
+
+    if (registry_keys_count > 0 || registry_values_count > 0) {
+        return true;
+    }
+#endif
+
+    return false;
+}
+
+/**
+ * @brief Prepares indices array based on database entry counts
+ *
+ * @param indices Array to store indices (must have at least 3 elements)
+ * @param indices_count Pointer to store the number of indices added
+ */
+STATIC void prepare_data_clean_indices(const char* indices[3], size_t* indices_count) {
+    *indices_count = 0;
+
+    int files_count = fim_db_get_count_file_entry();
+    if (files_count > 0) {
+        indices[(*indices_count)++] = FIM_FILES_SYNC_INDEX;
+        mdebug1("Found %d file entries to clean.", files_count);
+    }
+
+#ifdef WIN32
+    int registry_keys_count = fim_db_get_count_registry_key();
+    int registry_values_count = fim_db_get_count_registry_data();
+
+    if (registry_keys_count > 0) {
+        indices[(*indices_count)++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
+        mdebug1("Found %d registry key entries to clean.", registry_keys_count);
+    }
+    if (registry_values_count > 0) {
+        indices[(*indices_count)++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
+        mdebug1("Found %d registry value entries to clean.", registry_values_count);
+    }
+#endif
+}
+
+/**
+ * @brief Sends DataClean notification with retry logic and cleans up databases on success
+ *
+ * @param indices Array of index names to clean
+ * @param indices_count Number of indices in the array
+ * @return true if DataClean was sent successfully, false if aborted due to shutdown
+ */
+STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_count) {
+    bool dataCleanSent = false;
+
+    while (!dataCleanSent && !fim_shutdown_process_on()) {
+        dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        if (!dataCleanSent) {
+            mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
+            for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
+                sleep(1);
+            }
+        } else {
+            mdebug1("DataClean notification sent successfully.");
+            asp_delete_database(syscheck.sync_handle);
+            fim_db_close_and_delete_database();
+            mdebug1("FIM databases deleted successfully.");
+        }
+    }
+
+    return dataCleanSent;
+}
+
+/**
+ * @brief Handles the scenario when all monitored paths have been removed from configuration
+ *
+ * This function is called when syscheck is enabled but has no configured directories/registries.
+ * It performs the following operations:
+ * 1. Checks if the database has existing entries
+ * 2. If data exists, sends DataClean notifications to the server
+ * 3. Clears the database after successful notification
+ * 4. Module exits after cleanup
+ *
+ * @return true if DataClean was sent and handled successfully (or no data to clean), false otherwise
+ */
+STATIC bool handle_all_paths_removed(void) {
+    if (!fim_has_data_in_database()) {
+        mdebug1("No monitored paths configured and no data in database. Nothing to clean.");
+        return true;
+    }
+
+    mdebug1("All monitored paths removed from configuration but database has data. Initiating DataClean process.");
+
+    if (!syscheck.sync_handle) {
+        merror("Sync protocol not initialized, cannot send DataClean notification.");
+        return false;
+    }
+
+    const char* indices[3] = {NULL, NULL, NULL};
+    size_t indices_count = 0;
+    prepare_data_clean_indices(indices, &indices_count);
+
+    if (indices_count == 0) {
+        mdebug1("No indices to clean.");
+        return true;
+    }
+
+    minfo("All monitored paths removed from configuration. FIM database has entries. Proceeding with DataClean notification.");
+
+    bool dataCleanSent = send_data_clean_with_retry(indices, indices_count);
+
+    if (fim_shutdown_process_on() && !dataCleanSent) {
+        mdebug1("DataClean notification aborted due to module shutdown.");
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Handles the FIM disabled scenario by cleaning up database and notifying the server
  *
  * This function is called when syscheck is disabled. It performs the following operations:
@@ -92,50 +277,18 @@ bool fim_shutdown_process_on() {
  * 4. Resets the database tables after successful notification
  */
 STATIC void handle_fim_disabled(void) {
-
-    // Prepare indices vector for data clean notification
     const char* indices[3] = {NULL, NULL, NULL};
     size_t indices_count = 0;
+    prepare_data_clean_indices(indices, &indices_count);
 
-    int files_count = fim_db_get_count_file_entry();
-    if (files_count > 0) {
-        indices[indices_count++] = FIM_FILES_SYNC_INDEX;
-    }
-
-#ifdef WIN32
-    int registry_keys_count = fim_db_get_count_registry_key();
-    int registry_values_count = fim_db_get_count_registry_data();
-
-    if (registry_keys_count > 0) {
-        indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
-    }
-    if (registry_values_count > 0) {
-        indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
-    }
-#endif
-
-    // Send data clean notification if there are any indices to clean
     if (indices_count > 0) {
-        minfo( "Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
-
-        bool ret = false;
-        while (!ret && !fim_shutdown_process_on())
-        {
-            ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
-            if (!ret) {
-                for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
-                    sleep(1);
-                }
-            }
-            else
-            {
-                mdebug1("Data clean notification sent successfully.");
-                asp_delete_database(syscheck.sync_handle);
-                fim_db_close_and_delete_database();
-            }
-        }
+        minfo("Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
+        send_data_clean_with_retry(indices, indices_count);
     } else {
-        minfo( "Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
+        minfo("Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
+        asp_delete_database(syscheck.sync_handle);
+        fim_db_close_and_delete_database();
+        mdebug1("FIM databases deleted successfully.");
     }
 }
 
@@ -315,6 +468,15 @@ void start_daemon()
     if (syscheck.disabled) {
         handle_fim_disabled();
         minfo("Syscheck is disabled. Exiting.");
+        return;
+    }
+
+    // Check for the scenario where syscheck is enabled but has no configured paths
+    // This handles the case when all directories/registries are removed from configuration
+    if (!fim_has_configured_paths()) {
+        mdebug1("Syscheck enabled but no monitored paths configured. Checking for orphaned data.");
+        handle_all_paths_removed();
+        minfo("No monitored paths configured. FIM module exiting after DataClean.");
         return;
     }
 
@@ -597,28 +759,6 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 }
 #endif
 
-// Logging callback wrapper for FIM recovery functions
-static void fim_recovery_log_wrapper(modules_log_level_t level, const char* log) {
-    switch (level) {
-        case LOG_DEBUG:
-        case LOG_DEBUG_VERBOSE:
-            mdebug1("%s", log);
-            break;
-        case LOG_INFO:
-            minfo("%s", log);
-            break;
-        case LOG_WARNING:
-            mwarn("%s", log);
-            break;
-        case LOG_ERROR:
-            merror("%s", log);
-            break;
-        case LOG_ERROR_EXIT:
-            merror_exit("%s", log);
-            break;
-    }
-}
-
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
@@ -697,7 +837,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             // Acknowledge pause (atomic write, no mutex needed)
             atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
 
-            minfo("Running FIM synchronization requested by agent-info.");
+            minfo("Starting FIM synchronization requested by agent-info.");
 
             bool sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
@@ -711,30 +851,40 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 atomic_int_set(&fim_flush_in_progress, 0);
             }
         } else {
+            // Take a snapshot of the current directories list to avoid holding the lock during integrity checks.
+            // This prevents deadlocks that occur when different code paths acquire locks in different orders.
+            w_rwlock_rdlock(&syscheck.directories_lock);
+            OSList *directories_snapshot = fim_copy_directory_list(syscheck.directories);
+            w_rwlock_unlock(&syscheck.directories_lock);
+
+            if (directories_snapshot == NULL) {
+                merror("Failed to create snapshot of directories list. Aborting synchronization cycle.");
+                mdebug1("FIM synchronization aborted, waiting for %d seconds before next run.", syscheck.sync_interval);
+                continue;
+            }
+
+            // Lock FIM's scheduled and realtime scans during sync and recovery process
             w_mutex_lock(&syscheck.fim_scan_mutex);
             w_mutex_lock(&syscheck.fim_realtime_mutex);
             #ifdef WIN32
             w_mutex_lock(&syscheck.fim_registry_scan_mutex);
             #endif
-
-            minfo("Running FIM synchronization.");
+            minfo("Starting FIM synchronization.");
 
             bool sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
             if (sync_result) {
-                minfo("Synchronization succeeded");
+                minfo("FIM synchronization finished successfully.");
 
                 for (int i = 0; i < table_count; i++) {
                     if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
-                        minfo("Starting integrity validation process for %s", table_names[i]);
+                        mdebug1("Starting integrity validation process for %s", table_names[i]);
                         bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
-                                                                                           syscheck.sync_handle,
-                                                                                           fim_recovery_log_wrapper);
+                                                                                           syscheck.sync_handle);
                         if (full_sync_required) {
                             fim_recovery_persist_table_and_resync(table_names[i],
                                                                   syscheck.sync_handle,
-                                                                  NULL,
-                                                                  fim_recovery_log_wrapper);
+                                                                  directories_snapshot);
                         }
                         // Update the last sync time regardless of whether full sync was required
                         // This ensures the integrity check doesn't run again until integrity_interval has elapsed
@@ -742,15 +892,17 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     }
                 }
             } else {
-                minfo("Synchronization failed");
+                mwarn("FIM synchronization failed.");
             }
+
+            // Clean up the directories snapshot
+            OSList_Destroy(directories_snapshot);
             #ifdef WIN32
             w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
             #endif
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
             w_mutex_unlock(&syscheck.fim_scan_mutex);
-
-            minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+            mdebug1("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         }
     }
 
@@ -929,7 +1081,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     snprintf(path, PATH_MAX, "%s", dir_it->symbolic_links);
                     fim_link_check_delete(dir_it);
 
-                    directory_t *config = fim_configuration_directory(path, true);
+                    directory_t *config = fim_configuration_directory(path, true, syscheck.directories);
 
                     if (config != NULL) {
                         fim_link_silent_scan(path, config);

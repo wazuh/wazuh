@@ -43,8 +43,9 @@ static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 unsigned int sca_enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
 uint32_t sca_sync_end_delay = 1;                 // Database synchronization end message delay in seconds (default value)
-uint32_t sca_sync_response_timeout = 30;         // Database synchronization response timeout (default value)
-long sca_sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
+uint32_t sca_sync_response_timeout = 60;         // Database synchronization response timeout (default value)
+long sca_sync_max_eps = 50;                     // Database synchronization number of events per second (default value)
+uint32_t sca_integrity_interval = 86400;         // Integrity check interval in seconds (default value, 0 = disabled)
 
 // Forward declarations
 static bool wm_sca_is_shutting_down(void);
@@ -183,7 +184,7 @@ static void wm_handle_sca_disable_and_notify_data_clean()
         if (sca_set_sync_parameters_ptr)
         {
             MQ_Functions mq_funcs = {.start = wm_sca_startmq, .send_binary = wm_sca_send_binary_msg};
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps, sca_integrity_interval);
         }
 
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
@@ -288,6 +289,7 @@ void * wm_sca_main(wm_sca_t * data) {
             sca_sync_end_delay = data->sync.sync_end_delay;
             sca_sync_response_timeout = data->sync.sync_response_timeout;
             sca_sync_max_eps = data->sync.sync_max_eps;
+            sca_integrity_interval = data->sync.integrity_interval;
         }
 
         // Set the sync protocol parameters
@@ -296,7 +298,7 @@ void * wm_sca_main(wm_sca_t * data) {
                 .start = wm_sca_startmq,
                 .send_binary = wm_sca_send_binary_msg
             };
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps, sca_integrity_interval);
         }
 
         // Set the yaml to cjson function
@@ -499,15 +501,61 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 
     while (sca_sync_module_running)
     {
+        if (!sca_sync_module_running)
+        {
+            break;
+        }
+
+        // Pause scans during sync and integrity check
+        if (sca_query_ptr)
+        {
+            char* pause_output = NULL;
+            sca_query_ptr("{\"command\":\"pause\"}", &pause_output);
+            if (pause_output) {
+                mdebug2("SCA pause response: %s", pause_output);
+                free(pause_output);
+            }
+        }
+
+        // Perform DELTA synchronization
+        bool sync_result = false;
         if (sca_sync_module_ptr)
         {
-            sca_sync_module_ptr(MODE_DELTA);
+            sync_result = sca_sync_module_ptr(MODE_DELTA);
         }
         else
         {
             mdebug1("Sync function not available");
         }
 
+        // If sync succeeded and integrity checks are enabled, check integrity
+        if (sync_result && sca_integrity_interval > 0 && sca_query_ptr)
+        {
+            mdebug1("Performing SCA integrity check.");
+            char* integrity_output = NULL;
+            sca_query_ptr("{\"command\":\"check_integrity\"}", &integrity_output);
+
+            if (integrity_output)
+            {
+                mdebug2("SCA integrity check response: %s", integrity_output);
+                free(integrity_output);
+            }
+        }
+
+        // Resume scans after sync and integrity check
+        if (sca_query_ptr)
+        {
+            char* resume_output = NULL;
+            sca_query_ptr("{\"command\":\"resume\"}", &resume_output);
+            if (resume_output) {
+                mdebug2("SCA resume response: %s", resume_output);
+                free(resume_output);
+            }
+        }
+
+        mdebug1("SCA synchronization cycle finished, waiting for %d seconds before next run.", sca_sync_interval);
+
+        // Wait for sync_interval before next cycle
         for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
         {
             sleep(1);

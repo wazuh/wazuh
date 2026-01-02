@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Engine Run",
+            "name": "wazuh-engine standalone",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${env:ENGINE_BUILD}/main",
-            "args": [],
+            "program": "${env:ENGINE_BUILD}/wazuh-engine",
+            "args": ["-f"],
             "stopAtEntry": false,
             "cwd": "${env:ENGINE_BUILD}",
             "environment": [
@@ -18,35 +18,190 @@
                     "value": "2"
                 },
                 {
-                    "name": "WAZUH_LOG_LEVEL",
+                    "name": "WAZUH_STANDALONE_LOG_LEVEL",
                     "value": "trace"
                 },
-                {
-                    "name": "WAZUH_CONFIG_SKIP_API",
-                    "value": "true"
-                },
-                {
-                    "name": "WAZUH_QUEUE_FLOOD_FILE",
-                    "value": ""
-                },
-                {
-                    "name": "WAZUH_SERVER_EVENT_QUEUE_SIZE",
-                    "value": "0"
-                },
-                /*
+                // Data, store, kvdb and indexer store
                 {
                     "name": "WAZUH_KVDB_PATH",
-                    "value": "${workspaceFolder}/engine-installed/kvdb/"
+                    "value": "${env:ENGINE_STANDALONE_DIR}/kvdb/"
                 },
                 {
                     "name": "WAZUH_STORE_PATH",
-                    "value": "${workspaceFolder}/engine-installed/store"
+                    "value": "${env:ENGINE_STANDALONE_DIR}/store"
                 },
+                // Server and sockets
                 {
                     "name": "WAZUH_SERVER_API_SOCKET",
-                    "value": "/var/ossec/queue/sockets/engine-api"
+                    "value": "${env:ENGINE_STANDALONE_SOCKET_API}"
+                },
+                {
+                    "name": "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
+                    "value": "${env:ENGINE_STANDALONE_SOCKET_REMOTED}"
+                },
+                {
+                    "name": "WAZUH_SERVER_EVENT_SOCKET",
+                    "value": "${env:ENGINE_STANDALONE_SOCKET_LEGACY}"
+                },
+                // TZDB
+                {
+                    "name": "WAZUH_TZDB_PATH",
+                    "value": "${env:ENGINE_STANDALONE_DIR}/tzdb"
+                },
+                {
+                    "name": "WAZUH_TZDB_AUTO_UPDATE",
+                    "value": "true"
+                },
+                //{
+                //    "name": "WAZUH_TZDB_FORCE_VERSION_UPDATE",
+                //    "value": "2024a"
+                //},
+                // Arcive
+                {
+                    "name": "WAZUH_ARCHIVER_ENABLED",
+                    "value": "false"
+                },
+                {
+                    "name": "WAZUH_STREAMLOG_BASE_PATH",
+                    "value": "${env:ENGINE_STANDALONE_DIR}/logs/"
+                },
+                // Orchestrator
+                {
+                    "name": "WAZUH_ORCHESTRATOR_THREADS",
+                    "value": "2"
+                },
+                // Indexer conector
+                {
+                    "name": "WAZUH_INDEXER_HOSTS",
+                    "value": "https://localhost:9200"
+                },
+                {
+                    "name": "WAZUH_INDEXER_USER",
+                    "value": "admin"
+                },
+                {
+                    "name": "WAZUH_INDEXER_PASSWORD",
+                    "value": "admin"
+                },
+                {
+                    "name": "WAZUH_INDEXER_SSL_CERTIFICATE",
+                    "value": "/etc/wazuh-indexer/certs/admin.pem"
+                },
+                {
+                    "name": "WAZUH_INDEXER_SSL_KEY",
+                    "value": "/etc/wazuh-indexer/certs/admin-key.pem"
+                },
+                             {
+                    "name": "WAZUH_INDEXER_SSL_CA_BUNDLE",
+                    "value": "/etc/wazuh-indexer/certs/root-ca.pem"
+                },
+                // CMSync
+                {
+                    "name": "WAZUH_CMSYNC_OUTPUT_PATH",
+                    "value": "${env:ENGINE_STANDALONE_DIR}/outputs"
+                },
+                {
+                    "name": "WAZUH_CTI_PATH",
+                    "value": "${env:ENGINE_STANDALONE_DIR}/cti"
+                },
+                {
+                    "name": "WAZUH_CTI_ENABLED",
+                    "value": "false"
+                },
+                // Standalone mode
+                {
+                    "name": "WAZUH_SKIP_GROUP_CHANGE",
+                    "value": "true"
+                },
+                {
+                    "name": "WAZUH_ENGINE_STANDALONE",
+                    "value": "true"
                 }
-                */
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Enable capture SIGINT",
+                    "text": "handle SIGINT print nostop pass",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Muchos caracteres",
+                    "text": "-interpreter-exec console \"set print elements 300\"",
+                    "ignoreFailures": true
+                },
+            ]
+        },
+        {
+            "name": "wazuh-engine as analysisd",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${env:ENGINE_BUILD}/wazuh-engine",
+            "args": ["-f"],
+            "stopAtEntry": false,
+            "cwd": "/var/ossec/",
+            "environment": [
+                {
+                    "name": "MALLOC_CHECK_",
+                    "value": "2"
+                },
+                {
+                    "name": "WAZUH_ORCHESTRATOR_THREADS",
+                    "value": "2"
+                },                {
+                    "name": "WAZUH_SKIP_USER_CHANGE",
+                    "value": "true"
+                },
+                {
+                    "name": "WAZUH_LOG_LEVEL",
+                    "value": "0"
+                }
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Enable capture SIGINT",
+                    "text": "handle SIGINT print nostop pass",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Muchos caracteres",
+                    "text": "-interpreter-exec console \"set print elements 300\"",
+                    "ignoreFailures": true
+                },
+            ]
+        },
+        {
+            "name": "wazuh-analsysid",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/var/ossec/bin/wazuh-analysisd",
+           // "additionalSOLibSearchPath": "${workspaceFolder}/wazuh/src/",
+            "args": ["-f", "-d"],
+            "stopAtEntry": false,
+            "cwd": "/var/ossec/",
+            "environment": [
+                {
+                    "name": "MALLOC_CHECK_",
+                    "value": "2"
+                },
+                // {
+                //     "name": "WAZUH_ORCHESTRATOR_THREADS",
+                //     "value": "2"
+                // },                {
+                //     "name": "WAZUH_SKIP_USER_CHANGE",
+                //     "value": "true"
+                // }
             ],
             "MIMode": "gdb",
             "setupCommands": [
@@ -71,12 +226,22 @@
         *                        Installation scripts debug configurations
         *********************************************************************************/
         {
-            "name": "Wazuh installer script",
+            "name": "Wazuh ./install.sh",
             "type": "bashdb",
             "request": "launch",
             "program": "${env:WAZUH_REPO}/install.sh",
             "args": [],
             "cwd": "${env:WAZUH_REPO}",
+            "showDebugOutput": true,
+            "terminalKind": "integrated"
+        },
+        {
+            "name": "E2E Init script",
+            "type": "bashdb",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/tools/devContainer/e2e/init.sh",
+            "args": [],
+            "cwd": "${env:ENGINE_SRC}",
             "showDebugOutput": true,
             "terminalKind": "integrated"
         },
@@ -94,184 +259,33 @@
             "showLog": true
         },
         /*********************************************************************************
+        *                        C++ Core dump configurations
+        *********************************************************************************/
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "name": "Open a core dump Wazuh-Engine",
+            "program": "${env:ENGINE_BUILD}/main",
+            "coreDumpPath": "${input:coreFileName}",
+            "cwd": "${env:ENGINE_SRC}",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "MIMode": "gdb"
+        },
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "name": "Open a core dump cpp_test",
+            "program": "${env:ENGINE_BUILD}/source/router/router_utest",
+            "coreDumpPath": "${input:coreFileName}",
+            "cwd": "${env:ENGINE_SRC}",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "MIMode": "gdb"
+        },
+        /*********************************************************************************
         *                        Python Tools debug configurations
         * "cwd": "${env:TMP_CLEAN_ENV}", is temporary,
         *  it is used until we can have a configuration for indexer conector folder
         *********************************************************************************/
-        {
-            "name": "Python: engine-health-test dynamic init",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "init",
-                "-r", "${env:ENGINE_RULESET}",
-                "-t", "${env:ENGINE_SRC}/test/health_test/"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic load decoder",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "load_decoders"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic load rules",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "load_rules"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic assets_validate",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "assets_validate"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic validate_assets decoder",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "validate_successful_assets",
-                "--target", "decoder",
-                "--skip", "wazuh-core"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic validate_custom_field_indexing decoder",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "validate_custom_field_indexing",
-                "--target", "decoder"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic validate_assets rules",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "validate_successful_assets",
-                "--target", "rule",
-                "--skip", "wazuh-core"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic Health Test decoder",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "run",
-                "--target", "decoder",
-                "--skip", "wazuh-core"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: engine-health-test dynamic Health Test rules",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "run",
-                "--target", "rule",
-                "--skip", "wazuh-core"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-
         {
             "name": "Python: engine-helper-test init",
             "type": "debugpy",
@@ -353,7 +367,7 @@
                 "-e", "${env:TMP_CLEAN_ENV}",
                 "generate-doc",
                 "--input-dir", "${env:ENGINE_SRC}/test/helper_tests/helpers_description/",
-                "-o", "/tmp/helper_tests_doc/"
+                "-o", "${env:WAZUH_REPO}/docs/ref/modules/engine"
             ],
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
@@ -423,23 +437,6 @@
             "python": "${command:python.interpreterPath}",
             "args": [
                 "run", "syslog"
-            ],
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Python: TEMP engine-helper-test",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src/helper_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "-e", "/tmp/actions",
-                "run",
-                "--input-file", "/tmp/helper_tests/date_from_epoch.yml"
             ],
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",

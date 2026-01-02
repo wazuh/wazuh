@@ -554,7 +554,8 @@ nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) cons
 
     while (std::getline(stream, token, ','))
     {
-        token = Utils::trim(token, " \t");
+        // Trim all whitespace characters including \n, \r, \t, \v, \f, and spaces
+        token = Utils::trim(token, " \t\n\r\v\f");
 
         if (!token.empty())
         {
@@ -586,6 +587,12 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
     if (check.contains("policy_id"))
     {
         check.erase("policy_id");
+    }
+
+    // Remove internal field not part of indexer schema
+    if (check.contains("regex_type"))
+    {
+        check.erase("regex_type");
     }
 }
 

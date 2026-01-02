@@ -48,6 +48,7 @@ extern "C" {
 #define SYSCOLLECTOR_SYNC_INDEX_GROUPS "wazuh-states-inventory-groups"
 #define SYSCOLLECTOR_SYNC_INDEX_SERVICES "wazuh-states-inventory-services"
 #define SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS "wazuh-states-inventory-browser-extensions"
+#define SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES "wazuh-states-vulnerabilities"
 
 typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
@@ -81,16 +82,25 @@ EXPORTED void syscollector_stop();
 EXPORTED void syscollector_start();
 
 // Sync protocol C wrapper functions
-EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
-                                     size_t maxEps);
+EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
+                                     unsigned int retries,
+                                     size_t maxEps, uint32_t integrityInterval);
 EXPORTED bool syscollector_sync_module(Mode_t mode);
 EXPORTED void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 EXPORTED bool syscollector_parse_response(const unsigned char* data, size_t length);
+EXPORTED bool syscollector_parse_response_vd(const unsigned char* data, size_t length);
 EXPORTED bool syscollector_notify_data_clean(const char** indices, size_t indices_count);
 EXPORTED void syscollector_delete_database();
 
 // Query function
 EXPORTED size_t syscollector_query(const char* query, char** output);
+
+// Mutex access functions for external synchronization
+EXPORTED void syscollector_lock_scan_mutex();
+EXPORTED void syscollector_unlock_scan_mutex();
+
+// Recovery process function
+EXPORTED void syscollector_run_recovery_process();
 
 #ifdef __cplusplus
 }
@@ -122,11 +132,13 @@ typedef void(*syscollector_start_func)();
 typedef void(*syscollector_stop_func)();
 
 // Sync protocol C wrapper functions
-typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
-                                           size_t maxEps);
+typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
+                                           unsigned int retries,
+                                           size_t maxEps, uint32_t integrityInterval);
 typedef bool(*syscollector_sync_module_func)(Mode_t mode);
 typedef void(*syscollector_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 typedef bool(*syscollector_parse_response_func)(const unsigned char* data, size_t length);
+typedef bool(*syscollector_parse_response_vd_func)(const unsigned char* data, size_t length);
 typedef bool(*syscollector_notify_data_clean_func)(const char** indices, size_t indices_count);
 typedef void(*syscollector_delete_database_func)();
 

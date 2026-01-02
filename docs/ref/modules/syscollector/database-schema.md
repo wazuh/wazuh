@@ -8,6 +8,26 @@ This document describes the database schema additions specific to Syscollector (
 
 Syscollector uses a SQLite database with multiple tables to store different types of system inventory data. Each table is designed to track specific system components and their changes over time. The schema is defined in `src/wazuh_modules/syscollector/src/syscollectorTablesDef.hpp`.
 
+### Wazuh Common Schema (WCS)
+
+The schemas according to the Wazuh Common Schema (WCS) are available in `src/external/indexer-plugins` and are downloaded during the agent build process as part of external dependencies (`make deps`):
+
+- `inventory-browser-extensions.json`
+- `inventory-groups.json`
+- `inventory-hardware.json`
+- `inventory-hotfixes.json`
+- `inventory-interfaces.json`
+- `inventory-networks.json`
+- `inventory-packages.json`
+- `inventory-ports.json`
+- `inventory-processes.json`
+- `inventory-protocols.json`
+- `inventory-services.json`
+- `inventory-system.json`
+- `inventory-users.json`
+
+These schemas define the standardized format for inventory data that is sent to the Wazuh indexer.
+
 ---
 
 ## Database Tables
@@ -34,12 +54,12 @@ CREATE TABLE dbsync_osinfo (
     os_distribution_release TEXT,
     os_full TEXT,
     checksum TEXT,
-    PRIMARY KEY (os_name)
+    PRIMARY KEY (os_name, os_version)
 ) WITHOUT ROWID;
 ```
 
 **Key Fields:**
-- `os_name`: Primary key identifying the operating system
+- `os_name`, `os_version`: Composite primary key identifying the operating system
 - `checksum`: Hash for change detection
 - Various OS-specific version and build information
 
@@ -400,5 +420,28 @@ CREATE TABLE dbsync_hotfixes(
 
 **Key Fields:**
 - `hotfix_name`: Primary key (KB number or patch identifier)
+
+---
+
+### Table Metadata (`table_metadata`)
+
+Stores recovery metadata for each inventory table, tracking the last synchronization timestamp.
+
+```sql
+CREATE TABLE table_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_sync_time INTEGER DEFAULT 0
+) WITHOUT ROWID;
+```
+
+**Key Fields:**
+- `table_name`: Primary key identifying the inventory table
+- `last_sync_time`: Unix timestamp of last integrity check/recovery
+
+**Purpose:**
+This table enables the recovery mechanism by tracking when each inventory table was last validated against the manager. When `integrity_interval` elapses for a table, Syscollector:
+1. Calculates checksum-of-checksums from the inventory table
+2. Sends it to manager for validation
+3. Updates `last_sync_time` after check completes
 
 ---

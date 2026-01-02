@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "engine.proto";
+import "google/protobuf/struct.proto";
 
 package com.wazuh.api.engine.tester;
 
@@ -14,15 +15,15 @@ enum State
 enum Sync
 {
     SYNC_UNKNOWN = 0; ///< Unset state
-    UPDATED = 1;      ///< Policy is updated
-    OUTDATED = 2;     ///< Policy is outdated respect to the store
-    ERROR = 3;        ///< Error, can't get the policy status
+    UPDATED = 1;      ///< Namespace is updated
+    OUTDATED = 2;     ///< Namespace is outdated respect to the store
+    ERROR = 3;        ///< Error, can't get the namespace status
 }
 
 message SessionPost
 {
     string name = 1;                 // Name of the session
-    string policy = 2;               // Policy associated to the session
+    string namespaceId = 2;          // Namespace associated to the session
     uint32 lifetime = 3;             // Lifetime of the session
     optional string description = 4; // Optional description of the session
 }
@@ -30,13 +31,13 @@ message SessionPost
 message Session
 {
     string name = 1;                 // Name of the session
-    string policy = 2;               // Policy associated to the session
+    string namespaceId = 2;          // Namespace associated to the session
     uint32 lifetime = 3;             // Lifetime of the session
     optional string description = 4; // Optional description of the session
 
-    Sync policy_sync = 6;   // Status of the policy [updated|updated|error]
-    State entry_status = 7; // Status of the session [INACTIVE|ACTIVE]
-    uint32 last_use = 8;    // Last use of the session
+    Sync namespace_sync = 6; // Status of the namespace [updated|updated|error]
+    State entry_status = 7;  // Status of the session [INACTIVE|ACTIVE]
+    uint32 last_use = 8;     // Last use of the session
 }
 
 /***************************************************
@@ -142,7 +143,6 @@ message RunPost_Request
     // Configuration of test
     TraceLevel trace_level = 5;      // Level of traces
     repeated string asset_trace = 6; // Asset of which you only want to have details
-    repeated string namespaces = 7;  // Namespaces where are the assets to test
 }
 
 message RunPost_Response
@@ -151,3 +151,37 @@ message RunPost_Response
     optional string error = 2;  // Error message if status is ERROR
     optional Result result = 3; // Result of the test
 }
+
+/***************************************************
+ * Run a logtest event using an existing testing session
+ *
+ * endpoint: POST logtest
+ *
+ * Sends a single event to the engine using a previously created testing session.
+ * This endpoint does NOT validate or create policies/sessions; it only injects
+ * events into the already loaded session and returns the execution result.
+ *
+ * Prerequisite:
+ * - A testing session must exist and be loaded beforehand (e.g., via the session
+ *   creation/prepare endpoint in the tester API).
+ **************************************************/
+message PublicRunPost_Request
+{
+    // Queue number where the event will be injected (engine/input queue).
+    uint32 queue = 1;
+
+    // Event source/location label (e.g., file path, agent name, or custom identifier).
+    string location = 2;
+
+    // Metadata about the agent sending the event.
+    google.protobuf.Struct agent_metadata = 3;
+
+    // Raw event payload to test.
+    string event = 4;
+
+    // Trace verbosity level (e.g., NONE, ASSET_ONLY, ALL).
+    // Recommended: treat it as case-insensitive.
+    string trace_level = 5;
+}
+
+// MessageTestPost_Response -> returns a RunPost_Response

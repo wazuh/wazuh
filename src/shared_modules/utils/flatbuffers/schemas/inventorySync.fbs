@@ -17,7 +17,6 @@ enum Operation: byte {
 
 enum Status: byte {
     Ok,
-    PartialOk,
     Error,
     Offline,
     ChecksumMismatch
@@ -26,8 +25,7 @@ enum Status: byte {
 enum Option: byte {
     Sync,
     VDFirst,
-    VDSync,
-    VDClean
+    VDSync
 }
 
 table DataValue {

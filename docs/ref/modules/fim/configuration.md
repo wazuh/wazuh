@@ -17,7 +17,7 @@ The **FIM** module's persistence functionality can be configured through the `<s
         <enabled>yes</enabled>                    <!-- Enable/disable persistence -->
         <interval>300</interval>                  <!-- Sync interval in seconds -->
         <response_timeout>60</response_timeout>   <!-- Response timeout in seconds -->
-        <max_eps>10</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
+        <max_eps>50</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
         <integrity_interval>86400</integrity_interval> <!-- Integrity check interval in seconds -->
     </synchronization>
 </syscheck>
@@ -30,7 +30,7 @@ The **FIM** module's persistence functionality can be configured through the `<s
 | `enabled` | Boolean | `yes` | `yes`/`no` | Enable or disable FIM synchronization persistence |
 | `interval` | Integer | `300` | `1` - `∞` | How often to trigger synchronization with the manager (seconds) |
 | `response_timeout` | Integer | `60` | `1` - `∞` | Timeout for waiting manager responses during sync (seconds) |
-| `max_eps` | Integer | `10` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
+| `max_eps` | Integer | `50` | `0` - `1000000` | Maximum events per second for **sync messages** (0 = unlimited) |
 | `integrity_interval` | Integer | `86400` | `1` - `∞` | How often to perform integrity validation checks (seconds) |
 
 ### General Syscheck Parameters
@@ -106,7 +106,7 @@ Controls the maximum rate of synchronization message transmission:
 
 ```xml
 <synchronization>
-    <max_eps>100</max_eps>  <!-- 100 events per second -->
+    <max_eps>50</max_eps>  <!-- 50 events per second -->
 </synchronization>
 ```
 
@@ -226,7 +226,7 @@ unsigned int notify_first_scan;  /* Notify the first scan */
         <enabled>yes</enabled>
         <interval>300</interval>
         <response_timeout>60</response_timeout>
-        <max_eps>10</max_eps>                  <!-- Sync-specific rate limit -->
+        <max_eps>50</max_eps>                  <!-- Sync-specific rate limit -->
         <integrity_interval>86400</integrity_interval>  <!-- Integrity check every 24 hours -->
     </synchronization>
 </syscheck>

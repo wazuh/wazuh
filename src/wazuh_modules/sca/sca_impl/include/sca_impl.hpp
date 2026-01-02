@@ -83,8 +83,9 @@ class SecurityConfigurationAssessment
         /// @param timeout Timeout for synchronization responses
         /// @param retries Number of retries for synchronization
         /// @param maxEps Maximum events per second
+        /// @param integrityInterval Interval in seconds between integrity checks (0 = disabled)
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
-                              size_t maxEps);
+                              size_t maxEps, std::chrono::seconds integrityInterval);
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode
@@ -141,9 +142,60 @@ class SecurityConfigurationAssessment
         /// @brief List of policies
         std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
 
+        /// @brief Sync protocol for module synchronization
+        std::shared_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+
+        /// @brief Flag indicating if a sync operation is currently in progress
+        std::atomic<bool> m_syncInProgress {false};
+
+        /// @brief Condition variable for pause/resume coordination
+        std::condition_variable m_pauseCv;
+
+        /// @brief Mutex for pause/resume coordination
+        std::mutex m_pauseMutex;
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
+
+        /// @brief Integrity check interval in seconds (0 = disabled)
+        std::chrono::seconds m_integrityInterval = std::chrono::seconds(0);
+
+        /// @brief Check if integrity interval has elapsed
+        /// @param currentTime Current timestamp
+        /// @return true if check should run
+        bool integrityIntervalElapsed(int64_t currentTime);
+
+        /// @brief Get last integrity check timestamp from DB
+        /// @return Timestamp in seconds since epoch, 0 if never checked
+        int64_t getLastIntegrityCheckTime();
+
+        /// @brief Update last integrity check timestamp in DB
+        /// @param timestamp Current time
+        void updateLastIntegrityCheckTime(int64_t timestamp);
+
+        /// @brief Perform full recovery: load all checks and resync
+        /// @return true on success
+        bool performRecovery();
+
+        /// @brief Check with manager if full sync required via checksum
+        /// @param checksum Local checksum to validate
+        /// @return true if recovery needed
+        bool checkIfRecoveryRequired(const std::string& checksum);
+
+        /// @brief Check if DB has data (policies or checks)
+        /// @return true if DB contains any policies or checks
+        bool hasDataInDatabase();
+
+        /// @brief Handle the case when no policies are available (either at startup or runtime).
+        /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
+        /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
+        bool handleNoPoliciesAvailable();
+
+        /// @brief Handle case when all policies are removed from config
+        /// Sends DataClean, clears DB, syncs, and signals exit
+        /// @return true if DataClean was sent and handled successfully
+        bool handleAllPoliciesRemoved();
 
         /// @brief SCA module name
         std::string m_name = "SCA";
@@ -178,20 +230,11 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if a scan is currently in progress
         std::atomic<bool> m_scanInProgress {false};
 
-        /// @brief Flag indicating if a sync operation is currently in progress
-        std::atomic<bool> m_syncInProgress {false};
-
         /// @brief Condition variable for sleep interruption
         std::condition_variable m_cv;
 
         /// @brief Mutex for condition variable
         std::mutex m_mutex;
-
-        /// @brief Condition variable for pause/resume coordination
-        std::condition_variable m_pauseCv;
-
-        /// @brief Mutex for pause/resume coordination
-        std::mutex m_pauseMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;
@@ -205,9 +248,9 @@ class SecurityConfigurationAssessment
         /// @brief YAML to JSON conversion function
         YamlToJsonFunc m_yamlToJsonFunc;
 
+        /// @brief Flag indicating module should exit after DataClean (all policies removed)
+        std::atomic<bool> m_exitAfterDataClean {false};
+
         /// @brief Static/global function pointer to wm_exec
         static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);
-
-        /// @brief Path to the sync protocol
-        std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 };

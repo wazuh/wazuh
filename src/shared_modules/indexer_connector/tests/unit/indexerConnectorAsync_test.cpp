@@ -741,13 +741,11 @@ TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
                 // Test with a generic error status code (502 Bad Gateway)
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Bad Gateway", 502, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Bad Gateway", 502, "");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onError("Bad Gateway", 502, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Bad Gateway", 502, "");
                 }
                 errorHandledPromise.set_value();
             }));
@@ -1063,8 +1061,7 @@ TEST_F(IndexerConnectorAsyncTest, SplitAndProcessBulkWithAsyncDispatcher)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
                 }
             }))
         .WillRepeatedly(Invoke(
@@ -1148,8 +1145,7 @@ TEST_F(IndexerConnectorAsyncTest, ProcessBulkChunkRecursiveSplittingAsync)
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onError("Payload Too Large", 413, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413, "");
                 }
             }))
         .WillRepeatedly(Invoke(
@@ -1444,9 +1440,7 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexWithVersionHandling)
             [&capturedBulkData, &processingCompletedPromise](
                 RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
             {
-                std::visit([&capturedBulkData](auto&& request) {
-                    capturedBulkData = request.data;
-                }, requestParams);
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
@@ -1490,6 +1484,67 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexWithVersionHandling)
     EXPECT_THAT(doc2_metadata, ::testing::Not(::testing::HasSubstr("version")));
 }
 
+// Test escaping special characters in document IDs for async bulkIndex
+TEST_F(IndexerConnectorAsyncTest, BulkIndexEscapesSpecialCharactersInId)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Test various special characters that need escaping
+    connector.bulkIndex("001_dum\\amy", "test_index", R"({"group":"dum\\amy"})");
+    connector.bulkIndex("002_tab\tchar", "test_index", R"({"name":"tab\tchar"})");
+    connector.bulkIndex("003_quote\"char", "test_index", R"({"name":"quote\"char"})");
+    connector.bulkIndex("004_newline\nchar", "test_index", R"({"name":"newline\nchar"})");
+    connector.bulkIndex("005_normal", "test_index", R"({"name":"normal"})");
+
+    // Wait for processing to complete
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for async escape test processing";
+
+    // Verify backslash is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"001_dum\\amy")"));
+
+    // Verify tab is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"002_tab\tchar")"));
+
+    // Verify quote is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"003_quote\"char")"));
+
+    // Verify newline is properly escaped in ID
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"004_newline\nchar")"));
+
+    // Verify normal ID is passed through unchanged
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("_id":"005_normal")"));
+
+    // Verify the bulk data is valid (no JSON parse errors would occur)
+    EXPECT_FALSE(capturedBulkData.empty());
+}
+
 // Test error handling for missing version fields
 TEST_F(IndexerConnectorAsyncTest, ErrorHandlingForInvalidInput)
 {
@@ -1516,29 +1571,36 @@ TEST_F(IndexerConnectorAsyncTest, VersionConflictHandling)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(2) // Initial request + retry
-        .WillOnce(Invoke([&errorProcessedPromise](RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams) {
-            // Simulate version conflict (409)
-            if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        .WillOnce(Invoke(
+            [&errorProcessedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
             {
-                std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Version conflict", 409, "");
-            }
-            else
+                // Simulate version conflict (409)
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Version conflict", 409, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version conflict", 409, "");
+                }
+            }))
+        .WillOnce(Invoke(
+            [&errorProcessedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
             {
-                std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version conflict", 409, "");
-            }
-        }))
-        .WillOnce(Invoke([&errorProcessedPromise](RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams) {
-            // Simulate successful retry
-            if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-            {
-                std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
-            }
-            else
-            {
-                std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
-            }
-            errorProcessedPromise.set_value();
-        }));
+                // Simulate successful retry
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                errorProcessedPromise.set_value();
+            }));
 
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 

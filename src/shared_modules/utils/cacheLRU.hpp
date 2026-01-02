@@ -15,6 +15,7 @@
 #include <list>
 #include <map>
 #include <optional>
+#include <functional>
 
 /**
  * @brief A class for implementing a Least Recently Used (LRU) Cache.

@@ -38,8 +38,6 @@ void DB::init(const int storage,
                                                  DbManagement::PERSISTENT)};
 
     FIMDB::instance().init(callbackLogWrapper, dbsyncHandler, fileLimit, valueLimit);
-
-    initializeTableMetadata();
 }
 
 DBSYNC_HANDLE DB::DBSyncHandle()
@@ -87,164 +85,6 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
     return count;
 }
 
-std::string DB::getConcatenatedChecksums(const std::string& tableName)
-{
-    std::string concatenatedChecksums;
-
-    auto callback {[&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-    {
-        if (ReturnTypeCallback::SELECTED == type)
-        {
-            concatenatedChecksums += jsonResult.at("checksum").get<std::string>();
-        }
-    }};
-
-    auto selectQuery {SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"checksum"})
-                      .orderByOpt({"checksum"})
-                      .rowFilter("")
-                      .distinctOpt(false)
-                      .build()};
-
-    FIMDB::instance().executeQuery(selectQuery.query(), callback);
-
-    return concatenatedChecksums;
-}
-
-std::string DB::calculateTableChecksum(const char* table_name)
-{
-    std::string concatenated_checksums = DB::instance().getConcatenatedChecksums(table_name);
-
-    // Build checksum-of-checksums
-    Utils::HashData hash(Utils::HashType::Sha1);
-    std::string final_checksum;
-
-    try
-    {
-        hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
-        const std::vector<unsigned char> hashResult = hash.hash();
-        final_checksum = Utils::asciiToHex(hashResult);
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error{"Error calculating hash: " + std::string(e.what())};
-    }
-
-    // LCOV_EXCL_STOP
-
-
-    return final_checksum;
-}
-
-std::vector<nlohmann::json> DB::getEveryElement(const std::string& tableName)
-{
-    std::vector<nlohmann::json> recoveryItems;
-    auto callback {[&recoveryItems](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-    {
-        if (ReturnTypeCallback::SELECTED == type)
-        {
-            recoveryItems.push_back(jsonResult);
-        }
-    }};
-    auto selectQuery {SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"*"})
-                      .build()};
-
-    FIMDB::instance().executeQuery(selectQuery.query(), callback);
-    return recoveryItems;
-}
-
-void DB::initializeTableMetadata()
-{
-    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-    // Check if metadata entries already exist by querying the table
-    bool fileEntryExists = false;
-
-    auto checkCallback = [&fileEntryExists](ReturnTypeCallback result, const nlohmann::json&)
-    {
-        if (result == ReturnTypeCallback::SELECTED)
-        {
-            fileEntryExists = true;
-        }
-    };
-
-    auto checkQuery = SelectQuery::builder()
-                      .table("table_metadata")
-                      .columnList({"table_name"})
-                      .rowFilter("WHERE table_name = 'file_entry'")
-                      .build();
-
-    FIMDB::instance().executeQuery(checkQuery.query(), checkCallback);
-
-    // Only insert if the entry doesn't exist
-    if (!fileEntryExists)
-    {
-        auto fileEntrySyncQuery = SyncRowQuery::builder()
-                                  .table("table_metadata")
-        .data(nlohmann::json{{"table_name", "file_entry"}, {"last_sync_time", 0}})
-        .build();
-        FIMDB::instance().updateItem(fileEntrySyncQuery.query(), emptyCallback);
-    }
-
-#ifdef WIN32
-    bool registryKeyExists = false;
-    auto checkRegistryKeyCallback = [&registryKeyExists](ReturnTypeCallback result, const nlohmann::json&)
-    {
-        if (result == ReturnTypeCallback::SELECTED)
-        {
-            registryKeyExists = true;
-        }
-    };
-
-    auto checkRegistryKeyQuery = SelectQuery::builder()
-                                 .table("table_metadata")
-                                 .columnList({"table_name"})
-                                 .rowFilter("WHERE table_name = 'registry_key'")
-                                 .build();
-
-    FIMDB::instance().executeQuery(checkRegistryKeyQuery.query(), checkRegistryKeyCallback);
-
-    if (!registryKeyExists)
-    {
-        auto registryKeySyncQuery = SyncRowQuery::builder()
-                                    .table("table_metadata")
-        .data(nlohmann::json{{"table_name", "registry_key"}, {"last_sync_time", 0}})
-        .build();
-        FIMDB::instance().updateItem(registryKeySyncQuery.query(), emptyCallback);
-    }
-
-    bool registryDataExists = false;
-    auto checkRegistryDataCallback = [&registryDataExists](ReturnTypeCallback result, const nlohmann::json&)
-    {
-        if (result == ReturnTypeCallback::SELECTED)
-        {
-            registryDataExists = true;
-        }
-    };
-
-    auto checkRegistryDataQuery = SelectQuery::builder()
-                                  .table("table_metadata")
-                                  .columnList({"table_name"})
-                                  .rowFilter("WHERE table_name = 'registry_data'")
-                                  .build();
-
-    FIMDB::instance().executeQuery(checkRegistryDataQuery.query(), checkRegistryDataCallback);
-
-    if (!registryDataExists)
-    {
-        auto registryDataSyncQuery = SyncRowQuery::builder()
-                                     .table("table_metadata")
-        .data(nlohmann::json{{"table_name", "registry_data"}, {"last_sync_time", 0}})
-        .build();
-        FIMDB::instance().updateItem(registryDataSyncQuery.query(), emptyCallback);
-    }
-
-#endif
-}
 
 void DB::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
 {
@@ -369,6 +209,7 @@ int DB::updateVersion(const std::string& tableName, int version)
     return retval;
 }
 
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -402,7 +243,8 @@ FIMDBErrorCode fim_db_init(
     catch (const std::exception& ex)
     {
         auto errorMessage {std::string("Error, id: ") + ex.what()};
-        log_callback(LOG_ERROR_EXIT, errorMessage.c_str());
+        log_callback(LOG_ERROR, errorMessage.c_str());
+        retVal = FIMDBErrorCode::FIMDB_ERR;
     }
 
     // LCOV_EXCL_STOP
@@ -419,6 +261,7 @@ void fim_db_update_last_sync_time(const char* table_name)
     {
         // Log error but don't exit - this is not critical
         // The worst case is the integrity check runs again sooner than expected
+        FIMDB::instance().logFunction(LOG_ERROR, ex.what());
     }
 }
 
@@ -520,6 +363,155 @@ void fim_db_close_and_delete_database()
     }
 
     // LCOV_EXCL_STOP
+}
+
+int fim_db_increase_each_entry_version(const char* table_name)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return -1;
+    }
+
+    try
+    {
+        FIMDB::instance().DBSyncHandler()->increaseEachEntryVersion(table_name);
+        return 0;
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return -1;
+    }
+
+    // LCOV_EXCL_STOP
+}
+cJSON* fim_db_get_every_element(const char* table_name)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return NULL;
+    }
+
+    cJSON* result_array = NULL;
+
+    try
+    {
+        std::vector<nlohmann::json> items = FIMDB::instance().DBSyncHandler()->getEveryElement(table_name);
+
+        result_array = cJSON_CreateArray();
+
+        if (!result_array)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON array");
+            return NULL;
+        }
+
+        size_t processed = 0;
+
+        for (const auto& item : items)
+        {
+            // Convert nlohmann::json to cJSON for C compatibility
+            std::string json_str = item.dump();
+            cJSON* c_json = cJSON_Parse(json_str.c_str());
+
+            if (c_json)
+            {
+                cJSON_AddItemToArray(result_array, c_json);
+                processed++;
+            }
+            else
+            {
+                // Critical: If ANY item fails to parse, the entire result is invalid
+                // Returning partial data could cause incomplete sync/recovery operations
+                FIMDB::instance().logFunction(LOG_ERROR,
+                                              std::string("Failed to parse JSON item ") + std::to_string(processed) +
+                                              "/" + std::to_string(items.size()) + " from table " + table_name +
+                                              ". Aborting to prevent data loss.");
+                cJSON_Delete(result_array);
+                return NULL;
+            }
+        }
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+
+        if (result_array)
+        {
+            cJSON_Delete(result_array);
+        }
+
+        return NULL;
+    }
+
+    return result_array;
+}
+
+char* fim_db_calculate_table_checksum(const char* table_name)
+{
+    char* result = NULL;
+
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return NULL;
+    }
+
+    try
+    {
+        DBSync dbSync(DB::instance().DBSyncHandle());
+        std::string checksum = dbSync.calculateTableChecksum(table_name);
+        result = strdup(checksum.c_str());
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    return result;
+}
+
+int64_t fim_db_get_last_sync_time(const char* table_name)
+{
+    int64_t result = 0;
+
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return 0;
+    }
+
+    try
+    {
+        result = DB::instance().getLastSyncTime(table_name);
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    return result;
+}
+
+void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return;
+    }
+
+    try
+    {
+        DB::instance().updateLastSyncTime(table_name, timestamp);
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
 }
 
 #ifdef __cplusplus

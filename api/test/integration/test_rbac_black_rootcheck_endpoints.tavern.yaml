@@ -55,4 +55,6 @@ stages:
       params:
         agents_list: '001'
     response:
-      <<: *permission_denied
+      status_code: 403
+      json:
+        error: 4000

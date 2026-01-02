@@ -1,4 +1,5 @@
 #include <sca_impl.hpp>
+#include <sca_recovery_utils.hpp>
 
 #include <sca_event_handler.hpp>
 #include <sca_policy.hpp>
@@ -7,11 +8,14 @@
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
 
+#include <algorithm>
 #include <iostream>
 #include <thread>
 
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.hpp"
+#include "hashHelper.h"
+#include "../../include/sca.h"
 
 // Static member definitions
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -44,6 +48,13 @@ constexpr auto CHECK_SQL_STATEMENT
     rules TEXT,
     regex_type TEXT DEFAULT 'pcre2',
     version INTEGER NOT NULL DEFAULT 1);)"
+};
+
+constexpr auto METADATA_SQL_STATEMENT
+{
+    R"(CREATE TABLE IF NOT EXISTS sca_metadata (
+    key TEXT PRIMARY KEY,
+    value INTEGER);)"
 };
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
@@ -80,6 +91,27 @@ void SecurityConfigurationAssessment::Run()
     }
 
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
+
+    // Check for policies removed between agent restarts (before scan loop starts).
+    // This early check uses m_policiesData (raw config) since policies haven't been loaded yet.
+    bool hasEnabledPolicies =
+        std::any_of(m_policiesData.begin(), m_policiesData.end(), [](const auto & policy)
+    {
+        return policy.isEnabled;
+    });
+
+    if (!hasEnabledPolicies)
+    {
+        if (!handleNoPoliciesAvailable())
+        {
+            return;
+        }
+
+        // If handleNoPoliciesAvailable returns true, it means no cleanup was needed - but we still exit
+        // since there's nothing to scan
+        LoggingHelper::getInstance().log(LOG_DEBUG, "No enabled policies configured. SCA module has nothing to scan.");
+        return;
+    }
 
     bool firstScan = true;
 
@@ -128,6 +160,20 @@ void SecurityConfigurationAssessment::Run()
             m_yamlToJsonFunc
         );
         // *INDENT-ON*
+
+        // Check for policies removed at runtime (e.g., config change during scan loop).
+        // This uses m_policies (loaded objects) since LoadPolicies() may filter out invalid policies.
+        if (m_policies.empty())
+        {
+            m_scanInProgress.store(false);
+            {
+                std::lock_guard<std::mutex> lock(m_pauseMutex);
+                m_pauseCv.notify_all();
+            }
+
+            handleNoPoliciesAvailable();
+            return;
+        }
 
         // Check again after policy loading in case stop was called during load
         if (!m_keepRunning)
@@ -256,6 +302,7 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
     std::string ret;
     ret += POLICY_SQL_STATEMENT;
     ret += CHECK_SQL_STATEMENT;
+    ret += METADATA_SQL_STATEMENT;
 
     return ret;
 }
@@ -264,7 +311,7 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
 
 // Sync protocol methods implementation
 void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps, std::chrono::seconds integrityInterval)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -273,8 +320,12 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Set integrity interval
+        m_integrityInterval = integrityInterval;
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA integrity interval set to " + std::to_string(integrityInterval.count()) + " seconds");
     }
     catch (const std::exception& ex)
     {
@@ -286,17 +337,22 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
 bool SecurityConfigurationAssessment::syncModule(Mode mode)
 {
-    // Check if paused - don't start new sync operations
-    if (m_paused.load())
+    if (!m_paused.load())
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is paused");
-        return true;  // Return success to avoid error handling in caller
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - module is not paused");
+        return false;
+    }
+
+    if (m_syncInProgress.load())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - sync already in progress");
+        return false;
     }
 
     if (m_spSyncProtocol)
     {
         // Log
-        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA synchronization started.");
+        LoggingHelper::getInstance().log(LOG_INFO, "Starting SCA synchronization.");
 
         // Mark sync as in progress
         m_syncInProgress.store(true);
@@ -318,7 +374,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization failed.");
+            LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed.");
         }
 
         return result;
@@ -480,7 +536,7 @@ int SecurityConfigurationAssessment::setVersion(int version)
 
 void SecurityConfigurationAssessment::pause()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA pause requested");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module pause requested");
 
     // Set pause flag to prevent new operations from starting
     m_paused.store(true);
@@ -494,7 +550,14 @@ void SecurityConfigurationAssessment::pause()
         return (scanDone && syncDone) || !m_keepRunning;
     });
 
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA module paused - all operations completed");
+    if (!m_keepRunning)
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module pause interrupted by shutdown");
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module paused successfully");
+    }
 }
 
 int SecurityConfigurationAssessment::flush()
@@ -524,7 +587,7 @@ int SecurityConfigurationAssessment::flush()
 
 void SecurityConfigurationAssessment::resume()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA scanning resumed after coordination");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning resumed after coordination");
 
     // Clear pause flag to allow operations to resume
     m_paused.store(false);
@@ -655,6 +718,80 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
             response["data"]["module"] = "sca";
             response["data"]["action"] = "resume";
         }
+        else if (command == "check_integrity")
+        {
+            int64_t currentTime = Utils::getSecondsFromEpoch();
+
+            if (integrityIntervalElapsed(currentTime))
+            {
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Integrity interval elapsed, performing integrity check");
+
+                // Calculate local checksum
+                std::string checksum;
+
+                try
+                {
+                    if (!m_dBSync)
+                    {
+                        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot calculate checksum");
+                    }
+                    else
+                    {
+                        checksum = m_dBSync->calculateTableChecksum("sca_check");
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA table checksum calculated: " + checksum);
+                    }
+                }
+                catch (const std::exception& err)
+                {
+                    LoggingHelper::getInstance().log(LOG_ERROR, "Error calculating table checksum: " + std::string(err.what()));
+                }
+
+                if (checksum.empty())
+                {
+                    response["error"] = 1;
+                    response["message"] = "Failed to calculate checksum";
+                    response["data"]["module"] = "sca";
+                    response["data"]["action"] = "check_integrity";
+                    response["data"]["recovery_performed"] = false;
+                }
+                else
+                {
+                    // Check with manager if recovery needed
+                    bool recoveryNeeded = checkIfRecoveryRequired(checksum);
+
+                    if (recoveryNeeded)
+                    {
+                        // Perform full recovery
+                        bool success = performRecovery();
+                        response["error"] = success ? 0 : 1;
+                        response["message"] = success ? "Recovery completed successfully" : "Recovery failed";
+                        response["data"]["module"] = "sca";
+                        response["data"]["action"] = "check_integrity";
+                        response["data"]["recovery_performed"] = true;
+                        response["data"]["recovery_success"] = success;
+                    }
+                    else
+                    {
+                        response["error"] = 0;
+                        response["message"] = "Integrity check passed";
+                        response["data"]["module"] = "sca";
+                        response["data"]["action"] = "check_integrity";
+                        response["data"]["recovery_performed"] = false;
+                    }
+                }
+
+                // Update last check time regardless of outcome
+                updateLastIntegrityCheckTime(currentTime);
+            }
+            else
+            {
+                response["error"] = 0;
+                response["message"] = "Integrity interval not elapsed yet";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "check_integrity";
+                response["data"]["recovery_performed"] = false;
+            }
+        }
         else
         {
             response["error"] = 1; // MQ_ERR_UNKNOWN_COMMAND
@@ -672,6 +809,411 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 
         LoggingHelper::getInstance().log(LOG_ERROR, "Query error: " + std::string(ex.what()));
         return response.dump();
+    }
+}
+
+// Recovery methods implementation
+bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string& checksum)
+{
+    if (!m_spSyncProtocol)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot check recovery status");
+        return false;
+    }
+
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Checking with manager if recovery required");
+
+    try
+    {
+        // Use AgentSyncProtocol::requiresFullSync
+        // Note: returns true only if manager explicitly reports checksum mismatch
+        // Returns false for: success (checksums match) OR communication errors
+        // The sync protocol logs detailed messages for each case
+        bool needsRecovery = m_spSyncProtocol->requiresFullSync(SCA_SYNC_INDEX, checksum);
+
+        if (needsRecovery)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Checksum mismatch detected, full recovery required");
+        }
+
+        return needsRecovery;
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error checking recovery status: " + std::string(err.what()));
+        return false;
+    }
+}
+
+bool SecurityConfigurationAssessment::performRecovery()
+{
+    LoggingHelper::getInstance().log(LOG_INFO, "Starting SCA recovery process");
+
+    try
+    {
+        // Increase version for all entries before recovery sync
+        // This ensures our versions are higher than what's in the indexer
+        if (!m_dBSync)
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot perform recovery");
+            return false;
+        }
+
+        m_dBSync->increaseEachEntryVersion("sca_check");
+
+        // Get all checks from database (now with incremented versions)
+        auto checks = m_dBSync->getEveryElement("sca_check");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Retrieved " + std::to_string(checks.size()) + " checks from database");
+
+        // Clear in-memory data before repopulating
+        if (m_spSyncProtocol)
+        {
+            m_spSyncProtocol->clearInMemoryData();
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot perform recovery");
+            return false;
+        }
+
+        // Persist all checks in memory for full sync
+        for (const auto& check : checks)
+        {
+            if (!check.contains("id") || !check.contains("version") || !check.contains("policy_id"))
+            {
+                LoggingHelper::getInstance().log(LOG_ERROR, "Skipping check with missing id, version, or policy_id field");
+                continue;
+            }
+
+            std::string checkId = check["id"].get<std::string>();
+            std::string policyId = check["policy_id"].get<std::string>();
+
+            // Get policy data for this check
+            nlohmann::json policy = sca::recovery::getPolicyById(policyId, m_dBSync);
+
+            if (policy.empty())
+            {
+                LoggingHelper::getInstance().log(LOG_WARNING, "Policy not found for check " + checkId + ", skipping");
+                continue;
+            }
+
+            // Build stateful message in the format required by the indexer
+            nlohmann::json statefulMessage = sca::recovery::buildStatefulMessage(check, policy);
+
+            // Calculate SHA1 of policy_id:check_id for sync protocol (same as event handler)
+            std::string baseId = policyId + ":" + checkId;
+            Utils::HashData hash(Utils::HashType::Sha1);
+            hash.update(baseId.c_str(), baseId.length());
+            const std::vector<unsigned char> hashResult = hash.hash();
+            std::string hashedId = Utils::asciiToHex(hashResult);
+
+            m_spSyncProtocol->persistDifferenceInMemory(
+                hashedId,
+                Operation::CREATE,
+                SCA_SYNC_INDEX,
+                statefulMessage.dump(),
+                check["version"].get<uint64_t>()
+            );
+        }
+
+        // Trigger full synchronization
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for recovery");
+        bool success = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+
+        if (success)
+        {
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA recovery completed successfully");
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "SCA recovery synchronization failed");
+        }
+
+        return success;
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error during recovery: " + std::string(err.what()));
+        return false;
+    }
+}
+
+int64_t SecurityConfigurationAssessment::getLastIntegrityCheckTime()
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get last integrity check time");
+        return 0;
+    }
+
+    try
+    {
+        int64_t timestamp = 0;
+
+        auto selectQuery = SelectQuery::builder()
+                           .table("sca_metadata")
+                           .columnList({"value"})
+                           .rowFilter("WHERE key = 'last_integrity_check'")
+                           .build();
+
+        const auto callback = [&timestamp](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("value"))
+            {
+                if (resultData["value"].is_number())
+                {
+                    timestamp = resultData["value"].get<int64_t>();
+                }
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), callback);
+        return timestamp;
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error getting last integrity check time: " + std::string(err.what()));
+        return 0;
+    }
+}
+
+void SecurityConfigurationAssessment::updateLastIntegrityCheckTime(int64_t timestamp)
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot update last integrity check time");
+        return;
+    }
+
+    try
+    {
+        // Prepare metadata record
+        nlohmann::json metadata;
+        metadata["key"] = "last_integrity_check";
+        metadata["value"] = timestamp;
+
+        // Use DBSync transaction to update/insert
+        const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&)
+        {
+            // No action needed for transaction callback
+        };
+
+        DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {"sca_metadata"}, 0, DBSYNC_QUEUE_SIZE, txnCallback};
+
+        if (txn.handle() != nullptr)
+        {
+            nlohmann::json input;
+            input["table"] = "sca_metadata";
+            input["data"] = nlohmann::json::array({metadata});
+
+            txn.syncTxnRow(input);
+            txn.getDeletedRows(txnCallback);
+
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Updated last integrity check time to " + std::to_string(timestamp));
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to create DBSync transaction for updating last integrity check time");
+        }
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error updating last integrity check time: " + std::string(err.what()));
+    }
+}
+
+bool SecurityConfigurationAssessment::integrityIntervalElapsed(int64_t currentTime)
+{
+    if (m_integrityInterval.count() == 0)
+    {
+        // Integrity checks disabled
+        return false;
+    }
+
+    int64_t lastCheck = getLastIntegrityCheckTime();
+
+    // First check - initialize timestamp and defer the actual check
+    // This allows the system to stabilize before first integrity check
+    if (lastCheck == 0)
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "First integrity check - initializing timestamp, deferring check");
+        updateLastIntegrityCheckTime(currentTime);
+        return false;
+    }
+
+    int64_t elapsed = currentTime - lastCheck;
+    bool intervalElapsed = elapsed >= m_integrityInterval.count();
+
+    if (intervalElapsed)
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Integrity interval elapsed: " + std::to_string(elapsed) + " seconds >= " +
+                                         std::to_string(m_integrityInterval.count()) + " seconds");
+    }
+
+    return intervalElapsed;
+}
+
+bool SecurityConfigurationAssessment::hasDataInDatabase()
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot check database contents");
+        return false;
+    }
+
+    try
+    {
+        int policyCount = 0;
+        int checkCount = 0;
+
+        // Count policies
+        auto policyQuery = SelectQuery::builder()
+                           .table("sca_policy")
+                           .columnList({"COUNT(*) AS count"})
+                           .build();
+
+        const auto policyCallback = [&policyCount](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("count"))
+            {
+                if (resultData["count"].is_number())
+                {
+                    policyCount = resultData["count"].get<int>();
+                }
+            }
+        };
+
+        m_dBSync->selectRows(policyQuery.query(), policyCallback);
+
+        // Count checks
+        auto checkQuery = SelectQuery::builder()
+                          .table("sca_check")
+                          .columnList({"COUNT(*) AS count"})
+                          .build();
+
+        const auto checkCallback = [&checkCount](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("count"))
+            {
+                if (resultData["count"].is_number())
+                {
+                    checkCount = resultData["count"].get<int>();
+                }
+            }
+        };
+
+        m_dBSync->selectRows(checkQuery.query(), checkCallback);
+
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Database contains " + std::to_string(policyCount) + " policies and " +
+                                         std::to_string(checkCount) + " checks");
+
+        return (policyCount > 0 || checkCount > 0);
+    }
+    catch (const std::exception& err)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error checking database contents: " + std::string(err.what()));
+        return false;
+    }
+}
+
+bool SecurityConfigurationAssessment::handleNoPoliciesAvailable()
+{
+    if (hasDataInDatabase())
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "No policies available but database has data. Initiating DataClean process.");
+
+        if (handleAllPoliciesRemoved())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "All policies removed - DataClean completed. SCA module exiting.");
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to complete DataClean process. SCA module exiting.");
+        }
+
+        // Cleanup was attempted (whether successful or not), caller should exit
+        return false;
+    }
+
+    // No data in database, nothing to clean up
+    LoggingHelper::getInstance().log(LOG_DEBUG, "No policies configured and no data in database.");
+    return true;
+}
+
+bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
+{
+    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                     "All SCA policies removed from configuration. Initiating DataClean process.");
+
+    if (!m_spSyncProtocol)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+                                         "Sync protocol not initialized, cannot send DataClean notification");
+        return false;
+    }
+
+    // Wait for any in-progress sync to complete before sending DataClean.
+    // We must lock m_pauseMutex BEFORE checking m_syncInProgress to avoid TOCTOU race:
+    // Otherwise, sync could start between our check and the wait.
+    {
+        std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+        if (m_syncInProgress.load())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Waiting for sync to complete before DataClean...");
+        }
+
+        m_pauseCv.wait(lock, [this] { return !m_syncInProgress.load() || !m_keepRunning; });
+
+        if (!m_keepRunning)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "DataClean aborted - module shutdown during sync wait");
+            return false;
+        }
+    }
+
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Proceeding with DataClean (sync not in progress)");
+
+    // Send DataClean notification to manager with retry logic (similar to FIM)
+    std::vector<std::string> indices = {SCA_SYNC_INDEX};
+    bool dataCleanSent = false;
+
+    while (!dataCleanSent && m_keepRunning)
+    {
+        dataCleanSent = m_spSyncProtocol->notifyDataClean(indices);
+
+        if (!dataCleanSent && m_keepRunning)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "DataClean notification failed, retrying after scan interval...");
+
+            // Wait for scan interval before retrying, using cv for immediate wake-up on Stop()
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cv.wait_for(lock, m_scanInterval, [this] { return !m_keepRunning; });
+        }
+    }
+
+    if (dataCleanSent)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "DataClean notification sent successfully for SCA index");
+
+        // Delete both databases (sync protocol DB and SCA DB) like FIM does
+        deleteDatabase();
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA databases deleted");
+
+        // Set flag to exit after DataClean
+        m_exitAfterDataClean.store(true);
+        return true;
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "DataClean notification aborted due to module shutdown");
+        return false;
     }
 }
 

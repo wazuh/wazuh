@@ -1,4 +1,4 @@
-name: Generate internal tools package
+name: 5.X - Package - Build internal tools package
 
 on:
   pull_request:

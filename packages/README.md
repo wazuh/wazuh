@@ -5,13 +5,13 @@ This script automates the process of building Wazuh packages (manager or agent) 
 **Features:**
 
 - Supports building packages for different targets (manager/agent).
-- Selectable architectures (amd64, i386, **ppc64le, arm64, armhf*).
+- Selectable architectures (amd64, i386, arm64, armhf).
 - Optional debug builds.
 - Generates checksums for built packages.
 - Uses local source code or downloads from GitHub.
 - Builds future test packages (x.30.0).
 
-***Note:** Support for *ppc64le, arm64, and armhf* architectures **is not** currently **available** in the **workflow**.
+***Note:** Support for *arm64 and armhf* architectures **is not** currently **available** in the **workflow**.
 
 **Requirements:**
 

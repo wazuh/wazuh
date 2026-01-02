@@ -1,0 +1,20 @@
+{
+    "vulnerability-detection": {
+        "enabled": "yes",
+        "cti-url": "RemoveMeIfYouWantUpdateOffsetshttps://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_4.8.0"
+    },
+    "indexer": {
+        "hosts": [
+            "https://127.0.0.1:9200"
+        ],
+        "ssl": {
+            "certificate_authorities": [
+                "/var/ossec/etc/certs/root-ca.pem"
+            ],
+            "certificate": "/var/ossec/etc/certs/server.pem",
+            "key": "/var/ossec/etc/certs/server-key.pem"
+        }
+    },
+    "clusterName": "cluster01",
+    "clusterEnabled": false
+}

@@ -1,3 +1,10 @@
+#include <optional>
+#include <regex>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
 #include <indexerConnector.hpp>
 #include <json.hpp>
 
@@ -7,6 +14,101 @@
 
 namespace wiconnector
 {
+
+namespace
+{
+
+/**
+ * @brief List of policy resource aliases in the indexer
+ */
+const std::vector<std::string> POLICY_ALIASES = {
+    ".cti-kvdbs", ".cti-decoders", ".cti-integration-decoders", ".cti-policies"};
+
+constexpr std::string_view PIT_KEEP_ALIVE {"5m"};          ///< Keep alive duration for Point In Time
+constexpr std::string_view POLICY_INDEX {".cti-policies"}; ///< Policy index name
+constexpr std::size_t SINGLE_RESULT_SIZE {1};              ///< Size for single result queries
+constexpr std::size_t HASH_QUERY_SIZE {1};                 ///< Size for hash query (expecting single result)
+
+/// @brief Types of indexer resources
+enum class IndexResourceType
+{
+    KVDB,
+    DECODER,
+    INTEGRATION_DECODER,
+    POLICY
+};
+
+IndexResourceType fromIndexName(std::string_view indexName)
+{
+    // Static regex patterns compiled once
+    static const std::array<std::pair<std::regex, IndexResourceType>, 4> patterns = {
+        {{std::regex(R"(.*-kvdb$)"), IndexResourceType::KVDB},
+         {std::regex(R"(.*-decoder$)"), IndexResourceType::DECODER},
+         {std::regex(R"(.*-integration$)"), IndexResourceType::INTEGRATION_DECODER},
+         {std::regex(R"(.*-policy$)"), IndexResourceType::POLICY}}};
+
+    for (const auto& [pattern, resourceType] : patterns)
+    {
+        if (std::regex_match(indexName.begin(), indexName.end(), pattern))
+        {
+            return resourceType;
+        }
+    }
+
+    throw IndexerConnectorException("Cannot determine resource type from index name: " + std::string(indexName));
+}
+
+// Helpers
+nlohmann::json getQueryFilter(std::string_view space)
+{
+    if (space.empty())
+    {
+        throw std::invalid_argument("Space name cannot be empty");
+    }
+    nlohmann::json query = R"({"bool": {"filter": [{ "term": { "space.name": "" }}]}})"_json;
+    query["bool"]["filter"][0]["term"]["space.name"] = space;
+    return query;
+}
+
+nlohmann::json getSortCriteria()
+{
+    nlohmann::json sort = R"([{"_shard_doc": "asc"}, {"_id": "asc"}])"_json;
+    return sort;
+}
+
+nlohmann::json getSearchAfter(const nlohmann::json& hits)
+{
+    if (!hits.contains("hits") || !hits["hits"].is_array() || hits["hits"].empty())
+    {
+        throw std::invalid_argument("Hits object is invalid or empty");
+    }
+
+    return hits["hits"].back().at("sort");
+}
+
+size_t getTotalHits(const nlohmann::json& hits)
+{
+    if (!hits.contains("total") || !hits["total"].is_object())
+    {
+        throw std::invalid_argument("Hits object is invalid or does not contain total hits");
+    }
+
+    const auto& total = hits["total"];
+    if (total.is_object() && total.contains("value"))
+    {
+        return total["value"].get<size_t>();
+    }
+    else if (total.is_number())
+    {
+        return total.get<size_t>();
+    }
+    else
+    {
+        throw std::invalid_argument("Total hits format is unrecognized");
+    }
+}
+
+} // namespace
 
 /****************************************************************************************
  * Config class implementation
@@ -104,21 +206,211 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
     std::shared_lock lock(m_mutex);
     if (m_indexerConnectorAsync)
     {
-        try {
-            m_indexerConnectorAsync->index(index, data);
+        try
+        {
+            m_indexerConnectorAsync->indexDataStream(index, data);
         }
-        catch (const IndexerConnectorException& e) {
-            LOG_WARNING("Error indexing data: %s", e.what());
+        catch (const IndexerConnectorException& e)
+        {
+            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
             return;
         }
-        catch (const std::exception& e) {
-            LOG_WARNING("Error indexing data: %s", e.what());
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
             return;
         }
     }
     else
     {
-        LOG_DEBUG("IndexerConnectorAsync shutdown, cannot index data");
+        LOG_DEBUG("[indexer-connector] IndexerConnectorAsync shutdown, cannot index data");
     }
 }
+
+PolicyResources WIndexerConnector::getPolicy(std::string_view space)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    std::vector<std::pair<IndexResourceType, std::string>> resourceList;
+
+    // Create Point In Time (PIT) - Can throw IndexerConnectorException
+    auto pit = m_indexerConnectorAsync->createPointInTime(POLICY_ALIASES, PIT_KEEP_ALIVE, true);
+
+    auto pitGuard = std::unique_ptr<decltype(pit), std::function<void(decltype(pit)*)>>(
+        &pit,
+        [this](auto* p)
+        {
+            try
+            {
+                m_indexerConnectorAsync->deletePointInTime(*p);
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
+            }
+        });
+
+    // Prepare query and sort criteria
+    nlohmann::json query = getQueryFilter(space);
+    nlohmann::json sort = getSortCriteria();
+    std::optional<nlohmann::json> searchAfter = std::nullopt;
+
+    size_t total_hits = 0;
+    size_t retrievedSoFar = 0;
+    bool moreHits = true;
+
+    do
+    {
+        nlohmann::json hits = m_indexerConnectorAsync->search(pit, m_maxHitsPerRequest, query, sort, searchAfter);
+
+        if (!searchAfter.has_value())
+        {
+            total_hits = getTotalHits(hits);
+            resourceList.reserve(total_hits);
+            LOG_TRACE("[indexer-connector] Total hits to retrieve: {}", total_hits);
+        }
+
+        const auto& hitArray = hits["hits"];
+
+        // Just in case total_hits was greater than zero but no hits were returned
+        if (!hitArray.is_array() || hitArray.empty())
+        {
+            LOG_TRACE("[indexer-connector] No more hits retrieved, ending pagination");
+            break;
+        }
+
+        retrievedSoFar += hitArray.size();
+        for (const auto& hit : hitArray)
+        {
+            auto indexName = hit["_index"].get<std::string>();
+            auto sourceData = hit["_source"].dump();
+            IndexResourceType resourceType = fromIndexName(indexName);
+            resourceList.emplace_back(resourceType, std::move(sourceData));
+        }
+
+        moreHits = retrievedSoFar < total_hits;
+        searchAfter = getSearchAfter(hits);
+        LOG_TRACE("[indexer-connector] Retrieved {} / {} hits so far", retrievedSoFar, total_hits);
+
+    } while (moreHits);
+
+    // Organize resources into PolicyResources structure
+    PolicyResources policyMap {};
+
+    // Avoid memory reallocations
+    {
+        std::size_t kvdbCount = 0;
+        std::size_t decoderCount = 0;
+        std::size_t integrationDecoderCount = 0;
+        for (const auto& [type, _] : resourceList)
+        {
+            switch (type)
+            {
+                case IndexResourceType::KVDB: ++kvdbCount; break;
+                case IndexResourceType::DECODER: ++decoderCount; break;
+                case IndexResourceType::INTEGRATION_DECODER: ++integrationDecoderCount; break;
+                case IndexResourceType::POLICY: break;
+            }
+        }
+        policyMap.kvdbs.reserve(kvdbCount);
+        policyMap.decoders.reserve(decoderCount);
+        policyMap.integration.reserve(integrationDecoderCount);
+    }
+
+    // Move resources to appropriate vectors
+    for (auto& [type, data] : resourceList)
+    {
+        switch (type)
+        {
+            case IndexResourceType::KVDB: policyMap.kvdbs.emplace_back(std::move(data)); break;
+            case IndexResourceType::DECODER: policyMap.decoders.emplace_back(std::move(data)); break;
+            case IndexResourceType::INTEGRATION_DECODER: policyMap.integration.emplace_back(std::move(data)); break;
+            case IndexResourceType::POLICY: policyMap.policy = std::move(data); break;
+        }
+    }
+
+    return policyMap;
+}
+
+std::string WIndexerConnector::getPolicyHash(std::string_view space)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // Prepare query filter for the space
+    nlohmann::json query = getQueryFilter(space);
+
+    // Prepare source filter to only retrieve space.hash.sha256
+    nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
+
+    // Execute search query
+    nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, HASH_QUERY_SIZE, query, source);
+
+    // Check total hits
+    size_t totalHits = getTotalHits(hits);
+
+    if (totalHits == 0)
+    {
+        throw IndexerConnectorException("No policy found for space: " + std::string(space));
+    }
+
+    if (totalHits > 1)
+    {
+        throw IndexerConnectorException("Multiple policies found for space: " + std::string(space)
+                                        + " (expected 1, got " + std::to_string(totalHits) + ")");
+    }
+
+    // Extract the hash from the first (and only) hit
+    const auto& hitArray = hits["hits"];
+    if (!hitArray.is_array() || hitArray.empty())
+    {
+        throw IndexerConnectorException("No hits returned despite total_hits > 0 for space: " + std::string(space));
+    }
+
+    const auto& firstHit = hitArray[0];
+    if (!firstHit.contains("_source"))
+    {
+        throw IndexerConnectorException("Hit does not contain _source field for space: " + std::string(space));
+    }
+
+    const auto& source_data = firstHit["_source"];
+    if (!source_data.contains("space") || !source_data["space"].contains("hash")
+        || !source_data["space"]["hash"].contains("sha256"))
+    {
+        throw IndexerConnectorException("space.hash.sha256 field not found for space: " + std::string(space));
+    }
+
+    return source_data["space"]["hash"]["sha256"].get<std::string>();
+}
+
+bool WIndexerConnector::existsPolicy(std::string_view space)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // Prepare query filter for the space
+    nlohmann::json query = getQueryFilter(space);
+
+    // Prepare source filter to only retrieve space.name field
+    nlohmann::json source = {{"includes", {"space.name"}}, {"excludes", nlohmann::json::array()}};
+
+    // Execute search query with size=1 (we only need to know if at least one exists)
+    nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, SINGLE_RESULT_SIZE, query, source);
+
+    // Check total hits
+    size_t totalHits = getTotalHits(hits);
+
+    return totalHits > 0;
+}
+
 }; // namespace wiconnector

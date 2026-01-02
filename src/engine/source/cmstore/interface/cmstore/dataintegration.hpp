@@ -17,7 +17,7 @@
  * {
  *   "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
  *   "title": "windows",
- *   "enabled": true|false,
+ *   "enable_decoders": true|false,
  *   "category": "ossec",
  *   "default_parent": "docoder/windows/0", --> Optional
  *   "decoders":
@@ -42,6 +42,7 @@ constexpr std::string_view PATH_KEY_CATEGORY = "/category";
 constexpr std::string_view PATH_KEY_DEFAULT_PARENT = "/default_parent";
 constexpr std::string_view PATH_KEY_DECODERS = "/decoders";
 constexpr std::string_view PATH_KEY_KVDBS = "/kvdbs";
+constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
 } // namespace jsonintegration
 
 class Integration
@@ -51,18 +52,23 @@ private:
     std::string m_name;
     bool m_enabled;
     std::string m_category;
-    std::optional<base::Name> m_defaultParent;
+    std::optional<std::string> m_defaultParent;
     std::vector<std::string> m_kvdbsByUUID;
     std::vector<std::string> m_decodersByUUID;
+    std::vector<std::string> m_outputsByUUID;
 
     std::string m_hash;
 
     void updateHash()
     {
         // Create a hash based on the name, category, decoders and kvdbs UUIDs
-        std::string toHash = m_name + m_category;
-        toHash.reserve(toHash.length() + 1
-                       + (m_decodersByUUID.size() + m_kvdbsByUUID.size()) * base::utils::generators::UUID_V4_LENGTH);
+        std::string toHash = m_name + m_category + (m_enabled ? "1" : "0")
+                             + (m_defaultParent.has_value() ? m_defaultParent.value() : "");
+
+        auto len = toHash.length() + 1
+                   + base::utils::generators::UUID_V4_LENGTH
+                         * (m_decodersByUUID.size() + m_kvdbsByUUID.size() + m_outputsByUUID.size());
+        toHash.reserve(len);
         for (const auto& uuid : m_decodersByUUID)
         {
             toHash += uuid;
@@ -71,49 +77,80 @@ private:
         {
             toHash += uuid;
         }
-        toHash += m_enabled ? "1" : "0";
+        for (const auto& uuid : m_outputsByUUID)
+        {
+            toHash += uuid;
+        }
+
         m_hash = base::utils::hash::sha256(toHash);
     }
 
 public:
     ~Integration() = default;
+    Integration() = delete;
 
-    Integration() = default;
+    Integration(std::string uuid,
+                std::string name,
+                bool enabled,
+                std::string category,
+                std::optional<std::string> defaultParent,
+                std::vector<std::string> kvdbsByUUID,
+                std::vector<std::string> decodersByUUID,
+                std::vector<std::string> outputsByUUID = {})
+        : m_uuid(std::move(uuid))
+        , m_name(std::move(name))
+        , m_enabled(enabled)
+        , m_category(std::move(category))
+        , m_defaultParent(std::move(defaultParent))
+        , m_kvdbsByUUID(std::move(kvdbsByUUID))
+        , m_decodersByUUID(std::move(decodersByUUID))
+        , m_outputsByUUID(std::move(outputsByUUID))
+    {
+        if (m_uuid.empty())
+        {
+            throw std::runtime_error("Integration UUID cannot be empty");
+            // TODO CHECK LENGHT
+        }
+        if (m_name.empty())
+        {
+            throw std::runtime_error("Integration name cannot be empty");
+        }
+        if (m_category.empty())
+        {
+            throw std::runtime_error("Integration category cannot be empty");
+        }
+        updateHash();
+    }
 
     static Integration fromJson(const json::Json& integrationJson)
     {
-        Integration integration = {};
-
         auto uuidOpt = integrationJson.getString(jsonintegration::PATH_KEY_ID);
         if (!uuidOpt.has_value())
         {
             throw std::runtime_error("Integration JSON must have a valid id");
         }
-        integration.m_uuid = uuidOpt.value();
 
         auto nameOpt = integrationJson.getString(jsonintegration::PATH_KEY_NAME);
         if (!nameOpt.has_value())
         {
             throw std::runtime_error("Integration JSON must have a valid name");
         }
-        integration.m_name = nameOpt.value();
 
         auto enabledOpt = integrationJson.getBool(jsonintegration::PATH_KEY_ENABLED);
         if (!enabledOpt.has_value())
         {
             throw std::runtime_error("Integration JSON must have a valid enabled flag");
         }
-        integration.m_enabled = enabledOpt.value();
 
         auto categoryOpt = integrationJson.getString(jsonintegration::PATH_KEY_CATEGORY);
         if (!categoryOpt.has_value())
         {
             throw std::runtime_error("Integration JSON must have a valid category");
         }
-        integration.m_category = categoryOpt.value();
 
         std::size_t decoderCount = integrationJson.size(jsonintegration::PATH_KEY_DECODERS);
-        integration.m_decodersByUUID.reserve(decoderCount);
+        std::vector<std::string> decoders;
+        decoders.reserve(decoderCount);
 
         for (std::size_t i = 0; i < decoderCount; ++i)
         {
@@ -122,11 +159,12 @@ public:
             {
                 throw std::runtime_error(fmt::format("Decoder at index {} is not a valid string", i));
             }
-            integration.m_decodersByUUID.push_back(decoderOpt.value());
+            decoders.push_back(decoderOpt.value());
         }
 
         std::size_t kvdbCount = integrationJson.size(jsonintegration::PATH_KEY_KVDBS);
-        integration.m_kvdbsByUUID.reserve(kvdbCount);
+        std::vector<std::string> kvdbs;
+        kvdbs.reserve(kvdbCount);
 
         for (std::size_t i = 0; i < kvdbCount; ++i)
         {
@@ -135,49 +173,86 @@ public:
             {
                 throw std::runtime_error(fmt::format("KVDB at index {} is not a valid string", i));
             }
-            integration.m_kvdbsByUUID.push_back(kvdbOpt.value());
+            kvdbs.push_back(kvdbOpt.value());
         }
 
+        std::size_t outputCount;
+        try
+        {
+            outputCount = integrationJson.size(jsonintegration::PATH_KEY_OUTPUTS);
+        }
+        catch (const std::exception&)
+        {
+            outputCount = 0;
+        }
+        std::vector<std::string> outputs;
+        outputs.reserve(outputCount);
+
+        for (std::size_t i = 0; i < outputCount; ++i)
+        {
+            auto outputOpt = integrationJson.getString(fmt::format("{}/{}", jsonintegration::PATH_KEY_OUTPUTS, i));
+            if (!outputOpt.has_value())
+            {
+                throw std::runtime_error(fmt::format("Output at index {} is not a valid string", i));
+            }
+            outputs.push_back(outputOpt.value());
+        }
+
+        std::optional<base::Name> defaultParent = std::nullopt;
         try
         {
             if (auto defaultParentOpt = integrationJson.getString(jsonintegration::PATH_KEY_DEFAULT_PARENT);
                 defaultParentOpt.has_value())
             {
-                integration.m_defaultParent = base::Name(defaultParentOpt.value());
+                defaultParent = base::Name(defaultParentOpt.value());
             }
         }
         catch (const std::exception& e)
         {
             throw std::runtime_error(fmt::format("Error getting integration default parent: {}", e.what()));
         }
-        integration.updateHash();
-        return integration;
+
+        return {std::move(*uuidOpt),
+                std::move(*nameOpt),
+                *enabledOpt,
+                std::move(*categoryOpt),
+                std::move(defaultParent),
+                std::move(kvdbs),
+                std::move(decoders),
+                std::move(outputs)};
     }
 
     json::Json toJson() const
     {
         json::Json integrationJson;
 
-        integrationJson.setString(jsonintegration::PATH_KEY_ID, m_uuid);
-        integrationJson.setString(jsonintegration::PATH_KEY_NAME, m_name);
-        integrationJson.setString(jsonintegration::PATH_KEY_CATEGORY, m_category);
+        integrationJson.setString(m_uuid, jsonintegration::PATH_KEY_ID);
+        integrationJson.setString(m_name, jsonintegration::PATH_KEY_NAME);
+        integrationJson.setString(m_category, jsonintegration::PATH_KEY_CATEGORY);
 
         if (m_defaultParent.has_value())
         {
-            integrationJson.setString(jsonintegration::PATH_KEY_DEFAULT_PARENT, m_defaultParent->toStr());
+            integrationJson.setString(m_defaultParent.value(), jsonintegration::PATH_KEY_DEFAULT_PARENT);
         }
 
+        integrationJson.setBool(m_enabled, jsonintegration::PATH_KEY_ENABLED);
         integrationJson.setArray(jsonintegration::PATH_KEY_DECODERS);
         integrationJson.setArray(jsonintegration::PATH_KEY_KVDBS);
+        integrationJson.setArray(jsonintegration::PATH_KEY_OUTPUTS);
 
         for (std::size_t i = 0; i < m_decodersByUUID.size(); ++i)
         {
-            integrationJson.setString(fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i), m_decodersByUUID[i]);
+            integrationJson.setString(m_decodersByUUID[i], fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i));
         }
 
         for (std::size_t i = 0; i < m_kvdbsByUUID.size(); ++i)
         {
-            integrationJson.setString(fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i), m_kvdbsByUUID[i]);
+            integrationJson.setString(m_kvdbsByUUID[i], fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i));
+        }
+
+        for (std::size_t i = 0; i < m_outputsByUUID.size(); ++i)
+        {
+            integrationJson.setString(m_outputsByUUID[i], fmt::format("{}/{}", jsonintegration::PATH_KEY_OUTPUTS, i));
         }
 
         return integrationJson;
@@ -185,14 +260,14 @@ public:
 
     // getters
     const std::string& getCategory() const { return m_category; }
-    const std::optional<base::Name>& getDefaultParent() const { return m_defaultParent; }
+    const std::optional<std::string>& getDefaultParent() const { return m_defaultParent; }
     const std::vector<std::string>& getKVDBsByUUID() const { return m_kvdbsByUUID; }
     const std::vector<std::string>& getDecodersByUUID() const { return m_decodersByUUID; }
+    const std::vector<std::string>& getOutputsByUUID() const { return m_outputsByUUID; }
     const std::string& getHash() const { return m_hash; }
     const std::string& getName() const { return m_name; }
     const std::string& getUUID() const { return m_uuid; }
     bool isEnabled() const { return m_enabled; }
-
 };
 
 } // namespace cm::store::dataType

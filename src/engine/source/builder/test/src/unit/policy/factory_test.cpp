@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include <base/behaviour.hpp>
-#include <store/mockStore.hpp>
+#include <cmstore/mockcmstore.hpp>
 
 #include "expressionCmp.hpp"
 #include "factory_test.hpp"
@@ -464,6 +464,11 @@ INSTANTIATE_TEST_SUITE_P(
             AT::DECODER, "decoder/parent1", "output/asset")(AT::DECODER, "decoder/parent2", "decoder/parent3")(
             AT::DECODER, "decoder/parent3", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
             AT::OUTPUT, "output/asset", "output/Input"))),
+        // Decoders forming cycles (self-loop, two-node, multi-node)
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/self", "decoder/self"))),
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/a", "decoder/b")(AT::DECODER, "decoder/b", "decoder/a"))),
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/root", "decoder/Input")(AT::DECODER, "decoder/a", "decoder/b")(
+            AT::DECODER, "decoder/b", "decoder/c")(AT::DECODER, "decoder/c", "decoder/a"))),
         // SUCCESS cases
         BuildT(SUCCESS()),
         BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/Input"))),
@@ -801,6 +806,118 @@ INSTANTIATE_TEST_SUITE_P(
             ));
 
 } // namespace buildexpressiontest
+
+namespace cycledetectiontest
+{
+using buildgraphtest::assetExpr;
+
+namespace
+{
+inline Asset makeAsset(const base::Name& name)
+{
+    return Asset {base::Name(name), assetExpr(name), std::vector<base::Name> {}};
+}
+
+inline Graph<base::Name, Asset> createGraph()
+{
+    const base::Name root("decoder/Input");
+    return Graph<base::Name, Asset> {root, makeAsset(root)};
+}
+
+inline void addNode(Graph<base::Name, Asset>& graph, const std::string& id)
+{
+    const base::Name name(id);
+    graph.addNode(name, makeAsset(name));
+}
+
+inline void addEdge(Graph<base::Name, Asset>& graph, const std::string& parent, const std::string& child)
+{
+    graph.addEdge(base::Name(parent), base::Name(child));
+}
+} // namespace
+
+TEST(ValidateAcyclicTest, DetectsReachableCycleWithExtraParents)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/a");
+    addNode(graph, "decoder/b");
+    addNode(graph, "decoder/c");
+    addNode(graph, "decoder/d");
+
+    addEdge(graph, "decoder/Input", "decoder/a");
+    addEdge(graph, "decoder/a", "decoder/b");
+    addEdge(graph, "decoder/b", "decoder/c");
+    addEdge(graph, "decoder/c", "decoder/a"); // cycle closes
+
+    addEdge(graph, "decoder/Input", "decoder/d");
+    addEdge(graph, "decoder/d", "decoder/b"); // additional incoming edge
+
+    EXPECT_THROW(graph.validateAcyclic("decoder"), std::runtime_error);
+}
+
+TEST(ValidateAcyclicTest, DetectsDisconnectedCycle)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/a");
+    addNode(graph, "decoder/b");
+    addNode(graph, "decoder/x");
+    addNode(graph, "decoder/y");
+
+    addEdge(graph, "decoder/Input", "decoder/a");
+    addEdge(graph, "decoder/a", "decoder/b");
+
+    addEdge(graph, "decoder/x", "decoder/y");
+    addEdge(graph, "decoder/y", "decoder/x");
+
+    EXPECT_THROW(graph.validateAcyclic("decoder"), std::runtime_error);
+}
+
+TEST(ValidateAcyclicTest, DetectsCycleThroughInjectedFilter)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/b");
+    addNode(graph, "filter/f");
+    addNode(graph, "decoder/c");
+
+    addEdge(graph, "decoder/Input", "decoder/b");
+    addEdge(graph, "decoder/b", "filter/f");
+    addEdge(graph, "filter/f", "decoder/c");
+    addEdge(graph, "decoder/c", "decoder/b");
+
+    EXPECT_THROW(graph.validateAcyclic("decoder"), std::runtime_error);
+}
+
+TEST(ValidateAcyclicTest, DetectsFilterOnlyCycle)
+{
+    Graph<base::Name, Asset> graph {base::Name("filter/Input"), makeAsset(base::Name("filter/Input"))};
+    addNode(graph, "filter/a");
+    addNode(graph, "filter/b");
+
+    addEdge(graph, "filter/Input", "filter/a");
+    addEdge(graph, "filter/a", "filter/b");
+    addEdge(graph, "filter/b", "filter/a");
+
+    EXPECT_THROW(graph.validateAcyclic("filter"), std::runtime_error);
+}
+
+TEST(ValidateAcyclicTest, AllowsDiamondShapeWithoutCycle)
+{
+    auto graph = createGraph();
+    addNode(graph, "decoder/base");
+    addNode(graph, "decoder/a");
+    addNode(graph, "decoder/b");
+    addNode(graph, "decoder/c");
+
+    addEdge(graph, "decoder/Input", "decoder/base");
+    addEdge(graph, "decoder/base", "decoder/a");
+    addEdge(graph, "decoder/a", "decoder/b");
+    addEdge(graph, "decoder/b", "decoder/c");
+    addEdge(graph, "decoder/base", "decoder/c"); // multi-parent, sin ciclo
+
+    EXPECT_NO_THROW(graph.validateAcyclic("decoder"));
+}
+
+} // namespace cycledetectiontest
 namespace buildsubgraphtest
 {
 using buildgraphtest::assetExpr;

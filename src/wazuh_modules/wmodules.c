@@ -101,16 +101,16 @@ int wm_config() {
         wm_add(module);
     }
 
+    // Inventory sync
+    if ((module = wm_inventory_sync_read()))
+        wm_add(module);
+
     // The database module won't be available on agents
     if ((module = wm_database_read()))
         wm_add(module);
 
     // Downloading module
     if ((module = wm_download_read()))
-        wm_add(module);
-
-    // Inventory sync
-    if ((module = wm_inventory_sync_read()))
         wm_add(module);
 
 #endif

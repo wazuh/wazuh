@@ -15,6 +15,7 @@
 #include "json.hpp"
 #include "rpmPackageManager.h"
 #include "sharedDefs.h"
+#include "timeHelper.h"
 
 #include "stringHelper.h"
 
@@ -44,7 +45,7 @@ namespace PackageLinuxHelper
 
             ret["name"]         = package.name;
             ret["size"]         = package.size;
-            ret["installed"]    = package.installTime;
+            ret["installed"]    = package.installTime.empty() ? UNKNOWN_VALUE : Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(package.installTime)));
             ret["path"]         = UNKNOWN_VALUE;
             ret["category"]     = package.group;
             ret["version_"]     = version;

@@ -119,31 +119,3 @@ bash tools/check_ASAN.sh -t build/source/router/ --regex OrchestratorTest*
 ```bash
 bash tools/check_ASAN.sh -e build/source/bk/:build/source/builder/:build/source/kvdb/
 ```
-
-
-## Check events diff
-
-- **Download and Conversion**: Download files from URLs if necessary and convert EVTX files to XML.
-- **Test Execution**: Use `engine-test` to process the input file events.
-- **Format and Comparison**: Format and sort results before comparing them to a reference file using `jq` and `engine-diff`.
-
-### Usage
-
-```bash
-usage: engine-diff [-h] [--version] [-in {yaml,json}] [-q, --quiet] [--no-order] fileA fileB
-
-Compare two events in yaml format, returns SAME if no differences found, DIFFERENT otherwise. The script loads the events, orders them and makes a diff using
-delta, credits to dandavison for his awesome tool (https://github.com/dandavison/delta)
-
-positional arguments:
-  fileA                 First file to compare
-  fileB                 Second file to compare
-
-options:
-  -h, --help            show this help message and exit
-  --version             show program's version number and exit
-  -in {yaml,json}, --input {yaml,json}
-                        Input format (default: json)
-  -q, --quiet           Print only the result
-  --no-order            Do not order the events when comparing
-```

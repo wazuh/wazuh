@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.0]
 
+## [v4.14.3]
+
+### Manager
+
+#### Fixed
+
+- Scaped document ID when necessary before sending document to indexer. ([#33464](https://github.com/wazuh/wazuh/pull/33464))
+
+
 ## [v4.14.2]
 
 ### Manager
@@ -10,15 +19,25 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Prevented Azure Log Analytics bookmarks from being overwritten across similar configurations. ([#33046](https://github.com/wazuh/wazuh/pull/33046))
+- Fixed discrepancy in the API certificate files. ([#33330](https://github.com/wazuh/wazuh/pull/33330))
+- Made analysisd ruleset reload endpoints fully asynchronous to avoid blocking the API event loop. ([#33589](https://github.com/wazuh/wazuh/pull/33589))
+- Improved analysisd ruleset hot reload performance. ([#33580](https://github.com/wazuh/wazuh/pull/33580))
+- Avoided using `systemctl` in restart scripts when systemd is not running as PID 1. ([#33602](https://github.com/wazuh/wazuh/pull/33602))
 
 ### Agent
 
+#### Added
+
+- Added detection of the `-a never,task` Audit rule in FIM whodata for Linux. ([#33313](https://github.com/wazuh/wazuh/pull/33313))
+
 #### Fixed
 
-- Fixed Windows remote upgrade installing to default directory instead of respecting existing custom installation path. ([#33171](https://github.com/wazuh/wazuh/pull/33171))
-- Fixed issue where the agent did not create missing directories when receiving remote configuration with nested paths. ([#33227](https://github.com/wazuh/wazuh/pull/33227))
-- Fixed auditd integration issue where af_wazuh.conf could not be correctly applied due to configuration conflicts. ([#33270](https://github.com/wazuh/wazuh/pull/33270))
-- Fixed agent post-install upgrade failures when shared group subfolders already exist. ([#33182](https://github.com/wazuh/wazuh/pull/33182))
+- Fixed Windows agent remote upgrade (WPK) when installed in a custom directory. ([#33171](https://github.com/wazuh/wazuh/pull/33171))
+- Fixed a package issue causing upgrades to fail when the `shared` directory contained subdirectories. ([#33182](https://github.com/wazuh/wazuh/pull/33182))
+- Fixed FIM issue preventing whodata from working on systems with `/var` and `/etc` mounted on different volumes. ([#33270](https://github.com/wazuh/wazuh/pull/33270))
+- Optimized user and group inventory performance in Syscollector on Windows Domain Controllers. ([#33322](https://github.com/wazuh/wazuh/pull/33322))
+- Fixed an agent bug that prevented directories from being received in the remote configuration. ([#33227](https://github.com/wazuh/wazuh/pull/33227))
+- Silenced agent log message about failing to connect to Active Response when it is disabled. ([#33343](https://github.com/wazuh/wazuh/pull/33343))
 
 ### Ruleset
 
@@ -29,6 +48,11 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Fixed bug in multiple macOS SCA checks. ([#33202](https://github.com/wazuh/wazuh/pull/33202))
+
+#### Fixed
+
+- Fixed indentation issue in the SCA policy for Windows 10 Enterprise that prevented its execution. ([#33361](https://github.com/wazuh/wazuh/pull/33361))
+
 
 ### Other
 

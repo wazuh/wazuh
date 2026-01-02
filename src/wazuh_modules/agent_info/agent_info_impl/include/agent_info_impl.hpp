@@ -93,6 +93,13 @@ class AgentInfoImpl
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
     private:
+        /// @brief Determine if a stateless event should be generated based on changed fields
+        /// @param result Type of change (INSERTED, MODIFIED, DELETED)
+        /// @param data Event data
+        /// @param table Table name
+        /// @return true if stateless event should be generated, false otherwise
+        bool shouldGenerateStatelessEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table) const;
+
         /// @brief Update the global metadata provider with current agent metadata
         /// @param agentMetadata Agent metadata JSON
         /// @param groups List of agent groups
@@ -123,7 +130,8 @@ class AgentInfoImpl
         /// @brief Update changes in database and emit events
         /// @param table Table name
         /// @param values Values to sync
-        void updateChanges(const std::string& table, const nlohmann::json& values);
+        /// @return true if changes detected, false otherwise
+        bool updateChanges(const std::string& table, const nlohmann::json& values);
 
         /// @brief Update db_metadata table with current in-memory state
         void updateDbMetadata();
@@ -274,4 +282,7 @@ class AgentInfoImpl
 
         /// @brief Mutex for synchronizing access to sync flags
         std::mutex m_syncFlagsMutex;
+
+        /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
+        std::mutex m_dbSyncMutex;
 };

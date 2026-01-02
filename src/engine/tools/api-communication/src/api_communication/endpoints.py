@@ -3,11 +3,7 @@ from typing import Optional, Tuple
 from google.protobuf.message import Message
 
 # Import all proto messages to deduce component, resource and action
-import api_communication.proto.catalog_pb2 as catalog
-import api_communication.proto.graph_pb2 as graph
-import api_communication.proto.kvdb_pb2 as kvdb
-import api_communication.proto.metrics_pb2 as metrics
-import api_communication.proto.policy_pb2 as policy
+import api_communication.proto.crud_pb2 as crud
 import api_communication.proto.router_pb2 as router
 import api_communication.proto.tester_pb2 as tester
 import api_communication.proto.geo_pb2 as geo
@@ -24,20 +20,6 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
         Tuple[Optional[str], str]: Error string if any, endpoint string
     """
 
-    # Catalog
-    if isinstance(message, catalog.ResourcePost_Request):
-        return None, 'catalog/resource/post'
-    if isinstance(message, catalog.ResourceGet_Request):
-        return None, 'catalog/resource/get'
-    if isinstance(message, catalog.ResourcePut_Request):
-        return None, 'catalog/resource/put'
-    if isinstance(message, catalog.ResourceDelete_Request):
-        return None, 'catalog/resource/delete'
-    if isinstance(message, catalog.ResourceValidate_Request):
-        return None, 'catalog/resource/validate'
-    if isinstance(message, catalog.NamespacesGet_Request):
-        return None, 'catalog/namespaces/get'
-
     # Geo
     if isinstance(message, geo.DbPost_Request):
         return None, 'geo/db/add'
@@ -48,51 +30,31 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
     if isinstance(message, geo.DbRemoteUpsert_Request):
         return None, 'geo/db/remoteUpsert'
 
-    # KVDB
-    if isinstance(message, kvdb.dbGet_Request):
-        return None, 'kvdb/db/get'
-    if isinstance(message, kvdb.dbDelete_Request):
-        return None, 'kvdb/db/delete'
-    if isinstance(message, kvdb.dbPut_Request):
-        return None, 'kvdb/db/put'
-    if isinstance(message, kvdb.managerGet_Request):
-        return None, 'kvdb/manager/get'
-    if isinstance(message, kvdb.managerPost_Request):
-        return None, 'kvdb/manager/post'
-    if isinstance(message, kvdb.managerDelete_Request):
-        return None, 'kvdb/manager/delete'
-    if isinstance(message, kvdb.managerDump_Request):
-        return None, 'kvdb/manager/dump'
-    if isinstance(message, kvdb.dbSearch_Request):
-        return None, 'kvdb/db/search'
+    # CRUD NS
+    if isinstance(message, crud.namespacePost_Request):
+        return None, '_internal/content/namespace/create'
+    if isinstance(message, crud.namespaceDelete_Request):
+        return None, '_internal/content/namespace/delete'
+    if isinstance(message, crud.namespaceGet_Request):
+        return None, '_internal/content/namespace/list'
+    if isinstance(message, crud.namespaceImport_Request):
+        return None, '_internal/content/namespace/import'
 
-    # Policy
-    if isinstance(message, policy.StorePost_Request):
-        return None, 'policy/store/post'
-    if isinstance(message, policy.StoreDelete_Request):
-        return None, 'policy/store/delete'
-    if isinstance(message, policy.StoreGet_Request):
-        return None, 'policy/store/get'
-    if isinstance(message, policy.AssetPost_Request):
-        return None, 'policy/asset/post'
-    if isinstance(message, policy.AssetDelete_Request):
-        return None, 'policy/asset/delete'
-    if isinstance(message, policy.AssetGet_Request):
-        return None, 'policy/asset/get'
-    if isinstance(message, policy.AssetCleanDeleted_Request):
-        return None, 'policy/asset/clean_deleted'
-
-    if isinstance(message, policy.DefaultParentGet_Request):
-        return None, 'policy/default_parent/get'
-    if isinstance(message, policy.DefaultParentPost_Request):
-        return None, 'policy/default_parent/post'
-    if isinstance(message, policy.DefaultParentDelete_Request):
-        return None, 'policy/default_parent/delete'
-
-    if isinstance(message, policy.PoliciesGet_Request):
-        return None, 'policy/list'
-    if isinstance(message, policy.NamespacesGet_Request):
-        return None, 'policy/namespaces/list'
+    # CRUD CM
+    if isinstance(message, crud.resourcePost_Request):
+        return None, '_internal/content/upsert'
+    if isinstance(message, crud.resourceDelete_Request):
+        return None, '_internal/content/delete'
+    if isinstance(message, crud.resourceGet_Request):
+        return None, '_internal/content/get'
+    if isinstance(message, crud.resourceList_Request):
+        return None, '_internal/content/list'
+    if isinstance(message, crud.policyPost_Request):
+        return None, '_internal/content/policy/upsert'
+    if isinstance(message, crud.policyDelete_Request):
+        return None, '_internal/content/policy/delete'
+    if isinstance(message, crud.policyValidate_Request):
+        return None, 'content/validate/policy'
 
     # Router
     if isinstance(message, router.RoutePost_Request):

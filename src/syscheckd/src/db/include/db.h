@@ -113,6 +113,14 @@ EXPORTED int fim_db_get_max_version_file();
 EXPORTED int fim_db_set_version_file(int version);
 
 /**
+ * @brief Clean all file entries from the database.
+ *
+ * This function deletes all entries from file_entry table.
+ * Used when all directory paths are removed from configuration to clean orphaned data.
+ */
+EXPORTED void fim_db_clean_file_table();
+
+/**
  * @brief Makes any necessary queries to get the entry updated in the DB.
  *
  * @param data The information linked to the path to be created or updated.
@@ -185,11 +193,49 @@ EXPORTED void fim_db_teardown();
 EXPORTED void fim_db_close_and_delete_database();
 
 /**
+ * @brief Increase the version column for all entries in a table.
+ * @return 0 on success, -1 on error.
+ */
+EXPORTED int fim_db_increase_each_entry_version(const char* table_name);
+
+/**
  * @brief Update the last integrity check timestamp for a table.
  *
  * @param table_name Name of the table (e.g., "file_entry", "registry_key", "registry_data").
  */
 EXPORTED void fim_db_update_last_sync_time(const char* table_name);
+
+/**
+ * @brief Get all elements from a table.
+ *
+ * @param table_name Name of the table to query.
+ * @return cJSON array containing all table elements (must be freed with cJSON_Delete), NULL on error.
+ */
+EXPORTED cJSON* fim_db_get_every_element(const char* table_name);
+
+/**
+ * @brief Calculate the checksum-of-checksums for a table.
+ *
+ * @param table_name The table to calculate checksum for.
+ * @return The SHA1 checksum-of-checksums as a hex string (must be freed by caller), NULL on error.
+ */
+EXPORTED char* fim_db_calculate_table_checksum(const char* table_name);
+
+/**
+ * @brief Get the last sync time for a table.
+ *
+ * @param table_name Name of the table.
+ * @return Last sync timestamp in seconds since epoch, 0 if never synced or on error.
+ */
+EXPORTED int64_t fim_db_get_last_sync_time(const char* table_name);
+
+/**
+ * @brief Update the last sync time for a table.
+ *
+ * @param table_name Name of the table.
+ * @param timestamp Timestamp in seconds since epoch.
+ */
+EXPORTED void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 
 #ifdef WIN32
 
@@ -223,6 +269,14 @@ EXPORTED int fim_db_get_max_version_registry();
  * @return 0 on success, -1 on error.
  */
 EXPORTED int fim_db_set_version_registry(int version);
+
+/**
+ * @brief Clean all registry entries from the database.
+ *
+ * This function deletes all entries from registry_key and registry_data tables.
+ * Used when all registry paths are removed from configuration to clean orphaned data.
+ */
+EXPORTED void fim_db_clean_registry_tables();
 
 #endif /* WIN32 */
 

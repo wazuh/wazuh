@@ -327,7 +327,7 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     agent_info->sync.sync_end_delay = 1;
     agent_info->sync.sync_response_timeout = 30;
     agent_info->sync.sync_retries = 3;
-    agent_info->sync.sync_max_eps = 10;
+    agent_info->sync.sync_max_eps = 50;
 
     module->context = &WM_AGENT_INFO_CONTEXT;
     module->tag = strdup(module->context->name);

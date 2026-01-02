@@ -77,30 +77,30 @@ def test_context_cached():
                       ContextVar)
 
 
-@patch('wazuh.core.logtest.create_wazuh_socket_message', side_effect=SystemExit)
+@patch('wazuh.core.stats.wazuh_socket.create_wazuh_socket_message', side_effect=SystemExit)
 def test_origin_module_context_var_framework(mock_create_socket_msg):
     """Test that the origin_module context variable is being set to framework."""
-    from wazuh import logtest
+    from wazuh.core import stats
 
     # side_effect used to avoid mocking the rest of functions
     with pytest.raises(SystemExit):
-        logtest.run_logtest()
+        stats.get_daemons_stats_socket(None)
 
     assert mock_create_socket_msg.call_args[1]['origin']['module'] == 'framework'
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.logtest.create_wazuh_socket_message', side_effect=SystemExit)
+@patch('wazuh.core.stats.wazuh_socket.create_wazuh_socket_message', side_effect=SystemExit)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
 async def test_origin_module_context_var_api(mock_check_wazuh_status, mock_create_socket_msg):
     """Test that the origin_module context variable is being set to API."""
     import logging
     from wazuh.core.cluster.dapi import dapi
-    from wazuh import logtest
+    from wazuh import stats
 
     # side_effect used to avoid mocking the rest of functions
     with pytest.raises(SystemExit):
-        d = dapi.DistributedAPI(f=logtest.run_logtest, logger=logging.getLogger('wazuh'), is_async=True)
+        d = dapi.DistributedAPI(f=stats.get_daemons_stats, logger=logging.getLogger('wazuh'), is_async=True)
         await d.distribute_function()
 
     assert mock_create_socket_msg.call_args[1]['origin']['module'] == 'API'

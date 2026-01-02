@@ -504,6 +504,13 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, NULL);
 
+    // Mock for initialize_router_functions() - router module not available in tests
+    expect_string(__wrap_so_get_module_handle, so, "router");
+    will_return(__wrap_so_get_module_handle, NULL);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Unable to load router module.");
+
     sync_keys_with_wdb(&keys);
 }
 

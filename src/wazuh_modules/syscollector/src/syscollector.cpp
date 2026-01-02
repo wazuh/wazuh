@@ -119,13 +119,15 @@ void syscollector_stop()
     Syscollector::instance().destroy();
 }
 
-void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries, size_t maxEps)
+void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
+                            unsigned int retries, size_t maxEps, uint32_t integrityInterval)
 {
-    if (moduleName && syncDbPath && mqFuncs)
+    if (moduleName && syncDbPath && syncDbPathVD && mqFuncs)
     {
         try
         {
-            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), *mqFuncs, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries, maxEps);
+            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD), *mqFuncs, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout),
+                                                      retries, maxEps, integrityInterval);
         }
         catch (const std::exception& ex)
         {
@@ -162,6 +164,16 @@ bool syscollector_parse_response(const unsigned char* data, size_t length)
     if (data)
     {
         return Syscollector::instance().parseResponseBuffer(data, length);
+    }
+
+    return false;
+}
+
+bool syscollector_parse_response_vd(const unsigned char* data, size_t length)
+{
+    if (data)
+    {
+        return Syscollector::instance().parseResponseBufferVD(data, length);
     }
 
     return false;
@@ -223,6 +235,21 @@ size_t syscollector_query(const char* json_query, char** output)
         *output = strdup(error.c_str());
         return strlen(*output);
     }
+}
+
+void syscollector_lock_scan_mutex()
+{
+    Syscollector::instance().lockScanMutex();
+}
+
+void syscollector_unlock_scan_mutex()
+{
+    Syscollector::instance().unlockScanMutex();
+}
+
+void syscollector_run_recovery_process()
+{
+    Syscollector::instance().runRecoveryProcess();
 }
 
 #ifdef __cplusplus

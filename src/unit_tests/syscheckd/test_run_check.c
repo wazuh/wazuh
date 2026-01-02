@@ -40,7 +40,14 @@ void set_whodata_mode_changes();
 
 /* External 'static' functions prototypes */
 void fim_send_msg(char mq, const char * location, const char * msg);
+
+/* DataClean helper function prototypes */
+bool fim_has_configured_directories(void);
+bool fim_has_configured_paths(void);
+bool fim_has_data_in_database(void);
+bool handle_all_paths_removed(void);
 #ifdef WIN32
+bool fim_has_configured_registries(void);
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
 
 extern void free_win32rtfim_data(win32rtfim *data);
@@ -1029,6 +1036,102 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
+/* ---------------------------------- DataClean Tests ---------------------------------- */
+
+void test_fim_has_configured_directories_null_list(void **state) {
+    OSList *original = syscheck.directories;
+    syscheck.directories = NULL;
+
+    bool result = fim_has_configured_directories();
+
+    assert_false(result);
+
+    syscheck.directories = original;
+}
+
+void test_fim_has_configured_directories_with_directories(void **state) {
+#ifdef TEST_WINAGENT
+    // On WINAGENT, pthread_rwlock functions are wrapped - need to set expectations
+    // OSList_foreach uses OSList_GetFirstNode (wrlock) and OSList_GetNext (rdlock)
+    // Note: pthread_mutex is NOT wrapped in test_run_check linker flags
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
+
+    bool result = fim_has_configured_directories();
+
+    assert_true(result);
+}
+
+void test_fim_has_configured_paths_with_directories(void **state) {
+#ifdef TEST_WINAGENT
+    // On WINAGENT, pthread_rwlock functions are wrapped - need to set expectations
+    // OSList_foreach uses OSList_GetFirstNode (wrlock) and OSList_GetNext (rdlock)
+    // Note: pthread_mutex is NOT wrapped in test_run_check linker flags
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
+
+    bool result = fim_has_configured_paths();
+
+    assert_true(result);
+}
+
+void test_fim_has_data_in_database_no_entries(void **state) {
+    will_return(__wrap_fim_db_get_count_file_entry, 0);
+#ifdef WIN32
+    will_return(__wrap_fim_db_get_count_registry_key, 0);
+    will_return(__wrap_fim_db_get_count_registry_data, 0);
+#endif
+
+    bool result = fim_has_data_in_database();
+
+    assert_false(result);
+}
+
+void test_fim_has_data_in_database_with_file_entries(void **state) {
+    will_return(__wrap_fim_db_get_count_file_entry, 10);
+
+    bool result = fim_has_data_in_database();
+
+    assert_true(result);
+}
+
+void test_handle_all_paths_removed_no_data_in_db(void **state) {
+    will_return(__wrap_fim_db_get_count_file_entry, 0);
+#ifdef WIN32
+    will_return(__wrap_fim_db_get_count_registry_key, 0);
+    will_return(__wrap_fim_db_get_count_registry_data, 0);
+#endif
+
+    expect_string(__wrap__mdebug1, formatted_msg, "No monitored paths configured and no data in database. Nothing to clean.");
+
+    bool result = handle_all_paths_removed();
+
+    assert_true(result);
+}
+
+void test_handle_all_paths_removed_no_sync_handle(void **state) {
+    AgentSyncProtocolHandle *original_handle = syscheck.sync_handle;
+    syscheck.sync_handle = NULL;
+
+    // First call checks if DB has data
+    will_return(__wrap_fim_db_get_count_file_entry, 10);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "All monitored paths removed from configuration but database has data. Initiating DataClean process.");
+    expect_string(__wrap__merror, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
+
+    bool result = handle_all_paths_removed();
+
+    assert_false(result);
+
+    syscheck.sync_handle = original_handle;
+}
+
+/* ---------------------------------- End DataClean Tests ---------------------------------- */
+
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
@@ -1045,6 +1148,14 @@ int main(void) {
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
+        /* DataClean tests */
+        cmocka_unit_test(test_fim_has_configured_directories_null_list),
+        cmocka_unit_test(test_fim_has_configured_directories_with_directories),
+        cmocka_unit_test(test_fim_has_configured_paths_with_directories),
+        cmocka_unit_test(test_fim_has_data_in_database_no_entries),
+        cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
+        cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),
+        cmocka_unit_test(test_handle_all_paths_removed_no_sync_handle),
 #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_run_realtime_first_error),
         cmocka_unit_test(test_fim_run_realtime_first_timeout),

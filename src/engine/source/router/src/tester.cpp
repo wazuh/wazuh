@@ -69,7 +69,7 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost, bool ignoreFai
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        auto [controller, hash] = m_envBuilder->makeController(entry.policy());
+        auto [controller, hash] = m_envBuilder->makeController(entry.namespaceId());
         entry.controller() = controller;
         entry.hash(hash);
     }
@@ -122,7 +122,7 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     auto& entry = it->second;
     try
     {
-        auto [controller, hash] = m_envBuilder->makeController(entry.policy());
+        auto [controller, hash] = m_envBuilder->makeController(entry.namespaceId());
         entry.controller() = controller;
         entry.hash(hash);
     }
@@ -130,6 +130,29 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     {
         return base::Error {fmt::format("Failed to create the testing environment: {}", e.what())};
     }
+    return std::nullopt;
+}
+
+base::OptError Tester::renameEntry(const std::string& from, const std::string& to)
+{
+    std::unique_lock<std::shared_mutex> lock {m_mutex};
+
+    auto it = m_table.find(from);
+    if (it == m_table.end())
+    {
+        return base::Error {"Error renaming session: The \"from\" testing environment not exist"};
+    }
+
+    if (m_table.find(to) != m_table.end())
+    {
+        return base::Error {"Error renaming session: The \"to\" testing environment already exist"};
+    }
+
+    auto node = m_table.extract(it);
+    node.key() = to;
+    node.mapped().name(to);
+    m_table.insert(std::move(node));
+
     return std::nullopt;
 }
 

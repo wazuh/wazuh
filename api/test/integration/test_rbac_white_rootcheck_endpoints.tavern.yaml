@@ -54,4 +54,9 @@ stages:
       params:
         agents_list: '004'
     response:
-      <<: *permission_denied
+      status_code: 403
+      json:
+        error: 4000
+        dapi_errors:
+          unknown-node: # No permission to see node
+            error: !anystr

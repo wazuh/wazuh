@@ -15,6 +15,7 @@
 #include "../db/include/db.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -38,7 +39,188 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data, const OSList *directories_list){
+    const directory_t* config = fim_configuration_directory(path, true, directories_list);
+
+    // If config is NULL, we cannot proceed as fim_attributes_json requires it
+    if (config == NULL) {
+        merror("Failed to get configuration for path: %s", path);
+        return NULL;
+    }
+
+    cJSON* stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        return NULL;
+    }
+
+    // File
+    cJSON* file_stateful = fim_attributes_json(dbsync_event, file_data, config);
+    cJSON_AddItemToObject(stateful_event, "file", file_stateful);
+#ifdef WIN32
+     char *utf8_path = auto_to_utf8(path);
+     if (utf8_path) {
+        cJSON_AddStringToObject(file_stateful, "path", utf8_path);
+        os_free(utf8_path);
+     } else {
+        cJSON_AddStringToObject(file_stateful, "path", path);
+     }
+ #else
+     cJSON_AddStringToObject(file_stateful, "path", path);
+ #endif
+
+    // Checksum
+    cJSON* checksum = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
+    cJSON* hash = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum, "hash", hash);
+    cJSON_AddStringToObject(hash, "sha1", sha1_hash);
+
+    // State
+    cJSON* state = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "state", state);
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+    cJSON_AddNumberToObject(state, "document_version", document_version);
+
+    return stateful_event;
+}
+
 // DBSync Callback
+
+/**
+ * @brief Handle delete events for files under paths that were removed from configuration.
+ *
+ * When a path is removed from the FIM configuration, files that were previously
+ * monitored under that path need to generate delete events even though we no
+ * longer have the configuration available. This function creates minimal
+ * stateless and stateful delete events using only the information available
+ * from the database.
+ *
+ * @param path The file path being deleted.
+ * @param result_json Data from dbsync containing checksum and version.
+ * @param txn_context Transaction context with event metadata.
+ */
+STATIC void handle_orphaned_delete(const char* path,
+                                   const cJSON* result_json,
+                                   callback_ctx* txn_context) {
+    cJSON* stateless_event = NULL;
+    cJSON* stateful_event = NULL;
+    char iso_time[32];
+
+    mdebug1("Generating delete event for orphaned file '%s' (path removed from configuration)", path);
+
+    // Clean up any diff files that may exist for this path
+    // Safe to call unconditionally - returns gracefully if no diff files exist
+    fim_diff_process_delete_file(path);
+
+    // Get checksum from result_json (file's SHA1 hash from database)
+    cJSON* checksum_json = cJSON_GetObjectItem(result_json, "checksum");
+    if (checksum_json == NULL) {
+        mdebug1("Couldn't find checksum for orphaned delete '%s'", path);
+        return;
+    }
+    char* sha1_checksum = cJSON_GetStringValue(checksum_json);
+    if (sha1_checksum == NULL) {
+        mdebug1("Invalid checksum value for orphaned delete '%s'", path);
+        return;
+    }
+
+    // Get version from result_json (for DELETED events, version is at top level)
+    cJSON* version_json = cJSON_GetObjectItem(result_json, "version");
+    if (version_json == NULL) {
+        mdebug1("Couldn't find version for orphaned delete '%s'", path);
+        return;
+    }
+    uint64_t document_version = (uint64_t)version_json->valueint;
+
+    // Build minimal stateless event
+    stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
+        return;
+    }
+
+    cJSON_AddStringToObject(stateless_event, "collector", "file");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateless_event, "data", data);
+
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[FIM_DELETE]);
+
+    cJSON* file_stateless = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "file", file_stateless);
+
+#ifdef WIN32
+    char* utf8_path = auto_to_utf8(path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(file_stateless, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(file_stateless, "path", path);
+    }
+#else
+    cJSON_AddStringToObject(file_stateless, "path", path);
+#endif
+
+    cJSON_AddStringToObject(file_stateless, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
+
+    // Send stateless event if enabled
+    if (notify_scan != 0 && txn_context->event->report_event) {
+        send_syscheck_msg(stateless_event);
+    }
+
+    cJSON_Delete(stateless_event);
+
+    // Build minimal stateful event for sync
+    stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        return;
+    }
+
+    cJSON* file_stateful = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "file", file_stateful);
+
+#ifdef WIN32
+    utf8_path = auto_to_utf8(path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(file_stateful, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(file_stateful, "path", path);
+    }
+#else
+    cJSON_AddStringToObject(file_stateful, "path", path);
+#endif
+
+    cJSON* checksum_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum_obj);
+    cJSON* hash_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum_obj, "hash", hash_obj);
+    cJSON_AddStringToObject(hash_obj, "sha1", sha1_checksum);
+
+    cJSON* state_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "state", state_obj);
+    char modified_at_time[32];
+    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+    cJSON_AddStringToObject(state_obj, "modified_at", modified_at_time);
+    cJSON_AddNumberToObject(state_obj, "document_version", (double)document_version);
+
+    // Compute SHA1 of path for sync ID
+    char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(path, -1, file_path_sha1);
+
+    // Persist stateful event for sync
+    persist_syscheck_msg(file_path_sha1, OPERATION_DELETE, FIM_FILES_SYNC_INDEX,
+                         stateful_event, document_version);
+
+    cJSON_Delete(stateful_event);
+}
 
 /**
  * @brief File callback.
@@ -51,7 +233,6 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
                                  const cJSON* result_json,
                                  void* user_data) {
     cJSON* stateless_event = NULL;
-    cJSON* stateful_event = NULL;
     cJSON *json_path = NULL;
     cJSON* old_data = NULL;
     cJSON* old_attributes = NULL;
@@ -74,8 +255,14 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (txn_context->config == NULL) {
-        txn_context->config = fim_configuration_directory(path, true);
+        // For DELETE events, don't log "not found" since path may have been removed from config
+        txn_context->config = fim_configuration_directory(path, resultType != DELETED, syscheck.directories);
         if (txn_context->config == NULL) {
+            // For DELETE events of orphaned files (path removed from config),
+            // generate minimal delete events without requiring configuration
+            if (resultType == DELETED) {
+                handle_orphaned_delete(path, result_json, txn_context);
+            }
             goto end;
         }
     }
@@ -117,11 +304,6 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
-    stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
-        goto end; // LCOV_EXCL_LINE
-    }
-
     cJSON_AddStringToObject(stateless_event, "collector", "file");
     cJSON_AddStringToObject(stateless_event, "module", "fim");
 
@@ -138,22 +320,16 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     cJSON* file_stateless = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
     cJSON_AddItemToObject(data, "file", file_stateless);
 
-    cJSON* file_stateful = cJSON_Duplicate(file_stateless, 1);
-    cJSON_AddItemToObject(stateful_event, "file", file_stateful);
-
 #ifdef WIN32
      char *utf8_path = auto_to_utf8(path);
      if (utf8_path) {
         cJSON_AddStringToObject(file_stateless, "path", utf8_path);
-        cJSON_AddStringToObject(file_stateful, "path", utf8_path);
         os_free(utf8_path);
      } else {
         cJSON_AddStringToObject(file_stateless, "path", path);
-        cJSON_AddStringToObject(file_stateful, "path", path);
      }
  #else
      cJSON_AddStringToObject(file_stateless, "path", path);
-     cJSON_AddStringToObject(file_stateful, "path", path);
  #endif
 
     cJSON_AddStringToObject(file_stateless, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
@@ -192,31 +368,18 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         send_syscheck_msg(stateless_event);
     }
 
-    // Add checksum only to stateful event
-    cJSON* checksum = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
-    cJSON* hash = cJSON_CreateObject();
-    cJSON_AddItemToObject(checksum, "hash", hash);
-
+    char* sha1_checksum;
     if (txn_context->entry != NULL && txn_context->entry->file_entry.data != NULL) {
-        cJSON_AddStringToObject(hash, "sha1", txn_context->entry->file_entry.data->checksum);
+        sha1_checksum = txn_context->entry->file_entry.data->checksum;
     } else {
         cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
         if (aux != NULL) {
-            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
+            sha1_checksum = cJSON_GetStringValue(aux);
         } else {
             mdebug1("Couldn't find checksum for '%s", path);
             goto end; // LCOV_EXCL_LINE
         }
     }
-
-    // Add state modified_at and document_version fields for stateful event only
-    cJSON* state = cJSON_CreateObject();
-    cJSON_AddItemToObject(stateful_event, "state", state);
-
-    char modified_at_time[32];
-    get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
-    cJSON_AddStringToObject(state, "modified_at", modified_at_time);
 
     cJSON *version_aux = NULL;
     // For MODIFIED events, version is in the "new" object
@@ -231,7 +394,6 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     uint64_t document_version = 0;
     if (version_aux != NULL) {
         document_version = (uint64_t)version_aux->valueint;
-        cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
     } else {
         mdebug1("Couldn't find version for '%s", path);
         goto end; // LCOV_EXCL_LINE
@@ -240,12 +402,18 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
+    cJSON* stateful_event = build_stateful_event_file(path, sha1_checksum, document_version, result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, syscheck.directories);
+    if (!stateful_event) {
+        merror("Couldn't create stateful event for %s", path);
+        goto end; // LCOV_EXCL_LINE
+    }
+
     persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
+    cJSON_Delete(stateful_event);
 
 end:
     os_free(diff);
     cJSON_Delete(stateless_event);
-    cJSON_Delete(stateful_event);
 }
 
 // Callback
@@ -272,7 +440,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     char *path = (char *)data;
     struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
-    directory_t *validated_configuration = fim_configuration_directory(path, true);
+    directory_t *validated_configuration = fim_configuration_directory(path, true, syscheck.directories);
 
     if (validated_configuration == ctx_data->config)
     {
@@ -280,7 +448,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     }
 }
 
-directory_t *fim_configuration_directory(const char *key, bool notify_not_found) {
+directory_t *fim_configuration_directory(const char *key, bool notify_not_found, const OSList *directories_list) {
     char full_path[OS_SIZE_4096 + 1] = {'\0'};
     char full_entry[OS_SIZE_4096 + 1] = {'\0'};
     directory_t *dir_it = NULL;
@@ -291,6 +459,11 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found)
     char *pathname = NULL;
 
     if (!key || *key == '\0') {
+        return NULL;
+    }
+
+    if (!directories_list) {
+        merror("fim_configuration_directory called with NULL directories_list");
         return NULL;
     }
 
@@ -305,7 +478,7 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found)
 
     trail_path_separator(full_path, pathname, sizeof(full_path));
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, (OSList *)directories_list) {
         dir_it = node_it->data;
         char *real_path = fim_get_real_path(dir_it);
 
@@ -639,7 +812,7 @@ void fim_checker(const char *path,
     }
 #endif
 
-    configuration = fim_configuration_directory(path, true);
+    configuration = fim_configuration_directory(path, true, syscheck.directories);
     if (configuration == NULL) {
         return;
     }
@@ -850,7 +1023,7 @@ void fim_file(const char *path,
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     directory_t *configuration = NULL;
 
-    configuration = fim_configuration_directory(pathname, true);
+    configuration = fim_configuration_directory(pathname, true, syscheck.directories);
     if (NULL == configuration) {
         return;
     }
@@ -946,6 +1119,37 @@ void fim_handle_delete_by_path(const char *path,
 void fim_file_scan() {
     OSListNode *node_it;
     directory_t *dir_it;
+
+    // Check if directories are configured - if syscheck.directories is NULL or empty,
+    // but we have data in the database, we need to send DataClean for files index
+    if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
+        int files_count = fim_db_get_count_file_entry();
+
+        if (files_count > 0) {
+            mdebug1("No directory paths configured but database has %d files. Initiating DataClean for files.",
+                    files_count);
+
+            if (syscheck.sync_handle) {
+                // Prepare indices vector for data clean notification
+                const char* indices[1] = {FIM_FILES_SYNC_INDEX};
+                size_t indices_count = 1;
+
+                // Send DataClean notification for files index
+                bool dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+                if (dataCleanSent) {
+                    minfo("DataClean notification sent successfully for files index (all directory paths removed from configuration).");
+                } else {
+                    mwarn("DataClean notification failed for files index. Indexer may retain stale file data.");
+                }
+
+                // Clear file table from database
+                fim_db_clean_file_table();
+            } else {
+                mdebug1("Sync protocol not initialized, cannot send DataClean notification for files.");
+            }
+        }
+        return;
+    }
 
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
     callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL };

@@ -7,3 +7,7 @@ The module implements a **dual event system** that provides both real-time alert
 FIM persistence supports **stateful synchronization** for complete file/registry metadata including checksums, while maintaining **stateless real-time alerts** for immediate threat detection.
 
 FIM includes **automatic recovery capabilities** to detect and resolve synchronization inconsistencies between agent and manager databases. Recovery is triggered automatically during a periodic synchronization cycle determined by the `integrity_interval` option.
+
+FIM implements **DataClean capabilities** for proper state management when monitored paths are removed from configuration:
+- **Complete path removal**: When all directories/registries are removed, FIM sends a DataClean notification to the manager and clears local databases before exiting.
+- **Partial path removal**: When some paths are removed, the existing DBSync transaction mechanism automatically detects and removes orphaned entries during the next scan cycle.

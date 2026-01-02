@@ -3,82 +3,283 @@
 	// for the documentation about the tasks.json format
 	"version": "2.0.0",
 	"tasks": [
-		{
-			"label": "Remove engine env",
-			"type": "shell",
-			"command": "rm",
-			"args": [
-				"-rf",
-				"${env:TMP_CLEAN_ENV}",
-				"/var/log/wazuh-server/engine"
-			]
-		},
-		{
-			"label": "Create engine env",
-			"type": "shell",
-			"command": "${env:ENGINE_SRC}/test/setupEnvironment.py",
-			"args": [
-				"-e",
-				"${env:TMP_CLEAN_ENV}"
-			],
-			"dependsOn": "Remove engine env",
-			"problemMatcher": []
-		},
-		{
-			"label": "Remove vd feed",
-			"type": "shell",
-			"command": "rm",
-			"args": [
-				"-rf",
-				"/var/lib/wazuh-server/vd/feed/"
-			]
-		},
-		{
-			"label": "Remove indexer queue",
-			"type": "shell",
-			"command": "rm",
-			"args": [
-				"-rf",
-				"/var/lib/wazuh-server/indexer-connector/"
-			]
-		},
-		{
-			"label": "Remove all queue",
-			"type": "shell",
-			"command": "true",
-			"args": [],
-			"dependsOn": [
-				"Remove vd feed",
-				"Remove indexer queue"
-			]
-		},
-		{
-			"label": "Build clean python venv",
-			"type": "shell",
-			"command": "rm -rf ${env:TMP_PY_VENV}; python -m venv ${env:TMP_PY_VENV};. ${env:TMP_PY_VENV}/bin/activate; pip install behave pyyaml protobuf==4.21 docker lxml",
-			"args": [],
-			"problemMatcher": []
-		},
-		{
-			"label": "Install engine python dependencies",
-			"type": "shell",
-			"command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HEALTH} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_IT}",
-			"args": [],
-			"problemMatcher": []
-		},
-		{
-			"label": "Wazuh-server clean",
-			"type": "shell",
-			"command": "${env:ENGINE_SRC}/tools/devContainer/e2e/wazuh_purge.sh",
-			"args": [],
-			"problemMatcher": []
-		},
-		{
-			"label": "Wazuh-server copy certs",
-			"type": "shell",
-			"command": "${env:ENGINE_SRC}/tools/devContainer/e2e/wazuh_copy_certs.sh",
-			"args": [],
-			"problemMatcher": []
-		}
-	]
+        {
+            "label": "Test Env: Remove",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf",
+                "${env:TMP_CLEAN_ENV}"
+            ]
+        },
+        {
+            "label": "Test Env: Create",
+            "type": "shell",
+            "command": "${env:ENGINE_SRC}/test/setupEnvironment.py",
+            "args": [
+                "-e",
+                "${env:TMP_CLEAN_ENV}"
+            ],
+            "dependsOn": "Remove engine env",
+            "problemMatcher": []
+        },
+        {
+            "label": "Python venv: Create",
+            "type": "shell",
+            "command": "rm -rf ${env:TMP_PY_VENV}; python -m venv ${env:TMP_PY_VENV};. ${env:TMP_PY_VENV}/bin/activate; pip install behave pyyaml protobuf==4.21 docker lxml",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Python venv: Install dependencies",
+            "type": "shell",
+            "command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_IT}",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Scripts: Mount proc",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/mount_wazuh_proc.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Scripts: Create standalone structure",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/create_struct_standalone.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Scripts: Purge wazuh-manger",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/purge_wazuh.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build MANAGER - debug",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=server",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - debug && test",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=server",
+                "DEBUG=yes",
+                "TEST=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER + Full Engine - debug",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j",
+                "TARGET=server",
+                "ENGINE_TEST=y",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER + Full Engine - Release",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=server",
+                "ENGINE_TEST=y"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - address sanitizer",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "options": {
+                "env": {
+                    "LDFLAGS": "-fsanitize=address",
+                    "CFLAGS": "-fsanitize=address -fno-omit-frame-pointer"
+                }
+            },
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=server",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - thread sanitizer",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "options": {
+                "env": {
+                    "LDFLAGS": "-fsanitize=thread",
+                    "CFLAGS": "-fsanitize=thread -fno-omit-frame-pointer"
+                }
+            },
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=server",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Download precompiled deps",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "deps",
+                "TARGET=server",
+                "-j1"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean deps",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean-deps"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Clean external",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean-external"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Clean internals",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean-internals"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn": [
+                "Clean deps"
+            ]
+        },
+        {
+            "label": "cmake UNIT TESTS Server",
+            "type": "shell",
+            "command": "/usr/local/bin/cmake",
+            "args": [
+                "-DTARGET=server",
+                "-S",
+                "${env:WAZUH_REPO}/src/unit_tests",
+                "-B",
+                "${env:WAZUH_REPO}/src/unit_tests/build"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build UNIT TESTS",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src/unit_tests/build"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build UNIT TESTS - coverage",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src/unit_tests/build",
+                "coverage"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Valgrind remoted (example)",
+            "type": "shell",
+            "command": "/usr/bin/valgrind",
+            "args": [
+                "--track-origins=yes",
+                "--leak-check=full",
+                "--keep-stacktraces=alloc-and-free",
+                "--track-fds=yes",
+                "--trace-children=yes",
+                "--num-callers=20",
+                "--show-leak-kinds=definite,indirect",
+                "--log-file=ValgrindPRs.log",
+                "/var/ossec/bin/wazuh-remoted",
+                "-f",
+                "-d"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
 }

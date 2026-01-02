@@ -41,7 +41,6 @@ def mock_wazuh_path():
     ({'new': [None]}, None, 'new', [1]),
     ({}, None, 'new', 1),
     ({}, None, 'new', False),
-    ({'old': [None]}, 'ruleset', 'include', [1]),
 ])
 def test_insert(json_dst, section_name, option, value):
     """Checks insert function."""
@@ -56,9 +55,7 @@ def test_insert(json_dst, section_name, option, value):
 
 
 @pytest.mark.parametrize("json_dst, section_name, section_data", [
-    ({'old': []}, 'ruleset', 'include'),
     ({'labels': []}, 'labels', ['label']),
-    ({'ruleset': []}, 'labels', ['label']),
     ({'global': {'label': 5}}, 'global', {'label': 4}),
     ({'global': {'white_list': []}}, 'global', {'white_list': [4], 'label2': 5}),
     ({'cluster': {'label': 5}}, 'cluster', {'label': 4})
@@ -236,18 +233,6 @@ def test_get_ossec_conf():
         section='cluster', field='name',
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
     )['cluster']['name'] == 'wazuh'
-
-    assert configuration.get_ossec_conf(
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
-        section='ruleset',
-        field='rule_dir',
-        distinct=False)['ruleset']['rule_dir'] == ['ruleset/rules', 'ruleset/rules', 'etc/rules']
-
-    assert configuration.get_ossec_conf(
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
-        section='ruleset',
-        field='rule_dir',
-        distinct=True)['ruleset']['rule_dir'] == ['ruleset/rules', 'etc/rules']
 
 
 def test_get_agent_conf():

@@ -98,7 +98,10 @@ class BSDPortWrapper final : public IPortWrapper
                 getnameinfo(reinterpret_cast<sockaddr*>(&socketAddressIn), sizeof(socketAddressIn), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
             }
 
-            return Utils::substrOnFirstOccurrence(ipAddress, "%");
+            std::string result = Utils::substrOnFirstOccurrence(ipAddress, "%");
+            // Sanitize IPv6 addresses by replacing ":::" with "::"
+            Utils::replaceAll(result, ":::", "::");
+            return result;
         }
         int32_t localPort() const override
         {
@@ -124,7 +127,10 @@ class BSDPortWrapper final : public IPortWrapper
                 getnameinfo(reinterpret_cast<sockaddr*>(&socketAddressIn), sizeof(socketAddressIn), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
             }
 
-            return Utils::substrOnFirstOccurrence(ipAddress, "%");
+            std::string result = Utils::substrOnFirstOccurrence(ipAddress, "%");
+            // Sanitize IPv6 addresses by replacing ":::" with "::"
+            Utils::replaceAll(result, ":::", "::");
+            return result;
         }
         int32_t remotePort() const override
         {

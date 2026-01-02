@@ -122,7 +122,7 @@ DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=DigiCert Assured ID Root CA
-HTTP_REQUEST_BRANCH?=cd50797cfe03c27f3759bdc243fecca6f7535d35
+HTTP_REQUEST_BRANCH?=1a98c1aa40df0fe82136d790043c2f9cbf1a24c4
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
@@ -1057,7 +1057,7 @@ $(EXTERNAL_CURL)Makefile:
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-ifneq (,$(filter ${uname_M},aarch64 ppc64le))
+ifneq (,$(filter ${uname_M},aarch64))
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --build=${uname_M}-unknown-linux-gnu --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-libpsl --without-brotli --without-nghttp2 --without-zstd
 else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-libpsl --without-brotli --without-nghttp2 --without-zstd
@@ -1264,14 +1264,10 @@ else
 ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
 	PRECOMPILED_ARCH := /arm32
 else
-ifeq (${cpu_arch},ppc64le)
-	PRECOMPILED_ARCH := /ppc64le
-else
 ifneq (,$(filter ${cpu_arch},ia64))
 	PRECOMPILED_ARCH := /ia64
 else
 	PRECOMPILED_ARCH := /${uname_P}
-endif
 endif
 endif
 endif
@@ -1354,8 +1350,7 @@ INDEXER_TEMPLATES_BASE := \
 INDEXER_TEMPLATES_SERVER_STATES := \
 	vulnerabilities.json
 
-INDEXER_TEMPLATES_SERVER_STREAMS := \
-	alerts.json
+INDEXER_TEMPLATES_SERVER_STREAMS :=
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
@@ -2134,7 +2129,7 @@ os_auth/%.o: os_auth/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
 
 wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
 
 ### wazuh-modulesd ##
 
@@ -2374,10 +2369,10 @@ win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
 win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${DBSYNC_LIB} -lwazuh-syscheckd -l:libfimdb.lib -l:libfim_recovery.lib libwazuh.a ${SYNC_PROTOCOL_LIB} ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${DBSYNC_LIB} -lwazuh-syscheckd -l:libfimdb.lib libwazuh.a ${SYNC_PROTOCOL_LIB} ${OSSEC_LIBS} -o $@
 
 win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${DBSYNC_LIB} -lwazuh-syscheckd-event -l:libfimdb.lib -l:libfim_recovery.lib libwazuh.a ${SYNC_PROTOCOL_LIB} ${OSSEC_LIBS} -lwevtapi -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${DBSYNC_LIB} -lwazuh-syscheckd-event -l:libfimdb.lib libwazuh.a ${SYNC_PROTOCOL_LIB} ${OSSEC_LIBS} -lwevtapi -o $@
 
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@

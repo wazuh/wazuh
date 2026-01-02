@@ -19,9 +19,9 @@ namespace SyncTransportFactory
 {
     std::unique_ptr<ISyncMessageTransport> createDefaultTransport(
         const std::string& moduleName,
-        const MQ_Functions& mqFuncs,
+        [[maybe_unused]] const MQ_Functions& mqFuncs,
         LoggerFunc logger,
-        std::function<void(const std::vector<char>&)> responseCallback)
+        [[maybe_unused]] std::function<void(const std::vector<char>&)> responseCallback)
     {
 #if CLIENT
         return std::make_unique<MQueueTransport>(moduleName, mqFuncs, std::move(logger));

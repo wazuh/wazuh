@@ -20,6 +20,7 @@
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
 #include "stringHelper.h"
+#include "vulnerabilityScannerFacade.hpp"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
 #include <format>
@@ -38,6 +39,7 @@ constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
 constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
+constexpr auto WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
 
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
@@ -85,6 +87,35 @@ class InventorySyncFacadeImpl final
 
     void run(const std::vector<char>& dataRaw)
     {
+        // Check if message is JSON (starts with '{')
+        if (!dataRaw.empty() && dataRaw[0] == '{')
+        {
+            try
+            {
+                std::string jsonStr(dataRaw.data(), dataRaw.size());
+                auto jsonMsg = nlohmann::json::parse(jsonStr);
+
+                if (jsonMsg.contains("command") && jsonMsg["command"] == "delete_agent")
+                {
+                    if (jsonMsg.contains("agent_id") && jsonMsg["agent_id"].is_string())
+                    {
+                        std::string agentId = jsonMsg["agent_id"];
+                        deleteAgent(agentId);
+                    }
+                    else
+                    {
+                        logError(LOGGER_DEFAULT_TAG, "Invalid delete_agent message: missing agent_id");
+                    }
+                    return;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                logError(LOGGER_DEFAULT_TAG, "Failed to parse JSON message: %s", e.what());
+                return;
+            }
+        }
+
         auto syncMessage = Wazuh::SyncSchema::GetMessage(dataRaw.data());
 
         if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataValue)
@@ -190,13 +221,26 @@ class InventorySyncFacadeImpl final
             }
             else
             {
-                // Generate random number for session ID.
-                std::random_device rd;
-                std::mt19937 gen(rd());
-                std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
-                const auto sessionId = dis(gen);
+                // Check session limit before creating new session
+                std::unique_lock lock(m_agentSessionsMutex);
+                if (m_agentSessions.size() >= static_cast<size_t>(m_maxSessions))
                 {
-                    std::unique_lock lock(m_agentSessionsMutex);
+                    logWarn(LOGGER_DEFAULT_TAG,
+                            "InventorySyncFacade::start: Session limit reached (%zu/%d active sessions). "
+                            "Rejecting new session for agent %s - agent will retry later",
+                            m_agentSessions.size(),
+                            m_maxSessions,
+                            std::string(agentId).c_str());
+                    m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
+                }
+                else
+                {
+                    // Generate random number for session ID.
+                    std::random_device rd;
+                    std::mt19937 gen(rd());
+                    std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
+                    const auto sessionId = dis(gen);
+
                     // Check if session already exists.
                     if (m_agentSessions.contains(sessionId))
                     {
@@ -369,6 +413,13 @@ public:
 
         m_clusterName = Utils::toLowerCase(configuration.at("clusterName").get_ref<const std::string&>());
 
+        // Get max sessions from configuration, default to 1000 if not specified
+        if (configuration.contains("maxSessions"))
+        {
+            m_maxSessions = configuration.at("maxSessions").get<int>();
+        }
+        logInfo(LOGGER_DEFAULT_TAG, "InventorySync session limit: %d", m_maxSessions);
+
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
         m_workersQueue = std::make_unique<WorkersQueue>(
@@ -376,15 +427,27 @@ public:
             {
                 try
                 {
-                    flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                    if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+                    // Check if it's a JSON message (starts with '{')
+                    if (!dataRaw.empty() && dataRaw[0] == '{')
                     {
-                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing message...");
+                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing JSON message...");
                         run(dataRaw);
                     }
                     else
                     {
-                        throw InventorySyncException("Invalid message buffer");
+                        // FlatBuffer message - verify before processing
+                        flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()),
+                                                       dataRaw.size());
+                        if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG,
+                                      "InventorySyncFacade::start: Processing FlatBuffer message...");
+                            run(dataRaw);
+                        }
+                        else
+                        {
+                            throw InventorySyncException("Invalid message buffer");
+                        }
                     }
                 }
                 catch (const std::exception& e)
@@ -406,13 +469,8 @@ public:
                 queue->push(std::move(const_cast<std::vector<char>&>(message)));
             });
 
-        const auto preIndexerAction = []()
-        {
-            logDebug2(LOGGER_DEFAULT_TAG, "Pre-indexer action...");
-        };
-
         m_indexerQueue = std::make_unique<IndexerQueue>(
-            [this, &preIndexerAction](const Response& res)
+            [this](const Response& res)
             {
                 logDebug2(LOGGER_DEFAULT_TAG, "Indexer queue action...");
                 if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
@@ -425,9 +483,6 @@ public:
 
                 try
                 {
-                    // VD ?
-                    preIndexerAction();
-
                     // CRITICAL: For metadata/groups operations, lock agent and wait for active sessions
                     // to prevent race conditions with concurrent inventory data
                     if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta ||
@@ -450,28 +505,28 @@ public:
 
                         if (remainingSessions > 0)
                         {
-                            // Timeout: cannot proceed with metadata/groups update safely - agent will retry later
-                            res.context->ownsAgentLock = false;
-                            unlockAgent(res.context->agentId);
+                            // Timeout: sessions still active after 60s
+                            // These are zombie sessions - agent already validated no active syncs on its side
+                            // Manager-side validation failed because of orphaned sessions
+                            logWarn(
+                                LOGGER_DEFAULT_TAG,
+                                "Metadata/groups update for agent %s: %zu session(s) still active after 60s timeout. "
+                                "Detecting as zombie sessions (agent already validated no active syncs). "
+                                "Cleaning up zombie sessions automatically.",
+                                res.context->agentId.c_str(),
+                                remainingSessions);
 
-                            logDebug1(LOGGER_DEFAULT_TAG,
-                                      "Metadata/groups update failed for agent %s: %zu session(s) still active after "
-                                      "timeout. "
-                                      "Agent will retry later.",
-                                      res.context->agentId.c_str(),
-                                      remainingSessions);
+                            // Clean up zombie sessions
+                            size_t cleanedCount = cleanupZombieSessions(res.context->agentId, res.context->sessionId);
 
-                            // Notify agent of failure and cleanup session
-                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                             res.context->agentId,
-                                                             res.context->sessionId,
-                                                             res.context->moduleName);
-
-                            m_agentSessions.erase(res.context->sessionId);
-                            return;
+                            logInfo(LOGGER_DEFAULT_TAG,
+                                    "Cleaned up %zu zombie session(s) for agent %s - proceeding with metadata/groups "
+                                    "update",
+                                    cleanedCount,
+                                    res.context->agentId.c_str());
                         }
 
-                        // All sessions completed - safe to proceed with metadata/groups update
+                        // All sessions completed (or zombies cleaned) - safe to proceed with metadata/groups update
                     }
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
@@ -712,8 +767,8 @@ public:
                                 else
                                 {
                                     logInfo(LOGGER_DEFAULT_TAG,
-                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - full "
-                                            "resync required",
+                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - "
+                                            "full resync required",
                                             res.context->agentId.c_str(),
                                             MAX_RETRIES);
                                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
@@ -816,42 +871,28 @@ public:
                                 if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
+
+                                    // Build metadata using nlohmann::json for automatic escaping
+                                    nlohmann::json metadata;
+                                    metadata["agent"]["id"] = res.context->agentId;
+                                    metadata["agent"]["name"] = res.context->agentName;
+                                    metadata["agent"]["version"] = res.context->agentVersion;
+                                    metadata["agent"]["groups"] = res.context->groups;
+                                    metadata["agent"]["host"]["architecture"] = res.context->architecture;
+                                    metadata["agent"]["host"]["hostname"] = res.context->hostname;
+                                    metadata["agent"]["host"]["os"]["name"] = res.context->osname;
+                                    metadata["agent"]["host"]["os"]["platform"] = res.context->osplatform;
+                                    metadata["agent"]["host"]["os"]["type"] = res.context->ostype;
+                                    metadata["agent"]["host"]["os"]["version"] = res.context->osversion;
+                                    metadata["wazuh"]["cluster"]["name"] = m_clusterName;
+
+                                    // Serialize metadata to string and append FlatBuffer inventory data
                                     thread_local std::string dataString;
-                                    dataString.clear();
-                                    dataString.append(R"({"agent":{"id":")");
-                                    dataString.append(res.context->agentId);
-                                    dataString.append(R"(","name":")");
-                                    dataString.append(res.context->agentName);
-                                    dataString.append(R"(","version":")");
-                                    dataString.append(res.context->agentVersion);
-                                    dataString.append(R"(","groups":[)");
-                                    bool firstGroup = true;
-                                    for (const auto& group : res.context->groups)
-                                    {
-                                        if (!firstGroup)
-                                        {
-                                            dataString.append(",");
-                                        }
-                                        dataString.append(R"(")");
-                                        dataString.append(group);
-                                        dataString.append(R"(")");
-                                        firstGroup = false;
-                                    }
-                                    dataString.append(R"(],"host":{"architecture":")");
-                                    dataString.append(res.context->architecture);
-                                    dataString.append(R"(","hostname":")");
-                                    dataString.append(res.context->hostname);
-                                    dataString.append(R"(","os":{"name":")");
-                                    dataString.append(res.context->osname);
-                                    dataString.append(R"(","platform":")");
-                                    dataString.append(res.context->osplatform);
-                                    dataString.append(R"(","type":")");
-                                    dataString.append(res.context->ostype);
-                                    dataString.append(R"(","version":")");
-                                    dataString.append(res.context->osversion);
-                                    dataString.append(R"("}}},"wazuh":{"cluster":{"name":")");
-                                    dataString.append(m_clusterName);
-                                    dataString.append(R"("}},)");
+                                    dataString = metadata.dump();
+                                    // Remove closing brace to append inventory data
+                                    dataString.pop_back();
+                                    dataString.append(",");
+                                    // Append inventory data (skip opening brace from FlatBuffer data)
                                     dataString.append(std::string_view((const char*)data->data()->data() + 1,
                                                                        data->data()->size() - 1));
                                     const auto version = data->version();
@@ -879,6 +920,47 @@ public:
                             else
                             {
                                 throw InventorySyncException("Invalid message type");
+                            }
+                        }
+
+                        if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
+                            res.context->option == Wazuh::SyncSchema::Option_VDSync)
+                        {
+                            // Check if vulnerability scanner is initialized before attempting to run scan
+                            if (VulnerabilityScannerFacade::instance().isInitialized())
+                            {
+                                logDebug2(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade: Running vulnerability scanner for agent %s...",
+                                          res.context->agentId.c_str());
+
+                                // Run vulnerability scanner
+                                try
+                                {
+                                    VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    logError(LOGGER_DEFAULT_TAG,
+                                             "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
+                                             res.context->agentId.c_str(),
+                                             e.what());
+                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                     res.context->agentId,
+                                                                     res.context->sessionId,
+                                                                     res.context->moduleName);
+                                    m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+
+                                    m_agentSessions.erase(res.context->sessionId);
+                                }
+                            }
+                            else
+                            {
+                                // VD is disabled or not initialized - skip scan and continue with normal flow
+                                logDebug1(
+                                    LOGGER_DEFAULT_TAG,
+                                    "InventorySyncFacade: Vulnerability scanner is disabled or not initialized for "
+                                    "agent %s - skipping scan",
+                                    res.context->agentId.c_str());
                             }
                         }
 
@@ -1136,6 +1218,68 @@ public:
     }
 
     /**
+     * @brief Clean up zombie sessions for an agent
+     * @param agentId Agent ID to clean up sessions for
+     * @param excludeSessionId Session ID to exclude from cleanup (e.g., the current session)
+     * @return Number of zombie sessions cleaned up
+     */
+    size_t cleanupZombieSessions(const std::string& agentId, uint64_t excludeSessionId = 0)
+    {
+        std::unique_lock lock(m_agentSessionsMutex);
+        size_t cleanedCount = 0;
+
+        std::vector<uint64_t> sessionsToRemove;
+
+        // Collect zombie sessions for this agent
+        for (const auto& [sessionId, session] : m_agentSessions)
+        {
+            if (sessionId == excludeSessionId)
+            {
+                continue;
+            }
+
+            const auto& context = session.getContext();
+            if (agentId.empty() || context->agentId == agentId)
+            {
+                sessionsToRemove.push_back(sessionId);
+            }
+        }
+
+        // Remove zombie sessions
+        for (const auto& sessionId : sessionsToRemove)
+        {
+            auto it = m_agentSessions.find(sessionId);
+            if (it != m_agentSessions.end())
+            {
+                const auto& context = it->second.getContext();
+
+                logWarn(LOGGER_DEFAULT_TAG,
+                        "Cleaning up zombie session %llu for agent %s (module: %s)",
+                        sessionId,
+                        context->agentId.c_str(),
+                        context->moduleName.c_str());
+
+                // Delete data from database
+                m_dataStore->deleteByPrefix(std::to_string(sessionId));
+
+                // Remove session
+                m_agentSessions.erase(it);
+                cleanedCount++;
+            }
+        }
+
+        if (cleanedCount > 0)
+        {
+            logInfo(LOGGER_DEFAULT_TAG,
+                    "Cleaned up %zu zombie session(s) for agent %s",
+                    cleanedCount,
+                    agentId.empty() ? "ALL" : agentId.c_str());
+        }
+
+        return cleanedCount;
+    }
+
+    /**
      * @brief Wait for all active sessions of an agent to complete
      * @param agentId Agent ID to wait for, or empty string for ALL agents
      * @param timeout Maximum time to wait
@@ -1217,7 +1361,55 @@ public:
 
 private:
     InventorySyncFacadeImpl() = default;
+
+    void deleteAgent(const std::string& agentId)
+    {
+        if (agentId.empty())
+        {
+            logWarn(LOGGER_DEFAULT_TAG, "InventorySyncFacade::deleteAgent: Empty agent ID");
+            return;
+        }
+
+        if (!m_indexerConnector)
+        {
+            logError(LOGGER_DEFAULT_TAG, "InventorySyncFacade::deleteAgent: Indexer connector not initialized");
+            return;
+        }
+
+        if (!m_indexerConnector->isAvailable())
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "InventorySyncFacade::deleteAgent: Indexer not available, skipping deletion for agent '%s'",
+                    agentId.c_str());
+            return;
+        }
+
+        logInfo(LOGGER_DEFAULT_TAG,
+                "InventorySyncFacade::deleteAgent: Deleting data for agent '%s' from %s indexes",
+                agentId.c_str(),
+                WAZUH_STATES_INDEX_PATTERN);
+
+        try
+        {
+            // Delete all agent data from wazuh-states-* indexes using wildcard pattern
+            auto lock = m_indexerConnector->scopeLock();
+            m_indexerConnector->deleteByQuery(WAZUH_STATES_INDEX_PATTERN, agentId);
+
+            logInfo(LOGGER_DEFAULT_TAG,
+                    "InventorySyncFacade::deleteAgent: Successfully deleted data for agent '%s'",
+                    agentId.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            logError(LOGGER_DEFAULT_TAG,
+                     "InventorySyncFacade::deleteAgent: Failed to delete data for agent '%s': %s",
+                     agentId.c_str(),
+                     e.what());
+        }
+    }
+
     std::string m_clusterName;
+    int m_maxSessions {1000}; // Maximum concurrent sessions (configured from internal_options)
     mutable std::shared_mutex m_agentSessionsMutex;
     std::mutex m_sessionTimeoutMutex;
     std::condition_variable m_sessionTimeoutCv;

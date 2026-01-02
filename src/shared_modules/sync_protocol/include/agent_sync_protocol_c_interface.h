@@ -30,7 +30,8 @@ extern "C" {
 /// @param retries Default number of retries for synchronization operations.
 /// @param maxEps Default maximum events per second for synchronization operations.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries, size_t maxEps);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
+                                    size_t maxEps);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
@@ -117,7 +118,7 @@ bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
 ///
 /// This function sends DataClean messages for each index in the provided array.
 /// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
-/// Upon receiving Ok/PartialOk, it clears the local database and returns true.
+/// Upon receiving Ok, it clears the local database and returns true.
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param indices Array of index name strings to clean.
 /// @param indices_count Number of indices in the array.

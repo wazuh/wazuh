@@ -81,6 +81,10 @@
              cJSON_AddStringToObject(config_json, "clusterNodeName", manager_node_name);
              os_free(manager_node_name);
 
+             // Add max sessions from internal_options (inventory_sync specific)
+             int max_sessions = getDefine_Int("wazuh_modules", "max_sessions", 1, 100000);
+             cJSON_AddNumberToObject(config_json, "maxSessions", max_sessions);
+
              wm_inventory_sync_log_config(config_json);
              inventory_sync_start_ptr(mtLoggingFunctionsWrapper, config_json);
              cJSON_Delete(config_json);

@@ -30,7 +30,7 @@ constexpr auto OS_SQL_STATEMENT
     os_full TEXT,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (os_name)) WITHOUT ROWID;)"
+    PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;)"
 };
 
 constexpr auto HW_SQL_STATEMENT
@@ -90,7 +90,7 @@ constexpr auto PROCESSES_SQL_STATEMENT
     command_line TEXT,
     args TEXT,
     args_count BIGINT,
-    start BIGINT,
+    start TEXT,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (pid)) WITHOUT ROWID;)"
@@ -175,17 +175,17 @@ constexpr auto USERS_SQL_STATEMENT
         user_groups TEXT,
         user_group_id BIGINT,
         user_group_id_signed BIGINT,
-        user_created DOUBLE,
+        user_created TEXT,
         user_roles TEXT,
         user_shell TEXT,
         user_type TEXT,
         user_is_hidden INTEGER,
         user_is_remote INTEGER,
-        user_last_login BIGINT,
+        user_last_login TEXT,
         user_auth_failed_count BIGINT,
-        user_auth_failed_timestamp DOUBLE,
-        user_password_last_change DOUBLE,
-        user_password_expiration_date INTEGER,
+        user_auth_failed_timestamp TEXT,
+        user_password_last_change BIGINT,
+        user_password_expiration_date TEXT,
         user_password_hash_algorithm TEXT,
         user_password_inactive_days INTEGER,
         user_password_max_days_between_changes INTEGER,
@@ -287,6 +287,14 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
 };
 
+constexpr auto TABLE_METADATA_SQL_STATEMENT
+{
+    R"(CREATE TABLE IF NOT EXISTS table_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_sync_time INTEGER NOT NULL
+    );)"
+};
+
 constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };
 constexpr auto NET_PROTOCOL_TABLE           { "dbsync_network_protocol"     };
 constexpr auto NET_ADDRESS_TABLE            { "dbsync_network_address"      };
@@ -300,3 +308,5 @@ constexpr auto USERS_TABLE                  { "dbsync_users"                };
 constexpr auto GROUPS_TABLE                 { "dbsync_groups"               };
 constexpr auto SERVICES_TABLE               { "dbsync_services"             };
 constexpr auto BROWSER_EXTENSIONS_TABLE     { "dbsync_browser_extensions"   };
+
+constexpr auto METADATA_TABLE               { "table_metadata"              };

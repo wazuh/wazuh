@@ -95,7 +95,7 @@ help() {
     echo
     echo "    -b, --branch <branch>      [Optional] Select Git branch."
     echo "    -t, --target <target>      [Required] Target package to build: manager or agent."
-    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/ppc64le/arm64/armhf]."
+    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/arm64/armhf]."
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."

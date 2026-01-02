@@ -8,10 +8,9 @@
 #include <vector>
 
 #include <api/archiver/handlers.hpp>
-#include <api/catalog/catalog.hpp>
+#include <api/cmcrud/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
-#include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
 #include <base/hostInfo.hpp>
@@ -23,22 +22,25 @@
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
+#include <cmcrud/cmcontentvalidator.hpp>
+#include <cmcrud/cmcrudservice.hpp>
+#include <cmstore/cmstore.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
-#include <cmsync/cmsync.hpp>
+#include <ctistore/cm.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdbstore/ikvdbmanager.hpp>
+#include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <scheduler/scheduler.hpp>
 #include <streamlog/logger.hpp>
 #include <udgramsrv/udsrv.hpp>
 #include <wiconnector/windexerconnector.hpp>
-#include <ctistore/cm.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
@@ -60,7 +62,6 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 
 std::shared_ptr<udsrv::Server> g_engineLocalServer {};
 volatile sig_atomic_t g_shutdown_requested = 0;
-
 
 void sigintHandler(const int signum)
 {
@@ -111,6 +112,9 @@ int main(int argc, char* argv[])
     const auto opts = parseOptions(argc, argv);
     const bool isRunningStandAlone = base::process::isStandaloneModeEnable();
     const bool cliDebug = (opts.debugCount > 0);
+    auto ctiSyncRequested = std::make_shared<std::atomic_bool>(false);
+    const cm::store::NamespaceId ctiNs {"cti"};
+    const std::string CTI_ROUTE_NAME {"default"};
 
     // Loggin initialization
     if (isRunningStandAlone)
@@ -220,21 +224,20 @@ int main(int argc, char* argv[])
 
     std::shared_ptr<store::Store> store;
     std::shared_ptr<builder::Builder> builder;
-    std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
-    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
-    std::shared_ptr<api::policy::IPolicy> policyManager;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
-    std::shared_ptr<cm::sync::CMSync> cmsync;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
+    std::shared_ptr<cm::store::CMStore> cmStore;
+    std::shared_ptr<cm::crud::ICrudService> cmCrudService;
 
     try
     {
@@ -267,18 +270,7 @@ int main(int argc, char* argv[])
         if (!base::process::isStandaloneModeEnable())
         {
             // Get executable file name
-            std::string exePath {};
-            {
-                try
-                {
-                    exePath = std::filesystem::read_symlink("/proc/self/exe").filename().string();
-                }
-                catch (const std::exception& e)
-                {
-                    LOG_DEBUG("Could not get executable name: {}", e.what());
-                    exePath = "wazuh-analysisd";
-                }
-            }
+            std::string exePath {"wazuh-analysisd"};
 
             const auto pidError =
                 base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());
@@ -297,18 +289,66 @@ int main(int argc, char* argv[])
             LOG_INFO("Store initialized.");
         }
 
+        // CTI Store
+        if (confManager.get<bool>(conf::key::CTI_ENABLED))
+        {
+            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
+            cti::store::ContentManagerConfig ctiCfg;
+            ctiCfg.basePath = baseCtiPath;
+
+            try
+            {
+                std::vector<std::string> indexerHosts;
+
+                if (isRunningStandAlone)
+                {
+                    indexerHosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
+                }
+                else
+                {
+                    auto indexerConfig = json::Json(base::libwazuhshared::getJsonIndexerCnf().c_str());
+                    if (auto hostsArray = indexerConfig.getArray("/hosts"); hostsArray.has_value())
+                    {
+                        for (const auto& host : hostsArray.value())
+                        {
+                            if (host.isString())
+                            {
+                                indexerHosts.push_back(host.getString().value());
+                            }
+                        }
+                    }
+                }
+
+                if (!indexerHosts.empty())
+                {
+                    ctiCfg.oauth.indexer.url = indexerHosts[0];
+                }
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("Could not retrieve indexer configuration for CTI Store: '{}'. OAuth will be disabled.",
+                            e.what());
+            }
+
+            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, ctiSyncRequested);
+            LOG_INFO("CTI Store initialized");
+
+            ctiStoreManager->startSync();
+            exitHandler.add([ctiStoreManager]() { ctiStoreManager->shutdown(); });
+        }
+
+        // Content Manager
+        {
+            cmStore = std::make_shared<cm::store::CMStore>(confManager.get<std::string>(conf::key::CM_RULESET_PATH),
+                                                           confManager.get<std::string>(conf::key::OUTPUTS_PATH),
+                                                           ctiStoreManager);
+            LOG_INFO("Content Manager initialized.");
+        }
+
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions {confManager.get<std::string>(conf::key::KVDB_PATH), "kvdb"};
-            kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions);
-            kvdbManager->initialize();
+            kvdbManager = std::make_shared<kvdbstore::KVDBManager>();
             LOG_INFO("KVDB initialized.");
-            exitHandler.add(
-                [kvdbManager, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    kvdbManager->finalize();
-                    LOG_INFO_L(functionName.c_str(), "KVDB terminated.");
-                });
         }
 
         // GEO
@@ -375,11 +415,15 @@ int main(int argc, char* argv[])
                 return icConfig.toJson();
             };
 
-            try {
-                const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
+            try
+            {
+                const auto jsonCnf =
+                    isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
                 LOG_INFO("Indexer Connector initialized.");
-            } catch (const std::exception& e) {
+            }
+            catch (const std::exception& e)
+            {
                 LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());
                 return EXIT_FAILURE;
             }
@@ -443,7 +487,6 @@ int main(int argc, char* argv[])
             builder::BuilderDeps builderDeps;
             builderDeps.logparDebugLvl = 0;
             builderDeps.logpar = logpar;
-            builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
@@ -467,22 +510,16 @@ int main(int argc, char* argv[])
                     std::make_shared<builder::AllowedFields>(base::getResponse<store::Doc>(allowedFieldsDoc));
             }
 
-            builder = std::make_shared<builder::Builder>(store, schema, defs, allowedFields, builderDeps);
+            builder = std::make_shared<builder::Builder>(cmStore, schema, defs, allowedFields, builderDeps);
             LOG_INFO("Builder initialized.");
         }
 
-        // Catalog
+        // Crud Service
         {
-            api::catalog::Config catalogConfig {store, builder};
-
-            catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
-            LOG_INFO("Catalog initialized.");
-        }
-
-        // Policy manager
-        {
-            policyManager = std::make_shared<api::policy::Policy>(store, builder);
-            LOG_INFO("Policy manager initialized.");
+            std::shared_ptr<cm::crud::IContentValidator> contentValidator =
+                std::make_shared<cm::crud::ContentValidator>(builder);
+            cmCrudService = std::make_shared<cm::crud::CrudService>(cmStore, contentValidator);
+            LOG_INFO("Content Manager CRUD Service initialized.");
         }
 
         // Router
@@ -523,6 +560,54 @@ int main(int argc, char* argv[])
             LOG_INFO("Router initialized.");
         }
 
+        // CTISync
+        {
+            scheduler::TaskConfig cfg {};
+            cfg.interval = 5;
+            cfg.CPUPriority = 0;
+            cfg.taskFunction = [CTI_ROUTE_NAME, ctiSyncRequested, orchestrator, ctiNs]()
+            {
+                try
+                {
+                    // If the orchestrator has no entries, we create the route for the first time.
+                    if (orchestrator->getEntries().empty())
+                    {
+                        router::prod::EntryPost entry {
+                            CTI_ROUTE_NAME, ctiNs, base::Name({"filter", "allow-all", "0"}), 100};
+
+                        if (auto err = orchestrator->postEntry(entry))
+                        {
+                            LOG_ERROR("Failed to create CTI default route: {}", base::getError(err).message);
+                        }
+                        else
+                        {
+                            LOG_INFO("CTI '{}' route created.", CTI_ROUTE_NAME);
+                        }
+                    }
+
+                    // If there are already entries and CTI requested a sync, we reload the route
+                    if (ctiSyncRequested->exchange(false, std::memory_order_acq_rel))
+                    {
+                        if (auto err = orchestrator->reloadEntry(CTI_ROUTE_NAME))
+                        {
+                            LOG_ERROR(
+                                "Failed to reload CTI route '{}': {}", CTI_ROUTE_NAME, base::getError(err).message);
+                        }
+                        else
+                        {
+                            LOG_DEBUG("CTI route '{}' reloaded after CTI sync.", CTI_ROUTE_NAME);
+                        }
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_ERROR("Error in CTI sync route task: {}", e.what());
+                }
+            };
+
+            scheduler->scheduleTask("cti_sync_route", std::move(cfg));
+        }
+
         // Archiver
         {
             archiver =
@@ -530,85 +615,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
-        }
-
-        // TODO: This modules should be initialized before the API server to be able to
-        // provide their API endpoints, this need a improvement on wazuh-control start
-        // Content Manager
-        {
-            cmsync = std::make_shared<cm::sync::CMSync>(catalog,
-                                                        kvdbManager,
-                                                        policyManager,
-                                                        orchestrator,
-                                                        confManager.get<std::string>(conf::key::CMSYNC_OUTPUT_PATH));
-            LOG_INFO("Content Manager Sync initialized.");
-
-        }
-
-        // CTI Store (initialized after CMSync to pass deploy callback)
-        if (confManager.get<bool>(conf::key::CTI_ENABLED)) {
-            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
-            cti::store::ContentManagerConfig ctiCfg;
-            ctiCfg.basePath = baseCtiPath;
-
-            try
-            {
-                std::vector<std::string> indexerHosts;
-
-                if (isRunningStandAlone)
-                {
-                    indexerHosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-                }
-                else
-                {
-                    auto indexerConfig = json::Json(base::libwazuhshared::getJsonIndexerCnf().c_str());
-                    if (auto hostsArray = indexerConfig.getArray("/hosts"); hostsArray.has_value())
-                    {
-                        for (const auto& host : hostsArray.value())
-                        {
-                            if (host.isString())
-                            {
-                                indexerHosts.push_back(host.getString().value());
-                            }
-                        }
-                    }
-                }
-
-                if (!indexerHosts.empty())
-                {
-                    ctiCfg.oauth.indexer.url = indexerHosts[0];
-                }
-            }
-            catch (const std::exception& e)
-            {
-                LOG_WARNING("Could not retrieve indexer configuration for CTI Store: '{}'. OAuth will be disabled.",
-                            e.what());
-            }
-
-            auto deployCallback = [cmsync](const std::shared_ptr<cti::store::ICMReader>& cmstore)
-            {
-                cmsync->deploy(cmstore);
-            };
-
-            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, deployCallback);
-            LOG_INFO("CTI Store initialized");
-
-            // TODO: Find a better way to do this - This cannot going to production
-            if (orchestrator->getEntries().empty())
-            {
-                try
-                {
-                    LOG_WARNING("No environments found, deploying CTI content at startup. This may take a while...");
-                    cmsync->deploy(ctiStoreManager);
-                }
-                catch (const std::exception& e)
-                {
-                    LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
-                }
-            }
-
-            ctiStoreManager->startSync();
-            exitHandler.add([ctiStoreManager]() { ctiStoreManager->shutdown(); });
         }
 
         // Create and configure the api endpints
@@ -625,34 +631,26 @@ int main(int argc, char* argv[])
 
             // TODO Add Metrics API registration
 
-            // Catalog
-            api::catalog::handlers::registerHandlers(catalog, apiServer);
-            LOG_DEBUG("Catalog API registered.");
-
             // Geo
             api::geo::handlers::registerHandlers(geoManager, apiServer);
             LOG_DEBUG("Geo API registered.");
 
-            // KVDB
-            api::kvdb::handlers::registerHandlers(kvdbManager, apiServer);
-            LOG_DEBUG("KVDB API registered.");
-
-            // Policy
-            api::policy::handlers::registerHandlers(policyManager, apiServer);
-            LOG_DEBUG("Policy API registered.");
-
             // Router
-            api::router::handlers::registerHandlers(orchestrator, policyManager, apiServer);
+            api::router::handlers::registerHandlers(orchestrator, cmStore, apiServer);
             LOG_DEBUG("Router API registered.");
 
             // Tester
-            api::tester::handlers::registerHandlers(orchestrator, store, policyManager, apiServer);
+            api::tester::handlers::registerHandlers(orchestrator, cmStore, apiServer);
             LOG_DEBUG("Tester API registered.");
 
             // Archiver
             // should be refactored to use the rotation and dont use a semaphore for writing
             api::archiver::handlers::registerHandlers(archiver, apiServer);
             LOG_DEBUG("Archiver API registered.");
+
+            // Crud Manager
+            api::cmcrud::handlers::registerHandlers(cmCrudService, orchestrator, apiServer);
+            LOG_DEBUG("Content Manager CRUD API registered.");
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
@@ -665,7 +663,10 @@ int main(int argc, char* argv[])
                 [orchestrator, archiver, hostInfo](std::string_view msg)
                 {
                     archiver->archive(msg.data());
-                    orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg, hostInfo));
+                    auto event = base::eventParsers::parseLegacyEvent(msg, hostInfo);
+                    // TODO: momentary change
+                    event->setString("wazuh", "/wazuh/cluster/name");
+                    orchestrator->postEvent(std::move(event));
                 },
                 confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
@@ -679,10 +680,28 @@ int main(int argc, char* argv[])
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
+            // TODO: momentary change
+            auto modifyParsingJson = []() -> api::event::handlers::ProtolHandler
+            {
+                auto parser = api::event::protocol::getNDJsonParser();
+                return [parser](std::string&& batch) -> std::queue<base::Event>
+                {
+                    auto batchEvents = parser(std::move(batch));
+                    std::queue<base::Event> modifiedEvents;
+                    while (!batchEvents.empty())
+                    {
+                        batchEvents.front()->setString("wazuh", "/wazuh/cluster/name");
+                        modifiedEvents.push(std::move(batchEvents.front()));
+                        batchEvents.pop();
+                    }
+                    return modifiedEvents;
+                };
+            };
+
             engineRemoteServer->addRoute(
                 httpsrv::Method::POST,
                 "/events/enriched", // TODO: Double check route
-                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
+                api::event::handlers::pushEvent(orchestrator, modifyParsingJson(), archiver));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));

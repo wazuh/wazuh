@@ -580,6 +580,9 @@ static int setup_transaction_callback(void **state) {
     txn_data->txn_context->event->mode = FIM_SCHEDULED;
     txn_data->txn_context->event->type = FIM_DELETE;
 
+    // Enable notify_scan so send_syscheck_msg is called instead of persist_syscheck_msg
+    notify_scan = 1;
+
     *state = txn_data;
     return 0;
 }
@@ -598,6 +601,9 @@ static int teardown_transaction_callback(void **state) {
         }
         free(txn_data->txn_context);
     }
+
+    // Restore notify_scan to default state
+    notify_scan = 0;
 
     free(txn_data);
     return 0;
@@ -983,7 +989,7 @@ static void test_fim_check_depth_failure_null_directory(void **state) {
 static void test_fim_configuration_directory_no_path(void **state) {
     directory_t *ret;
 
-    ret = fim_configuration_directory(NULL, true);
+    ret = fim_configuration_directory(NULL, true, syscheck.directories);
 
     assert_null(ret);
 }
@@ -1001,7 +1007,7 @@ static void test_fim_configuration_directory_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    ret = fim_configuration_directory(path, true);
+    ret = fim_configuration_directory(path, true, syscheck.directories);
 
     assert_non_null(ret);
     assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
@@ -1023,7 +1029,7 @@ static void test_fim_configuration_directory_file(void **state) {
 
     str_lowercase(path);
 
-    ret = fim_configuration_directory(path, true);
+    ret = fim_configuration_directory(path, true, syscheck.directories);
 
     assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
 }
@@ -1049,7 +1055,7 @@ static void test_fim_configuration_directory_not_found(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/invalid'");
 
-    ret = fim_configuration_directory(path, true);
+    ret = fim_configuration_directory(path, true, syscheck.directories);
 
     assert_null(ret);
 }
@@ -1071,7 +1077,7 @@ static void test_fim_configuration_directory_not_found_not_debug(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
-    ret = fim_configuration_directory(path, false);
+    ret = fim_configuration_directory(path, false, syscheck.directories);
 
     assert_null(ret);
 }
@@ -1875,6 +1881,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
     TXN_HANDLE mock_handle = NULL;
     char debug_buffer[OS_SIZE_128] = {0};
     int rt_folder = 0;
+
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -2338,10 +2345,10 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     };
     int i;
 
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, mock_handle);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
@@ -2400,10 +2407,11 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     int i;
     struct stat buf = { .st_mode = S_IFDIR };
     TXN_HANDLE mock_handle;
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
@@ -2463,12 +2471,11 @@ static void test_fim_scan_no_limit(void **state) {
     struct stat buf = { .st_mode = S_IFDIR };
     TXN_HANDLE mock_handle;
 
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 

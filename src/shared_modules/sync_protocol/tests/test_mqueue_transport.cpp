@@ -28,65 +28,67 @@ using ::testing::SetArgReferee;
  */
 class MQueueTransportTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        logMessages.clear();
-        mqStartCalls = 0;
-        mqSendCalls = 0;
-        mqStartReturnValue = 1;  // Valid queue descriptor
-        mqSendReturnValue = 0;   // Success
-        shouldThrowException = false;
-    }
-
-    void TearDown() override
-    {
-        logMessages.clear();
-    }
-
-    // Mock state
-    static std::vector<std::string> logMessages;
-    static int mqStartCalls;
-    static int mqSendCalls;
-    static int mqStartReturnValue;
-    static int mqSendReturnValue;
-    static bool shouldThrowException;
-
-    // Mock MQ_Functions
-    static int mockMqStart(const char* path, short type, short n)
-    {
-        mqStartCalls++;
-        if (shouldThrowException)
+    protected:
+        void SetUp() override
         {
-            throw std::runtime_error("MQ start error");
+            logMessages.clear();
+            mqStartCalls = 0;
+            mqSendCalls = 0;
+            mqStartReturnValue = 1;  // Valid queue descriptor
+            mqSendReturnValue = 0;   // Success
+            shouldThrowException = false;
         }
-        return mqStartReturnValue;
-    }
 
-    static int mockMqSendBinary(int queue, const void* buffer, size_t size, const char* module, char mq_type)
-    {
-        mqSendCalls++;
-        return mqSendReturnValue;
-    }
-
-    static void mockLogger(modules_log_level_t level, const std::string& msg)
-    {
-        logMessages.push_back(msg);
-    }
-
-    MQ_Functions createMockMqFunctions()
-    {
-        return MQ_Functions
+        void TearDown() override
         {
-            mockMqStart,
-            mockMqSendBinary
-        };
-    }
+            logMessages.clear();
+        }
 
-    LoggerFunc createMockLogger()
-    {
-        return mockLogger;
-    }
+        // Mock state
+        static std::vector<std::string> logMessages;
+        static int mqStartCalls;
+        static int mqSendCalls;
+        static int mqStartReturnValue;
+        static int mqSendReturnValue;
+        static bool shouldThrowException;
+
+        // Mock MQ_Functions
+        static int mockMqStart([[maybe_unused]] const char* path, [[maybe_unused]] short type, [[maybe_unused]] short n)
+        {
+            mqStartCalls++;
+
+            if (shouldThrowException)
+            {
+                throw std::runtime_error("MQ start error");
+            }
+
+            return mqStartReturnValue;
+        }
+
+        static int mockMqSendBinary([[maybe_unused]] int queue, [[maybe_unused]] const void* buffer, [[maybe_unused]] size_t size, [[maybe_unused]] const char* module, [[maybe_unused]] char mq_type)
+        {
+            mqSendCalls++;
+            return mqSendReturnValue;
+        }
+
+        static void mockLogger([[maybe_unused]] modules_log_level_t level, const std::string& msg)
+        {
+            logMessages.push_back(msg);
+        }
+
+        MQ_Functions createMockMqFunctions()
+        {
+            return MQ_Functions
+            {
+                mockMqStart,
+                mockMqSendBinary
+            };
+        }
+
+        LoggerFunc createMockLogger()
+        {
+            return mockLogger;
+        }
 };
 
 // Initialize static members
@@ -122,7 +124,7 @@ TEST_F(MQueueTransportTest, ShutdownDoesNothing)
     auto logger = createMockLogger();
 
     MQueueTransport transport("test_module", mqFuncs, logger);
-    
+
     transport.shutdown();
 
     // Constructor should not call any MQ functions yet
@@ -164,7 +166,7 @@ TEST_F(MQueueTransportTest, CheckStatusFailsWhenQueueUnavailable)
 
     EXPECT_FALSE(result);
     EXPECT_EQ(mqStartCalls, 1);
-    EXPECT_EQ(logMessages.size(), 1);
+    EXPECT_EQ(logMessages.size(), 1u);
     EXPECT_TRUE(logMessages[0].find("Failed to open queue") != std::string::npos);
 }
 
@@ -203,7 +205,7 @@ TEST_F(MQueueTransportTest, CheckStatusCachesException)
 
     // Queue should only be opened once
     EXPECT_EQ(mqStartCalls, 1);
-    EXPECT_EQ(logMessages.size(), 2);
+    EXPECT_EQ(logMessages.size(), 2u);
     EXPECT_TRUE(logMessages[0].find("Exception when checking queue availability") != std::string::npos);
     EXPECT_TRUE(logMessages[1].find("Failed to open queue") != std::string::npos);
 }
@@ -257,15 +259,17 @@ TEST_F(MQueueTransportTest, SendMessageSucceedsAfterQueueReinit)
     MQ_Functions customMqFuncs
     {
         mockMqStart,
-        [](int queue, const void* buffer, size_t size, const char* module, char mq_type) -> int
+        [](int, const void*, size_t, const char*, char) -> int
         {
             mqSendCalls++;
             static int count = 0;
             count++;
+
             if (count == 1)
             {
                 return -1;
             }
+
             return 5;
         }
     };
@@ -278,8 +282,8 @@ TEST_F(MQueueTransportTest, SendMessageSucceedsAfterQueueReinit)
     EXPECT_TRUE(result);
     EXPECT_EQ(mqSendCalls, 2);
     EXPECT_EQ(mqStartCalls, 1);  // Opens queue once for reinit
-    EXPECT_EQ(logMessages.size(), 1);
-    EXPECT_TRUE(logMessages[0].find("SendMSG failed, attempting to reinitialize queue") != std::string::npos);
+    EXPECT_EQ(logMessages.size(), 1u);
+    EXPECT_TRUE(logMessages[0].find("attempting to reinitialize queue") != std::string::npos);
 }
 
 /**
@@ -300,9 +304,9 @@ TEST_F(MQueueTransportTest, SendMessageFailsAfterRetry)
     EXPECT_FALSE(result);
     EXPECT_EQ(mqSendCalls, 2);
     EXPECT_EQ(mqStartCalls, 1);  // Opens queue once for reinit
-    EXPECT_EQ(logMessages.size(), 2);
-    EXPECT_TRUE(logMessages[0].find("SendMSG failed, attempting to reinitialize queue") != std::string::npos);
-    EXPECT_TRUE(logMessages[1].find("SendMSG failed to send message after retry") != std::string::npos);
+    EXPECT_EQ(logMessages.size(), 2u);
+    EXPECT_TRUE(logMessages[0].find("attempting to reinitialize queue") != std::string::npos);
+    EXPECT_TRUE(logMessages[1].find("Failed to send message after retry") != std::string::npos);
 }
 
 /**
@@ -316,15 +320,17 @@ TEST_F(MQueueTransportTest, SendMessageFailsWhenQueueReinitFails)
     MQ_Functions customMqFuncs
     {
         mockMqStart,
-        [](int queue, const void* buffer, size_t size, const char* module, char mq_type) -> int
+        [](int, const void*, size_t, const char*, char) -> int
         {
             mqSendCalls++;
             static int count = 0;
             count++;
+
             if (count == 1)
             {
                 return -1;
             }
+
             return 5;
         }
     };
@@ -337,8 +343,32 @@ TEST_F(MQueueTransportTest, SendMessageFailsWhenQueueReinitFails)
     EXPECT_FALSE(result);
     EXPECT_EQ(mqSendCalls, 1);  //  send_binary is not called again on reinit failure
     EXPECT_EQ(mqStartCalls, 1);  // Opens queue once for reinit
-    EXPECT_EQ(logMessages.size(), 2);
-    EXPECT_TRUE(logMessages[0].find("SendMSG failed, attempting to reinitialize queue") != std::string::npos);
-    EXPECT_TRUE(logMessages[1].find("SendMSG failed to send message after retry") != std::string::npos);
+    EXPECT_EQ(logMessages.size(), 2u);
+    EXPECT_TRUE(logMessages[0].find("attempting to reinitialize queue") != std::string::npos);
+    EXPECT_TRUE(logMessages[1].find("Failed to send message after retry") != std::string::npos);
 }
 
+
+// Test to cover ISyncMessageTransport D0 destructor (delete through base pointer)
+TEST(InterfaceDestructorTest, ISyncMessageTransportDeletingDestructor)
+{
+    // Create concrete implementation through base interface pointer
+    ISyncMessageTransport* transport = nullptr;
+
+    MQ_Functions mockMq
+    {
+        [](const char*, short, short) { return 1; },
+        [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Create MQueueTransport through base interface pointer
+    transport = new MQueueTransport("test_module", mockMq, testLogger);
+
+    // Delete through base pointer - this calls D0 destructor
+    delete transport;
+}

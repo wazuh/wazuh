@@ -74,14 +74,26 @@ class EXPORTED Syscollector final
         void destroy();
 
         // Sync protocol methods
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
-                              size_t maxEps);
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
+                              std::chrono::seconds timeout, unsigned int retries,
+                              size_t maxEps, uint32_t integrityInterval);
         bool syncModule(Mode mode);
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
+        bool parseResponseBufferVD(const uint8_t* data, size_t length);
         bool notifyDataClean(const std::vector<std::string>& indices);
         void deleteDatabase();
         std::string query(const std::string& jsonQuery);
+        bool notifyDisableCollectorsDataClean();
+        void deleteDisableCollectorsData();
+
+        // Mutex access for external synchronization (e.g., from wm_sync_module)
+        void lockScanMutex();
+        void unlockScanMutex();
+
+        // Recovery functions
+        void runRecoveryProcess();
+
     private:
         Syscollector();
         ~Syscollector() = default;
@@ -100,6 +112,36 @@ class EXPORTED Syscollector final
 
         std::pair<nlohmann::json, uint64_t> ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
         nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
+
+        /**
+         * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
+         * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")
+         * @param excludeIds Set of hash IDs to exclude from results (items already in DataValue)
+         * @return Vector of JSON objects representing all rows in the table (excluding specified IDs)
+         */
+        std::vector<nlohmann::json> fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds);
+
+        /**
+         * @brief Determines which DataContext items to include based on platform-specific rules
+         * @param operation The operation type (CREATE, MODIFY, DELETE_)
+         * @param index The index being modified (system, packages, hotfixes)
+         * @return Vector of table names that should be included as DataContext
+         */
+        std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
+
+        /**
+         * @brief Checks if the first VD sync has been completed
+         * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
+         */
+        bool isVDFirstSyncDone() const;
+
+        /**
+         * @brief Processes VD DataContext after scan completes
+         * @details Queries the VD sync protocol database for pending DataValue items,
+         *          applies platform-specific rules to determine what DataContext to include,
+         *          and submits the DataContext items to the sync protocol
+         */
+        void processVDDataContext();
         nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsPackageData(const nlohmann::json& originalData, bool createFields = true);
@@ -138,7 +180,7 @@ class EXPORTED Syscollector final
         void scanServices();
         void scanBrowserExtensions();
         void scan();
-        void syncLoop(std::unique_lock<std::mutex>& lock);
+        void syncLoop(std::unique_lock<std::mutex>& scan_lock);
         bool pause();
         void resume();
         int flush();
@@ -157,11 +199,50 @@ class EXPORTED Syscollector final
                                const std::string& sourceKey,
                                bool createFields);
 
+        bool hasDataInTable(const std::string& tableName);
+        void checkDisabledCollectorsIndicesWithData();
+        void clearTablesForIndices(const std::vector<std::string>& indices);
+        bool handleNotifyDataClean();
+
+        // Recovery functions
+        /**
+         * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
+         * @param table_name The table to check
+         * @returns true if a full sync is required, false if a delta sync is sufficient
+         */
+        bool checkIfFullSyncRequired(const std::string& tableName);
+
+        /**
+         * @brief Get the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to query.
+         * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
+         */
+        int64_t getLastSyncTime(const std::string& tableName);
+
+        /**
+         * @brief Update the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to update.
+         * @param timestamp The sync timestamp to set (UNIX format).
+         */
+        void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
+
+        /**
+         * @brief Check if the integrity interval has elapsed for a given table.
+         *
+         * @param tableName Name of the table to check.
+         * @param integrityInterval Integrity check interval in seconds.
+         * @return true if interval has elapsed, false otherwise.
+         */
+        bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
+
         std::shared_ptr<ISysInfo>                                                m_spInfo;
         std::function<void(const std::string&)>                                  m_reportDiffFunction;
         std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_persistDiffFunction;
         std::function<void(const modules_log_level_t, const std::string&)>       m_logFunction;
         unsigned int                                                             m_intervalValue;
+        uint32_t                                                                 m_integrityIntervalValue;
         bool                                                                     m_scanOnStart;
         bool                                                                     m_hardware;
         bool                                                                     m_os;
@@ -172,6 +253,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_processes;
         bool                                                                     m_hotfixes;
         bool                                                                     m_stopping;
+        bool                                                                     m_syncLoopFinished;
         bool                                                                     m_initialized;
         bool                                                                     m_notify;
         std::atomic<bool>                                                        m_paused;
@@ -181,13 +263,18 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
+        unsigned int                                                             m_dataCleanRetries;
+        bool                                                                     m_allCollectorsDisabled;
+        bool                                                                     m_vdSyncEnabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
-        std::mutex                                                               m_mutex;
+        std::mutex                                                               m_scan_mutex;
         std::condition_variable                                                  m_pauseCv;
         std::mutex                                                               m_pauseMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
+        std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
+        std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
 };
 
 

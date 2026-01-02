@@ -5,8 +5,10 @@
 
 #include <cmstore/cmstore.hpp>
 
+#include "storens.hpp"
+
 TEST(ContentManagerTest, init)
 {
-    // Dummy test to verify that ContentManager can be instantiated.
+    cm::store::CMStoreNS store (cm::store::NamespaceId("test"), std::filesystem::temp_directory_path(), std::filesystem::temp_directory_path());
     GTEST_SKIP() << "Not implemented yet.";
 }

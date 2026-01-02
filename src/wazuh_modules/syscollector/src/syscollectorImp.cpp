@@ -14,8 +14,11 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include <cstdint>
 #include <iostream>
+#include <fstream>
 #include <stack>
+#include <set>
 #include <chrono>
 #include <thread>
 
@@ -23,6 +26,7 @@
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
 #include "../../module_query_errors.h"
+#include "defs.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -111,6 +115,10 @@ static const std::map<std::string, std::string> INDEX_MAP
     {BROWSER_EXTENSIONS_TABLE, SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS},
     // LCOV_EXCL_STOP
 };
+
+// VD (Vulnerability Detection) flag file path
+// This file is created after the first successful VD sync to distinguish VDFIRST from VDSYNC
+static constexpr auto VD_FIRST_SYNC_FLAG_FILE = "queue/syscollector/db/.vd_first_sync_done";
 
 static void sanitizeJsonValue(nlohmann::json& input)
 {
@@ -209,7 +217,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 
 void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
-    nlohmann::json aux = result == MODIFIED && data.contains("new") ? data["new"] : data;
+    nlohmann::json aux = (result == MODIFIED && data.contains("new")) ? data["new"] : data;
 
     auto [newData, version] = ecsData(aux, table);
 
@@ -286,6 +294,7 @@ void Syscollector::updateChanges(const std::string& table,
 
 Syscollector::Syscollector()
     : m_intervalValue { 0 }
+    , m_integrityIntervalValue { 86400 }
     , m_scanOnStart { false }
     , m_hardware { false }
     , m_os { false }
@@ -296,6 +305,7 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
+    , m_syncLoopFinished { true }
     , m_initialized { false }
     , m_notify { false }
     , m_paused { false }
@@ -305,6 +315,7 @@ Syscollector::Syscollector()
     , m_users { false }
     , m_services { false }
     , m_browserExtensions { false }
+    , m_vdSyncEnabled { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -324,6 +335,7 @@ std::string Syscollector::getCreateStatement() const
     ret += USERS_SQL_STATEMENT;
     ret += SERVICES_SQL_STATEMENT;
     ret += BROWSER_EXTENSIONS_SQL_STATEMENT;
+    ret += TABLE_METADATA_SQL_STATEMENT;
     return ret;
 }
 
@@ -374,16 +386,22 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
+    m_stopping = false;
+
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
     m_initialized   = true;
 
+    m_allCollectorsDisabled = !(m_hardware || m_os || m_network || m_packages || m_ports || m_processes || m_hotfixes || m_groups || m_users || m_services || m_browserExtensions);
+    m_dataCleanRetries = 1;  // Default retries for data clean
+
+    // Check disabled collectors with existing data
+    checkDisabledCollectorsIndicesWithData();
 }
 
 void Syscollector::start()
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
-
     // Don't start if initialization failed
     if (!m_initialized)
     {
@@ -395,7 +413,10 @@ void Syscollector::start()
         return;
     }
 
-    m_stopping = false;
+    {
+        std::unique_lock<std::mutex> lock{m_scan_mutex};
+        m_stopping = false;
+    }
 
     // Reset sync protocol stop flag to allow restarting operations
     if (m_spSyncProtocol)
@@ -403,26 +424,153 @@ void Syscollector::start()
         m_spSyncProtocol->reset();
     }
 
-    syncLoop(lock);
+    bool notifySuccess = handleNotifyDataClean();
+
+    if (notifySuccess)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "Syscollector data clean notification for disabled collectors sent successfully, proceeding to delete data.");
+        }
+
+        deleteDisableCollectorsData();
+    }
+    else
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Syscollector data clean notification for disabled collectors failed, proceeding without deleting data.");
+        }
+    }
+
+    // If all collectors are disabled, do not start the module
+    if (m_allCollectorsDisabled)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "All collectors are disabled. Exiting...");
+        }
+
+        return;
+    }
+
+    // Determine if VD sync should be enabled based on configuration
+    // VD-relevant data includes: packages, OS, and hotfixes (Windows only)
+    m_vdSyncEnabled = m_packages && m_os;
+#ifdef _WIN32
+    m_vdSyncEnabled = m_vdSyncEnabled && m_hotfixes;
+#endif
+
+    if (!m_vdSyncEnabled)
+    {
+#ifdef _WIN32
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages, OS, or hotfixes scanning is enabled in the configuration.");
+#else
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages or OS scanning is enabled in the configuration.");
+#endif
+    }
+
+    std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
+    syncLoop(scan_lock);
+}
+
+bool Syscollector::handleNotifyDataClean()
+{
+    bool ret = false;
+    unsigned int attempt = 0;
+    constexpr unsigned int DATACLEAN_RETRY_WAIT_SECONDS = 60;  // Fixed wait time between retries
+
+    // If all collectors are disabled, retry indefinitely until success or stopping
+    // Otherwise, respect the configured retry limit
+    while (!ret && !m_stopping)
+    {
+        attempt++;
+
+        ret = notifyDisableCollectorsDataClean();
+
+        if (ret)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Data clean notification succeeded on attempt " + std::to_string(attempt) + ".");
+            }
+
+            break;
+        }
+
+        // Check if we should continue retrying
+        bool shouldRetry = m_allCollectorsDisabled || (attempt < m_dataCleanRetries);
+
+        if (shouldRetry)
+        {
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_WARNING, "Syscollector data clean notification failed, retry in " + std::to_string(DATACLEAN_RETRY_WAIT_SECONDS) + " seconds.");
+            }
+
+            // Wait before next retry with fixed interval
+            for (unsigned int i = 0; i < DATACLEAN_RETRY_WAIT_SECONDS && !m_stopping; i++)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+
+            if (m_stopping)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Data clean notification interrupted by module stop.");
+                }
+
+                break;
+            }
+        }
+        else
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_WARNING, "Syscollector data clean notification failed after " + std::to_string(m_dataCleanRetries) + " attempts.");
+            }
+
+            break;
+        }
+    }
+
+    return ret;
 }
 
 void Syscollector::destroy()
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = true;
     m_cv.notify_all();
+
+    // Wait for syncLoop to finish completely, including cleanup of resources
+    m_cv.wait(lock, [this]()
+    {
+        return m_syncLoopFinished;
+    });
     lock.unlock();
 
-    // Signal sync protocol to stop any ongoing operations
+    // Signal sync protocols to stop any ongoing operations
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
     }
 
-    // Explicitly release DBSync before static destructors run
-    // This prevents use-after-free when Syscollector singleton destructs
-    // after DBSyncImplementation singleton has already been destroyed
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->stop();
+    }
+
+    // Explicitly release all resources to ensure clean state between tests
+    // and prevent use-after-free when Syscollector singleton destructs
+    // after static dependencies have already been destroyed
     m_spDBSync.reset();
+    m_spNormalizer.reset();
+    m_spSyncProtocol.reset();
+    m_spSyncProtocolVD.reset();
+    m_spInfo.reset();
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
@@ -1311,12 +1459,21 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanUsers);
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
+
+    // Process VD DataContext after scan completes
+    // This adds context data (e.g., all packages when OS changes) based on platform-specific rules
+    if (m_vdSyncEnabled)
+    {
+        TRY_CATCH_TASK(processVDDataContext);
+    }
+
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
-void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
+void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
+    m_syncLoopFinished = false;
     m_logFunction(LOG_INFO, "Module started.");
 
     if (m_scanOnStart)
@@ -1324,7 +1481,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         scan();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
     return m_stopping;
 }))
@@ -1338,6 +1495,8 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         scan();
     }
     m_spDBSync.reset(nullptr);
+    m_syncLoopFinished = true;
+    m_cv.notify_all();
 }
 
 std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& data, const std::string& table)
@@ -1346,7 +1505,9 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
 
     if (table == OS_TABLE)
     {
-        ret = data.contains("os_name") ? data["os_name"].get<std::string>() : "";
+        std::string osName = data.contains("os_name") ? data["os_name"].get<std::string>() : "";
+        std::string osVersion = data.contains("os_version") ? data["os_version"].get<std::string>() : "";
+        ret = osName + ":" + osVersion;
     }
     else if (table == HW_TABLE)
     {
@@ -1591,19 +1752,36 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
+                                    std::chrono::seconds timeout,
                                     unsigned int retries,
-                                    size_t maxEps)
+                                    size_t maxEps, uint32_t integrityInterval)
 {
+    m_dataCleanRetries = retries;  // Same as sync retries for data clean notifications
+    m_integrityIntervalValue = integrityInterval;
+
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
         this->m_logFunction(level, msg);
     };
 
+    auto logger_func_vd = [moduleName, this](modules_log_level_t level, const std::string & msg)
+    {
+        this->m_logFunction(level, moduleName + "_vd: " + msg);
+    };
+
     try
     {
+        // Initialize regular sync protocol
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Initialize VD sync protocol with different module name to avoid routing conflicts
+        std::string vdModuleName = moduleName + "_vd";
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func_vd, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
+
+        m_logFunction(LOG_DEBUG, "Integrity interval set to " + std::to_string(integrityInterval) + " seconds");
     }
     catch (const std::exception& ex)
     {
@@ -1625,45 +1803,380 @@ bool Syscollector::syncModule(Mode mode)
         return false;
     }
 
+    m_logFunction(LOG_INFO, "Starting inventory synchronization.");
+
+    // RAII guard ensures m_syncing is set to false even if function exits early
+    ScanGuard syncGuard(m_syncing, m_pauseCv);
+
+    bool success = true;
+
+    // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
-        m_logFunction(LOG_DEBUG, "Syscollector synchronization started.");
+        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+    }
 
-        // RAII guard ensures m_syncing is set to false even if function exits early
-        ScanGuard syncGuard(m_syncing, m_pauseCv);
-        bool result = m_spSyncProtocol->synchronizeModule(mode);
+    // Sync VD data with appropriate option based on first scan status
+    if (m_spSyncProtocolVD)
+    {
+        Option vdOption;
+        bool firstSyncDone = isVDFirstSyncDone();
 
-        if (result)
+        if (!m_vdSyncEnabled)
         {
-            m_logFunction(LOG_INFO, "Syscollector synchronization finished successfully.");
+            // If both packages and OS are disabled, use regular SYNC option
+            vdOption = Option::SYNC;
+            m_logFunction(LOG_DEBUG, "Using SYNC option (VD scanning disabled)");
         }
         else
         {
-            m_logFunction(LOG_INFO, "Syscollector synchronization failed.");
+            // Use VDFIRST for first scan, VDSYNC for subsequent syncs
+            vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
         }
 
-        return result;
+        bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+
+        // Create flag file after successful first sync
+        if (vdSuccess && !firstSyncDone)
+        {
+            m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
+            std::ofstream flagFile(VD_FIRST_SYNC_FLAG_FILE);
+
+            if (flagFile.is_open())
+            {
+                flagFile << "1";
+                flagFile.close();
+                m_logFunction(LOG_INFO, "VD first sync completed, flag file created");
+            }
+            else
+            {
+                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
+            }
+        }
+        else if (!vdSuccess)
+        {
+            m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
+        }
+
+        success = vdSuccess && success;
     }
 
-    return false;
+    if (success)
+    {
+        m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
+    }
+    else
+    {
+        m_logFunction(LOG_WARNING, "Syscollector synchronization process failed.");
+    }
+
+    return success;
 }
 
-void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
+void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext)
 {
-    if (m_spSyncProtocol)
+    // VD tables: system (os), packages, hotfixes
+    bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+                      index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+    if (isVDTable && m_spSyncProtocolVD)
     {
-        m_spSyncProtocol->persistDifference(id, operation, index, data, version);
+        m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
+    }
+    else if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
     }
 }
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    // Route to regular (non-VD) sync protocol only
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
     return false;
+}
+
+bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
+{
+    // Route to VD sync protocol only
+    if (m_spSyncProtocolVD)
+    {
+        return m_spSyncProtocolVD->parseResponseBuffer(data, length);
+    }
+
+    return false;
+}
+
+std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds)
+{
+    std::vector<nlohmann::json> results;
+
+    if (!m_spDBSync)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Cannot fetch from table " + tableName + ": DBSync not initialized");
+        }
+
+        return results;
+    }
+
+    try
+    {
+        // Build SELECT query to fetch all rows from the table
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"*"})
+                           .build();
+
+        // Callback to collect selected rows, filtering out excluded IDs in-memory
+        // Note: We filter in the callback because excluded IDs are hash values (SHA1),
+        // not primary keys, so we cannot use SQL WHERE clause directly
+        const auto selectCallback = [&](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+        {
+            if (returnType == SELECTED)
+            {
+                // Calculate the hash ID for this row
+                std::string rowId = calculateHashId(resultData, tableName);
+
+                // Only include if not in the exclude list
+                if (excludeIds.find(rowId) == excludeIds.end())
+                {
+                    results.push_back(resultData);
+                }
+            }
+        };
+
+        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Fetched " + std::to_string(results.size()) + " rows from table " + tableName +
+                          " (excluded " + std::to_string(excludeIds.size()) + " DataValue items)");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to fetch from table " + tableName + ": " + std::string(e.what()));
+        }
+    }
+
+    return results;
+}
+
+std::vector<std::string> Syscollector::getDataContextTables(Operation operation, const std::string& index)
+{
+    std::vector<std::string> tables;
+
+    // Apply platform-specific DataContext inclusion rules
+    if (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM)
+    {
+        // OS changes → include packages as DataContext
+        if (operation == Operation::CREATE || operation == Operation::MODIFY)
+        {
+            tables.push_back(PACKAGES_TABLE);
+
+#ifdef _WIN32
+            // Windows: also include hotfixes
+            tables.push_back(HOTFIXES_TABLE);
+#endif
+        }
+    }
+    else if (index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES)
+    {
+        // Package changes
+        if (operation == Operation::DELETE_)
+        {
+            // Package DELETE → NO DataContext
+            // (no tables added)
+        }
+        else  // CREATE or MODIFY
+        {
+            // Linux/macOS: include OS
+            // Windows: include hotfixes (and OS implicitly needed but not in spec)
+            tables.push_back(OS_TABLE);
+
+#ifdef _WIN32
+            // Windows: also include hotfixes (except on delete, handled above)
+            tables.push_back(HOTFIXES_TABLE);
+#endif
+        }
+    }
+
+#ifdef _WIN32
+    else if (index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES)
+    {
+        tables.push_back(OS_TABLE);
+        tables.push_back(PACKAGES_TABLE);
+        tables.push_back(HOTFIXES_TABLE);
+    }
+
+#endif
+
+    if (m_logFunction && !tables.empty())
+    {
+        std::string tablesStr;
+
+        for (const auto& table : tables)
+        {
+            if (!tablesStr.empty()) tablesStr += ", ";
+
+            tablesStr += table;
+        }
+
+        m_logFunction(LOG_DEBUG, "DataContext tables for index=" + index +
+                      " operation=" + std::to_string(static_cast<int>(operation)) +
+                      ": [" + tablesStr + "]");
+    }
+
+    return tables;
+}
+
+bool Syscollector::isVDFirstSyncDone() const
+{
+    std::ifstream flagCheck(VD_FIRST_SYNC_FLAG_FILE);
+    bool firstSyncDone = flagCheck.good();
+    flagCheck.close();
+    return firstSyncDone;
+}
+
+void Syscollector::processVDDataContext()
+{
+    // Skip DataContext processing on first VD scan or if protocol not initialized
+    if (!m_spSyncProtocolVD || !isVDFirstSyncDone())
+    {
+        return;
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Processing VD DataContext after scan");
+    }
+
+    try
+    {
+        // Step 0: Clear any existing DataContext from previous scans
+        // This prevents inconsistencies if a scan happens before the previous sync completes
+        m_spSyncProtocolVD->clearAllDataContext();
+
+        // Step 1: Fetch pending DataValue items from syscollector_vd_sync.db
+        std::vector<PersistedData> pendingDataValues = m_spSyncProtocolVD->fetchPendingItems(true);
+
+        if (pendingDataValues.empty())
+        {
+            return;
+        }
+
+        // Step 2: Build exclusion sets - IDs of items already submitted as DataValue
+        // These IDs are calculated from local.db data, so they match what we'll calculate later
+        std::map<std::string, std::set<std::string>> dataValueIdsByIndex;
+
+        for (const auto& dataValue : pendingDataValues)
+        {
+            dataValueIdsByIndex[dataValue.index].insert(dataValue.id);
+        }
+
+        // Step 3: Determine what DataContext tables are needed based on platform rules
+        std::set<std::string> dataContextTablesToFetch;
+
+        for (const auto& dataValue : pendingDataValues)
+        {
+            std::vector<std::string> contextTables = getDataContextTables(dataValue.operation, dataValue.index);
+
+            for (const auto& table : contextTables)
+            {
+                dataContextTablesToFetch.insert(table);
+            }
+        }
+
+        if (dataContextTablesToFetch.empty())
+        {
+            return;
+        }
+
+        // Step 4: Fetch and submit DataContext for each required table
+        size_t totalDataContextItems = 0;
+
+        for (const auto& tableName : dataContextTablesToFetch)
+        {
+            std::string contextIndex;
+            std::set<std::string> excludeIds;
+
+            if (tableName == OS_TABLE)
+            {
+                contextIndex = SYSCOLLECTOR_SYNC_INDEX_SYSTEM;
+                excludeIds = dataValueIdsByIndex[SYSCOLLECTOR_SYNC_INDEX_SYSTEM];
+            }
+            else if (tableName == PACKAGES_TABLE)
+            {
+                contextIndex = SYSCOLLECTOR_SYNC_INDEX_PACKAGES;
+                excludeIds = dataValueIdsByIndex[SYSCOLLECTOR_SYNC_INDEX_PACKAGES];
+            }
+            else if (tableName == HOTFIXES_TABLE)
+            {
+                contextIndex = SYSCOLLECTOR_SYNC_INDEX_HOTFIXES;
+                excludeIds = dataValueIdsByIndex[SYSCOLLECTOR_SYNC_INDEX_HOTFIXES];
+            }
+
+            if (contextIndex.empty())
+            {
+                continue;
+            }
+
+            // Fetch all items from local.db, excluding those already in DataValue
+            // Since local.db is stable during scan, the calculated IDs will match
+            std::vector<nlohmann::json> contextItems = fetchAllFromTable(tableName, excludeIds);
+
+            for (const auto& item : contextItems)
+            {
+                try
+                {
+                    const auto ecsPair = ecsData(item, tableName);
+                    const auto statefulToSend{ecsPair.first.dump()};
+
+                    // Calculate ID the same way as done during scan for DataValue
+                    std::string itemId = calculateHashId(item, tableName);
+
+                    // Submit as DataContext (isDataContext=true)
+                    // Note: operation and version parameters are not used for DataContext
+                    m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, statefulToSend, 0, true);
+                    totalDataContextItems++;
+                }
+                catch (const std::exception& e)
+                {
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_ERROR, "Failed to persist DataContext from " + tableName + ": " + std::string(e.what()));
+                    }
+                }
+            }
+
+            if (m_logFunction && !contextItems.empty())
+            {
+                m_logFunction(LOG_DEBUG, "Added " + std::to_string(contextItems.size()) + " DataContext items from " + tableName);
+            }
+        }
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "VD DataContext complete: " + std::to_string(totalDataContextItems) +
+                          " items for " + std::to_string(pendingDataValues.size()) + " DataValues");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Error processing VD DataContext: " + std::string(e.what()));
+        }
+    }
 }
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
@@ -1683,6 +2196,11 @@ void Syscollector::deleteDatabase()
         m_spSyncProtocol->deleteDatabase();
     }
 
+    if (m_spSyncProtocolVD)
+    {
+        m_spSyncProtocolVD->deleteDatabase();
+    }
+
     if (m_spDBSync)
     {
         m_spDBSync->closeAndDeleteDatabase();
@@ -1693,7 +2211,7 @@ bool Syscollector::pause()
 {
     if (m_logFunction)
     {
-        m_logFunction(LOG_INFO, "Pausing Syscollector module - waiting for ongoing operations to complete");
+        m_logFunction(LOG_DEBUG, "Syscollector module pause requested");
     }
 
     // Set the pause flag first to prevent new operations from starting
@@ -1712,11 +2230,11 @@ bool Syscollector::pause()
     {
         if (m_stopping)
         {
-            m_logFunction(LOG_WARNING, "Syscollector module pause interrupted by shutdown");
+            m_logFunction(LOG_DEBUG, "Syscollector module pause interrupted by shutdown");
         }
         else
         {
-            m_logFunction(LOG_INFO, "Syscollector module paused successfully");
+            m_logFunction(LOG_DEBUG, "Syscollector module paused successfully");
         }
     }
 
@@ -1927,6 +2445,16 @@ int Syscollector::setVersion(int version)
     }
 }
 
+void Syscollector::lockScanMutex()
+{
+    m_scan_mutex.lock();
+}
+
+void Syscollector::unlockScanMutex()
+{
+    m_scan_mutex.unlock();
+}
+
 std::string Syscollector::query(const std::string& jsonQuery)
 {
     // Log the received query
@@ -2075,5 +2603,518 @@ std::string Syscollector::query(const std::string& jsonQuery)
         }
 
         return response.dump();
+    }
+}
+
+bool Syscollector::hasDataInTable(const std::string& tableName)
+{
+    if (!m_spDBSync)
+    {
+        return false;
+    }
+
+    try
+    {
+        int count = 0;
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"COUNT(*) AS count"})
+                           .build();
+
+        const auto callback = [&count](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+        {
+            if (returnType == SELECTED && resultData.contains("count"))
+            {
+                if (resultData["count"].is_number())
+                {
+                    count = resultData["count"].get<int>();
+                }
+            }
+        };
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+        return count > 0;
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Error checking data in table " + tableName + ": " + std::string(ex.what()));
+        }
+
+        return false;
+    }
+}
+
+void Syscollector::checkDisabledCollectorsIndicesWithData()
+{
+    m_disabledCollectorsIndicesWithData.clear();
+    bool already_included_vd = false;
+
+    if (!m_hardware && hasDataInTable(HW_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HARDWARE);
+    }
+
+    if (!m_os && hasDataInTable(OS_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+
+        if (!already_included_vd)
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
+            already_included_vd = true;
+        }
+    }
+
+    if (!m_packages && hasDataInTable(PACKAGES_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+
+        if (!already_included_vd)
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
+            already_included_vd = true;
+        }
+    }
+
+    if (!m_hotfixes && hasDataInTable(HOTFIXES_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
+
+        if (!already_included_vd)
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
+        }
+    }
+
+    if (!m_processes && hasDataInTable(PROCESSES_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PROCESSES);
+    }
+
+    if (!m_ports && hasDataInTable(PORTS_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PORTS);
+    }
+
+    if (!m_users && hasDataInTable(USERS_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_USERS);
+    }
+
+    if (!m_groups && hasDataInTable(GROUPS_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_GROUPS);
+    }
+
+    if (!m_services && hasDataInTable(SERVICES_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SERVICES);
+    }
+
+    if (!m_browserExtensions && hasDataInTable(BROWSER_EXTENSIONS_TABLE))
+    {
+        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS);
+    }
+
+    if (!m_network)
+    {
+        if (hasDataInTable(NET_IFACE_TABLE))
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_INTERFACES);
+        }
+
+        if (hasDataInTable(NET_PROTOCOL_TABLE))
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS);
+        }
+
+        if (hasDataInTable(NET_ADDRESS_TABLE))
+        {
+            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_NETWORKS);
+        }
+    }
+
+    if (!m_disabledCollectorsIndicesWithData.empty() && m_logFunction)
+    {
+        std::string indices;
+
+        for (const auto& idx : m_disabledCollectorsIndicesWithData)
+        {
+            if (!indices.empty())
+            {
+                indices += ", ";
+            }
+
+            indices += idx;
+        }
+
+        m_logFunction(LOG_INFO, "Disabled collectors indices with data detected: " + indices);
+    }
+}
+
+bool Syscollector::notifyDisableCollectorsDataClean()
+{
+    if (m_disabledCollectorsIndicesWithData.empty())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "No disabled collectors indices with data to notify for cleanup");
+        }
+
+        return true;
+    }
+
+    if (!m_spSyncProtocol)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean");
+        }
+
+        return false;
+    }
+
+    if (m_logFunction)
+    {
+        std::string indices;
+
+        for (const auto& idx : m_disabledCollectorsIndicesWithData)
+        {
+            if (!indices.empty())
+            {
+                indices += ", ";
+            }
+
+            indices += idx;
+        }
+
+        m_logFunction(LOG_DEBUG, "Notifying DataClean for disabled collectors indices: " + indices);
+    }
+
+    return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData);
+}
+
+void Syscollector::deleteDisableCollectorsData()
+{
+    if (m_disabledCollectorsIndicesWithData.empty())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "No disabled collectors indices with data to delete");
+        }
+
+        return;
+    }
+
+    // If all collectors are disabled, delete the entire database instead of going table by table
+    if (m_allCollectorsDisabled)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "All collectors are disabled. Deleting entire database.");
+        }
+
+        deleteDatabase();
+        m_disabledCollectorsIndicesWithData.clear();
+        return;
+    }
+
+    // Only some collectors are disabled, delete specific tables
+    if (m_logFunction)
+    {
+        std::string indices;
+
+        for (const auto& idx : m_disabledCollectorsIndicesWithData)
+        {
+            if (!indices.empty())
+            {
+                indices += ", ";
+            }
+
+            indices += idx;
+        }
+
+        m_logFunction(LOG_INFO, "Deleting data for disabled collectors indices: " + indices);
+    }
+
+    clearTablesForIndices(m_disabledCollectorsIndicesWithData);
+    m_disabledCollectorsIndicesWithData.clear();
+}
+
+void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices)
+{
+    if (!m_spDBSync)
+    {
+        return;
+    }
+
+    auto dbHandle = m_spDBSync->handle();
+
+    if (dbHandle == nullptr)
+    {
+        return;
+    }
+
+    for (const auto& index : indices)
+    {
+        std::string tableName;
+
+        for (const auto& [table, idx] : INDEX_MAP)
+        {
+            if (idx == index)
+            {
+                tableName = table;
+                break;
+            }
+        }
+
+        if (!tableName.empty())
+        {
+            try
+            {
+                // Callback for delete operations (no-op, we don't need to process deleted rows)
+                const auto deleteCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+                // Create transaction for this table - commits automatically on destruction
+                DBSyncTxn txn
+                {
+                    dbHandle,
+                    nlohmann::json {tableName},
+                    0,
+                    QUEUE_SIZE,
+                    deleteCallback
+                };
+
+                // Sync with empty data to mark all existing rows as deleted
+                nlohmann::json emptyInput;
+                emptyInput["table"] = tableName;
+                emptyInput["data"] = nlohmann::json::array();
+
+                txn.syncTxnRow(emptyInput);
+                txn.getDeletedRows(deleteCallback);
+
+                // Transaction commits here when txn goes out of scope
+
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Cleared table " + tableName);
+                }
+            }
+            catch (const std::exception& ex)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Error clearing table " + tableName + ": " + std::string(ex.what()));
+                }
+            }
+        }
+    }
+}
+// LCOV_EXCL_STOP
+
+bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
+{
+    m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
+
+    std::string final_checksum = m_spDBSync->calculateTableChecksum(tableName);
+
+    m_logFunction(LOG_DEBUG, "Success! Final file table checksum is: " + std::string(final_checksum));
+
+    bool needs_full_sync;
+    needs_full_sync = m_spSyncProtocol->requiresFullSync(
+                          INDEX_MAP.at(tableName),
+                          final_checksum
+                      );
+
+    if (needs_full_sync)
+    {
+        m_logFunction(LOG_DEBUG, "Checksum mismatch detected for index " + tableName + " full sync required");
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG, "Checksum valid for index " + tableName + ", delta sync sufficient");
+    }
+
+    return needs_full_sync;
+}
+
+int64_t Syscollector::getLastSyncTime(const std::string& tableName)
+{
+    int64_t lastSyncTime = 0;
+
+    auto callback = [&lastSyncTime](ReturnTypeCallback result, const nlohmann::json & data)
+    {
+        if (result == ReturnTypeCallback::SELECTED && data.contains("last_sync_time"))
+        {
+            lastSyncTime = data.at("last_sync_time").get<int64_t>();
+        }
+    };
+
+    auto selectQuery = SelectQuery::builder()
+                       .table("table_metadata")
+                       .columnList({"last_sync_time"})
+                       .rowFilter("WHERE table_name = '" + tableName + "'")
+                       .build();
+
+    m_spDBSync->selectRows(selectQuery.query(), callback);
+
+    return lastSyncTime;
+
+}
+
+void Syscollector::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
+{
+    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+    // Read all current last_sync_time values from table_metadata
+    // We need to sync ALL rows to prevent DBSyncTxn from deleting unsynced rows
+    std::map<std::string, int64_t> allTimestamps;
+
+    for (const auto& [table, index] : INDEX_MAP)
+    {
+        allTimestamps[table] = getLastSyncTime(table);
+    }
+
+    // Update the one that changed
+    allTimestamps[tableName] = timestamp;
+
+    // Use DBSyncTxn to ensure transaction is committed immediately
+    // getDeletedRows() commits m_transaction and creates a new one
+    DBSyncTxn txn
+    {
+        m_spDBSync->handle(),
+        nlohmann::json{"table_metadata"},
+        0,
+        QUEUE_SIZE,
+        emptyCallback
+    };
+
+    // Build data array with ALL table timestamps to prevent deletion
+    nlohmann::json allData = nlohmann::json::array();
+
+    for (const auto& [table, ts] : allTimestamps)
+    {
+        allData.push_back({{"table_name", table}, {"last_sync_time", ts}});
+    }
+
+    nlohmann::json input;
+    input["table"] = "table_metadata";
+    input["data"] = allData;
+
+    txn.syncTxnRow(input);
+    txn.getDeletedRows(emptyCallback);  // Commits the transaction here
+}
+
+bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval)
+{
+    int64_t currentTime = Utils::getSecondsFromEpoch();
+    int64_t lastSyncTime = getLastSyncTime(tableName);
+
+    // If never checked before (lastSyncTime == 0), initialize timestamp and don't run check yet
+    // This enables integrity checks to run after the configured interval
+    if (lastSyncTime == 0)
+    {
+        updateLastSyncTime(tableName, currentTime);
+        return false;
+    }
+
+    int64_t elapsedTime = currentTime - lastSyncTime;
+    return (elapsedTime >= integrityInterval);
+}
+
+void Syscollector::runRecoveryProcess()
+{
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        // Skip disabled modules
+        if (tableName == OS_TABLE && !m_os) continue;
+
+        if (tableName == HW_TABLE && !m_hardware) continue;
+
+        if (tableName == HOTFIXES_TABLE && !m_hotfixes) continue;
+
+        if (tableName == PACKAGES_TABLE && !m_packages) continue;
+
+        if (tableName == PROCESSES_TABLE && !m_processes) continue;
+
+        if (tableName == PORTS_TABLE && !m_ports) continue;
+
+        if (((tableName == NET_ADDRESS_TABLE) || (tableName == NET_IFACE_TABLE) || (tableName == NET_PROTOCOL_TABLE)) && !m_network) continue;
+
+        if (tableName == USERS_TABLE && !m_users) continue;
+
+        if (tableName == GROUPS_TABLE && !m_groups) continue;
+
+        if (tableName == SERVICES_TABLE && !m_services) continue;
+
+        if (tableName == BROWSER_EXTENSIONS_TABLE && !m_browserExtensions) continue;
+
+        if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
+        {
+            m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
+            bool full_sync_required = checkIfFullSyncRequired(tableName);
+
+            if (full_sync_required)
+            {
+                try
+                {
+                    m_spDBSync->increaseEachEntryVersion(tableName);
+                }
+                catch (const std::exception& ex)
+                {
+                    m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
+                    return;
+                }
+
+                std::vector<nlohmann::json> items;
+
+                try
+                {
+                    items = m_spDBSync->getEveryElement(tableName);
+                }
+                catch (const std::exception& ex)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
+                    return;
+                }
+
+                m_spSyncProtocol->clearInMemoryData();
+
+                for (const auto& item : items)
+                {
+                    // Build stateful event
+                    auto [newData, version] = ecsData(item, tableName);
+                    const auto statefulToSend{newData.dump()};
+
+                    m_spSyncProtocol->persistDifferenceInMemory(
+                        calculateHashId(item, tableName),
+                        Operation::CREATE,
+                        index,
+                        statefulToSend,
+                        item["version"].get<uint64_t>()
+                    );
+                }
+
+                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
+                m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
+                bool success = syncModule(Mode::FULL);
+
+                if (success)
+                {
+                    m_logFunction(LOG_DEBUG, "Recovery completed successfully");
+                }
+                else
+                {
+                    m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
+                }
+
+            }
+
+            // Update the last sync time regardless of whether full sync was required
+            // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+            updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+        }
     }
 }

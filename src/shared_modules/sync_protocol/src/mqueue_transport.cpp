@@ -40,13 +40,13 @@ bool MQueueTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
 {
     if (m_mqFuncs.send_binary(m_queue, message.data(), message.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
     {
-        m_logger(LOG_ERROR, "SendMSG failed, attempting to reinitialize queue...");
+        m_logger(LOG_DEBUG, "Failed to send message, attempting to reinitialize queue...");
         m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
 
         if (m_queue < 0 ||
                 m_mqFuncs.send_binary(m_queue, message.data(), message.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
         {
-            m_logger(LOG_ERROR, "SendMSG failed to send message after retry");
+            m_logger(LOG_DEBUG, "Failed to send message after retry");
             return false;
         }
     }

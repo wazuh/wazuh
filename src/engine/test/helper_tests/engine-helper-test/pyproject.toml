@@ -13,7 +13,7 @@ classifiers = ["Programming Language :: Python :: 3"]
 dependencies = ["api-communication", "engine-test-utils", "pyyaml"]
 
 [project.urls]
-Homepage = "https://github.com/wazuh/wazuh/src/engine/test/health_test/engine-health-test"
+Homepage = "https://github.com/wazuh/wazuh/src/engine/test/helper_tests/engine-helper-test"
 
 [project.scripts]
 engine-helper-test = "helper_test.__main__:main"

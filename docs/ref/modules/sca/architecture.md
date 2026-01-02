@@ -95,6 +95,45 @@ Integrates with Wazuh's Agent Sync Protocol for reliable manager communication.
 3. Manager responses are parsed and processed
 4. Database state is updated through DBSync
 
+### **Recovery Flow**
+The SCA module includes automatic recovery to detect and resolve synchronization inconsistencies:
+
+1. Each time `integrity_interval` elapses, an integrity check is performed
+2. Agent calculates checksum-of-checksums from the `sca_check` table
+3. Checksum is sent to manager via `requiresFullSync()` in Agent Sync Protocol
+4. Manager compares agent checksum with its indexed data
+5. On mismatch, full recovery is triggered:
+   - All checks are loaded from local database
+   - Stateful messages are rebuilt in the indexer-required format
+   - Full synchronization sends all data to manager
+6. `last_integrity_check` timestamp is stored in `sca_metadata` table
+
+```
+Sync Thread (wm_sca_sync_module)
+         │
+         ▼
+   DELTA Sync
+         │
+         ▼
+Check if integrity_interval elapsed
+         │
+         ├─► No  → Skip integrity check
+         │
+         └─► Yes → Calculate table checksum
+                   │
+                   ▼
+             Send checksum to manager
+                   │
+                   ├─► Match    → No action needed
+                   │
+                   └─► Mismatch → Perform full recovery
+                                  │
+                                  ├─► Load all checks from DB
+                                  ├─► Clear in-memory sync data
+                                  ├─► Rebuild stateful messages
+                                  └─► Trigger FULL synchronization
+```
+
 ---
 
 ## Threading Model
@@ -192,6 +231,40 @@ Send data clean notification ────────► sca_notify_data_clean()
 2. SCA database file does not exist
 3. Skip data clean notification (nothing to clean)
 4. Exit module startup immediately
+```
+
+---
+
+## Policy Removal Cleanup Flow
+
+When all SCA policies are removed from configuration while the module remains enabled, the module detects this at startup or during runtime and initiates a cleanup process.
+
+### Behavior
+
+| Scenario | Action |
+|----------|--------|
+| **All policies removed** | DataClean sent to manager → DB tables cleared → module exits |
+| **Partial removal** | DBSync generates delete events → module continues with remaining policies |
+
+### Flow
+
+```
+Policy Loading
+      │
+      ▼
+No enabled policies found?
+      │
+      ├─► No  → Continue normal scanning
+      │
+      └─► Yes → Check if DB has existing data
+                │
+                ├─► No data  → Exit (nothing to clean)
+                │
+                └─► Has data → Send DataClean notification
+                              │
+                              ├─► Clear sca_policy table
+                              ├─► Clear sca_check table
+                              └─► Exit module
 ```
 
 ---

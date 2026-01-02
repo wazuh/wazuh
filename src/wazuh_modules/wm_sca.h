@@ -32,6 +32,7 @@ typedef struct wm_sca_db_sync_flags_t {
     uint32_t sync_end_delay;                // Delay for synchronization end message
     uint32_t sync_response_timeout;         // Minimum interval for the synchronization process
     long sync_max_eps;                      // Maximum events per second for synchronization messages.
+    uint32_t integrity_interval;            // Integrity check interval (0 = disabled)
 } wm_sca_db_sync_flags_t;
 
 typedef struct wm_sca_t {

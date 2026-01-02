@@ -160,3 +160,19 @@ void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime
 
     return data;
 }
+
+void * try_queue_pop_ex(w_queue_t * queue) {
+    void * data;
+
+    w_mutex_lock(&queue->mutex);
+
+    data = queue_pop(queue);
+
+    if (data) {
+        w_cond_signal(&queue->available_not_empty);
+    }
+
+    w_mutex_unlock(&queue->mutex);
+
+    return data;
+}

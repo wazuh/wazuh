@@ -62,10 +62,10 @@ build_package(){
         ARCH="aarch64"
     elif [ "${ARCHITECTURE_TARGET}" = "amd64" ]; then
         ARCH="x86_64"
-    elif [[ "${ARCHITECTURE_TARGET}" == "i386" ]] || [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
+    elif [[ "${ARCHITECTURE_TARGET}" == "i386" ]]; then
         ARCH=${ARCHITECTURE_TARGET}
     else
-        echo "Invalid architecture selected. Choose: [armhf, arm64, amd64, i386, ppc64le]"
+        echo "Invalid architecture selected. Choose: [armhf, arm64, amd64, i386]"
         return 1
     fi
 

@@ -15,6 +15,7 @@ public:
     MOCK_METHOD(base::OptError, deleteTestEntry, (const std::string& name), (override));
     MOCK_METHOD(base::RespOrError<::router::test::Entry>, getTestEntry, (const std::string& name), (const, override));
     MOCK_METHOD(base::OptError, reloadTestEntry, (const std::string& name), (override));
+    MOCK_METHOD(base::OptError, renameTestEntry, (const std::string& from, const std::string& to), (override));
     MOCK_METHOD(std::list<::router::test::Entry>, getTestEntries, (), (const, override));
     MOCK_METHOD(std::future<base::RespOrError<::router::test::Output>>,
                 ingestTest,

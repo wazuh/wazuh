@@ -51,11 +51,17 @@ class PersistentQueue : public IPersistentQueue
                     const std::string& index,
                     const std::string& data,
                     Operation operation,
-                    uint64_t version) override;
+                    uint64_t version,
+                    bool isDataContext = false) override;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @return A vector of messages now marked as SYNCING.
         std::vector<PersistedData> fetchAndMarkForSync() override;
+
+        /// @brief Fetches pending items without marking them for sync.
+        /// @param onlyDataValues If true, only returns items with is_data_context=false
+        /// @return A vector of pending messages.
+        std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
 
         /// @brief Clears items that were successfully synchronized.
         void clearSyncedItems() override;
@@ -66,6 +72,9 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Clears all items belonging to a specific index.
         /// @param index The index for which all items should be cleared.
         void clearItemsByIndex(const std::string& index) override;
+
+        /// @brief Clears all DataContext items (where is_data_context = true).
+        void clearAllDataContext() override;
 
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
