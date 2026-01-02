@@ -1,21 +1,26 @@
 import asyncio
 import os
+from pathlib import PosixPath
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
+from asyncinotify import Mask
 import pytest
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
-from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
+from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY, SECURITY_PATH
 from api.signals import (
     ONE_DAY_SLEEP,
     cancel_signal_handler,
     load_installation_uid,
     get_update_information,
+    clean_auth_keys_cache,
     lifespan_handler,
     cti_context
 )
+
+from api.authentication import _private_key_path, _public_key_path
 
 # Fixtures
 @pytest.fixture
@@ -31,6 +36,11 @@ def installation_uid_mock():
 @pytest.fixture
 def query_update_check_service_mock():
     with patch('api.signals.query_update_check_service') as mock:
+        yield mock
+
+@pytest.fixture
+def clean_auth_keys_cache_mock():
+    with patch('api.signals.generate_keypair.cache_clear') as mock:
         yield mock
 
 
@@ -139,12 +149,13 @@ async def test_get_update_information_schedule(query_update_check_service_mock):
 @pytest.mark.parametrize(
     'cluster_config,update_check_config,registered_tasks',
     [
-        (True, True, 2),
-        (True, False, 1),
-        (False, True, 0),
-        (False, False, 0),
+        (True, True, 3),
+        (True, False, 2),
+        (False, True, 1),
+        (False, False, 1),
     ],
 )
+@patch('api.signals.clean_auth_keys_cache')
 @patch('api.signals.load_installation_uid')
 @patch('api.signals.get_update_information')
 @patch('api.signals.update_check_is_enabled')
@@ -155,6 +166,7 @@ async def test_register_background_tasks(
     update_check_mock,
     get_update_information_mock,
     load_installation_uid_mock,
+    clean_auth_keys_cache_mock,
     cluster_config,
     update_check_config,
     registered_tasks,
@@ -178,3 +190,32 @@ async def test_register_background_tasks(
             create_task_mock.create_task.return_value.cancel.call_count
             == registered_tasks
         )
+
+
+@pytest.mark.asyncio
+@patch('api.authentication.generate_keypair.cache_clear')
+@pytest.mark.parametrize(
+    'filename',
+    [_private_key_path, _public_key_path, 'other_file.txt']
+)
+async def test_clean_auth_keys_cache(mock_generate_keypair_cache, filename):
+    with patch('api.signals.Inotify') as inotify_mock:
+        inotify_instance = inotify_mock.return_value.__enter__.return_value
+        event_mock = AsyncMock()
+        event_mock.path = PosixPath(filename)
+        inotify_instance.__aiter__.return_value = [event_mock]
+
+        task = asyncio.create_task(
+            clean_auth_keys_cache()
+        )
+        await asyncio.sleep(1)
+
+        task.cancel()
+
+        inotify_instance.add_watch.assert_called_with(
+            SECURITY_PATH, Mask.MODIFY | Mask.CREATE
+        )
+        if filename in {_private_key_path, _public_key_path}:
+            mock_generate_keypair_cache.assert_called_once()
+        else:
+            mock_generate_keypair_cache.assert_not_called()
