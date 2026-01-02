@@ -814,7 +814,7 @@ bool SQLiteDBEngine::bindJsonData(const std::shared_ptr<SQLite::IStatement> stmt
 {
     bool retVal { true };
     const auto type { std::get<TableHeader::Type>(cd) };
-    const auto name { std::get<TableHeader::Name>(cd) };
+    const auto& name { std::get<TableHeader::Name>(cd) };
     const auto& it  { valueType.find(name) };
 
     if (valueType.end() != it)
@@ -1247,27 +1247,27 @@ void SQLiteDBEngine::bindFieldData(const std::shared_ptr<SQLite::IStatement> stm
 
     if (ColumnType::BigInt == type)
     {
-        const auto value { std::get<GenericTupleIndex::GenBigInt>(fieldData) };
+        const auto& value { std::get<GenericTupleIndex::GenBigInt>(fieldData) };
         stmt->bind(index, value);
     }
     else if (ColumnType::UnsignedBigInt == type)
     {
-        const auto value { std::get<GenericTupleIndex::GenUnsignedBigInt>(fieldData) };
+        const auto& value { std::get<GenericTupleIndex::GenUnsignedBigInt>(fieldData) };
         stmt->bind(index, value);
     }
     else if (ColumnType::Integer == type)
     {
-        const auto value { std::get<GenericTupleIndex::GenInteger>(fieldData) };
+        const auto& value { std::get<GenericTupleIndex::GenInteger>(fieldData) };
         stmt->bind(index, value);
     }
     else if (ColumnType::Text == type)
     {
-        const auto value { std::get<GenericTupleIndex::GenString>(fieldData) };
+        const auto& value { std::get<GenericTupleIndex::GenString>(fieldData) };
         stmt->bind(index, value);
     }
     else if (ColumnType::Double == type)
     {
-        const auto value { std::get<GenericTupleIndex::GenDouble>(fieldData) };
+        const auto& value { std::get<GenericTupleIndex::GenDouble>(fieldData) };
         stmt->bind(index, value);
     }
     else
@@ -1729,7 +1729,7 @@ std::string SQLiteDBEngine::buildModifiedRowsQuery(const std::string& t1,
 
     for (const auto& value : tableFields)
     {
-        const auto fieldName {std::get<TableHeader::Name>(value)};
+        const auto& fieldName {std::get<TableHeader::Name>(value)};
         fieldsList.append("CASE WHEN t1.");
         fieldsList.append(fieldName);
         fieldsList.append("<>t2.");
