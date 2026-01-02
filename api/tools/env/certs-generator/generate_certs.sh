@@ -20,13 +20,10 @@ mkdir -p "${CERTS_DIR}"
 cd /tmp
 ./wazuh-certs-tool.sh -A
 
-cp wazuh-certificates/wazuh-master-key.pem wazuh-certificates/server-key.pem
-cp wazuh-certificates/wazuh-master.pem wazuh-certificates/server.pem
-
 echo "Copying certificates..."
 cp -r wazuh-certificates/* "${CERTS_DIR}/"
 
-chmod 600 "${CERTS_DIR}"/*
+mv ${CERTS_DIR}/wazuh-master.pem ${CERTS_DIR}/server.pem
+mv ${CERTS_DIR}/wazuh-master-key.pem ${CERTS_DIR}/server-key.pem
+
 echo "Certificates generated successfully."
-
-

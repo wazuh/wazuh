@@ -879,7 +879,7 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]}, post_proc_func=async_list_handler)
 async def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
-                           replace_list: list = None, external_gte: int = None) -> AffectedItemsWazuhResult:
+                           replace_list: list = None) -> AffectedItemsWazuhResult:
     """Assign a list of agents to a group.
 
     Parameters
@@ -892,9 +892,6 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
         Whether to append new group to current agent's group or replace it.
     replace_list : list
         List of Group names that can be replaced.
-    external_gte : int, optional
-        Minimum version threshold for synchronization (used for disconnected agents).
-        When set, this value is used as the external_gte parameter for group synchronization.
 
     Raises
     ------
@@ -936,8 +933,7 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
 
     for agent_id in agent_list:
         try:
-            await Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list,
-                                           external_gte=external_gte)
+            await Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)

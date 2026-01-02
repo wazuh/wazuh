@@ -315,6 +315,10 @@ class WazuhException(Exception):
         # External services
         2100: {'message': 'Error in CTI service request'},
 
+        # Indexer
+        2200: {'message': 'Error connecting to the Indexer service'},
+        2201: {'message': 'Error in authentication credentials for Indexer service'},
+
         # Cluster
         3000: 'Cluster',
         3001: 'Error creating zip file',
@@ -668,6 +672,13 @@ class WazuhHAPHelperError(WazuhClusterError):
     """
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
+
+
+class WazuhIndexerError(WazuhInternalError):
+    """Indexer client exception."""
+
+    _default_type = 'about:blank'
+    _default_title = 'Wazuh Indexer Error'
 
 
 class WazuhError(WazuhException):

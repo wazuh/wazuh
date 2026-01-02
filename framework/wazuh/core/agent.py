@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import ipaddress
-import logging
 import json
 import re
 import threading
@@ -23,7 +22,6 @@ from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
     get_date_from_timestamp
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
@@ -205,7 +203,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                                 'level': 0 if i == len(value) - 1 else 1}
                                for name, value in legacy_filters_as_list.items()
                                for i, subvalue in enumerate(value) if not self._pass_filter(name, subvalue)]
-
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
@@ -913,8 +910,7 @@ class Agent:
         return data
 
     @staticmethod
-    async def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None,
-                                 external_gte: int = None) -> str:
+    async def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None) -> str:
         """Add an existing group to an agent.
 
         Parameters
@@ -927,8 +923,6 @@ class Agent:
             Whether to append new group to current agent's group or replace it.
         replace_list: list
             List of group names that can be replaced.
-        external_gte: int, optional
-            Minimum version threshold for synchronization (used for disconnected agents).
 
         Raises
         ------
@@ -966,7 +960,7 @@ class Agent:
             raise WazuhError(1737)
 
         # Update group
-        Agent.set_agent_group_relationship(agent_id, group_id, override=replace, external_gte=external_gte)
+        Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
 
         return f"Agent {agent_id} assigned to {group_id}"
 
@@ -1053,8 +1047,7 @@ class Agent:
             return await wdb_client.get_agent_groups(agent_id)
 
     @staticmethod
-    def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False,
-                                     external_gte: int = None):
+    def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False):
         """Set a relationship between an agent and a group.
 
         Parameters
@@ -1068,22 +1061,14 @@ class Agent:
         override : bool
             Set the relationship with the override mode. This option only works if remove is False. If both override and
             remove are False, the mode used is append.
-        external_gte : int, optional
-            Minimum version threshold for synchronization (used for disconnected agents).
-            When set, this value is added to the command for proper version tracking.
         """
         if remove:
             mode = 'remove'
         else:
             mode = 'append' if not override else 'override'
 
-        # Build the command with optional external_gte parameter
-        command = f'global set-agent-groups {{"mode":"{mode}","sync_status":"syncreq"'
-
-        if external_gte is not None:
-            command += f',"external_gte":{external_gte}'
-
-        command += f',"data":[{{"id":{agent_id},"groups":["{group_id}"]}}]}}'
+        command = f'global set-agent-groups {{"mode":"{mode}","sync_status":"syncreq","data":[{{"id":{agent_id},' \
+                  f'"groups":["{group_id}"]}}]}}'
 
         wdb = WazuhDBConnection()
         try:
@@ -1511,107 +1496,3 @@ def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk
      for agent_info in data['data']]
 
     return data
-
-
-async def disconnected_agent_group_sync(agent_list: list = None, group_list: list = None,
-                                        external_gte: int = None) -> AffectedItemsWazuhResult:
-    """Synchronize group configuration for disconnected agents using external_gte version.
-
-    This function is designed to synchronize agent groups for disconnected agents using the maximum
-    version from indexed documents (external_gte). This ensures that indexed data remains consistent
-    with the current group configuration, even when the agent is offline.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of disconnected agent IDs to synchronize.
-    group_list : list
-        Current group list for the agent(s).
-    external_gte : int
-        Minimum version threshold from Indexer. Documents with version >= external_gte will be updated.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Synchronization result with affected items and failed items.
-
-    Raises
-    ------
-    WazuhError
-        If required parameters are missing.
-    WazuhResourceNotFound
-        If agent does not exist.
-    """
-    # Local imports to avoid circular dependencies
-    from wazuh.agent import assign_agents_to_group
-    logger = logging.getLogger('wazuh')
-
-    result = AffectedItemsWazuhResult(
-        all_msg='Group synchronization completed for all disconnected agents',
-        some_msg='Group synchronization completed for some disconnected agents',
-        none_msg='No disconnected agents were synchronized'
-    )
-
-    # Handle empty agent list
-    if not agent_list:
-        logger.debug("Empty agent list provided for disconnected agent group sync")
-        return result
-
-    # Validate required parameters
-    if not group_list or external_gte is None:
-        raise WazuhError(1001,
-                         extra_message="Missing required parameters: group_list, external_gte")
-
-    system_agents = get_agents_info()
-
-    # Validate that all agents exist
-    invalid_agents = []
-    for agent_id in agent_list:
-        if agent_id == '000':
-            result.add_failed_item(id_='000', error=WazuhError(1703))
-            invalid_agents.append(agent_id)
-        elif agent_id not in system_agents:
-            result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
-            invalid_agents.append(agent_id)
-
-    # Remove invalid agents from processing list
-    valid_agents = [a for a in agent_list if a not in invalid_agents]
-
-    if not valid_agents:
-        result.total_affected_items = 0
-        return result
-
-    # Synchronize groups for valid disconnected agents
-    logger.info(f"Starting group synchronization for {len(valid_agents)} disconnected agents "
-                f"with external_gte={external_gte}")
-
-    for agent_id in valid_agents:
-        try:
-            # Use assign_agents_to_group with external_gte parameter
-            await assign_agents_to_group(
-                agent_list=[agent_id],
-                group_list=group_list,
-                replace=True,
-                external_gte=external_gte
-            )
-            result.affected_items.append(agent_id)
-            logger.debug(f"Successfully synchronized agent {agent_id} with groups {group_list}")
-
-        except WazuhException as e:
-            logger.error(f"Error synchronizing agent {agent_id}: {str(e)}")
-            result.add_failed_item(id_=agent_id, error=e)
-        except Exception as e:
-            logger.error(f"Unexpected error synchronizing agent {agent_id}: {str(e)}",
-                         exc_info=True)
-            result.add_failed_item(
-                id_=agent_id,
-                error=WazuhInternalError(1000, extra_message=str(e))
-            )
-
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=int)
-
-    logger.info(f"Group synchronization completed: {len(result.affected_items)} succeeded, "
-                f"{len(result.failed_items)} failed")
-
-    return result
