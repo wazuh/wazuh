@@ -190,26 +190,28 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
                 wm_strcat(&msg, "NULL", '|');
             }
 
-            char *response;
+            char *response = NULL;
             char *message;
             os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
                     cJSON_Delete(logJSON);
-                    free(response);
+                    os_free(response);
+                    os_free(msg);
                     return (0);
                 }
             } else {
                 cJSON_Delete(logJSON);
-                free(response);
+                os_free(response);
+                os_free(msg);
                 return (0);
             }
-            free(response);
-            free(msg);
+            os_free(response);
+            os_free(msg);
         } else {
             mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
             cJSON_Delete(logJSON);
-            free(msg);
+            os_free(msg);
             return (0);
         }
     }
