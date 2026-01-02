@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+CERTS_DIR="/var/ossec/etc/certs"
+
+echo "Waiting for certificates..."
+while [ ! -f "${CERTS_DIR}/root-ca.pem" ]; do
+  sleep 2
+done
+
+echo "Certificates found."
+
 if [ "$3" == "master" ]
 then
     python3 /scripts/xml_parser.py /var/ossec/etc/ossec.conf /scripts/master_ossec_conf.xml

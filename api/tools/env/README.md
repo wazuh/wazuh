@@ -40,6 +40,8 @@ docker run -d \
 dev-wazuh-manager \
 /scripts/entrypoint.sh wazuh-master master-node master
 ```
+If we need more agents we can use:
+`docker compose up --scale wazuh-agent=<number_of_agents>`
 
 ### Troubleshooting
 - Use option **-no-cache** when you have building issues.

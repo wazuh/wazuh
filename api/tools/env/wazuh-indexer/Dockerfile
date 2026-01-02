@@ -1,23 +1,32 @@
-FROM opensearchproject/opensearch:2.19.0
+FROM ubuntu:24.04
 
 USER root
 
-RUN yum update -y && \
-    yum install -y curl unzip sudo jq yum-utils --allowerasing && \
-    yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo && \
-    yum install -y gh && \
-    yum clean all && \
-    rm -rf /var/cache/yum
+ARG GH_TOKEN
+ENV GH_TOKEN=${GH_TOKEN}
 
-COPY --chown=opensearch:opensearch download_indexer.sh /usr/share/opensearch/download_indexer.sh
-COPY --chown=opensearch:opensearch entrypoint.sh /usr/share/opensearch/entrypoint.sh
+# Update and install dependencies
+RUN apt-get update && apt-get install -y locales bash curl && rm -rf /var/lib/apt/lists/* \
+    && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+ENV LANG=en_US.utf8
 
-RUN chmod +x /usr/share/opensearch/download_indexer.sh /usr/share/opensearch/entrypoint.sh
+SHELL ["/bin/bash", "-c"]
 
-# Allow opensearch user to run gh, mkdir, touch, chmod as root without password for setup operations
-RUN echo 'opensearch ALL=(ALL) NOPASSWD: /usr/bin/gh, /bin/mkdir, /bin/touch, /bin/chmod' >> /etc/sudoers.d/opensearch && \
-    chmod 0440 /etc/sudoers.d/opensearch
+RUN set -euo pipefail \
+    && [[ -n "$HOME" ]]
+# Scripts
+COPY download_indexer.sh /usr/share/wazuh/download_indexer.sh
+COPY entrypoint.sh /usr/share/wazuh/entrypoint.sh
 
-USER opensearch
+RUN chmod +x /usr/share/wazuh/*.sh
 
-ENTRYPOINT ["/usr/share/opensearch/entrypoint.sh"]
+# Download wazuh-indexer package
+RUN /usr/share/wazuh/download_indexer.sh
+
+# Install wazuh-indexer
+RUN dpkg -i /usr/share/wazuh/wazuh-indexer_*.deb || (apt-get update && apt-get -f install -y)
+
+# Set working directory
+WORKDIR /root
+
+ENTRYPOINT ["/usr/share/wazuh/entrypoint.sh"]
