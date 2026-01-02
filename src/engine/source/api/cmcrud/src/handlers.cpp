@@ -1,4 +1,3 @@
-
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -27,6 +26,7 @@ constexpr auto MESSAGE_JSON_REQUIRED = "Field /jsonContent cannot be empty";
 constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
 constexpr auto MESSAGE_TYPE_REQUIRED = "Field /type is required";
 constexpr auto MESSAGE_TYPE_UNSUPPORTED = "Unsupported value for /type";
+constexpr auto MESSAGE_RESOURCE_REQUIRED = "Field /resource cannot be empty";
 
 /*********************************************
  * Namespace handlers
@@ -715,6 +715,75 @@ adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> cru
         try
         {
             service->deleteResourceByUUID(protoReq.space(), protoReq.uuid());
+        }
+        catch (const std::exception& ex)
+        {
+            res = adapter::userErrorResponse<ResponseType>(ex.what());
+            return;
+        }
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        res = adapter::userResponse(eResponse);
+    };
+}
+
+/*********************************************
+ * Resource handler – validate (public, no namespace)
+ *********************************************/
+
+adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> crud)
+{
+    return [wCrud = std::weak_ptr<cm::crud::ICrudService>(crud)](const auto& req, auto& res)
+    {
+        using RequestType = eContent::resourceValidate_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+
+        constexpr auto MESSAGE_RESOURCE_REQUIRED = "Field /resource cannot be empty";
+
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::cm::crud::ICrudService>(req, wCrud);
+        if (adapter::isError(result))
+        {
+            res = adapter::getErrorResp(result);
+            return;
+        }
+
+        auto [service, protoReq] = adapter::getRes(result);
+
+        if (protoReq.type().empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_REQUIRED);
+            return;
+        }
+
+        // In proto3, Struct presence is best checked via fields_size()
+        if (protoReq.resource().fields_size() == 0)
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_RESOURCE_REQUIRED);
+            return;
+        }
+
+        const auto rType = cm::store::resourceTypeFromString(protoReq.type());
+        if (rType == cm::store::ResourceType::UNDEFINED)
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_UNSUPPORTED);
+            return;
+        }
+
+        // Convert Struct -> json::Json without JSON stringify/parse
+        auto payloadOrErr = eMessage::eStructToJson(protoReq.resource());
+        if (std::holds_alternative<base::Error>(payloadOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Error converting /resource to JSON: {}", std::get<base::Error>(payloadOrErr).message));
+            return;
+        }
+
+        const auto& payload = std::get<json::Json>(payloadOrErr);
+
+        try
+        {
+            service->validateResource(rType, payload);
         }
         catch (const std::exception& ex)
         {

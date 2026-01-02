@@ -28,7 +28,7 @@ json::Json createCompleteIntegrationDoc(const std::string& uuid,
                                         const std::string& title,
                                         const std::vector<std::string>& decoderUUIDs = {},
                                         const std::vector<std::string>& kvdbUUIDs = {},
-                                        const std::string& category = "ossec",
+                                        const std::string& category = "Security",
                                         bool enable_decoders = true)
 {
     // CTI Store format: UUID is in /name, document only has title, decoders, kvdbs
@@ -183,8 +183,11 @@ protected:
 TEST_F(CMStoreCTIComponentTest, FullPolicyWorkflow_GetPolicyWithIntegrations)
 {
     // Create a policy with integrations
-    std::vector<std::string> integrationUUIDs = {"int-uuid-1", "int-uuid-2", "int-uuid-3"};
-    json::Json policyDoc = createCompletePolicyDoc("policy-uuid-1", "Development 0.0.1", integrationUUIDs);
+    std::vector<std::string> integrationUUIDs = {"82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+                                                 "82e215c4-988a-4f64-8d15-b98b2fc03a42",
+                                                 "82e215c4-988a-4f64-ad15-b98b2fc03a4f"};
+    json::Json policyDoc =
+        createCompletePolicyDoc("82e215c4-988a-4f64-8d15-123b2fc03a4f", "Development 0.0.1", integrationUUIDs);
 
     std::vector<base::Name> policyList = {base::Name("policy1")};
     EXPECT_CALL(*mockReader, getPolicyList()).WillOnce(Return(policyList));
@@ -203,57 +206,59 @@ TEST_F(CMStoreCTIComponentTest, FullPolicyWorkflow_GetPolicyWithIntegrations)
 TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByNameThenResolveUUID)
 {
     // Create integration document
-    std::vector<std::string> decoderUUIDs = {"dec-uuid-1", "dec-uuid-2"};
-    std::vector<std::string> kvdbUUIDs = {"kvdb-uuid-1"};
-    json::Json integrationDoc =
-        createCompleteIntegrationDoc("int-uuid-windows", "windows", decoderUUIDs, kvdbUUIDs, "test-category", true);
+    std::vector<std::string> decoderUUIDs = {"85853f26-5779-469b-86c4-c47ee7d400b4",
+                                             "4aa06596-5ba9-488c-8354-2475705e1257"};
+    std::vector<std::string> kvdbUUIDs = {"82e215c4-988a-4f64-8d15-b98b2fc03a4f"};
+    json::Json integrationDoc = createCompleteIntegrationDoc(
+        "5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", decoderUUIDs, kvdbUUIDs, "security", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows"))).WillOnce(Return(integrationDoc));
 
     dataType::Integration integration = storeCTI->getIntegrationByName("windows");
 
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("windows"), "integration"))
-        .WillOnce(Return("int-uuid-windows"));
+        .WillOnce(Return("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"));
 
     std::string uuid = storeCTI->resolveUUIDFromName("windows", ResourceType::INTEGRATION);
 
-    EXPECT_EQ(uuid, "int-uuid-windows");
+    EXPECT_EQ(uuid, "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "windows");
     EXPECT_EQ(integration.getDecodersByUUID().size(), 2);
     // Verify category and enable_decoders propagated
-    EXPECT_EQ(integration.getCategory(), "test-category");
+    EXPECT_EQ(integration.getCategory(), "security");
     EXPECT_TRUE(integration.isEnabled());
 }
 
 TEST_F(CMStoreCTIComponentTest, FullIntegrationWorkflow_GetByUUIDChain)
 {
-    json::Json integrationDoc = createCompleteIntegrationDoc("int-uuid-linux", "linux", {}, {}, "linux-category", true);
+    json::Json integrationDoc =
+        createCompleteIntegrationDoc("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "linux", {}, {}, "applications", true);
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("int-uuid-linux")).WillOnce(Return("linux"));
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).WillOnce(Return("linux"));
     EXPECT_CALL(*mockReader, getAsset(base::Name("linux"))).WillOnce(Return(integrationDoc));
 
-    dataType::Integration integration = storeCTI->getIntegrationByUUID("int-uuid-linux");
+    dataType::Integration integration = storeCTI->getIntegrationByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
 
-    EXPECT_EQ(integration.getUUID(), "int-uuid-linux");
+    EXPECT_EQ(integration.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "linux");
 
     // Verify fields propagated from document
-    EXPECT_EQ(integration.getCategory(), "linux-category");
+    EXPECT_EQ(integration.getCategory(), "applications");
     EXPECT_TRUE(integration.isEnabled());
 }
 
 TEST_F(CMStoreCTIComponentTest, Integration_EnableDecodersFlagFalse)
 {
     // Create integration with decoders but enable_decoders = false
-    std::vector<std::string> decoderUUIDs = {"dec-uuid-1"};
+    std::vector<std::string> decoderUUIDs = {"85853f26-5779-469b-86c4-c47ee7d400b4"};
     json::Json integrationDoc = createCompleteIntegrationDoc(
-        "int-uuid-disabled", "disabled_integration", decoderUUIDs, {}, "disabled-category", false);
+        "5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "disabled_integration", decoderUUIDs, {}, "security", false);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("disabled_integration"))).WillOnce(Return(integrationDoc));
 
     dataType::Integration integration = storeCTI->getIntegrationByName("disabled_integration");
 
-    EXPECT_EQ(integration.getCategory(), "disabled-category");
+    EXPECT_EQ(integration.getCategory(), "security");
     EXPECT_FALSE(integration.isEnabled());
     EXPECT_EQ(integration.getDecodersByUUID().size(), 1);
 }
@@ -328,13 +333,13 @@ TEST_F(CMStoreCTIComponentTest, KVDBOperations_GetByNameAndUUID)
 {
     // Build full KVDB document structure
     json::Json kvdbDoc;
-    kvdbDoc.setString("kvdb-uuid-1", "/name");
+    kvdbDoc.setString("82e215c4-988a-4f64-8d15-b98b2fc03a4f", "/name");
 
     json::Json payload;
     payload.setString("kvdb", "/type");
 
     json::Json document;
-    document.setString("kvdb-uuid-1", "/id");
+    document.setString("82e215c4-988a-4f64-8d15-b98b2fc03a4f", "/id");
     document.setString("kerberos_status_codes", "/title");
     document.setBool(true, "/enabled");
 
@@ -351,13 +356,14 @@ TEST_F(CMStoreCTIComponentTest, KVDBOperations_GetByNameAndUUID)
 
     dataType::KVDB kvdb1 = storeCTI->getKVDBByName("kerberos_status_codes");
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("kvdb-uuid-1")).WillOnce(Return("kerberos_status_codes"));
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f"))
+        .WillOnce(Return("kerberos_status_codes"));
     EXPECT_CALL(*mockReader, kvdbDump("kerberos_status_codes")).WillOnce(Return(kvdbDoc));
 
-    dataType::KVDB kvdb2 = storeCTI->getKVDBByUUID("kvdb-uuid-1");
+    dataType::KVDB kvdb2 = storeCTI->getKVDBByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f");
 
-    EXPECT_EQ(kvdb1.getUUID(), "kvdb-uuid-1");
-    EXPECT_EQ(kvdb2.getUUID(), "kvdb-uuid-1");
+    EXPECT_EQ(kvdb1.getUUID(), "82e215c4-988a-4f64-8d15-b98b2fc03a4f");
+    EXPECT_EQ(kvdb2.getUUID(), "82e215c4-988a-4f64-8d15-b98b2fc03a4f");
 }
 
 /*****************************************************************************
@@ -429,7 +435,7 @@ TEST_F(CMStoreCTIComponentTest, ConcurrentAccess_MultipleReadsFromSameStore)
 {
     // Setup mock for multiple calls
     json::Json integrationDoc =
-        createCompleteIntegrationDoc("int-uuid", "windows", {}, {}, "concurrent-category", true);
+        createCompleteIntegrationDoc("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", {}, {}, "other", true);
 
     EXPECT_CALL(*mockReader, getAsset(base::Name("windows"))).Times(3).WillRepeatedly(Return(integrationDoc));
 

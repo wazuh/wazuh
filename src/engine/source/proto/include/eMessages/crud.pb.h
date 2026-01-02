@@ -97,6 +97,9 @@ extern resourceList_ResponseDefaultTypeInternal _resourceList_Response_default_i
 class resourcePost_Request;
 struct resourcePost_RequestDefaultTypeInternal;
 extern resourcePost_RequestDefaultTypeInternal _resourcePost_Request_default_instance_;
+class resourceValidate_Request;
+struct resourceValidate_RequestDefaultTypeInternal;
+extern resourceValidate_RequestDefaultTypeInternal _resourceValidate_Request_default_instance_;
 }  // namespace content
 }  // namespace engine
 }  // namespace api
@@ -118,6 +121,7 @@ template<> ::com::wazuh::api::engine::content::resourceGet_Response* Arena::Crea
 template<> ::com::wazuh::api::engine::content::resourceList_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourceList_Request>(Arena*);
 template<> ::com::wazuh::api::engine::content::resourceList_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourceList_Response>(Arena*);
 template<> ::com::wazuh::api::engine::content::resourcePost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourcePost_Request>(Arena*);
+template<> ::com::wazuh::api::engine::content::resourceValidate_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::content::resourceValidate_Request>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace com {
 namespace wazuh {
@@ -2698,6 +2702,179 @@ class resourceDelete_Request final :
   union { Impl_ _impl_; };
   friend struct ::TableStruct_crud_2eproto;
 };
+// -------------------------------------------------------------------
+
+class resourceValidate_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.content.resourceValidate_Request) */ {
+ public:
+  inline resourceValidate_Request() : resourceValidate_Request(nullptr) {}
+  ~resourceValidate_Request() override;
+  explicit PROTOBUF_CONSTEXPR resourceValidate_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  resourceValidate_Request(const resourceValidate_Request& from);
+  resourceValidate_Request(resourceValidate_Request&& from) noexcept
+    : resourceValidate_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline resourceValidate_Request& operator=(const resourceValidate_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline resourceValidate_Request& operator=(resourceValidate_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const resourceValidate_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const resourceValidate_Request* internal_default_instance() {
+    return reinterpret_cast<const resourceValidate_Request*>(
+               &_resourceValidate_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    15;
+
+  friend void swap(resourceValidate_Request& a, resourceValidate_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(resourceValidate_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(resourceValidate_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  resourceValidate_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<resourceValidate_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const resourceValidate_Request& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const resourceValidate_Request& from) {
+    resourceValidate_Request::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(resourceValidate_Request* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.content.resourceValidate_Request";
+  }
+  protected:
+  explicit resourceValidate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kTypeFieldNumber = 1,
+    kResourceFieldNumber = 2,
+  };
+  // string type = 1;
+  void clear_type();
+  const std::string& type() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_type(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_type();
+  PROTOBUF_NODISCARD std::string* release_type();
+  void set_allocated_type(std::string* type);
+  private:
+  const std::string& _internal_type() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
+  std::string* _internal_mutable_type();
+  public:
+
+  // .google.protobuf.Struct resource = 2;
+  bool has_resource() const;
+  private:
+  bool _internal_has_resource() const;
+  public:
+  void clear_resource();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& resource() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_resource();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_resource();
+  void set_allocated_resource(::PROTOBUF_NAMESPACE_ID::Struct* resource);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_resource() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_resource();
+  public:
+  void unsafe_arena_set_allocated_resource(
+      ::PROTOBUF_NAMESPACE_ID::Struct* resource);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_resource();
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.resourceValidate_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* resource_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_crud_2eproto;
+};
 // ===================================================================
 
 
@@ -4369,9 +4546,150 @@ inline void resourceDelete_Request::set_allocated_uuid(std::string* uuid) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceDelete_Request.uuid)
 }
 
+// -------------------------------------------------------------------
+
+// resourceValidate_Request
+
+// string type = 1;
+inline void resourceValidate_Request::clear_type() {
+  _impl_.type_.ClearToEmpty();
+}
+inline const std::string& resourceValidate_Request::type() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourceValidate_Request.type)
+  return _internal_type();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void resourceValidate_Request::set_type(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.type_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.resourceValidate_Request.type)
+}
+inline std::string* resourceValidate_Request::mutable_type() {
+  std::string* _s = _internal_mutable_type();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourceValidate_Request.type)
+  return _s;
+}
+inline const std::string& resourceValidate_Request::_internal_type() const {
+  return _impl_.type_.Get();
+}
+inline void resourceValidate_Request::_internal_set_type(const std::string& value) {
+  
+  _impl_.type_.Set(value, GetArenaForAllocation());
+}
+inline std::string* resourceValidate_Request::_internal_mutable_type() {
+  
+  return _impl_.type_.Mutable(GetArenaForAllocation());
+}
+inline std::string* resourceValidate_Request::release_type() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourceValidate_Request.type)
+  return _impl_.type_.Release();
+}
+inline void resourceValidate_Request::set_allocated_type(std::string* type) {
+  if (type != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.type_.SetAllocated(type, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.type_.IsDefault()) {
+    _impl_.type_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceValidate_Request.type)
+}
+
+// .google.protobuf.Struct resource = 2;
+inline bool resourceValidate_Request::_internal_has_resource() const {
+  return this != internal_default_instance() && _impl_.resource_ != nullptr;
+}
+inline bool resourceValidate_Request::has_resource() const {
+  return _internal_has_resource();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& resourceValidate_Request::_internal_resource() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.resource_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& resourceValidate_Request::resource() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourceValidate_Request.resource)
+  return _internal_resource();
+}
+inline void resourceValidate_Request::unsafe_arena_set_allocated_resource(
+    ::PROTOBUF_NAMESPACE_ID::Struct* resource) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.resource_);
+  }
+  _impl_.resource_ = resource;
+  if (resource) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.content.resourceValidate_Request.resource)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceValidate_Request::release_resource() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.resource_;
+  _impl_.resource_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceValidate_Request::unsafe_arena_release_resource() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourceValidate_Request.resource)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.resource_;
+  _impl_.resource_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceValidate_Request::_internal_mutable_resource() {
+  
+  if (_impl_.resource_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.resource_ = p;
+  }
+  return _impl_.resource_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceValidate_Request::mutable_resource() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_resource();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourceValidate_Request.resource)
+  return _msg;
+}
+inline void resourceValidate_Request::set_allocated_resource(::PROTOBUF_NAMESPACE_ID::Struct* resource) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.resource_);
+  }
+  if (resource) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(resource));
+    if (message_arena != submessage_arena) {
+      resource = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, resource, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.resource_ = resource;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceValidate_Request.resource)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

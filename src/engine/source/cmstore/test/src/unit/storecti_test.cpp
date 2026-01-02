@@ -3,8 +3,8 @@
 #include <tuple>
 #include <vector>
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <base/json.hpp>
 #include <base/name.hpp>
@@ -23,19 +23,20 @@ namespace
 {
 
 // Helper function to create a valid integration JSON document (CTI Store format)
-json::Json createIntegrationJson(const std::string& uuid, const std::string& title,
+json::Json createIntegrationJson(const std::string& uuid,
+                                 const std::string& title,
                                  const std::string& category = "ossec",
                                  bool enable_decoders = true)
 {
     json::Json doc;
-    doc.setString(uuid, "/name");  // UUID is stored in /name field in CTI Store
+    doc.setString(uuid, "/name"); // UUID is stored in /name field in CTI Store
     doc.setString("integration", "/type");
 
     json::Json payload;
     payload.setString("integration", "/type");
 
     json::Json document;
-    document.setString(title, "/title");  // Only title in document section
+    document.setString(title, "/title"); // Only title in document section
     document.setArray("/decoders");
     document.setArray("/kvdbs");
 
@@ -67,7 +68,7 @@ json::Json createPolicyJson(const std::string& uuid, const std::string& title)
     document.setString("decoder/root/0", "/root_decoder");
     document.setArray("/integrations");
     // Add at least one integration (required by Policy validation)
-    document.appendString("test-integration-uuid", "/integrations");
+    document.appendString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/integrations");
 
     payload.set("/document", document);
     doc.set("/payload", payload);
@@ -103,7 +104,7 @@ json::Json createAssetJson(const std::string& uuid, const std::string& name)
 
     json::Json document;
     document.setString(name, "/name");
-
+    document.setBool(true, "/enabled");
     payload.set("/document", document);
     doc.set("/payload", payload);
 
@@ -120,7 +121,7 @@ class CMStoreCTITest : public ::testing::Test
 protected:
     std::shared_ptr<cti::store::MockCMReader> mockReader;
     std::unique_ptr<CMStoreCTI> storeCTI;
-    NamespaceId testNamespaceId{"test_namespace"};
+    NamespaceId testNamespaceId {"test_namespace"};
 
     void SetUp() override
     {
@@ -141,17 +142,15 @@ protected:
 
 TEST_F(CMStoreCTITest, Constructor_ValidReader_Success)
 {
-    EXPECT_NO_THROW({
-        CMStoreCTI store(mockReader, NamespaceId("valid_namespace"), std::filesystem::temp_directory_path());
-    });
+    EXPECT_NO_THROW(
+        { CMStoreCTI store(mockReader, NamespaceId("valid_namespace"), std::filesystem::temp_directory_path()); });
 }
 
 TEST_F(CMStoreCTITest, Constructor_NullReader_Accepted)
 {
     // Null reader is accepted at construction time (weak_ptr behavior)
-    EXPECT_NO_THROW({
-        CMStoreCTI store(nullptr, NamespaceId("null_namespace"), std::filesystem::temp_directory_path());
-    });
+    EXPECT_NO_THROW(
+        { CMStoreCTI store(nullptr, NamespaceId("null_namespace"), std::filesystem::temp_directory_path()); });
 }
 
 TEST_F(CMStoreCTITest, GetNamespaceId_ReturnsCorrectId)
@@ -166,14 +165,15 @@ TEST_F(CMStoreCTITest, GetNamespaceId_ReturnsCorrectId)
 
 TEST_F(CMStoreCTITest, CreateResource_ThrowsReadOnlyException)
 {
-    EXPECT_THROW(
-        storeCTI->createResource("test", ResourceType::DECODER, "content"),
-        std::runtime_error);
+    EXPECT_THROW(storeCTI->createResource("test", ResourceType::DECODER, "content"), std::runtime_error);
 
-    try {
+    try
+    {
         storeCTI->createResource("test", ResourceType::DECODER, "content");
         FAIL() << "Expected std::runtime_error";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         EXPECT_THAT(e.what(), HasSubstr("Read-Only"));
         EXPECT_THAT(e.what(), HasSubstr("creation"));
     }
@@ -181,14 +181,15 @@ TEST_F(CMStoreCTITest, CreateResource_ThrowsReadOnlyException)
 
 TEST_F(CMStoreCTITest, UpdateResourceByName_ThrowsReadOnlyException)
 {
-    EXPECT_THROW(
-        storeCTI->updateResourceByName("test", ResourceType::DECODER, "content"),
-        std::runtime_error);
+    EXPECT_THROW(storeCTI->updateResourceByName("test", ResourceType::DECODER, "content"), std::runtime_error);
 
-    try {
+    try
+    {
         storeCTI->updateResourceByName("test", ResourceType::DECODER, "content");
         FAIL() << "Expected std::runtime_error";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         EXPECT_THAT(e.what(), HasSubstr("Read-Only"));
         EXPECT_THAT(e.what(), HasSubstr("update"));
     }
@@ -196,14 +197,15 @@ TEST_F(CMStoreCTITest, UpdateResourceByName_ThrowsReadOnlyException)
 
 TEST_F(CMStoreCTITest, UpdateResourceByUUID_ThrowsReadOnlyException)
 {
-    EXPECT_THROW(
-        storeCTI->updateResourceByUUID("uuid-123", "content"),
-        std::runtime_error);
+    EXPECT_THROW(storeCTI->updateResourceByUUID("uuid-123", "content"), std::runtime_error);
 
-    try {
+    try
+    {
         storeCTI->updateResourceByUUID("uuid-123", "content");
         FAIL() << "Expected std::runtime_error";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         EXPECT_THAT(e.what(), HasSubstr("Read-Only"));
         EXPECT_THAT(e.what(), HasSubstr("update"));
     }
@@ -211,14 +213,15 @@ TEST_F(CMStoreCTITest, UpdateResourceByUUID_ThrowsReadOnlyException)
 
 TEST_F(CMStoreCTITest, DeleteResourceByName_ThrowsReadOnlyException)
 {
-    EXPECT_THROW(
-        storeCTI->deleteResourceByName("test", ResourceType::DECODER),
-        std::runtime_error);
+    EXPECT_THROW(storeCTI->deleteResourceByName("test", ResourceType::DECODER), std::runtime_error);
 
-    try {
+    try
+    {
         storeCTI->deleteResourceByName("test", ResourceType::DECODER);
         FAIL() << "Expected std::runtime_error";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         EXPECT_THAT(e.what(), HasSubstr("Read-Only"));
         EXPECT_THAT(e.what(), HasSubstr("deletion"));
     }
@@ -226,14 +229,15 @@ TEST_F(CMStoreCTITest, DeleteResourceByName_ThrowsReadOnlyException)
 
 TEST_F(CMStoreCTITest, DeleteResourceByUUID_ThrowsReadOnlyException)
 {
-    EXPECT_THROW(
-        storeCTI->deleteResourceByUUID("uuid-123"),
-        std::runtime_error);
+    EXPECT_THROW(storeCTI->deleteResourceByUUID("uuid-123"), std::runtime_error);
 
-    try {
+    try
+    {
         storeCTI->deleteResourceByUUID("uuid-123");
         FAIL() << "Expected std::runtime_error";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         EXPECT_THAT(e.what(), HasSubstr("Read-Only"));
         EXPECT_THAT(e.what(), HasSubstr("deletion"));
     }
@@ -246,17 +250,18 @@ TEST_F(CMStoreCTITest, UpsertPolicy_ThrowsReadOnlyException)
     policyJson.setString("test-uuid", "/id");
     policyJson.setString("test-policy", "/name");
     policyJson.setArray("/integrations");
-    policyJson.appendString("test-integration-uuid", "/integrations");
+    policyJson.appendString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/integrations");
 
     dataType::Policy policy = dataType::Policy::fromJson(policyJson);
-    EXPECT_THROW(
-        storeCTI->upsertPolicy(policy),
-        std::runtime_error);
+    EXPECT_THROW(storeCTI->upsertPolicy(policy), std::runtime_error);
 
-    try {
+    try
+    {
         storeCTI->upsertPolicy(policy);
         FAIL() << "Expected std::runtime_error";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         EXPECT_THAT(e.what(), HasSubstr("Read-Only"));
         EXPECT_THAT(e.what(), HasSubstr("upsert"));
     }
@@ -264,14 +269,15 @@ TEST_F(CMStoreCTITest, UpsertPolicy_ThrowsReadOnlyException)
 
 TEST_F(CMStoreCTITest, DeletePolicy_ThrowsReadOnlyException)
 {
-    EXPECT_THROW(
-        storeCTI->deletePolicy(),
-        std::runtime_error);
+    EXPECT_THROW(storeCTI->deletePolicy(), std::runtime_error);
 
-    try {
+    try
+    {
         storeCTI->deletePolicy();
         FAIL() << "Expected std::runtime_error";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         EXPECT_THAT(e.what(), HasSubstr("Read-Only"));
         EXPECT_THAT(e.what(), HasSubstr("deletion"));
     }
@@ -286,10 +292,8 @@ TEST_F(CMStoreCTITest, GetPolicy_Success_ReturnsPolicy)
     std::vector<base::Name> policyList = {base::Name("policy1")};
     json::Json policyDoc = createPolicyJson("uuid-policy-1", "TestPolicy");
 
-    EXPECT_CALL(*mockReader, getPolicyList())
-        .WillOnce(Return(policyList));
-    EXPECT_CALL(*mockReader, getPolicy(base::Name("policy1")))
-        .WillOnce(Return(policyDoc));
+    EXPECT_CALL(*mockReader, getPolicyList()).WillOnce(Return(policyList));
+    EXPECT_CALL(*mockReader, getPolicy(base::Name("policy1"))).WillOnce(Return(policyDoc));
 
     dataType::Policy policy = storeCTI->getPolicy();
 
@@ -299,8 +303,7 @@ TEST_F(CMStoreCTITest, GetPolicy_Success_ReturnsPolicy)
 
 TEST_F(CMStoreCTITest, GetPolicy_EmptyPolicyList_ThrowsException)
 {
-    EXPECT_CALL(*mockReader, getPolicyList())
-        .WillOnce(Return(std::vector<base::Name>{}));
+    EXPECT_CALL(*mockReader, getPolicyList()).WillOnce(Return(std::vector<base::Name> {}));
 
     EXPECT_THROW(storeCTI->getPolicy(), std::runtime_error);
 }
@@ -311,16 +314,15 @@ TEST_F(CMStoreCTITest, GetPolicy_EmptyPolicyList_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByName_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("uuid-int-1", "windows", "test-category", true);
+    json::Json integrationDoc = createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "windows", "other", true);
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
-        .WillOnce(Return(integrationDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("windows"))).WillOnce(Return(integrationDoc));
 
     dataType::Integration integration = storeCTI->getIntegrationByName("windows");
 
-    EXPECT_EQ(integration.getUUID(), "uuid-int-1");
+    EXPECT_EQ(integration.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "windows");
-    EXPECT_EQ(integration.getCategory(), "test-category");
+    EXPECT_EQ(integration.getCategory(), "other");
     EXPECT_TRUE(integration.isEnabled());
 }
 
@@ -334,18 +336,17 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_NotFound_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetIntegrationByUUID_Success_ReturnsIntegration)
 {
-    json::Json integrationDoc = createIntegrationJson("uuid-int-2", "linux", "linux-category", true);
+    json::Json integrationDoc =
+        createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "linux", "security", true);
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-int-2"))
-        .WillOnce(Return("linux"));
-    EXPECT_CALL(*mockReader, getAsset(base::Name("linux")))
-        .WillOnce(Return(integrationDoc));
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).WillOnce(Return("linux"));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("linux"))).WillOnce(Return(integrationDoc));
 
-    dataType::Integration integration = storeCTI->getIntegrationByUUID("uuid-int-2");
+    dataType::Integration integration = storeCTI->getIntegrationByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
 
-    EXPECT_EQ(integration.getUUID(), "uuid-int-2");
+    EXPECT_EQ(integration.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(integration.getName(), "linux");
-    EXPECT_EQ(integration.getCategory(), "linux-category");
+    EXPECT_EQ(integration.getCategory(), "security");
     EXPECT_TRUE(integration.isEnabled());
 }
 
@@ -366,8 +367,7 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_MissingUUID_ThrowsException)
     malformedDoc.setObject("/payload/document");
     malformedDoc.setString("windows", "/payload/document/title");
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
-        .WillOnce(Return(malformedDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("windows"))).WillOnce(Return(malformedDoc));
 
     EXPECT_THROW(storeCTI->getIntegrationByName("windows"), std::runtime_error);
 }
@@ -380,8 +380,7 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_MissingDocument_ThrowsException)
     malformedDoc.setString("uuid-int-1", "/name");
     malformedDoc.setObject("/payload");
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("windows")))
-        .WillOnce(Return(malformedDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("windows"))).WillOnce(Return(malformedDoc));
 
     EXPECT_THROW(storeCTI->getIntegrationByName("windows"), std::runtime_error);
 }
@@ -389,14 +388,14 @@ TEST_F(CMStoreCTITest, GetIntegrationByName_MissingDocument_ThrowsException)
 TEST_F(CMStoreCTITest, GetIntegrationByName_EnableDecodersFalse)
 {
     // Create integration document with enable_decoders = false
-    json::Json integrationDoc = createIntegrationJson("uuid-disabled", "disabled", "disabled-category", false);
+    json::Json integrationDoc =
+        createIntegrationJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "disabled", "other", false);
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("disabled")))
-        .WillOnce(Return(integrationDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("disabled"))).WillOnce(Return(integrationDoc));
 
     dataType::Integration integration = storeCTI->getIntegrationByName("disabled");
 
-    EXPECT_EQ(integration.getCategory(), "disabled-category");
+    EXPECT_EQ(integration.getCategory(), "other");
     EXPECT_FALSE(integration.isEnabled());
 }
 
@@ -408,13 +407,13 @@ TEST_F(CMStoreCTITest, GetKVDBByName_Success_ReturnsKVDB)
 {
     // Build full KVDB document structure
     json::Json kvdbDoc;
-    kvdbDoc.setString("uuid-kvdb-1", "/name");
+    kvdbDoc.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/name");
 
     json::Json payload;
     payload.setString("kvdb", "/type");
 
     json::Json document;
-    document.setString("uuid-kvdb-1", "/id");
+    document.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/id");
     document.setString("test_kvdb", "/title");
     document.setBool(true, "/enabled");
 
@@ -426,21 +425,19 @@ TEST_F(CMStoreCTITest, GetKVDBByName_Success_ReturnsKVDB)
     payload.set("/document", document);
     kvdbDoc.set("/payload", payload);
 
-    EXPECT_CALL(*mockReader, kvdbDump("test_kvdb"))
-        .WillOnce(Return(kvdbDoc));
+    EXPECT_CALL(*mockReader, kvdbDump("test_kvdb")).WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb = storeCTI->getKVDBByName("test_kvdb");
 
     auto kvdbJson = kvdb.toJson();
     EXPECT_EQ(kvdbJson.getString("/title").value_or(""), "test_kvdb");
-    EXPECT_EQ(kvdbJson.getString("/id").value_or(""), "uuid-kvdb-1");
+    EXPECT_EQ(kvdbJson.getString("/id").value_or(""), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(kvdbJson.getJson("/content").value_or(json::Json()).getString("/key1").value_or(""), "value1");
 }
 
 TEST_F(CMStoreCTITest, GetKVDBByName_NotFound_ThrowsException)
 {
-    EXPECT_CALL(*mockReader, kvdbDump("nonexistent"))
-        .WillOnce(Throw(std::runtime_error("KVDB not found")));
+    EXPECT_CALL(*mockReader, kvdbDump("nonexistent")).WillOnce(Throw(std::runtime_error("KVDB not found")));
 
     EXPECT_THROW(storeCTI->getKVDBByName("nonexistent"), std::runtime_error);
 }
@@ -449,13 +446,13 @@ TEST_F(CMStoreCTITest, GetKVDBByUUID_Success_ReturnsKVDB)
 {
     // Build full KVDB document structure
     json::Json kvdbDoc;
-    kvdbDoc.setString("uuid-kvdb-2", "/name");
+    kvdbDoc.setString("4aa06596-5ba9-488c-8354-2475705e1257", "/name");
 
     json::Json payload;
     payload.setString("kvdb", "/type");
 
     json::Json document;
-    document.setString("uuid-kvdb-2", "/id");
+    document.setString("4aa06596-5ba9-488c-8354-2475705e1257", "/id");
     document.setString("another_kvdb", "/title");
     document.setBool(true, "/enabled");
 
@@ -467,27 +464,26 @@ TEST_F(CMStoreCTITest, GetKVDBByUUID_Success_ReturnsKVDB)
     payload.set("/document", document);
     kvdbDoc.set("/payload", payload);
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-kvdb-2"))
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("4aa06596-5ba9-488c-8354-2475705e1257"))
         .WillOnce(Return("another_kvdb"));
-    EXPECT_CALL(*mockReader, kvdbDump("another_kvdb"))
-        .WillOnce(Return(kvdbDoc));
+    EXPECT_CALL(*mockReader, kvdbDump("another_kvdb")).WillOnce(Return(kvdbDoc));
 
-    dataType::KVDB kvdb = storeCTI->getKVDBByUUID("uuid-kvdb-2");
+    dataType::KVDB kvdb = storeCTI->getKVDBByUUID("4aa06596-5ba9-488c-8354-2475705e1257");
 
-    EXPECT_EQ(kvdb.getUUID(), "uuid-kvdb-2");
+    EXPECT_EQ(kvdb.getUUID(), "4aa06596-5ba9-488c-8354-2475705e1257");
 }
 
 TEST_F(CMStoreCTITest, GetKVDBByName_EmptyContent_ReturnsValidKVDB)
 {
     // Build full KVDB document structure with empty content
     json::Json kvdbDoc;
-    kvdbDoc.setString("uuid-empty-kvdb", "/name");
+    kvdbDoc.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/name");
 
     json::Json payload;
     payload.setString("kvdb", "/type");
 
     json::Json document;
-    document.setString("uuid-empty-kvdb", "/id");
+    document.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/id");
     document.setString("empty_kvdb", "/title");
     document.setBool(true, "/enabled");
 
@@ -498,25 +494,23 @@ TEST_F(CMStoreCTITest, GetKVDBByName_EmptyContent_ReturnsValidKVDB)
     payload.set("/document", document);
     kvdbDoc.set("/payload", payload);
 
-    EXPECT_CALL(*mockReader, kvdbDump("empty_kvdb"))
-        .WillOnce(Return(kvdbDoc));
+    EXPECT_CALL(*mockReader, kvdbDump("empty_kvdb")).WillOnce(Return(kvdbDoc));
 
     dataType::KVDB kvdb = storeCTI->getKVDBByName("empty_kvdb");
-    EXPECT_EQ(kvdb.getUUID(), "uuid-empty-kvdb");
+    EXPECT_EQ(kvdb.getUUID(), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
 }
 
 TEST_F(CMStoreCTITest, GetKVDBByName_MissingDocument_ThrowsException)
 {
     // kvdbDump returns document missing /payload/document section
     json::Json malformedDoc;
-    malformedDoc.setString("uuid-malformed", "/name");
+    malformedDoc.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/name");
     json::Json payload;
     payload.setString("kvdb", "/type");
     malformedDoc.set("/payload", payload);
     // Missing /payload/document section
 
-    EXPECT_CALL(*mockReader, kvdbDump("malformed_kvdb"))
-        .WillOnce(Return(malformedDoc));
+    EXPECT_CALL(*mockReader, kvdbDump("malformed_kvdb")).WillOnce(Return(malformedDoc));
 
     EXPECT_THROW(storeCTI->getKVDBByName("malformed_kvdb"), std::runtime_error);
 }
@@ -527,10 +521,9 @@ TEST_F(CMStoreCTITest, GetKVDBByName_MissingDocument_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetAssetByName_Success_ReturnsAsset)
 {
-    json::Json assetDoc = createAssetJson("uuid-decoder-1", "decoder/test/0");
+    json::Json assetDoc = createAssetJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "decoder/test/0");
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test/0")))
-        .WillOnce(Return(assetDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test/0"))).WillOnce(Return(assetDoc));
 
     json::Json asset = storeCTI->getAssetByName(base::Name("decoder/test/0"));
 
@@ -547,14 +540,13 @@ TEST_F(CMStoreCTITest, GetAssetByName_NotFound_ThrowsException)
 
 TEST_F(CMStoreCTITest, GetAssetByUUID_Success_ReturnsAsset)
 {
-    json::Json assetDoc = createAssetJson("uuid-decoder-2", "decoder/windows/0");
+    json::Json assetDoc = createAssetJson("5c1df6b6-1458-4b2e-9001-96f67a8b12c2", "decoder/windows/0");
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-decoder-2"))
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c2"))
         .WillOnce(Return("decoder/windows/0"));
-    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/windows/0")))
-        .WillOnce(Return(assetDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/windows/0"))).WillOnce(Return(assetDoc));
 
-    json::Json asset = storeCTI->getAssetByUUID("uuid-decoder-2");
+    json::Json asset = storeCTI->getAssetByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c2");
 }
 
 TEST_F(CMStoreCTITest, GetAssetByName_MissingPayloadDocument_ThrowsException)
@@ -562,12 +554,11 @@ TEST_F(CMStoreCTITest, GetAssetByName_MissingPayloadDocument_ThrowsException)
     // Create asset document WITHOUT /payload/document section
     json::Json malformedDoc;
     malformedDoc.setObject();
-    malformedDoc.setString("uuid-bad-asset", "/name");
+    malformedDoc.setString("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", "/name");
     malformedDoc.setString("decoder", "/type");
     // Missing /payload/document!
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed/asset/0")))
-        .WillOnce(Return(malformedDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed/asset/0"))).WillOnce(Return(malformedDoc));
 
     EXPECT_THROW(
         {
@@ -581,8 +572,7 @@ TEST_F(CMStoreCTITest, GetAssetByName_MissingPayloadDocument_ThrowsException)
                 throw;
             }
         },
-        std::runtime_error
-    );
+        std::runtime_error);
 }
 
 TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
@@ -603,20 +593,18 @@ TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
     json::Json document;
     document.setObject();
     document.setString("decoder/test-extract/0", "/name");
-    document.setString("test-metadata", "/metadata");
     document.setString("test-value", "/test_field");
+    document.setBool(true, "/enabled");
 
     payload.set("/document", document);
     fullDoc.set("/payload", payload);
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test-extract/0")))
-        .WillOnce(Return(fullDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test-extract/0"))).WillOnce(Return(fullDoc));
 
     json::Json result = storeCTI->getAssetByName(base::Name("decoder/test-extract/0"));
 
     // Verify result contains ONLY the /payload/document section
     EXPECT_TRUE(result.exists("/name"));
-    EXPECT_TRUE(result.exists("/metadata"));
 
     // Verify envelope fields are NOT present
     EXPECT_FALSE(result.exists("/offset"));
@@ -628,10 +616,6 @@ TEST_F(CMStoreCTITest, GetAssetByName_ReturnsOnlyPayloadDocument)
     auto nameOpt = result.getString("/name");
     EXPECT_TRUE(nameOpt.has_value());
     EXPECT_EQ(nameOpt.value(), "decoder/test-extract/0");
-
-    auto metadataOpt = result.getString("/metadata");
-    EXPECT_TRUE(metadataOpt.has_value());
-    EXPECT_EQ(metadataOpt.value(), "test-metadata");
 }
 
 TEST_F(CMStoreCTITest, GetAssetByUUID_MissingPayloadDocument_ThrowsException)
@@ -643,10 +627,8 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_MissingPayloadDocument_ThrowsException)
     malformedDoc.setString("decoder", "/type");
     // Missing /payload/document!
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-bad-asset-2"))
-        .WillOnce(Return("malformed/asset/0"));
-    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed/asset/0")))
-        .WillOnce(Return(malformedDoc));
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-bad-asset-2")).WillOnce(Return("malformed/asset/0"));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed/asset/0"))).WillOnce(Return(malformedDoc));
 
     EXPECT_THROW(
         {
@@ -660,8 +642,7 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_MissingPayloadDocument_ThrowsException)
                 throw;
             }
         },
-        std::runtime_error
-    );
+        std::runtime_error);
 }
 
 TEST_F(CMStoreCTITest, GetAssetByUUID_ReturnsOnlyPayloadDocument)
@@ -681,22 +662,18 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_ReturnsOnlyPayloadDocument)
     json::Json document;
     document.setObject();
     document.setString("decoder/test-uuid-extract/0", "/name");
-    document.setString("uuid-test-metadata", "/metadata");
     document.setString("uuid-test-value", "/custom_field");
-
+    document.setBool(true, "/enabled");
     payload.set("/document", document);
     fullDoc.set("/payload", payload);
 
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-decoder-4"))
-        .WillOnce(Return("decoder/test-uuid-extract/0"));
-    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test-uuid-extract/0")))
-        .WillOnce(Return(fullDoc));
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-decoder-4")).WillOnce(Return("decoder/test-uuid-extract/0"));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("decoder/test-uuid-extract/0"))).WillOnce(Return(fullDoc));
 
     json::Json result = storeCTI->getAssetByUUID("uuid-decoder-4");
 
     // Verify result contains ONLY the /payload/document section
     EXPECT_TRUE(result.exists("/name"));
-    EXPECT_TRUE(result.exists("/metadata"));
 
     // Verify envelope fields are NOT present
     EXPECT_FALSE(result.exists("/offset"));
@@ -716,8 +693,7 @@ TEST_F(CMStoreCTITest, GetAssetByUUID_ReturnsOnlyPayloadDocument)
 
 TEST_F(CMStoreCTITest, AssetExistsByName_Exists_ReturnsTrue)
 {
-    EXPECT_CALL(*mockReader, assetExists(base::Name("decoder/test/0")))
-        .WillOnce(Return(true));
+    EXPECT_CALL(*mockReader, assetExists(base::Name("decoder/test/0"))).WillOnce(Return(true));
 
     bool exists = storeCTI->assetExistsByName(base::Name("decoder/test/0"));
 
@@ -726,8 +702,7 @@ TEST_F(CMStoreCTITest, AssetExistsByName_Exists_ReturnsTrue)
 
 TEST_F(CMStoreCTITest, AssetExistsByName_NotExists_ReturnsFalse)
 {
-    EXPECT_CALL(*mockReader, assetExists(base::Name("nonexistent")))
-        .WillOnce(Return(false));
+    EXPECT_CALL(*mockReader, assetExists(base::Name("nonexistent"))).WillOnce(Return(false));
 
     bool exists = storeCTI->assetExistsByName(base::Name("nonexistent"));
 
@@ -736,8 +711,7 @@ TEST_F(CMStoreCTITest, AssetExistsByName_NotExists_ReturnsFalse)
 
 TEST_F(CMStoreCTITest, AssetExistsByUUID_Exists_ReturnsTrue)
 {
-    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-123"))
-        .WillOnce(Return("decoder/test/0"));
+    EXPECT_CALL(*mockReader, resolveNameFromUUID("uuid-123")).WillOnce(Return("decoder/test/0"));
 
     bool exists = storeCTI->assetExistsByUUID("uuid-123");
 
@@ -758,20 +732,16 @@ TEST_F(CMStoreCTITest, AssetExistsByUUID_NotExists_ReturnsFalse)
 
 TEST_F(CMStoreCTITest, GetCollection_Decoders_ReturnsUUIDNameTuples)
 {
-    std::vector<base::Name> assetList = {
-        base::Name("decoder/test/0"),
-        base::Name("decoder/windows/0")
-    };
+    std::vector<base::Name> assetList = {base::Name("decoder/test/0"), base::Name("decoder/windows/0")};
 
-    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::DECODER))
-        .WillOnce(Return(assetList));
-    EXPECT_CALL(*mockReader, resolveUUIDFromName(testing::_, "decoder"))
-        .WillRepeatedly(testing::Return("uuid-test"));
+    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::DECODER)).WillOnce(Return(assetList));
+    EXPECT_CALL(*mockReader, resolveUUIDFromName(testing::_, "decoder")).WillRepeatedly(testing::Return("uuid-test"));
 
     auto collection = storeCTI->getCollection(ResourceType::DECODER);
 
     EXPECT_EQ(collection.size(), 2);
-    for (const auto& [uuid, name] : collection) {
+    for (const auto& [uuid, name] : collection)
+    {
         EXPECT_FALSE(uuid.empty());
         EXPECT_FALSE(name.empty());
     }
@@ -779,8 +749,7 @@ TEST_F(CMStoreCTITest, GetCollection_Decoders_ReturnsUUIDNameTuples)
 
 TEST_F(CMStoreCTITest, GetCollection_EmptyResult_ReturnsEmptyVector)
 {
-    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::DECODER))
-        .WillOnce(Return(std::vector<base::Name>{}));
+    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::DECODER)).WillOnce(Return(std::vector<base::Name> {}));
 
     auto collection = storeCTI->getCollection(ResourceType::DECODER);
 
@@ -789,21 +758,17 @@ TEST_F(CMStoreCTITest, GetCollection_EmptyResult_ReturnsEmptyVector)
 
 TEST_F(CMStoreCTITest, GetCollection_Integrations_ReturnsUUIDNameTuples)
 {
-    std::vector<base::Name> integrationList = {
-        base::Name("windows"),
-        base::Name("linux"),
-        base::Name("apache")
-    };
+    std::vector<base::Name> integrationList = {base::Name("windows"), base::Name("linux"), base::Name("apache")};
 
-    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::INTEGRATION))
-        .WillOnce(Return(integrationList));
+    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::INTEGRATION)).WillOnce(Return(integrationList));
     EXPECT_CALL(*mockReader, resolveUUIDFromName(testing::_, "integration"))
         .WillRepeatedly(testing::Return("uuid-test"));
 
     auto collection = storeCTI->getCollection(ResourceType::INTEGRATION);
 
     EXPECT_EQ(collection.size(), 3);
-    for (const auto& [uuid, name] : collection) {
+    for (const auto& [uuid, name] : collection)
+    {
         EXPECT_FALSE(uuid.empty());
         EXPECT_FALSE(name.empty());
     }
@@ -811,21 +776,16 @@ TEST_F(CMStoreCTITest, GetCollection_Integrations_ReturnsUUIDNameTuples)
 
 TEST_F(CMStoreCTITest, GetCollection_KVDB_ReturnsUUIDNameTuples)
 {
-    std::vector<std::string> kvdbList = {
-        "geo_locations",
-        "error_codes",
-        "status_mappings"
-    };
+    std::vector<std::string> kvdbList = {"geo_locations", "error_codes", "status_mappings"};
 
-    EXPECT_CALL(*mockReader, listKVDB())
-        .WillOnce(Return(kvdbList));
-    EXPECT_CALL(*mockReader, resolveUUIDFromName(testing::_, "kvdb"))
-        .WillRepeatedly(testing::Return("uuid-test"));
+    EXPECT_CALL(*mockReader, listKVDB()).WillOnce(Return(kvdbList));
+    EXPECT_CALL(*mockReader, resolveUUIDFromName(testing::_, "kvdb")).WillRepeatedly(testing::Return("uuid-test"));
 
     auto collection = storeCTI->getCollection(ResourceType::KVDB);
 
     EXPECT_EQ(collection.size(), 3);
-    for (const auto& [uuid, name] : collection) {
+    for (const auto& [uuid, name] : collection)
+    {
         EXPECT_FALSE(uuid.empty());
         EXPECT_FALSE(name.empty());
     }
@@ -834,13 +794,9 @@ TEST_F(CMStoreCTITest, GetCollection_KVDB_ReturnsUUIDNameTuples)
 TEST_F(CMStoreCTITest, GetCollection_PartialFailure_SkipsFailedEntries)
 {
     std::vector<base::Name> decoderList = {
-        base::Name("decoder/valid/0"),
-        base::Name("decoder/invalid/0"),
-        base::Name("decoder/another_valid/0")
-    };
+        base::Name("decoder/valid/0"), base::Name("decoder/invalid/0"), base::Name("decoder/another_valid/0")};
 
-    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::DECODER))
-        .WillOnce(Return(decoderList));
+    EXPECT_CALL(*mockReader, getAssetList(cti::store::AssetType::DECODER)).WillOnce(Return(decoderList));
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("decoder/valid/0"), "decoder"))
         .WillOnce(Return("uuid-valid"));
     EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("decoder/invalid/0"), "decoder"))
@@ -878,8 +834,7 @@ TEST_F(CMStoreCTITest, ResolveNameFromUUID_NotFound_ThrowsException)
 
 TEST_F(CMStoreCTITest, ResolveUUIDFromName_Success_ReturnsUUID)
 {
-    EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("decoder/test/0"), "decoder"))
-        .WillOnce(Return("uuid-456"));
+    EXPECT_CALL(*mockReader, resolveUUIDFromName(base::Name("decoder/test/0"), "decoder")).WillOnce(Return("uuid-456"));
 
     std::string uuid = storeCTI->resolveUUIDFromName("decoder/test/0", ResourceType::DECODER);
 
@@ -932,10 +887,7 @@ TEST_F(CMStoreCTITest, ExpiredWeakPtr_AssetExistsByName_ReturnsFalse)
     tempReader.reset();
 
     // Existence checks should return false (not throw) when reader is expired
-    EXPECT_THROW(
-        storeWithExpiredReader.assetExistsByName(base::Name("test")),
-        std::runtime_error
-    );
+    EXPECT_THROW(storeWithExpiredReader.assetExistsByName(base::Name("test")), std::runtime_error);
 }
 
 TEST_F(CMStoreCTITest, MalformedDocument_MissingPayload_ThrowsException)
@@ -945,8 +897,7 @@ TEST_F(CMStoreCTITest, MalformedDocument_MissingPayload_ThrowsException)
     malformedDoc.setString("integration", "/type");
     // Missing /payload section
 
-    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed")))
-        .WillOnce(Return(malformedDoc));
+    EXPECT_CALL(*mockReader, getAsset(base::Name("malformed"))).WillOnce(Return(malformedDoc));
 
     EXPECT_THROW(storeCTI->getIntegrationByName("malformed"), std::runtime_error);
 }

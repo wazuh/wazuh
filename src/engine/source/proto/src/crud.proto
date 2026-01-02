@@ -17,7 +17,9 @@ message ResourceSummary
 /***************************************************
  * List all namespaces
  *
- * command: content.namespace/get (<resource>/<action>)
+ * endpoint: POST /_internal/content/namespace/list
+ *
+ * list all available namespaces
  **************************************************/
 message namespaceGet_Request
 {
@@ -32,9 +34,11 @@ message namespaceGet_Response
 }
 
 /***************************************************
- * Create / ensure a namespace exists
+ * Create a namespace
  *
- * command: content.namespace/post (<resource>/<action>)
+ * endpoint: POST /_internal/content/namespace/create
+ *
+ * create a new namespace
  **************************************************/
 message namespacePost_Request
 {
@@ -45,7 +49,9 @@ message namespacePost_Request
 /***************************************************
  * Delete a namespace
  *
- * command: content.namespace/delete (<resource>/<action>)
+ * endpoint: POST /_internal/content/namespace/delete
+ *
+ * delete a namespace and all its content
  **************************************************/
 message namespaceDelete_Request
 {
@@ -74,7 +80,9 @@ message namespaceImport_Request
 /***************************************************
  * Upsert policy for a namespace
  *
- * command: content.policy/post (<resource>/<action>)
+ * endpoint: POST /_internal/content/policy/upsert
+ *
+ * create or replace the policy for a namespace
  **************************************************/
 message policyPost_Request
 {
@@ -86,7 +94,9 @@ message policyPost_Request
 /***************************************************
  * Delete policy from a namespace
  *
- * command: content.policy/delete (<resource>/<action>)
+ * endpoint: POST /_internal/content/policy/delete
+ *
+ * delete the policy associated with a namespace
  **************************************************/
 message policyDelete_Request
 {
@@ -113,7 +123,9 @@ message policyValidate_Request
 /***************************************************
  * List resources in a namespace by type
  *
- * command: content.resource/list (<resource>/<action>)
+ * endpoint: POST /_internal/content/list
+ *
+ * list resources of a given type within a namespace
  **************************************************/
 message resourceList_Request
 {
@@ -131,7 +143,9 @@ message resourceList_Response
 /***************************************************
  * Get a resource YAML by UUID
  *
- * command: content.resource/get (<resource>/<action>)
+ * endpoint: POST /_internal/content/get
+ *
+ * retrieve a resource (as YAML) by UUID from a namespace
  **************************************************/
 message resourceGet_Request
 {
@@ -150,7 +164,9 @@ message resourceGet_Response
 /***************************************************
  * Upsert a resource (asset / integration / kvdb)
  *
- * command: content.resource/post (<resource>/<action>)
+ * endpoint: POST /_internal/content/upsert
+ *
+ * create or replace a resource in a namespace
  **************************************************/
 message resourcePost_Request
 {
@@ -163,7 +179,9 @@ message resourcePost_Request
 /***************************************************
  * Delete a resource by UUID
  *
- * command: content.resource/delete (<resource>/<action>)
+ * endpoint: POST /_internal/content/delete
+ *
+ * delete a resource from a namespace by UUID
  **************************************************/
 message resourceDelete_Request
 {
@@ -171,3 +189,17 @@ message resourceDelete_Request
     string uuid = 2;  // UUID of the resource to delete
 }
 // message resourceDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Validate a resource payload (isolated, no namespace)
+ *
+ * endpoint: POST /content/validate/resource
+ *
+ * validate a resource payload without persisting it
+ **************************************************/
+message resourceValidate_Request
+{
+    string type = 1;                     // "decoder" | "filter" | "integration" | "kvdb"
+    google.protobuf.Struct resource = 2; // JSON object payload
+}
+// message resourceValidate_Response -> Return a GenericStatus_Response

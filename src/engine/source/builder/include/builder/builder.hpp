@@ -88,6 +88,11 @@ public:
                                  const json::Json& assetJson) const override;
 
     /**
+     * @copydoc IBuilder::validateAssetShallow
+     */
+    base::OptError validateAssetShallow(const json::Json& assetJson) const override;
+
+    /**
      * @copydoc IBuilder::validatePolicy
      */
     base::OptError softPolicyValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,

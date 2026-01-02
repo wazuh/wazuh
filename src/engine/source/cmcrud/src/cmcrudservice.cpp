@@ -1,7 +1,7 @@
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
-#include <cmstore/adapter.hpp>
+#include <cmstore/detail.hpp>
 #include <cmstore/types.hpp>
 #include <yml/yml.hpp>
 
@@ -9,6 +9,34 @@
 
 namespace
 {
+constexpr std::string_view PATH_KEY_ID = "/id";
+
+std::string assetUuidFromJson(const json::Json& jsonDoc, const base::Name& assetName)
+{
+    auto uuidOpt = jsonDoc.getString(PATH_KEY_ID);
+    if (!uuidOpt.has_value() || uuidOpt->empty())
+    {
+        throw std::runtime_error(
+            fmt::format("Asset '{}' is missing required UUID at JSON path '{}'", assetName.toStr(), PATH_KEY_ID));
+    }
+
+    if (!base::utils::generators::isValidUUIDv4(*uuidOpt))
+    {
+        throw std::runtime_error(fmt::format(
+            "Asset '{}' has an invalid UUIDv4 '{}' at JSON path '{}'", assetName.toStr(), *uuidOpt, PATH_KEY_ID));
+    }
+
+    return uuidOpt.value();
+}
+
+void throwIfError(base::OptError err, std::string_view context)
+{
+    if (err.has_value())
+    {
+        const auto& e = base::getError(err);
+        throw std::runtime_error(fmt::format("{}: {}", context, e.message));
+    }
+}
 
 json::Json yamlToJson(std::string_view document)
 {
@@ -34,12 +62,12 @@ cm::store::dataType::Policy policyFromDocument(std::string_view policyDocument)
 
 cm::store::dataType::Integration integrationFromDocument(std::string_view integrationDocument)
 {
-    return cm::store::dataType::Integration::fromJson(yamlToJson(integrationDocument));
+    return cm::store::dataType::Integration::fromJson(yamlToJson(integrationDocument), /*requireUUID:*/ false);
 }
 
 cm::store::dataType::KVDB kvdbFromDocument(std::string_view kvdbDocument)
 {
-    return cm::store::dataType::KVDB::fromJson(yamlToJson(kvdbDocument));
+    return cm::store::dataType::KVDB::fromJson(yamlToJson(kvdbDocument), /*requireUUID:*/ false);
 }
 
 base::Name assetNameFromJson(const json::Json& jsonDoc)
@@ -56,7 +84,7 @@ base::Name assetNameFromJson(const json::Json& jsonDoc)
 namespace cm::crud
 {
 
-CrudService::CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<IContentValidator> validator)
+CrudService::CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator)
     : m_store(std::move(store))
     , m_validator(std::move(validator))
 {
@@ -127,8 +155,8 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
         // Reject if destination namespace already exists
         if (m_store->existsNamespace(nsId))
         {
-            throw std::runtime_error(fmt::format(
-                "Namespace '{}' already exists. Import is only allowed into a new namespace.", nsName));
+            throw std::runtime_error(
+                fmt::format("Namespace '{}' already exists. Import is only allowed into a new namespace.", nsName));
         }
 
         // Parse input JSON
@@ -169,8 +197,11 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
                     {
                         case cm::store::ResourceType::INTEGRATION:
                         {
-                            auto integ = cm::store::dataType::Integration::fromJson(itemJson);
-                            if (!force) { m_validator->validateIntegration(nsReader, integ); }
+                            auto integ = cm::store::dataType::Integration::fromJson(itemJson, /*requireUUID:*/ true);
+                            if (!force)
+                            {
+                                validateIntegration(nsReader, integ);
+                            }
 
                             const std::string& name = integ.getName();
                             const std::string yml = jsonToYaml(integ.toJson());
@@ -180,8 +211,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 
                         case cm::store::ResourceType::KVDB:
                         {
-                            auto kvdb = cm::store::dataType::KVDB::fromJson(itemJson);
-                            if (!force) { m_validator->validateKVDB(nsReader, kvdb); }
+                            auto kvdb = cm::store::dataType::KVDB::fromJson(itemJson, /*requireUUID:*/ true);
 
                             const std::string& name = kvdb.getName();
                             const std::string yml = jsonToYaml(kvdb.toJson());
@@ -191,8 +221,11 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 
                         case cm::store::ResourceType::DECODER:
                         {
-                            auto assetJson = adaptDecoder(itemJson);
+                            auto assetJson = cm::store::detail::adaptDecoder(itemJson);
                             auto name = assetNameFromJson(assetJson);
+
+                            (void)assetUuidFromJson(assetJson, name);
+
                             const auto resourceStr = cm::store::resourceTypeToString(type);
 
                             if (resourceStr != name.parts().front())
@@ -201,7 +234,10 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
                                     "Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
                             }
 
-                            if (!force) { m_validator->validateAsset(nsReader, assetJson); }
+                            if (!force)
+                            {
+                                validateAsset(nsReader, assetJson);
+                            }
 
                             const std::string yml = jsonToYaml(assetJson);
                             const std::string nameStr = name.toStr();
@@ -209,8 +245,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
                             break;
                         }
 
-                        default:
-                            throw std::runtime_error("Unsupported resource type in importNamespace");
+                        default: throw std::runtime_error("Unsupported resource type in importNamespace");
                     }
                 }
             };
@@ -224,7 +259,10 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
             if (auto policyObjOpt = nsJson.getJson("/policy"))
             {
                 auto policy = cm::store::dataType::Policy::fromJson(*policyObjOpt);
-                if (!force) { m_validator->validatePolicy(nsReader, policy); }
+                if (!force)
+                {
+                    validatePolicy(nsReader, policy);
+                }
                 ns->upsertPolicy(policy);
             }
         }
@@ -249,7 +287,7 @@ void CrudService::upsertPolicy(std::string_view nsName, std::string_view policyD
         auto policy = policyFromDocument(policyDocument);
 
         std::shared_ptr<cm::store::ICMStoreNSReader> nsReader = ns;
-        m_validator->validatePolicy(nsReader, policy);
+        validatePolicy(nsReader, policy);
 
         ns->upsertPolicy(policy);
     }
@@ -375,7 +413,7 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
             case cm::store::ResourceType::INTEGRATION:
             {
                 auto integ = integrationFromDocument(document);
-                m_validator->validateIntegration(nsReader, integ);
+                validateIntegration(nsReader, integ);
 
                 const std::string& uuid = integ.getUUID();
                 const std::string& name = integ.getName();
@@ -394,7 +432,6 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
             case cm::store::ResourceType::KVDB:
             {
                 auto kvdb = kvdbFromDocument(document);
-                m_validator->validateKVDB(nsReader, kvdb);
 
                 const std::string& uuid = kvdb.getUUID();
                 const std::string& name = kvdb.getName();
@@ -425,7 +462,7 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
                         "Asset name '{}' does not match resource type '{}'", name, resourceTypeToString(type)));
                 }
 
-                m_validator->validateAsset(nsReader, assetJson);
+                validateAsset(nsReader, assetJson);
 
                 const std::string nameStr = name.toStr();
 
@@ -466,6 +503,80 @@ void CrudService::deleteResourceByUUID(std::string_view nsName, const std::strin
         throw std::runtime_error(
             fmt::format("Failed to delete resource with UUID '{}' in namespace '{}': {}", uuid, nsName, e.what()));
     }
+}
+
+void CrudService::validateResource(cm::store::ResourceType type, const json::Json& payload)
+{
+    try
+    {
+        switch (type)
+        {
+            case cm::store::ResourceType::DECODER:
+            case cm::store::ResourceType::FILTER:
+            {
+                auto adaptedPayload = cm::store::detail::adaptDecoder(payload);
+                auto name = assetNameFromJson(adaptedPayload);
+
+                (void)assetUuidFromJson(adaptedPayload, name);
+
+                const auto resourceStr = cm::store::resourceTypeToString(type);
+
+                if (resourceStr != name.parts().front())
+                {
+                    throw std::runtime_error(
+                        fmt::format("Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
+                }
+
+                throwIfError(m_validator->validateAssetShallow(adaptedPayload),
+                             fmt::format("Validation failed for '{}'", cm::store::resourceTypeToString(type)));
+                return;
+            }
+
+            case cm::store::ResourceType::INTEGRATION:
+            {
+                (void)cm::store::dataType::Integration::fromJson(payload, /*requireUUID:*/ true);
+                return;
+            }
+
+            case cm::store::ResourceType::KVDB:
+            {
+                (void)cm::store::dataType::KVDB::fromJson(payload, /*requireUUID:*/ true);
+                return;
+            }
+
+            default:
+                throw std::runtime_error(
+                    fmt::format("Unsupported resource type '{}'", cm::store::resourceTypeToString(type)));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format(
+            "Failed to validate resource of type '{}': {}", cm::store::resourceTypeToString(type), e.what()));
+    }
+}
+
+void CrudService::validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                 const cm::store::dataType::Policy& policy) const
+{
+    throwIfError(m_validator->softPolicyValidate(nsReader, policy),
+                 fmt::format("Policy validation failed in namespace '{}'", nsReader->getNamespaceId().toStr()));
+}
+
+void CrudService::validateIntegration(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                      const cm::store::dataType::Integration& integration) const
+{
+    throwIfError(m_validator->softIntegrationValidate(nsReader, integration),
+                 fmt::format("Integration validation failed for '{}' in namespace '{}'",
+                             integration.getName(),
+                             nsReader->getNamespaceId().toStr()));
+}
+
+void CrudService::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                                const json::Json& asset) const
+{
+    throwIfError(m_validator->validateAsset(nsReader, asset),
+                 fmt::format("Asset validation failed in namespace '{}'", nsReader->getNamespaceId().toStr()));
 }
 
 std::shared_ptr<cm::store::ICMStoreNSReader>
