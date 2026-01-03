@@ -54,7 +54,7 @@ json::Json adaptDecoder(const json::Json& document)
     json::Json result;
     result.setObject();
 
-    // Order: name, metadata, parent, definitions, parse|${XX}, normalize
+    // Order: name, parent, definitions, parse|${XX}, normalize
 
     // 1. name (from /payload/document/name)
     // TODO: In the future this will be from /payload/document/metadata/title
@@ -71,16 +71,6 @@ json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-    // 2. metadata
-    if (document.exists("/metadata"))
-    {
-        auto metadataOpt = document.getJson("/metadata");
-        if (metadataOpt.has_value())
-        {
-            result.set("/metadata", *metadataOpt);
-        }
-    }
-
     // parents
     if (document.exists("/parents"))
     {
@@ -91,7 +81,7 @@ json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-    // 3. definitions
+    // 2. definitions
     if (auto defJsonOpt = document.getJson("/definitions"); defJsonOpt.has_value())
     {
         result.set("/definitions", *defJsonOpt);
@@ -107,25 +97,38 @@ json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-
-    // 4. parse|${XXX} (from /parse|\W+)
+    // 3. parse|${XXX} (from /parse|\W+)
     {
         const auto fullDocOpt = document.getObject();
         if (!fullDocOpt.has_value())
         {
             throw std::runtime_error("Decoder document is not a valid JSON object");
         }
+
+        size_t parseKeyCount = 0;
+        std::string parseKey;
+
         for (const auto& [key, value] : *fullDocOpt)
         {
             if (key.find("parse|") == 0)
             {
-                result.set(fmt::format("/{}", key), value);
-                break; // Only one parse|XXX expected
+                ++parseKeyCount;
+                if (parseKeyCount == 1)
+                {
+                    parseKey = key;
+                    result.set(fmt::format("/{}", key), value);
+                }
             }
+        }
+
+        if (parseKeyCount > 1)
+        {
+            throw std::runtime_error(
+                fmt::format("Decoder document contains multiple parse| keys ({}). Only one is allowed", parseKeyCount));
         }
     }
 
-    // 5. normalize
+    // 4. normalize
     if (const auto normalizeOpt = document.getArray("/normalize"); normalizeOpt.has_value())
     {
         result.setArray("/normalize");
@@ -182,16 +185,24 @@ json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-    // 6. enabled
-    if (document.exists("/enabled"))
+    // 5. enabled
+    auto enabledOpt = document.getBool("/enabled");
+    if (!enabledOpt.has_value())
     {
-        auto enabledOpt = document.getJson("/enabled");
-        if (enabledOpt.has_value())
-        {
-            result.set("/enabled", *enabledOpt);
-        }
+        throw std::runtime_error("Decoder document /enabled is not a boolean or does not exist");
     }
+    result.setBool(*enabledOpt, "/enabled");
 
+    // 6. id
+    if (document.exists("/id"))
+    {
+        auto idOpt = document.getString("/id");
+        if (!idOpt.has_value())
+        {
+            throw std::runtime_error("Decoder document /id is not a string");
+        }
+        result.setString(*idOpt, "/id");
+    }
     return result;
 }
 } // namespace

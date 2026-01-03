@@ -1,4 +1,5 @@
 #include <eMessages/crud.pb.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <api/adapter/baseHandler_test.hpp>
@@ -20,6 +21,11 @@ using CmCrudHandlerT = Params<cm::crud::ICrudService, cm::crud::MockCrudService>
 
 constexpr const char* kParseErrorMsg = "Failed to parse protobuff json request: INVALID_ARGUMENT:Unexpected token.\n"
                                        "not json proto reque\n^";
+
+// resourceValidate handler messages
+constexpr const char* kTypeRequiredMsg = "Field /type is required";
+constexpr const char* kResourceRequiredMsg = "Field /resource cannot be empty";
+constexpr const char* kTypeUnsupportedMsg = "Unsupported value for /type";
 
 TEST_P(CmCrudHandlerTest, Handler)
 {
@@ -354,5 +360,126 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceDelete(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
+            [](auto&) {}),
+
+        /***********************************************************************
+         * resourceValidate (public, no namespace)
+         **********************************************************************/
+        // Success (decoder)
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("decoder");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("11111111-1111-4111-8111-111111111111");
+                fields["name"].set_string_value("decoder/test");
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            []()
+            {
+                eEngine::GenericStatus_Response protoRes;
+                protoRes.set_status(eEngine::ReturnStatus::OK);
+                return userResponse<eEngine::GenericStatus_Response>(protoRes);
+            },
+            [](auto& mock) { EXPECT_CALL(mock, validateResource(cm::store::ResourceType::DECODER, ::testing::_)); }),
+
+        /*** Missing /type ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+
+                // Optional: set resource so this case is strictly testing missing /type
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("11111111-1111-4111-8111-111111111111");
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeRequiredMsg); },
+            [](auto&) {}),
+
+        /*** Missing /resource ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("decoder");
+                // No resource fields set => fields_size() == 0
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kResourceRequiredMsg); },
+            [](auto&) {}),
+
+        /*** Unsupported type (not recognized) ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("not-a-real-type");
+
+                // Must include non-empty resource or you'll get "resource required" first
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("11111111-1111-4111-8111-111111111111");
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeUnsupportedMsg); },
+            [](auto&) {}),
+
+        /*** Defined but not allowed in phase-1 validate (e.g. undefined) ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("undefined");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("11111111-1111-4111-8111-111111111111");
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeUnsupportedMsg); },
+            [](auto&) {}),
+
+        /*** Service throws -> user error ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("integration");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("bad");
+                fields["name"].set_string_value("integration/test");
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>("validation failed"); },
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock, validateResource(cm::store::ResourceType::INTEGRATION, ::testing::_))
+                    .WillOnce(::testing::Throw(std::runtime_error("validation failed")));
+            }),
+
+        /*** Wrong request type ***/
+        CmCrudHandlerT(
+            []()
+            {
+                httplib::Request req;
+                req.body = "not json proto request";
+                req.set_header("Content-Type", "text/plain");
+                return req;
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
             [](auto&) {})));

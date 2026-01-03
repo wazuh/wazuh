@@ -145,14 +145,6 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
         }
     }
 
-    // Category
-    const auto& category = integration.getCategory();
-    if (!cm::store::categories::exists(category))
-    {
-        return base::Error {
-            fmt::format("Category '{}' is not a valid category for integration '{}'.", category, integrationName)};
-    }
-
     // Default parent
     if (const auto& opt = integration.getDefaultParent(); opt.has_value())
     {
@@ -178,6 +170,7 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
         buildCtx->setValidator(m_schema);
         buildCtx->setAllowedFields(m_allowedFields);
         buildCtx->setStoreNSReader(nsReader);
+        buildCtx->setAllowMissingDependencies(false);
 
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
         auto asset = (*assetBuilder)(assetJson);
@@ -193,6 +186,27 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
                     "Parent '{}' referenced by asset '{}' does not exist.", parentName.toStr(), assetName.toStr())};
             }
         }
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
+
+    return base::noError();
+}
+
+base::OptError Builder::validateAssetShallow(const json::Json& assetJson) const
+{
+    try
+    {
+        auto buildCtx = std::make_shared<builders::BuildCtx>();
+        buildCtx->setRegistry(m_registry);
+        buildCtx->setValidator(m_schema);
+        buildCtx->setAllowedFields(m_allowedFields);
+        buildCtx->setAllowMissingDependencies(true);
+
+        auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
+        (void)(*assetBuilder)(assetJson);
     }
     catch (const std::exception& e)
     {

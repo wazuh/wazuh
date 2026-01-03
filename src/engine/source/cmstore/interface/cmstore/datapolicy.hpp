@@ -10,6 +10,8 @@
 #include <base/utils/generator.hpp>
 #include <base/utils/hash.hpp>
 
+#include <cmstore/detail.hpp>
+
 /**
  * @brief DataPolicy class to represent a content manager data policy. Its the definition of a policy.
  *
@@ -74,6 +76,8 @@ public:
         , m_defaultParent(std::move(defaultParent))
         , m_rootDecoder(std::move(rootDecoder))
     {
+        cm::store::detail::findDuplicateOrInvalidUUID(m_integrationsUUIDs, "Integration");
+
         updateHash();
     }
 
@@ -106,6 +110,7 @@ public:
             {
                 throw std::runtime_error(fmt::format("Integration at index {} is not a valid string", i));
             }
+
             integrations.push_back(integrationOpt.value());
         }
 

@@ -13,6 +13,28 @@
 
 namespace builder::builders
 {
+
+namespace
+{
+inline TransformOp makeTransformNoOp(const std::shared_ptr<const IBuildCtx>& buildCtx, std::string trace)
+{
+    const auto runState = buildCtx->runState();
+    return [runState, trace = std::move(trace)](base::Event event) -> TransformResult
+    {
+        RETURN_SUCCESS(runState, event, trace)
+    };
+}
+
+inline FilterOp makeFilterNoOp(const std::shared_ptr<const IBuildCtx>& buildCtx, bool pass, std::string trace)
+{
+    const auto runState = buildCtx->runState();
+    return [runState, pass, trace = std::move(trace)](base::ConstEvent) -> FilterResult
+    {
+        RETURN_SUCCESS(runState, pass, trace)
+    };
+}
+} // namespace
+
 using namespace kvdbstore;
 
 TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
@@ -65,20 +87,6 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         }
     }
 
-    // Get KVDB handler
-    const auto& nsReader = buildCtx->getStoreNSReader();
-
-    std::shared_ptr<IKVDBHandler> kvdbHandler;
-    try
-    {
-        kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
-    }
-    catch (const std::exception& e)
-    {
-        const auto nsStr = nsReader.getNamespaceId().toStr();
-        throw std::runtime_error(fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
-    }
-
     // Validate the target field
     schemf::ValueValidator targetValueValidator = nullptr;
     if (buildCtx->validator().hasField(targetField.dotPath()))
@@ -100,6 +108,24 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
+
+    if (buildCtx->allowMissingDependencies())
+    {
+        return makeTransformNoOp(buildCtx,
+                                 fmt::format("{} -> Skipped KVDB resolution (allowMissingDependencies)", name));
+    }
+    // Get KVDB handler
+    const auto& nsReader = buildCtx->getStoreNSReader();
+
+    std::shared_ptr<IKVDBHandler> kvdbHandler;
+    try
+    {
+        kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
+    }
 
     // Trace messages
     const auto successTrace {fmt::format("{} -> Success", name)};
@@ -183,21 +209,11 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         {
             resolvedKey = std::static_pointer_cast<const Value>(key)->value().getString().value();
         }
-
         // Get value from KVDB
-        const json::Json* valuePtr = nullptr;
         try
         {
-            valuePtr = &kvdbHandler->get(resolvedKey);
-        }
-        catch (const std::out_of_range&)
-        {
-            RETURN_FAILURE(runState, event, failureTrace4)
-        }
+            const json::Json& value = kvdbHandler->get(resolvedKey);
 
-        try
-        {
-            const auto& value = *valuePtr;
             if (targetValueValidator != nullptr)
             {
                 auto res = targetValueValidator(value);
@@ -236,6 +252,10 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
             {
                 event->set(targetJsonPath, value);
             }
+        }
+        catch (const std::out_of_range&)
+        {
+            RETURN_FAILURE(runState, event, failureTrace4)
         }
         catch (const std::runtime_error& e)
         {
@@ -285,11 +305,6 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
                         const std::shared_ptr<const IBuildCtx>& buildCtx,
                         const bool shouldMatch)
 {
-    if (!kvdbManager)
-    {
-        throw std::runtime_error("Got null KVDB manager");
-    }
-
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
 
@@ -303,6 +318,15 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
 
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
+    const auto name = buildCtx->context().opName;
+
+    if (buildCtx->allowMissingDependencies())
+    {
+        // Neutral behavior in validation: do not filter anything out.
+        return makeFilterNoOp(
+            buildCtx, true, fmt::format("{} -> Skipped KVDB resolution (allowMissingDependencies)", name));
+    }
+
     // Get KVDB handler
     const auto& nsReader = buildCtx->getStoreNSReader();
 
@@ -313,12 +337,10 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     }
     catch (const std::exception& e)
     {
-        const auto nsStr = nsReader.getNamespaceId().toStr();
         throw std::runtime_error(fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
     }
 
     // Trace messages
-    const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
     const auto failureTrace2 = fmt::format("{} -> Target field '{}' is not a string", name, targetField.dotPath());
@@ -445,21 +467,6 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
             }
         }
 
-        // Get KVDB handler
-        const auto& nsReader = buildCtx->getStoreNSReader();
-
-        std::shared_ptr<IKVDBHandler> kvdbHandler;
-        try
-        {
-            kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
-        }
-        catch (const std::exception& e)
-        {
-            const auto nsStr = nsReader.getNamespaceId().toStr();
-            throw std::runtime_error(
-                fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
-        }
-
         // Validate target field
         auto valRes = buildCtx->validator().validate(targetField.dotPath(), schemf::elementValidationToken());
         if (base::isError(valRes))
@@ -470,8 +477,29 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }
         auto targetValidator = base::getResponse<schemf::ValidationResult>(valRes).getValidator();
 
-        // Trace messages
         const auto name = buildCtx->context().opName;
+
+        if (buildCtx->allowMissingDependencies())
+        {
+            return makeTransformNoOp(buildCtx,
+                                     fmt::format("{} -> Skipped KVDB resolution (allowMissingDependencies)", name));
+        }
+
+        // Get KVDB handler
+        const auto& nsReader = buildCtx->getStoreNSReader();
+
+        std::shared_ptr<IKVDBHandler> kvdbHandler;
+        try
+        {
+            kvdbHandler = kvdbManager->getKVDBHandler(nsReader, dbName);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
+        }
+
+        // Trace messages
         const auto successTrace = fmt::format("{} -> Success", name);
 
         const auto failureTrace1 = [&]()
@@ -543,34 +571,33 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
             // Get values from KVDB
             bool first = true;
             json::Json::Type type {};
-            std::vector<const json::Json*> values;
+            std::vector<std::reference_wrapper<const json::Json>> values;
+            values.reserve(keys.size());
 
             for (const auto& jKey : keys)
             {
-                const json::Json* valuePtr = nullptr;
                 try
                 {
-                    valuePtr = &kvdbHandler->get(jKey.getString().value());
+                    const json::Json& jValue = kvdbHandler->get(jKey.getString().value());
+
+                    if (first)
+                    {
+                        type = jValue.type();
+                        first = false;
+                    }
+                    else if (jValue.type() != type)
+                    {
+                        RETURN_FAILURE(runState, event, failureTrace5)
+                    }
+
+                    values.emplace_back(std::cref(jValue));
                 }
                 catch (const std::out_of_range& e)
                 {
                     RETURN_FAILURE(runState, event, failureTrace3 + e.what())
                 }
-
-                const auto& jValue = *valuePtr;
-
-                if (first)
-                {
-                    type = jValue.type();
-                    first = false;
-                }
-                else if (jValue.type() != type)
-                {
-                    RETURN_FAILURE(runState, event, failureTrace5)
-                }
-
-                values.emplace_back(valuePtr);
             }
+
             // Get target array
             auto targetArray = event->getJson(targetField)
                                    .value_or(
@@ -582,9 +609,9 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                                        }());
 
             // Append values to target field
-            for (const auto* value : values)
+            for (const auto& value : values)
             {
-                targetArray.appendJson(*value);
+                targetArray.appendJson(value.get());
             }
 
             // Validate target array
@@ -730,6 +757,14 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         }
     }
 
+    const auto name = buildCtx->context().opName;
+
+    // In validation mode, we skip KVDB access entirely (no handler, no map pre-build).
+    if (buildCtx->allowMissingDependencies())
+    {
+        return makeTransformNoOp(buildCtx,
+                                 fmt::format("{} -> Skipped KVDB map build (allowMissingDependencies)", name));
+    }
     // Build the lookup function from the KVDB map
     std::function<std::optional<json::Json>(uint64_t)> getValueFn;
     {
@@ -742,15 +777,12 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         }
         catch (const std::exception& e)
         {
-            const auto nsStr = nsReader.getNamespaceId().toStr();
             throw std::runtime_error(
                 fmt::format("Engine KVDB builder: failed to load KVDB '{}': {}", dbName, e.what()));
         }
 
         try
         {
-            // Do not copy-assign: just bind a const reference and let getFnSearchMap
-            // build its own internal structure.
             const json::Json& jMap = kvdbHandler->get(keyMap);
             getValueFn = getFnSearchMap(jMap);
         }
@@ -765,7 +797,6 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     }
 
     // Tracing
-    const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, maskRef.dotPath());
     const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, maskRef.dotPath());
