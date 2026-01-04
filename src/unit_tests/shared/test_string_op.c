@@ -1109,6 +1109,26 @@ void test_os_substr_success(void **state) {
     }
 }
 
+// Tests os_strcnt
+
+void test_os_strcnt_multiple_occurrences(void **state) {
+    const char *haystack = "hello world";
+    size_t result = os_strcnt(haystack, 'l');
+    assert_int_equal(result, 3);  
+}
+
+void test_os_strcnt_not_found(void **state) {
+    const char *haystack = "hello";
+    size_t result = os_strcnt(haystack, 'z');
+    assert_int_equal(result, 0);  
+}
+
+void test_os_strcnt_empty_string(void **state) {
+    const char *haystack = "";
+    size_t result = os_strcnt(haystack, 'a');
+    assert_int_equal(result, 0);
+}
+
 /* Tests */
 
 int main(void) {
@@ -1229,7 +1249,11 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_equal_dest_ok),
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
-        cmocka_unit_test(test_print_hex_string_null_dst_err)
+        cmocka_unit_test(test_print_hex_string_null_dst_err),
+        // Tests os_strcnt
+        cmocka_unit_test(test_os_strcnt_multiple_occurrences),
+        cmocka_unit_test(test_os_strcnt_not_found),
+        cmocka_unit_test(test_os_strcnt_empty_string),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
