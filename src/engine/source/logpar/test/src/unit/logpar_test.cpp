@@ -465,7 +465,7 @@ namespace schematypetest
 
 using TypeParseT = std::tuple<std::string, schemf::Type, hlp::ParserType, std::string, std::string, json::Json>;
 
-class LogparNewTypeTest
+class LogparAdditionalTypesTest
     : public ::testing::TestWithParam<TypeParseT>
 {
 protected:
@@ -513,7 +513,7 @@ protected:
     }
 };
 
-TEST_P(LogparNewTypeTest, ParsesNewTypes)
+TEST_P(LogparAdditionalTypesTest, ParsesNewTypes)
 {
     auto [fieldName, schemaType, parserType, expression, inputText, expectedJson] = GetParam();
 
@@ -537,7 +537,7 @@ TEST_P(LogparNewTypeTest, ParsesNewTypes)
 
 INSTANTIATE_TEST_SUITE_P(
     AdditionalSchemaTypes,
-    LogparNewTypeTest,
+    LogparAdditionalTypesTest,
     ::testing::Values(
         // UNSIGNED_LONG type - should use P_UNSIGNED_LONG parser
         TypeParseT("unsigned_long_field",
@@ -588,9 +588,8 @@ INSTANTIATE_TEST_SUITE_P(
                       "<constant_keyword_field>",
                       "constant",
                       logpar_test::J(R"({"constant_keyword_field":"constant"})"))),
-    [](const testing::TestParamInfo<LogparNewTypeTest::ParamType>& info)
+    [](const testing::TestParamInfo<LogparAdditionalTypesTest::ParamType>& info)
     {
-        // Return the field name as-is (must be valid C++ identifier - no hyphens allowed)
         return std::get<0>(info.param);
     });
 

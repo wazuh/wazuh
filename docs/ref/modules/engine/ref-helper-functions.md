@@ -18058,7 +18058,7 @@ number. It converts and stores the integer number in `field` with truncation.
 
 ## Keywords
 
-- `parser` 
+- `parser`
 
 ## Examples
 
@@ -18128,7 +18128,7 @@ normalize:
 
 ### Example 3
 
-Failure integer parse
+Succesfull integer parse with truncation
 
 #### Asset
 
@@ -18152,11 +18152,11 @@ normalize:
 ```json
 {
   "input_field": "23.45",
-  "target_field": "any_value"
+  "target_field": 23
 }
 ```
 
-*The operation was performed with errors*
+*The operation was successful*
 
 ### Example 4
 
@@ -19040,7 +19040,7 @@ number. It converts and stores the short integer number in `field` with truncati
 
 ## Keywords
 
-- `parser` 
+- `parser`
 
 ## Examples
 
@@ -19110,7 +19110,7 @@ normalize:
 
 ### Example 3
 
-Failure short parse
+Success short parse (with truncation)
 
 #### Asset
 
@@ -19134,7 +19134,7 @@ normalize:
 ```json
 {
   "input_field": "23.45",
-  "target_field": "any_value"
+  "target_field": 23
 }
 ```
 
@@ -19244,7 +19244,7 @@ normalize:
 
 ### Example 2
 
-Failed unsigned long parse
+Succesfull unsigned long parse with truncation
 
 #### Asset
 
@@ -19268,11 +19268,11 @@ normalize:
 ```json
 {
   "input_field": "23.45",
-  "target_field": "any_value"
+  "target_field": 23
 }
 ```
 
-*The operation was performed with errors*
+*The operation was successful*
 
 ### Example 3
 

@@ -44,9 +44,9 @@ test:
   - arguments:
       input_field: "23.45"
     target_field: any_value
-    should_pass: false
-    expected: any_value
-    description: Failure integer parse
+    should_pass: true
+    expected: 23
+    description: Success integer parse
 
   - arguments:
       input_field: hello

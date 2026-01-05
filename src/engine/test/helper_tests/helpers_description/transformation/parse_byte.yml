@@ -59,3 +59,9 @@ test:
     expected:
       key: value
     description: Failure byte parse
+  - arguments:
+      input_field: "3.14"
+    target_field: any_value
+    should_pass: true
+    expected: 3
+    description: Success byte parse

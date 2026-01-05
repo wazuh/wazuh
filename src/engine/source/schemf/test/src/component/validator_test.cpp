@@ -475,7 +475,7 @@ TEST_F(IncompatibleTypeTest, IncompatibleTypesOnlyAcceptThemselves)
     {
         auto target = getField(incompatibleType);
 
-        // Should accept self
+        // TODO: check usage Should accept self
         auto selfToken = STypeToken::create(incompatibleType);
         auto selfResult = validator->validate(target, selfToken);
         EXPECT_FALSE(base::isError(selfResult))
