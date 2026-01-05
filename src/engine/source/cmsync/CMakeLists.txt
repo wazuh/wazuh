@@ -21,7 +21,7 @@ target_link_libraries(cmsync_cmsync
     PUBLIC
     base
     cmsync::icmsync
-    cmstore::icmstore
+    cmcrud::icmcrud
     wIndexerConnector::iwIndexerConnector
 )
 add_library(cmsync::cmsync ALIAS cmsync_cmsync)

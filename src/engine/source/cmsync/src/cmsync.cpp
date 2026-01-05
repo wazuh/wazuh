@@ -34,22 +34,7 @@ void CMSync::downloadNamespace(std::string_view originSpace, std::string_view de
 {
 
     auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
-    auto cmstorePtr = lockWeakPtr(m_cmstorePtr, "CMStore");
-
-    // Helpers
-    // Parse JSON resource and throw detailed error on failure
-    auto parseJsonResource = [](const std::string& resourceStr, const std::string& resourceType) -> json::Json
-    {
-        try
-        {
-            return json::Json(resourceStr.c_str());
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(
-                fmt::format("Failed to parse {} JSON: '{}'. Original error: {}", resourceType, resourceStr, e.what()));
-        }
-    };
+    auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrudService");
 
     // Create destination Namespace
     auto destNSId = cm::store::NamespaceId(destNamespace);
@@ -77,56 +62,31 @@ void CMSync::downloadNamespace(std::string_view originSpace, std::string_view de
                     throw;
             }
         }
-        throw std::runtime_error("Unreachable code reached in downloadNamespace");
     }();
 
     // Create destNamespace
-    auto nsHandler = cmstorePtr->createNamespace(destNSId);
-    auto cleanupDestNS = [&cmstorePtr, &nsHandler, &destNSId]()
-    {
-        try
-        {
-            nsHandler.reset();
-            cmstorePtr->deleteNamespace(destNSId);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING_L(
-                "CMSync::downloadNamespace", "Failed to cleanup namespace '{}': {}", destNSId.toStr(), e.what());
-        }
-    };
-
     try
     {
-        // Upload resources to destNamespace
-        for (const auto& kvdb : policyResource.kvdbs)
-        {
-            const auto jKVdb = parseJsonResource(kvdb, "KVDB");
-            const auto sKVDB = store::dataType::KVDB::fromJson(jKVdb);
-
-            nsHandler->createResource(sKVDB.getName(), cm::store::ResourceType::KVDB, sKVDB.toJson().str());
-        }
-        for (const auto& decoder : policyResource.decoders)
-        {
-            const auto jDecoder = parseJsonResource(decoder, "Decoder");
-            // Adapt decoder
-            // Pass the json.str() directly to createResource
-            nsHandler->createResource("", cm::store::ResourceType::DECODER, decoder);
-        }
-        for (const auto& integration : policyResource.integration)
-        {
-            const auto jIntegration = parseJsonResource(integration, "Integration");
-            const auto sIntegration = store::dataType::Integration::fromJson(jIntegration);
-            nsHandler->createResource(
-                sIntegration.getName(), cm::store::ResourceType::INTEGRATION, sIntegration.toJson().str());
-        }
-        // Upload policy
-        auto p = store::dataType::Policy::fromJson(parseJsonResource(policyResource.policy, "Policy"));
-        nsHandler->upsertPolicy(p);
+        cmcrudPtr->importNamespace(destNSId,
+                                   policyResource.kvdbs,
+                                   policyResource.decoders,
+                                   policyResource.integration,
+                                   policyResource.policy,
+                                   /*softValidation=*/true);
     }
     catch (const std::exception& e)
     {
-        cleanupDestNS();
+        try
+        {
+            cmcrudPtr->deleteNamespace(destNamespace);
+        }
+        catch (const std::exception& ex)
+        {
+            LOG_WARNING_L("CMSync::downloadNamespace",
+                          "Failed to rollback namespace '{}' after import failure: {}",
+                          destNSId.toStr(),
+                          ex.what());
+        }
         throw std::runtime_error(fmt::format(
             "[CMSync::downloadNamespace] Failed to store resources in namespace '{}': {}", destNSId.toStr(), e.what()));
     }
