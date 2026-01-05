@@ -75,13 +75,43 @@ public:
     virtual void deleteNamespace(std::string_view nsName) = 0;
 
     /*
-     * @brief Import a full namespace from a JSON document.
+     * @brief Import a full namespace from a JSON document in a new namespace.
      *
-     * @param nsName Namespace name (space).
+     * The document is expected to contain a full representation of the policy
+     * and resources to be imported into the new namespace. The structure must be:
+     * {
+     *  "resources": {
+     *    "kvdbs": [ ... ],     // Array of KVDB objects
+     *    "decoders": [ ... ],  // Array of decoder objects
+     *    "integrations": [ ... ], // Array of integration objects
+     *    "policy": { ... }        // Policy object
+     * }
+     *
+     * @param nsName Namespace name (space), to store the imported data.
      * @param jsonDocument JSON string with policy + resources. must end in \0
      * @param force If true, skip all validations.
+     * @throws std::runtime_error on errors.
+     * TODO: Change jsonDocument from string_view to json::Json
      */
     virtual void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) = 0;
+
+    /**
+     * @brief Import a full namespace from individual components.
+     *
+     * @param nsName Namespace identifier, to store the imported data.
+     * @param kvdbs list of KVDB definitions in json format
+     * @param decoders list of decoder definitions in json format
+     * @param integrations list of integration definitions in json format
+     * @param policy policy definition in json format
+     * @param softValidation if true, only check the most critical validations.
+     * @throws std::runtime_error on errors.
+     */
+    virtual void importNamespace(const cm::store::NamespaceId& nsId,
+                                 const std::vector<json::Json>& kvdbs,
+                                 const std::vector<json::Json>& decoders,
+                                 const std::vector<json::Json>& integrations,
+                                 const json::Json& policy,
+                                 bool softValidation) = 0;
 
     /********************************* Policy *********************************/
 

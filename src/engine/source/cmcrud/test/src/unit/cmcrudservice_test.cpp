@@ -383,7 +383,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const std::string yaml = service.getResourceByUUID(nsName, uuid);
+    const std::string yaml = service.getResourceByUUID(nsName, uuid, false);
 
     EXPECT_THAT(yaml, HasSubstr("windows"));
     EXPECT_THAT(yaml, HasSubstr("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"));
@@ -427,7 +427,7 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     EXPECT_CALL(*nsReader, getKVDBByUUID(uuid)).Times(1).WillOnce(Return(kvdb));
 
-    const std::string yaml = service.getResourceByUUID(nsName, uuid);
+    const std::string yaml = service.getResourceByUUID(nsName, uuid, false);
 
     EXPECT_THAT(yaml, ::testing::HasSubstr("windows_kerberos_status_code_to_code_name"));
     EXPECT_THAT(yaml, ::testing::HasSubstr("82e215c4-988a-4f64-8d15-b98b2fc03a4f"));
@@ -465,7 +465,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     EXPECT_CALL(*nsReader, getAssetByUUID(uuid)).Times(1).WillOnce(Return(assetJson));
 
-    const std::string yaml = service.getResourceByUUID(nsName, uuid);
+    const std::string yaml = service.getResourceByUUID(nsName, uuid, false);
 
     EXPECT_THAT(yaml, ::testing::HasSubstr("decoder/syslog/0"));
     EXPECT_THAT(yaml, ::testing::HasSubstr("3f086ce2-32a4-42b0-be7e-40dcfb9c6160"));

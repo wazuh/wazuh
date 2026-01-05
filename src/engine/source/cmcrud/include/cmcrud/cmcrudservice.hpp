@@ -30,6 +30,12 @@ public:
     void createNamespace(std::string_view nsName) override;
     void deleteNamespace(std::string_view nsName) override;
     void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) override;
+    void importNamespace(const cm::store::NamespaceId& nsId,
+                         const std::vector<json::Json>& kvdbs,
+                         const std::vector<json::Json>& decoders,
+                         const std::vector<json::Json>& integrations,
+                         const json::Json& policy,
+                         bool softValidation) override;
 
     /********************************* Policy *********************************/
     void upsertPolicy(std::string_view nsName, std::string_view policyDocument) override;
@@ -37,7 +43,7 @@ public:
 
     /***************************** Generic resources **************************/
     std::vector<ResourceSummary> listResources(std::string_view nsName, cm::store::ResourceType type) const override;
-    std::string getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson = false) const override;
+    std::string getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson) const override;
     void upsertResource(std::string_view nsName, cm::store::ResourceType type, std::string_view document) override;
     void deleteResourceByUUID(std::string_view nsName, const std::string& uuid) override;
 

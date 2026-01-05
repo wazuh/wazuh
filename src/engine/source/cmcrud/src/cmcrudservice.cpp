@@ -212,13 +212,11 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
                 const auto& resourcesArray = resourcesArrayOpt.value();
                 for (const auto& item : resourcesArray)
                 {
-                    json::Json itemJson {item};
-
                     switch (type)
                     {
                         case cm::store::ResourceType::INTEGRATION:
                         {
-                            auto integ = cm::store::dataType::Integration::fromJson(itemJson, /*requireUUID:*/ true);
+                            auto integ = cm::store::dataType::Integration::fromJson(item, /*requireUUID:*/ true);
                             if (!force)
                             {
                                 validateIntegration(nsReader, integ);
@@ -232,7 +230,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 
                         case cm::store::ResourceType::KVDB:
                         {
-                            auto kvdb = cm::store::dataType::KVDB::fromJson(itemJson, /*requireUUID:*/ true);
+                            auto kvdb = cm::store::dataType::KVDB::fromJson(item, /*requireUUID:*/ true);
 
                             const std::string& name = kvdb.getName();
                             const std::string yml = jsonToYaml(kvdb.toJson());
@@ -242,7 +240,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
 
                         case cm::store::ResourceType::DECODER:
                         {
-                            auto assetJson = cm::store::detail::adaptDecoder(itemJson);
+                            auto assetJson = cm::store::detail::adaptDecoder(item);
                             auto name = assetNameFromJson(assetJson);
 
                             (void)assetUuidFromJson(assetJson, name);
@@ -296,6 +294,70 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
         }
         throw std::runtime_error(fmt::format("Failed to import namespace '{}': {}", nsName, e.what()));
     }
+}
+
+void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
+                                  const std::vector<json::Json>& kvdbs,
+                                  const std::vector<json::Json>& decoders,
+                                  const std::vector<json::Json>& integrations,
+                                  const json::Json& policy,
+                                  bool softValidation)
+{
+    // Reject if destination namespace already exists
+    if (m_store->existsNamespace(nsId))
+    {
+        throw std::runtime_error(
+            fmt::format("Namespace '{}' already exists. Import is only allowed into a new namespace.", nsId.toStr()));
+    }
+
+    // Create empty destination namespace
+    auto ns = m_store->createNamespace(nsId);
+    auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(ns);
+
+
+    for (const auto& jkvdb : kvdbs)
+    {
+        auto kvdb = cm::store::dataType::KVDB::fromJson(jkvdb, true);
+        ns->createResource(kvdb.getName(), cm::store::ResourceType::KVDB, kvdb.toJson().str());
+    }
+
+    for (const auto& jdec : decoders)
+    {
+        auto assetJson = store::detail::adaptDecoder(jdec);
+        auto name = assetNameFromJson(assetJson);
+        const auto resourceStr = fmt::format("decoder/{}", name.parts().back());
+
+        if (resourceStr != name.toStr())
+        {
+            throw std::runtime_error(
+                fmt::format("Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
+        }
+
+        if (!softValidation)
+        {
+            m_validator->validateAsset(nsReader, assetJson);
+        }
+        ns->createResource(resourceStr, cm::store::ResourceType::DECODER, assetJson.str());
+    }
+
+    for (const auto& jinteg : integrations)
+    {
+        auto integ = cm::store::dataType::Integration::fromJson(jinteg, true);
+        if (!softValidation)
+        {
+            m_validator->softIntegrationValidate(nsReader, integ);
+        }
+        ns->createResource(integ.getName(), cm::store::ResourceType::INTEGRATION, integ.toJson().str());
+    }
+
+    auto pol = cm::store::dataType::Policy::fromJson(policy);
+    if (!softValidation)
+    {
+        validatePolicy(nsReader, pol);
+    }
+
+    ns->upsertPolicy(pol);
+
 }
 
 void CrudService::upsertPolicy(std::string_view nsName, std::string_view policyDocument)

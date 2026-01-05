@@ -16,6 +16,15 @@ public:
                 importNamespace,
                 (std::string_view nsName, std::string_view jsonDocument, bool force),
                 (override));
+    MOCK_METHOD(void,
+                importNamespace,
+                (const cm::store::NamespaceId& nsName,
+                 const std::vector<json::Json>& kvdbs,
+                 const std::vector<json::Json>& decoders,
+                 const std::vector<json::Json>& integrations,
+                 const json::Json& policy,
+                 bool softValidation),
+                (override));
 
     MOCK_METHOD(void, upsertPolicy, (std::string_view nsName, std::string_view document), (override));
     MOCK_METHOD(void, deletePolicy, (std::string_view nsName), (override));
