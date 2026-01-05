@@ -194,7 +194,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
         char query[QUERY_MAX_SIZE] = {0};
         int query_actual_size = 0;
 
-        // kv_value->value harcoded value that never exceeds OS_SIZE_256
+        // kv_value->value hardcoded value that never exceeds OS_SIZE_256
         query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
                                       "INSERT INTO %s VALUES( ", kv_value->value);
 
@@ -304,7 +304,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
         char query[OS_SIZE_2048] = {0};
         int query_actual_size = 0;
 
-        // kv_value->value harcoded value that never exceeds OS_SIZE_256
+        // kv_value->value hardcoded value that never exceeds OS_SIZE_256
         query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
                                       "DELETE FROM %s WHERE ", kv_value->value);
 

@@ -831,7 +831,7 @@ void test_wdb_upsert_dbsync_packages_null_pk_field (void **state) {
 }
 
 void test_wdb_upsert_dbsync_big_fields_number (void **state) {
-    // In a real sceneario the number of fields won't be this big. There's no table containing over 1000 fields.
+    // In a real scenario the number of fields won't be this big. There's no table containing over 1000 fields.
     struct column_list TEST_FIELDS[OS_SIZE_1024];
     for (int i = 0; i < OS_SIZE_1024; ++i) {
         char field_name[32];
@@ -844,10 +844,10 @@ void test_wdb_upsert_dbsync_big_fields_number (void **state) {
         } else {
             TEST_FIELDS[i].value.is_pk = false;
         }
-        TEST_FIELDS[i].value.is_pk = false;
         TEST_FIELDS[i].value.source_name = NULL;
         TEST_FIELDS[i].value.target_name = strdup(field_name);
         TEST_FIELDS[i].value.default_value.integer = 0;
+        TEST_FIELDS[i].value.convert_empty_string_as_null = true;
         TEST_FIELDS[i].value.convert_empty_string_as_null = true;
         TEST_FIELDS[i].next = (i < OS_SIZE_1024 - 1) ? &TEST_FIELDS[i + 1] : NULL;
     }
@@ -877,7 +877,7 @@ void test_wdb_upsert_dbsync_big_fields_number (void **state) {
 }
 
 void test_wdb_upsert_dbsync_query_size_exceeded_on_conflict_clause (void **state) {
-    // In a real sceneario the number of fields won't be this big.
+    // In a real scenario the number of fields won't be this big.
     const int fields_number = 1000; // Adjusted to trigger the size limit on conflict clause
     struct column_list TEST_FIELDS[fields_number];
     for (int i = 0; i < fields_number; ++i) {
@@ -891,7 +891,6 @@ void test_wdb_upsert_dbsync_query_size_exceeded_on_conflict_clause (void **state
         } else {
             TEST_FIELDS[i].value.is_pk = false;
         }
-        TEST_FIELDS[i].value.is_pk = false;
         TEST_FIELDS[i].value.source_name = NULL;
         TEST_FIELDS[i].value.target_name = strdup(field_name);
         TEST_FIELDS[i].value.default_value.integer = 0;
