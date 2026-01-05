@@ -5,6 +5,8 @@
 #include <string_view>
 #include <vector>
 
+#include <base/json.hpp>
+
 /**
  * @brief Interface for connecting to and indexing data in a wazuh-indexer.
  *
@@ -23,10 +25,10 @@ namespace wiconnector
  */
 struct PolicyResources
 {
-    std::vector<std::string> kvdbs;       ///< List of KVDB
-    std::vector<std::string> decoders;    ///< List of decoder
-    std::vector<std::string> integration; ///< List of integration decoder
-    std::string policy;                   ///< The policy
+    std::vector<json::Json> kvdbs {};       ///< List of KVDB
+    std::vector<json::Json> decoders {};    ///< List of decoder
+    std::vector<json::Json> integration {}; ///< List of integration decoder
+    json::Json policy {};                   ///< The policy
 };
 
 class IWIndexerConnector
