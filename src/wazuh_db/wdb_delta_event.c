@@ -200,12 +200,22 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
 
         struct column_list const * column = NULL;
         for (column = kv_value->column_list; column; column = column->next) {
+            // "?," plus null terminator
+            if (3 + query_actual_size > QUERY_MAX_SIZE) {
+                merror("Exceeding maximum query size of %d bytes adding values placeholders.", QUERY_MAX_SIZE);
+                return false;
+            }
             query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "?");
             if (column->next) {
                 query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ",");
             }
         }
 
+        // ") ON CONFLICT DO UPDATE SET " plus null terminator
+        if (29 + query_actual_size > QUERY_MAX_SIZE) {
+            merror("Exceeding maximum query size of %d bytes adding conflict clause.", QUERY_MAX_SIZE);
+            return false;
+        }
         query_actual_size +=
             snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ") ON CONFLICT DO UPDATE SET ");
 
@@ -214,10 +224,20 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
             const char * field_name = column->value.target_name;
             if (!column->value.is_aux_field && !column->value.is_pk) {
                 if (first_condition_element) {
+                    // "=?" plus null terminator
+                    if (strlen(field_name) + query_actual_size + 3 > QUERY_MAX_SIZE) {
+                        merror("Exceeding maximum query size of %d bytes adding first field.", QUERY_MAX_SIZE);
+                        return false;
+                    }
                     query_actual_size +=
                         snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "%s=?", field_name);
                     first_condition_element = false;
                 } else {
+                    // ",%s=?" plus null terminator
+                    if (strlen(field_name) + query_actual_size + 4 > QUERY_MAX_SIZE) {
+                        merror("Exceeding maximum query size of %d bytes adding subsequent fields.", QUERY_MAX_SIZE);
+                        return false;
+                    }
                     query_actual_size +=
                         snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ",%s=?", field_name);
                 }
