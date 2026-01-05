@@ -554,8 +554,8 @@ void SQLiteDBEngine::initialize(const std::string&              path,
         if (!cleanDB(path))
         {
             // Use detailed error message if available, otherwise use default
-            throw dbengine_error {std::make_pair(DELETE_OLD_DB_ERROR.first, 
-                m_lastCleanDBError.empty() ? DELETE_OLD_DB_ERROR.second : m_lastCleanDBError)};
+            throw dbengine_error {std::make_pair(DELETE_OLD_DB_ERROR.first,
+                                                 m_lastCleanDBError.empty() ? DELETE_OLD_DB_ERROR.second : m_lastCleanDBError)};
         }
 
         m_sqliteConnection = m_sqliteFactory->createConnection(path);
