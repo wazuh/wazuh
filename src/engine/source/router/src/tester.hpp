@@ -76,7 +76,7 @@ public:
     /**
      * @copydoc ITester::addEntry
      */
-    base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail = false) override;
+    base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail) override;
 
     /**
      * @copydoc ITester::removeEntry

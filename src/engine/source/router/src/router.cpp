@@ -169,22 +169,32 @@ base::RespOrError<prod::Entry> Router::getEntry(const std::string& name) const
 void Router::ingest(base::Event&& event)
 {
     std::shared_lock lock {m_mutex};
-    base::Event shared_event {std::move(event)};
     bool processed {false};
+
+    auto copies = m_table.size(); // best approximation of copies needed without really counting
 
     for (const auto& entry : m_table)
     {
-        if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(shared_event))
+        // TODO: Remove filtering here and do it in the Environment
+        if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(event))
         {
-            base::Event ev_copy = shared_event;
-            entry.environment()->ingest(std::move(ev_copy));
+
+            if (copies > 1)
+            {
+                entry.environment()->ingest(std::make_shared<json::Json>(*event));
+                copies--;
+            }
+            else
+            {
+                entry.environment()->ingest(std::move(event));
+            }
             processed = true;
         }
     }
 
-    if (!processed && shared_event)
+    if (!processed && event)
     {
-        LOG_WARNING("Event not processed: {}", shared_event->str());
+        LOG_WARNING("Event not processed: {}", event->str());
     }
 }
 

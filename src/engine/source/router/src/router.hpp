@@ -58,7 +58,7 @@ public:
     /**
      * @copydoc IRouter::addEntry
      */
-    base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail = false) override;
+    base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail) override;
 
     /**
      * @copydoc IRouter::removeEntry

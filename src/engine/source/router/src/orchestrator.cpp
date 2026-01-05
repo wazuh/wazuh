@@ -72,7 +72,7 @@ base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
 {
     for (const auto& entry : entries)
     {
-        auto err = worker->get()->addEntry(test::EntryPost(entry), true);
+        auto err = worker->get()->addEntry(test::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
             return err;
@@ -88,7 +88,7 @@ base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
 {
     for (const auto& entry : entries)
     {
-        auto err = worker->get()->addEntry(prod::EntryPost(entry), true);
+        auto err = worker->get()->addEntry(prod::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
             return err;
@@ -390,7 +390,8 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachRouterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry); });
+    auto error = forEachRouterWorker([&entry](const auto& worker)
+                                     { return worker->get()->addEntry(entry, /*ignoreFail=*/false); });
 
     if (error)
     {
@@ -550,7 +551,8 @@ base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forTesterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry); });
+    auto error =
+        forTesterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry, /*ignoreFail=*/false); });
     if (error)
     {
         return error;

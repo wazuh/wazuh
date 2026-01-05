@@ -27,10 +27,10 @@ public:
     /**
      * @brief Add a new environment to the router. The environment is disabled by default.
      * @param entryPost The entry information for the environment.
-     * @paran ignoreFail
+     * @param ignoreFail If true, if the operation fails the entry is added in disabled state.
      * @return An optional error if the operation failed.
      */
-    virtual base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail = false) = 0;
+    virtual base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail) = 0;
 
     /**
      * @brief Removes the environment
