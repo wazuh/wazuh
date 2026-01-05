@@ -194,6 +194,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
         char query[QUERY_MAX_SIZE] = {0};
         int query_actual_size = 0;
 
+        // kv_value->value harcoded value that never exceeds OS_SIZE_256
         query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
                                       "INSERT INTO %s VALUES( ", kv_value->value);
 
@@ -283,6 +284,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
         char query[OS_SIZE_2048] = {0};
         int query_actual_size = 0;
 
+        // kv_value->value harcoded value that never exceeds OS_SIZE_256
         query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
                                       "DELETE FROM %s WHERE ", kv_value->value);
 
@@ -293,10 +295,20 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
             const char * field_name = column->value.target_name;
             if (column->value.is_pk) {
                 if (first_condition_element) {
+                    // "=?" plus null terminator
+                    if (strlen(field_name) + query_actual_size + 3 > QUERY_MAX_SIZE) {
+                        merror("Exceeding maximum query size of %d bytes adding first pk.", QUERY_MAX_SIZE);
+                        return false;
+                    }
                     query_actual_size +=
                         snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "%s=?", field_name);
                     first_condition_element = false;
                 } else {
+                    // " AND " plus "=?" plus null terminator
+                    if (strlen(field_name) + query_actual_size + 8 > QUERY_MAX_SIZE) {
+                        merror("Exceeding maximum query size of %d bytes adding subsequent pks.", QUERY_MAX_SIZE);
+                        return false;
+                    }
                     query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
                                                   " AND %s=?", field_name);
                 }
