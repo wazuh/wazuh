@@ -1109,6 +1109,80 @@ void test_os_substr_success(void **state) {
     }
 }
 
+/* os_trimcrlf  */
+
+void test_os_trimcrlf_NULL(void **state) {
+    char *str = NULL;
+    os_trimcrlf(str);
+    assert_null(str);
+}
+
+void test_os_trimcrlf_empty(void **state) {
+    char str[] = "";
+    os_trimcrlf(str);
+    assert_string_equal(str, "");
+}
+
+void test_os_trimcrlf_no_cr_no_lf(void **state) {
+    char str[] = "TEST";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TEST");
+}
+
+void test_os_trimcrlf_only_cr(void **state) {
+    char str[] = "\n";
+    os_trimcrlf(str);
+    assert_string_equal(str, "\0");
+}
+
+void test_os_trimcrlf_only_lf(void **state) {
+    char str[] = "\r";
+    os_trimcrlf(str);
+    assert_string_equal(str, "\0");
+}
+
+void test_os_trimcrlf_one_end_cr(void **state) {
+    char str[] = "TEST\n";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TEST");
+}
+
+void test_os_trimcrlf_one_end_lf(void **state) {
+    char str[] = "TEST\r";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TEST");
+}
+
+void test_os_trimcrlf_one_end_cr_one_end_lf(void **state) {
+    char str[] = "TEST\n\r";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TEST");
+}
+
+void test_os_trimcrlf_middle_cr(void **state) {
+    char str[] = "TE\nST";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TE\nST");
+}
+
+void test_os_trimcrlf_middle_lf(void **state) {
+    char str[] = "TE\rST";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TE\rST");
+}
+
+void test_os_trimcrlf_multiple_cr_end(void **state) {
+    char str[] = "TEST\n\n";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TEST");
+}
+
+void test_os_trimcrlf_multiple_lf_end(void **state) {
+    char str[] = "TEST\r\r";
+    os_trimcrlf(str);
+    assert_string_equal(str, "TEST");
+}
+
 /* Tests */
 
 int main(void) {
@@ -1229,7 +1303,20 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_equal_dest_ok),
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
-        cmocka_unit_test(test_print_hex_string_null_dst_err)
+        cmocka_unit_test(test_print_hex_string_null_dst_err),        
+        // Test os_trimcrlf
+        cmocka_unit_test(test_os_trimcrlf_NULL),
+        cmocka_unit_test(test_os_trimcrlf_empty),
+        cmocka_unit_test(test_os_trimcrlf_no_cr_no_lf),
+        cmocka_unit_test(test_os_trimcrlf_only_cr),
+        cmocka_unit_test(test_os_trimcrlf_only_lf),
+        cmocka_unit_test(test_os_trimcrlf_one_end_cr),
+        cmocka_unit_test(test_os_trimcrlf_one_end_lf),
+        cmocka_unit_test(test_os_trimcrlf_one_end_cr_one_end_lf),    
+        cmocka_unit_test(test_os_trimcrlf_middle_cr),
+        cmocka_unit_test(test_os_trimcrlf_middle_lf),
+        cmocka_unit_test(test_os_trimcrlf_multiple_cr_end),
+        cmocka_unit_test(test_os_trimcrlf_multiple_lf_end)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
