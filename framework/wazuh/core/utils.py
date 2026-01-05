@@ -1105,27 +1105,29 @@ def check_indexer(new_conf, original_conf):
             raise WazuhError(1127, extra_message='indexer')
 
 
-def check_virustotal_integration(new_conf: str):
-    """Check if the configuration VirusTotal API Key corresponds to Public or Premium API.
+def check_virustotal_integration(new_conf: Element):
+    """Check if VirusTotal integration configuration is allowed.
 
     Parameters
     ----------
-    new_conf : str
+    new_conf : Element
         New configuration file.
 
     Raises
-    -------
-    WazuhError(1127)
-        Raised if the integrations section is modified in the configuration to upload.
+    ------
+    WazuhError(1131)
+        Raised if there is an unexpected VirusTotal response or connection error.
+    WazuhError(1130)
+        Raised if the VirusTotal API key does not meet the minimum quota requirements.
     """
 
-    def obtain_vt_api_keys(conf: str) -> list[str]:
+    def obtain_vt_api_keys(integrations: list[dict]) -> list[str]:
         """Obtain Virus Total API keys from the configuration.
 
         Parameters
         ----------
-        conf : str
-            XML configuration file.
+        integrations : list[dict]
+            List of integration configurations from XML.
 
         Returns
         -------
@@ -1133,19 +1135,24 @@ def check_virustotal_integration(new_conf: str):
             Virus Total API keys.
         """
         keys = []
-        for str_conf in re.findall(r'<integration>.*?</integration>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
-            integrations_section = fromstring(str_conf)
-            for name_section in integrations_section.iter('name'):
-                if name_section.text.strip() == 'virustotal':
-                    for api_key_section in integrations_section.iter('api_key'):
-                        keys.append(api_key_section.text.strip())
+        for integration in integrations:
+            if integration['integration']['name']['value'] == 'virustotal':
+                keys.append(
+                    integration['integration']['api_key']['value']
+                )
+
         return keys
+
+    CONFIG_VT_HIERACHY = ['ossec_config', 'integration']
 
     blocked_configurations = configuration.api_conf['upload_configuration']['integrations']['virustotal']
 
     if not blocked_configurations['public_key']['allow']:
+        new_vt = xml_to_dict(new_conf, CONFIG_VT_HIERACHY)
+
         minimum_quota = blocked_configurations['public_key']['minimum_quota']
-        api_keys = obtain_vt_api_keys(new_conf)
+        api_keys = obtain_vt_api_keys(new_vt)
+
         for api_key in api_keys:
             headers = {'x-apikey': f'{api_key}'}
             url = f"https://www.virustotal.com/api/v3/users/{api_key}/overall_quotas"
@@ -2147,7 +2154,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
             current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
             check_remote_commands(incoming_xml, current_xml)
             check_agents_allow_higher_versions(incoming_xml, current_xml)
-            check_virustotal_integration(final_xml)
+            check_virustotal_integration(incoming_xml)
             check_indexer(incoming_xml, current_xml)
             check_wazuh_limits_unchanged(incoming_xml, current_xml)
 
