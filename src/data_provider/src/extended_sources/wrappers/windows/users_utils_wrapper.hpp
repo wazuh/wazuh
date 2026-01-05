@@ -206,9 +206,9 @@ class UsersHelper : public IUsersHelper
         static constexpr std::uint32_t BATCH_SIZE = 100;
         static constexpr std::chrono::milliseconds BATCH_DELAY{250};
 
-        static constexpr std::chrono::seconds s_cacheTimeout{60}; // Cache válido por 60 segundos
+        static constexpr std::chrono::seconds s_cacheTimeout{30}; // Cache válido por 30 segundos
 
-        /// @brief Validates cache and clears it if expired (> 60 seconds old).
+        /// @brief Validates cache and clears it if expired (> 30 seconds old).
         static void validateCache();
 
         /// @brief Updates cache timestamp after successful operation.

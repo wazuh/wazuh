@@ -69,7 +69,7 @@ class UserGroupsProvider
         std::shared_ptr<IUsersHelper> m_usersHelper;
         std::shared_ptr<IGroupsHelper> m_groupsHelper;
 
-        static constexpr std::chrono::seconds s_cacheTimeout{60};
+        static constexpr std::chrono::seconds s_cacheTimeout{30};
 
         /// @brief Rate limiting constants (only applied during cache refresh)
         static constexpr std::uint32_t BATCH_SIZE = 100;
