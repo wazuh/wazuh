@@ -16,6 +16,7 @@
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "agent_sync_protocol_c_interface.h"
+#include "schemaValidator_c.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -215,9 +216,34 @@ STATIC void handle_orphaned_delete(const char* path,
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
-    // Persist stateful event for sync
-    persist_syscheck_msg(file_path_sha1, OPERATION_DELETE, FIM_FILES_SYNC_INDEX,
-                         stateful_event, document_version);
+    // Validate stateful event before persisting
+    // For orphaned deletes, we don't need to delete from DBSync since the item is already deleted
+    bool validation_passed = true;
+    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
+        char* msg = cJSON_PrintUnformatted(stateful_event);
+        char* errorMessage = NULL;
+
+        if (!schema_validator_validate(FIM_FILES_SYNC_INDEX, msg, &errorMessage)) {
+            // Validation failed - log but don't persist
+            if (errorMessage) {
+                merror("Schema validation failed for orphaned delete file message (path: %s, index: %s). Errors: %s",
+                       path, FIM_FILES_SYNC_INDEX, errorMessage);
+                os_free(errorMessage);
+            }
+
+            merror("Raw event that failed validation: %s", msg);
+            mdebug1("Skipping persistence of invalid orphaned delete event for %s", path);
+            validation_passed = false;
+        }
+
+        os_free(msg);
+    }
+
+    // Persist stateful event for sync only if validation passed
+    if (validation_passed) {
+        persist_syscheck_msg(file_path_sha1, OPERATION_DELETE, FIM_FILES_SYNC_INDEX,
+                             stateful_event, document_version);
+    }
 
     cJSON_Delete(stateful_event);
 }
@@ -408,7 +434,47 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
-    persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
+    // Validate message before persisting to sync protocol
+    // If validation fails, delete from DBSync to prevent integrity sync loops
+    bool validation_passed = true;
+    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
+        char* msg = cJSON_PrintUnformatted(stateful_event);
+        char* errorMessage = NULL;
+
+        if (!schema_validator_validate(FIM_FILES_SYNC_INDEX, msg, &errorMessage)) {
+            // Validation failed
+            if (errorMessage) {
+                merror("Schema validation failed for FIM file message (path: %s, index: %s). Errors: %s",
+                       path, FIM_FILES_SYNC_INDEX, errorMessage);
+                os_free(errorMessage);
+            }
+
+            // Log raw event for debugging
+            merror("Raw event that failed validation: %s", msg);
+
+            // Mark for deletion from DBSync to prevent integrity sync loops
+            // We cannot delete here as we are inside a DBSync callback (would cause nested transactions)
+            if (resultType == INSERTED || resultType == MODIFIED) {
+                mdebug1("Marking %s for deletion from DBSync due to validation failure", path);
+                if (txn_context->failed_paths) {
+                    char* path_copy = strdup(path);
+                    if (path_copy) {
+                        OSList_AddData(txn_context->failed_paths, path_copy);
+                    }
+                }
+            }
+
+            validation_passed = false;
+        }
+
+        os_free(msg);
+    }
+
+    // Only persist to sync protocol if validation passed
+    if (validation_passed) {
+        persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
+    }
+
     cJSON_Delete(stateful_event);
 
 end:
@@ -1002,10 +1068,18 @@ void fim_file(const char *path,
         txn_context->entry = NULL;
         txn_context->config = NULL;
     } else {
+        OSList* failed_paths = OSList_Create();
+        if (!failed_paths) {
+            free_file_data(new_entry.file_entry.data);
+            return;
+        }
+        OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+
         callback_ctx ctx = {
             .event = evt_data,
             .config = configuration,
-            .entry = &new_entry
+            .entry = &new_entry,
+            .failed_paths = failed_paths
         };
 
         callback_context_t callback_data;
@@ -1014,6 +1088,15 @@ void fim_file(const char *path,
 
         fim_db_file_update(&new_entry, callback_data);
 
+        // Delete files that failed schema validation (outside transaction)
+        OSListNode* node;
+        OSList_foreach(node, failed_paths) {
+            const char* failed_path = (const char*)node->data;
+            mdebug1("Deleting %s from DBSync due to validation failure", failed_path);
+            fim_db_file_delete(failed_path);
+        }
+
+        OSList_Destroy(failed_paths);
         free_file_data(new_entry.file_entry.data);
     }
 
@@ -1060,6 +1143,8 @@ void fim_link_delete_range(directory_t *config) {
     callback_ctx ctx = {
         .event = (event_data_t *)&evt_data,
         .config = config,
+        .entry = NULL,
+        .failed_paths = NULL
     };
 
     // Create the sqlite LIKE pattern.
@@ -1089,7 +1174,8 @@ void fim_handle_delete_by_path(const char *path,
     callback_ctx ctx = {
         .event = (event_data_t *)evt_data,
         .config = config,
-        .entry = NULL
+        .entry = NULL,
+        .failed_paths = NULL
     };
 
     callback_context_t cb = {
@@ -1151,12 +1237,20 @@ void fim_file_scan() {
         return;
     }
 
+    OSList* failed_paths = OSList_Create();
+    if (!failed_paths) {
+        merror("Failed to create failed_paths list for schema validation cleanup");
+        return;
+    }
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL };
+    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths };
 
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
+        OSList_Destroy(failed_paths);
         return;
     }
 
@@ -1183,4 +1277,14 @@ void fim_file_scan() {
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
     fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+
+    // Delete files that failed schema validation (outside transaction)
+    OSListNode* node;
+    OSList_foreach(node, failed_paths) {
+        const char* failed_path = (const char*)node->data;
+        mdebug1("Deleting %s from DBSync due to validation failure", failed_path);
+        fim_db_file_delete(failed_path);
+    }
+
+    OSList_Destroy(failed_paths);
 }

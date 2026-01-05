@@ -142,6 +142,21 @@ class SCAEventHandler
         std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_pushStatefulMessage;
 
     private:
+        /// @brief Validates a stateful message against the schema and handles validation failures.
+        ///
+        /// If validation fails, logs errors and attempts to delete the entry from DBSync to prevent
+        /// integrity sync loops.
+        ///
+        /// @param statefulEvent The JSON event to validate.
+        /// @param context Context string for logging (e.g., check ID or description).
+        /// @param checkData Optional JSON data to identify the row for deletion if validation fails.
+        /// @param failedChecks Optional vector to accumulate failed checks for deferred deletion (nullptr to delete immediately).
+        /// @return true if validation passed or schema validator is not initialized, false if validation failed.
+        bool ValidateAndHandleStatefulMessage(const nlohmann::json& statefulEvent,
+                                              const std::string& context,
+                                              const nlohmann::json& checkData = nlohmann::json(),
+                                              std::vector<nlohmann::json>* failedChecks = nullptr) const;
+
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;
 };

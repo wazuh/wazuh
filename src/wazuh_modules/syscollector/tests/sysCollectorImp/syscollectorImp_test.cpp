@@ -15,6 +15,7 @@
 #include "syscollector.hpp"
 #include "../../module_query_errors.h"
 #include "../../src/syscollectorTablesDef.hpp"
+#include "schemaValidator.hpp"
 
 #include <mock_sysinfo.hpp>
 
@@ -175,6 +176,10 @@ const auto expected_dbsync_browser_extensions
 void SyscollectorImpTest::SetUp()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+
+    // Reset schema validator to prevent validation in tests
+    // This ensures that syscollector will queue messages without validation
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 };
 
 void SyscollectorImpTest::TearDown()

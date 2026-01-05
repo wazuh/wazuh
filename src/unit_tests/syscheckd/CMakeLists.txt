@@ -127,11 +127,12 @@ set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckC
                            -Wl,--wrap,fim_db_get_count_file_entry -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_file_inode_search \
                            -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start \
                            -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                           -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
+                           -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                           -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                            ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
@@ -162,11 +163,12 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                  -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                                  -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
-                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,popen \
+                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete -Wl,--wrap,popen \
                                  -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                  -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                  -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                                  -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                                 -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                                  ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "fim_diff_changes")
@@ -190,11 +192,12 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                              -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                             -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
+                             -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                              -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                              -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                             -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                              ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_realtime")
@@ -226,11 +229,12 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthr
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                                 -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                                 -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                                -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
+                                -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                                 -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                 -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                 -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                                 -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                                -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "config")
@@ -255,11 +259,12 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--w
                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                          -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                          -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                         -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
+                         -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                          -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                         -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                          ${DEBUG_OP_WRAPPERS}")
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
@@ -294,12 +299,13 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                           -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                          -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
+                          -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                           -Wl,--wrap=fim_generate_delete_event -Wl,--wrap=asp_sync_module \
                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                           ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_check")
@@ -418,11 +424,12 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_sysche
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                           -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
-                          -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
+                          -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                           ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_scan SYSCHECK_O ${TEST_DEPS} fim_shared)
@@ -458,6 +465,7 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 \
                          -Wl,--wrap,build_stateful_event_file -Wl,--wrap,build_stateful_event_registry_key \
                          -Wl,--wrap,build_stateful_event_registry_value \
+                         -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_validate \
                          ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_recovery SYSCHECK_O ${TEST_DEPS})

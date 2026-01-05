@@ -31,6 +31,7 @@
 #include "../wrappers/wazuh/syscheckd/registry.h"
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/schema_validator_wrappers.h"
 
 #include "syscheck.h"
 #include "file/file.h"
@@ -1110,6 +1111,11 @@ static void test_fim_file_add(void **state) {
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
@@ -1179,6 +1185,12 @@ static void test_fim_file_modify(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
@@ -1275,6 +1287,12 @@ static void test_fim_file_error_on_insert(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
@@ -3441,6 +3459,13 @@ static void test_transaction_callback_add(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
     expect_function_call(__wrap_persist_syscheck_msg);
 
+    // Schema validator mocks
+    will_return(__wrap_schema_validator_is_initialized, true);
+    expect_any(__wrap_schema_validator_validate, indexPattern);
+    expect_any(__wrap_schema_validator_validate, message);
+    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
+    will_return(__wrap_schema_validator_validate, true);  // return value
+
     transaction_callback(INSERTED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_ADD);
 
@@ -3478,6 +3503,13 @@ static void test_transaction_callback_modify(void **state) {
 
     expect_function_call(__wrap_send_syscheck_msg);
     expect_function_call(__wrap_persist_syscheck_msg);
+
+    // Schema validator mocks
+    will_return(__wrap_schema_validator_is_initialized, true);
+    expect_any(__wrap_schema_validator_validate, indexPattern);
+    expect_any(__wrap_schema_validator_validate, message);
+    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
+    will_return(__wrap_schema_validator_validate, true);  // return value
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3519,6 +3551,9 @@ static void test_transaction_callback_modify_empty_changed_attributes(void **sta
 #else
     expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
 #endif
+
+    // Schema validator mocks (not called in this case due to empty changed_attributes)
+
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
 
@@ -3553,6 +3588,13 @@ static void test_transaction_callback_modify_report_changes(void **state) {
 
     expect_function_call(__wrap_send_syscheck_msg);
     expect_function_call(__wrap_persist_syscheck_msg);
+
+    // Schema validator mocks
+    will_return(__wrap_schema_validator_is_initialized, true);
+    expect_any(__wrap_schema_validator_validate, indexPattern);
+    expect_any(__wrap_schema_validator_validate, message);
+    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
+    will_return(__wrap_schema_validator_validate, true);  // return value
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3591,6 +3633,13 @@ static void test_transaction_callback_delete(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
     expect_function_call(__wrap_persist_syscheck_msg);
 
+    // Schema validator mocks
+    will_return(__wrap_schema_validator_is_initialized, true);
+    expect_any(__wrap_schema_validator_validate, indexPattern);
+    expect_any(__wrap_schema_validator_validate, message);
+    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
+    will_return(__wrap_schema_validator_validate, true);  // return value
+
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
 }
@@ -3622,6 +3671,13 @@ static void test_transaction_callback_delete_report_changes(void **state) {
 
     expect_function_call(__wrap_send_syscheck_msg);
     expect_function_call(__wrap_persist_syscheck_msg);
+
+    // Schema validator mocks
+    will_return(__wrap_schema_validator_is_initialized, true);
+    expect_any(__wrap_schema_validator_validate, indexPattern);
+    expect_any(__wrap_schema_validator_validate, message);
+    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
+    will_return(__wrap_schema_validator_validate, true);  // return value
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3658,9 +3714,17 @@ static void test_transaction_callback_delete_full_db(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
     expect_function_call(__wrap_persist_syscheck_msg);
 
+    // Schema validator mocks
+    will_return(__wrap_schema_validator_is_initialized, true);
+    expect_any(__wrap_schema_validator_validate, indexPattern);
+    expect_any(__wrap_schema_validator_validate, message);
+    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
+    will_return(__wrap_schema_validator_validate, true);  // return value
+
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
 }
+
 
 static void test_transaction_callback_full_db(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
@@ -3696,6 +3760,8 @@ static void test_transaction_callback_full_db(void **state) {
 
     snprintf(debug_msg, OS_SIZE_128, "Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    // Schema validator mocks not needed - MAX_ROWS goes to end before validation
 
     transaction_callback(MAX_ROWS, result, txn_context);
 }

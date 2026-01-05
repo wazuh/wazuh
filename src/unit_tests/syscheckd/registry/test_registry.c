@@ -26,6 +26,7 @@
 #include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 #include "../../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
+#include "../../wrappers/wazuh/shared_modules/schema_validator_wrappers.h"
 
 #include "test_fim.h"
 
@@ -840,8 +841,8 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     syscheck.registry = one_entry_config;
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
@@ -902,8 +903,8 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 static void test_fim_registry_scan_regular_scan(void **state) {
     syscheck.registry = default_config;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
@@ -1001,8 +1002,8 @@ static void test_fim_registry_scan_RegOpenKeyExW_fail(void **state) {
     expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, -1);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -1029,8 +1030,9 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, -1);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    // Expect pthread calls from C++ singletons and syscheck mutexes
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);

@@ -118,6 +118,12 @@ void test_fim_initialize(void **state)
 
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
+    // Schema validator initialization
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+
+    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
     fim_initialize();
 }
 
@@ -208,6 +214,11 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
+    // Schema validator initialization
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -249,6 +260,12 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -288,6 +305,12 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -365,6 +388,11 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 
@@ -426,6 +454,12 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 

@@ -275,6 +275,7 @@ class EXPORTED Syscollector final
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
+        std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
 };
 
 

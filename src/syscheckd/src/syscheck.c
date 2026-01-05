@@ -20,6 +20,7 @@
 #include "db/include/fimCommonDefs.h"
 #include "ebpf/include/ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
+#include "schemaValidator_c.h"
 
 // Global variables
 syscheck_config syscheck;
@@ -131,6 +132,15 @@ void fim_initialize() {
     syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction, syscheck.sync_end_delay, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
+    }
+
+    // Initialize schema validator from embedded resources
+    if (!schema_validator_is_initialized()) {
+        if (schema_validator_initialize()) {
+            minfo("Schema validator initialized successfully from embedded resources");
+        } else {
+            mwarn("Failed to initialize schema validator. Schema validation will be disabled.");
+        }
     }
 }
 
