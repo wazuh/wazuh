@@ -1118,7 +1118,7 @@ void test_os_trimcrlf_NULL(void **state) {
 }
 
 void test_os_trimcrlf_empty(void **state) {
-    char str[] = "";
+    char str[] = "\0";
     os_trimcrlf(str);
     assert_string_equal(str, "");
 }
