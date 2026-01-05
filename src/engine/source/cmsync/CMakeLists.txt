@@ -22,6 +22,8 @@ target_link_libraries(cmsync_cmsync
     base
     cmsync::icmsync
     cmcrud::icmcrud
+    store::istore
+    router::irouter
     wIndexerConnector::iwIndexerConnector
 )
 add_library(cmsync::cmsync ALIAS cmsync_cmsync)
