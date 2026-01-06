@@ -123,6 +123,11 @@ std::vector<cm::store::NamespaceId> CrudService::listNamespaces() const
     return getStore()->getNamespaces();
 }
 
+bool CrudService::existsNamespace(const cm::store::NamespaceId& nsId) const
+{
+    return m_store->existsNamespace(nsId);
+}
+
 void CrudService::createNamespace(std::string_view nsName)
 {
     try

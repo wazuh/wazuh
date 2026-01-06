@@ -11,6 +11,7 @@ class MockCrudService : public ICrudService
 public:
     MOCK_METHOD(std::vector<cm::store::NamespaceId>, listNamespaces, (), (const, override));
     MOCK_METHOD(void, createNamespace, (std::string_view nsName), (override));
+    MOCK_METHOD(bool, existsNamespace, (const cm::store::NamespaceId& nsId), (const, override));
     MOCK_METHOD(void, deleteNamespace, (std::string_view nsName), (override));
     MOCK_METHOD(void,
                 importNamespace,

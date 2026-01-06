@@ -65,6 +65,14 @@ public:
     virtual void createNamespace(std::string_view nsName) = 0;
 
     /**
+     * @brief Check if a namespace exists.
+     *
+     * @param nsId Namespace identifier.
+     * @return true if the namespace exists, false otherwise.
+     */
+    virtual bool existsNamespace(const cm::store::NamespaceId& nsId) const = 0;
+
+    /**
      * @brief Delete an existing namespace and all of its resources.
      *
      * @param nsName Namespace name.

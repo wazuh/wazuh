@@ -28,6 +28,7 @@ public:
     /******************************* Namespaces *******************************/
     std::vector<cm::store::NamespaceId> listNamespaces() const override;
     void createNamespace(std::string_view nsName) override;
+    bool existsNamespace(const cm::store::NamespaceId& nsId) const override;
     void deleteNamespace(std::string_view nsName) override;
     void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) override;
     void importNamespace(const cm::store::NamespaceId& nsId,
