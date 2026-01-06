@@ -700,27 +700,10 @@ int main(int argc, char* argv[])
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
-            // TODO: momentary change
-            auto modifyParsingJson = []() -> api::event::handlers::ProtolHandler
-            {
-                auto parser = api::event::protocol::getNDJsonParser();
-                return [parser](std::string&& batch) -> std::queue<base::Event>
-                {
-                    auto batchEvents = parser(std::move(batch));
-                    std::queue<base::Event> modifiedEvents;
-                    while (!batchEvents.empty())
-                    {
-                        batchEvents.front()->setString("wazuh", "/wazuh/cluster/name");
-                        modifiedEvents.push(std::move(batchEvents.front()));
-                        batchEvents.pop();
-                    }
-                    return modifiedEvents;
-                };
-            };
-
-            engineRemoteServer->addRoute(httpsrv::Method::POST,
-                                         "/events/enriched", // TODO: Double check route
-                                         api::event::handlers::pushEvent(orchestrator, modifyParsingJson(), archiver));
+            engineRemoteServer->addRoute(
+                httpsrv::Method::POST,
+                "/events/enriched", // TODO: Double check route
+                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
