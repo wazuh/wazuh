@@ -433,7 +433,7 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
     // Each router will:
     // 1. Read entry info with shared lock
     // 2. Create new environment WITHOUT lock
-    // 3. Swap atomically with unique lock (Swap environment and enable it for earch worker independently)
+    // 3. Swap atomically with unique lock (swap environment and enable it for each worker independently)
     std::unique_lock lock {m_syncMutex};
     auto error = forEachRouterWorker([&](const std::shared_ptr<IWorker<IRouter>>& worker)
                                      { return worker->get()->hotSwapNamespace(name, newNamespace); });
@@ -443,8 +443,8 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
         return error;
     }
 
-    // Save the updated configuration
-    dumpRouters();
+    // Save the updated configuration (lock already held, use Internal version)
+    dumpRoutersInternal();
 
     LOG_INFO("Router: Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
     return std::nullopt;
