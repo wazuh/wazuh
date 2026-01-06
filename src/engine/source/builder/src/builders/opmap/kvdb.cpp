@@ -63,19 +63,24 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     }
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
-    // Validate KVDB availability in build context
-    const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
-    if (!exists)
+    // Validate KVDB availability only when building from integration/policy context.
+    // When validating assets individually, shouldValidateKvdbs() returns false.
+    if (buildCtx->shouldValidateKvdbs())
     {
-        throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
-                                             "Please add it to the integration's KVDB list before using it.",
-                                             dbName));
-    }
-    if (!enabled)
-    {
-        throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
-                                             "Enable it before using it.",
-                                             dbName));
+        const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+
+        if (!exists)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                                 "Please add it to the integration's KVDB list before using it.",
+                                                 dbName));
+        }
+        if (!enabled)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                                 "Enable it before using it.",
+                                                 dbName));
+        }
     }
 
     // Second argument is key
@@ -332,20 +337,24 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     }
 
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
+    // Validate KVDB availability only when building from integration/policy context.
+    // When validating assets individually, shouldValidateKvdbs() returns false.
+    if (buildCtx->shouldValidateKvdbs())
+    {
+        const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
 
-    // Validate KVDB availability in build context
-    const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
-    if (!exists)
-    {
-        throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
-                                             "Please add it to the integration's KVDB list before using it.",
-                                             dbName));
-    }
-    if (!enabled)
-    {
-        throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
-                                             "Enable it before using it in decoders.",
-                                             dbName));
+        if (!exists)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                                 "Please add it to the integration's KVDB list before using it.",
+                                                 dbName));
+        }
+        if (!enabled)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                                 "Enable it before using it.",
+                                                 dbName));
+        }
     }
 
     const auto name = buildCtx->context().opName;
@@ -462,19 +471,24 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }
         const auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
-        // Validate KVDB availability in build context
-        const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
-        if (!exists)
+        // Validate KVDB availability only when building from integration/policy context.
+        // When validating assets individually, shouldValidateKvdbs() returns false.
+        if (buildCtx->shouldValidateKvdbs())
         {
-            throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
-                                                 "Please add it to the integration's KVDB list before using it.",
-                                                 dbName));
-        }
-        if (!enabled)
-        {
-            throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
-                                                 "Enable it before using it in decoders.",
-                                                 dbName));
+            const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+
+            if (!exists)
+            {
+                throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                                     "Please add it to the integration's KVDB list before using it.",
+                                                     dbName));
+            }
+            if (!enabled)
+            {
+                throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                                     "Enable it before using it.",
+                                                     dbName));
+            }
         }
 
         // Second argument is key array
@@ -782,19 +796,24 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     const auto keyMap = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
     const auto& maskRef = *std::static_pointer_cast<const Reference>(opArgs[2]);
 
-    // Validate KVDB availability in build context
-    const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
-    if (!exists)
+    // Validate KVDB availability only when building from integration/policy context.
+    // When validating assets individually, shouldValidateKvdbs() returns false.
+    if (buildCtx->shouldValidateKvdbs())
     {
-        throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
-                                             "Please add it to the integration's KVDB list before using it.",
-                                             dbName));
-    }
-    if (!enabled)
-    {
-        throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
-                                             "Enable it before using it in decoders.",
-                                             dbName));
+        const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+
+        if (!exists)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                                 "Please add it to the integration's KVDB list before using it.",
+                                                 dbName));
+        }
+        if (!enabled)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                                 "Enable it before using it.",
+                                                 dbName));
+        }
     }
 
     // Verify the schema fields

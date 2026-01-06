@@ -2,6 +2,7 @@
 #define _BUILDER_BUILDERS_IBUILDCTX_HPP
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <builder/iallowedFields.hpp>
@@ -184,11 +185,24 @@ public:
     virtual std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const = 0;
 
     /**
+     * @brief Check if KVDB validation should be performed
+     *
+     * @return true if building from integration/policy context and validation should run
+     * @return false if validating individual assets without integration context
+     */
+    virtual bool shouldValidateKvdbs() const = 0;
+
+    /**
      * @brief Set the available KVDBs for the current integration build
      *
      * @param kvdbs Map of KVDB name to enabled status
      */
     virtual void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) = 0;
+
+    /**
+     * @brief Clear the available KVDBs (used when not in integration context)
+     */
+    virtual void clearAvailableKvdbs() = 0;
 };
 
 } // namespace builder::builders

@@ -70,7 +70,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             }
         }
 
-        // Replace availability map in the build context (integration-scoped).
+        // Set availability map in the build context (integration-scoped).
         buildCtx->setAvailableKvdbs(kvdbs);
 
         for (const auto& decUUID : integration.getDecodersByUUID())
@@ -165,8 +165,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     // Only available for production
     if (!sandbox)
     {
-        // Default outputs are not associated with an integration; treat KVDB availability as empty.
-        buildCtx->setAvailableKvdbs(std::unordered_map<std::string, bool> {});
+        // Default outputs are not associated with an integration; clear KVDB validation.
+        buildCtx->clearAvailableKvdbs();
 
         const auto defaultOutputs = cmStoreNsReader->getDefaultOutputs();
         auto& outputsData = builtAssets[cm::store::ResourceType::OUTPUT];

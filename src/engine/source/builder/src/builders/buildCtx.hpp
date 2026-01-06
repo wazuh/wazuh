@@ -28,8 +28,8 @@ private:
 
     bool m_allowMissingDependencies {false}; ///< Allow missing dependencies flag
 
-    std::shared_ptr<std::unordered_map<std::string, bool>>
-        m_availableKvdbs; ///< Available KVDBs: name -> enabled status
+    std::shared_ptr<std::optional<std::unordered_map<std::string, bool>>>
+        m_availableKvdbs; ///< Available KVDBs: nullopt = no validation, value = validate with this map
 
 public:
     BuildCtx()
@@ -42,7 +42,7 @@ public:
         m_allowedFields = nullptr;
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
-        m_availableKvdbs = std::make_shared<std::unordered_map<std::string, bool>>();
+        m_availableKvdbs = std::make_shared<std::optional<std::unordered_map<std::string, bool>>>(std::nullopt);
     }
 
     ~BuildCtx() = default;
@@ -65,7 +65,7 @@ public:
              const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
              const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader,
              bool allowMissingDependencies,
-             const std::shared_ptr<std::unordered_map<std::string, bool>>& availableKvdbs)
+             const std::shared_ptr<std::optional<std::unordered_map<std::string, bool>>>& availableKvdbs)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
@@ -210,8 +210,13 @@ public:
      */
     inline std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const override
     {
-        auto it = m_availableKvdbs->find(kvdbName);
-        if (it == m_availableKvdbs->end())
+        if (!m_availableKvdbs->has_value())
+        {
+            return {false, false};
+        }
+
+        auto it = m_availableKvdbs->value().find(kvdbName);
+        if (it == m_availableKvdbs->value().end())
         {
             return {false, false};
         }
@@ -220,12 +225,22 @@ public:
     }
 
     /**
+     * @copydoc IBuildCtx::shouldValidateKvdbs
+     */
+    inline bool shouldValidateKvdbs() const override { return m_availableKvdbs->has_value(); }
+
+    /**
      * @copydoc IBuildCtx::setAvailableKvdbs
      */
     inline void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) override
     {
         *m_availableKvdbs = kvdbs;
     }
+
+    /**
+     * @copydoc IBuildCtx::clearAvailableKvdbs
+     */
+    inline void clearAvailableKvdbs() override { *m_availableKvdbs = std::nullopt; }
 };
 
 } // namespace builder::builders

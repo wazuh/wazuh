@@ -1172,6 +1172,9 @@ auto createCtxWithKvdbs(const std::unordered_map<std::string, bool>& kvdbs)
 {
     return [kvdbs](const BuildersMocks& mocks)
     {
+        // Mock shouldValidateKvdbs to return true (we're in integration context)
+        ON_CALL(*mocks.ctx, shouldValidateKvdbs()).WillByDefault(testing::Return(true));
+
         ON_CALL(*mocks.ctx, isKvdbAvailable(testing::_))
             .WillByDefault(testing::Invoke(
                 [kvdbs](const std::string& name) -> std::pair<bool, bool>
@@ -1218,6 +1221,7 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(
                 [](const BuildersMocks& mocks)
                 {
+                    ON_CALL(*mocks.ctx, shouldValidateKvdbs()).WillByDefault(testing::Return(true));
                     ON_CALL(*mocks.ctx, isKvdbAvailable("enabled_db"))
                         .WillByDefault(testing::Return(std::make_pair(true, true)));
                     ON_CALL(*mocks.ctx, allowedFields()).WillByDefault(testing::ReturnRef(*mocks.allowedFields));
@@ -1284,6 +1288,7 @@ INSTANTIATE_TEST_SUITE_P(
                     SUCCESS(
                         [](const BuildersMocks& mocks)
                         {
+                            ON_CALL(*mocks.ctx, shouldValidateKvdbs()).WillByDefault(testing::Return(true));
                             ON_CALL(*mocks.ctx, isKvdbAvailable("enabled_db"))
                                 .WillByDefault(testing::Return(std::make_pair(true, true)));
                             return None {};
@@ -1302,6 +1307,7 @@ INSTANTIATE_TEST_SUITE_P(
                     SUCCESS(
                         [](const BuildersMocks& mocks)
                         {
+                            ON_CALL(*mocks.ctx, shouldValidateKvdbs()).WillByDefault(testing::Return(true));
                             ON_CALL(*mocks.ctx, isKvdbAvailable("enabled_db"))
                                 .WillByDefault(testing::Return(std::make_pair(true, true)));
                             return None {};
