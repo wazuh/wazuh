@@ -232,11 +232,11 @@ override_dh_install:
 override_dh_fixperms:
 	dh_fixperms
 	# Fix Python permissions
-	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/2to3-3.10
-	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/pydoc3.10
+	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/2to3-3.12
+	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/pydoc3.12
 	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/python3-config
-	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.10-embed.pc
-	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.10.pc
+	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.12-embed.pc
+	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.12.pc
 	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python3.pc
 
 override_dh_auto_clean:
