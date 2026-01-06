@@ -934,7 +934,7 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
         if normalize(_filter_remote_commands(new_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])) \
             != normalize(_filter_remote_commands(original_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])):
-            raise WazuhError(1127, extra_message="localfile")
+            raise WazuhError(1124, extra_message="localfile")
 
     if not WODLE_SETTINGS[ALLOW_KEY]:
         new_wodle = xml_to_dict(new_conf, WODLE_HIERACHY)
@@ -942,7 +942,7 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
         if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
             != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):
-            raise WazuhError(1127, extra_message="wodle")
+            raise WazuhError(1124, extra_message="wodle")
 
 def xml_to_dict(root, section_path: list):
     """Extract configuration sections from an XML tree using dotted paths.
@@ -1059,7 +1059,7 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
 
     Raises
     ------
-    WazuhError(1127)
+    WazuhError(1129)
         Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
 
@@ -1071,12 +1071,12 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
         new_auth = xml_to_dict(new_conf, AUTH_HIERACHY)
         original_auth = xml_to_dict(original_conf, AUTH_HIERACHY)
         if normalize(new_auth) != normalize(original_auth):
-            raise WazuhError(1127, extra_message='auth > allow_higher_versions')
+            raise WazuhError(1129, extra_message='auth > allow_higher_versions')
 
         new_remote = xml_to_dict(new_conf, REMOTE_HIERACHY)
         original_remote = xml_to_dict(original_conf, REMOTE_HIERACHY)
         if normalize(new_remote) != normalize(original_remote):
-            raise WazuhError(1127, extra_message='remote > allow_higher_versions')
+            raise WazuhError(1129, extra_message='remote > allow_higher_versions')
 
 
 def check_indexer(new_conf, original_conf):
