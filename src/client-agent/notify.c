@@ -32,10 +32,10 @@ char *getsharedfiles()
         md5sum[1] = '\0';
     }
 
-    /* We control these files, max size is m_size */
+    /* Return just the MD5 hash (used in JSON keepalives) */
     ret = (char *)calloc(m_size + 1, sizeof(char));
     if (ret) {
-        snprintf(ret, m_size, "%s merged.mg\n", md5sum);
+        snprintf(ret, m_size, "%s", md5sum);
     }
 
     return (ret);
