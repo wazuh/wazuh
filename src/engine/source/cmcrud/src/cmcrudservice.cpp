@@ -85,22 +85,42 @@ namespace cm::crud
 {
 
 CrudService::CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator)
-    : m_store(std::move(store))
-    , m_validator(std::move(validator))
+    : m_store(store)
+    , m_validator(validator)
 {
-    if (!m_store)
+    if (!store)
     {
         throw std::invalid_argument("CrudService: store pointer cannot be null");
     }
-    if (!m_validator)
+    if (!validator)
     {
         throw std::invalid_argument("CrudService: validator pointer cannot be null");
     }
 }
 
+std::shared_ptr<cm::store::ICMStore> CrudService::getStore() const
+{
+    auto store = m_store.lock();
+    if (!store)
+    {
+        throw std::runtime_error("CMStore is no longer available");
+    }
+    return store;
+}
+
+std::shared_ptr<builder::IValidator> CrudService::getValidator() const
+{
+    auto validator = m_validator.lock();
+    if (!validator)
+    {
+        throw std::runtime_error("Validator is no longer available");
+    }
+    return validator;
+}
+
 std::vector<cm::store::NamespaceId> CrudService::listNamespaces() const
 {
-    return m_store->getNamespaces();
+    return getStore()->getNamespaces();
 }
 
 void CrudService::createNamespace(std::string_view nsName)
@@ -109,7 +129,7 @@ void CrudService::createNamespace(std::string_view nsName)
     {
         // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
         cm::store::NamespaceId nsId {nsName};
-        m_store->createNamespace(nsId);
+        getStore()->createNamespace(nsId);
     }
     catch (const std::exception& e)
     {
@@ -123,7 +143,7 @@ void CrudService::deleteNamespace(std::string_view nsName)
     {
         // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
         cm::store::NamespaceId nsId {nsName};
-        m_store->deleteNamespace(nsId);
+        getStore()->deleteNamespace(nsId);
     }
     catch (const std::exception& e)
     {
@@ -134,13 +154,14 @@ void CrudService::deleteNamespace(std::string_view nsName)
 void CrudService::importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force)
 {
     const cm::store::NamespaceId nsId {nsName};
+    auto store = getStore();
 
-    auto bestEffortDelete = [this, functionName = logging::getLambdaName(__FUNCTION__, "bestEffortDelete")](
+    auto bestEffortDelete = [store, functionName = logging::getLambdaName(__FUNCTION__, "bestEffortDelete")](
                                 const cm::store::NamespaceId& id)
     {
         try
         {
-            m_store->deleteNamespace(id);
+            store->deleteNamespace(id);
         }
         catch (const std::exception& ex)
         {
@@ -153,7 +174,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
     try
     {
         // Reject if destination namespace already exists
-        if (m_store->existsNamespace(nsId))
+        if (store->existsNamespace(nsId))
         {
             throw std::runtime_error(
                 fmt::format("Namespace '{}' already exists. Import is only allowed into a new namespace.", nsName));
@@ -171,13 +192,13 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
         }
 
         // Create empty destination namespace
-        m_store->createNamespace(nsId);
+        store->createNamespace(nsId);
         destinationCreated = true;
 
         // Import into the new namespace
         {
-            auto ns = m_store->getNS(nsId);
-            auto nsReader = m_store->getNSReader(nsId);
+            auto ns = store->getNS(nsId);
+            auto nsReader = store->getNSReader(nsId);
 
             auto importResources = [&](cm::store::ResourceType type, std::string_view key)
             {
@@ -527,7 +548,7 @@ void CrudService::validateResource(cm::store::ResourceType type, const json::Jso
                         fmt::format("Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
                 }
 
-                throwIfError(m_validator->validateAssetShallow(adaptedPayload),
+                throwIfError(getValidator()->validateAssetShallow(adaptedPayload),
                              fmt::format("Validation failed for '{}'", cm::store::resourceTypeToString(type)));
                 return;
             }
@@ -559,14 +580,14 @@ void CrudService::validateResource(cm::store::ResourceType type, const json::Jso
 void CrudService::validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                  const cm::store::dataType::Policy& policy) const
 {
-    throwIfError(m_validator->softPolicyValidate(nsReader, policy),
+    throwIfError(getValidator()->softPolicyValidate(nsReader, policy),
                  fmt::format("Policy validation failed in namespace '{}'", nsReader->getNamespaceId().toStr()));
 }
 
 void CrudService::validateIntegration(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                       const cm::store::dataType::Integration& integration) const
 {
-    throwIfError(m_validator->softIntegrationValidate(nsReader, integration),
+    throwIfError(getValidator()->softIntegrationValidate(nsReader, integration),
                  fmt::format("Integration validation failed for '{}' in namespace '{}'",
                              integration.getName(),
                              nsReader->getNamespaceId().toStr()));
@@ -575,14 +596,14 @@ void CrudService::validateIntegration(const std::shared_ptr<cm::store::ICMStoreN
 void CrudService::validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                 const json::Json& asset) const
 {
-    throwIfError(m_validator->validateAsset(nsReader, asset),
+    throwIfError(getValidator()->validateAsset(nsReader, asset),
                  fmt::format("Asset validation failed in namespace '{}'", nsReader->getNamespaceId().toStr()));
 }
 
 std::shared_ptr<cm::store::ICMStoreNSReader>
 CrudService::getNamespaceStoreView(const cm::store::NamespaceId& nsId) const
 {
-    auto ns = m_store->getNSReader(nsId);
+    auto ns = getStore()->getNSReader(nsId);
     if (!ns)
     {
         throw std::runtime_error(fmt::format("Namespace '{}' does not exist", nsId.toStr()));
@@ -592,7 +613,7 @@ CrudService::getNamespaceStoreView(const cm::store::NamespaceId& nsId) const
 
 std::shared_ptr<cm::store::ICMstoreNS> CrudService::getNamespaceStore(const cm::store::NamespaceId& nsId) const
 {
-    auto ns = m_store->getNS(nsId);
+    auto ns = getStore()->getNS(nsId);
     if (!ns)
     {
         throw std::runtime_error(fmt::format("Namespace '{}' does not exist", nsId.toStr()));
