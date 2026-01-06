@@ -3,13 +3,12 @@
 
 #include <string>
 
-#include <wiconnector/iwindexerconnector.hpp>
 #include <cmcrud/icmcrudservice.hpp>
-#include <store/istore.hpp>
 #include <router/iapi.hpp>
+#include <store/istore.hpp>
+#include <wiconnector/iwindexerconnector.hpp>
 
 #include <cmsync/icmsync.hpp>
-
 
 namespace cm::sync
 {
@@ -36,15 +35,41 @@ private:
      * @brief Download a full namespace from the indexer to the local cmcrud store
      *
      * @param originSpace Define the source space in the indexer
-     * @param destNamespace Define the destination namespace in the local store (Must not exist)
+     * @param dstNamespace Define the destination namespace in the local store (Must not exist)
      * @throws std::runtime_error on errors.
      */
-    void downloadNamespace(std::string_view originSpace, std::string_view destNamespace);
+    void downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace);
+
+    /**
+     * @brief Get remote policy hash for a space
+     *
+     * @param space Space name in the indexer
+     * @return std::string SHA-256 hash of the policy
+     * @throws std::runtime_error on errors.
+     */
+    std::string remoteHash(std::string_view space);
+
+    /**
+     * @brief Downloads a namespace from the indexer and enriches it with local assets
+     *
+     * This method performs a two-phase operation to prepare a complete namespace:
+     * 1. Downloads the policy and resources from the remote indexer (KVDB, decoders, integrations, policy)
+     * 2. Enriches the namespace with local-only assets (outputs, filters, etc.)
+     *
+     * The method generates a unique temporary namespace ID to avoid conflicts and performs
+     * automatic rollback on failure, ensuring the local store remains consistent.
+     *
+     * @param originSpace The source space name in the wazuh-indexer to download from
+     * @return cm::store::NamespaceId The newly created namespace ID in the local store,
+     * @throws std::runtime_error if any step of the process fails
+     * @warning There is no ganrantee that the returned namespace is valid, should be verified by the router.
+     * @note If the operation fails at any point, the temporary namespace is automatically deleted
+     *       to maintain store consistency
+     */
+    cm::store::NamespaceId downloadAndEnrichNamespace(std::string_view originSpace);
 
     void loadStateFromStore(); ///< Load sync state from the internal store
     void dumpStateToStore();   ///< Dump sync state to the internal store
-
-    void syncNamespace(NsSyncState& nsState); ///< Sync a single namespace based on its state
 
 public:
     CMSync() = delete;
@@ -53,7 +78,6 @@ public:
            const std::shared_ptr<::store::IStoreInternal>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr);
     ~CMSync() override;
-
 };
 
 } // namespace cm::sync
