@@ -241,7 +241,7 @@ Syscollector::Syscollector()
     , m_portsAll { false }
     , m_processes { false }
     , m_hotfixes { false }
-    , m_stopping { true }
+    , m_stopping { false }
     , m_syncLoopFinished { false }
     , m_notify { false }
     , m_groups { false }
@@ -457,7 +457,14 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
     std::unique_lock<std::mutex> lock{m_mutex};
-    m_stopping = false;
+
+    // Check if stop was already requested before we start
+    if (m_stopping)
+    {
+        m_logFunction(LOG_INFO, "Stop requested before initialization completed. Skipping module start.");
+        return;
+    }
+
     m_syncLoopFinished = false;
 
     m_spDBSync      = std::move(dbSync);
