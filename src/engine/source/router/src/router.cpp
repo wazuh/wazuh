@@ -166,6 +166,54 @@ base::RespOrError<prod::Entry> Router::getEntry(const std::string& name) const
     return m_table.get(name);
 }
 
+base::OptError Router::hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace)
+{
+    // Step 1: Get entry info (filter)
+    base::Name filter;
+    {
+        std::shared_lock lock {m_mutex};
+        if (!m_table.nameExists(name))
+        {
+            return base::Error {"The route does not exist"};
+        }
+        const auto& entry = m_table.get(name);
+        filter = entry.filter();
+    }
+
+    // Step 2: Create new environment WITHOUT any lock
+    std::unique_ptr<Environment> newEnv;
+    try
+    {
+        newEnv = m_envBuilder->create(newNamespace, filter);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {
+            fmt::format("Failed to create environment with new namespace '{}': {}", newNamespace.toStr(), e.what())};
+    }
+
+    // Step 3: Atomically swap the environment
+    {
+        std::unique_lock lock {m_mutex};
+
+        // Verify entry still exists
+        if (!m_table.nameExists(name))
+        {
+            return base::Error {"The route was removed during hot swap"};
+        }
+
+        auto& entry = m_table.get(name);
+
+        // Swap the environment and enable it
+        entry.environment() = std::move(newEnv);
+        entry.lastUpdate(getStartTime());
+        entry.hash(entry.environment()->hash());
+        entry.status(env::State::ENABLED); // Always enable after successful hot swap
+    }
+
+    return std::nullopt;
+}
+
 void Router::ingest(base::Event&& event)
 {
     std::shared_lock lock {m_mutex};
@@ -178,7 +226,7 @@ void Router::ingest(base::Event&& event)
         // TODO: Remove filtering here and do it in the Environment
         if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(event))
         {
-
+            processed = true;
             if (copies > 1)
             {
                 entry.environment()->ingest(std::make_shared<json::Json>(*event));
@@ -187,8 +235,9 @@ void Router::ingest(base::Event&& event)
             else
             {
                 entry.environment()->ingest(std::move(event));
+                event = nullptr;
+                break;
             }
-            processed = true;
         }
     }
 

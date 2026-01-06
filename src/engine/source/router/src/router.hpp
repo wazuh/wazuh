@@ -91,6 +91,11 @@ public:
     base::RespOrError<prod::Entry> getEntry(const std::string& name) const override;
 
     /**
+     * @copydoc IRouter::hotSwapNamespace
+     */
+    base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) override;
+
+    /**
      * @copydoc IRouter::ingest
      */
     void ingest(base::Event&& event) override;

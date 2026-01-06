@@ -79,6 +79,17 @@ public:
     virtual base::RespOrError<prod::Entry> getEntry(const std::string& name) const = 0;
 
     /**
+     * @brief Hot swap the namespace of an entry with minimal blocking.
+     * Creates a new environment with the new namespace, then atomically swaps it.
+     * If the build fails, the old environment remains unchanged.
+     *
+     * @param name The name of the entry to hot swap
+     * @param newNamespace The new namespace to use
+     * @return An optional error if the operation failed
+     */
+    virtual base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) = 0;
+
+    /**
      * @brief Ingest an event into the router.
      * @param event The event to be ingested.
      */
