@@ -23,7 +23,6 @@ namespace builder::policy::factory
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder,
-                        const std::shared_ptr<builders::IBuildCtx>& buildCtx,
                         const bool sandbox)
 {
     BuiltAssets builtAssets;
@@ -71,7 +70,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         }
 
         // Set availability map in the build context (integration-scoped).
-        buildCtx->setAvailableKvdbs(kvdbs);
+        assetBuilder->setAvailableKvdbs(kvdbs);
 
         for (const auto& decUUID : integration.getDecodersByUUID())
         {
@@ -166,7 +165,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     if (!sandbox)
     {
         // Default outputs are not associated with an integration; clear KVDB validation.
-        buildCtx->clearAvailableKvdbs();
+        assetBuilder->clearAvailableKvdbs();
 
         const auto defaultOutputs = cmStoreNsReader->getDefaultOutputs();
         auto& outputsData = builtAssets[cm::store::ResourceType::OUTPUT];

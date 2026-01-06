@@ -538,7 +538,7 @@ TEST_P(BuildAssets, KVDBAvailability)
     if (expected)
     {
         expected.succCase()(cmStoreNSReader, buildCtx);
-        EXPECT_NO_THROW(factory::buildAssets(policy, cmStoreNSReader, assetBuilder, buildCtx, true));
+        EXPECT_NO_THROW(factory::buildAssets(policy, cmStoreNSReader, assetBuilder, true));
     }
     else
     {
@@ -547,7 +547,7 @@ TEST_P(BuildAssets, KVDBAvailability)
             {
                 try
                 {
-                    factory::buildAssets(policy, cmStoreNSReader, assetBuilder, buildCtx, true);
+                    factory::buildAssets(policy, cmStoreNSReader, assetBuilder, true);
                 }
                 catch (const std::runtime_error& e)
                 {

@@ -28,9 +28,6 @@ private:
 
     bool m_allowMissingDependencies {false}; ///< Allow missing dependencies flag
 
-    std::shared_ptr<std::optional<std::unordered_map<std::string, bool>>>
-        m_availableKvdbs; ///< Available KVDBs: nullopt = no validation, value = validate with this map
-
 public:
     BuildCtx()
     {
@@ -42,7 +39,7 @@ public:
         m_allowedFields = nullptr;
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
-        m_availableKvdbs = std::make_shared<std::optional<std::unordered_map<std::string, bool>>>(std::nullopt);
+        m_context.availableKvdbs = std::nullopt;
     }
 
     ~BuildCtx() = default;
@@ -64,8 +61,7 @@ public:
              const std::shared_ptr<const schemf::IValidator>& schemaValidator,
              const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
              const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader,
-             bool allowMissingDependencies,
-             const std::shared_ptr<std::optional<std::unordered_map<std::string, bool>>>& availableKvdbs)
+             bool allowMissingDependencies)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
@@ -74,7 +70,6 @@ public:
         , m_allowedFields(allowedFields)
         , m_storeNSReader(storeNSReader)
         , m_allowMissingDependencies(allowMissingDependencies)
-        , m_availableKvdbs(availableKvdbs)
     {
     }
 
@@ -92,8 +87,7 @@ public:
                                           m_schemaValidator,
                                           m_allowedFields,
                                           m_storeNSReader,
-                                          m_allowMissingDependencies,
-                                          m_availableKvdbs);
+                                          m_allowMissingDependencies);
     }
 
     /**
@@ -210,13 +204,13 @@ public:
      */
     inline std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const override
     {
-        if (!m_availableKvdbs->has_value())
+        if (!m_context.availableKvdbs.has_value())
         {
             return {false, false};
         }
 
-        auto it = m_availableKvdbs->value().find(kvdbName);
-        if (it == m_availableKvdbs->value().end())
+        auto it = m_context.availableKvdbs.value().find(kvdbName);
+        if (it == m_context.availableKvdbs.value().end())
         {
             return {false, false};
         }
@@ -227,20 +221,7 @@ public:
     /**
      * @copydoc IBuildCtx::shouldValidateKvdbs
      */
-    inline bool shouldValidateKvdbs() const override { return m_availableKvdbs->has_value(); }
-
-    /**
-     * @copydoc IBuildCtx::setAvailableKvdbs
-     */
-    inline void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) override
-    {
-        *m_availableKvdbs = kvdbs;
-    }
-
-    /**
-     * @copydoc IBuildCtx::clearAvailableKvdbs
-     */
-    inline void clearAvailableKvdbs() override { *m_availableKvdbs = std::nullopt; }
+    inline bool shouldValidateKvdbs() const override { return m_context.availableKvdbs.has_value(); }
 };
 
 } // namespace builder::builders

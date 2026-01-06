@@ -39,6 +39,8 @@ struct Context
     std::string policyName;          // Name of the current policy being built
     std::string stageName;           // Name of the current stage being built
     std::string opName;              // Name of the current operation being built
+    std::optional<std::unordered_map<std::string, bool>>
+        availableKvdbs; // Available KVDBs: nullopt = no validation, value = validate with this map
 };
 
 /**
@@ -191,18 +193,6 @@ public:
      * @return false if validating individual assets without integration context
      */
     virtual bool shouldValidateKvdbs() const = 0;
-
-    /**
-     * @brief Set the available KVDBs for the current integration build
-     *
-     * @param kvdbs Map of KVDB name to enabled status
-     */
-    virtual void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) = 0;
-
-    /**
-     * @brief Clear the available KVDBs (used when not in integration context)
-     */
-    virtual void clearAvailableKvdbs() = 0;
 };
 
 } // namespace builder::builders
