@@ -28,6 +28,9 @@ private:
 
     bool m_allowMissingDependencies {false}; ///< Allow missing dependencies flag
 
+    std::shared_ptr<std::unordered_map<std::string, bool>>
+        m_availableKvdbs; ///< Available KVDBs: name -> enabled status
+
 public:
     BuildCtx()
     {
@@ -39,6 +42,7 @@ public:
         m_allowedFields = nullptr;
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
+        m_availableKvdbs = std::make_shared<std::unordered_map<std::string, bool>>();
     }
 
     ~BuildCtx() = default;
@@ -60,7 +64,8 @@ public:
              const std::shared_ptr<const schemf::IValidator>& schemaValidator,
              const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
              const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader,
-             bool allowMissingDependencies = false)
+             bool allowMissingDependencies,
+             const std::shared_ptr<std::unordered_map<std::string, bool>>& availableKvdbs)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
@@ -69,6 +74,7 @@ public:
         , m_allowedFields(allowedFields)
         , m_storeNSReader(storeNSReader)
         , m_allowMissingDependencies(allowMissingDependencies)
+        , m_availableKvdbs(availableKvdbs)
     {
     }
 
@@ -86,7 +92,8 @@ public:
                                           m_schemaValidator,
                                           m_allowedFields,
                                           m_storeNSReader,
-                                          m_allowMissingDependencies);
+                                          m_allowMissingDependencies,
+                                          m_availableKvdbs);
     }
 
     /**
@@ -197,6 +204,28 @@ public:
      * @copydoc IBuildCtx::setAllowMissingDependencies
      */
     inline void setAllowMissingDependencies(bool allow) override { m_allowMissingDependencies = allow; }
+
+    /**
+     * @copydoc IBuildCtx::isKvdbAvailable
+     */
+    inline std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const override
+    {
+        auto it = m_availableKvdbs->find(kvdbName);
+        if (it == m_availableKvdbs->end())
+        {
+            return {false, false};
+        }
+
+        return {true, it->second};
+    }
+
+    /**
+     * @copydoc IBuildCtx::setAvailableKvdbs
+     */
+    inline void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) override
+    {
+        *m_availableKvdbs = kvdbs;
+    }
 };
 
 } // namespace builder::builders

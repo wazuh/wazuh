@@ -174,6 +174,21 @@ public:
      * @param allow
      */
     virtual void setAllowMissingDependencies(bool allow) = 0;
+
+    /**
+     * @brief Check if a KVDB is available and enabled in the current integration context
+     *
+     * @param kvdbName Name of the KVDB to check
+     * @return std::pair<bool, bool> First: exists, Second: is enabled (only valid if exists)
+     */
+    virtual std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const = 0;
+
+    /**
+     * @brief Set the available KVDBs for the current integration build
+     *
+     * @param kvdbs Map of KVDB name to enabled status
+     */
+    virtual void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) = 0;
 };
 
 } // namespace builder::builders

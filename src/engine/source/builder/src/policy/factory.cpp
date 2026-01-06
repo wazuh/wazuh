@@ -14,7 +14,7 @@
 
 namespace
 {
-auto constexpr GRAPH_INPUT_SUFFIX = "Input";
+auto constexpr GRAPH_INPUT_SUFFIX = "/Input";
 } // namespace
 
 namespace builder::policy::factory
@@ -23,6 +23,7 @@ namespace builder::policy::factory
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder,
+                        const std::shared_ptr<builders::IBuildCtx>& buildCtx,
                         const bool sandbox)
 {
     BuiltAssets builtAssets;
@@ -37,6 +38,40 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 
         assetBuilder->getContext().integrationName = integration.getName();
         assetBuilder->getContext().integrationCategory = integration.getCategory();
+
+        std::unordered_map<std::string, bool> kvdbs;
+        {
+            const auto& kvdbUUIDs = integration.getKVDBsByUUID();
+            kvdbs.reserve(kvdbUUIDs.size());
+
+            for (const auto& kvdbUUID : kvdbUUIDs)
+            {
+                try
+                {
+                    const auto kvdb = cmStoreNsReader->getKVDBByUUID(kvdbUUID);
+                    const auto& kvdbName = kvdb.getName();
+                    const bool kvdbEnabled = kvdb.isEnabled();
+
+                    const auto [it, inserted] = kvdbs.emplace(kvdbName, kvdbEnabled);
+                    if (!inserted)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Duplicate KVDB title '{}' in integration '{}'. KVDB titles must be unique within an "
+                            "integration.",
+                            kvdbName,
+                            integration.getName()));
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Failed to load KVDB with UUID '{}' from integration '{}': {}", kvdbUUID, integUUID, e.what()));
+                }
+            }
+        }
+
+        // Replace availability map in the build context (integration-scoped).
+        buildCtx->setAvailableKvdbs(kvdbs);
 
         for (const auto& decUUID : integration.getDecodersByUUID())
         {
@@ -127,9 +162,12 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         }
     }
 
-    // Only available for produccion
+    // Only available for production
     if (!sandbox)
     {
+        // Default outputs are not associated with an integration; treat KVDB availability as empty.
+        buildCtx->setAvailableKvdbs(std::unordered_map<std::string, bool> {});
+
         const auto defaultOutputs = cmStoreNsReader->getDefaultOutputs();
         auto& outputsData = builtAssets[cm::store::ResourceType::OUTPUT];
 

@@ -698,10 +698,10 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE()),
 
         // OK: build (valid map object with homogeneous values and numeric-string keys)
-        TransformDepsT(
-            {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
-            getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"0":"A","3":"B"})")),
-            SUCCESS()),
+        TransformDepsT({makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
+                                                                 expectKvdbGetMap("bit_map", R"({"0":"A","3":"B"})")),
+                       SUCCESS()),
 
         // Error: getKVDBHandler throws
         TransformDepsT({makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
@@ -710,8 +710,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Error: map value is not an object
         TransformDepsT({makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
-                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
-                                                                       expectKvdbGetMap("bit_map", R"(["A","B"])")),
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"(["A","B"])")),
                        FAILURE()),
 
         // Error: empty object
@@ -721,15 +720,14 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Error: non-numeric key
         TransformDepsT({makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
-                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
-                                                                       expectKvdbGetMap("bit_map", R"({"x":"A"})")),
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"x":"A"})")),
                        FAILURE()),
 
         // Error: heterogeneous value types
-        TransformDepsT(
-            {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
-            getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"0":"A","1":42})")),
-            FAILURE())),
+        TransformDepsT({makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
+                                                                 expectKvdbGetMap("bit_map", R"({"0":"A","1":42})")),
+                       FAILURE())),
     testNameFormatter<TransformBuilderWithDepsTest>("HelperKVDBDecodeBitmask"));
 
 } // namespace transformbuildtest
@@ -1025,12 +1023,12 @@ INSTANTIATE_TEST_SUITE_P(
     TransformOperationWithDepsTest,
     testing::Values(
         // OK: mask 0x9 -> bits 0 and 3 => ["A","B"]
-        TransformDepsT(
-            R"({"mask":"0x9"})",
-            getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"0":"A","3":"B"})")),
-            "targetField",
-            std::vector<OpArg> {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
-            SUCCESS(eventOnlyExpected(makeEvent(R"({"mask":"0x9","targetField":["A","B"]})")))),
+        TransformDepsT(R"({"mask":"0x9"})",
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
+                                                                 expectKvdbGetMap("bit_map", R"({"0":"A","3":"B"})")),
+                       "targetField",
+                       std::vector<OpArg> {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
+                       SUCCESS(eventOnlyExpected(makeEvent(R"({"mask":"0x9","targetField":["A","B"]})")))),
 
         // OK: mask 0x1F -> bits 0,1,2,3,4 => ["A","B","C","D","E"]
         TransformDepsT(R"({"mask":"0x1F"})",
@@ -1050,35 +1048,32 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Missing 'mask' reference in event
         TransformDepsT(R"({})",
-                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
-                                                                       expectKvdbGetMap("bit_map", R"({"0":"A"})")),
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"0":"A"})")),
                        "targetField",
                        std::vector<OpArg> {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
                        FAILURE()),
 
         // 'mask' exists but is not a string
         TransformDepsT(R"({"mask":123})",
-                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
-                                                                       expectKvdbGetMap("bit_map", R"({"0":"A"})")),
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"0":"A"})")),
                        "targetField",
                        std::vector<OpArg> {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
                        FAILURE()),
 
         // 'mask' is not a valid hexadecimal string
         TransformDepsT(R"({"mask":"ZZZ"})",
-                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
-                                                                       expectKvdbGetMap("bit_map", R"({"0":"A"})")),
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"0":"A"})")),
                        "targetField",
                        std::vector<OpArg> {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
                        FAILURE()),
 
         // mask == 0x0 => no bits set => empty result => failure
-        TransformDepsT(
-            R"({"mask":"0x0"})",
-            getBuilder_KVDBDecodeBitmaskExpectHandler("dbm", expectKvdbGetMap("bit_map", R"({"0":"A","3":"B"})")),
-            "targetField",
-            std::vector<OpArg> {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
-            FAILURE())),
+        TransformDepsT(R"({"mask":"0x0"})",
+                       getBuilder_KVDBDecodeBitmaskExpectHandler("dbm",
+                                                                 expectKvdbGetMap("bit_map", R"({"0":"A","3":"B"})")),
+                       "targetField",
+                       std::vector<OpArg> {makeValue(R"("dbm")"), makeValue(R"("bit_map")"), makeRef("mask")},
+                       FAILURE())),
     testNameFormatter<TransformOperationWithDepsTest>("HelperKVDBDecodeBitmask"));
 
 } // namespace transformoperatestest
@@ -1165,3 +1160,152 @@ INSTANTIATE_TEST_SUITE_P(KVDBFilters_Operation,
                          testNameFormatter<FilterOperationWithDepsTest>("KVDBFilters"));
 
 } // namespace filteroperatestest
+
+namespace kvdbavailabilitybuildtest
+{
+
+using namespace transformbuildtest;
+using namespace filterbuildtest;
+
+// Helper to create mock context with KVDB availability map
+auto createCtxWithKvdbs(const std::unordered_map<std::string, bool>& kvdbs)
+{
+    return [kvdbs](const BuildersMocks& mocks)
+    {
+        ON_CALL(*mocks.ctx, isKvdbAvailable(testing::_))
+            .WillByDefault(testing::Invoke(
+                [kvdbs](const std::string& name) -> std::pair<bool, bool>
+                {
+                    auto it = kvdbs.find(name);
+                    if (it != kvdbs.end())
+                    {
+                        return {true, it->second};
+                    }
+                    return {false, false};
+                }));
+
+        // Setup other required mocks
+        ON_CALL(*mocks.ctx, allowedFields()).WillByDefault(testing::ReturnRef(*mocks.allowedFields));
+        EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_)).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.ctx, validator()).WillRepeatedly(testing::ReturnRef(*mocks.validator));
+        EXPECT_CALL(*mocks.validator, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+
+        return None {};
+    };
+}
+
+} // namespace kvdbavailabilitybuildtest
+
+namespace transformbuildtest
+{
+
+INSTANTIATE_TEST_SUITE_P(
+    KVDBAvailability_Builder,
+    TransformBuilderWithDepsTest,
+    testing::Values(
+        // Test: KVDB not found in context
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGet(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({}))),
+        // Test: KVDB exists but is disabled
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGet(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({{"disabled_db", false}}))),
+        // Test: KVDB exists and is enabled (with handler mock)
+        TransformDepsT(
+            {makeValue(R"("enabled_db")"), makeValue(R"("key")")},
+            getBuilder_KVDBGetExpectHandler("enabled_db"),
+            SUCCESS(
+                [](const BuildersMocks& mocks)
+                {
+                    ON_CALL(*mocks.ctx, isKvdbAvailable("enabled_db"))
+                        .WillByDefault(testing::Return(std::make_pair(true, true)));
+                    ON_CALL(*mocks.ctx, allowedFields()).WillByDefault(testing::ReturnRef(*mocks.allowedFields));
+                    EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_))
+                        .WillRepeatedly(testing::Return(true));
+                    EXPECT_CALL(*mocks.ctx, validator()).WillRepeatedly(testing::ReturnRef(*mocks.validator));
+                    EXPECT_CALL(*mocks.validator, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+                    return None {};
+                })),
+        // Test: kvdb_get_merge with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({}))),
+        // Test: kvdb_get_merge with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({{"disabled_db", false}}))),
+        // Test: kvdb_get_merge_recursive with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGetMergeRecursive(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({}))),
+        // Test: kvdb_get_merge_recursive with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGetMergeRecursive(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({{"disabled_db", false}}))),
+        // Test: kvdb_get_array with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeRef("array")},
+                       getBuilder_KVDBGetArray(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({}))),
+        // Test: kvdb_get_array with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeRef("array")},
+                       getBuilder_KVDBGetArray(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({{"disabled_db", false}}))),
+        // Test: kvdb_decode_bitmask with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")"), makeRef("mask")},
+                       getBuilder_KVDBDecodeBitmask(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({}))),
+        // Test: kvdb_decode_bitmask with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")"), makeRef("mask")},
+                       getBuilder_KVDBDecodeBitmask(),
+                       FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({{"disabled_db", false}})))),
+    testNameFormatter<TransformBuilderWithDepsTest>("KVDBAvailability"));
+
+} // namespace transformbuildtest
+
+namespace filterbuildtest
+{
+
+INSTANTIATE_TEST_SUITE_P(
+    KVDBAvailability_Filter,
+    FilterBuilderWithDepsTest,
+    testing::Values(
+        // Test: kvdb_match with non-existent KVDB
+        FilterDepsT({makeValue(R"("nonexistent_db")")},
+                    getBuilder_KVDBMatch(),
+                    FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({}))),
+        // Test: kvdb_match with disabled KVDB
+        FilterDepsT({makeValue(R"("disabled_db")")},
+                    getBuilder_KVDBMatch(),
+                    FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({{"disabled_db", false}}))),
+        // Test: kvdb_match with enabled KVDB (with handler mock)
+        FilterDepsT({makeValue(R"("enabled_db")")},
+                    getBuilder_KVDBMatchExpectHandler("enabled_db", [](auto) {}),
+                    SUCCESS(
+                        [](const BuildersMocks& mocks)
+                        {
+                            ON_CALL(*mocks.ctx, isKvdbAvailable("enabled_db"))
+                                .WillByDefault(testing::Return(std::make_pair(true, true)));
+                            return None {};
+                        })),
+        // Test: kvdb_not_match with non-existent KVDB
+        FilterDepsT({makeValue(R"("nonexistent_db")")},
+                    getBuilder_KVDBNotMatch(),
+                    FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({}))),
+        // Test: kvdb_not_match with disabled KVDB
+        FilterDepsT({makeValue(R"("disabled_db")")},
+                    getBuilder_KVDBNotMatch(),
+                    FAILURE(kvdbavailabilitybuildtest::createCtxWithKvdbs({{"disabled_db", false}}))),
+        // Test: kvdb_not_match with enabled KVDB (with handler mock)
+        FilterDepsT({makeValue(R"("enabled_db")")},
+                    getBuilder_KVDBNotMatchExpectHandler("enabled_db", [](auto) {}),
+                    SUCCESS(
+                        [](const BuildersMocks& mocks)
+                        {
+                            ON_CALL(*mocks.ctx, isKvdbAvailable("enabled_db"))
+                                .WillByDefault(testing::Return(std::make_pair(true, true)));
+                            return None {};
+                        }))),
+    testNameFormatter<FilterBuilderWithDepsTest>("KVDBAvailability"));
+
+} // namespace filterbuildtest

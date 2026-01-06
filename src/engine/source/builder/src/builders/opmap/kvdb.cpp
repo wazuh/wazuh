@@ -63,6 +63,21 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     }
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
+    // Validate KVDB availability in build context
+    const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+    if (!exists)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                             "Please add it to the integration's KVDB list before using it.",
+                                             dbName));
+    }
+    if (!enabled)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                             "Enable it before using it.",
+                                             dbName));
+    }
+
     // Second argument is key
     auto key = opArgs[1];
     if (key->isValue())
@@ -318,6 +333,21 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
 
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
+    // Validate KVDB availability in build context
+    const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+    if (!exists)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                             "Please add it to the integration's KVDB list before using it.",
+                                             dbName));
+    }
+    if (!enabled)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                             "Enable it before using it in decoders.",
+                                             dbName));
+    }
+
     const auto name = buildCtx->context().opName;
 
     if (buildCtx->allowMissingDependencies())
@@ -431,6 +461,21 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                                                  std::static_pointer_cast<Value>(opArgs[0])->value().str()));
         }
         const auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
+
+        // Validate KVDB availability in build context
+        const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+        if (!exists)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                                 "Please add it to the integration's KVDB list before using it.",
+                                                 dbName));
+        }
+        if (!enabled)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                                 "Enable it before using it in decoders.",
+                                                 dbName));
+        }
 
         // Second argument is key array
         auto keyArray = opArgs[1];
@@ -736,6 +781,21 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     const auto dbName = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
     const auto keyMap = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
     const auto& maskRef = *std::static_pointer_cast<const Reference>(opArgs[2]);
+
+    // Validate KVDB availability in build context
+    const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+    if (!exists)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                             "Please add it to the integration's KVDB list before using it.",
+                                             dbName));
+    }
+    if (!enabled)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                             "Enable it before using it in decoders.",
+                                             dbName));
+    }
 
     // Verify the schema fields
     if (buildCtx->validator().hasField(targetField.dotPath()))

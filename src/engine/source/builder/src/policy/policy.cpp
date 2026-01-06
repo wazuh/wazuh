@@ -39,7 +39,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     buildCtx->setStoreNSReader(cmStoreNsReader);
 
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
-    auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder, sandbox);
+    auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder, buildCtx, sandbox);
 
     // Assign the assets
     for (const auto& [type, subgraph] : builtAssets)
