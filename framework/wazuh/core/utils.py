@@ -879,12 +879,14 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
     """
 
     def _filter_remote_commands(commands: list, exceptions: list) -> list:
-        """Filter remote commands from configuration dictionary.
+        """Keep only remote commands that are not part of the exception list.
 
         Parameters
         ----------
-        conf_dict : dict
-            Configuration dictionary.
+        commands : list
+            List of commands to filter.
+        exceptions : list
+            List of exceptions to exclude from filtering.
 
         Returns
         -------
@@ -901,12 +903,14 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
         return remote_commands
 
     def _filter_wodle_commands(commands: list, exceptions: list) -> list:
-        """Filter wodle commands from configuration dictionary.
+        """Keep only wodle commands that are not part of the exception list.
 
         Parameters
         ----------
-        conf_dict : dict
-            Configuration dictionary.
+        commands : list
+            List of commands to filter.
+        exceptions : list
+            List of exceptions to exclude from filtering.
 
         Returns
         -------
