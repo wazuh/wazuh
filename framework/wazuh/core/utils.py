@@ -22,7 +22,7 @@ from pyexpat import ExpatError
 from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Element  # nosec B405
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
