@@ -1067,8 +1067,10 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 
     if (m_scanOnStart)
     {
+        lock.unlock();
         scan();
         sync();
+        lock.lock();
     }
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
@@ -1076,8 +1078,10 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     return m_stopping;
 }))
     {
+        lock.unlock();
         scan();
         sync();
+        lock.lock();
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
