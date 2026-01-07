@@ -140,7 +140,7 @@ void Schema::Validator::registerCompatibles()
                           ValidationInfo {json::Json::Type::Object, validators::getObjectValidator(), {}});
     m_compatibles.emplace(
         Type::UNSIGNED_LONG,
-        ValidationInfo {json::Json::Type::Number, validators::getLongValidator(), {{Type::LONG, true}}});
+        ValidationInfo {json::Json::Type::Number, validators::getUnsignedLongValidator(), {}});
     m_compatibles.emplace(Type::COMPLETION,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),

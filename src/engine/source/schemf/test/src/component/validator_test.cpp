@@ -390,7 +390,7 @@ INSTANTIATE_TEST_SUITE_P(
            BuildT(ST::FLAT_OBJECT, {ST::FLAT_OBJECT}, {}, {JT::Object}),
            BuildT(ST::TOKEN_COUNT, {ST::TOKEN_COUNT}, {}, {JT::Number}),
            BuildT(ST::SEMANTIC, {ST::SEMANTIC}, {}, {JT::String}),
-           BuildT(ST::UNSIGNED_LONG, {ST::UNSIGNED_LONG}, {ST::LONG}, {JT::Number}),
+           BuildT(ST::UNSIGNED_LONG, {ST::UNSIGNED_LONG}, {}, {JT::Number}),
            BuildT(ST::COMPLETION,
                   {ST::COMPLETION, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
                     ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::TEXT, ST::SEARCH_AS_YOU_TYPE,
