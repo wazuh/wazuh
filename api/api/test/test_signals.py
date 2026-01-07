@@ -20,8 +20,6 @@ from api.signals import (
     cti_context
 )
 
-from api.authentication import _private_key_path, _public_key_path
-
 # Fixtures
 @pytest.fixture
 def installation_uid_mock():
@@ -36,11 +34,6 @@ def installation_uid_mock():
 @pytest.fixture
 def query_update_check_service_mock():
     with patch('api.signals.query_update_check_service') as mock:
-        yield mock
-
-@pytest.fixture
-def clean_auth_keys_cache_mock():
-    with patch('api.signals.generate_keypair.cache_clear') as mock:
         yield mock
 
 
@@ -193,10 +186,12 @@ async def test_register_background_tasks(
 
 
 @pytest.mark.asyncio
-@patch('api.authentication.generate_keypair.cache_clear')
+@patch('api.signals._private_key_path', new='/path/to/private.key')
+@patch('api.signals._public_key_path', new='/path/to/public.key')
+@patch('api.signals.generate_keypair.cache_clear')
 @pytest.mark.parametrize(
     'filename',
-    [_private_key_path, _public_key_path, 'other_file.txt']
+    ['/path/to/private.key', '/path/to/public.key', 'other_file.txt']
 )
 async def test_clean_auth_keys_cache(mock_generate_keypair_cache, filename):
     with patch('api.signals.Inotify') as inotify_mock:
@@ -215,7 +210,7 @@ async def test_clean_auth_keys_cache(mock_generate_keypair_cache, filename):
         inotify_instance.add_watch.assert_called_with(
             SECURITY_PATH, Mask.MODIFY | Mask.CREATE
         )
-        if filename in {_private_key_path, _public_key_path}:
+        if filename in {'/path/to/private.key', '/path/to/public.key'}:
             mock_generate_keypair_cache.assert_called_once()
         else:
             mock_generate_keypair_cache.assert_not_called()
