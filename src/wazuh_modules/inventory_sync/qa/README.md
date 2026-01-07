@@ -86,7 +86,7 @@ Tests basic request-return functionality.
 
 ### 5. Metadata Delta Flow (`metadata_delta_flow`)
 
-Tests the metadata delta synchronization mode (Mode 4):
+Tests the metadata delta synchronization mode (Mode 4)test:
 - Start synchronization with MetadataDelta mode
 - No data messages are sent
 - Manager updates agent metadata across all specified indices
