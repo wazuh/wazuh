@@ -111,26 +111,13 @@ public:
             integrations.push_back(integrationOpt.value());
         }
 
-        std::string rootDecoder;
-        try
+        auto rootDecoderOpt = policyJson.getString(jsonpolicy::PATH_KEY_ROOT_PARENT);
+        if (!rootDecoderOpt.has_value() || rootDecoderOpt->empty())
         {
-            // TODO: Delete this, make root_decoder mandatory
-            if (auto rootDecoderOpt = policyJson.getString(jsonpolicy::PATH_KEY_ROOT_PARENT);
-                rootDecoderOpt.has_value())
-            {
-                rootDecoder = rootDecoderOpt.value();
-            }
-            // else
-            // {
-            //     throw std::runtime_error("Policy JSON must have a 'root_decoder' string");
-            // }
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(fmt::format("Error getting policy root decoder: {}", e.what()));
+            throw std::runtime_error("Policy JSON must have a 'root_decoder' UUID");
         }
 
-        return {std::move(integrations), std::move(rootDecoder)};
+        return {std::move(integrations), std::move(rootDecoderOpt.value())};
     }
 
     json::Json toJson() const

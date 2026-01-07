@@ -104,6 +104,7 @@ public:
     NsSyncState(std::string_view originSpace, std::string_view lastPolicyHash, cm::store::NamespaceId nsId)
         : m_originSpace(originSpace)
         , m_lastPolicyHash(lastPolicyHash)
+        , m_routeName(generateRouteName(originSpace))
         , m_nsId(std::move(nsId))
     {
     }
@@ -332,8 +333,7 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
         // TODO
 
         // [FILTERS]: Necesary filter for the route to work
-        cmcrudPtr->upsertResource(
-            createAllowAllFilter().str(), cm::store::ResourceType::FILTER, ALLOW_ALL_FILTER_NAME.fullName());
+        cmcrudPtr->upsertResource(newNs.toStr(), cm::store::ResourceType::FILTER, createAllowAllFilter().str());
     }
     catch (const std::exception& e)
     {
@@ -579,7 +579,13 @@ void CMSync::synchronize()
     }
 
     // Dump the updated state to the store
-    dumpStateToStore();
+    try {
+        dumpStateToStore();
+    }
+    catch (const std::exception& e) {
+        LOG_WARNING("[CM::Sync] Failed to dump sync state to store after synchronization: {}", e.what());
+    }
+    
 
     LOG_INFO("[CM::Sync] Finished synchronization of spaces");
 }

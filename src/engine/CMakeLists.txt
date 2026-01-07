@@ -328,6 +328,7 @@ target_link_libraries(wazuh-engine
     archiver::archive
     cmstore::cmstore
     cmcrud::cmcrud
+    cmsync::cmsync
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries

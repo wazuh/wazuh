@@ -24,6 +24,7 @@
 #include <builder/builder.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
+#include <cmsync/cmsync.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <defs/defs.hpp>
@@ -231,6 +232,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
+    std::shared_ptr<cm::sync::CMSync> cmSyncService;
 
     try
     {
@@ -373,8 +375,7 @@ int main(int argc, char* argv[])
             }
             catch (const std::exception& e)
             {
-                LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());
-                return EXIT_FAILURE;
+                throw std::runtime_error(fmt::format("Could not initialize Indexer Connector: {}", e.what()));
             }
         }
         else
@@ -511,6 +512,24 @@ int main(int argc, char* argv[])
             LOG_INFO("Router initialized.");
         }
 
+        // CMsync
+        {
+            cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator);
+            LOG_INFO("Content Manager Sync Service initialized.");
+
+            // Add sync to scheduler
+            scheduler->scheduleTask(
+                "cm-sync-task",
+                scheduler::TaskConfig {//.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
+                                       .interval = 360,
+                                       .CPUPriority = 0,
+                                       .timeout = 0,
+                                       .taskFunction = [cmSyncService]()
+                                       {
+                                           cmSyncService->synchronize();
+                                       }});
+        }
+
         // Archiver
         {
             archiver =
@@ -634,10 +653,6 @@ int main(int argc, char* argv[])
         {
             LOG_INFO("Engine started in standalone mode.");
         }
-        else if (indexerConnector == nullptr)
-        {
-            LOG_ERROR("Engine started without indexer connector, event will be lost. Review the configuration.");
-        }
         else
         {
             LOG_INFO("Engine started and ready to process events.");
@@ -646,6 +661,9 @@ int main(int argc, char* argv[])
         // Do not exit until the server is running or shutdown is requested
         if (g_engineLocalServer)
         {
+            // Synchronize on startup
+            cmSyncService->synchronize();
+
             while (g_engineLocalServer->isRunning())
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));

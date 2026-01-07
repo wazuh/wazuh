@@ -330,9 +330,9 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     {
         auto assetJson = store::detail::adaptDecoder(jdec);
         auto name = assetNameFromJson(assetJson);
-        const auto resourceStr = fmt::format("decoder/{}", name.parts().back());
+        const auto resourceStr = cm::store::resourceTypeToString(cm::store::ResourceType::DECODER);
 
-        if (resourceStr != name.toStr())
+        if (resourceStr != name.parts().front())
         {
             throw std::runtime_error(
                 fmt::format("Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
@@ -342,7 +342,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
         {
             m_validator->validateAsset(nsReader, assetJson);
         }
-        ns->createResource(resourceStr, cm::store::ResourceType::DECODER, assetJson.str());
+        ns->createResource(name.toStr(), cm::store::ResourceType::DECODER, assetJson.str());
     }
 
     for (const auto& jinteg : integrations)
