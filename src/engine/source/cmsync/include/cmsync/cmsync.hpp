@@ -1,6 +1,8 @@
 #ifndef _CMSYNC_CMSYNC
 #define _CMSYNC_CMSYNC
 
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 
 #include <cmcrud/icmcrudservice.hpp>
@@ -25,11 +27,20 @@ private:
     std::weak_ptr<::store::IStoreInternal> m_store;              ///< Internal config store
     std::weak_ptr<router::IRouterAPI> m_router;                  ///< Router API for event injection
 
-    std::mutex m_mutex;        ///< Only one sync at a time
     std::size_t m_attemps;     ///< Number of attempts to connect or retry operations before failing
     std::size_t m_waitSeconds; ///< Seconds to wait between attempts
 
-    // std::vector<NsSyncState> m_namespacesState; ///< State of the namespaces being synchronized
+    mutable std::shared_mutex m_mutex;          ///< Mutex to protect access to m_namespacesState and sync operations
+    std::vector<NsSyncState> m_namespacesState; ///< State of the namespaces being synchronized
+
+    /**
+     * @brief Check if a space exists in the wazuh-indexer
+     *
+     * @param space Space name to check
+     * @return true if the space exists, false otherwise
+     * @throws std::runtime_error on errors.
+     */
+    bool existSpaceInRemote(std::string_view space);
 
     /**
      * @brief Download a full namespace from the indexer to the local cmcrud store
@@ -47,7 +58,7 @@ private:
      * @return std::string SHA-256 hash of the policy
      * @throws std::runtime_error on errors.
      */
-    std::string remoteHash(std::string_view space);
+    std::string getPolicyHashFromRemote(std::string_view space);
 
     /**
      * @brief Downloads a namespace from the indexer and enriches it with local assets
@@ -68,6 +79,22 @@ private:
      */
     cm::store::NamespaceId downloadAndEnrichNamespace(std::string_view originSpace);
 
+    /**
+     * @brief Syncs a namespace in the router by updating or creating its route
+     *
+     * This method ensures that the router has an up-to-date route for the specified
+     * namespace. If the route already exists, it updates it to point to the new
+     * namespace ID. If it does not exist, it creates a new route.
+     *
+     * @param nsState The state of the namespace being synchronized, including origin space and route name
+     * @param newNamespaceId The new namespace ID to be used in the router
+     * @throws std::runtime_error if the operation fails
+     */
+    void syncNamespaceInRoute(const NsSyncState& nsState, const cm::store::NamespaceId& newNamespaceId);
+
+    void addSpaceToSync(std::string_view space);      ///< Add a space to the sync list
+    void removeSpaceFromSync(std::string_view space); ///< Remove a space from the sync
+
     void loadStateFromStore(); ///< Load sync state from the internal store
     void dumpStateToStore();   ///< Dump sync state to the internal store
 
@@ -78,6 +105,18 @@ public:
            const std::shared_ptr<::store::IStoreInternal>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr);
     ~CMSync() override;
+
+    /**
+     * @brief Perform synchronization of all configured namespaces
+     *
+     * This method iterates through all namespaces configured for synchronization,
+     * checking for updates in the remote indexer. If changes are detected, it
+     * downloads the updated namespace, enriches it with local assets, and updates
+     * the router accordingly.
+     *
+     * @throws std::runtime_error if any step of the synchronization process fails
+     */
+    void synchronize();
 };
 
 } // namespace cm::sync
