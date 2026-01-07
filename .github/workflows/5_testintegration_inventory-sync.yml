@@ -27,6 +27,22 @@ jobs:
     name: inventory-sync-integration-tests
     runs-on: ubuntu-22.04
 
+    # Service containers to run alongside the job
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:latest
+        env:
+          discovery.type: single-node
+          plugins.security.disabled: true
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD: WazuhTest99$
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master

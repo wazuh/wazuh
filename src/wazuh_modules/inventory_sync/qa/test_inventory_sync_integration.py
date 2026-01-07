@@ -24,7 +24,10 @@ GLOBAL_URL = 'localhost:9200'
 
 def init_opensearch(low_resources=False):
     """
-    Initialize OpenSearch container for testing.
+    Initialize OpenSearch for testing.
+
+    First checks if OpenSearch is already running (e.g., as a GitHub Actions service container).
+    If not available, starts a local Docker container for development.
 
     Args:
         low_resources: If True, configure for low resource usage
@@ -33,6 +36,18 @@ def init_opensearch(low_resources=False):
         Docker client instance
     """
     client = docker.from_env()
+
+    # First, check if OpenSearch is already accessible (e.g., via GitHub Actions service)
+    print("Checking if OpenSearch service is already available...")
+    try:
+        response = requests.get('http://' + GLOBAL_URL, timeout=5)
+        if response.status_code == 200:
+            print(" OpenSearch service already available (service container or existing instance)")
+            return client
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        print("OpenSearch not accessible yet, will start local container...")
+
+    # If not available, prepare to start local container
     env_vars = {
         'discovery.type': 'single-node',
         'plugins.security.disabled': 'true',
@@ -42,7 +57,7 @@ def init_opensearch(low_resources=False):
     if low_resources:
         env_vars['http.max_content_length'] = '4mb'
 
-    # Check if container already exists
+    # Check if container already exists locally
     try:
         existing_container = client.containers.get('opensearch-test')
         if existing_container.status == 'running':
@@ -53,9 +68,21 @@ def init_opensearch(low_resources=False):
     except docker.errors.NotFound:
         pass
 
+    # Pull the image explicitly to avoid issues in CI environments
+    # where Docker Hub rate limits may prevent automatic pulls
+    image_name = "opensearchproject/opensearch:latest"
+    try:
+        print(f"Pulling OpenSearch image: {image_name}...")
+        client.images.pull(image_name)
+        print("✅ OpenSearch image pulled successfully")
+    except Exception as e:
+        print(f"⚠️  Warning: Failed to pull image: {e}")
+        print("Attempting to run with existing image or auto-pull...")
+
     # Start new container
+    print("Starting OpenSearch container...")
     client.containers.run(
-        "opensearchproject/opensearch:latest",
+        image_name,
         detach=True,
         ports={'9200/tcp': 9200},
         environment=env_vars,
@@ -66,15 +93,21 @@ def init_opensearch(low_resources=False):
 
     # Wait for OpenSearch to be ready
     print("Waiting for OpenSearch to be ready...")
-    while True:
+    max_retries = 60
+    retry_count = 0
+    while retry_count < max_retries:
         try:
             response = requests.get('http://' + GLOBAL_URL, timeout=5)
             if response.status_code == 200:
-                print("OpenSearch is ready")
+                print("✅ OpenSearch is ready")
                 break
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             pass
         time.sleep(1)
+        retry_count += 1
+
+    if retry_count >= max_retries:
+        raise Exception("OpenSearch failed to start within expected time")
 
     return client
 
@@ -87,10 +120,14 @@ def opensearch(request):
     low_resources = getattr(request, 'param', False)
     client = init_opensearch(low_resources)
     yield client
-    # Stop all containers
-    for container in client.containers.list():
-        container.stop()
-    client.containers.prune()
+    # Only stop and remove locally created containers (not service containers)
+    try:
+        local_container = client.containers.get('opensearch-test')
+        local_container.stop()
+        local_container.remove()
+    except docker.errors.NotFound:
+        # Container doesn't exist (e.g., using GitHub Actions service container)
+        pass
 
 
 class InventorySyncIntegrationTester:
