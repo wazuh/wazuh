@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import errno
-import glob
 import hashlib
 import json
 import operator
@@ -17,12 +16,13 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
-from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
+from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, path
 import psutil
 from pyexpat import ExpatError
 from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
+from xml.etree.ElementTree import Element  # nosec B405
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -164,7 +164,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
     """
     if not array:
         return {'items': [], 'totalItems': 0}
-    
+
     if isinstance(filters, dict) and len(filters.keys()) > 0:
         new_array = []
         for element in array:
@@ -862,37 +862,91 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def check_remote_commands(data: str):
-    """Check if remote commands are allowed. If not, it will check if the found command is in the list of exceptions.
+def check_remote_commands(new_conf: Element, original_conf: Element):
+    """Check if higher version agents are allowed.
 
     Parameters
     ----------
-    data : str
-        Configuration file
+    new_conf : Element
+        New configuration file.
+    original_conf : Element
+        Original configuration file.
+
+    Raises
+    ------
+    WazuhError(1127)
+        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
 
-    def check_section(command_regex, section, split_section):
-        try:
-            for line in command_regex.findall(data)[0].split(split_section):
-                command_matches = re.match(r".*<(command|full_command)>(.*)</(command|full_command)>.*",
-                                           line, flags=re.MULTILINE | re.DOTALL)
-                if command_matches and \
-                        (line.count('<command>') > 1 or
-                         command_matches.group(2) not in
-                         blocked_configurations['remote_commands'][section].get('exceptions', [])):
-                    raise WazuhError(1124)
-        except IndexError:
-            pass
+    def _filter_remote_commands(commands: list, exceptions: list) -> list:
+        """Keep only remote commands that are not part of the exception list.
 
-    if not blocked_configurations['remote_commands']['localfile']['allow']:
-        command_section = re.compile(r"<localfile>(.*?)</localfile>", flags=re.MULTILINE | re.DOTALL)
-        check_section(command_section, section='localfile', split_section='</localfile>')
+        Parameters
+        ----------
+        commands : list
+            List of commands to filter.
+        exceptions : list
+            List of exceptions to exclude from filtering.
 
-    if not blocked_configurations['remote_commands']['wodle_command']['allow']:
-        command_section = re.compile(r"<wodle name=\"command\">(.*?)</wodle>", flags=re.MULTILINE | re.DOTALL)
-        check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
+        Returns
+        -------
+        list
+            List of remote commands.
+        """
+        remote_commands = []
 
+        for command in commands:
+            if command['localfile']['log_format']['value'] in ['command', 'full_command'] \
+                and command['localfile']['command']['value'] not in exceptions:
+                remote_commands.append(command)
+
+        return remote_commands
+
+    def _filter_wodle_commands(commands: list, exceptions: list) -> list:
+        """Keep only wodle commands that are not part of the exception list.
+
+        Parameters
+        ----------
+        commands : list
+            List of commands to filter.
+        exceptions : list
+            List of exceptions to exclude from filtering.
+
+        Returns
+        -------
+        list
+            List of wodle commands.
+        """
+        wodle_commands = []
+
+        for command in commands:
+            if 'command' in command['wodle'] and command['wodle']['command']['value'] not in exceptions:
+                wodle_commands.append(command)
+
+        return wodle_commands
+
+    ALLOW_KEY = 'allow'
+    EXCEPTIONS_KEY = 'exceptions'
+    LOCALFILE_HIERACHY = ['ossec_config', 'localfile']
+    WODLE_HIERACHY = ['ossec_config', 'wodle']
+    LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
+    WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
+
+    if not LOCALFILE_SETTINGS[ALLOW_KEY]:
+        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERACHY)
+        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERACHY)
+
+        if normalize(_filter_remote_commands(new_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])) \
+            != normalize(_filter_remote_commands(original_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])):
+            raise WazuhError(1124, extra_message="localfile")
+
+    if not WODLE_SETTINGS[ALLOW_KEY]:
+        new_wodle = xml_to_dict(new_conf, WODLE_HIERACHY)
+        original_wodle = xml_to_dict(original_conf, WODLE_HIERACHY)
+
+        if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
+            != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):
+            raise WazuhError(1124, extra_message="wodle")
 
 def xml_to_dict(root, section_path: list):
     """Extract configuration sections from an XML tree using dotted paths.
@@ -997,32 +1051,36 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
             raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
-def check_agents_allow_higher_versions(data: str):
+def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element):
     """Check if higher version agents are allowed.
 
     Parameters
     ----------
-    data : str
-        Configuration file content.
+    new_conf : Element
+        New configuration file.
+    original_conf : Element
+        Original configuration file.
+
+    Raises
+    ------
+    WazuhError(1129)
+        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
 
-    def check_section(agents_regex, split_section):
-        try:
-            for line in agents_regex.findall(data)[0].split(split_section):
-                tag_matches = re.match(r".*<allow_higher_versions>(.*)</allow_higher_versions>.*",
-                                            line, flags=re.MULTILINE | re.DOTALL)
-                if tag_matches and (tag_matches.group(1) == 'yes'):
-                    raise WazuhError(1129)
-        except IndexError:
-            pass
+    AUTH_HIERACHY = ['ossec_config', 'auth', 'allow_higher_versions']
+    REMOTE_HIERACHY = ['ossec_config', 'remote', 'allow_higher_versions']
+    upload_configuration = configuration.api_conf['upload_configuration']
 
-    if not blocked_configurations['agents']['allow_higher_versions']['allow']:
-        remote_section = re.compile(r"<remote>(.*)</remote>", flags=re.MULTILINE | re.DOTALL)
-        check_section(remote_section, split_section='</remote>')
+    if not upload_configuration['agents']['allow_higher_versions']['allow']:
+        new_auth = xml_to_dict(new_conf, AUTH_HIERACHY)
+        original_auth = xml_to_dict(original_conf, AUTH_HIERACHY)
+        if normalize(new_auth) != normalize(original_auth):
+            raise WazuhError(1129, extra_message='auth > allow_higher_versions')
 
-        auth_section = re.compile(r"<auth>(.*)</auth>", flags=re.MULTILINE | re.DOTALL)
-        check_section(auth_section, split_section='</auth>')
+        new_remote = xml_to_dict(new_conf, REMOTE_HIERACHY)
+        original_remote = xml_to_dict(original_conf, REMOTE_HIERACHY)
+        if normalize(new_remote) != normalize(original_remote):
+            raise WazuhError(1129, extra_message='remote > allow_higher_versions')
 
 
 def check_indexer(new_conf, original_conf):
@@ -1051,27 +1109,29 @@ def check_indexer(new_conf, original_conf):
             raise WazuhError(1127, extra_message='indexer')
 
 
-def check_virustotal_integration(new_conf: str):
-    """Check if the configuration VirusTotal API Key corresponds to Public or Premium API.
+def check_virustotal_integration(new_conf: Element):
+    """Check if VirusTotal integration configuration is allowed.
 
     Parameters
     ----------
-    new_conf : str
+    new_conf : Element
         New configuration file.
 
     Raises
-    -------
-    WazuhError(1127)
-        Raised if the integrations section is modified in the configuration to upload.
+    ------
+    WazuhError(1131)
+        Raised if there is an unexpected VirusTotal response or connection error.
+    WazuhError(1130)
+        Raised if the VirusTotal API key does not meet the minimum quota requirements.
     """
 
-    def obtain_vt_api_keys(conf: str) -> list[str]:
+    def obtain_vt_api_keys(integrations: list[dict]) -> list[str]:
         """Obtain Virus Total API keys from the configuration.
 
         Parameters
         ----------
-        conf : str
-            XML configuration file.
+        integrations : list[dict]
+            List of integration configurations from XML.
 
         Returns
         -------
@@ -1079,19 +1139,24 @@ def check_virustotal_integration(new_conf: str):
             Virus Total API keys.
         """
         keys = []
-        for str_conf in re.findall(r'<integration>.*?</integration>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
-            integrations_section = fromstring(str_conf)
-            for name_section in integrations_section.iter('name'):
-                if name_section.text.strip() == 'virustotal':
-                    for api_key_section in integrations_section.iter('api_key'):
-                        keys.append(api_key_section.text.strip())
+        for integration in integrations:
+            if integration['integration']['name']['value'] == 'virustotal':
+                keys.append(
+                    integration['integration']['api_key']['value']
+                )
+
         return keys
+
+    CONFIG_VT_HIERACHY = ['ossec_config', 'integration']
 
     blocked_configurations = configuration.api_conf['upload_configuration']['integrations']['virustotal']
 
     if not blocked_configurations['public_key']['allow']:
+        new_vt = xml_to_dict(new_conf, CONFIG_VT_HIERACHY)
+
         minimum_quota = blocked_configurations['public_key']['minimum_quota']
-        api_keys = obtain_vt_api_keys(new_conf)
+        api_keys = obtain_vt_api_keys(new_vt)
+
         for api_key in api_keys:
             headers = {'x-apikey': f'{api_key}'}
             url = f"https://www.virustotal.com/api/v3/users/{api_key}/overall_quotas"
@@ -1807,7 +1872,7 @@ class WazuhDBQuery(object):
             repeat_close = 1
             if curr_level > level:
                 repeat_close += curr_level - level
-            
+
             self.query += ')' * repeat_close
             self.query += ' {} '.format(q_filter['separator'])
             curr_level = level
@@ -2091,9 +2156,9 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         # Check if remote commands are allowed if it is a configuration file
         if config_file:
             current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
-            check_remote_commands(final_xml)
-            check_agents_allow_higher_versions(final_xml)
-            check_virustotal_integration(final_xml)
+            check_remote_commands(incoming_xml, current_xml)
+            check_agents_allow_higher_versions(incoming_xml, current_xml)
+            check_virustotal_integration(incoming_xml)
             check_indexer(incoming_xml, current_xml)
             check_wazuh_limits_unchanged(incoming_xml, current_xml)
 
