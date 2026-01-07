@@ -16,11 +16,9 @@ import re
 import struct
 import time
 import traceback
-import posixpath
 from importlib import import_module
 from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
 from uuid import uuid4
-from pathlib import PurePosixPath
 
 import cryptography.fernet
 
@@ -35,7 +33,7 @@ from wazuh.core.wdb_http import get_wdb_http_client
 IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
 
 _ALLOWED_PREFIXES = (
-    "/queue/cluster/",
+    os.path.join(common.WAZUH_PATH, "queue/cluster"),
 )
 
 class Response:
@@ -963,20 +961,11 @@ class Handler(asyncio.Protocol):
         # Decode path requested by peer node
         rel = data.decode()
 
-        # Resolve final destination (real path) under WAZUH_PATH
-        wazuh_root = os.path.realpath(common.WAZUH_PATH)
-        dst = os.path.realpath(os.path.join(wazuh_root, rel.lstrip("/")))
+        dst = os.path.realpath(os.path.join(common.WAZUH_PATH, rel.lstrip("/")))
 
-        # Only allow writes under WAZUH_PATH + allowed prefixes (real paths)
-        allowed_roots = [
-            os.path.realpath(os.path.join(wazuh_root, p.lstrip("/")))
-            for p in _ALLOWED_PREFIXES
-        ]
-
-        if not any(os.path.commonpath([dst, root]) == root for root in allowed_roots):
+        if not any(os.path.commonpath([dst, root]) == root for root in _ALLOWED_PREFIXES):
             return b"err", b"Write path not allowed"
 
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
         self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256()}
 
         return b"ok ", b"Ready to receive new file"
@@ -1152,7 +1141,7 @@ class Handler(asyncio.Protocol):
         """
         try:
             exc = json.loads(data.decode(), object_hook=as_wazuh_object)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             exc = exception.WazuhClusterError(3000, extra_message=data.decode())
 
         return exc
@@ -1624,7 +1613,7 @@ class SyncWazuhdb(SyncTask):
 
     async def retrieve_agents_information(self) -> dict | None:
         """Collect the agents required information from the local node's database.
-        
+
         Returns
         -------
         dict | None
@@ -1637,7 +1626,7 @@ class SyncWazuhdb(SyncTask):
         except exception.WazuhException as e:
             self.logger.error(f"Could not obtain data from wazuh-db: {e}")
             return
-        
+
         now = time.perf_counter()
         self.logger.debug(f"Obtained agents synchronization information in {(now - start_time):.3f}s.")
 
@@ -1669,7 +1658,7 @@ class SyncWazuhdb(SyncTask):
                                                                       f'not be sent to the master node: {task_id}')
 
             # Specify under which task_id the JSON can be found in the master/worker.
-            self.logger.debug(f"Sending chunks.")
+            self.logger.debug("Sending chunks.")
             await self.server.send_request(command=self.cmd, data=task_id)
         else:
             self.logger.info(f"Finished in {(utils.get_utc_now().timestamp() - start_time):.3f}s. Updated 0 chunks.")
@@ -1783,7 +1772,7 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
                             continue
 
                         result['error_messages']['chunks'].append((i, error))
-                
+
                 wdb_conn.close()
     except TimeoutError:
         result['error_messages']['others'].append(f'Timeout while processing {info_type} chunks.')
