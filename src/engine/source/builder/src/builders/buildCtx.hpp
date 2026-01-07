@@ -217,11 +217,6 @@ public:
 
         return {true, it->second};
     }
-
-    /**
-     * @copydoc IBuildCtx::shouldValidateKvdbs
-     */
-    inline bool shouldValidateKvdbs() const override { return m_context.availableKvdbs.has_value(); }
 };
 
 } // namespace builder::builders

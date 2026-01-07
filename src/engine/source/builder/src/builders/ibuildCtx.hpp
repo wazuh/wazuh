@@ -185,14 +185,6 @@ public:
      * @return std::pair<bool, bool> First: exists, Second: is enabled (only valid if exists)
      */
     virtual std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const = 0;
-
-    /**
-     * @brief Check if KVDB validation should be performed
-     *
-     * @return true if building from integration/policy context and validation should run
-     * @return false if validating individual assets without integration context
-     */
-    virtual bool shouldValidateKvdbs() const = 0;
 };
 
 } // namespace builder::builders
