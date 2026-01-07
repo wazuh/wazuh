@@ -29,7 +29,7 @@ constexpr auto DEFAULT_QUEUE_PATH = "queue/sockets/queue";
 constexpr auto DEFAULT_ARQUEUE_DIR = "queue/alerts";
 constexpr auto DEFAULT_ARQUEUE = "queue/alerts/ar";
 constexpr auto IS_TOPIC = "inventory-states";
-constexpr auto MIN_ARGS = 2;
+constexpr auto MIN_ARGS = 3;
 
 /**
  * @brief Struct to hold test configuration
@@ -40,6 +40,7 @@ struct TestConfig
     std::string configFile; ///< VD configuration file
     uint32_t waitTime = 30; ///< seconds to wait after sending messages
     bool verbose = false;   ///< verbose logging
+    std::string logFile;    ///< log file path
 };
 
 /**
@@ -217,6 +218,10 @@ public:
     void stop()
     {
         m_shouldStop.store(true);
+        if (m_socketServer >= 0)
+        {
+            shutdown(m_socketServer, SHUT_RDWR);
+        }
     }
 
     void waitForStop()
@@ -782,6 +787,7 @@ TestConfig parseArgs(int argc, char* argv[])
 {
     TestConfig config;
 
+    // At least the input file and configuration file are required
     if (argc < MIN_ARGS)
     {
         throw std::runtime_error("Usage: " + std::string(argv[0]) +
@@ -790,7 +796,7 @@ TestConfig parseArgs(int argc, char* argv[])
 
     config.inputFile = argv[1];
 
-    for (int i = MIN_ARGS; i < argc; ++i)
+    for (int i = MIN_ARGS - 1; i < argc; ++i)
     {
         std::string arg = argv[i];
         if (arg == "--config" && i + 1 < argc)
@@ -804,6 +810,10 @@ TestConfig parseArgs(int argc, char* argv[])
         else if (arg == "--verbose")
         {
             config.verbose = true;
+        }
+        else if (arg == "--logFile")
+        {
+            config.logFile = argv[++i];
         }
     }
 
@@ -883,29 +893,53 @@ int main(int argc, char* argv[])
 
         std::cout << "\n[INFO] Initializing modules..." << std::endl;
 
+        std::ofstream logFile;
+        if (!config.logFile.empty())
+        {
+            logFile.open(config.logFile, std::ios::out);
+            if (!logFile.is_open())
+            {
+                throw std::runtime_error("Failed to open log file: " + config.logFile);
+            }
+        }
+
         auto& inventorySync = InventorySync::instance();
         inventorySync.start(
-            [](const int,
-               const std::string&,
-               const std::string&,
-               const int,
-               const std::string&,
-               const std::string& message,
-               va_list args)
+            [&logFile](
+                const int, const char* tag, const char*, const int, const char* func, const char* message, va_list args)
             {
                 char buffer[MAX_LEN];
-                vsnprintf(buffer, sizeof(buffer), message.c_str(), args);
+                vsnprintf(buffer, sizeof(buffer), message, args);
                 std::cout << "[IS] " << buffer << std::endl;
+
+                if (logFile.is_open())
+                {
+                    if (strcmp(tag, WM_VULNSCAN_LOGTAG) == 0)
+                    {
+                        logFile << func << "():" << buffer << std::endl;
+                    }
+                }
+                logFile.flush();
             },
             vdConfig);
 
         auto& vulnerabilityScanner = VulnerabilityScannerFacade::instance();
         vulnerabilityScanner.start(
-            [](const int, const char*, const char*, const int, const char*, const char* message, va_list args)
+            [&logFile](
+                const int, const char* tag, const char*, const int, const char* func, const char* message, va_list args)
             {
                 char buffer[MAX_LEN];
                 vsnprintf(buffer, sizeof(buffer), message, args);
                 std::cout << "[VD] " << buffer << std::endl;
+
+                if (logFile.is_open())
+                {
+                    if (strcmp(tag, WM_VULNSCAN_LOGTAG) == 0)
+                    {
+                        logFile << func << "():" << buffer << std::endl;
+                    }
+                }
+                logFile.flush();
             },
             vdConfig,
             false,
