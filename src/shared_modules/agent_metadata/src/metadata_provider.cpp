@@ -9,6 +9,7 @@
 
 #include "metadata_provider.h"
 
+#include <atomic>
 #include <cstring>
 #include <mutex>
 
@@ -19,7 +20,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <pthread.h>
+#include <errno.h>
 #endif
 
 #define MAX_GROUPS_PER_MULTIGROUP 128
@@ -41,48 +42,11 @@ namespace
      */
     struct SharedMetadata
     {
-#ifdef _WIN32
-        LONG lock;  // Simple spinlock for Windows
-#else
-        pthread_mutex_t mutex;
-#endif
+        std::atomic<bool> updating;
         bool has_metadata;
         agent_metadata_t base_metadata;
         size_t groups_count;
         char groups[MAX_GROUPS_PER_MULTIGROUP][MAX_GROUP_NAME_LEN];
-    };
-
-    /**
-     * @brief Cross-platform lock/unlock helpers
-     */
-    class ShmLock
-    {
-        public:
-            explicit ShmLock(SharedMetadata* shm) : m_shm(shm)
-            {
-#ifdef _WIN32
-
-                while (InterlockedCompareExchange(&m_shm->lock, 1, 0) != 0)
-                {
-                    SwitchToThread();
-                }
-
-#else
-                pthread_mutex_lock(&m_shm->mutex);
-#endif
-            }
-
-            ~ShmLock()
-            {
-#ifdef _WIN32
-                InterlockedExchange(&m_shm->lock, 0);
-#else
-                pthread_mutex_unlock(&m_shm->mutex);
-#endif
-            }
-
-        private:
-            SharedMetadata* m_shm;
     };
 
     /**
@@ -107,7 +71,7 @@ namespace
                     return -1;
                 }
 
-                ShmLock lock(m_shm);
+                m_shm->updating.store(true, std::memory_order_release);
 
                 // Copy scalar fields
                 std::strncpy(m_shm->base_metadata.agent_id, metadata->agent_id, sizeof(m_shm->base_metadata.agent_id) - 1);
@@ -154,6 +118,7 @@ namespace
                 }
 
                 m_shm->has_metadata = true;
+                m_shm->updating.store(false, std::memory_order_release);
 
                 return 0;
             }
@@ -165,7 +130,10 @@ namespace
                     return -1;
                 }
 
-                ShmLock lock(m_shm);
+                if (m_shm->updating.load(std::memory_order_acquire))
+                {
+                    return -1;  // Update in progress, try again later
+                }
 
                 if (!m_shm->has_metadata)
                 {
@@ -226,9 +194,10 @@ namespace
             {
                 if (m_shm)
                 {
-                    ShmLock lock(m_shm);
+                    m_shm->updating.store(true, std::memory_order_release);
                     m_shm->has_metadata = false;
                     m_shm->groups_count = 0;
+                    m_shm->updating.store(false, std::memory_order_release);
                 }
             }
 
@@ -239,6 +208,7 @@ namespace
                 , m_hMapFile(NULL)
 #else
                 , m_shm_fd(-1)
+                , m_read_only(false)
 #endif
             {
 #ifdef _WIN32
@@ -274,14 +244,22 @@ namespace
 
                 if (created)
                 {
-                    m_shm->lock = 0;
+                    m_shm->updating.store(false);
                     m_shm->has_metadata = false;
                     m_shm->groups_count = 0;
                 }
 
 #else
                 // Unix/Linux: Use mmap on a file
-                m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT, 0600);
+                // Try read-write first (for writers), fallback to read-only (for readers)
+                m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT, 0644);
+
+                if (m_shm_fd == -1 && errno == EACCES)
+                {
+                    // Permission denied for write, try read-only
+                    m_shm_fd = open(SHM_PATH, O_RDONLY);
+                    m_read_only = true;
+                }
 
                 if (m_shm_fd == -1)
                 {
@@ -292,8 +270,8 @@ namespace
 
                 bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size < static_cast<off_t>(sizeof(SharedMetadata)));
 
-                // Always set correct size
-                if (ftruncate(m_shm_fd, sizeof(SharedMetadata)) == -1)
+                // Always set correct size (only if we have write access)
+                if (!m_read_only && ftruncate(m_shm_fd, sizeof(SharedMetadata)) == -1)
                 {
                     close(m_shm_fd);
                     m_shm_fd = -1;
@@ -303,7 +281,7 @@ namespace
                 m_shm = static_cast<SharedMetadata*>(mmap(
                                                          nullptr,
                                                          sizeof(SharedMetadata),
-                                                         PROT_READ | PROT_WRITE,
+                                                         m_read_only ? PROT_READ : (PROT_READ | PROT_WRITE),
                                                          MAP_SHARED,
                                                          m_shm_fd,
                                                          0));
@@ -316,14 +294,9 @@ namespace
                     return;
                 }
 
-                if (created)
+                if (created && !m_read_only)
                 {
-                    pthread_mutexattr_t attr;
-                    pthread_mutexattr_init(&attr);
-                    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-                    pthread_mutex_init(&m_shm->mutex, &attr);
-                    pthread_mutexattr_destroy(&attr);
-
+                    m_shm->updating.store(false);
                     m_shm->has_metadata = false;
                     m_shm->groups_count = 0;
                 }
@@ -365,6 +338,7 @@ namespace
             HANDLE m_hMapFile;
 #else
             int m_shm_fd;
+            bool m_read_only;
 #endif
     };
 }
@@ -378,6 +352,17 @@ int metadata_provider_update(const agent_metadata_t* metadata)
 
 int metadata_provider_get(agent_metadata_t* out_metadata)
 {
+#ifndef _WIN32
+    // Check if file exists before attempting to access shared memory (Unix only)
+    struct stat st;
+
+    if (stat(SHM_PATH, &st) != 0)
+    {
+        return -1;  // File doesn't exist yet
+    }
+
+#endif
+
     return SharedMemoryProvider::instance().get(out_metadata);
 }
 
