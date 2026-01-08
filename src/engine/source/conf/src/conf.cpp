@@ -76,6 +76,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(
         key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/analysis").c_str());
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
+    addUnit<int64_t>(key::SERVER_API_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_PAYLOAD_MAX_BYTES", 0);
 
     // Event server (dgram)
     addUnit<std::string>(
@@ -86,6 +87,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET,
                          "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
                          (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
+
+    // Enable or disable server event processing
+    addUnit<bool>(key::SERVER_ENABLE_EVENT_PROCESSING, "WAZUH_SERVER_ENABLE_EVENT_PROCESSING", true);
 
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());
@@ -135,12 +139,6 @@ void Conf::validate(const OptionMap& config) const
         {
             case UnitConfType::INTEGER:
             {
-                if (!base::utils::string::isNumber(valueStr))
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Invalid configuration type for key '{}'. Expected integer, got '{}'.", key, valueStr));
-                }
-
                 std::size_t pos = 0;
                 try
                 {

@@ -396,7 +396,11 @@ int main(int argc, char* argv[])
             LOG_INFO("HLP initialized.");
         }
 
+        // Check if event processing is enabled
+        const bool enableProcessing = confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING);
+
         // Indexer Connector
+        if (enableProcessing)
         {
 
             const auto standAloneConfig = [&]() -> std::string
@@ -426,6 +430,10 @@ int main(int argc, char* argv[])
                 LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());
                 return EXIT_FAILURE;
             }
+        }
+        else
+        {
+            LOG_INFO("Indexer Connector DISABLED - events will not be indexed.");
         }
 
         // Scheduler
@@ -616,7 +624,16 @@ int main(int argc, char* argv[])
 
         // Create and configure the api endpints
         {
-            apiServer = std::make_shared<httpsrv::Server>("API_SRV");
+            // Validate payload limit to prevent unsigned integer wrapping from negative values
+            auto serverApiPayloadMaxBytes = confManager.get<int64_t>(conf::key::SERVER_API_PAYLOAD_MAX_BYTES);
+            if (serverApiPayloadMaxBytes < 0)
+            {
+                LOG_WARNING("Invalid configuration: {} is negative ({}). Setting to 0 (unlimited).",
+                            conf::key::SERVER_API_PAYLOAD_MAX_BYTES,
+                            serverApiPayloadMaxBytes);
+                serverApiPayloadMaxBytes = 0;
+            }
+            apiServer = std::make_shared<httpsrv::Server>("API_SRV", static_cast<size_t>(serverApiPayloadMaxBytes));
 
             // API
             exitHandler.add(
@@ -654,6 +671,7 @@ int main(int argc, char* argv[])
         }
 
         // UDP Servers
+        if (enableProcessing)
         {
             const auto hostInfo = base::hostInfo::toJson();
             g_engineLocalServer = std::make_shared<udsrv::Server>(
@@ -670,8 +688,13 @@ int main(int argc, char* argv[])
 
             LOG_INFO("Local engine's server initialized and started.");
         }
+        else
+        {
+            LOG_INFO("Local engine's UDP event server DISABLED - events will not be received via UDP.");
+        }
 
         // HTTP enriched events server
+        if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV");
 
@@ -695,15 +718,18 @@ int main(int argc, char* argv[])
                 };
             };
 
-            engineRemoteServer->addRoute(
-                httpsrv::Method::POST,
-                "/events/enriched", // TODO: Double check route
-                api::event::handlers::pushEvent(orchestrator, modifyParsingJson(), archiver));
+            engineRemoteServer->addRoute(httpsrv::Method::POST,
+                                         "/events/enriched", // TODO: Double check route
+                                         api::event::handlers::pushEvent(orchestrator, modifyParsingJson(), archiver));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
 
             LOG_INFO("Remote engine's server initialized and started.");
+        }
+        else
+        {
+            LOG_INFO("Remote engine's HTTP event server DISABLED - events will not be received via HTTP.");
         }
 
         if (isRunningStandAlone)
@@ -719,18 +745,32 @@ int main(int argc, char* argv[])
             LOG_INFO("Engine started and ready to process events.");
         }
 
-        // Do not exit until the server is running
-        while (g_engineLocalServer->isRunning())
+        // Do not exit until the server is running or shutdown is requested
+        if (g_engineLocalServer)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            if (g_shutdown_requested)
+            while (g_engineLocalServer->isRunning())
             {
-                LOG_INFO("Shutdown requested (signal: {}), stopping the engine local server.", g_shutdown_requested);
-                g_engineLocalServer->stop();
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (g_shutdown_requested)
+                {
+                    LOG_INFO("Shutdown requested (signal: {}), stopping the engine local server.",
+                             g_shutdown_requested);
+                    g_engineLocalServer->stop();
+                }
             }
+            g_engineLocalServer.reset();
+            LOG_INFO("Engine local server stopped.");
         }
-        g_engineLocalServer.reset();
-        LOG_INFO("Engine local server stopped.");
+        else
+        {
+            // Event processing disabled, just wait for shutdown signal
+            LOG_INFO("Waiting for shutdown signal (event processing is disabled)...");
+            while (!g_shutdown_requested)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            LOG_INFO("Shutdown requested (signal: {}), stopping the engine.", g_shutdown_requested);
+        }
     }
     catch (const std::exception& e)
     {
