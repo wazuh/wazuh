@@ -58,6 +58,16 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Free disk space (safe cleanup)
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          echo "Disk space after cleanup:"
+          df -h
+
       - name: Wait for specific deb amd64 check to be created
         if: github.event_name == 'pull_request'
         id: wait-for-specific-check
