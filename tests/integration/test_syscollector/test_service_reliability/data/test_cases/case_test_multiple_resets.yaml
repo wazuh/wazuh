@@ -1,0 +1,18 @@
+# Test cases for syscollector deadlock detection during service stop
+# Simplified to focus on most likely scenarios
+
+- name: "Stop during scan - 5s delay"
+  description: "Wait for scan to start, then stop after 5s"
+  configuration_parameters:
+  metadata:
+    n_restarts: 20
+    delay: 5
+    wait_for_scan: true
+
+- name: "Stop during scan - 6s delay"
+  description: "Wait for scan to start, then stop after 6s"
+  configuration_parameters:
+  metadata:
+    n_restarts: 20
+    delay: 6
+    wait_for_scan: true
