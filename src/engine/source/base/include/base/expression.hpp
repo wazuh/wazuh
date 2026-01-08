@@ -490,7 +490,7 @@ protected:
 
 class Broadcast : public Operation
 {
-/* TODO: double check
+    /**
      * Description:
      * Computes multiple formulas simultaneously, replicating the operation's
      * effect across all targets in parallel.
