@@ -184,11 +184,6 @@ case "$1" in
         rm -f /etc/ossec-init.conf
     fi
 
-    # Delete installation scripts
-    if [ -d ${SCRIPTS_DIR} ]; then
-        rm -rf ${SCRIPTS_DIR}
-    fi
-
     # Delete tmp directory
     if [ -d ${WAZUH_TMP_DIR} ]; then
         rm -rf ${WAZUH_TMP_DIR}
