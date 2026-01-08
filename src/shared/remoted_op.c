@@ -53,18 +53,6 @@ void parse_uname_string (char *uname,
     if (!osd)
         return;
 
-    // Extract hostname (nodename) for Linux/macOS: format is "sysname |nodename |..."
-    // For Windows this won't match the pattern
-    if (str_tmp = strstr(uname, " |"), str_tmp) {
-        char *hostname_start = str_tmp + 2;  // Skip " |"
-        char *hostname_end = strstr(hostname_start, " |");
-        if (hostname_end) {
-            int hostname_len = hostname_end - hostname_start;
-            os_malloc(hostname_len + 1, osd->hostname);
-            snprintf(osd->hostname, hostname_len + 1, "%.*s", hostname_len, hostname_start);
-        }
-    }
-
     // [Ver: os_major.os_minor.os_build]
     if (str_tmp = strstr(uname, " [Ver: "), str_tmp) {
         char *bracket_end = NULL;
@@ -75,20 +63,29 @@ void parse_uname_string (char *uname,
 
         // Find closing bracket to handle both old and new formats
         if (bracket_end = strchr(str_tmp, ']'), bracket_end) {
-            char *arch_field = NULL;
             *bracket_end = '\0';
 
-            // Extract architecture
-            if (arch_field = strrchr(bracket_end + 1, '|'), arch_field) {
-                arch_field++;
-                while (*arch_field == ' ') arch_field++;
-                if (*arch_field) {
-                    char *arch_end = arch_field;
-                    while (*arch_end && *arch_end != ' ') arch_end++;
-                    size_t arch_len = arch_end - arch_field;
-                    if (arch_len > 0) {
-                        os_malloc(arch_len + 1, osd->os_arch);
-                        snprintf(osd->os_arch, arch_len + 1, "%.*s", (int)arch_len, arch_field);
+            char *hostname_start = strstr(bracket_end + 1, " |");
+            if (hostname_start) {
+                hostname_start += 2;
+                char *hostname_end = strstr(hostname_start, " |");
+                if (hostname_end) {
+                    // Extract hostname
+                    int hostname_len = hostname_end - hostname_start;
+                    os_malloc(hostname_len + 1, osd->hostname);
+                    snprintf(osd->hostname, hostname_len + 1, "%.*s", hostname_len, hostname_start);
+
+                    // Extract architecture
+                    char *arch_start = hostname_end + 2;
+                    while (*arch_start == ' ') arch_start++;
+                    if (*arch_start) {
+                        char *arch_end = arch_start;
+                        while (*arch_end && *arch_end != ' ' && *arch_end != '-') arch_end++;
+                        int arch_len = arch_end - arch_start;
+                        if (arch_len > 0) {
+                            os_malloc(arch_len + 1, osd->os_arch);
+                            snprintf(osd->os_arch, arch_len + 1, "%.*s", arch_len, arch_start);
+                        }
                     }
                 }
             }
@@ -120,6 +117,16 @@ void parse_uname_string (char *uname,
         os_strdup(str_tmp, osd->os_version);
         os_strdup("windows", osd->os_platform);
     } else {
+        if (str_tmp = strstr(uname, " |"), str_tmp) {
+            char *hostname_start = str_tmp + 2;
+            char *hostname_end = strstr(hostname_start, " |");
+            if (hostname_end) {
+                int hostname_len = hostname_end - hostname_start;
+                os_malloc(hostname_len + 1, osd->hostname);
+                snprintf(osd->hostname, hostname_len + 1, "%.*s", hostname_len, hostname_start);
+            }
+        }
+
         if (str_tmp = strstr(uname, " ["), str_tmp) {
             *str_tmp = '\0';
             str_tmp += 2;

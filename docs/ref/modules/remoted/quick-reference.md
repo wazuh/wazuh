@@ -13,18 +13,18 @@ Wazuh 5.0+ automatically enriches all events with agent metadata (OS, version, g
 
 ## Metadata Fields
 
-| Field | Example | Source |
-|-------|---------|--------|
-| Agent ID | `"001"` | Agent registration |
-| Agent Name | `"web-server-01"` | Keep-alive message |
-| Agent Version | `"v5.0.0"` | Keep-alive message |
-| Groups | `["web", "prod"]` | Keep-alive message |
-| OS Name | `"Ubuntu"` | Keep-alive message |
-| OS Version | `"22.04"` | Keep-alive message |
-| OS Platform | `"ubuntu"` | Keep-alive message |
-| OS Type | `"linux"` | Keep-alive or inferred |
-| Architecture | `"x86_64"` | Keep-alive message |
-| Hostname | `"web-server-01"` | Keep-alive (Linux/macOS only) |
+| Field         | Example           | Source                                                         |
+| ------------- | ----------------- | -------------------------------------------------------------- |
+| Agent ID      | `"001"`           | Agent registration                                             |
+| Agent Name    | `"web-server-01"` | Keep-alive message                                             |
+| Agent Version | `"v5.0.0"`        | Keep-alive message                                             |
+| Groups        | `["web", "prod"]` | Keep-alive message                                             |
+| OS Name       | `"Ubuntu"`        | Keep-alive message                                             |
+| OS Version    | `"22.04"`         | Keep-alive message                                             |
+| OS Platform   | `"ubuntu"`        | Keep-alive message                                             |
+| OS Type       | `"linux"`         | Keep-alive or inferred                                         |
+| Architecture  | `"x86_64"`        | Keep-alive (all platforms, requires extended keepalive format) |
+| Hostname      | `"web-server-01"` | Keep-alive (all platforms, requires extended keepalive format) |
 
 ## Common Tasks
 
