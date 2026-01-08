@@ -896,7 +896,7 @@ int main(int argc, char* argv[])
         std::ofstream logFile;
         if (!config.logFile.empty())
         {
-            logFile.open(config.logFile, std::ios::out);
+            logFile.open(config.logFile, std::ios::out | std::ios::app);
             if (!logFile.is_open())
             {
                 throw std::runtime_error("Failed to open log file: " + config.logFile);
