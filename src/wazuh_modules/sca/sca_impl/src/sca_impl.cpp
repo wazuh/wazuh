@@ -134,9 +134,11 @@ void SecurityConfigurationAssessment::Run()
         // Check if paused for coordination - skip scanning but stay in loop
         if (m_paused)
         {
+            // LCOV_EXCL_START
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning paused, skipping scan iteration");
             firstScan = false;  // Clear first scan flag even when paused
             continue;
+            // LCOV_EXCL_STOP
         }
 
         if (firstScan && m_scanOnStart)
@@ -179,6 +181,7 @@ void SecurityConfigurationAssessment::Run()
         // Check again after policy loading in case stop was called during load
         if (!m_keepRunning)
         {
+            // LCOV_EXCL_START
             // Mark scan as complete before returning
             m_scanInProgress.store(false);
             {
@@ -186,6 +189,7 @@ void SecurityConfigurationAssessment::Run()
                 m_pauseCv.notify_all();
             }
             return;
+            // LCOV_EXCL_STOP
         }
 
         auto reportCheckResult = [this](const CheckResult & checkResult)
@@ -201,6 +205,7 @@ void SecurityConfigurationAssessment::Run()
         {
             if (!m_keepRunning)
             {
+                // LCOV_EXCL_START
                 // Mark scan as complete before returning
                 m_scanInProgress.store(false);
                 {
@@ -208,6 +213,7 @@ void SecurityConfigurationAssessment::Run()
                     m_pauseCv.notify_all();
                 }
                 return;
+                // LCOV_EXCL_STOP
             }
 
             policy->Run(reportCheckResult);

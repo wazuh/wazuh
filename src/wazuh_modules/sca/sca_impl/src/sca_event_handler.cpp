@@ -731,10 +731,10 @@ void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const
     }
 
     // Remove internal field not part of indexer schema
-    //if (policy.contains("regex_type"))
-    //{
-    //    policy.erase("regex_type");
-    //}
+    if (policy.contains("regex_type"))
+    {
+        policy.erase("regex_type");
+    }
 }
 
 bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& statefulEvent,

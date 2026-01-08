@@ -141,7 +141,6 @@ class SCAEventHandler
         /// @brief Callback function used to push stateful messages to the message queue.
         std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_pushStatefulMessage;
 
-    private:
         /// @brief Validates a stateful message against the schema and handles validation failures.
         ///
         /// If validation fails, logs errors and attempts to delete the entry from DBSync to prevent
@@ -157,6 +156,7 @@ class SCAEventHandler
                                               const nlohmann::json& checkData = nlohmann::json(),
                                               std::vector<nlohmann::json>* failedChecks = nullptr) const;
 
+    private:
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;
 };
