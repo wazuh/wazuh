@@ -17,6 +17,44 @@ const base::Name ALLOW_ALL_FILTER_NAME {"filter/allow-all/0"};   ///< Name of th
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
 
 /**
+ * @brief Execute an operation with retry logic
+ *
+ * @tparam Func Callable type that performs the operation
+ * @param operation The operation to execute
+ * @param operationName Name of the operation for logging purposes
+ * @param maxAttempts Maximum number of retry attempts
+ * @param waitSeconds Seconds to wait between retries
+ * @return decltype(auto) Result of the operation
+ * @throw std::exception if all retry attempts fail
+ */
+template<typename Func>
+decltype(auto)
+executeWithRetry(Func&& operation, std::string_view operationName, std::size_t maxAttempts, std::size_t waitSeconds)
+{
+    for (std::size_t attempt = 1; attempt <= maxAttempts; ++attempt)
+    {
+        try
+        {
+            return operation();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING_L(
+                operationName.data(), "[CMSync::{}] Attempt {}/{}: {}", operationName, attempt, maxAttempts, e.what());
+            if (attempt < maxAttempts)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(waitSeconds));
+            }
+            else
+            {
+                throw;
+            }
+        }
+    }
+    throw std::runtime_error(fmt::format("Unreachable code in CMSync::{}", operationName));
+}
+
+/**
  * @brief Locks a weak pointer and returns a shared pointer.
  *
  * @tparam T Type of the resource
@@ -77,9 +115,9 @@ namespace cm::sync
 {
 
 /**
- * @brief State of a namespace being synchronized
+ * @brief Represents a namespace being synchronized from the indexer
  */
-class NsSyncState
+class SyncedNamespace
 {
 private:
     std::string m_originSpace;     ///< Origin space in the indexer
@@ -92,8 +130,8 @@ private:
     static constexpr std::string_view JPATH_NAMESPACE_ID = "/namespace_id";         ///< JSON path for namespace ID
 
 public:
-    NsSyncState() = delete;
-    explicit NsSyncState(std::string_view originSpace)
+    SyncedNamespace() = delete;
+    explicit SyncedNamespace(std::string_view originSpace)
         : m_originSpace(originSpace)
         , m_lastPolicyHash()
         , m_routeName(generateRouteName(originSpace))
@@ -101,7 +139,7 @@ public:
     {
     }
 
-    NsSyncState(std::string_view originSpace, std::string_view lastPolicyHash, cm::store::NamespaceId nsId)
+    SyncedNamespace(std::string_view originSpace, std::string_view lastPolicyHash, cm::store::NamespaceId nsId)
         : m_originSpace(originSpace)
         , m_lastPolicyHash(lastPolicyHash)
         , m_routeName(generateRouteName(originSpace))
@@ -120,9 +158,9 @@ public:
     void setNamespaceId(const cm::store::NamespaceId& nsId) { m_nsId = nsId; }
 
     /**
-     * @brief Serialize the NsSyncState to a JSON object
+     * @brief Serialize the SyncedNamespace to a JSON object
      *
-     * @return json::Json JSON representation of the NsSyncState
+     * @return json::Json JSON representation of the SyncedNamespace
      */
     json::Json toJson() const
     {
@@ -134,13 +172,13 @@ public:
     }
 
     /**
-     * @brief Deserialize a NsSyncState from a JSON object
+     * @brief Deserialize a SyncedNamespace from a JSON object
      *
      * @param j JSON object to deserialize
-     * @return NsSyncState Deserialized NsSyncState
+     * @return SyncedNamespace Deserialized SyncedNamespace
      * @throw std::runtime_error if required fields are missing or invalid
      */
-    static NsSyncState fromJson(const json::Json& j)
+    static SyncedNamespace fromJson(const json::Json& j)
     {
         auto optOrigin = j.getString(JPATH_ORIGIN);
         if (!optOrigin.has_value() || optOrigin->empty())
@@ -199,26 +237,10 @@ bool CMSync::existSpaceInRemote(std::string_view space)
 {
     auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
-    for (std::size_t attempt = 1; attempt <= m_attemps; ++attempt)
-    {
-        try
-        {
-            return indexerPtr->existsPolicy(space);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("[CMSync::existSpaceInRemote] Attempt {}/{}: Failed to check existence of space '{}': {}",
-                        attempt,
-                        m_attemps,
-                        space,
-                        e.what());
-            if (attempt < m_attemps)
-                std::this_thread::sleep_for(std::chrono::seconds(m_waitSeconds));
-            else
-                throw;
-        }
-    }
-    throw std::runtime_error("Unreachable code in CMSync::existSpaceInRemote");
+    return executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
+                            fmt::format("existSpaceInRemote('{}')", space),
+                            m_attemps,
+                            m_waitSeconds);
 }
 
 void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
@@ -227,30 +249,11 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
     auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrudService");
 
-    // Download de policy from wazuh-indexer
-    auto policyResource = [this, &indexerPtr, &originSpace]()
-    {
-        for (std::size_t attempt = 1; attempt <= m_attemps; ++attempt)
-        {
-            try
-            {
-                return indexerPtr->getPolicy(originSpace);
-            }
-            catch (const std::exception& e)
-            {
-                LOG_WARNING("[CMSync::downloadNamespace] Attempt {}/{}: Failed to get policy for space '{}': {}",
-                            attempt,
-                            m_attemps,
-                            originSpace,
-                            e.what());
-                if (attempt < m_attemps)
-                    std::this_thread::sleep_for(std::chrono::seconds(m_waitSeconds));
-                else
-                    throw;
-            }
-        }
-        throw std::runtime_error("Unreachable code in CMSync::downloadNamespace");
-    }();
+    // Download policy from wazuh-indexer
+    auto policyResource = executeWithRetry([&indexerPtr, originSpace]() { return indexerPtr->getPolicy(originSpace); },
+                                           fmt::format("downloadNamespace('{}')", originSpace),
+                                           m_attemps,
+                                           m_waitSeconds);
 
     // Create destNamespace
     try
@@ -283,27 +286,10 @@ std::string CMSync::getPolicyHashFromRemote(std::string_view space)
 {
     auto indexerPtr = lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
-    for (std::size_t attempt = 1; attempt <= m_attemps; ++attempt)
-    {
-        try
-        {
-            return indexerPtr->getPolicyHash(space);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING_L("CMSync::getPolicyHashFromRemote",
-                          "Attempt {}/{}: Failed to get policy hash for space '{}': {}",
-                          attempt,
-                          m_attemps,
-                          space,
-                          e.what());
-            if (attempt < m_attemps)
-                std::this_thread::sleep_for(std::chrono::seconds(m_waitSeconds));
-            else
-                throw;
-        }
-    }
-    throw std::runtime_error("Unreachable code in CMSync::getPolicyHashFromRemote");
+    return executeWithRetry([&indexerPtr, space]() { return indexerPtr->getPolicyHash(space); },
+                            fmt::format("getPolicyHashFromRemote('{}')", space),
+                            m_attemps,
+                            m_waitSeconds);
 }
 
 cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
@@ -344,10 +330,10 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING(
-                "[CMSync::buildNamespace] Failed to rollback temporary namespace '{}' after asset addition failure: {}",
-                newNs.toStr(),
-                ex.what());
+            LOG_WARNING("[CMSync::downloadAndEnrichNamespace] Failed to rollback temporary namespace '{}' after asset "
+                        "addition failure: {}",
+                        newNs.toStr(),
+                        ex.what());
         }
         throw std::runtime_error(
             fmt::format("Failed to add extra assets to namespace '{}': {}", newNs.toStr(), e.what()));
@@ -356,7 +342,7 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
     return newNs;
 }
 
-void CMSync::syncNamespaceInRoute(const NsSyncState& nsState, const cm::store::NamespaceId& newNamespaceId)
+void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId)
 {
     auto routerPtr = lockWeakPtr(m_router, "RouterAPI");
 
@@ -366,7 +352,7 @@ void CMSync::syncNamespaceInRoute(const NsSyncState& nsState, const cm::store::N
         if (auto err = routerPtr->hotSwapNamespace(nsState.getRouteName(), newNamespaceId); base::isError(err))
         {
             throw std::runtime_error(
-                fmt::format("[CMSync::syncNamespaceInRoute] Failed to hot-swap namespace in route '{}': {}",
+                fmt::format("Failed to hot-swap namespace in route '{}': {}",
                             nsState.getRouteName(),
                             err->message));
         }
@@ -409,9 +395,9 @@ void CMSync::addSpaceToSync(std::string_view space)
     std::unique_lock lock(m_mutex);
 
     // Check if the space is already in the sync list
-    for (const auto& nsState : m_namespacesState)
+    for (const auto& syncedNs : m_namespacesState)
     {
-        if (nsState.getOriginSpace() == space)
+        if (syncedNs.getOriginSpace() == space)
         {
             throw std::runtime_error(fmt::format("Space '{}' is already in the sync list", space));
         }
@@ -433,7 +419,7 @@ void CMSync::removeSpaceFromSync(std::string_view space)
 
     auto it = std::remove_if(m_namespacesState.begin(),
                              m_namespacesState.end(),
-                             [space](const NsSyncState& nsState) { return nsState.getOriginSpace() == space; });
+                             [space](const SyncedNamespace& syncedNs) { return syncedNs.getOriginSpace() == space; });
     if (it == m_namespacesState.end())
     {
         throw std::runtime_error(fmt::format("Space '{}' is not in the sync list", space));
@@ -467,9 +453,9 @@ void CMSync::loadStateFromStore()
     }
 
     m_namespacesState.clear();
-    for (const auto& jNsState : *optArrayConf)
+    for (const auto& jSyncedNs : *optArrayConf)
     {
-        m_namespacesState.push_back(NsSyncState::fromJson(jNsState));
+        m_namespacesState.emplace_back(SyncedNamespace::fromJson(jSyncedNs));
     }
 }
 
@@ -480,9 +466,9 @@ void CMSync::dumpStateToStore()
 
     json::Json j {};
     j.setArray();
-    for (const auto& nsState : m_namespacesState)
+    for (const auto& syncedNs : m_namespacesState)
     {
-        j.appendJson(nsState.toJson());
+        j.appendJson(syncedNs.toJson());
     }
 
     if (auto optErr = storePtr->upsertInternalDoc(STORE_NAME_CMSYNC, j); base::isError(optErr))
@@ -574,18 +560,20 @@ void CMSync::synchronize()
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[CM::Sync] Failed to synchronize namespace for space '{}': {}", nsState.getOriginSpace(), e.what());
+            LOG_WARNING(
+                "[CM::Sync] Failed to synchronize namespace for space '{}': {}", nsState.getOriginSpace(), e.what());
         }
     }
 
     // Dump the updated state to the store
-    try {
+    try
+    {
         dumpStateToStore();
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         LOG_WARNING("[CM::Sync] Failed to dump sync state to store after synchronization: {}", e.what());
     }
-    
 
     LOG_INFO("[CM::Sync] Finished synchronization of spaces");
 }

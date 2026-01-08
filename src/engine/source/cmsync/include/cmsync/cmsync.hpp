@@ -15,8 +15,8 @@
 namespace cm::sync
 {
 
-// Forward declarations for config sync
-class NsSyncState;
+// Forward declarations, state of synchronized namespace
+class SyncedNamespace;
 
 class CMSync : public ICMSync
 {
@@ -30,8 +30,8 @@ private:
     std::size_t m_attemps;     ///< Number of attempts to connect or retry operations before failing
     std::size_t m_waitSeconds; ///< Seconds to wait between attempts
 
-    mutable std::shared_mutex m_mutex;          ///< Mutex to protect access to m_namespacesState and sync operations
-    std::vector<NsSyncState> m_namespacesState; ///< State of the namespaces being synchronized
+    mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_namespacesState and sync operations
+    std::vector<SyncedNamespace> m_namespacesState; ///< State of the namespaces being synchronized
 
     /**
      * @brief Check if a space exists in the wazuh-indexer
@@ -90,7 +90,7 @@ private:
      * @param newNamespaceId The new namespace ID to be used in the router
      * @throws std::runtime_error if the operation fails
      */
-    void syncNamespaceInRoute(const NsSyncState& nsState, const cm::store::NamespaceId& newNamespaceId);
+    void syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId);
 
     void addSpaceToSync(std::string_view space);      ///< Add a space to the sync list
     void removeSpaceFromSync(std::string_view space); ///< Remove a space from the sync
