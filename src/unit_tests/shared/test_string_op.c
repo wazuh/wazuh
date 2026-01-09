@@ -15,8 +15,8 @@
 
 #include "../headers/shared.h"
 
-#define OS_TRIMCRLF_ARRAY_SIZE 8
-#define OS_TRIMCRLF_MAX_STR_SIZE 11
+#define OS_TRIMCRLF_ARRAY_SIZE 11
+#define OS_TRIMCRLF_MAX_STR_SIZE 8
 
 char * w_tolower_str(const char *string);
 
@@ -1128,7 +1128,7 @@ void test_os_trimcrlf(void **state) {
         "TEST\n\n",
         "TEST\r\r"
     };
-    
+
     char result_value_array[OS_TRIMCRLF_ARRAY_SIZE][OS_TRIMCRLF_MAX_STR_SIZE] = {
         "",
         "TEST",
@@ -1276,7 +1276,7 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_equal_dest_ok),
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
-        cmocka_unit_test(test_print_hex_string_null_dst_err),        
+        cmocka_unit_test(test_print_hex_string_null_dst_err),
         // Test os_trimcrlf
         cmocka_unit_test(test_os_trimcrlf),
         cmocka_unit_test(test_os_trimcrlf_NULL)
