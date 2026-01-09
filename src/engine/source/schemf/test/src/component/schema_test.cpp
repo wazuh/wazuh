@@ -272,7 +272,7 @@ TEST(SchemaTest, ArrayItem_StringTypes)
 
 TEST(SchemaTest, ArrayItem_ObjectTypes)
 {
-    std::vector<Type> objectTypes = {Type::OBJECT, Type::NESTED, Type::FLAT_OBJECT};
+    std::vector<Type> objectTypes = {Type::OBJECT, Type::NESTED, Type::FLAT_OBJECT, Type::GEO_POINT};
 
     for (auto type : objectTypes)
     {
@@ -282,15 +282,6 @@ TEST(SchemaTest, ArrayItem_ObjectTypes)
         ASSERT_EQ(schema.getJsonType("obj.0"), json::Json::Type::Object);
         ASSERT_EQ(schema.getType("obj.0"), type);
     }
-}
-
-TEST(SchemaTest, ArrayItem_GeoPoint)
-{
-    Schema schema;
-    schema.addField("location", {Type::GEO_POINT});
-    ASSERT_TRUE(schema.hasField("location.0"));
-    ASSERT_EQ(schema.getJsonType("location.0"), json::Json::Type::Array);
-    ASSERT_EQ(schema.getType("location.0"), Type::GEO_POINT);
 }
 
 TEST(SchemaTest, ArrayItem_Boolean)

@@ -623,8 +623,7 @@ TEST_F(LogparIncompatibleTypeTest, IncompatibleTypesMapToErrorType)
         schemf::Type::FLOAT_RANGE,
         schemf::Type::DOUBLE_RANGE,
         schemf::Type::DATE_RANGE,
-        schemf::Type::IP_RANGE,
-        schemf::Type::FLATTENED};
+        schemf::Type::IP_RANGE};
 
     for (auto incompatibleType : incompatibleTypes)
     {

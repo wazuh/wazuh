@@ -39,7 +39,8 @@ enum class HLPParserType
     KV,
     UNSIGNED_LONG,
     INTEGER,
-    SHORT
+    SHORT,
+    HALF_FLOAT
 };
 
 auto parserGetter(HLPParserType parserType)
@@ -71,6 +72,7 @@ auto parserGetter(HLPParserType parserType)
         case HLPParserType::UNSIGNED_LONG: return hlp::parsers::getUnsignedLongParser;
         case HLPParserType::INTEGER: return hlp::parsers::getIntegerParser;
         case HLPParserType::SHORT: return hlp::parsers::getShortParser;
+        case HLPParserType::HALF_FLOAT: return hlp::parsers::getHalfFloatParser;
         default: throw std::logic_error("Invalid HLP parser type");
     }
 }
@@ -355,6 +357,14 @@ TransformOp shortParseBuilder(const Reference& targetField,
                               const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::SHORT));
+}
+
+// +parse_half_float/[$ref|value]
+TransformOp halfFloatParseBuilder(const Reference& targetField,
+                                  const std::vector<OpArg>& opArgs,
+                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::HALF_FLOAT));
 }
 
 } // namespace builder::builders::optransform

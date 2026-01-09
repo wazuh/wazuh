@@ -33,7 +33,6 @@ enum class Type
     OBJECT,
     NESTED,
     FLAT_OBJECT,
-    FLATTENED,
     GEO_POINT,
     UNSIGNED_LONG,
     COMPLETION,
@@ -230,7 +229,7 @@ inline constexpr auto typeToJType(Type type)
         case Type::OBJECT: return json::Json::Type::Object;
         case Type::NESTED: return json::Json::Type::Object;
         case Type::FLAT_OBJECT: return json::Json::Type::Object;
-        case Type::GEO_POINT: return json::Json::Type::Array;
+        case Type::GEO_POINT: return json::Json::Type::Object;
         case Type::COMPLETION: return json::Json::Type::String;
         case Type::SEARCH_AS_YOU_TYPE: return json::Json::Type::String;
         case Type::TOKEN_COUNT: return json::Json::Type::Number;

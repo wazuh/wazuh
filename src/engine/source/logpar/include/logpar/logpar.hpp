@@ -36,6 +36,7 @@ enum class ParserType
     P_BYTE,
     P_DOUBLE,
     P_FLOAT,
+    P_HALF_FLOAT,
     P_INTEGER,
     P_LONG,
     P_SCALED_FLOAT,
@@ -74,6 +75,7 @@ constexpr auto parserTypeToStr(ParserType type)
         case ParserType::P_FILE: return "file";
         case ParserType::P_FLOAT: return "float";
         case ParserType::P_FQDN: return "fqdn";
+        case ParserType::P_HALF_FLOAT: return "half_float";
         case ParserType::P_IGNORE: return "ignore";
         case ParserType::P_IP: return "ip";
         case ParserType::P_JSON: return "json";
@@ -101,6 +103,8 @@ constexpr auto strToParserType(std::string_view str)
         return ParserType::P_DOUBLE;
     if (str == parserTypeToStr(ParserType::P_FLOAT))
         return ParserType::P_FLOAT;
+    if (str == parserTypeToStr(ParserType::P_HALF_FLOAT))
+        return ParserType::P_HALF_FLOAT;
     if (str == parserTypeToStr(ParserType::P_SCALED_FLOAT))
         return ParserType::P_SCALED_FLOAT;
     if (str == parserTypeToStr(ParserType::P_BYTE))

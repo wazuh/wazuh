@@ -456,6 +456,114 @@ Output after parse
   "output_field": 0.01
 }
 ```
+
+## Half Float parser
+
+The `half_float` parser handles strings that represent half precision floating-point values, interpreting them without applying the
+scaling factor during the initial parsing phase. This approach allows for high-precision data capture while deferring
+scaling to later stages of data processing
+
+### Behavior
+
+- Accepts both integers and decimals, with or without a negative sign.
+- Efficiently processes numbers expressed in scientific notation (e.g., 2.5E3).
+- Does not require a specific end token.
+
+### Signature
+
+```yaml
+<field/half_float>
+```
+
+### Examples
+
+**Parser configuration**
+
+For the following examples, the parser configuration is as follows:
+```yaml
+parse|input_field:
+  - <output_field/half_float>
+```
+
+**Example 1**
+
+Event input
+```json
+{
+  "input_field": "123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123",
+  "output_field": 123.0
+}
+```
+
+**Example 2**
+
+Event input
+```json
+{
+  "input_field": "-123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "-123",
+  "output_field": -123.0
+}
+```
+
+**Example 3**
+
+Event input
+```json
+{
+  "input_field": "2.5E3"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "2.5E3",
+  "output_field": 2500.0
+}
+```
+
+**Example 4**
+
+Event input
+```json
+{
+  "input_field": "Not a number"
+}
+```
+
+Failed parsing, the input is not a valid scaled float.
+
+**Example 5**
+
+Event input
+```json
+{
+  "input_field": "1.0E-2"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "1.0E-2",
+  "output_field": 0.01
+}
+```
+
 ## Byte parser
 
 The `byte` parser interprets strings as 8-bit signed integers, handling values from -128 to 127. This parser is crucial

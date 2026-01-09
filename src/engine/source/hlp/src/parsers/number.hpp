@@ -16,6 +16,16 @@
 
 namespace utils
 {
+
+struct HalfFloat
+{
+    float value;
+
+    // IEEE 754 half-precision limits
+    static constexpr float HALF_FLOAT_MAX = 65504.0f;
+    static constexpr float HALF_FLOAT_MIN = -65504.0f;
+};
+
 void setNumber(std::string_view targetField, json::Json& doc, int8_t val);
 void setNumber(std::string_view targetField, json::Json& doc, int64_t val);
 void setNumber(std::string_view targetField, json::Json& doc, float_t val);
@@ -23,6 +33,7 @@ void setNumber(std::string_view targetField, json::Json& doc, double_t val);
 void setNumber(std::string_view targetField, json::Json& doc, uint64_t val);
 void setNumber(std::string_view targetField, json::Json& doc, int32_t val);
 void setNumber(std::string_view targetField, json::Json& doc, int16_t val);
+void setNumber(std::string_view targetField, json::Json& doc, HalfFloat val);
 std::from_chars_result from_chars(const char* first, const char* last, int8_t& val);
 std::from_chars_result from_chars(const char* first, const char* last, int64_t& val);
 std::from_chars_result from_chars(const char* first, const char* last, float& val);
@@ -30,6 +41,7 @@ std::from_chars_result from_chars(const char* first, const char* last, double& v
 std::from_chars_result from_chars(const char* first, const char* last, uint64_t& val);
 std::from_chars_result from_chars(const char* first, const char* last, int32_t& val);
 std::from_chars_result from_chars(const char* first, const char* last, int16_t& val);
+std::from_chars_result from_chars(const char* first, const char* last, HalfFloat& val);
 } // namespace utils
 
 namespace

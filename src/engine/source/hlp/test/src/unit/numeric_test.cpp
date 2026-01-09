@@ -875,3 +875,306 @@ INSTANTIATE_TEST_SUITE_P(
                5,
                getShortParser,
                {NAME, TARGET, {}, {}})));
+
+INSTANTIATE_TEST_SUITE_P(HalfFloatBuild,
+                         HlpBuildTest,
+                         ::testing::Values(BuildT(SUCCESS, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+                                           BuildT(FAILURE, getHalfFloatParser, {NAME, TARGET, {}, {"unexpected"}})));
+
+INSTANTIATE_TEST_SUITE_P(
+    HalfFloatParse,
+    HlpParseTest,
+    ::testing::Values(
+        ParseT(SUCCESS,
+               "42",
+               j(fmt::format(R"({{"{}": 42}})", TARGET.substr(1))),
+               2,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-42",
+               j(fmt::format(R"({{"{}": -42}})", TARGET.substr(1))),
+               3,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "3.14",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(3.14f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               4,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-3.14",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(-3.14f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "0",
+               j(fmt::format(R"({{"{}": 0}})", TARGET.substr(1))),
+               1,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "0.0",
+               j(fmt::format(R"({{"{}": 0}})", TARGET.substr(1))),
+               3,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-0.0",
+               j(fmt::format(R"({{"{}": -0}})", TARGET.substr(1))),
+               4,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "65504",
+               j(fmt::format(R"({{"{}": 65504}})", TARGET.substr(1))),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-65504",
+               j(fmt::format(R"({{"{}": -65504}})", TARGET.substr(1))),
+               6,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "65503.9",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(65503.9f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               7,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-65503.9",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(-65503.9f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               8,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "65505", {}, 5, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "-65505", {}, 6, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "100000", {}, 6, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "-100000", {}, 7, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "1000000", {}, 7, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "1.5e3",
+               j(fmt::format(R"({{"{}": 1500}})", TARGET.substr(1))),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-1.5e3",
+               j(fmt::format(R"({{"{}": -1500}})", TARGET.substr(1))),
+               6,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "1.5e-4",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(1.5e-4f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               6,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "6.5e4",
+               j(fmt::format(R"({{"{}": 65000}})", TARGET.substr(1))),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "6.5E4",
+               j(fmt::format(R"({{"{}": 65000}})", TARGET.substr(1))),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "1e2",
+               j(fmt::format(R"({{"{}": 100}})", TARGET.substr(1))),
+               3,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "1e+2",
+               j(fmt::format(R"({{"{}": 100}})", TARGET.substr(1))),
+               4,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "1e-2",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(0.01f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               4,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "1e6", {}, 3, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "-1e6", {}, 4, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "1e10", {}, 4, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "6.6e4", {}, 5, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "0.001",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(0.001f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "0.0001",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(0.0001f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               6,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "0.00001",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(0.00001f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               7,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-0.001",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(-0.001f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               6,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "1000",
+               j(fmt::format(R"({{"{}": 1000}})", TARGET.substr(1))),
+               4,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "10000",
+               j(fmt::format(R"({{"{}": 10000}})", TARGET.substr(1))),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "32767",
+               j(fmt::format(R"({{"{}": 32767}})", TARGET.substr(1))),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-32768",
+               j(fmt::format(R"({{"{}": -32768}})", TARGET.substr(1))),
+               6,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "42.5    ",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(42.5f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               4,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-42.5    ",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(-42.5f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "42.5#####",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(42.5f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               4,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "123.456abc",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(123.456f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               7,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "00042.5",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(42.5f, json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               7,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "65504.0",
+               j(fmt::format(R"({{"{}": 65504}})", TARGET.substr(1))),
+               7,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "65500",
+               j(fmt::format(R"({{"{}": 65500}})", TARGET.substr(1))),
+               5,
+               getHalfFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "65504.1", {}, 7, getHalfFloatParser, {NAME, TARGET, {}, {}}),
+        ParseT(FAILURE, "-65504.1", {}, 8, getHalfFloatParser, {NAME, TARGET, {}, {}})));
+
+
+

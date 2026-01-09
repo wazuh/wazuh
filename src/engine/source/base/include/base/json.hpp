@@ -328,15 +328,6 @@ public:
     std::optional<int64_t> getInt64(std::string_view path = "") const;
 
     /**
-     * @brief Get the Int16 object field.
-     *
-     * @param basePointerPath The base pointer path to set.
-     * @return std::optional<int16_t>
-     * @throws std::runtime_error If any pointer path is invalid.
-     */
-    std::optional<int16_t> getInt16(std::string_view path = "") const;
-
-    /**
      * @brief Get the Uint64 object field.
      *
      * @param basePointerPath The base pointer path to set.
