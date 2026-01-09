@@ -1119,13 +1119,13 @@ void test_os_strcnt(void **state) {
 
     // Matrix of combinations covering all cases
     const char *haystacks[] = {
-        "hello world",  
-        "hello",        
-        "",             
-        "a",            
-        "aaaaaa",       
-        "abc",          
-        "test\nstring"  
+        "hello world",
+        "hello",
+        "",
+        "a",
+        "aaaaaa",
+        "abc",
+        "test\nstring"
     };
 
     const char needles[] = { 'l', 'o', 'z', 'a', ' ', '\n' };
