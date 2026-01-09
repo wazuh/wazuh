@@ -17692,6 +17692,7 @@ paths:
       tags:
         - Syscollector
       summary: "Get agent users"
+      description: "Return the agent's users info"
       operationId: api.controllers.syscollector_controller.get_user_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -17774,6 +17775,7 @@ paths:
       tags:
         - Syscollector
       summary: "Get agent groups"
+      description: "Return the agent's users groups info"
       operationId: api.controllers.syscollector_controller.get_group_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -17837,6 +17839,7 @@ paths:
       tags:
         - Syscollector
       summary: "Get agent browser extensions"
+      description: "Return the agent's browser extensions info"
       operationId: api.controllers.syscollector_controller.get_browser_extensions_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -17915,6 +17918,7 @@ paths:
       tags:
         - Syscollector
       summary: "Get agent services"
+      description: "Return the agent's services info"
       operationId: api.controllers.syscollector_controller.get_services_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
