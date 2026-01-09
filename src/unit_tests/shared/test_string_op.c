@@ -1112,6 +1112,44 @@ void test_os_substr_success(void **state) {
     }
 }
 
+// Tests os_strcnt
+
+void test_os_strcnt(void **state) {
+    (void)state;
+
+    // NULL parameter handling
+    assert_int_equal(os_strcnt(NULL, 'a'), 0);
+
+    // Matrix of combinations covering all cases
+    const char *haystacks[] = {
+        "hello world",
+        "hello",
+        "",
+        "a",
+        "aaaaaa",
+        "abc",
+        "test\nstring"
+    };
+
+    const char needles[] = { 'l', 'o', 'z', 'a', ' ', '\n' };
+
+    const size_t expected[][6] = {
+        // haystacks[i] × needles[j]: 'l', 'o', 'z', 'a', ' ', '\n'
+        { 3, 2, 0, 0, 1, 0 }, // "hello world"
+        { 2, 1, 0, 0, 0, 0 }, // "hello"
+        { 0, 0, 0, 0, 0, 0 }, // ""
+        { 0, 0, 0, 1, 0, 0 }, // "a"
+        { 0, 0, 0, 6, 0, 0 }, // "aaaaaa"
+        { 0, 0, 0, 1, 0, 0 }, // "abc"
+        { 0, 0, 0, 0, 0, 1 }, // "test\nstring"
+    };
+
+    for (size_t i = 0; i < sizeof(haystacks)/sizeof(haystacks[0]); ++i) {
+        for (size_t j = 0; j < sizeof(needles)/sizeof(needles[0]); ++j) {
+            assert_int_equal(os_strcnt(haystacks[i], needles[j]), expected[i][j]);
+        }
+    }
+}
 /* os_trimcrlf  */
 
 void test_os_trimcrlf(void **state) {
@@ -1277,6 +1315,8 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
         cmocka_unit_test(test_print_hex_string_null_dst_err),
+        // Tests os_strcnt
+        cmocka_unit_test(test_os_strcnt),
         // Test os_trimcrlf
         cmocka_unit_test(test_os_trimcrlf),
         cmocka_unit_test(test_os_trimcrlf_NULL)
