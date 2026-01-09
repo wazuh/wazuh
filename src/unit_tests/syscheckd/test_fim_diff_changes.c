@@ -1539,6 +1539,76 @@ void test_fim_registry_value_diff_generate_diff_str(void **state) {
 
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
 }
+
+void test_fim_registry_value_diff_utf16_REG_SZ(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char value_data_utf16[] = "v\0a\0l\0u\0e\0\0\0";
+    const char *expected_canonical = "v"; // It is expected to stop at the first null byte.
+    DWORD data_type = REG_EXPAND_SZ;
+    registry_t *configuration = &syscheck.registry[0];
+
+    expect_mkdir_ex("queue/diff/tmp", 0);
+    FILE *fp = (FILE *)1234;
+    expect_wfopen("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, "w", fp);
+    expect_fprintf(fp, expected_canonical, 0);
+    expect_fclose(fp, 0);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, COMPRESS_FOLDER_REG, 0);
+
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", "queue/diff/tmp/tmp-entry", fp);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, "queue/diff/tmp/tmp-entry.gz", 0);
+
+    expect_mkdir_ex(COMPRESS_FOLDER_REG, 0);
+
+    expect_save_compress_file("queue/diff/tmp/tmp-entry.gz", "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", 0);
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data_utf16, data_type, configuration);
+
+    assert_string_equal(diff_str, "Unable to calculate diff due to no previous data stored for this registry value.");
+    free(diff_str);
+}
+
+void test_fim_registry_value_diff_utf16_REG_MULTI_SZ(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char value_data_utf16_multi[] = "o\0n\0e\0\0\0t\0w\0o\0\0\0\0\0";
+
+    // It is expected to stop at the first double null byte for REG_MULTI_SZ registries.
+    const char *expected_canonical = "o\n" "n\n" "e\n"; 
+    DWORD data_type = REG_MULTI_SZ;
+    registry_t *configuration = &syscheck.registry[0];
+
+    expect_mkdir_ex("queue/diff/tmp", 0);
+    FILE *fp2 = (FILE *)1234;
+    expect_wfopen("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, "w", fp2);
+    expect_fprintf(fp2, "o\n", 0);
+    expect_fprintf(fp2, "n\n", 0);
+    expect_fprintf(fp2, "e\n", 0);
+    expect_fclose(fp2, 0);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, COMPRESS_FOLDER_REG, 0);
+
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", "queue/diff/tmp/tmp-entry", fp2);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, "queue/diff/tmp/tmp-entry.gz", 0);
+
+    expect_mkdir_ex(COMPRESS_FOLDER_REG, 0);
+
+    expect_save_compress_file("queue/diff/tmp/tmp-entry.gz", "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", 0);
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data_utf16_multi, data_type, configuration);
+
+    assert_string_equal(diff_str, "Unable to calculate diff due to no previous data stored for this registry value.");
+    free(diff_str);
+}
 #endif
 
 void test_fim_file_diff_wrong_initialize(void **state) {
@@ -2135,6 +2205,8 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_value_diff_nodiff),
         cmocka_unit_test_setup_teardown(test_fim_registry_value_diff_generate_fail, setup_full_diff_functionality, teardown_full_diff_functionality),
         cmocka_unit_test_setup_teardown(test_fim_registry_value_diff_generate_diff_str, setup_full_diff_functionality, teardown_full_diff_functionality),
+        cmocka_unit_test(test_fim_registry_value_diff_utf16_REG_SZ),
+        cmocka_unit_test(test_fim_registry_value_diff_utf16_REG_MULTI_SZ),
 #endif
 
         // fim_file_diff

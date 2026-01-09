@@ -15,6 +15,9 @@
 
 #include "../headers/shared.h"
 
+#define OS_TRIMCRLF_ARRAY_SIZE 11
+#define OS_TRIMCRLF_MAX_STR_SIZE 8
+
 char * w_tolower_str(const char *string);
 
 /* setup/teardown */
@@ -1147,6 +1150,49 @@ void test_os_strcnt(void **state) {
         }
     }
 }
+/* os_trimcrlf  */
+
+void test_os_trimcrlf(void **state) {
+    char initial_value_array[OS_TRIMCRLF_ARRAY_SIZE][OS_TRIMCRLF_MAX_STR_SIZE] = {
+        "",
+        "TEST",
+        "\n",
+        "\r",
+        "TEST\n",
+        "TEST\r",
+        "TEST\n\r",
+        "TE\nST",
+        "TE\rST",
+        "TEST\n\n",
+        "TEST\r\r"
+    };
+
+    char result_value_array[OS_TRIMCRLF_ARRAY_SIZE][OS_TRIMCRLF_MAX_STR_SIZE] = {
+        "",
+        "TEST",
+        "",
+        "",
+        "TEST",
+        "TEST",
+        "TEST",
+        "TE\nST",
+        "TE\rST",
+        "TEST",
+        "TEST"
+    };
+
+    for (int idx = 0; idx < OS_TRIMCRLF_ARRAY_SIZE; ++idx) {
+        os_trimcrlf(initial_value_array[idx]);
+        assert_string_equal(initial_value_array[idx], result_value_array[idx]);
+    }
+
+}
+
+void test_os_trimcrlf_NULL(void **state) {
+    char *str = NULL;
+    os_trimcrlf(str);
+    assert_null(str);
+}
 
 /* Tests */
 
@@ -1271,6 +1317,9 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_null_dst_err),
         // Tests os_strcnt
         cmocka_unit_test(test_os_strcnt),
+        // Test os_trimcrlf
+        cmocka_unit_test(test_os_trimcrlf),
+        cmocka_unit_test(test_os_trimcrlf_NULL)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

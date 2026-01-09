@@ -9,6 +9,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -576,10 +577,10 @@ static void test_fim_registry_calculate_hashes_CHECK_MD5SUM(void **state) {
     syscheck.registry = one_entry_config;
     registry_t *configuration = &syscheck.registry[0];
     configuration->opts = CHECK_MD5SUM;
-    BYTE *data_buffer = (unsigned char *)"value_data";
+    WCHAR data_buffer[] = L"value_data";
     entry->registry_entry.value->type = REG_EXPAND_SZ;
 
-    fim_registry_calculate_hashes(entry, configuration, data_buffer);
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)data_buffer);
 
     assert_string_equal(entry->registry_entry.value->hash_md5, "51718cc02664f7b131b76f8b53918927");
     assert_string_equal(entry->registry_entry.value->hash_sha1, "");
@@ -593,11 +594,10 @@ static void test_fim_registry_calculate_hashes_CHECK_SHA1SUM(void **state) {
     syscheck.registry = one_entry_config;
     registry_t *configuration = &syscheck.registry[0];
     configuration->opts = CHECK_SHA1SUM;
-    BYTE *data_buffer = (unsigned char *)"value_data\0";
+    WCHAR data_buffer[] = L"value_data\0\0";
     entry->registry_entry.value->type = REG_MULTI_SZ;
 
-    fim_registry_calculate_hashes(entry, configuration, data_buffer);
-
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)data_buffer);
 
     assert_string_equal(entry->registry_entry.value->hash_md5, "");
     assert_string_equal(entry->registry_entry.value->hash_sha1, "ee6cf811813827f6e18d07f0fb7e22a43337d63c");
@@ -656,6 +656,190 @@ static void test_fim_registry_calculate_hashes_no_config(void **state) {
     assert_string_equal(entry->registry_entry.value->hash_sha1, "");
     assert_string_equal(entry->registry_entry.value->hash_sha256, "");
     assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_conversion(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_MD5SUM;
+
+    WCHAR utf16_data[] = L"cmd";
+    entry->registry_entry.value->type = REG_SZ;
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_data);
+
+    // Using MD5 hash of "cmd" (without null character)
+    assert_string_equal(entry->registry_entry.value->hash_md5, "dfff0a7fa1a55c8c1a4966c19f6da452");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+    assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_multi_sz(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_MD5SUM;
+
+    // REG_MULTI_SZ is expected to have double null termination:
+    // https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
+    WCHAR utf16_multi_data[] = L"A\0B\0\0";
+    entry->registry_entry.value->type = REG_MULTI_SZ;
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_multi_data);
+
+    // Using MD5 hash of "AB" (without null characters)
+    assert_string_equal(entry->registry_entry.value->hash_md5, "b86fc6b051f63d73de262d4c34e3a0a9");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+    assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_conversion_fail_reg_sz(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_MD5SUM;
+
+    WCHAR utf16_data[] = L"test";
+    entry->registry_entry.value->type = REG_SZ;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error converting registry value data to UTF-8.");
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_data);
+
+    assert_string_equal(entry->registry_entry.value->hash_md5, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_conversion_fail_reg_expand_sz(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_SHA1SUM;
+
+    WCHAR utf16_data[] = L"%USERPROFILE%\\test";
+    entry->registry_entry.value->type = REG_EXPAND_SZ;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error converting registry value data to UTF-8.");
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_data);
+
+    assert_string_equal(entry->registry_entry.value->hash_md5, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_multi_sz_conversion_fail_first(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_SHA256SUM;
+
+    WCHAR utf16_multi_data[] = L"A\0B\0\0";
+    entry->registry_entry.value->type = REG_MULTI_SZ;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error converting registry value data to UTF-8.");
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_multi_data);
+
+    assert_string_equal(entry->registry_entry.value->hash_md5, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+}
+
+static void test_fim_registry_calculate_hashes_utf16_multi_sz_conversion_fail_second(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry_t *configuration = &syscheck.registry[0];
+    configuration->opts = CHECK_MD5SUM | CHECK_SHA1SUM;
+
+    WCHAR utf16_multi_data[] = L"A\0B\0\0";
+    entry->registry_entry.value->type = REG_MULTI_SZ;
+    expect_string(__wrap__mdebug1, formatted_msg, "Error converting registry value data to UTF-8.");
+
+    fim_registry_calculate_hashes(entry, configuration, (BYTE *)utf16_multi_data);
+
+    assert_string_equal(entry->registry_entry.value->hash_md5, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_sz_success(void **state) {
+    WCHAR utf16_data[] = L"TestValue";
+    char *expected_result = "TestValue";
+
+    char *result = fim_registry_convert_value_for_diff((BYTE *)utf16_data, REG_SZ);
+
+    assert_non_null(result);
+    assert_string_equal(result, expected_result);
+    free(result);
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_sz_fail(void **state) {
+    WCHAR utf16_data[] = L"TestValue";
+    char *result = fim_registry_convert_value_for_diff((BYTE *)utf16_data, REG_SZ);
+
+    assert_null(result);
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_expand_sz_success(void **state) {
+    WCHAR utf16_data[] = L"%USERPROFILE%\\test";
+    char *expected_result = "%USERPROFILE%\\test";
+    char *result = fim_registry_convert_value_for_diff((BYTE *)utf16_data, REG_EXPAND_SZ);
+
+    assert_non_null(result);
+    assert_string_equal(result, expected_result);
+    free(result);
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_expand_sz_fail(void **state) {
+    WCHAR utf16_data[] = L"%USERPROFILE%\\test";
+    char *result = fim_registry_convert_value_for_diff((BYTE *)utf16_data, REG_EXPAND_SZ);
+
+    assert_null(result);
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_multi_sz_success(void **state) {
+    WCHAR utf16_multi_data[] = L"Value1\0Value2\0Value3\0\0";
+    char *result = fim_registry_convert_value_for_diff((BYTE *)utf16_multi_data, REG_MULTI_SZ);
+
+    assert_non_null(result);
+    assert_string_equal(result, "Value1");
+    assert_string_equal(result + 7, "Value2");
+    assert_string_equal(result + 14, "Value3");
+    free(result);
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_multi_sz_fail_first_loop(void **state) {
+    WCHAR utf16_multi_data[] = L"Value1\0Value2\0\0";
+    char *result = fim_registry_convert_value_for_diff((BYTE *)utf16_multi_data, REG_MULTI_SZ);
+
+    assert_null(result);
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_multi_sz_fail_second_loop(void **state) {
+    WCHAR utf16_multi_data[] = L"Value1\0Value2\0\0";
+    char *result = fim_registry_convert_value_for_diff((BYTE *)utf16_multi_data, REG_MULTI_SZ);
+
+    assert_null(result);
+}
+
+static void test_fim_registry_convert_value_for_diff_reg_dword(void **state) {
+    DWORD dword_value = 12345678;
+    BYTE *data_buffer = (BYTE *)&dword_value;
+
+    char *result = fim_registry_convert_value_for_diff(data_buffer, REG_DWORD);
+
+    assert_ptr_equal(result, (char *)data_buffer);
 }
 
 static void test_fim_registry_scan_base_line_generation(void **state) {
@@ -1110,6 +1294,383 @@ static void test_fim_registry_free_entry(){
     fim_registry_free_entry(entry);
 }
 
+static void test_fim_read_values_single_dword_value(void **state) {
+    HKEY key_handle = (HKEY)123;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM;
+
+    wchar_t *value_name = L"TestValue";
+    DWORD value_data = 12345;
+    DWORD value_type = REG_DWORD;
+    DWORD value_size = sizeof(DWORD);
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_string_equal(txn_ctx.data->path, path);
+    assert_int_equal(txn_ctx.data->arch, arch);
+    assert_int_equal(txn_ctx.data->type, REG_DWORD);
+    assert_int_equal(txn_ctx.data->size, value_size);
+}
+
+static void test_fim_read_values_single_string_value(void **state) {
+    HKEY key_handle = (HKEY)123;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"StringValue";
+    WCHAR value_data[] = L"test_string_data";
+    DWORD value_type = REG_SZ;
+    DWORD value_size = sizeof(value_data);
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)value_data, value_size, ERROR_SUCCESS);
+
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_SZ);
+}
+
+static void test_fim_read_values_multiple_values(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 2;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name1 = L"Value1";
+    DWORD value_data1 = 100;
+    wchar_t *value_name2 = L"Value2";
+    DWORD value_data2 = 200;
+
+    expect_RegEnumValueW_call(value_name1, REG_DWORD, (LPBYTE)&value_data1, sizeof(DWORD), ERROR_SUCCESS);
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    expect_RegEnumValueW_call(value_name2, REG_DWORD, (LPBYTE)&value_data2, sizeof(DWORD), ERROR_SUCCESS);
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+}
+
+static void test_fim_read_values_zero_value_count(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 0;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_null(txn_ctx.data);
+}
+
+static void test_fim_read_values_RegEnumValueW_fail(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+
+    wchar_t *value_name = L"FailedValue";
+    DWORD value_data = 0;
+
+    expect_RegEnumValueW_call(value_name, REG_DWORD, (LPBYTE)&value_data, sizeof(DWORD), ERROR_NO_MORE_ITEMS);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_null(txn_ctx.data);
+}
+
+static void test_fim_read_values_null_configuration(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Unknown\\Path";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_null(txn_ctx.data);
+}
+
+static void test_fim_read_values_arch_32bit(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_32BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = default_config;
+    syscheck.registry[0].arch = ARCH_32BIT;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"TestValue32";
+    DWORD value_data = 32;
+
+    expect_RegEnumValueW_call(value_name, REG_DWORD, (LPBYTE)&value_data, sizeof(DWORD), ERROR_SUCCESS);
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->arch, ARCH_32BIT);
+
+    syscheck.registry[0].arch = ARCH_64BIT;
+}
+
+static void test_fim_read_values_with_seechanges(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM | CHECK_SEECHANGES;
+
+    wchar_t *value_name = L"DiffValue";
+    DWORD value_data = 999;
+    DWORD value_type = REG_DWORD;
+    DWORD value_size = sizeof(DWORD);
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+
+    expect_fim_registry_value_diff(path, "DiffValue", (const char *)&value_data, value_size, value_type, NULL);
+
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+}
+
+static void test_fim_read_values_utf16_full_string_hash(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM;
+
+    wchar_t *value_name = L"StringValue";
+
+    WCHAR value_data[] = L"test";
+    DWORD value_type = REG_SZ;
+    DWORD value_size = sizeof(value_data);
+
+    const char *expected_md5 = "098f6bcd4621d373cade4e832627b4f6";
+    const char *expected_sha1 = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3";
+    const char *expected_sha256 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)value_data, value_size, ERROR_SUCCESS);
+
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_SZ);
+
+    assert_string_equal(txn_ctx.data->hash_md5, expected_md5);
+    assert_string_equal(txn_ctx.data->hash_sha1, expected_sha1);
+    assert_string_equal(txn_ctx.data->hash_sha256, expected_sha256);
+}
+
+static void test_fim_read_values_db_sync_fail(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"SyncFailValue";
+    DWORD value_data = 500;
+
+    expect_RegEnumValueW_call(value_name, REG_DWORD, (LPBYTE)&value_data, sizeof(DWORD), ERROR_SUCCESS);
+
+    will_return(__wrap_fim_db_transaction_sync_row, -1);
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+}
+
+static void test_fim_read_values_ignored_value(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Ignore";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    static registry_ignore value_ignore_config[] = {
+        { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT },
+        { NULL, 0 }
+    };
+    registry_ignore *saved_value_ignore = syscheck.value_ignore;
+    syscheck.value_ignore = value_ignore_config;
+
+    syscheck.registry = default_config;
+    syscheck.registry[2].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"IgnoredValue";
+    DWORD value_data = 123;
+
+    expect_RegEnumValueW_call(value_name, REG_DWORD, (LPBYTE)&value_data, sizeof(DWORD), ERROR_SUCCESS);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_null(txn_ctx.data);
+    syscheck.value_ignore = saved_value_ignore;
+}
+
+static void test_fim_read_values_reg_qword(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM | CHECK_SHA256SUM;
+
+    wchar_t *value_name = L"QwordValue";
+    unsigned long long value_data = 0x123456789ABCDEF0ULL;
+
+    expect_RegEnumValueW_call(value_name, REG_QWORD, (LPBYTE)&value_data, sizeof(unsigned long long), ERROR_SUCCESS);
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_QWORD);
+    assert_int_equal(txn_ctx.data->size, sizeof(unsigned long long));
+}
+
+static void test_fim_read_values_unknown_type(void **state) {
+    HKEY key_handle = (HKEY)123;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"UnknownTypeValue";
+    DWORD value_data = 0;
+    DWORD unknown_type = 100;
+
+    expect_RegEnumValueW_call(value_name, unknown_type, (LPBYTE)&value_data, sizeof(DWORD), ERROR_SUCCESS);
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_UNKNOWN);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_set_root_key test */
@@ -1155,6 +1716,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_default_type, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_no_config, setup_test_hashes, teardown_test_hashes),
 
+        /* UTF-16 to UTF-8 conversion tests for Issue #33371 */
+        cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_utf16_conversion, setup_test_hashes, teardown_test_hashes),
+        cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_utf16_multi_sz, setup_test_hashes, teardown_test_hashes),
+        cmocka_unit_test(test_fim_registry_convert_value_for_diff_reg_sz_success),
+        cmocka_unit_test(test_fim_registry_convert_value_for_diff_reg_expand_sz_success),
+        cmocka_unit_test(test_fim_registry_convert_value_for_diff_reg_multi_sz_success),
+        cmocka_unit_test(test_fim_registry_convert_value_for_diff_reg_dword),
+
         /* fim_registry_scan tests */
         cmocka_unit_test(test_fim_registry_scan_base_line_generation),
         cmocka_unit_test(test_fim_registry_scan_regular_scan),
@@ -1183,7 +1752,22 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_value_transaction_callback_max_rows),
 
         /* fim_registry_free_entry */
-        cmocka_unit_test(test_fim_registry_free_entry)
+        cmocka_unit_test(test_fim_registry_free_entry),
+
+        /* fim_read_values tests */
+        cmocka_unit_test(test_fim_read_values_single_dword_value),
+        cmocka_unit_test(test_fim_read_values_single_string_value),
+        cmocka_unit_test(test_fim_read_values_multiple_values),
+        cmocka_unit_test(test_fim_read_values_zero_value_count),
+        cmocka_unit_test(test_fim_read_values_RegEnumValueW_fail),
+        cmocka_unit_test(test_fim_read_values_null_configuration),
+        cmocka_unit_test(test_fim_read_values_arch_32bit),
+        cmocka_unit_test(test_fim_read_values_with_seechanges),
+        cmocka_unit_test(test_fim_read_values_utf16_full_string_hash),
+        cmocka_unit_test(test_fim_read_values_db_sync_fail),
+        cmocka_unit_test(test_fim_read_values_ignored_value),
+        cmocka_unit_test(test_fim_read_values_reg_qword),
+        cmocka_unit_test(test_fim_read_values_unknown_type)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

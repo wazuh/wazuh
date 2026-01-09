@@ -24,6 +24,9 @@
 #include <string_view>
 #endif
 
+#define ISO8601_LENGTH_WITH_MS 24
+#define ISO8601_LENGTH_NO_MS 20
+
 #ifdef WIN32
 
 static struct tm* gmtime_r(const time_t* timep, struct tm* result)
@@ -45,6 +48,13 @@ namespace Utils
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+    /**
+     * @brief Get a timestamp.
+     *
+     * @param time Time to convert.
+     * @param utc If true, the time will be expressed as a UTC time.
+     * @return std::string Timestamp. Format: "YYYY/MM/DD hh:mm:ss".
+     */
     static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
@@ -76,6 +86,10 @@ namespace Utils
         ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
         return ss.str();
     }
+
+    /**
+     * @brief Get the current timestamp.
+     */
     static std::string getCurrentTimestamp()
     {
         return getTimestamp(std::time(nullptr));
@@ -114,6 +128,9 @@ namespace Utils
         return ss.str();
     }
 
+    /**
+     * @brief Get the current compact timestamp.
+     */
     static std::string getCurrentISO8601()
     {
         // Get local time in UTC
@@ -143,6 +160,12 @@ namespace Utils
         return ss.str();
     }
 
+    /**
+     * @brief Convert a timestamp to ISO8601 format.
+     *
+     * @param timestamp Timestamp to convert. Format: "YYYY/MM/DD hh:mm:ss".
+     * @return std::string ISO8601 timestamp.
+     */
     static std::string timestampToISO8601(const std::string& timestamp)
     {
         std::tm tm {};
@@ -186,7 +209,79 @@ namespace Utils
             .count();
     };
 
+    /**
+     * @brief Check if a timestamp is in ISO8601 format.
+     * @param timestamp Timestamp to check.
+     * @return std::string ISO8601 timestamp or empty string.
+     */
+    static std::string normalizeTimestampISO8601(const std::string& timestamp)
+    {
+        // "2024-11-14T18:32:28Z"
+        // "2025-11-26T12:00:01.000Z"
+        const int size = static_cast<int>(timestamp.size());
+        if (size != ISO8601_LENGTH_WITH_MS && size != ISO8601_LENGTH_NO_MS)
+        {
+            return "";
+        }
+
+        for (int i = 0; i < size; ++i)
+        {
+            // Check - exists on expected positions.
+            if ((i == 4 || i == 7) && timestamp[i] != '-')
+            {
+                return "";
+            }
+            // Check T exists on expected position.
+            else if (i == 10 && timestamp[i] != 'T')
+            {
+                return "";
+            }
+            // Check : exists on expected positions.
+            else if ((i == 13 || i == 16) && timestamp[i] != ':')
+            {
+                return "";
+            }
+            // Check Z exists on expected position if no milliseconds and add default milliseconds.
+            else if (size == ISO8601_LENGTH_NO_MS && i == 19)
+            {
+                if (timestamp[i] != 'Z')
+                {
+                    return "";
+                }
+                // Adds milliseconds to a valid ISO8601 without milliseconds.
+                auto tempTimestamp {timestamp};
+                Utils::replaceFirst(tempTimestamp, "Z", ".000Z");
+                return tempTimestamp;
+            }
+            // Check . exists on expected position if milliseconds.
+            else if (size == ISO8601_LENGTH_WITH_MS && i == 19 && timestamp[i] != '.')
+            {
+                return "";
+            }
+            // Check Z exists on expected position if milliseconds.
+            else if (size == ISO8601_LENGTH_WITH_MS && i == 23 && timestamp[i] != 'Z')
+            {
+                return "";
+            }
+            // Check digits on expected positions.
+            else if (i != 4 && i != 7 && i != 10 && i != 13 && i != 16 && i != 19 && i != 23)
+            {
+                if (!std::isdigit(timestamp[i]))
+                {
+                    return "";
+                }
+            }
+        }
+
+        return timestamp;
+    }
+
 #if __cplusplus >= 201703L
+    /**
+     * @brief Convert a raw timestamp to ISO8601 format.
+     * @param timestamp Timestamp to convert. Can be uint32_t, double, std::string or std::string_view.
+     * @return std::string ISO8601 timestamp or empty string.
+     */
     template<typename T>
     static std::string rawTimestampToISO8601(T timestamp)
     {
@@ -248,7 +343,10 @@ namespace Utils
         {
             if (timestamp.empty() || !Utils::isNumber(timestamp))
             {
-                return "";
+                // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
+                // if not, check if it is already ISO8601.
+                auto ISO8601Timestamp = timestampToISO8601(timestamp);
+                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(timestamp) : std::move(ISO8601Timestamp);
             }
             std::time_t time = std::stoi(timestamp);
             auto itt = std::chrono::system_clock::from_time_t(time);
@@ -273,7 +371,10 @@ namespace Utils
         {
             if (timestamp.empty() || !Utils::isNumber(timestamp))
             {
-                return "";
+                // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
+                // if not, check if it is already ISO8601.
+                auto ISO8601Timestamp = timestampToISO8601(std::string(timestamp));
+                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp)) : std::move(ISO8601Timestamp);
             }
             std::time_t time;
             auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);

@@ -13,6 +13,7 @@
 #include "HTTPRequest.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
+#include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <chrono>
@@ -194,7 +195,19 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append(R"({"index":{"_index":")");
     bulkData.append(index);
     bulkData.append(R"(","_id":")");
-    bulkData.append(id);
+
+    // Escape special characters in ID to prevent JSON parsing errors
+    if (needEscape(id))
+    {
+        std::string escapedId;
+        escapeJSONString(id, escapedId);
+        bulkData.append(escapedId);
+    }
+    else
+    {
+        bulkData.append(id);
+    }
+
     bulkData.append(R"("}})");
     bulkData.append("\n");
     bulkData.append(data);

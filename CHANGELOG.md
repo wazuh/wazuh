@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.14.3]
+
+### Manager
+
+#### Fixed
+
+- Scaped document ID when necessary before sending document to indexer. ([#33464](https://github.com/wazuh/wazuh/pull/33464))
+
+
 ## [v4.14.2]
 
 ### Manager

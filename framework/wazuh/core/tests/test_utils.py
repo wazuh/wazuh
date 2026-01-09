@@ -663,43 +663,71 @@ def test_plain_dict_to_nested_dict():
     assert result == mock_nested_dict
 
 
-@pytest.mark.parametrize('data, allow_config, exceptions, should_raise', [
-    ("<localfile><command>rm -rf /</command></localfile>",
+@pytest.mark.parametrize('new_conf, original_conf, allow_config, should_raise', [
+    # Test case where localfile with command log_format is added (should raise when not allowed)
+    ("<ossec_config><localfile><log_format>command</log_format><command>rm -rf /</command></localfile></ossec_config>",
+     "<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
      {'localfile': {'allow': False, 'exceptions': []},
       'wodle_command': {'allow': True, 'exceptions': []}},
-     [], True),
+     True),
 
-    ("<localfile><command>echo test</command></localfile>",
+    # Test case where same command exists in both (should not raise)
+    ("<ossec_config><localfile><log_format>command</log_format><command>echo test</command></localfile></ossec_config>",
+     "<ossec_config><localfile><log_format>command</log_format><command>echo test</command></localfile></ossec_config>",
      {'localfile': {'allow': False, 'exceptions': ['echo test']},
       'wodle_command': {'allow': True, 'exceptions': []}},
-     [], False),
+     False),
 
-    ('<wodle name="command"><command>ls -la</command></wodle>',
+    # Test case where wodle command is added (should raise when not allowed)
+    ('<ossec_config><wodle name="command"><command>ls -la</command></wodle></ossec_config>',
+     '<ossec_config><wodle name="command"><tag>value</tag></wodle></ossec_config>',
      {'localfile': {'allow': True, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': []}},
-     [], True),
+     True),
 
-    ('<wodle name="command"><command>test</command></wodle>',
+    # Test case where wodle command is in exceptions (should not raise)
+    ('<ossec_config><wodle name="command"><command>test</command></wodle></ossec_config>',
+     '<ossec_config><wodle name="command"><command>test</command></wodle></ossec_config>',
      {'localfile': {'allow': True, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': ['test']}},
-     [], False),
+     False),
 
-    ("<other><value>test</value></other>",
+    # Test case with no remote commands (should not raise)
+    ("<ossec_config><other><value>test</value></other></ossec_config>",
+     "<ossec_config><other><value>test</value></other></ossec_config>",
      {'localfile': {'allow': False, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': []}},
-     [], False),
+     False),
+
+    # Test case where localfile with full_command log_format is added (should raise when not allowed)
+    ("<ossec_config><localfile><log_format>full_command</log_format><command>cat /etc/passwd</command></localfile></ossec_config>",
+     "<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': True, 'exceptions': []}},
+     True),
+
+    # Test case where localfile without command log_format (should not raise)
+    ("<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
+     "<ossec_config><localfile><log_format>apache</log_format><location>/var/log/apache.log</location></localfile></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     False),
 ])
-def test_check_remote_commands(data, allow_config, exceptions, should_raise):
+def test_check_remote_commands(new_conf, original_conf, allow_config, should_raise):
     """Tests check_remote_commands with different remote command inputs."""
     api_conf = utils.configuration.api_conf
     api_conf['upload_configuration']['remote_commands'].update(allow_config)
 
+    # Convert string to XML Element for both new and original configurations
+    xml_new_conf = utils.load_wazuh_xml(None, new_conf)
+    xml_original_conf = utils.load_wazuh_xml(None, original_conf)
+
     with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
         if should_raise:
             with pytest.raises(exception.WazuhError, match=r'.* 1124 .*'):
-                utils.check_remote_commands(data)
+                utils.check_remote_commands(xml_new_conf, xml_original_conf)
         else:
-            utils.check_remote_commands(data)
+            utils.check_remote_commands(xml_new_conf, xml_original_conf)
 
 
 @patch('wazuh.core.utils.compile', return_value='Something')
@@ -868,7 +896,7 @@ def test_failed_test_get_timeframe_in_seconds():
      {'operator': 'LIKE', 'value': 'user_s', 'field': 'description'}, {'description'}),
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
@@ -893,7 +921,7 @@ def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db, moc
     (100, True, 1405),
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
@@ -917,7 +945,7 @@ def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_conn_d
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
@@ -943,7 +971,7 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_
     ({'order': 'asc', 'fields': ['internal_key']}, 1403)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
@@ -974,7 +1002,7 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_conn_db, mock_glob,
@@ -998,7 +1026,7 @@ def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_conn_
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn, mock_glob, mock_conn_db, mock_exists,
                                                     selector_fields, error, expected_exception):
@@ -1022,7 +1050,7 @@ def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn, mock_glob,
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._parse_select_filter')
@@ -1150,7 +1178,7 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
     ('internal_key=test', True, 1408)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
@@ -1179,7 +1207,7 @@ def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db, mock
     {'name': 'value1,value2'}
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_conn_db, mock_glob,
@@ -1202,7 +1230,7 @@ def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_conn
     ({'name': 'value1,value2'}, 'os.version>12e')
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._parse_legacy_filters')
@@ -1233,7 +1261,7 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, m
     ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'})
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._filter_status')
@@ -1256,7 +1284,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._process_filter')
@@ -1344,7 +1372,7 @@ def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, m
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
@@ -1363,7 +1391,7 @@ def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_conn_db, 
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_conn_db, mock_glob,
@@ -1382,7 +1410,7 @@ def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_con
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
@@ -1402,7 +1430,7 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glo
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn, mock_conn_db, mock_glob,
@@ -1423,7 +1451,7 @@ def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn, mo
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
@@ -1448,7 +1476,7 @@ def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_conn_db, mo
     ({'value': 'bad_value'}, 'os.name', 10, True)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
@@ -1510,7 +1538,7 @@ def test_WazuhDBQuery_oversized_run(mock_socket_conn, execute_value, rbac_ids, n
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._default_query')
@@ -1530,7 +1558,7 @@ def test_WazuhDBQuery_reset(mock_query, mock_socket_conn, mock_conn_db, mock_glo
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
@@ -1549,7 +1577,7 @@ def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_conn_db, mo
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_conn_db, mock_glob,
@@ -1573,7 +1601,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_conn_
     'other_filter'
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
@@ -1593,7 +1621,7 @@ def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_conn_db, mock
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQueryDistinct_protected_default_query(mock_socket_conn, mock_conn_db, mock_glob,
@@ -1614,7 +1642,7 @@ def test_WazuhDBQueryDistinct_protected_default_query(mock_socket_conn, mock_con
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQueryDistinct_protected_default_count_query(mock_socket_conn, mock_conn_db, mock_glob,
@@ -1635,7 +1663,7 @@ def test_WazuhDBQueryDistinct_protected_default_count_query(mock_socket_conn, mo
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._add_filters_to_query')
@@ -1659,7 +1687,7 @@ def test_WazuhDBQueryDistinct_protected_add_filters_to_query(mock_add, mock_sock
     {'name', 'ip'}
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._add_select_to_query')
@@ -1683,7 +1711,7 @@ def test_WazuhDBQueryDistinct_protected_add_select_to_query(mock_add, mock_socke
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQueryDistinct_protected_format_data_into_dictionary(mock_socket_conn, mock_conn_db,
@@ -1706,7 +1734,7 @@ def test_WazuhDBQueryDistinct_protected_format_data_into_dictionary(mock_socket_
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
@@ -1724,7 +1752,7 @@ def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_conn_db, mock_glob, 
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._get_total_items')
@@ -1747,7 +1775,7 @@ def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total, mock_socket_c
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._add_select_to_query')
@@ -1915,6 +1943,7 @@ def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
     mock_agents_versions.assert_not_called()
     mock_check_indexer.assert_not_called()
     mock_virus_total_integration.assert_not_called()
+    mock_unchanged_limits.assert_not_called()
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file, config_file=True)
@@ -1922,6 +1951,7 @@ def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
     mock_agents_versions.assert_called_once()
     mock_check_indexer.assert_called_once()
     mock_virus_total_integration.assert_called_once()
+    mock_unchanged_limits.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
@@ -2033,20 +2063,53 @@ def test_get_utc_strptime():
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
 
 
-@pytest.mark.parametrize("new_conf, unchanged_limits_conf", [
-    ("<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>no</logall></global><global><limits><eps><test>yes</test></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config>", True),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config><ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
-     False)
-])
-@pytest.mark.parametrize("original_conf", [
-    "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
-])
+@pytest.mark.parametrize(
+    "new_conf, original_conf, unchanged_limits_conf",
+    [
+        # Same limits + adding a new eps option. Should be considered changed.
+        (
+            "<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
+            "</ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        # Different limits + adding a new eps option + unrelated configuration. Should be considered changed.
+        (
+            "<ossec_config><global><logall>no</logall></global>"
+            "<global><limits><eps><test>yes</test></eps></limits></global>"
+            "</ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        #  Same limits, only adding misc unrelated configurations. Should be considered unchanged.
+        (
+            "<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            True,
+        ),
+        # Same limits (last config applies) but new section added. Should be considered changed.
+        (
+            "<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        # Same limits but different order. Should be considered changed due to XML precedence.
+        (
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
+            "<ossec_config><global><limits><eps><maximum>100</maximum></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><maximum>100</maximum></eps></limits></global></ossec_config>"
+            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            False,
+        ),
+        # Same limits options and values but internally shuffled. Should be considered unchanged.
+        (
+            "<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global></ossec_config>",
+            "<ossec_config><global><limits><eps><timeframe>5</timeframe><maximum>300</maximum></eps></limits></global></ossec_config>",
+            True,
+        ),
+    ],
+)
 @pytest.mark.parametrize("limits_conf", [
     ({'eps': {'allow': True}}),
     ({'eps': {'allow': False}})
@@ -2070,57 +2133,71 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
     """
     api_conf = utils.configuration.api_conf
     api_conf['upload_configuration']['limits'].update(limits_conf)
-
+    xml_new_conf = utils.load_wazuh_xml(None, new_conf)
+    xml_original_conf = utils.load_wazuh_xml(None, original_conf)
     with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
         if limits_conf['eps']['allow'] or unchanged_limits_conf:
-            utils.check_wazuh_limits_unchanged(new_conf, original_conf)
+            utils.check_wazuh_limits_unchanged(xml_new_conf, xml_original_conf)
         else:
             with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_wazuh_limits_unchanged(new_conf, original_conf)
+                utils.check_wazuh_limits_unchanged(xml_new_conf, xml_original_conf)
 
 
-@pytest.mark.parametrize("new_conf", [
-    ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></ossec_config>"),
-    ("<ossec_config><auth><agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
-    ("<ossec_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote></ossec_config>"),
-    ("<ossec_config><auth><agents><allow_higher_versions>no</allow_higher_versions></agents></auth></ossec_config>"),
-    ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote><auth>" \
-     "<agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
-     ("<ossec_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote><auth>" \
-     "<agents><allow_higher_versions>no</allow_higher_versions></agents></auth></ossec_config>"),
+@pytest.mark.parametrize("new_conf, original_conf, agents_conf, should_raise", [
+    ("<ossec_config><auth></auth></ossec_config>",
+     "<ossec_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></ossec_config>",
+     {'allow_higher_versions': {'allow': False}},
+     True),
+
+    ("<ossec_config><remote></remote></ossec_config>",
+     "<ossec_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></ossec_config>",
+     {'allow_higher_versions': {'allow': False}},
+     True),
+
+    ("<ossec_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></ossec_config>",
+     "<ossec_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></ossec_config>",
+     {'allow_higher_versions': {'allow': True}},
+     False),
+
+    ("<ossec_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></ossec_config>",
+     "<ossec_config><remote><allow_higher_versions>no</allow_higher_versions></remote></ossec_config>",
+     {'allow_higher_versions': {'allow': True}},
+     False),
 ])
-@pytest.mark.parametrize("agents_conf", [
-    ({'allow_higher_versions': {'allow': True}}),
-    ({'allow_higher_versions': {'allow': False}}),
-])
-def test_agents_allow_higher_versions(new_conf, agents_conf):
-    """Check if ossec.conf agents versions are protected by the API.
-
-    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf
-    cannot be changed. However, other configuration sections can be added,
-    removed or modified.
-
-    Parameters
-    ----------
-    new_conf : str
-        New ossec.conf to be uploaded.
-    agents_conf : dict
-        API configuration for the agents section.
-    """
-    api_conf = utils.configuration.api_conf
+def test_check_agents_allow_higher_versions(new_conf, original_conf, agents_conf, should_raise):
+    """Check if ossec.conf agents versions are protected by the API."""
+    api_conf = utils.configuration.api_conf.copy()
     api_conf['upload_configuration']['agents'].update(agents_conf)
 
+    xml_new_conf = utils.load_wazuh_xml(None, new_conf)
+    xml_original_conf = utils.load_wazuh_xml(None, original_conf)
+
     with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        if agents_conf['allow_higher_versions']['allow'] or new_conf.find('no') != -1:
-            utils.check_agents_allow_higher_versions(new_conf)
-        else:
+        if should_raise:
             with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
-                utils.check_agents_allow_higher_versions(new_conf)
+                utils.check_agents_allow_higher_versions(xml_new_conf, xml_original_conf)
+        else:
+            utils.check_agents_allow_higher_versions(xml_new_conf, xml_original_conf)
 
 
 @pytest.mark.parametrize("new_conf, original_conf, indexer_changed", [
     (
         "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        True,
+     ),
+    (
+        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config><ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config><ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
+        True,
+     ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config><ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        True,
+     ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config><ossec_config><indexer><host>https://0.0.0.0:9200/</host></indexer></ossec_config>",
         "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
         True,
      ),
@@ -2151,6 +2228,18 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         "<ossec_config><auth><disabled>yes</disabled></auth></ossec_config>",
         False,
     ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>"
+        "<ossec_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        False,
+    ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>"
+        "<ossec_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></ossec_config>",
+        False,
+    )
 ])
 @pytest.mark.parametrize("indexer_allowed", [
     True,
@@ -2174,11 +2263,13 @@ def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed
     api_conf['upload_configuration']['indexer']['allow'] = indexer_allowed
 
     with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
+        xml_new_conf = utils.load_wazuh_xml(None, new_conf)
+        xml_original_conf = utils.load_wazuh_xml(None, original_conf)
         if indexer_allowed:
-            utils.check_indexer(new_conf, original_conf)
+            utils.check_indexer(xml_new_conf, xml_original_conf)
         elif indexer_changed:
             with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_indexer(new_conf, original_conf)
+                utils.check_indexer(xml_new_conf, xml_original_conf)
 
 
 @pytest.mark.parametrize(
@@ -2302,20 +2393,26 @@ def test_check_virustotal_integration(integrations_conf, new_conf):
     """
     api_conf = utils.configuration.api_conf
     api_conf['upload_configuration']['integrations'].update(integrations_conf)
-    virust_total_min_quouta = integrations_conf['virustotal']['public_key']['minimum_quota']
+    virust_total_min_quota = integrations_conf['virustotal']['public_key']['minimum_quota']
+
+    # Convert string to XML Element
+    xml_new_conf = utils.load_wazuh_xml(None, new_conf)
 
     with patch('wazuh.core.utils.get') as mock_requests_get:
         if not integrations_conf['virustotal']['public_key']['allow']:
             with pytest.raises(exception.WazuhError, match=".* 1130 .*"):
                 mock_response = Mock()
                 mock_response.json.return_value = {
-                    'data': {'api_requests_hourly': {'user': {'allowed': virust_total_min_quouta}}}}
+                    'data': {'api_requests_hourly': {'user': {'allowed': virust_total_min_quota}}}}
                 mock_requests_get.return_value = mock_response
-                utils.check_virustotal_integration(new_conf)
+                utils.check_virustotal_integration(xml_new_conf)
 
             with pytest.raises(exception.WazuhError, match=".* 1131 .*"):
                 mock_requests_get.side_effect = exceptions.RequestException
-                utils.check_virustotal_integration(new_conf)
+                utils.check_virustotal_integration(xml_new_conf)
+        else:
+            # Test when integration is allowed
+            utils.check_virustotal_integration(xml_new_conf)
 
 @pytest.mark.parametrize(
     "version_str, expected_result",
