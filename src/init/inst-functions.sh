@@ -1029,10 +1029,10 @@ InstallCommon()
 
     if [ ! -f ${INSTALLDIR}/etc/ossec.conf ]; then
         if [ -f  ../etc/ossec.mc ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/ossec.conf
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/ossec.conf
         else
             echo "WARNING: unable to generate ossec.conf file with desired configurations, using default configurations from ${OSSEC_CONF_SRC}"
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ${OSSEC_CONF_SRC} ${INSTALLDIR}/etc/ossec.conf
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${OSSEC_CONF_SRC} ${INSTALLDIR}/etc/ossec.conf
         fi
     fi
 
