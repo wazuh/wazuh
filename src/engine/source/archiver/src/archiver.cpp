@@ -27,4 +27,18 @@ void Archiver::archive(const char* data)
     }
 }
 
+void Archiver::archive(std::string_view data)
+{
+    if (data.empty())
+    {
+        return;
+    }
+
+    std::shared_lock<std::shared_mutex> lock(m_loggerMutex);
+    if (m_logWriter)
+    {
+        m_logWriter->operator()(std::string(data));
+    }
+}
+
 } // namespace archiver

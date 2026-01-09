@@ -1382,7 +1382,7 @@ static int append_header(dispatch_ctx_t *ctx) {
     cJSON_Delete(root);
     if (!json) goto fail;
 
-    if (bulk_append_fmt(&ctx->bulk, "H\t%s\n", json) < 0) {
+    if (bulk_append_fmt(&ctx->bulk, "H %s\n", json) < 0) {
         free(json);
         goto fail;
     }
@@ -1423,8 +1423,8 @@ static void rr_collect_one(void *data, void *user) {
         }
     }
 
-    // Event Framing: "E\t<payload>\n"
-    if (bulk_append_fmt(&ctx->bulk, "E\t") < 0 ||
+    // Event Framing: "E <payload>\n"
+    if (bulk_append_fmt(&ctx->bulk, "E ") < 0 ||
         bulk_append(&ctx->bulk, e->raw, e->len) < 0 ||
         bulk_append(&ctx->bulk, "\n", 1) < 0) {
         mwarn("Unable to append event for agent '%s'", ctx->agent_id ?: "?");
