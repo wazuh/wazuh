@@ -243,6 +243,9 @@ void HandleSecure()
     /* Create shared file updating thread */
     w_create_thread(update_shared_files, NULL);
 
+    /* Create agent metadata cache cleanup thread */
+    w_create_thread(agent_meta_cleanup_thread, NULL);
+
     /* Create Active Response forwarder thread */
     w_create_thread(AR_Forward, NULL);
 

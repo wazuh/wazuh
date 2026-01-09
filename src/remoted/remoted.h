@@ -224,5 +224,6 @@ extern int shared_reload_interval;
 extern size_t global_counter;
 extern size_t batch_events_capacity;
 extern size_t batch_events_per_agent_capacity;
+extern int enrich_cache_expire_time;
 
 #endif /* LOGREMOTE_H */

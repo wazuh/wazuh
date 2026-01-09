@@ -12,6 +12,7 @@
 #define AGENT_METADATA_DB_H
 
 #include <stddef.h>
+#include <time.h>
 
 typedef struct agent_meta
 {
@@ -26,6 +27,7 @@ typedef struct agent_meta
     char* hostname;
     char** groups;
     size_t groups_count;
+    time_t lastmsg;  // Last time a keepalive was received
 } agent_meta_t;
 
 /* Forward declaration is OK in the header (we only need the pointer type here) */
@@ -40,6 +42,12 @@ int agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh);
 
 /* Snapshot helpers (copian strings; el caller libera con agent_meta_free) */
 int agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out);
+
+/* Cleanup expired cache entries based on lastmsg timestamp */
+void agent_meta_cleanup_expired(time_t expire_threshold);
+
+/* Periodic cleanup thread */
+void* agent_meta_cleanup_thread(void* arg);
 
 void agent_meta_free(agent_meta_t* m);
 void agent_meta_clear(agent_meta_t* m);
