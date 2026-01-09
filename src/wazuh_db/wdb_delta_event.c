@@ -205,9 +205,9 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                 merror("Exceeding maximum query size of %d bytes adding values placeholders.", QUERY_MAX_SIZE);
                 return false;
             }
-            query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "?");
+            query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size, "?");
             if (column->next) {
-                query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ",");
+                query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size, ",");
             }
         }
 
@@ -217,7 +217,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
             return false;
         }
         query_actual_size +=
-            snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ") ON CONFLICT DO UPDATE SET ");
+            snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size, ") ON CONFLICT DO UPDATE SET ");
 
         bool first_condition_element = true;
         for (column = kv_value->column_list; column; column = column->next) {
@@ -230,7 +230,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                         return false;
                     }
                     query_actual_size +=
-                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "%s=?", field_name);
+                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size, "%s=?", field_name);
                     first_condition_element = false;
                 } else {
                     // ",%s=?" plus null terminator
@@ -239,7 +239,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                         return false;
                     }
                     query_actual_size +=
-                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, ",%s=?", field_name);
+                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size, ",%s=?", field_name);
                 }
             }
         }
@@ -321,7 +321,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                         return false;
                     }
                     query_actual_size +=
-                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1, "%s=?", field_name);
+                        snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size, "%s=?", field_name);
                     first_condition_element = false;
                 } else {
                     // " AND " plus "=?" plus null terminator
@@ -329,7 +329,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                         merror("Exceeding maximum query size of %d bytes adding subsequent pks.", QUERY_MAX_SIZE);
                         return false;
                     }
-                    query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size - 1,
+                    query_actual_size += snprintf(query + query_actual_size, QUERY_MAX_SIZE - query_actual_size,
                                                   " AND %s=?", field_name);
                 }
             }
