@@ -1,18 +1,35 @@
 # Test cases for syscollector deadlock detection during service stop
-# Simplified to focus on most likely scenarios
+# The test waits for:
+#   1. Agent to connect to manager (asserted)
+#   2. Syscollector scan to start (asserted)
+#   3. Then waits 'delay' seconds and stops the service
+#
+# If DB init error is detected, the cycle is skipped (not counted as failure)
 
-- name: "Stop during scan - 5s delay"
-  description: "Wait for scan to start, then stop after 5s"
+- name: "Stop immediately after scan starts"
+  description: "Stop service immediately when scan is detected (0s delay)"
   configuration_parameters:
   metadata:
     n_restarts: 20
+    delay: 0
+
+- name: "Stop 1s after scan starts"
+  description: "Wait 1s after scan detected, then stop"
+  configuration_parameters:
+  metadata:
+    n_restarts: 20
+    delay: 1
+
+- name: "Stop 3s after scan starts"
+  description: "Wait 3s after scan detected (mid-scan), then stop"
+  configuration_parameters:
+  metadata:
+    n_restarts: 15
+    delay: 3
+
+- name: "Stop 5s after scan starts"
+  description: "Wait 5s after scan detected (during sync), then stop"
+  configuration_parameters:
+  metadata:
+    n_restarts: 15
     delay: 5
-    wait_for_scan: true
-
-- name: "Stop during scan - 6s delay"
-  description: "Wait for scan to start, then stop after 6s"
-  configuration_parameters:
-  metadata:
-    n_restarts: 20
-    delay: 6
-    wait_for_scan: true
