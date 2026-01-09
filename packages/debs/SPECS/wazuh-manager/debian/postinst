@@ -52,12 +52,7 @@ case "$1" in
         fi
     else
         ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf.new
-        chmod 640 ${DIR}/etc/ossec.conf.new
-    fi
-    # Hardening: ossec.conf must not be writable by wazuh user/group
-    if [ -f ${DIR}/etc/ossec.conf ]; then
-        chown root:${GROUP} ${DIR}/etc/ossec.conf
-        chmod 0640 ${DIR}/etc/ossec.conf
+        chmod 660 ${DIR}/etc/ossec.conf.new
     fi
 
     # Remove/relocate existing SQLite databases
@@ -132,11 +127,6 @@ case "$1" in
     # Restore ossec.conf configuration
     if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
         mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
-    fi
-    # Hardening: ossec.conf must not be writable by wazuh user/group
-    if [ -f ${DIR}/etc/ossec.conf ]; then
-        chown root:${GROUP} ${DIR}/etc/ossec.conf
-        chmod 0640 ${DIR}/etc/ossec.conf
     fi
     # Restore local_rules.xml configuration
     if [ -f ${WAZUH_TMP_DIR}/local_rules.xml ]; then
@@ -251,12 +241,6 @@ case "$1" in
 
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
-
-    # Ensure ossec.conf hardening is not overridden by restore-permissions
-    if [ -f ${DIR}/etc/ossec.conf ]; then
-        chown root:${GROUP} ${DIR}/etc/ossec.conf
-        chmod 0640 ${DIR}/etc/ossec.conf
-    fi
 
     # Remove old service file /etc/systemd/system/wazuh-manager.service if present
     if [ -f /etc/systemd/system/wazuh-manager.service ]; then
