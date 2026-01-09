@@ -768,21 +768,6 @@ DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
 
-    // Initial wait until FIM is started
-    for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-        // Check for pause request during initial wait (atomic read, no mutex needed)
-        int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
-
-        if (pause_requested) {
-            // Acknowledge pause immediately (atomic write, no mutex needed)
-            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-            mdebug2("Pause request detected during initial wait");
-            break;
-        }
-
-        sleep(1);
-    }
-
 #ifdef WIN32
     int table_count = 3;
     char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
