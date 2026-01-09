@@ -36,9 +36,6 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Store module
     addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "engine/store").c_str());
 
-    // KVDB module
-    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", (wazuhRoot / "engine/kvdb/").c_str());
-
     // Default outputs
     addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", (wazuhRoot / "engine/outputs/").c_str());
 
