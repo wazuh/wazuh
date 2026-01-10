@@ -809,7 +809,29 @@ nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData
     setJsonField(ret, originalData, "/process/command_line", "command_line", createFields);
     setJsonField(ret, originalData, "/process/name", "name", createFields);
     setJsonField(ret, originalData, "/process/parent/pid", "parent_pid", createFields);
-    setJsonField(ret, originalData, "/process/pid", "pid", createFields);
+
+    // Convert pid from string to integer for ECS compliance
+    if (createFields || originalData.contains("pid"))
+    {
+        const nlohmann::json::json_pointer pointer("/process/pid");
+
+        if (originalData.contains("pid") && originalData["pid"] != EMPTY_VALUE && originalData["pid"] != UNKNOWN_VALUE)
+        {
+            try
+            {
+                ret[pointer] = std::stoll(originalData["pid"].get<std::string>());
+            }
+            catch (...)
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/process/start", "start", createFields);
     setJsonField(ret, originalData, "/process/state", "state", createFields);
     setJsonField(ret, originalData, "/process/stime", "stime", createFields);

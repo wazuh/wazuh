@@ -146,7 +146,7 @@ const auto expected_dbsync_ports_udp
 };
 const auto expected_dbsync_processes
 {
-    R"({"collector":"dbsync_processes","data":{"event":{"changed_fields":[],"type":"created"},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0}},"module":"inventory"})"
+    R"({"collector":"dbsync_processes","data":{"event":{"changed_fields":[],"type":"created"},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":431625,"start":9302261,"state":"I","stime":3,"utime":0}},"module":"inventory"})"
 };
 const auto expected_dbsync_packages
 {
@@ -318,7 +318,7 @@ static const auto expectedPersistPortsUdp
 };
 static const auto expectedPersistProcess
 {
-    R"({"checksum":{"hash":{"sha1":"78e4e090e42f88d949428eb56836287f99de9f4f"}},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0}})"
+    R"({"checksum":{"hash":{"sha1":"78e4e090e42f88d949428eb56836287f99de9f4f"}},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":431625,"start":9302261,"state":"I","stime":3,"utime":0}})"
 };
 static const auto expectedPersistPackage
 {
@@ -2463,7 +2463,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"name":" kworker/u256:2-  ","pid":"  431625  ","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
+              (R"({"name":" kworker/u256:2-  ","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
