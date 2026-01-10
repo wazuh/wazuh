@@ -76,6 +76,13 @@ jobs:
             -t -v ${{github.workspace}}:/workspace/wazuh:Z \
             ${CONTAINER_NAME}:${TAG}
 
+      - name: Generate engine schemas
+        run: |
+          python3 ${{ env.ENGINE_DIR }}/tools/engine-schema/engine_schema.py generate \
+            --output-dir ${{ env.ENGINE_DIR }}/ruleset/schemas/ \
+            --wcs-path ${{ github.workspace }}/src/external/wcs-flat-files/ \
+            --decoder-template ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-decoders.template.json
+
       - name: Create standalone package
         run: |
           mkdir auxiliar_dir
@@ -103,10 +110,7 @@ jobs:
           cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/engine-schema/0
           cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-logpar-overrides.json  wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides/0
           cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/allowed-fields.json  wazuh-engine-standalone/data/store/schema/allowed-fields/0
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/fields_decoder.json wazuh-engine-standalone/schemas/
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/fields_rule.json  wazuh-engine-standalone/schemas/
           cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-decoders.json  wazuh-engine-standalone/schemas/
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-rules.json  wazuh-engine-standalone/schemas/
           cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-filters.json  wazuh-engine-standalone/schemas/
           cp -r ${{ env.ENGINE_DIR }}/standalone/run_engine.sh wazuh-engine-standalone/
           chmod +x wazuh-engine-standalone/run_engine.sh

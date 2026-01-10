@@ -999,8 +999,7 @@ InstallCommon()
 generateSchemaFiles()
 {
     echo "Generating schema files..."
-    ${INSTALLDIR}/framework/python/bin/python3 engine/tools/engine-schema/engine_schema.py generate --allowed-fields-path engine/ruleset/schemas/allowed-fields.json \
-      --output-dir engine/ruleset/schemas/  --wcs-path external/wcs-flat-files/
+    ${INSTALLDIR}/framework/python/bin/python3 engine/tools/engine-schema/engine_schema.py generate --output-dir engine/ruleset/schemas/ --wcs-path external/wcs-flat-files/ --decoder-template engine/ruleset/schemas/wazuh-decoders.template.json
     if [ $? != 0 ]; then
         echo "Error: Failed to generate schema files."
         exit 1
