@@ -1,35 +1,25 @@
 # Test cases for syscollector deadlock detection during service stop
-# The test waits for:
-#   1. Agent to connect to manager (asserted)
-#   2. Syscollector scan to start (asserted)
-#   3. Then waits 'delay' seconds and stops the service
+# Uses a timing sweep approach - tries stopping at different delays after scan starts.
+#
+# The test:
+#   1. Waits for agent to connect to manager (asserted)
+#   2. Waits for syscollector scan to start (asserted)
+#   3. Waits delay_ms milliseconds and stops the service
+#   4. Sweeps through delay values from delay_start_ms to delay_end_ms
 #
 # If DB init error is detected, the cycle is skipped (not counted as failure)
+#
+# Parameters:
+#   delay_start_ms: Starting delay in milliseconds (default: 0)
+#   delay_end_ms: Ending delay in milliseconds (default: 1000)
+#   delay_increment_ms: Delay increment in milliseconds (default: 50)
+#   cycles_per_delay: Number of stop cycles per delay value (default: 3)
 
-- name: "Stop immediately after scan starts"
-  description: "Stop service immediately when scan is detected (0s delay)"
+- name: "Timing sweep 0-500ms"
+  description: "Sweep delays from 0ms to 500ms in 50ms increments to find deadlock window"
   configuration_parameters:
   metadata:
-    n_restarts: 20
-    delay: 0
-
-- name: "Stop 1s after scan starts"
-  description: "Wait 1s after scan detected, then stop"
-  configuration_parameters:
-  metadata:
-    n_restarts: 20
-    delay: 1
-
-- name: "Stop 3s after scan starts"
-  description: "Wait 3s after scan detected (mid-scan), then stop"
-  configuration_parameters:
-  metadata:
-    n_restarts: 15
-    delay: 3
-
-- name: "Stop 5s after scan starts"
-  description: "Wait 5s after scan detected (during sync), then stop"
-  configuration_parameters:
-  metadata:
-    n_restarts: 15
-    delay: 5
+    delay_start_ms: 0
+    delay_end_ms: 500
+    delay_increment_ms: 50
+    cycles_per_delay: 3
