@@ -993,7 +993,35 @@ nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/service/state", "service_state", createFields);
     setJsonField(ret, originalData, "/service/sub_state", "service_sub_state", createFields);
     setJsonField(ret, originalData, "/service/target/address", "service_target_address", createFields);
-    setJsonField(ret, originalData, "/service/target/ephemeral_id", "service_target_ephemeral_id", createFields);
+
+    // Convert service_target_ephemeral_id from number to string for ECS compliance
+    if (createFields || originalData.contains("service_target_ephemeral_id"))
+    {
+        const nlohmann::json::json_pointer pointer("/service/target/ephemeral_id");
+
+        if (originalData.contains("service_target_ephemeral_id"))
+        {
+            const auto& value = originalData["service_target_ephemeral_id"];
+
+            if (value == EMPTY_VALUE || value == UNKNOWN_VALUE)
+            {
+                ret[pointer] = value;
+            }
+            else if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int>());
+            }
+            else
+            {
+                ret[pointer] = value;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/service/target/type", "service_target_type", createFields);
     setJsonField(ret, originalData, "/service/type", "service_type", createFields);
     setJsonField(ret, originalData, "/service/win32_exit_code", "service_win32_exit_code", createFields);
