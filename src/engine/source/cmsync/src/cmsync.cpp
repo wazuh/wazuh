@@ -225,9 +225,8 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
 
     LOG_INFO("[CM::Sync] First setup detected, initializing default sync spaces");
 
-    addSpaceToSync("wazuh");
+    addSpaceToSync("standard");
     addSpaceToSync("custom");
-    addSpaceToSync("free");
     dumpStateToStore();
 }
 
@@ -384,7 +383,7 @@ void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::stor
 
     if (auto err = routerPtr->postEntry(newEntry); base::isError(err))
     {
-        throw std::runtime_error(fmt::format("[CMSync::syncNamespaceInRoute] Failed to create new route '{}': {}",
+        throw std::runtime_error(fmt::format("Failed to create new route '{}': {}",
                                              nsState.getRouteName(),
                                              err->message));
     }
