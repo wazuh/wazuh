@@ -761,7 +761,31 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
 
     setJsonField(ret, originalData, "/host/cpu/cores", "cpu_cores", createFields);
     setJsonField(ret, originalData, "/host/cpu/name", "cpu_name", createFields);
-    setJsonField(ret, originalData, "/host/cpu/speed", "cpu_speed", createFields);
+
+    // Convert cpu speed to integer for ECS compliance (in case it comes as float)
+    if (createFields || originalData.contains("cpu_speed"))
+    {
+        const nlohmann::json::json_pointer pointer("/host/cpu/speed");
+
+        if (originalData.contains("cpu_speed") && !originalData["cpu_speed"].is_null())
+        {
+            const auto& value = originalData["cpu_speed"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = value.get<int64_t>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/host/memory/free", "memory_free", createFields);
     setJsonField(ret, originalData, "/host/memory/total", "memory_total", createFields);
     setJsonField(ret, originalData, "/host/memory/used", "memory_used", createFields);
