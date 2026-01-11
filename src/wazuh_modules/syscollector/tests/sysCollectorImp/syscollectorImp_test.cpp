@@ -130,11 +130,11 @@ const auto expected_dbsync_network_protocol_2
 };
 const auto expected_dbsync_network_address_1
 {
-    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":"1"}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_address_2
 {
-    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":"0"}},"module":"inventory"})"
 };
 const auto expected_dbsync_ports
 {
@@ -298,7 +298,7 @@ static const auto expectedPersistNetProtoIPv4
 };
 static const auto expectedPersistNetAddrIPv4
 {
-    R"({"checksum":{"hash":{"sha1":"24ecdd6a316b2320c809085106812f6cf8a4cf67"}},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}})"
+    R"({"checksum":{"hash":{"sha1":"24ecdd6a316b2320c809085106812f6cf8a4cf67"}},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":"0"}})"
 };
 static const auto expectedPersistNetProtoIPv6
 {
@@ -306,7 +306,7 @@ static const auto expectedPersistNetProtoIPv6
 };
 static const auto expectedPersistNetAddrIPv6
 {
-    R"({"checksum":{"hash":{"sha1":"7271714e0616caea85422916dd6ab2fbdac2b5cd"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}})"
+    R"({"checksum":{"hash":{"sha1":"7271714e0616caea85422916dd6ab2fbdac2b5cd"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":"1"}})"
 };
 static const auto expectedPersistPorts
 {

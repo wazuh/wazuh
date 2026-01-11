@@ -852,7 +852,7 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
     {
         const nlohmann::json::json_pointer pointer("/file/inode");
 
-        if (originalData.contains("file_inode") && originalData["file_inode"] != EMPTY_VALUE && originalData["file_inode"] != UNKNOWN_VALUE)
+        if (originalData.contains("file_inode") && !originalData["file_inode"].is_null())
         {
             const auto& value = originalData["file_inode"];
 
@@ -930,7 +930,34 @@ nlohmann::json Syscollector::ecsNetworkAddressData(const nlohmann::json& origina
     setJsonField(ret, originalData, "/network/broadcast", "network_broadcast", createFields);
     setJsonField(ret, originalData, "/network/ip", "network_ip", createFields);
     setJsonField(ret, originalData, "/network/netmask", "network_netmask", createFields);
-    setJsonField(ret, originalData, "/network/type", "network_type", createFields);
+
+    // Convert network type from number to string for ECS compliance
+    if (createFields || originalData.contains("network_type"))
+    {
+        const nlohmann::json::json_pointer pointer("/network/type");
+
+        if (originalData.contains("network_type") && !originalData["network_type"].is_null())
+        {
+            const auto& value = originalData["network_type"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int64_t>());
+            }
+            else if (value.is_string())
+            {
+                ret[pointer] = value.get<std::string>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
 
     return ret;
 }
