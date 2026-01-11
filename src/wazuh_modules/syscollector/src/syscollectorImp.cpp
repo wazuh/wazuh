@@ -846,7 +846,35 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
 
     setJsonField(ret, originalData, "/destination/ip", "destination_ip", createFields);
     setJsonField(ret, originalData, "/destination/port", "destination_port", createFields);
-    setJsonField(ret, originalData, "/file/inode", "file_inode", createFields);
+
+    // Convert inode from number to string for ECS compliance
+    if (createFields || originalData.contains("file_inode"))
+    {
+        const nlohmann::json::json_pointer pointer("/file/inode");
+
+        if (originalData.contains("file_inode") && originalData["file_inode"] != EMPTY_VALUE && originalData["file_inode"] != UNKNOWN_VALUE)
+        {
+            const auto& value = originalData["file_inode"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int64_t>());
+            }
+            else if (value.is_string())
+            {
+                ret[pointer] = value.get<std::string>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/host/network/egress/queue", "host_network_egress_queue", createFields);
     setJsonField(ret, originalData, "/host/network/ingress/queue", "host_network_ingress_queue", createFields);
     setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
