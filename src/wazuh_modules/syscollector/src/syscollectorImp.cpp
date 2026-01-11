@@ -916,7 +916,42 @@ nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& origin
     setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
     setJsonField(ret, originalData, "/network/dhcp", "network_dhcp", createFields, true);
     setJsonField(ret, originalData, "/network/gateway", "network_gateway", createFields);
-    setJsonField(ret, originalData, "/network/metric", "network_metric", createFields);
+
+    // Convert metric from string to integer for ECS compliance
+    if (createFields || originalData.contains("network_metric"))
+    {
+        const nlohmann::json::json_pointer pointer("/network/metric");
+
+        if (originalData.contains("network_metric") && !originalData["network_metric"].is_null())
+        {
+            const auto& value = originalData["network_metric"];
+
+            if (value.is_string())
+            {
+                try
+                {
+                    ret[pointer] = std::stoll(value.get<std::string>());
+                }
+                catch (...)
+                {
+                    ret[pointer] = nullptr;
+                }
+            }
+            else if (value.is_number())
+            {
+                ret[pointer] = value.get<int64_t>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/network/type", "network_type", createFields);
 
     return ret;
