@@ -924,7 +924,31 @@ nlohmann::json Syscollector::ecsUsersData(const nlohmann::json& originalData, bo
     setJsonField(ret, originalData, "/user/group/id_signed", "user_group_id_signed", createFields);
     setJsonFieldArray(ret, originalData, "/user/groups", "user_groups", createFields);
     setJsonField(ret, originalData, "/user/home", "user_home", createFields);
-    setJsonField(ret, originalData, "/user/id", "user_id", createFields);
+
+    // Convert user_id from number to string for ECS compliance
+    if (createFields || originalData.contains("user_id"))
+    {
+        const nlohmann::json::json_pointer pointer("/user/id");
+
+        if (originalData.contains("user_id"))
+        {
+            const auto& value = originalData["user_id"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int>());
+            }
+            else
+            {
+                ret[pointer] = value;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/user/is_hidden", "user_is_hidden", createFields, true);
     setJsonField(ret, originalData, "/user/is_remote", "user_is_remote", createFields, true);
     setJsonField(ret, originalData, "/user/last_login", "user_last_login", createFields);
