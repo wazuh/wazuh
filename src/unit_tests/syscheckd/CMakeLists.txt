@@ -404,6 +404,7 @@ add_executable(test_fim_scan test_fim_scan.c)
 target_compile_options(test_fim_scan PRIVATE "-Wall")
 
 set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_syscheck_msg \
+                          -Wl,--wrap,validate_and_persist_fim_event -Wl,--wrap,cleanup_failed_fim_files \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \

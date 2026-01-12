@@ -216,34 +216,13 @@ STATIC void handle_orphaned_delete(const char* path,
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
-    // Validate stateful event before persisting
-    // For orphaned deletes, we don't need to delete from DBSync since the item is already deleted
-    bool validation_passed = true;
-    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
-        char* msg = cJSON_PrintUnformatted(stateful_event);
-        char* errorMessage = NULL;
-
-        if (!schema_validator_validate(FIM_FILES_SYNC_INDEX, msg, &errorMessage)) {
-            // Validation failed - log but don't persist
-            if (errorMessage) {
-                merror("Schema validation failed for orphaned delete file message (path: %s, index: %s). Errors: %s",
-                       path, FIM_FILES_SYNC_INDEX, errorMessage);
-                os_free(errorMessage);
-            }
-
-            merror("Raw event that failed validation: %s", msg);
-            mdebug1("Skipping persistence of invalid orphaned delete event for %s", path);
-            validation_passed = false;
-        }
-
-        os_free(msg);
-    }
-
-    // Persist stateful event for sync only if validation passed
-    if (validation_passed) {
-        persist_syscheck_msg(file_path_sha1, OPERATION_DELETE, FIM_FILES_SYNC_INDEX,
-                             stateful_event, document_version);
-    }
+    // Validate and persist the orphaned delete event
+    // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
+    char item_desc[PATH_MAX + 32];
+    snprintf(item_desc, sizeof(item_desc), "file %s", path);
+    validate_and_persist_fim_event(stateful_event, file_path_sha1, OPERATION_DELETE,
+                                    FIM_FILES_SYNC_INDEX, document_version,
+                                    item_desc, false, NULL, NULL);
 
     cJSON_Delete(stateful_event);
 }
@@ -434,45 +413,23 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
-    // Validate message before persisting to sync protocol
-    // If validation fails, delete from DBSync to prevent integrity sync loops
-    bool validation_passed = true;
-    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
-        char* msg = cJSON_PrintUnformatted(stateful_event);
-        char* errorMessage = NULL;
+    // Validate and persist the event
+    // For INSERT/MODIFY operations that fail validation, mark for deletion from DBSync
+    char item_desc[PATH_MAX + 32];
+    snprintf(item_desc, sizeof(item_desc), "file %s", path);
 
-        if (!schema_validator_validate(FIM_FILES_SYNC_INDEX, msg, &errorMessage)) {
-            // Validation failed
-            if (errorMessage) {
-                merror("Schema validation failed for FIM file message (path: %s, index: %s). Errors: %s",
-                       path, FIM_FILES_SYNC_INDEX, errorMessage);
-                os_free(errorMessage);
-            }
+    char* path_copy = (resultType == INSERTED || resultType == MODIFIED) ? strdup(path) : NULL;
+    bool mark_for_deletion = (resultType == INSERTED || resultType == MODIFIED) && path_copy != NULL;
 
-            // Log raw event for debugging
-            merror("Raw event that failed validation: %s", msg);
+    bool validation_passed = validate_and_persist_fim_event(stateful_event, file_path_sha1, sync_operation,
+                                                             FIM_FILES_SYNC_INDEX, document_version,
+                                                             item_desc, mark_for_deletion,
+                                                             txn_context->failed_paths, path_copy);
 
-            // Mark for deletion from DBSync to prevent integrity sync loops
-            // We cannot delete here as we are inside a DBSync callback (would cause nested transactions)
-            if (resultType == INSERTED || resultType == MODIFIED) {
-                mdebug1("Marking %s for deletion from DBSync due to validation failure", path);
-                if (txn_context->failed_paths) {
-                    char* path_copy = strdup(path);
-                    if (path_copy) {
-                        OSList_AddData(txn_context->failed_paths, path_copy);
-                    }
-                }
-            }
-
-            validation_passed = false;
-        }
-
-        os_free(msg);
-    }
-
-    // Only persist to sync protocol if validation passed
-    if (validation_passed) {
-        persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
+    // If validation passed, we need to free path_copy (it wasn't added to the list)
+    // If validation failed, path_copy was added to the list and will be freed later
+    if (validation_passed && path_copy) {
+        os_free(path_copy);
     }
 
     cJSON_Delete(stateful_event);
@@ -1089,13 +1046,7 @@ void fim_file(const char *path,
         fim_db_file_update(&new_entry, callback_data);
 
         // Delete files that failed schema validation (outside transaction)
-        OSListNode* node;
-        OSList_foreach(node, failed_paths) {
-            const char* failed_path = (const char*)node->data;
-            mdebug1("Deleting %s from DBSync due to validation failure", failed_path);
-            fim_db_file_delete(failed_path);
-        }
-
+        cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
         free_file_data(new_entry.file_entry.data);
     }
@@ -1279,12 +1230,6 @@ void fim_file_scan() {
     fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
     // Delete files that failed schema validation (outside transaction)
-    OSListNode* node;
-    OSList_foreach(node, failed_paths) {
-        const char* failed_path = (const char*)node->data;
-        mdebug1("Deleting %s from DBSync due to validation failure", failed_path);
-        fim_db_file_delete(failed_path);
-    }
-
+    cleanup_failed_fim_files(failed_paths);
     OSList_Destroy(failed_paths);
 }

@@ -32,6 +32,7 @@
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared_modules/schema_validator_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 
 #include "syscheck.h"
 #include "file/file.h"
@@ -1115,6 +1116,7 @@ static void test_fim_file_add(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
@@ -1190,6 +1192,7 @@ static void test_fim_file_modify(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
@@ -1292,6 +1295,7 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
@@ -3457,14 +3461,9 @@ static void test_transaction_callback_add(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
 
-    // Schema validator mocks
-    will_return(__wrap_schema_validator_is_initialized, true);
-    expect_any(__wrap_schema_validator_validate, indexPattern);
-    expect_any(__wrap_schema_validator_validate, message);
-    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
-    will_return(__wrap_schema_validator_validate, true);  // return value
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(INSERTED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_ADD);
@@ -3502,14 +3501,9 @@ static void test_transaction_callback_modify(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
 
-    // Schema validator mocks
-    will_return(__wrap_schema_validator_is_initialized, true);
-    expect_any(__wrap_schema_validator_validate, indexPattern);
-    expect_any(__wrap_schema_validator_validate, message);
-    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
-    will_return(__wrap_schema_validator_validate, true);  // return value
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3587,14 +3581,9 @@ static void test_transaction_callback_modify_report_changes(void **state) {
     expect_fim_file_diff(entry.file_entry.path, strdup("diff"));
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
 
-    // Schema validator mocks
-    will_return(__wrap_schema_validator_is_initialized, true);
-    expect_any(__wrap_schema_validator_validate, indexPattern);
-    expect_any(__wrap_schema_validator_validate, message);
-    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
-    will_return(__wrap_schema_validator_validate, true);  // return value
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3631,14 +3620,9 @@ static void test_transaction_callback_delete(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
 
-    // Schema validator mocks
-    will_return(__wrap_schema_validator_is_initialized, true);
-    expect_any(__wrap_schema_validator_validate, indexPattern);
-    expect_any(__wrap_schema_validator_validate, message);
-    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
-    will_return(__wrap_schema_validator_validate, true);  // return value
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3670,14 +3654,9 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     expect_fim_diff_process_delete_file(path, 0);
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
 
-    // Schema validator mocks
-    will_return(__wrap_schema_validator_is_initialized, true);
-    expect_any(__wrap_schema_validator_validate, indexPattern);
-    expect_any(__wrap_schema_validator_validate, message);
-    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
-    will_return(__wrap_schema_validator_validate, true);  // return value
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3712,14 +3691,9 @@ static void test_transaction_callback_delete_full_db(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
 
-    // Schema validator mocks
-    will_return(__wrap_schema_validator_is_initialized, true);
-    expect_any(__wrap_schema_validator_validate, indexPattern);
-    expect_any(__wrap_schema_validator_validate, message);
-    will_return(__wrap_schema_validator_validate, NULL);  // errorMessage
-    will_return(__wrap_schema_validator_validate, true);  // return value
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3760,8 +3734,6 @@ static void test_transaction_callback_full_db(void **state) {
 
     snprintf(debug_msg, OS_SIZE_128, "Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
-
-    // Schema validator mocks not needed - MAX_ROWS goes to end before validation
 
     transaction_callback(MAX_ROWS, result, txn_context);
 }

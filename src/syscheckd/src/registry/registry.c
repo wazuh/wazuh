@@ -328,34 +328,13 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
     char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
 
-    // Validate stateful event before persisting
-    // For orphaned deletes, we don't need to delete from DBSync since the item is already deleted
-    bool validation_passed = true;
-    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
-        char* msg = cJSON_PrintUnformatted(stateful_event);
-        char* errorMessage = NULL;
-
-        if (!schema_validator_validate(FIM_REGISTRY_KEYS_SYNC_INDEX, msg, &errorMessage)) {
-            // Validation failed - log but don't persist
-            if (errorMessage) {
-                merror("Schema validation failed for orphaned delete registry key message (path: %s, index: %s). Errors: %s",
-                       path, FIM_REGISTRY_KEYS_SYNC_INDEX, errorMessage);
-                os_free(errorMessage);
-            }
-
-            merror("Raw event that failed validation: %s", msg);
-            mdebug1("Skipping persistence of invalid orphaned delete event for registry key %s", path);
-            validation_passed = false;
-        }
-
-        os_free(msg);
-    }
-
-    // Persist stateful event for sync only if validation passed
-    if (validation_passed) {
-        persist_syscheck_msg(registry_key_sha1, OPERATION_DELETE, FIM_REGISTRY_KEYS_SYNC_INDEX,
-                             stateful_event, document_version);
-    }
+    // Validate and persist the orphaned delete event
+    // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
+    char item_desc[PATH_MAX + 64];
+    snprintf(item_desc, sizeof(item_desc), "registry key %s", path);
+    validate_and_persist_fim_event(stateful_event, registry_key_sha1, OPERATION_DELETE,
+                                    FIM_REGISTRY_KEYS_SYNC_INDEX, document_version,
+                                    item_desc, false, NULL, NULL);
 
     cJSON_Delete(stateful_event);
 }
@@ -520,34 +499,13 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
     char registry_value_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(id_source_string, -1, registry_value_sha1);
 
-    // Validate stateful event before persisting
-    // For orphaned deletes, we don't need to delete from DBSync since the item is already deleted
-    bool validation_passed = true;
-    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
-        char* msg = cJSON_PrintUnformatted(stateful_event);
-        char* errorMessage = NULL;
-
-        if (!schema_validator_validate(FIM_REGISTRY_VALUES_SYNC_INDEX, msg, &errorMessage)) {
-            // Validation failed - log but don't persist
-            if (errorMessage) {
-                merror("Schema validation failed for orphaned delete registry value message (path: %s, value: %s, index: %s). Errors: %s",
-                       path, value, FIM_REGISTRY_VALUES_SYNC_INDEX, errorMessage);
-                os_free(errorMessage);
-            }
-
-            merror("Raw event that failed validation: %s", msg);
-            mdebug1("Skipping persistence of invalid orphaned delete event for registry value %s:%s", path, value);
-            validation_passed = false;
-        }
-
-        os_free(msg);
-    }
-
-    // Persist stateful event for sync only if validation passed
-    if (validation_passed) {
-        persist_syscheck_msg(registry_value_sha1, OPERATION_DELETE, FIM_REGISTRY_VALUES_SYNC_INDEX,
-                             stateful_event, document_version);
-    }
+    // Validate and persist the orphaned delete event
+    // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
+    char item_desc[PATH_MAX + 128];
+    snprintf(item_desc, sizeof(item_desc), "registry value %s:%s", path, value);
+    validate_and_persist_fim_event(stateful_event, registry_value_sha1, OPERATION_DELETE,
+                                    FIM_REGISTRY_VALUES_SYNC_INDEX, document_version,
+                                    item_desc, false, NULL, NULL);
 
     cJSON_Delete(stateful_event);
 }
@@ -748,51 +706,37 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
-    // Validate message before persisting to sync protocol
-    // If validation fails, delete from DBSync to prevent integrity sync loops
-    bool validation_passed = true;
-    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
-        char* msg = cJSON_PrintUnformatted(stateful_event);
-        char* errorMessage = NULL;
+    // Validate and persist the event
+    // For INSERT/MODIFY operations that fail validation, mark for deletion from DBSync
+    char item_desc[PATH_MAX + 64];
+    snprintf(item_desc, sizeof(item_desc), "registry key %s", path);
 
-        if (!schema_validator_validate(FIM_REGISTRY_KEYS_SYNC_INDEX, msg, &errorMessage)) {
-            // Validation failed
-            if (errorMessage) {
-                merror("Schema validation failed for FIM registry key message (path: %s, index: %s). Errors: %s",
-                       path, FIM_REGISTRY_KEYS_SYNC_INDEX, errorMessage);
-                os_free(errorMessage);
+    failed_registry_key_t *failed_key = NULL;
+    bool mark_for_deletion = false;
+
+    if (resultType == INSERTED || resultType == MODIFIED) {
+        failed_key = malloc(sizeof(failed_registry_key_t));
+        if (failed_key) {
+            failed_key->path = strdup(path);
+            failed_key->arch = arch;
+            mark_for_deletion = (failed_key->path != NULL);
+            if (!mark_for_deletion) {
+                os_free(failed_key);
+                failed_key = NULL;
             }
-
-            // Log raw event for debugging
-            merror("Raw event that failed validation: %s", msg);
-
-            // Mark for deletion from DBSync to prevent integrity sync loops
-            // We cannot delete here as we are inside a DBSync callback (would cause nested transactions)
-            if (resultType == INSERTED || resultType == MODIFIED) {
-                mdebug1("Marking registry key %s for deletion from DBSync due to validation failure", path);
-                if (event_data->failed_keys) {
-                    failed_registry_key_t *failed_key = malloc(sizeof(failed_registry_key_t));
-                    if (failed_key) {
-                        failed_key->path = strdup(path);
-                        failed_key->arch = arch;
-                        if (failed_key->path) {
-                            OSList_AddData(event_data->failed_keys, failed_key);
-                        } else {
-                            free(failed_key);
-                        }
-                    }
-                }
-            }
-
-            validation_passed = false;
         }
-
-        os_free(msg);
     }
 
-    // Only persist to sync protocol if validation passed
-    if (validation_passed) {
-        persist_syscheck_msg(registry_key_sha1, sync_operation, FIM_REGISTRY_KEYS_SYNC_INDEX, stateful_event, document_version);
+    bool validation_passed = validate_and_persist_fim_event(stateful_event, registry_key_sha1, sync_operation,
+                                                             FIM_REGISTRY_KEYS_SYNC_INDEX, document_version,
+                                                             item_desc, mark_for_deletion,
+                                                             event_data->failed_keys, failed_key);
+
+    // If validation passed, we need to free failed_key (it wasn't added to the list)
+    // If validation failed, failed_key was added to the list and will be freed later
+    if (validation_passed && failed_key) {
+        os_free(failed_key->path);
+        os_free(failed_key);
     }
 
     cJSON_Delete(stateful_event);
@@ -1010,54 +954,41 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
-    // Validate message before persisting to sync protocol
-    // If validation fails, delete from DBSync to prevent integrity sync loops
-    bool validation_passed = true;
-    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
-        char* msg = cJSON_PrintUnformatted(stateful_event);
-        char* errorMessage = NULL;
+    // Validate and persist the event
+    // For INSERT/MODIFY operations that fail validation, mark for deletion from DBSync
+    char item_desc[PATH_MAX + 128];
+    snprintf(item_desc, sizeof(item_desc), "registry value %s:%s", path, value);
 
-        if (!schema_validator_validate(FIM_REGISTRY_VALUES_SYNC_INDEX, msg, &errorMessage)) {
-            // Validation failed
-            if (errorMessage) {
-                merror("Schema validation failed for FIM registry value message (path: %s, value: %s, index: %s). Errors: %s",
-                       path, value, FIM_REGISTRY_VALUES_SYNC_INDEX, errorMessage);
-                os_free(errorMessage);
+    failed_registry_value_t *failed_value = NULL;
+    bool mark_for_deletion = false;
+
+    if (resultType == INSERTED || resultType == MODIFIED) {
+        failed_value = malloc(sizeof(failed_registry_value_t));
+        if (failed_value) {
+            failed_value->path = strdup(path);
+            failed_value->value = strdup(value);
+            failed_value->arch = arch;
+            mark_for_deletion = (failed_value->path != NULL && failed_value->value != NULL);
+            if (!mark_for_deletion) {
+                os_free(failed_value->path);
+                os_free(failed_value->value);
+                os_free(failed_value);
+                failed_value = NULL;
             }
-
-            // Log raw event for debugging
-            merror("Raw event that failed validation: %s", msg);
-
-            // Mark for deletion from DBSync to prevent integrity sync loops
-            // We cannot delete here as we are inside a DBSync callback (would cause nested transactions)
-            if (resultType == INSERTED || resultType == MODIFIED) {
-                mdebug1("Marking registry value %s:%s for deletion from DBSync due to validation failure", path, value);
-                if (event_data->failed_values) {
-                    failed_registry_value_t *failed_value = malloc(sizeof(failed_registry_value_t));
-                    if (failed_value) {
-                        failed_value->path = strdup(path);
-                        failed_value->value = strdup(value);
-                        failed_value->arch = arch;
-                        if (failed_value->path && failed_value->value) {
-                            OSList_AddData(event_data->failed_values, failed_value);
-                        } else {
-                            free(failed_value->path);
-                            free(failed_value->value);
-                            free(failed_value);
-                        }
-                    }
-                }
-            }
-
-            validation_passed = false;
         }
-
-        os_free(msg);
     }
 
-    // Only persist to sync protocol if validation passed
-    if (validation_passed) {
-        persist_syscheck_msg(registry_value_sha1, sync_operation, FIM_REGISTRY_VALUES_SYNC_INDEX, stateful_event, document_version);
+    bool validation_passed = validate_and_persist_fim_event(stateful_event, registry_value_sha1, sync_operation,
+                                                             FIM_REGISTRY_VALUES_SYNC_INDEX, document_version,
+                                                             item_desc, mark_for_deletion,
+                                                             event_data->failed_values, failed_value);
+
+    // If validation passed, we need to free failed_value (it wasn't added to the list)
+    // If validation failed, failed_value was added to the list and will be freed later
+    if (validation_passed && failed_value) {
+        os_free(failed_value->path);
+        os_free(failed_value->value);
+        os_free(failed_value);
     }
 
     cJSON_Delete(stateful_event);
@@ -2036,27 +1967,9 @@ void fim_registry_scan() {
     regkey_txn_handler = NULL;
     regval_txn_handler = NULL;
 
-    // Delete registry keys that failed schema validation (outside transaction)
-    OSListNode* node;
-    OSList_foreach(node, failed_keys) {
-        failed_registry_key_t* failed_key = (failed_registry_key_t*)node->data;
-        mdebug1("Deleting registry key %s from DBSync due to validation failure", failed_key->path);
-        fim_db_registry_key_delete(failed_key->path, failed_key->arch);
-        // Free the structure members manually since OSList free won't do it
-        free(failed_key->path);
-        // failed_key itself will be freed by OSList_Destroy
-    }
-
-    // Delete registry values that failed schema validation (outside transaction)
-    OSList_foreach(node, failed_values) {
-        failed_registry_value_t* failed_value = (failed_registry_value_t*)node->data;
-        mdebug1("Deleting registry value %s:%s from DBSync due to validation failure", failed_value->path, failed_value->value);
-        fim_db_registry_value_delete(failed_value->path, failed_value->value, failed_value->arch);
-        // Free the structure members manually since OSList free won't do it
-        free(failed_value->path);
-        free(failed_value->value);
-        // failed_value itself will be freed by OSList_Destroy
-    }
+    // Delete registry keys and values that failed schema validation (outside transaction)
+    cleanup_failed_registry_keys(failed_keys);
+    cleanup_failed_registry_values(failed_values);
 
     OSList_Destroy(failed_keys);
     OSList_Destroy(failed_values);
