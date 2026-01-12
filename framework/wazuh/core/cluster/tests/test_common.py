@@ -1783,13 +1783,16 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
     # Test the first condition and nested if
     assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
 
-    # Test the first condition and nested else
-    assert isinstance(
+    # Test the first condition - non-internal callable must be blocked
+    with pytest.raises(exception.WazuhInternalError) as err:
         cluster_common.as_wazuh_object({"__callable__": {"__name__": "path", "__qualname__": "__loader__.value",
-                                                         "__module__": "os"}}), str)
+                                                        "__module__": "os"}})
+    assert "Decoding non-internal callable from JSON is not allowed" in str(err.value)
 
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
-                                                            "__module__": "itertools"}}) == "itertools"
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
+                                                        "__module__": "itertools"}})
+    assert "Decoding non-internal callable from JSON is not allowed" in str(err.value)
 
     # Test the second condition
     assert isinstance(cluster_common.as_wazuh_object(
