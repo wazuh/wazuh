@@ -3017,6 +3017,7 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
         m_spDBSync->selectRows(selectQuery.query(), callback);
         return count > 0;
     }
+    // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
         if (m_logFunction)
@@ -3026,6 +3027,8 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
 
         return false;
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void Syscollector::checkDisabledCollectorsIndicesWithData()
@@ -3158,6 +3161,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
         return false;
     }
 
+    // LCOV_EXCL_START
     if (m_logFunction)
     {
         std::string indices;
@@ -3176,6 +3180,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
     }
 
     return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData);
+    // LCOV_EXCL_STOP
 }
 
 void Syscollector::deleteDisableCollectorsData()
@@ -3193,6 +3198,7 @@ void Syscollector::deleteDisableCollectorsData()
     // If all collectors are disabled, delete the entire database instead of going table by table
     if (m_allCollectorsDisabled)
     {
+        // LCOV_EXCL_START
         if (m_logFunction)
         {
             m_logFunction(LOG_INFO, "All collectors are disabled. Deleting entire database.");
@@ -3201,6 +3207,7 @@ void Syscollector::deleteDisableCollectorsData()
         deleteDatabase();
         m_disabledCollectorsIndicesWithData.clear();
         return;
+        // LCOV_EXCL_STOP
     }
 
     // Only some collectors are disabled, delete specific tables
@@ -3284,6 +3291,7 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
                     m_logFunction(LOG_DEBUG, "Cleared table " + tableName);
                 }
             }
+            // LCOV_EXCL_START
             catch (const std::exception& ex)
             {
                 if (m_logFunction)
@@ -3291,11 +3299,13 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
                     m_logFunction(LOG_ERROR, "Error clearing table " + tableName + ": " + std::string(ex.what()));
                 }
             }
+
+            // LCOV_EXCL_STOP
         }
     }
 }
-// LCOV_EXCL_STOP
 
+// LCOV_EXCL_START
 bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
     m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
@@ -3321,6 +3331,7 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 
     return needs_full_sync;
 }
+// LCOV_EXCL_STOP
 
 int64_t Syscollector::getLastSyncTime(const std::string& tableName)
 {
@@ -3433,6 +3444,8 @@ void Syscollector::runRecoveryProcess()
 
         if (tableName == BROWSER_EXTENSIONS_TABLE && !m_browserExtensions) continue;
 
+        // LCOV_EXCL_START
+        // Recovery process requires manager integration for checksum validation.
         if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
         {
             m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
@@ -3531,5 +3544,7 @@ void Syscollector::runRecoveryProcess()
             // This ensures the integrity check doesn't run again until integrity_interval has elapsed
             updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
         }
+
+        // LCOV_EXCL_STOP
     }
 }

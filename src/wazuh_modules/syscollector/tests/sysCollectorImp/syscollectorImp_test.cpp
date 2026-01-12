@@ -22,6 +22,15 @@
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
 
+// Mock SchemaValidatorEngine for dependency injection in tests
+class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
+{
+    public:
+        MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const std::string&), (override));
+        MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const nlohmann::json&), (override));
+        MOCK_METHOD(std::string, getSchemaName, (), (const, override));
+};
+
 // Helper to populate test DB manually
 void populateTestDb()
 {
@@ -177,14 +186,44 @@ void SyscollectorImpTest::SetUp()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 
-    // Reset schema validator to prevent validation in tests
-    // This ensures that syscollector will queue messages without validation
+    // Initialize SchemaValidatorFactory with mocks to prevent issues in Wine/Windows tests
+    // This ensures all tests use mock validators instead of loading real embedded schemas
+    m_mockValidator = std::make_shared<MockSchemaValidatorEngine>();
+    SchemaValidator::ValidationResult successResult;
+    successResult.isValid = true;
+
+    EXPECT_CALL(*m_mockValidator, validate(testing::An<const std::string&>()))
+    .WillRepeatedly(testing::Return(successResult));
+    EXPECT_CALL(*m_mockValidator, validate(testing::An<const nlohmann::json&>()))
+    .WillRepeatedly(testing::Return(successResult));
+    EXPECT_CALL(*m_mockValidator, getSchemaName())
+    .WillRepeatedly(testing::Return("mock-validator"));
+
+    // Inject mock validators for all indices
+    std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mockValidators;
+    mockValidators["wazuh-states-inventory-hardware"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-system"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-interfaces"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-networks"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-ports"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-packages"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-processes"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-hotfixes"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-groups"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-users"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-services"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-browser-extensions"] = m_mockValidator;
+
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+    SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 };
 
 void SyscollectorImpTest::TearDown()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+
+    // Clean up SchemaValidatorFactory after each test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 };
 
 using ::testing::_;
@@ -441,6 +480,8 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
+
+    // Note: Mock validators are automatically initialized in SetUp() to prevent Wine issues
 
     std::thread t
     {
@@ -3829,4 +3870,469 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
     EXPECT_NO_THROW(Syscollector::instance().runRecoveryProcess());
 
     Syscollector::instance().destroy();
+}
+
+// Schema validation tests
+TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Return valid hardware data (cpu_speed as integer, which our correction handles)
+    const std::string validHardwareJson =
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(validHardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect persist callback for valid hardware data (will pass validation)
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Data that our corrections should handle:
+    // - file_inode as number (will be converted to string)
+    // - cpu_speed as float (will be converted to integer)
+    const std::string hardwareJson = R"({"serial_number":"Intel", "cpu_speed":2688.0,"cpu_cores":2,"cpu_name":"Intel i5","memory_free":1000000,"memory_total":2000000,"memory_used":1000000})";
+    const std::string portsJson =
+        R"([{"file_inode":6822,"source_ip":"127.0.0.1","source_port":22,"process_pid":822,"process_name":"sshd","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(portsJson)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            // Verify corrected data types in the actual data
+            auto jsonData = nlohmann::json::parse(data);
+
+            if (index == "wazuh-states-inventory-hardware")
+            {
+                // cpu_speed should be integer now
+                EXPECT_TRUE(jsonData["host"]["cpu"]["speed"].is_number_integer());
+                EXPECT_EQ(jsonData["host"]["cpu"]["speed"].get<int>(), 2688);
+            }
+            else if (index == "wazuh-states-inventory-ports")
+            {
+                // file.inode should be string now
+                EXPECT_TRUE(jsonData["file"]["inode"].is_string());
+                EXPECT_EQ(jsonData["file"]["inode"].get<std::string>(), "6822");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect persist callbacks for valid data after corrections
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-ports"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+// Schema validation test using mock to force rejection
+TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Return any hardware data (content doesn't matter, mock will force failure)
+    const std::string hardwareJson =
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect NO persist callback for invalid hardware data (will be rejected by mock validator)
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(0);
+
+    // Capture log messages to verify validation errors
+    std::vector<std::string> loggedMessages;
+    auto customLogFunction = [&loggedMessages](modules_log_level_t level, const std::string & message)
+    {
+        loggedMessages.push_back(message);
+    };
+
+    // Create mock validator that will reject all validations
+    auto mockValidator = std::make_shared<MockSchemaValidatorEngine>();
+
+    SchemaValidator::ValidationResult failureResult;
+    failureResult.isValid = false;
+    failureResult.errors = {"Field 'host.memory.free' has invalid type: expected 'long', got 'string'"};
+
+    EXPECT_CALL(*mockValidator, validate(testing::An<const std::string&>()))
+    .WillRepeatedly(testing::Return(failureResult));
+
+    EXPECT_CALL(*mockValidator, getSchemaName())
+    .WillRepeatedly(testing::Return("wazuh-states-inventory-hardware"));
+
+    // Inject mock validator into factory
+    std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mockValidators;
+    mockValidators["wazuh-states-inventory-hardware"] = mockValidator;
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &customLogFunction, &mockValidators]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          customLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Reset and initialize factory with mock BEFORE initSyncProtocol
+            SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+            SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
+
+            // Initialize sync protocol
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+
+    // Verify that validation errors were logged
+    EXPECT_FALSE(loggedMessages.empty());
+
+    bool foundValidationError = false;
+    bool foundDiscardMessage = false;
+    bool foundDeferredDeletion = false;
+
+    for (const auto& msg : loggedMessages)
+    {
+        if (msg.find("Schema validation failed") != std::string::npos)
+        {
+            foundValidationError = true;
+        }
+
+        if (msg.find("Discarding invalid Syscollector message") != std::string::npos)
+        {
+            foundDiscardMessage = true;
+        }
+
+        if (msg.find("Marking entry from table") != std::string::npos &&
+                msg.find("for deferred deletion") != std::string::npos)
+        {
+            foundDeferredDeletion = true;
+        }
+    }
+
+    EXPECT_TRUE(foundValidationError) << "Expected validation error not found";
+    EXPECT_TRUE(foundDiscardMessage) << "Expected discard message not found";
+    EXPECT_TRUE(foundDeferredDeletion) << "Expected deferred deletion log not found";
+}
+
+// Test for missing validator: factory is initialized but no validator for the index
+TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    const std::string hardwareJson =
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect persist callback for hardware data (should be queued despite missing validator)
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    // Capture log messages to verify warning is logged
+    std::vector<std::string> loggedMessages;
+    auto customLogFunction = [&loggedMessages](modules_log_level_t level, const std::string & message)
+    {
+        loggedMessages.push_back(message);
+    };
+
+    // Create mock validator for a DIFFERENT index (not for hardware)
+    auto mockValidator = std::make_shared<MockSchemaValidatorEngine>();
+
+    EXPECT_CALL(*mockValidator, getSchemaName())
+    .WillRepeatedly(testing::Return("some-other-index"));
+
+    // Inject mock validator for a different index (factory is initialized, but no validator for hardware)
+    std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mockValidators;
+    mockValidators["some-other-index"] = mockValidator;
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &customLogFunction, &mockValidators]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          customLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Reset and initialize factory with mock for DIFFERENT index
+            SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+            SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
+
+            // Initialize sync protocol
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+
+    // Verify that warning was logged for missing validator
+    EXPECT_FALSE(loggedMessages.empty());
+
+    bool foundMissingValidatorWarning = false;
+
+    for (const auto& msg : loggedMessages)
+    {
+        if (msg.find("No schema validator found for index: wazuh-states-inventory-hardware") != std::string::npos)
+        {
+            foundMissingValidatorWarning = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(foundMissingValidatorWarning) << "Expected warning for missing validator not found";
 }

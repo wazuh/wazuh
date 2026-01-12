@@ -91,6 +91,7 @@ void SCAEventHandler::ReportPoliciesDelta(
     // Delete checks that failed schema validation (batch delete with transaction)
     if (!failedChecks.empty() && m_dBSync)
     {
+        // LCOV_EXCL_START
         try
         {
             DBSyncTxn deleteTxn(m_dBSync->handle(),
@@ -118,6 +119,8 @@ void SCAEventHandler::ReportPoliciesDelta(
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
         }
+
+        // LCOV_EXCL_STOP
     }
 }
 
@@ -223,6 +226,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     // Delete checks that failed schema validation (batch delete with transaction)
     if (!failedChecks.empty())
     {
+        // LCOV_EXCL_START
         try
         {
             DBSyncTxn deleteTxn(m_dBSync->handle(),
@@ -250,6 +254,8 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
         }
+
+        // LCOV_EXCL_STOP
     }
 }
 

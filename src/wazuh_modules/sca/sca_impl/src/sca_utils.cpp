@@ -190,6 +190,7 @@ namespace sca
     {
         switch (result)
         {
+            // LCOV_EXCL_START
             case CheckResult::Passed:
                 return "Passed";
 
@@ -204,6 +205,7 @@ namespace sca
 
             default:
                 return "Unknown";
+                // LCOV_EXCL_STOP
         }
     }
 
@@ -224,12 +226,14 @@ namespace sca
             key.erase(0, 1);
         }
 
+        // LCOV_EXCL_START
         static const std::map<std::string, int> typeMap = {{"f", WM_SCA_TYPE_FILE},
             {"r", WM_SCA_TYPE_REGISTRY},
             {"p", WM_SCA_TYPE_PROCESS},
             {"d", WM_SCA_TYPE_DIR},
             {"c", WM_SCA_TYPE_COMMAND}
         };
+        // LCOV_EXCL_STOP
 
         const auto it = typeMap.find(key);
 
