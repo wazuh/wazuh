@@ -128,13 +128,13 @@ def stop_service():
 
 def start_service():
     """Start the Wazuh service."""
-    result = subprocess.run(['net', 'start', 'WazuhSvc'], capture_output=True, text=True, timeout=120)
+    result = subprocess.run(['net', 'start', 'WazuhSvc'], capture_output=True, text=True, timeout=60)
     return result.returncode == 0
 
 
 def ensure_stopped():
     """Ensure service is stopped."""
-    subprocess.run(['net', 'stop', 'WazuhSvc'], capture_output=True, timeout=120)
+    subprocess.run(['net', 'stop', 'WazuhSvc'], capture_output=True, timeout=60)
     time.sleep(0.5)
 
 
@@ -254,19 +254,27 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                 if not connected:
                     print(f"[{cycle_id}] SKIP - No connection within {CONNECTION_TIMEOUT}s")
                     stop_service()
+                    # Generate failure if no connection
+                    failures.append({
+                        'delay_ms': delay_ms,
+                        'cycle': cycle,
+                        'error': 'NO_CONNECTION',
+                        'duration': 0,
+                    })
                     continue
 
-                # Check for DB init error
-                if has_db_init_error():
-                    print(f"[{cycle_id}] SKIP - DB init error")
-                    stop_service()
-                    continue
 
                 # Wait for scan to start
                 scan_started = wait_for_scan_start(timeout=SCAN_TIMEOUT)
                 if not scan_started:
                     print(f"[{cycle_id}] SKIP - Scan not detected within {SCAN_TIMEOUT}s")
                     stop_service()
+                    failures.append({
+                        'delay_ms': delay_ms,
+                        'cycle': cycle,
+                        'error': 'NO_SCAN',
+                        'duration': 0,
+                    })
                     continue
 
                 # NOW: Wait the specific delay and stop
@@ -284,7 +292,6 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                         'duration': duration,
                     })
                     print(f"[{cycle_id}] FAILED - Error: {error_code}, Duration: {duration:.2f}s")
-                    # Don't fail fast - continue to test other delays
                 else:
                     print(f"[{cycle_id}] OK - Stop time: {duration:.2f}s")
 
