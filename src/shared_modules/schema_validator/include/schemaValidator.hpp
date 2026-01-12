@@ -36,59 +36,96 @@ namespace SchemaValidator
     };
 
     /**
+     * @brief Abstract interface for schema validators
+     *
+     * Implementations can validate JSON messages against schemas.
+     */
+    class EXPORTED ISchemaValidatorEngine
+    {
+        public:
+            /**
+             * @brief Virtual destructor
+             */
+            virtual ~ISchemaValidatorEngine() = default;
+
+            /**
+             * @brief Validate a JSON message against the loaded schema
+             *
+             * @param message JSON message as string
+             * @return ValidationResult Result of the validation
+             */
+            virtual ValidationResult validate(const std::string& message) = 0;
+
+            /**
+             * @brief Validate a JSON message against the loaded schema
+             *
+             * @param message JSON message as nlohmann::json object
+             * @return ValidationResult Result of the validation
+             */
+            virtual ValidationResult validate(const nlohmann::json& message) = 0;
+
+            /**
+             * @brief Get the schema name
+             *
+             * @return std::string Schema name (derived from index pattern)
+             */
+            virtual std::string getSchemaName() const = 0;
+    };
+
+    /**
      * @brief Schema validator for Elasticsearch index template mappings
      *
      * This class validates JSON messages against Elasticsearch index template mappings
      * loaded from schema files. It supports type checking, nested objects, and strict mode.
      */
-    class EXPORTED SchemaValidatorEngine
+    class EXPORTED SchemaValidatorEngine : public ISchemaValidatorEngine
     {
-    public:
-        /**
-         * @brief Construct a new Schema Validator object
-         */
-        SchemaValidatorEngine();
+        public:
+            /**
+             * @brief Construct a new Schema Validator object
+             */
+            SchemaValidatorEngine();
 
-        /**
-         * @brief Destroy the Schema Validator object
-         */
-        ~SchemaValidatorEngine();
+            /**
+             * @brief Destroy the Schema Validator object
+             */
+            ~SchemaValidatorEngine() override;
 
-        /**
-         * @brief Load a schema from a JSON string
-         *
-         * @param schemaContent JSON schema content as string
-         * @return true if schema was loaded successfully
-         * @return false if schema loading failed
-         */
-        bool loadSchemaFromString(const std::string& schemaContent);
+            /**
+             * @brief Load a schema from a JSON string
+             *
+             * @param schemaContent JSON schema content as string
+             * @return true if schema was loaded successfully
+             * @return false if schema loading failed
+             */
+            bool loadSchemaFromString(const std::string& schemaContent);
 
-        /**
-         * @brief Validate a JSON message against the loaded schema
-         *
-         * @param message JSON message as string
-         * @return ValidationResult Result of the validation
-         */
-        ValidationResult validate(const std::string& message);
+            /**
+             * @brief Validate a JSON message against the loaded schema
+             *
+             * @param message JSON message as string
+             * @return ValidationResult Result of the validation
+             */
+            ValidationResult validate(const std::string& message) override;
 
-        /**
-         * @brief Validate a JSON message against the loaded schema
-         *
-         * @param message JSON message as nlohmann::json object
-         * @return ValidationResult Result of the validation
-         */
-        ValidationResult validate(const nlohmann::json& message);
+            /**
+             * @brief Validate a JSON message against the loaded schema
+             *
+             * @param message JSON message as nlohmann::json object
+             * @return ValidationResult Result of the validation
+             */
+            ValidationResult validate(const nlohmann::json& message) override;
 
-        /**
-         * @brief Get the schema name
-         *
-         * @return std::string Schema name (derived from index pattern)
-         */
-        std::string getSchemaName() const;
+            /**
+             * @brief Get the schema name
+             *
+             * @return std::string Schema name (derived from index pattern)
+             */
+            std::string getSchemaName() const override;
 
-    private:
-        class Impl;
-        std::unique_ptr<Impl> m_impl;
+        private:
+            class Impl;
+            std::unique_ptr<Impl> m_impl;
     };
 
     /**
@@ -99,56 +136,59 @@ namespace SchemaValidator
      */
     class EXPORTED SchemaValidatorFactory
     {
-    public:
-        /**
-         * @brief Get the singleton instance
-         *
-         * @return SchemaValidatorFactory& Reference to the singleton instance
-         */
-        static SchemaValidatorFactory& getInstance();
+        public:
+            /**
+             * @brief Get the singleton instance
+             *
+             * @return SchemaValidatorFactory& Reference to the singleton instance
+             */
+            static SchemaValidatorFactory& getInstance();
 
-        /**
-         * @brief Initialize the factory with embedded schema resources
-         *
-         * Loads schemas from embedded resources (compiled into the binary).
-         *
-         * @return true if initialization was successful
-         * @return false if initialization failed
-         */
-        bool initialize();
+            /**
+             * @brief Initialize the factory with embedded schema resources or custom validators
+             *
+             * If customValidators is provided, uses those validators instead of loading
+             * from embedded resources. This allows dependency injection for testing.
+             *
+             * @param customValidators Optional map of index pattern -> validator instances.
+             *                         If empty, loads schemas from embedded resources.
+             * @return true if initialization was successful
+             * @return false if initialization failed
+             */
+            bool initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators = {});
 
-        /**
-         * @brief Get a validator for a specific index pattern
-         *
-         * @param indexPattern Index pattern (e.g., "wazuh-states-sca")
-         * @return std::shared_ptr<SchemaValidatorEngine> Validator instance or nullptr if not found
-         */
-        std::shared_ptr<SchemaValidatorEngine> getValidator(const std::string& indexPattern);
+            /**
+             * @brief Get a validator for a specific index pattern
+             *
+             * @param indexPattern Index pattern (e.g., "wazuh-states-inventory-hardware")
+             * @return std::shared_ptr<ISchemaValidatorEngine> Validator instance or nullptr if not found
+             */
+            std::shared_ptr<ISchemaValidatorEngine> getValidator(const std::string& indexPattern);
 
-        /**
-         * @brief Check if the factory is initialized
-         *
-         * @return true if initialized
-         * @return false otherwise
-         */
-        bool isInitialized() const;
+            /**
+             * @brief Check if the factory is initialized
+             *
+             * @return true if initialized
+             * @return false otherwise
+             */
+            bool isInitialized() const;
 
-        /**
-         * @brief Reset the singleton instance (for testing purposes)
-         *
-         * This allows tests to inject a mock validator by clearing
-         * the singleton and letting tests control initialization.
-         */
-        void reset();
+            /**
+             * @brief Reset the singleton instance (for testing purposes)
+             *
+             * This allows tests to inject a mock validator by clearing
+             * the singleton and letting tests control initialization.
+             */
+            void reset();
 
-    private:
-        SchemaValidatorFactory();
-        ~SchemaValidatorFactory();
-        SchemaValidatorFactory(const SchemaValidatorFactory&) = delete;
-        SchemaValidatorFactory& operator=(const SchemaValidatorFactory&) = delete;
+        private:
+            SchemaValidatorFactory();
+            ~SchemaValidatorFactory();
+            SchemaValidatorFactory(const SchemaValidatorFactory&) = delete;
+            SchemaValidatorFactory& operator=(const SchemaValidatorFactory&) = delete;
 
-        class Impl;
-        std::unique_ptr<Impl> m_impl;
+            class Impl;
+            std::unique_ptr<Impl> m_impl;
     };
 
 } // namespace SchemaValidator

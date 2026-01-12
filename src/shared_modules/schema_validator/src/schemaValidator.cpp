@@ -26,6 +26,7 @@ namespace SchemaValidator
     {
         std::regex ipv4Pattern(
             R"(^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$)");
+
         if (std::regex_match(ipStr, ipv4Pattern))
         {
             return true;
@@ -39,258 +40,263 @@ namespace SchemaValidator
     // Implementation class for SchemaValidatorEngine
     class SchemaValidatorEngine::Impl
     {
-    public:
-        nlohmann::json m_schema;
-        nlohmann::json m_properties;
-        bool m_strictMode;
-        std::string m_schemaName;
+        public:
+            nlohmann::json m_schema;
+            nlohmann::json m_properties;
+            bool m_strictMode;
+            std::string m_schemaName;
 
-        Impl()
-            : m_strictMode(false)
-        {
-        }
-
-        bool loadSchemaFromString(const std::string& schemaContent)
-        {
-            try
+            Impl()
+                : m_strictMode(false)
             {
-                m_schema = nlohmann::json::parse(schemaContent);
-                return parseAndInitializeSchema();
-            }
-            catch (const std::exception& e)
-            {
-                return false;
-            }
-        }
-
-    private:
-        bool parseAndInitializeSchema()
-        {
-            // Extract properties from Elasticsearch mapping
-            if (m_schema.contains("template") && m_schema["template"].contains("mappings") &&
-                m_schema["template"]["mappings"].contains("properties"))
-            {
-                m_properties = m_schema["template"]["mappings"]["properties"];
-            }
-            else
-            {
-                return false;
             }
 
-            // Check for strict mode
-            if (m_schema["template"]["mappings"].contains("dynamic"))
+            bool loadSchemaFromString(const std::string& schemaContent)
             {
-                std::string dynamicMode = m_schema["template"]["mappings"]["dynamic"].get<std::string>();
-                m_strictMode = (dynamicMode == "strict");
-            }
-
-            // Extract schema name from index_patterns
-            if (m_schema.contains("index_patterns") && m_schema["index_patterns"].is_array() &&
-                !m_schema["index_patterns"].empty())
-            {
-                std::string pattern = m_schema["index_patterns"][0].get<std::string>();
-                // Remove wildcard suffix if present
-                size_t starPos = pattern.find('*');
-                if (starPos != std::string::npos)
+                try
                 {
-                    m_schemaName = pattern.substr(0, starPos);
+                    m_schema = nlohmann::json::parse(schemaContent);
+                    return parseAndInitializeSchema();
+                }
+                catch (const std::exception& e)
+                {
+                    return false;
+                }
+            }
+
+        private:
+            bool parseAndInitializeSchema()
+            {
+                // Extract properties from Elasticsearch mapping
+                if (m_schema.contains("template") && m_schema["template"].contains("mappings") &&
+                        m_schema["template"]["mappings"].contains("properties"))
+                {
+                    m_properties = m_schema["template"]["mappings"]["properties"];
                 }
                 else
                 {
-                    m_schemaName = pattern;
+                    return false;
                 }
-            }
 
-            return true;
-        }
-
-    public:
-
-        ValidationResult validate(const nlohmann::json& message)
-        {
-            ValidationResult result;
-
-            // Validate against properties
-            validateObject(message, m_properties, "", result);
-
-            result.isValid = result.errors.empty();
-            return result;
-        }
-
-    private:
-        void validateObject(const nlohmann::json& obj,
-                            const nlohmann::json& properties,
-                            const std::string& path,
-                            ValidationResult& result)
-        {
-            if (!obj.is_object())
-            {
-                result.errors.push_back(path + ": Expected object, got " + std::string(obj.type_name()) +
-                                        " with value: " + obj.dump());
-                return;
-            }
-
-            // Check for extra fields in strict mode
-            // OpenSearch accepts extra fields in strict mode ONLY if their value is null
-            if (m_strictMode)
-            {
-                for (auto it = obj.begin(); it != obj.end(); ++it)
+                // Check for strict mode
+                if (m_schema["template"]["mappings"].contains("dynamic"))
                 {
-                    if (!properties.contains(it.key()))
+                    std::string dynamicMode = m_schema["template"]["mappings"]["dynamic"].get<std::string>();
+                    m_strictMode = (dynamicMode == "strict");
+                }
+
+                // Extract schema name from index_patterns
+                if (m_schema.contains("index_patterns") && m_schema["index_patterns"].is_array() &&
+                        !m_schema["index_patterns"].empty())
+                {
+                    std::string pattern = m_schema["index_patterns"][0].get<std::string>();
+                    // Remove wildcard suffix if present
+                    size_t starPos = pattern.find('*');
+
+                    if (starPos != std::string::npos)
                     {
-                        // OpenSearch allows undefined fields if their value is null
-                        // (null values don't need mapping as they're not indexed)
-                        if (!it.value().is_null())
+                        m_schemaName = pattern.substr(0, starPos);
+                    }
+                    else
+                    {
+                        m_schemaName = pattern;
+                    }
+                }
+
+                return true;
+            }
+
+        public:
+
+            ValidationResult validate(const nlohmann::json& message)
+            {
+                ValidationResult result;
+
+                // Validate against properties
+                validateObject(message, m_properties, "", result);
+
+                result.isValid = result.errors.empty();
+                return result;
+            }
+
+        private:
+            void validateObject(const nlohmann::json& obj,
+                                const nlohmann::json& properties,
+                                const std::string& path,
+                                ValidationResult& result)
+            {
+                if (!obj.is_object())
+                {
+                    result.errors.push_back(path + ": Expected object, got " + std::string(obj.type_name()) +
+                                            " with value: " + obj.dump());
+                    return;
+                }
+
+                // Check for extra fields in strict mode
+                // OpenSearch accepts extra fields in strict mode ONLY if their value is null
+                if (m_strictMode)
+                {
+                    for (auto it = obj.begin(); it != obj.end(); ++it)
+                    {
+                        if (!properties.contains(it.key()))
                         {
-                            std::string fieldPath = path.empty() ? it.key() : path + "." + it.key();
-                            result.errors.push_back(fieldPath + ": Field not allowed in strict mode");
+                            // OpenSearch allows undefined fields if their value is null
+                            // (null values don't need mapping as they're not indexed)
+                            if (!it.value().is_null())
+                            {
+                                std::string fieldPath = path.empty() ? it.key() : path + "." + it.key();
+                                result.errors.push_back(fieldPath + ": Field not allowed in strict mode");
+                            }
                         }
                     }
                 }
-            }
 
-            // Validate each property
-            for (auto it = properties.begin(); it != properties.end(); ++it)
-            {
-                std::string fieldName = it.key();
-                std::string fieldPath = path.empty() ? fieldName : path + "." + fieldName;
-                const nlohmann::json& fieldSchema = it.value();
-
-                // Skip validation if field is not present in message (fields are optional by default)
-                if (!obj.contains(fieldName))
+                // Validate each property
+                for (auto it = properties.begin(); it != properties.end(); ++it)
                 {
-                    continue;
-                }
+                    std::string fieldName = it.key();
+                    std::string fieldPath = path.empty() ? fieldName : path + "." + fieldName;
+                    const nlohmann::json& fieldSchema = it.value();
 
-                const nlohmann::json& fieldValue = obj[fieldName];
-
-                // Handle nested objects
-                if (fieldSchema.contains("properties"))
-                {
-                    // OpenSearch allows null values for any field, including nested objects
-                    if (fieldValue.is_null())
+                    // Skip validation if field is not present in message (fields are optional by default)
+                    if (!obj.contains(fieldName))
                     {
                         continue;
                     }
 
-                    if (!fieldValue.is_object())
+                    const nlohmann::json& fieldValue = obj[fieldName];
+
+                    // Handle nested objects
+                    if (fieldSchema.contains("properties"))
                     {
-                        result.errors.push_back(fieldPath + ": Expected object, got " +
-                                                std::string(fieldValue.type_name()) + " with value: " + fieldValue.dump());
-                        continue;
+                        // OpenSearch allows null values for any field, including nested objects
+                        if (fieldValue.is_null())
+                        {
+                            continue;
+                        }
+
+                        if (!fieldValue.is_object())
+                        {
+                            result.errors.push_back(fieldPath + ": Expected object, got " +
+                                                    std::string(fieldValue.type_name()) + " with value: " + fieldValue.dump());
+                            continue;
+                        }
+
+                        validateObject(fieldValue, fieldSchema["properties"], fieldPath, result);
                     }
-                    validateObject(fieldValue, fieldSchema["properties"], fieldPath, result);
-                }
-                else if (fieldSchema.contains("type"))
-                {
-                    std::string type = fieldSchema["type"].get<std::string>();
-                    validateField(fieldValue, type, fieldPath, result);
-                }
-            }
-        }
-
-        void validateField(const nlohmann::json& value,
-                           const std::string& type,
-                           const std::string& path,
-                           ValidationResult& result)
-        {
-            // Allow null values for any field
-            if (value.is_null())
-            {
-                return;
-            }
-
-            // Arrays use the type of their elements
-            if (value.is_array())
-            {
-                // Validate each element of the array against the expected type
-                for (size_t i = 0; i < value.size(); ++i)
-                {
-                    std::string elementPath = path + "[" + std::to_string(i) + "]";
-                    validateField(value[i], type, elementPath, result);
-                }
-                return;
-            }
-
-            // Strict validation: only accept exact type or null
-            if (type == "keyword" || type == "text" || type == "match_only_text")
-            {
-                if (!value.is_string())
-                {
-                    result.errors.push_back(path + ": Expected string, got " +
-                                            std::string(value.type_name()) + " with value: " + value.dump());
-                }
-            }
-            else if (type == "integer" || type == "long" || type == "short" || type == "unsigned_long")
-            {
-                if (!value.is_number_integer())
-                {
-                    result.errors.push_back(path + ": Expected integer, got " +
-                                            std::string(value.type_name()) + " with value: " + value.dump());
-                }
-            }
-            else if (type == "scaled_float")
-            {
-                if (!value.is_number())
-                {
-                    result.errors.push_back(path + ": Expected number, got " +
-                                            std::string(value.type_name()) + " with value: " + value.dump());
-                }
-            }
-            else if (type == "date")
-            {
-                // Date can be number (epoch) or ISO8601 string
-                if (value.is_number())
-                {
-                    // Accept epoch timestamp
-                }
-                else if (value.is_string())
-                {
-                    std::string dateStr = value.get<std::string>();
-                    if (!isValidISO8601Date(dateStr))
+                    else if (fieldSchema.contains("type"))
                     {
-                        result.errors.push_back(path + ": Invalid date format. Expected ISO8601, got: " + dateStr);
-                    }
-                }
-                else
-                {
-                    result.errors.push_back(path + ": Expected date (number or ISO8601 string), got " +
-                                            std::string(value.type_name()) + " with value: " + value.dump());
-                }
-            }
-            else if (type == "ip")
-            {
-                if (!value.is_string())
-                {
-                    result.errors.push_back(path + ": Expected IP address string, got " +
-                                            std::string(value.type_name()) + " with value: " + value.dump());
-                }
-                else
-                {
-                    std::string ipStr = value.get<std::string>();
-                    if (!isValidIP(ipStr))
-                    {
-                        result.errors.push_back(path + ": Invalid IP address format: " + ipStr);
+                        std::string type = fieldSchema["type"].get<std::string>();
+                        validateField(fieldValue, type, fieldPath, result);
                     }
                 }
             }
-            else if (type == "boolean")
+
+            void validateField(const nlohmann::json& value,
+                               const std::string& type,
+                               const std::string& path,
+                               ValidationResult& result)
             {
-                if (!value.is_boolean())
+                // Allow null values for any field
+                if (value.is_null())
                 {
-                    result.errors.push_back(path + ": Expected boolean, got " +
-                                            std::string(value.type_name()) + " with value: " + value.dump());
+                    return;
+                }
+
+                // Arrays use the type of their elements
+                if (value.is_array())
+                {
+                    // Validate each element of the array against the expected type
+                    for (size_t i = 0; i < value.size(); ++i)
+                    {
+                        std::string elementPath = path + "[" + std::to_string(i) + "]";
+                        validateField(value[i], type, elementPath, result);
+                    }
+
+                    return;
+                }
+
+                // Strict validation: only accept exact type or null
+                if (type == "keyword" || type == "text" || type == "match_only_text")
+                {
+                    if (!value.is_string())
+                    {
+                        result.errors.push_back(path + ": Expected string, got " +
+                                                std::string(value.type_name()) + " with value: " + value.dump());
+                    }
+                }
+                else if (type == "integer" || type == "long" || type == "short" || type == "unsigned_long")
+                {
+                    if (!value.is_number_integer())
+                    {
+                        result.errors.push_back(path + ": Expected integer, got " +
+                                                std::string(value.type_name()) + " with value: " + value.dump());
+                    }
+                }
+                else if (type == "scaled_float")
+                {
+                    if (!value.is_number())
+                    {
+                        result.errors.push_back(path + ": Expected number, got " +
+                                                std::string(value.type_name()) + " with value: " + value.dump());
+                    }
+                }
+                else if (type == "date")
+                {
+                    // Date can be number (epoch) or ISO8601 string
+                    if (value.is_number())
+                    {
+                        // Accept epoch timestamp
+                    }
+                    else if (value.is_string())
+                    {
+                        std::string dateStr = value.get<std::string>();
+
+                        if (!isValidISO8601Date(dateStr))
+                        {
+                            result.errors.push_back(path + ": Invalid date format. Expected ISO8601, got: " + dateStr);
+                        }
+                    }
+                    else
+                    {
+                        result.errors.push_back(path + ": Expected date (number or ISO8601 string), got " +
+                                                std::string(value.type_name()) + " with value: " + value.dump());
+                    }
+                }
+                else if (type == "ip")
+                {
+                    if (!value.is_string())
+                    {
+                        result.errors.push_back(path + ": Expected IP address string, got " +
+                                                std::string(value.type_name()) + " with value: " + value.dump());
+                    }
+                    else
+                    {
+                        std::string ipStr = value.get<std::string>();
+
+                        if (!isValidIP(ipStr))
+                        {
+                            result.errors.push_back(path + ": Invalid IP address format: " + ipStr);
+                        }
+                    }
+                }
+                else if (type == "boolean")
+                {
+                    if (!value.is_boolean())
+                    {
+                        result.errors.push_back(path + ": Expected boolean, got " +
+                                                std::string(value.type_name()) + " with value: " + value.dump());
+                    }
+                }
+                else if (type == "object")
+                {
+                    if (!value.is_object())
+                    {
+                        result.errors.push_back(path + ": Expected object, got " +
+                                                std::string(value.type_name()) + " with value: " + value.dump());
+                    }
                 }
             }
-            else if (type == "object")
-            {
-                if (!value.is_object())
-                {
-                    result.errors.push_back(path + ": Expected object, got " +
-                                            std::string(value.type_name()) + " with value: " + value.dump());
-                }
-            }
-        }
     };
 
     // SchemaValidatorEngine implementation
@@ -335,74 +341,86 @@ namespace SchemaValidator
     // SchemaValidatorFactory implementation
     class SchemaValidatorFactory::Impl
     {
-    public:
-        std::map<std::string, std::shared_ptr<SchemaValidatorEngine>> m_validators;
-        bool m_initialized;
+        public:
+            std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> m_validators;
+            bool m_initialized;
 
-        Impl()
-            : m_initialized(false)
-        {
-        }
-
-        bool loadSchemaFromString(const std::string& schemaContent)
-        {
-            try
+            Impl()
+                : m_initialized(false)
             {
-                auto validator = std::make_shared<SchemaValidatorEngine>();
+            }
 
-                // Load schema from string using public method
-                if (validator->loadSchemaFromString(schemaContent))
+            bool loadSchemaFromString(const std::string& schemaContent)
+            {
+                try
                 {
-                    std::string schemaName = validator->getSchemaName();
-                    if (!schemaName.empty())
+                    auto validator = std::make_shared<SchemaValidatorEngine>();
+
+                    // Load schema from string using public method
+                    if (validator->loadSchemaFromString(schemaContent))
                     {
-                        m_validators[schemaName] = validator;
-                        return true;
+                        std::string schemaName = validator->getSchemaName();
+
+                        if (!schemaName.empty())
+                        {
+                            m_validators[schemaName] = validator;
+                            return true;
+                        }
                     }
+
+                    return false;
                 }
-
-                return false;
-            }
-            catch (const std::exception& e)
-            {
-                return false;
-            }
-        }
-
-        bool initializeFromEmbeddedResources()
-        {
-            try
-            {
-                const auto& embeddedSchemas = Resources::getEmbeddedSchemas();
-
-                for (const auto& [_, content] : embeddedSchemas)
+                catch (const std::exception& e)
                 {
-                    loadSchemaFromString(content);
+                    return false;
+                }
+            }
+
+            bool initializeFromEmbeddedResources()
+            {
+                try
+                {
+                    const auto& embeddedSchemas = Resources::getEmbeddedSchemas();
+
+                    for (const auto& [_, content] : embeddedSchemas)
+                    {
+                        loadSchemaFromString(content);
+                    }
+
+                    m_initialized = !m_validators.empty();
+                    return m_initialized;
+                }
+                catch (const std::exception& e)
+                {
+                    return false;
+                }
+            }
+
+            bool initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators)
+            {
+                if (!customValidators.empty())
+                {
+                    // Use injected custom validators (for testing or extensibility)
+                    m_validators = std::move(customValidators);
+                    m_initialized = true;
+                    return true;
                 }
 
-                m_initialized = !m_validators.empty();
-                return m_initialized;
+                // Default behavior: load from embedded resources
+                return initializeFromEmbeddedResources();
             }
-            catch (const std::exception& e)
-            {
-                return false;
-            }
-        }
 
-        bool initialize()
-        {
-            return initializeFromEmbeddedResources();
-        }
-
-        std::shared_ptr<SchemaValidatorEngine> getValidator(const std::string& indexPattern)
-        {
-            auto it = m_validators.find(indexPattern);
-            if (it != m_validators.end())
+            std::shared_ptr<ISchemaValidatorEngine> getValidator(const std::string& indexPattern)
             {
-                return it->second;
+                auto it = m_validators.find(indexPattern);
+
+                if (it != m_validators.end())
+                {
+                    return it->second;
+                }
+
+                return nullptr;
             }
-            return nullptr;
-        }
     };
 
     SchemaValidatorFactory::SchemaValidatorFactory()
@@ -418,12 +436,12 @@ namespace SchemaValidator
         return instance;
     }
 
-    bool SchemaValidatorFactory::initialize()
+    bool SchemaValidatorFactory::initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators)
     {
-        return m_impl->initialize();
+        return m_impl->initialize(std::move(customValidators));
     }
 
-    std::shared_ptr<SchemaValidatorEngine> SchemaValidatorFactory::getValidator(const std::string& indexPattern)
+    std::shared_ptr<ISchemaValidatorEngine> SchemaValidatorFactory::getValidator(const std::string& indexPattern)
     {
         return m_impl->getValidator(indexPattern);
     }
