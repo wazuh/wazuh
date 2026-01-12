@@ -2,6 +2,7 @@
 #define _BUILDER_BUILDERS_IBUILDCTX_HPP
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <builder/iallowedFields.hpp>
@@ -38,6 +39,8 @@ struct Context
     std::string policyName;          // Name of the current policy being built
     std::string stageName;           // Name of the current stage being built
     std::string opName;              // Name of the current operation being built
+    std::optional<std::unordered_map<std::string, bool>>
+        availableKvdbs; // Available KVDBs: nullopt = no validation, value = validate with this map
 };
 
 /**
@@ -174,6 +177,14 @@ public:
      * @param allow
      */
     virtual void setAllowMissingDependencies(bool allow) = 0;
+
+    /**
+     * @brief Check if a KVDB is available and enabled in the current integration context
+     *
+     * @param kvdbName Name of the KVDB to check
+     * @return std::pair<bool, bool> First: exists, Second: is enabled (only valid if exists)
+     */
+    virtual std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const = 0;
 };
 
 } // namespace builder::builders

@@ -11,6 +11,8 @@ namespace builder::builders::mocks
 class MockBuildCtx : public IBuildCtx
 {
 public:
+    using KvdbMap = std::unordered_map<std::string, bool>;
+
     MOCK_METHOD(std::shared_ptr<IBuildCtx>, clone, (), (const));
     MOCK_METHOD((const defs::IDefinitions&), definitions, (), (const));
     MOCK_METHOD(void, setDefinitions, (const std::shared_ptr<defs::IDefinitions>& definitions), ());
@@ -30,6 +32,7 @@ public:
     MOCK_METHOD(void, setStoreNSReader, (const std::shared_ptr<cm::store::ICMStoreNSReader> nsReader), ());
     MOCK_METHOD(bool, allowMissingDependencies, (), (const));
     MOCK_METHOD(void, setAllowMissingDependencies, (bool allow), ());
+    MOCK_METHOD((std::pair<bool, bool>), isKvdbAvailable, (const std::string& kvdbName), (const));
 };
 
 } // namespace builder::builders::mocks
