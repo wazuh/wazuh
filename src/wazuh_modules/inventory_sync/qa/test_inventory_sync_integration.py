@@ -50,7 +50,7 @@ def init_opensearch(low_resources=False):
     # If not available, prepare to start local container
     env_vars = {
         'discovery.type': 'single-node',
-        'plugins.security.disabled': 'true'
+        'DISABLE_SECURITY_PLUGIN': 'true'
     }
 
     if low_resources:

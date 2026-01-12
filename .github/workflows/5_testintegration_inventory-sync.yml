@@ -33,7 +33,7 @@ jobs:
         image: opensearchproject/opensearch:latest
         env:
           discovery.type: single-node
-          plugins.security.disabled: true
+          DISABLE_SECURITY_PLUGIN: true
           action.auto_create_index: "true"
           cluster.routing.allocation.disk.threshold_enabled: "false"
         ports:
