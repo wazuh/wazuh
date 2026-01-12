@@ -397,6 +397,7 @@ int main(int argc, char* argv[])
         }
 
         // Stream log for alerts an archive
+        if (enableProcessing)
         {
 
             streamLogger = std::make_shared<streamlog::LogManager>(store, scheduler);
@@ -513,7 +514,7 @@ int main(int argc, char* argv[])
         }
 
         // CMsync
-        {
+        if (enableProcessing) {
             cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator);
             LOG_INFO("Content Manager Sync Service initialized.");
 
@@ -531,6 +532,7 @@ int main(int argc, char* argv[])
         }
 
         // Archiver
+        if (enableProcessing)
         {
             archiver =
                 std::make_shared<archiver::Archiver>(streamLogger, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));

@@ -13,14 +13,12 @@ export WAZUH_STANDALONE_LOG_LEVEL="info"
 export WAZUH_STORE_PATH="${DATA_PATH}/store"
 export WAZUH_OUTPUTS_PATH="${DATA_PATH}/outputs"
 export WAZUH_CM_RULESET_PATH="${DATA_PATH}/content"
-export WAZUH_CMSYNC_OUTPUT_PATH="${DATA_PATH}/outputs"
 export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"
 export WAZUH_STREAMLOG_BASE_PATH="${LOG_PATH}"
 export WAZUH_SERVER_ENABLE_EVENT_PROCESSING="false"
 
 # If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
-mkdir -p "${WAZUH_CMSYNC_OUTPUT_PATH}" # For cmsync output files
 mkdir -p "${WAZUH_CM_RULESET_PATH}" # For Ruleset store
 
 "${SCRIPT_DIR}/bin/wazuh-engine" -f

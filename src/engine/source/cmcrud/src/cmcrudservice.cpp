@@ -125,7 +125,7 @@ std::vector<cm::store::NamespaceId> CrudService::listNamespaces() const
 
 bool CrudService::existsNamespace(const cm::store::NamespaceId& nsId) const
 {
-    return m_store->existsNamespace(nsId);
+    return getStore()->existsNamespace(nsId);
 }
 
 void CrudService::createNamespace(std::string_view nsName)
@@ -308,15 +308,17 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                                   const json::Json& policy,
                                   bool softValidation)
 {
+    const auto store = getStore();
+    const auto validator = getValidator();
     // Reject if destination namespace already exists
-    if (m_store->existsNamespace(nsId))
+    if (store->existsNamespace(nsId))
     {
         throw std::runtime_error(
             fmt::format("Namespace '{}' already exists. Import is only allowed into a new namespace.", nsId.toStr()));
     }
 
     // Create empty destination namespace
-    auto ns = m_store->createNamespace(nsId);
+    auto ns = store->createNamespace(nsId);
     auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(ns);
 
 
@@ -340,7 +342,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
 
         if (!softValidation)
         {
-            m_validator->validateAsset(nsReader, assetJson);
+            validator->validateAsset(nsReader, assetJson);
         }
         ns->createResource(name.toStr(), cm::store::ResourceType::DECODER, assetJson.str());
     }
@@ -350,7 +352,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
         auto integ = cm::store::dataType::Integration::fromJson(jinteg, true);
         if (!softValidation)
         {
-            m_validator->softIntegrationValidate(nsReader, integ);
+            validator->softIntegrationValidate(nsReader, integ);
         }
         ns->createResource(integ.getName(), cm::store::ResourceType::INTEGRATION, integ.toJson().str());
     }
