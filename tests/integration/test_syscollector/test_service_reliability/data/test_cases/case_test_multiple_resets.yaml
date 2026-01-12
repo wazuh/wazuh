@@ -1,25 +1,153 @@
 # Test cases for syscollector deadlock detection during service stop
-# Uses a timing sweep approach - tries stopping at different delays after scan starts.
+# Uses EVENT-based stop triggers - stops at specific events with configurable delays.
 #
 # The test:
 #   1. Waits for agent to connect to manager (asserted)
-#   2. Waits for syscollector scan to start (asserted)
-#   3. Waits delay_ms milliseconds and stops the service
-#   4. Sweeps through delay values from delay_start_ms to delay_end_ms
-#
-# If DB init error is detected, the cycle is skipped (not counted as failure)
+#   2. Waits for the specified stop_event to occur (asserted)
+#   3. Waits delay_ms milliseconds after the event
+#   4. Stops the service and checks for deadlock errors
 #
 # Parameters:
-#   delay_start_ms: Starting delay in milliseconds (default: 0)
-#   delay_end_ms: Ending delay in milliseconds (default: 1000)
-#   delay_increment_ms: Delay increment in milliseconds (default: 50)
-#   cycles_per_delay: Number of stop cycles per delay value (default: 3)
+#   stop_event: Event to trigger stop (SCAN_START, SCAN_END, SYNC_START, SYNC_END)
+#   delay_ms: Delay in milliseconds after event detection before stopping
+#   cycles: Number of stop cycles to execute
 
-- name: "Timing sweep 0-500ms"
-  description: "Sweep delays from 0ms to 500ms in 50ms increments to find deadlock window"
+# ============================================================================
+# SCAN_START event - Stop during scan phase
+# ============================================================================
+- name: "SCAN_START delay 0ms"
+  description: "Stop immediately when scan starts"
   configuration_parameters:
   metadata:
-    delay_start_ms: 0
-    delay_end_ms: 500
-    delay_increment_ms: 50
-    cycles_per_delay: 3
+    stop_event: SCAN_START
+    delay_ms: 0
+    cycles: 3
+
+- name: "SCAN_START delay 50ms"
+  description: "Stop 50ms after scan starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SCAN_START
+    delay_ms: 50
+    cycles: 3
+
+- name: "SCAN_START delay 100ms"
+  description: "Stop 100ms after scan starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SCAN_START
+    delay_ms: 100
+    cycles: 3
+
+- name: "SCAN_START delay 200ms"
+  description: "Stop 200ms after scan starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SCAN_START
+    delay_ms: 200
+    cycles: 3
+
+- name: "SCAN_START delay 500ms"
+  description: "Stop 500ms after scan starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SCAN_START
+    delay_ms: 500
+    cycles: 3
+
+# ============================================================================
+# SCAN_END event - Stop right after scan completes
+# ============================================================================
+- name: "SCAN_END delay 0ms"
+  description: "Stop immediately when scan ends"
+  configuration_parameters:
+  metadata:
+    stop_event: SCAN_END
+    delay_ms: 0
+    cycles: 3
+
+- name: "SCAN_END delay 50ms"
+  description: "Stop 50ms after scan ends"
+  configuration_parameters:
+  metadata:
+    stop_event: SCAN_END
+    delay_ms: 50
+    cycles: 3
+
+- name: "SCAN_END delay 100ms"
+  description: "Stop 100ms after scan ends"
+  configuration_parameters:
+  metadata:
+    stop_event: SCAN_END
+    delay_ms: 100
+    cycles: 3
+
+# ============================================================================
+# SYNC_START event - Stop during sync phase (most likely to trigger deadlock)
+# ============================================================================
+- name: "SYNC_START delay 0ms"
+  description: "Stop immediately when sync starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_START
+    delay_ms: 0
+    cycles: 3
+
+- name: "SYNC_START delay 50ms"
+  description: "Stop 50ms after sync starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_START
+    delay_ms: 50
+    cycles: 3
+
+- name: "SYNC_START delay 100ms"
+  description: "Stop 100ms after sync starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_START
+    delay_ms: 100
+    cycles: 3
+
+- name: "SYNC_START delay 200ms"
+  description: "Stop 200ms after sync starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_START
+    delay_ms: 200
+    cycles: 3
+
+- name: "SYNC_START delay 500ms"
+  description: "Stop 500ms after sync starts"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_START
+    delay_ms: 500
+    cycles: 3
+
+# ============================================================================
+# SYNC_END event - Stop right after sync completes
+# ============================================================================
+- name: "SYNC_END delay 0ms"
+  description: "Stop immediately when sync ends"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_END
+    delay_ms: 0
+    cycles: 3
+
+- name: "SYNC_END delay 50ms"
+  description: "Stop 50ms after sync ends"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_END
+    delay_ms: 50
+    cycles: 3
+
+- name: "SYNC_END delay 100ms"
+  description: "Stop 100ms after sync ends"
+  configuration_parameters:
+  metadata:
+    stop_event: SYNC_END
+    delay_ms: 100
+    cycles: 3
