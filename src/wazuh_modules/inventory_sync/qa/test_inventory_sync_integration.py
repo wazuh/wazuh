@@ -40,9 +40,9 @@ def init_opensearch(low_resources=False):
     # First, check if OpenSearch is already accessible (e.g., via GitHub Actions service)
     print("Checking if OpenSearch service is already available...")
     try:
-        response = requests.get('http://' + GLOBAL_URL, timeout=5)
+        response = requests.get(f"http://{GLOBAL_URL}", timeout=5)
         if response.status_code == 200:
-            print(" OpenSearch service already available (service container or existing instance)")
+            print("OpenSearch service already available (service container or existing instance)")
             return client
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         print("OpenSearch not accessible yet, will start local container...")
