@@ -50,6 +50,22 @@ remoted.batch_events_capacity=131072
 
 ## Stateless Metadata Configuration
 
+### Cache Expiration
+
+```conf
+# Agent metadata cache expiration time in seconds [60..86400]
+# Entries older than this threshold will be cleaned up periodically
+# Default: 300 (5 minutes)
+remoted.enrich_cache_expire_time=300
+```
+
+**Guidelines**:
+- Ephemeral/short-lived agents: 300 (5 minutes) - default
+- Stable agents with occasional restarts: 600 (10 minutes)
+- Long-running stable agents: 1800 (30 minutes)
+
+The cleanup runs every 60 seconds and removes entries that haven't received a keepalive in the configured time period.
+
 ### Queue Sizing
 
 ```conf
