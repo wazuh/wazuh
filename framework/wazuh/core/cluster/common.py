@@ -1849,15 +1849,24 @@ def as_wazuh_object(dct: Dict):
                 wazuh = Wazuh()
                 return getattr(wazuh, funcname)
             else:
-                # Encoded function or static method.
+                # Encoded function or static method (restricted to allowlisted internal modules).
                 qualname = encoded_callable['__qualname__'].split('.')
                 classname = qualname[0] if len(qualname) > 1 else None
                 module_path = encoded_callable['__module__']
-                module = import_module(module_path)
+
+                if not module_path.startswith('wazuh.'):
+                    raise exception.WazuhInternalError(1000,
+                                                       extra_message=f"Decoding callable from module '{module_path}' is not allowed",
+                                                       cmd_error=True)
+                
+                relative_mod = '.' + module_path[len('wazuh.'):]
+                module = import_module(relative_mod, package='wazuh')
+
                 if classname is None:
                     return getattr(module, funcname)
                 else:
                     return getattr(getattr(module, classname), funcname)
+        
         elif '__wazuh_exception__' in dct:
             wazuh_exception = dct['__wazuh_exception__']
             return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
@@ -1872,7 +1881,7 @@ def as_wazuh_object(dct: Dict):
             return ast.literal_eval(json.dumps(exc_dict))
         return dct
 
-    except (KeyError, AttributeError):
+    except (KeyError, AttributeError, TypeError, ValueError):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
                                            cmd_error=True)
