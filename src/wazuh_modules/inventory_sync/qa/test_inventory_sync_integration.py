@@ -50,8 +50,7 @@ def init_opensearch(low_resources=False):
     # If not available, prepare to start local container
     env_vars = {
         'discovery.type': 'single-node',
-        'plugins.security.disabled': 'true',
-        'OPENSEARCH_INITIAL_ADMIN_PASSWORD': 'WazuhTest99$'
+        'DISABLE_SECURITY_PLUGIN': 'true'
     }
 
     if low_resources:
