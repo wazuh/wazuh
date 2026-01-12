@@ -1848,16 +1848,13 @@ def as_wazuh_object(dct: Dict):
                 # Encoded Wazuh instance method.
                 wazuh = Wazuh()
                 return getattr(wazuh, funcname)
-            else:
-                # Encoded function or static method.
-                qualname = encoded_callable['__qualname__'].split('.')
-                classname = qualname[0] if len(qualname) > 1 else None
-                module_path = encoded_callable['__module__']
-                module = import_module(module_path)
-                if classname is None:
-                    return getattr(module, funcname)
-                else:
-                    return getattr(getattr(module, classname), funcname)
+            
+            raise exception.WazuhInternalError(
+                1000,
+                extra_message="Decoding non-internal callable from JSON is not allowed",
+                cmd_error=True
+            )
+        
         elif '__wazuh_exception__' in dct:
             wazuh_exception = dct['__wazuh_exception__']
             return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
