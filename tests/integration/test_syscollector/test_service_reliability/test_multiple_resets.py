@@ -35,6 +35,7 @@ import subprocess
 import sys
 import time
 import threading
+import re
 from pathlib import Path
 
 import pytest
@@ -48,12 +49,9 @@ from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.modules.modulesd.syscollector.patterns import (
     CB_SCAN_STARTED,
     CB_SCAN_FINISHED,
-    CB_SYNC_STARTED,
-    CB_SYNC_FINISHED,
 )
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.utils import callbacks, configuration
+from wazuh_testing.utils import configuration
 from wazuh_testing.utils.file import truncate_file
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -79,6 +77,12 @@ MAX_STOP_TIME = 30  # Seconds - stops taking longer indicate a problem
 STOP_COMMAND_TIMEOUT = 60  # Timeout for the net stop command
 CONNECTION_TIMEOUT = 30  # Timeout for connection
 EVENT_TIMEOUT = 60  # Timeout for event detection (scan/sync)
+POLL_INTERVAL = 0.01  # 10ms polling interval for faster detection
+
+# Define sync patterns locally (not available in wazuh_testing package)
+# These are DEBUG level messages from syscollectorImp.cpp
+CB_SYNC_STARTED = r'.*DEBUG: Starting syscollector sync'
+CB_SYNC_FINISHED = r'.*DEBUG: Ending syscollector sync'
 
 # Event name to pattern mapping
 EVENT_PATTERNS = {
@@ -153,36 +157,82 @@ def ensure_stopped():
     time.sleep(0.5)
 
 
-def wait_for_connection(timeout=CONNECTION_TIMEOUT):
-    """Wait for agent to connect to manager. Returns True if connected."""
-    try:
-        monitor = FileMonitor(WAZUH_LOG_PATH)
-        monitor.start(
-            callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER),
-            timeout=timeout,
-            only_new_events=True
-        )
-        return monitor.callback_result is not None
-    except Exception:
-        return False
+class FastLogMonitor:
+    """Fast log monitor with configurable polling interval."""
 
+    def __init__(self, log_path, poll_interval=POLL_INTERVAL):
+        self.log_path = log_path
+        self.poll_interval = poll_interval
+        self.patterns = {}  # name -> (compiled_regex, event)
+        self.results = {}   # name -> matched line
+        self._stop_event = threading.Event()
+        self._monitor_thread = None
+        self._file_position = 0
 
-def wait_for_event(event_name, timeout=EVENT_TIMEOUT):
-    """Wait for a specific event. Returns True if event detected."""
-    if event_name not in EVENT_PATTERNS:
-        raise ValueError(f"Unknown event: {event_name}. Valid events: {list(EVENT_PATTERNS.keys())}")
+    def add_pattern(self, name, pattern):
+        """Add a pattern to watch for."""
+        self.patterns[name] = (re.compile(pattern), threading.Event())
+        self.results[name] = None
 
-    pattern = EVENT_PATTERNS[event_name]
-    try:
-        monitor = FileMonitor(WAZUH_LOG_PATH)
-        monitor.start(
-            callback=callbacks.generate_callback(pattern),
-            timeout=timeout,
-            only_new_events=True
-        )
-        return monitor.callback_result is not None
-    except Exception:
-        return False
+    def start(self):
+        """Start monitoring from current end of file."""
+        # Get current file size to start from
+        try:
+            with open(self.log_path, 'r', encoding='utf-8', errors='replace') as f:
+                f.seek(0, 2)  # Seek to end
+                self._file_position = f.tell()
+        except Exception as e:
+            print(f"[MONITOR] Error getting file position: {e}")
+            self._file_position = 0
+
+        self._stop_event.clear()
+        self._monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self._monitor_thread.start()
+
+    def stop(self):
+        """Stop monitoring."""
+        self._stop_event.set()
+        if self._monitor_thread:
+            self._monitor_thread.join(timeout=2)
+
+    def _monitor_loop(self):
+        """Main monitoring loop with fast polling."""
+        while not self._stop_event.is_set():
+            try:
+                with open(self.log_path, 'r', encoding='utf-8', errors='replace') as f:
+                    f.seek(self._file_position)
+                    new_lines = f.readlines()
+                    self._file_position = f.tell()
+
+                for line in new_lines:
+                    for name, (regex, event) in self.patterns.items():
+                        if not event.is_set() and regex.search(line):
+                            self.results[name] = line.strip()
+                            event.set()
+                            print(f"[MONITOR] Detected {name}: {line.strip()[:80]}...")
+
+            except Exception as e:
+                print(f"[MONITOR] Error reading log: {e}")
+
+            time.sleep(self.poll_interval)
+
+    def wait_for(self, name, timeout):
+        """Wait for a specific pattern to be matched."""
+        if name not in self.patterns:
+            raise ValueError(f"Unknown pattern: {name}")
+        _, event = self.patterns[name]
+        return event.wait(timeout=timeout)
+
+    def was_detected(self, name):
+        """Check if a pattern was detected."""
+        if name not in self.patterns:
+            return False
+        _, event = self.patterns[name]
+        return event.is_set()
+
+    def get_result(self, name):
+        """Get the matched line for a pattern."""
+        return self.results.get(name)
 
 
 def has_db_init_error():
@@ -193,42 +243,6 @@ def has_db_init_error():
             return 'Error deleting old db file' in content or 'Unable to initialize' in content
     except Exception:
         return False
-
-
-class StopTrigger:
-    """Helper class to trigger stop after an event with optional delay."""
-
-    def __init__(self, delay_ms=0):
-        self.delay_ms = delay_ms
-        self.event_detected = threading.Event()
-        self.stop_result = None
-        self.stop_thread = None
-
-    def trigger_stop(self):
-        """Execute stop after delay."""
-        if self.delay_ms > 0:
-            time.sleep(self.delay_ms / 1000.0)
-        self.stop_result = stop_service()
-
-    def start_stop_thread(self):
-        """Start the stop thread (waits for event_detected to be set)."""
-        def worker():
-            self.event_detected.wait()
-            self.trigger_stop()
-
-        self.stop_thread = threading.Thread(target=worker)
-        self.stop_thread.start()
-
-    def signal_event(self):
-        """Signal that the target event was detected."""
-        self.event_detected.set()
-
-    def wait_for_stop(self, timeout=STOP_COMMAND_TIMEOUT + 10):
-        """Wait for stop to complete."""
-        if self.stop_thread:
-            self.stop_thread.join(timeout=timeout)
-            return self.stop_result
-        return None
 
 
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_ids)
@@ -278,11 +292,13 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
     print(f"  Stop Event: {stop_event}")
     print(f"  Delay after event: {delay_ms}ms")
     print(f"  Cycles: {cycles}")
+    print(f"  Poll interval: {POLL_INTERVAL*1000:.0f}ms")
     print(f"{'='*70}")
 
     ensure_stopped()
     test_start_time = time.time()
     remoted_server = None
+    monitor = None
 
     try:
         for cycle in range(1, cycles + 1):
@@ -293,8 +309,17 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
             # Truncate log for clean monitoring
             truncate_file(WAZUH_LOG_PATH)
 
+            # Create and start monitor BEFORE starting service (fixes race condition)
+            monitor = FastLogMonitor(WAZUH_LOG_PATH, poll_interval=POLL_INTERVAL)
+            monitor.add_pattern('CONNECTION', AGENTD_CONNECTED_TO_SERVER)
+            monitor.add_pattern('SCAN_START', CB_SCAN_STARTED)
+            monitor.add_pattern('SCAN_END', CB_SCAN_FINISHED)
+            monitor.add_pattern('SYNC_START', CB_SYNC_STARTED)
+            monitor.add_pattern('SYNC_END', CB_SYNC_FINISHED)
+            monitor.start()
+            print(f"[{cycle_id}] Log monitor started (poll: {POLL_INTERVAL*1000:.0f}ms)")
+
             # Start fresh RemotedSimulator for each cycle
-            # (Required: simulator doesn't handle reconnections after service restart)
             print(f"[{cycle_id}] Starting RemotedSimulator...")
             remoted_server = RemotedSimulator(server_ip='127.0.0.1', port=1514, protocol='tcp')
             remoted_server.start()
@@ -303,12 +328,13 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
             apply_config()
             if not start_service():
                 print(f"[{cycle_id}] SKIP - Failed to start service")
+                monitor.stop()
                 remoted_server.destroy()
                 continue
 
             # ASSERTION 1: Agent must connect to manager
             print(f"[{cycle_id}] Waiting for agent connection...")
-            connected = wait_for_connection(timeout=CONNECTION_TIMEOUT)
+            connected = monitor.wait_for('CONNECTION', timeout=CONNECTION_TIMEOUT)
             if not connected:
                 print(f"[{cycle_id}] FAIL - Agent did not connect within {CONNECTION_TIMEOUT}s")
                 failures.append({
@@ -317,14 +343,17 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                     'duration': 0,
                     'phase': 'connection'
                 })
+                monitor.stop()
                 stop_service()
                 remoted_server.destroy()
                 continue
             print(f"[{cycle_id}] ASSERT PASS - Agent connected to manager")
+            if monitor.get_result('CONNECTION'):
+                print(f"[{cycle_id}]   -> {monitor.get_result('CONNECTION')[:70]}...")
 
             # ASSERTION 2: Wait for scan to start (always needed)
             print(f"[{cycle_id}] Waiting for scan to start...")
-            scan_started = wait_for_event('SCAN_START', timeout=EVENT_TIMEOUT)
+            scan_started = monitor.wait_for('SCAN_START', timeout=EVENT_TIMEOUT)
             if not scan_started:
                 print(f"[{cycle_id}] FAIL - Scan did not start within {EVENT_TIMEOUT}s")
                 failures.append({
@@ -333,6 +362,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                     'duration': 0,
                     'phase': 'scan_start'
                 })
+                monitor.stop()
                 stop_service()
                 remoted_server.destroy()
                 continue
@@ -349,7 +379,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                 if stop_event in ['SCAN_END', 'SYNC_START', 'SYNC_END']:
                     # Wait for scan to finish
                     print(f"[{cycle_id}] Waiting for scan to finish...")
-                    scan_finished = wait_for_event('SCAN_END', timeout=EVENT_TIMEOUT)
+                    scan_finished = monitor.wait_for('SCAN_END', timeout=EVENT_TIMEOUT)
                     if not scan_finished:
                         print(f"[{cycle_id}] FAIL - Scan did not finish within {EVENT_TIMEOUT}s")
                         failures.append({
@@ -358,6 +388,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                             'duration': 0,
                             'phase': 'scan_end'
                         })
+                        monitor.stop()
                         stop_service()
                         remoted_server.destroy()
                         continue
@@ -371,7 +402,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                     else:
                         # Need sync events
                         print(f"[{cycle_id}] Waiting for sync to start...")
-                        sync_started = wait_for_event('SYNC_START', timeout=EVENT_TIMEOUT)
+                        sync_started = monitor.wait_for('SYNC_START', timeout=EVENT_TIMEOUT)
                         if not sync_started:
                             print(f"[{cycle_id}] FAIL - Sync did not start within {EVENT_TIMEOUT}s")
                             failures.append({
@@ -380,6 +411,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                                 'duration': 0,
                                 'phase': 'sync_start'
                             })
+                            monitor.stop()
                             stop_service()
                             remoted_server.destroy()
                             continue
@@ -393,7 +425,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                         else:
                             # SYNC_END
                             print(f"[{cycle_id}] Waiting for sync to finish...")
-                            sync_finished = wait_for_event('SYNC_END', timeout=EVENT_TIMEOUT)
+                            sync_finished = monitor.wait_for('SYNC_END', timeout=EVENT_TIMEOUT)
                             if not sync_finished:
                                 print(f"[{cycle_id}] FAIL - Sync did not finish within {EVENT_TIMEOUT}s")
                                 failures.append({
@@ -402,6 +434,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                                     'duration': 0,
                                     'phase': 'sync_end'
                                 })
+                                monitor.stop()
                                 stop_service()
                                 remoted_server.destroy()
                                 continue
@@ -413,6 +446,9 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                             success, duration, error_code, output = stop_service()
                 else:
                     pytest.fail(f"Unknown stop_event: {stop_event}")
+
+            # Stop monitor after service stop
+            monitor.stop()
 
             results.append(duration)
 
@@ -428,6 +464,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                     'phase': 'stop'
                 })
                 print(f"[{cycle_id}] FAILED - Error: {error_code}, Duration: {duration:.2f}s")
+                print(f"[{cycle_id}]   Output: {output[:200]}...")
             else:
                 print(f"[{cycle_id}] OK - Stop time: {duration:.2f}s")
 
@@ -468,6 +505,8 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
         assert len(stop_failures) == 0, f"Service stop failures detected: {stop_failures}"
 
     finally:
+        if monitor is not None:
+            monitor.stop()
         if remoted_server is not None:
             print(f"[CLEANUP] Stopping RemotedSimulator...")
             remoted_server.destroy()
