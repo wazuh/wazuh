@@ -160,6 +160,13 @@ std::string trim(const std::string& str, const std::string& args = " ");
 
 std::string toSentenceCase(const std::string& str);
 
+/**
+ * @brief Check if a string represents a positive integer number
+ *
+ * @param str String to be checked
+ * @return true if the string represents a positive integer number
+ * @return false otherwise
+ */
 bool isNumber(const std::string& str);
 
 bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace);
