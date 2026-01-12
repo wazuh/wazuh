@@ -1849,7 +1849,7 @@ def as_wazuh_object(dct: Dict):
                 wazuh = Wazuh()
                 return getattr(wazuh, funcname)
             else:
-                # Encoded function or static method (restricted to allowlisted internal modules).
+                # Encoded function or static method.
                 qualname = encoded_callable['__qualname__'].split('.')
                 classname = qualname[0] if len(qualname) > 1 else None
                 module_path = encoded_callable['__module__']
