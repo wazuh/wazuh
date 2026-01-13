@@ -36,7 +36,10 @@ import sys
 import time
 import threading
 import re
+import shutil
+import os
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 import yaml
@@ -54,6 +57,9 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration
 from wazuh_testing.utils.file import truncate_file
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+
+# Directory to store logs from each test cycle
+CYCLE_LOGS_DIR = Path(r'C:\test_logs\cycles') if sys.platform == WINDOWS else Path('/tmp/test_logs/cycles')
 
 
 pytestmark = [pytest.mark.agent, pytest.mark.win32, pytest.mark.tier(level=1)]
@@ -91,6 +97,56 @@ EVENT_PATTERNS = {
     'SYNC_START': CB_SYNC_STARTED,
     'SYNC_END': CB_SYNC_FINISHED,
 }
+
+
+def setup_cycle_logs_dir():
+    """Create the cycle logs directory."""
+    CYCLE_LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    return CYCLE_LOGS_DIR
+
+
+def save_cycle_log(cycle_id, stop_result, events_detected):
+    """Save the log from a specific test cycle for later analysis."""
+    try:
+        cycle_log_path = CYCLE_LOGS_DIR / f"cycle_{cycle_id}.log"
+
+        with open(cycle_log_path, 'w', encoding='utf-8') as f:
+            # Write cycle header
+            f.write(f"{'='*80}\n")
+            f.write(f"CYCLE: {cycle_id}\n")
+            f.write(f"TIMESTAMP: {datetime.now().isoformat()}\n")
+            f.write(f"{'='*80}\n\n")
+
+            # Write stop result
+            if stop_result:
+                success, duration, error_code, output = stop_result
+                f.write(f"STOP RESULT:\n")
+                f.write(f"  Success: {success}\n")
+                f.write(f"  Duration: {duration:.2f}s\n")
+                f.write(f"  Error Code: {error_code}\n")
+                f.write(f"  Output: {output}\n\n")
+
+            # Write events detected
+            f.write(f"EVENTS DETECTED:\n")
+            for event, detected in events_detected.items():
+                f.write(f"  {event}: {detected}\n")
+            f.write("\n")
+
+            # Copy ossec.log content
+            f.write(f"{'='*80}\n")
+            f.write(f"OSSEC.LOG CONTENT:\n")
+            f.write(f"{'='*80}\n")
+            try:
+                with open(WAZUH_LOG_PATH, 'r', encoding='utf-8', errors='replace') as log_file:
+                    f.write(log_file.read())
+            except Exception as e:
+                f.write(f"Error reading log: {e}\n")
+
+        print(f"[{cycle_id}] Log saved to: {cycle_log_path}")
+        return cycle_log_path
+    except Exception as e:
+        print(f"[{cycle_id}] Error saving cycle log: {e}")
+        return None
 
 
 def load_yaml_template(path):
@@ -296,6 +352,7 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
     print(f"{'='*70}")
 
     ensure_stopped()
+    setup_cycle_logs_dir()
     test_start_time = time.time()
     remoted_server = None
     monitor = None
@@ -467,6 +524,16 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
                 print(f"[{cycle_id}]   Output: {output[:200]}...")
             else:
                 print(f"[{cycle_id}] OK - Stop time: {duration:.2f}s")
+
+            # Save cycle log for debugging
+            events_detected = {
+                'CONNECTION': monitor.was_detected('CONNECTION'),
+                'SCAN_START': monitor.was_detected('SCAN_START'),
+                'SCAN_END': monitor.was_detected('SCAN_END'),
+                'SYNC_START': monitor.was_detected('SYNC_START'),
+                'SYNC_END': monitor.was_detected('SYNC_END'),
+            }
+            save_cycle_log(cycle_id, (success, duration, error_code, output), events_detected)
 
             # Destroy RemotedSimulator at end of each cycle
             remoted_server.destroy()
