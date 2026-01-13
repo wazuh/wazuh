@@ -15,7 +15,7 @@ RUN echo "deb http://archive.debian.org/debian/ wheezy contrib main non-free" > 
 # -------------------------------------------------------------------
 # Install certificates for https
 # -------------------------------------------------------------------
-COPY certificates/cacert.pem /etc/ssl/certs/ca-certificates.crt
+COPY ../../../certificates/cacert.pem /etc/ssl/certs/ca-certificates.crt
 
 ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
