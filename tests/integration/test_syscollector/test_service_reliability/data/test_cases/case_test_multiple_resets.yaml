@@ -21,7 +21,7 @@
   metadata:
     stop_event: SCAN_START
     delay_ms: 0
-    cycles: 3
+    cycles: 15
 
 - name: "SCAN_START delay 50ms"
   description: "Stop 50ms after scan starts"
@@ -29,7 +29,7 @@
   metadata:
     stop_event: SCAN_START
     delay_ms: 50
-    cycles: 3
+    cycles: 15
 
 - name: "SCAN_START delay 100ms"
   description: "Stop 100ms after scan starts"
@@ -37,7 +37,7 @@
   metadata:
     stop_event: SCAN_START
     delay_ms: 100
-    cycles: 3
+    cycles: 15
 
 - name: "SCAN_START delay 200ms"
   description: "Stop 200ms after scan starts"
@@ -45,7 +45,7 @@
   metadata:
     stop_event: SCAN_START
     delay_ms: 200
-    cycles: 3
+    cycles: 15
 
 - name: "SCAN_START delay 500ms"
   description: "Stop 500ms after scan starts"
@@ -53,7 +53,7 @@
   metadata:
     stop_event: SCAN_START
     delay_ms: 500
-    cycles: 3
+    cycles: 15
 
 # ============================================================================
 # SCAN_END event - Stop right after scan completes
@@ -64,7 +64,7 @@
   metadata:
     stop_event: SCAN_END
     delay_ms: 0
-    cycles: 3
+    cycles: 15
 
 - name: "SCAN_END delay 50ms"
   description: "Stop 50ms after scan ends"
@@ -72,7 +72,7 @@
   metadata:
     stop_event: SCAN_END
     delay_ms: 50
-    cycles: 3
+    cycles: 15
 
 - name: "SCAN_END delay 100ms"
   description: "Stop 100ms after scan ends"
@@ -80,7 +80,7 @@
   metadata:
     stop_event: SCAN_END
     delay_ms: 100
-    cycles: 3
+    cycles: 15
 
 # ============================================================================
 # SYNC_START event - Stop during sync phase (most likely to trigger deadlock)
@@ -91,7 +91,7 @@
   metadata:
     stop_event: SYNC_START
     delay_ms: 0
-    cycles: 3
+    cycles: 15
 
 - name: "SYNC_START delay 50ms"
   description: "Stop 50ms after sync starts"
@@ -99,7 +99,7 @@
   metadata:
     stop_event: SYNC_START
     delay_ms: 50
-    cycles: 3
+    cycles: 15
 
 - name: "SYNC_START delay 100ms"
   description: "Stop 100ms after sync starts"
@@ -107,7 +107,7 @@
   metadata:
     stop_event: SYNC_START
     delay_ms: 100
-    cycles: 3
+    cycles: 15
 
 - name: "SYNC_START delay 200ms"
   description: "Stop 200ms after sync starts"
@@ -115,7 +115,7 @@
   metadata:
     stop_event: SYNC_START
     delay_ms: 200
-    cycles: 3
+    cycles: 15
 
 - name: "SYNC_START delay 500ms"
   description: "Stop 500ms after sync starts"
@@ -123,7 +123,7 @@
   metadata:
     stop_event: SYNC_START
     delay_ms: 500
-    cycles: 3
+    cycles: 15
 
 # ============================================================================
 # SYNC_END event - Stop right after sync completes
@@ -134,7 +134,7 @@
   metadata:
     stop_event: SYNC_END
     delay_ms: 0
-    cycles: 3
+    cycles: 15
 
 - name: "SYNC_END delay 50ms"
   description: "Stop 50ms after sync ends"
@@ -142,7 +142,7 @@
   metadata:
     stop_event: SYNC_END
     delay_ms: 50
-    cycles: 3
+    cycles: 15
 
 - name: "SYNC_END delay 100ms"
   description: "Stop 100ms after sync ends"
@@ -150,4 +150,4 @@
   metadata:
     stop_event: SYNC_END
     delay_ms: 100
-    cycles: 3
+    cycles: 15
