@@ -605,8 +605,10 @@ def runTests(moduleName):
                     "/usr/i686-w64-mingw32/lib",
                     utils.currentPath(),
                     currentDir,  # already chdir'ed to this later
-                    os.path.join(utils.moduleDirPathBuild("shared_modules/dbsync"), "build", "bin"),
-                    os.path.join(utils.moduleDirPathBuild("data_provider"), "build", "bin"),
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/dbsync"), "bin"),
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/sync_protocol"), "bin"),
+                    os.path.join(utils.moduleDirPathBuild("data_provider"), "bin"),
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/schema_validator"), "bin"),
                 ]
 
                 # Add GCC runtime DLL paths - prioritize -posix variant
