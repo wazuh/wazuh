@@ -53,8 +53,8 @@ from wazuh_testing.modules.modulesd.syscollector.patterns import (
     CB_SCAN_STARTED,
     CB_SCAN_FINISHED,
 )
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration
+from .rsync_stress_simulator import RsyncStressSimulator
 from wazuh_testing.utils.file import truncate_file
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -376,9 +376,20 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
             monitor.start()
             print(f"[{cycle_id}] Log monitor started (poll: {POLL_INTERVAL*1000:.0f}ms)")
 
-            # Start fresh RemotedSimulator for each cycle
-            print(f"[{cycle_id}] Starting RemotedSimulator...")
-            remoted_server = RemotedSimulator(server_ip='127.0.0.1', port=1514, protocol='tcp')
+            # Start fresh RsyncStressSimulator for each cycle
+            # This simulator responds to integrity_check with checksum_fail to trigger heavy rsync traffic
+            print(f"[{cycle_id}] Starting RsyncStressSimulator (checksum_fail mode)...")
+
+            def on_integrity_check(check_type, message):
+                print(f"[{cycle_id}] Received integrity_check: {check_type}")
+
+            remoted_server = RsyncStressSimulator(
+                server_ip='127.0.0.1',
+                port=1514,
+                protocol='tcp',
+                max_checksum_fails=200,  # Increased to trigger more rsync traffic
+                on_integrity_check=on_integrity_check
+            )
             remoted_server.start()
 
             # Apply config and start service
@@ -535,7 +546,12 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
             }
             save_cycle_log(cycle_id, (success, duration, error_code, output), events_detected)
 
-            # Destroy RemotedSimulator at end of each cycle
+            # Print rsync stress statistics
+            print(f"[{cycle_id}] RsyncStressSimulator stats:")
+            print(f"[{cycle_id}]   Integrity checks received: {remoted_server.integrity_check_counter}")
+            print(f"[{cycle_id}]   Checksum fails sent: {remoted_server.checksum_fail_counter}")
+
+            # Destroy RsyncStressSimulator at end of each cycle
             remoted_server.destroy()
             remoted_server = None
 
@@ -575,5 +591,5 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
         if monitor is not None:
             monitor.stop()
         if remoted_server is not None:
-            print(f"[CLEANUP] Stopping RemotedSimulator...")
+            print(f"[CLEANUP] Stopping RsyncStressSimulator...")
             remoted_server.destroy()
