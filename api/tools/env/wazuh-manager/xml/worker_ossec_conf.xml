@@ -12,6 +12,18 @@
         </nodes>
         <hidden>no</hidden>
     </cluster>
+    <indexer>
+        <hosts>
+            <host>https://172.20.0.15:9200</host>
+        </hosts>
+        <ssl>
+            <certificate_authorities>
+                <ca>/var/ossec/etc/certs/root-ca.pem</ca>
+            </certificate_authorities>
+            <certificate>/var/ossec/etc/certs/server.pem</certificate>
+            <key>/var/ossec/etc/certs/server-key.pem</key>
+        </ssl>
+    </indexer>
 
      <use_source_ip>no</use_source_ip>
 

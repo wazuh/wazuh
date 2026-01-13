@@ -1,23 +1,21 @@
 FROM dev-wazuh-base AS builder
 
 COPY preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
-
 RUN /wazuh/install.sh
 
-# install pip libraries for development
-RUN /var/ossec/framework/python/bin/pip3 install pydevd-pycharm freezegun ipdb
+# Install pip libraries for development
+RUN /var/ossec/framework/python/bin/pip3 install \
+    pydevd-pycharm freezegun ipdb
+# ----------------------------------------------------
 
-FROM builder as server
+FROM builder AS server
 
+# Copy Wazuh installation
 COPY --from=builder /var/ossec /var/ossec
 
-# Soft link for the embedded python
-RUN ln -s /var/ossec/framework/python/bin/python3 /bin/wpy
-RUN ln -s /var/ossec/framework/python/bin/pip3 /bin/wpip
-RUN mkdir -p /var/ossec/etc/certs
-RUN touch /var/ossec/etc/certs/root-ca.pem
-RUN touch /var/ossec/etc/certs/server.pem
-RUN touch /var/ossec/etc/certs/server-key.pem
+# Embedded python symlinks
+RUN ln -s /var/ossec/framework/python/bin/python3 /bin/wpy && \
+    ln -s /var/ossec/framework/python/bin/pip3 /bin/wpip
 
 ADD xml/xml_parser.py /scripts/xml_parser.py
 ADD xml/master_ossec_conf.xml /scripts/master_ossec_conf.xml

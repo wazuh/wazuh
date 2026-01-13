@@ -203,7 +203,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                                 'level': 0 if i == len(value) - 1 else 1}
                                for name, value in legacy_filters_as_list.items()
                                for i, subvalue in enumerate(value) if not self._pass_filter(name, subvalue)]
-
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
