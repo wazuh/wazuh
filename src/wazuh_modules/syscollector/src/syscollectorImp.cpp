@@ -228,77 +228,38 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     if (indexIt != INDEX_MAP.end())
     {
         // Validate data against schema before queuing
-        auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
         bool shouldQueue = true;
         std::string dataToQueue = statefulToSend;
+        std::string context = "table: " + table;
 
-        if (validatorFactory.isInitialized())
+        // Use helper function to validate and log
+        bool validationPassed = validateSchemaAndLog(statefulToSend, indexIt->second, context);
+
+        if (!validationPassed)
         {
-            auto validator = validatorFactory.getValidator(indexIt->second);
-
-            if (validator)
-            {
-                auto validationResult = validator->validate(statefulToSend);
-
-                if (!validationResult.isValid)
-                {
-                    // Log validation errors
-                    std::string errorMsg = "Schema validation failed for Syscollector message (table: " + table + ", index: " + indexIt->second + "). Errors: ";
-
-                    for (const auto& error : validationResult.errors)
-                    {
-                        errorMsg += "  - " + error;
-                    }
-
-                    if (m_logFunction)
-                    {
-                        m_logFunction(LOG_ERROR, errorMsg);
-                    }
-
-                    // Don't queue invalid message and delete from DBSync to prevent integrity sync loops
-                    if (m_logFunction)
-                    {
-                        m_logFunction(LOG_ERROR, "Discarding invalid Syscollector message (table: " + table + ")");
-                        // Log raw event for debugging
-                        m_logFunction(LOG_ERROR, "Raw event that failed validation: " + statefulToSend);
-                    }
-
-                    // Mark for deferred deletion from DBSync to prevent integrity sync loops
-                    // We cannot delete here as we are inside a DBSync callback (would cause nested transactions)
-                    if (result == INSERTED || result == MODIFIED)
-                    {
-                        if (m_logFunction)
-                        {
-                            m_logFunction(LOG_DEBUG, "Marking entry from table " + table + " for deferred deletion due to validation failure");
-                        }
-
-                        // Store the failed item for deletion after transaction completes
-                        if (m_failedItems)
-                        {
-                            m_failedItems->push_back({table, aux});
-                        }
-                    }
-
-                    shouldQueue = false;
-
-                }
-            }
-            else
-            {
-                // Validator not found for this index, log warning and queue anyway
-                if (m_logFunction)
-                {
-                    m_logFunction(LOG_WARNING, "No schema validator found for index: " + indexIt->second + ". Queuing message without validation.");
-                }
-            }
-        }
-        else
-        {
-            // Validator factory not initialized, queue without validation
+            // Don't queue invalid message
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG, "Schema validator not initialized. Queuing Syscollector message without validation.");
+                m_logFunction(LOG_ERROR, "Discarding invalid Syscollector message (table: " + table + ")");
             }
+
+            // Mark for deferred deletion from DBSync to prevent integrity sync loops
+            // We cannot delete here as we are inside a DBSync callback (would cause nested transactions)
+            if (result == INSERTED || result == MODIFIED)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Marking entry from table " + table + " for deferred deletion due to validation failure");
+                }
+
+                // Store the failed item for deletion after transaction completes
+                if (m_failedItems)
+                {
+                    m_failedItems->push_back({table, aux});
+                }
+            }
+
+            shouldQueue = false;
         }
 
         if (shouldQueue && m_persistDiffFunction)
@@ -1761,56 +1722,7 @@ void Syscollector::scan()
 
     // Delete all items that failed schema validation inside a DBSync transaction
     // This ensures deletions are committed to disk immediately
-    if (!failedItems.empty())
-    {
-        try
-        {
-            // Create a transaction scope - BEGIN TRANSACTION will be executed
-            DBSyncTxn deleteTxn(m_spDBSync->handle(),
-                                nlohmann::json::array(),  // Empty table list
-                                0,
-                                1,
-            [](ReturnTypeCallback, const nlohmann::json&) {});
-
-            // Execute all deletions within the transaction scope
-            for (const auto& [tableName, data] : failedItems)
-            {
-                if (m_logFunction)
-                {
-                    m_logFunction(LOG_DEBUG, "Deleting entry from table " + tableName + " due to validation failure");
-                }
-
-                try
-                {
-                    auto deleteQuery = DeleteQuery::builder()
-                                       .table(tableName)
-                                       .data(data)
-                                       .rowFilter("")
-                                       .build();
-
-                    m_spDBSync->deleteRows(deleteQuery.query());
-                }
-                catch (const std::exception& e)
-                {
-                    if (m_logFunction)
-                    {
-                        m_logFunction(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
-                    }
-                }
-            }
-
-            // Call getDeletedRows to finalize the transaction properly
-            // This triggers the internal commit mechanism in DBSync
-            deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
-        }
-        catch (const std::exception& e)
-        {
-            if (m_logFunction)
-            {
-                m_logFunction(LOG_WARNING, "Failed to create deletion transaction: " + std::string(e.what()));
-            }
-        }
-    }
+    deleteFailedItemsFromDB(failedItems);
 
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
@@ -2509,36 +2421,19 @@ void Syscollector::processVDDataContext()
 
                     // Validate stateful event before persisting VD DataContext
                     bool shouldPersist = true;
-                    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+                    std::string context = "VD DataContext, table: " + tableName;
 
-                    if (validatorFactory.isInitialized())
+                    // Use helper function to validate and log
+                    bool validationPassed = validateSchemaAndLog(statefulToSend, contextIndex, context);
+
+                    if (!validationPassed)
                     {
-                        auto validator = validatorFactory.getValidator(contextIndex);
-
-                        if (validator)
+                        if (m_logFunction)
                         {
-                            auto validationResult = validator->validate(statefulToSend);
-
-                            if (!validationResult.isValid)
-                            {
-                                std::string errorMsg = "Schema validation failed for VD DataContext (table: " +
-                                                       tableName + ", index: " + contextIndex + "). Errors: ";
-
-                                for (const auto& error : validationResult.errors)
-                                {
-                                    errorMsg += error + " ";
-                                }
-
-                                if (m_logFunction)
-                                {
-                                    m_logFunction(LOG_ERROR, errorMsg);
-                                    m_logFunction(LOG_ERROR, "Raw VD DataContext event that failed validation: " + statefulToSend);
-                                    m_logFunction(LOG_DEBUG, "Skipping persistence of invalid VD DataContext event");
-                                }
-
-                                shouldPersist = false;
-                            }
+                            m_logFunction(LOG_DEBUG, "Skipping persistence of invalid VD DataContext event");
                         }
+
+                        shouldPersist = false;
                     }
 
                     // Submit as DataContext (isDataContext=true)
@@ -3504,32 +3399,15 @@ void Syscollector::runRecoveryProcess()
 
                     // Validate stateful event before persisting for recovery
                     bool shouldPersist = true;
-                    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+                    std::string context = "recovery event, table: " + tableName;
 
-                    if (validatorFactory.isInitialized())
+                    // Use helper function to validate and log
+                    bool validationPassed = validateSchemaAndLog(statefulToSend, index, context);
+
+                    if (!validationPassed)
                     {
-                        auto validator = validatorFactory.getValidator(index);
-
-                        if (validator)
-                        {
-                            auto validationResult = validator->validate(statefulToSend);
-
-                            if (!validationResult.isValid)
-                            {
-                                std::string errorMsg = "Schema validation failed for recovery event (table: " +
-                                                       tableName + ", index: " + std::string(index) + "). Errors: ";
-
-                                for (const auto& error : validationResult.errors)
-                                {
-                                    errorMsg += error + " ";
-                                }
-
-                                m_logFunction(LOG_ERROR, errorMsg);
-                                m_logFunction(LOG_ERROR, "Raw recovery event that failed validation: " + statefulToSend);
-                                m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
-                                shouldPersist = false;
-                            }
-                        }
+                        m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
+                        shouldPersist = false;
                     }
 
                     if (shouldPersist)
@@ -3565,5 +3443,112 @@ void Syscollector::runRecoveryProcess()
         }
 
         // LCOV_EXCL_STOP
+    }
+}
+
+bool Syscollector::validateSchemaAndLog(const std::string& data, const std::string& index, const std::string& context) const
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    if (!validatorFactory.isInitialized())
+    {
+        return true;
+    }
+
+    auto validator = validatorFactory.getValidator(index);
+
+    if (!validator)
+    {
+        // Validator not found for this index, log warning and allow message through
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Queuing message without validation.");
+        }
+
+        return true;
+    }
+
+    auto validationResult = validator->validate(data);
+
+    if (validationResult.isValid)
+    {
+        return true;
+    }
+
+    // Validation failed - log errors
+    std::string errorMsg = "Schema validation failed for Syscollector message (" + context + ", index: " + index + "). Errors: ";
+
+    for (const auto& error : validationResult.errors)
+    {
+        errorMsg += "  - " + error;
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_ERROR, errorMsg);
+        m_logFunction(LOG_ERROR, "Raw event that failed validation: " + data);
+    }
+
+    return false;
+}
+
+void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const
+{
+    if (failedItems.empty() || !m_spDBSync)
+    {
+        return;
+    }
+
+    try
+    {
+        // Create a transaction scope - BEGIN TRANSACTION will be executed
+        DBSyncTxn deleteTxn(m_spDBSync->handle(),
+                            nlohmann::json::array(),  // Empty table list
+                            0,
+                            1,
+        [](ReturnTypeCallback, const nlohmann::json&) {});
+
+        // Execute all deletions within the transaction scope
+        for (const auto& [tableName, data] : failedItems)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Deleting entry from table " + tableName + " due to validation failure");
+            }
+
+            try
+            {
+                auto deleteQuery = DeleteQuery::builder()
+                                   .table(tableName)
+                                   .data(data)
+                                   .rowFilter("")
+                                   .build();
+
+                m_spDBSync->deleteRows(deleteQuery.query());
+            }
+            catch (const std::exception& e)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
+                }
+            }
+        }
+
+        // Call getDeletedRows to finalize the transaction properly
+        // This triggers the internal commit mechanism in DBSync
+        deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Deleted " + std::to_string(failedItems.size()) + " item(s) from DBSync due to validation failure");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to create DBSync transaction for deletion: " + std::string(e.what()));
+        }
     }
 }
