@@ -62,7 +62,7 @@ class Indexer:
         hosts: List[str],
         ports: List[int],
         user: str = "",
-        password: str = "",
+        password: str = "", # nosec B107
         use_ssl: bool = True,
         client_cert_path: str = "",
         client_key_path: str = "",
@@ -209,7 +209,7 @@ async def create_indexer(retries: int = 5, backoff: int = 1, **kwargs) -> Indexe
                 raise e
 
             # Exponential backoff with jitter to avoid "thundering herd"
-            wait_time = (backoff * 2**attempt) + random.random()
+            wait_time = (backoff * 2**attempt) + random.random() # nosec B311
             await sleep(wait_time)
 
 
