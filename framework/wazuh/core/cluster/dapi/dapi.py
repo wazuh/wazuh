@@ -702,6 +702,8 @@ class APIRequestQueue(WazuhRequestQueue):
                 continue
 
             try:
+                self.logger.error(f"[DEBUG] DAPI names={names!r} name_2={name_2!r}")
+                self.logger.error(f"[DEBUG] Raw DAPI request (first 1200): {request[:1200]!r}")
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
                 self.logger.info("Receiving request: {} from {}".format(
                     request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
@@ -747,10 +749,7 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 continue
 
             try:
-                self.logger.error(f"[DEBUG] Raw SendSync request: {request!r}")
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
-                self.logger.error(f"[DEBUG] Decoded SendSync request keys: {list(request.keys())}")
-                self.logger.error(f"[DEBUG] Decoded SendSync request f type: {type(request.get('f'))} value: {request.get('f')}")
                 self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(result.encode())
