@@ -41,6 +41,7 @@ _SAFE_CALLABLE_MODULES = {
     "wazuh.manager",
     "wazuh.stats",
     "wazuh.analysis",
+    "wazuh.cluster",
 }
 
 class Response:
