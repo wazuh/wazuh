@@ -138,6 +138,11 @@ void parse_uname_string (char *uname,
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size +1, osd->os_minor);
                     snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
+                } else if (w_regexec("^[0-9]+-[Ss][Pp]([0-9]+)\\.*", osd->os_version, 2, match)) {
+                    // SUSE: 15-SP7, 15-SPxx
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, osd->os_minor);
+                    snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
                 }
 
             } else {
