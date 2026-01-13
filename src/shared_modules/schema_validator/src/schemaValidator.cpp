@@ -8,6 +8,15 @@
 #include <algorithm>
 #include <cctype>
 
+// Network headers for inet_pton
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <arpa/inet.h>
+    #include <netinet/in.h>
+#endif
+
 namespace SchemaValidator
 {
 
@@ -23,20 +32,62 @@ namespace SchemaValidator
     }
 
     // Helper function to check if a string is a valid IP address
+    // Uses inet_pton following the same pattern as windowsHelper.h
+    // This aligns with OpenSearch which uses InetAddress (native API validation)
     static bool isValidIP(const std::string& ipStr)
     {
-        // Use static const to compile regex only once
-        static const std::regex ipv4Pattern(
-            R"(^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$)");
+        struct in_addr addr4;
+        struct in6_addr addr6;
 
-        if (std::regex_match(ipStr, ipv4Pattern))
+#ifdef _WIN32
+        // Windows: Use GetProcAddress pattern (same as windowsHelper.h)
+        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+        static inet_pton_t pfnInetPton = nullptr;
+        static bool initialized = false;
+
+        if (!initialized)
+        {
+            auto hWs2_32 = GetModuleHandleA("ws2_32.dll");
+            if (hWs2_32)
+            {
+                pfnInetPton = reinterpret_cast<inet_pton_t>(GetProcAddress(hWs2_32, "inet_pton"));
+            }
+            initialized = true;
+        }
+
+        if (!pfnInetPton)
+        {
+            // inet_pton not available (e.g., wine environment)
+            return false;
+        }
+
+        // Try IPv4 first
+        if (pfnInetPton(AF_INET, ipStr.c_str(), &addr4) == 1)
         {
             return true;
         }
 
-        static const std::regex ipv6Pattern(
-            R"(^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0-1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$)");
-        return std::regex_match(ipStr, ipv6Pattern);
+        // Try IPv6
+        if (pfnInetPton(AF_INET6, ipStr.c_str(), &addr6) == 1)
+        {
+            return true;
+        }
+
+        return false;
+#else
+        // Linux/Unix: Use inet_pton directly
+        if (inet_pton(AF_INET, ipStr.c_str(), &addr4) == 1)
+        {
+            return true;
+        }
+
+        if (inet_pton(AF_INET6, ipStr.c_str(), &addr6) == 1)
+        {
+            return true;
+        }
+
+        return false;
+#endif
     }
 
     // Implementation class for SchemaValidatorEngine

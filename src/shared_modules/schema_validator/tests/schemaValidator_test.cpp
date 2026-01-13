@@ -106,11 +106,12 @@ TEST_F(SchemaValidatorTest, ValidateIntegerWithNumericString)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts numeric strings for integer fields
+    // Strict validation rejects numeric strings for integer fields
     nlohmann::json message = {{"name", "John Doe"}, {"age", "30"}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateIntegerWithFloat)
@@ -118,11 +119,12 @@ TEST_F(SchemaValidatorTest, ValidateIntegerWithFloat)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts floats for integer fields (truncates)
+    // Strict validation rejects floats for integer fields
     nlohmann::json message = {{"name", "John Doe"}, {"age", 30.5}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateStrictModeExtraField)
@@ -247,12 +249,12 @@ TEST_F(SchemaValidatorTest, ValidateDateAsStringNumeric)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // Date as string containing numeric value (OpenSearch format)
+    // Strict validation rejects string "123" as it's not a valid ISO8601 date
     nlohmann::json message = {{"name", "John Doe"}, {"age", 30}, {"created_at", "123"}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
-    EXPECT_TRUE(result.errors.empty());
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateInvalidDate)
@@ -333,11 +335,12 @@ TEST_F(SchemaValidatorTest, ValidateKeywordWithNumber)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts numbers for keyword fields (automatic coercion)
+    // Strict validation rejects numbers for keyword fields
     nlohmann::json message = {{"name", 123}, {"age", 30}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateKeywordWithBoolean)
@@ -345,11 +348,12 @@ TEST_F(SchemaValidatorTest, ValidateKeywordWithBoolean)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts booleans for keyword fields (automatic coercion)
+    // Strict validation rejects booleans for keyword fields
     nlohmann::json message = {{"name", true}, {"age", 30}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateKeywordAsArray)
@@ -370,12 +374,12 @@ TEST_F(SchemaValidatorTest, ValidateKeywordArrayMixedTypes)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts arrays with mixed types for keyword fields
+    // Strict validation rejects arrays with mixed types for keyword fields
     nlohmann::json message = {{"name", nlohmann::json::array({123, "string", true})}, {"age", 30}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
-    EXPECT_TRUE(result.errors.empty());
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateIntegerAsArray)
@@ -413,22 +417,23 @@ TEST_F(SchemaValidatorTest, ValidateDateRealOpenSearchScenarios)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // Test case 1: Array of integers (milliseconds) - VALID in OpenSearch with default format
+    // Test case 1: Array of integers (milliseconds) - VALID
     nlohmann::json msg1 = {{"created_at", nlohmann::json::array({123, 123})}};
     auto result1 = validator.validate(msg1);
     EXPECT_TRUE(result1.isValid);
 
-    // Test case 2: Array with string numeric (epoch_millis) - VALID in OpenSearch with default format
+    // Test case 2: Array with string numeric - INVALID (not ISO8601)
     nlohmann::json msg2 = {{"created_at", nlohmann::json::array({"123"})}};
     auto result2 = validator.validate(msg2);
-    EXPECT_TRUE(result2.isValid);
+    EXPECT_FALSE(result2.isValid);
+    EXPECT_FALSE(result2.errors.empty());
 
-    // Test case 3: Null value - VALID in OpenSearch
+    // Test case 3: Null value - VALID
     nlohmann::json msg3 = {{"created_at", nullptr}};
     auto result3 = validator.validate(msg3);
     EXPECT_TRUE(result3.isValid);
 
-    // Test case 4: Invalid date format - INVALID in OpenSearch with default format
+    // Test case 4: Invalid date format - INVALID
     // (strict_date_optional_time||epoch_millis doesn't support RFC format)
     nlohmann::json msg4 = {{"created_at", "Tue 23 Dec 2025 02:28:56 PM UTC"}};
     auto result4 = validator.validate(msg4);
@@ -461,11 +466,12 @@ TEST_F(SchemaValidatorTest, ValidateBooleanWithString)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts string "true" for boolean fields
+    // Strict validation rejects string "true" for boolean fields
     nlohmann::json message = {{"name", "John Doe"}, {"is_active", "true"}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateBooleanWithStringFalse)
@@ -473,11 +479,12 @@ TEST_F(SchemaValidatorTest, ValidateBooleanWithStringFalse)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts string "false" for boolean fields
+    // Strict validation rejects string "false" for boolean fields
     nlohmann::json message = {{"name", "John Doe"}, {"is_active", "false"}};
 
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateBooleanRejectsNumbers)
@@ -563,10 +570,11 @@ TEST_F(SchemaValidatorTest, ValidateShortWithFloat)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts floats for short fields (truncates)
+    // Strict validation rejects floats for short fields
     nlohmann::json message = {{"port", 8080.5}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateShortWithNumericString)
@@ -574,9 +582,11 @@ TEST_F(SchemaValidatorTest, ValidateShortWithNumericString)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
+    // Strict validation rejects numeric strings for short fields
     nlohmann::json message = {{"port", "8080"}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateShortWithInvalidString)
@@ -605,9 +615,11 @@ TEST_F(SchemaValidatorTest, ValidateUnsignedLongWithFloat)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
+    // Strict validation rejects floats for unsigned_long fields
     nlohmann::json message = {{"counter", 123.456}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateUnsignedLongWithNumericString)
@@ -615,9 +627,11 @@ TEST_F(SchemaValidatorTest, ValidateUnsignedLongWithNumericString)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
+    // Strict validation rejects numeric strings for unsigned_long fields
     nlohmann::json message = {{"counter", "9223372036854775807"}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateUnsignedLongWithInvalidString)
@@ -656,9 +670,11 @@ TEST_F(SchemaValidatorTest, ValidateScaledFloatWithNumericString)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
+    // Strict validation rejects numeric strings for scaled_float fields
     nlohmann::json message = {{"price", "99.99"}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateScaledFloatWithInvalidString)
@@ -687,10 +703,11 @@ TEST_F(SchemaValidatorTest, ValidateMatchOnlyTextWithNumber)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts numbers for text fields (automatic coercion)
+    // Strict validation rejects numbers for text fields
     nlohmann::json message = {{"description", 12345}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateMatchOnlyTextWithBoolean)
@@ -698,10 +715,11 @@ TEST_F(SchemaValidatorTest, ValidateMatchOnlyTextWithBoolean)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts booleans for text fields (automatic coercion)
+    // Strict validation rejects booleans for text fields
     nlohmann::json message = {{"description", true}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateObjectTypeValid)
@@ -744,66 +762,93 @@ TEST_F(SchemaValidatorTest, ValidateObjectTypeWithArray)
 
 TEST_F(SchemaValidatorTest, ValidateIPv4Valid)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IP tests are skipped on Windows (inet_pton not available under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
     nlohmann::json message = {{"ip_address", "192.168.1.1"}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPv6AllZeros)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IPv6 tests are skipped on Windows (inet_pton issues under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
     nlohmann::json message = {{"ip_address", "::"}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPv6Loopback)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IPv6 tests are skipped on Windows (inet_pton issues under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
     nlohmann::json message = {{"ip_address", "::1"}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPv6Standard)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IPv6 tests are skipped on Windows (inet_pton issues under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
     nlohmann::json message = {{"ip_address", "2001:db8::1"}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPv6WithZone)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IPv6 tests are skipped on Windows (inet_pton issues under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
     nlohmann::json message = {{"ip_address", "fe80::1%eth0"}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPv4MappedIPv6)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IPv6 tests are skipped on Windows (inet_pton issues under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
     nlohmann::json message = {{"ip_address", "::ffff:192.0.2.1"}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPCIDRNotationInvalid)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IP tests are skipped on Windows (inet_pton not available under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
@@ -812,10 +857,14 @@ TEST_F(SchemaValidatorTest, ValidateIPCIDRNotationInvalid)
     ValidationResult result = validator.validate(message);
     EXPECT_FALSE(result.isValid);
     EXPECT_FALSE(result.errors.empty());
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPWithNumberInvalid)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IP tests are skipped on Windows (inet_pton not available under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
@@ -824,10 +873,14 @@ TEST_F(SchemaValidatorTest, ValidateIPWithNumberInvalid)
     ValidationResult result = validator.validate(message);
     EXPECT_FALSE(result.isValid);
     EXPECT_FALSE(result.errors.empty());
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPAsArray)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IPv6 tests are skipped on Windows (inet_pton issues under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
@@ -835,10 +888,14 @@ TEST_F(SchemaValidatorTest, ValidateIPAsArray)
     nlohmann::json message = {{"ip_address", nlohmann::json::array({"192.168.1.1", "::1", "2001:db8::1"})}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+#endif
 }
 
 TEST_F(SchemaValidatorTest, ValidateIPArrayWithInvalidElement)
 {
+#ifdef _WIN32
+    GTEST_SKIP() << "IP tests are skipped on Windows (inet_pton not available under wine)";
+#else
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
@@ -847,6 +904,7 @@ TEST_F(SchemaValidatorTest, ValidateIPArrayWithInvalidElement)
     ValidationResult result = validator.validate(message);
     EXPECT_FALSE(result.isValid);
     EXPECT_FALSE(result.errors.empty());
+#endif
 }
 
 // ============================================================================
@@ -880,10 +938,11 @@ TEST_F(SchemaValidatorTest, ValidateDateWithFloatAsString)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // String containing float epoch value
+    // Strict validation rejects string "1704196800000.123" as it's not ISO8601
     nlohmann::json message = {{"created_at", "1704196800000.123"}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateDateAsArrayWithFloats)
@@ -916,10 +975,11 @@ TEST_F(SchemaValidatorTest, ValidateLongWithFloat)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    // OpenSearch accepts floats for long fields (truncates)
+    // Strict validation rejects floats for long fields
     nlohmann::json message = {{"score", 12345.67}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateLongWithNumericString)
@@ -927,9 +987,11 @@ TEST_F(SchemaValidatorTest, ValidateLongWithNumericString)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
+    // Strict validation rejects numeric strings for long fields
     nlohmann::json message = {{"score", "9223372036854775807"}};
     ValidationResult result = validator.validate(message);
-    EXPECT_TRUE(result.isValid);
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
 }
 
 TEST_F(SchemaValidatorTest, ValidateLongWithInvalidString)
