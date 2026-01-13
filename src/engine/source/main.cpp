@@ -521,8 +521,7 @@ int main(int argc, char* argv[])
             // Add sync to scheduler
             scheduler->scheduleTask(
                 "cm-sync-task",
-                scheduler::TaskConfig {//.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
-                                       .interval = 360,
+                scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
                                        .CPUPriority = 0,
                                        .timeout = 0,
                                        .taskFunction = [cmSyncService]()

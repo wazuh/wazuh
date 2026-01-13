@@ -41,6 +41,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Content Manager
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "etc/ruleset").c_str());
+    addUnit<size_t>(key::CM_SYNC_INTERVAL, "WAZUH_CM_SYNC_INTERVAL", 360);
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
@@ -87,11 +88,6 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
     addUnit<std::string>(key::TZDB_FORCE_VERSION_UPDATE, "WAZUH_TZDB_FORCE_VERSION_UPDATE", "");
-
-    // Metrics module
-    addUnit<bool>(key::METRICS_ENABLED, "WAZUH_METRICS_ENABLED", false);
-    addUnit<int64_t>(key::METRICS_EXPORT_INTERVAL, "WAZUH_METRICS_EXPORT_INTERVAL", 10000);
-    addUnit<int64_t>(key::METRICS_EXPORT_TIMEOUT, "WAZUH_METRICS_EXPORT_TIMEOUT", 1000);
 
     // Streamlog module
     addUnit<std::string>(key::STREAMLOG_BASE_PATH, "WAZUH_STREAMLOG_BASE_PATH", (wazuhRoot / "logs/").c_str());

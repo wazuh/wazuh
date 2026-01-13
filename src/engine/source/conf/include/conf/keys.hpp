@@ -16,6 +16,7 @@ constexpr std::string_view KVDB_PATH = "analysisd.kvdb_path";
 constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 
 constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
+constexpr std::string_view CM_SYNC_INTERVAL = "analysisd.cm_sync_interval";
 
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
@@ -45,10 +46,6 @@ constexpr std::string_view SERVER_ENABLE_EVENT_PROCESSING = "analysisd.server_en
 constexpr std::string_view TZDB_PATH = "analysisd.tzdb_path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "analysisd.tzdb_auto_update";
 constexpr std::string_view TZDB_FORCE_VERSION_UPDATE = "analysisd.tzdb_force_version_update";
-
-constexpr std::string_view METRICS_ENABLED = "analysisd.metrics_enabled";
-constexpr std::string_view METRICS_EXPORT_INTERVAL = "analysisd.metrics_export_interval";
-constexpr std::string_view METRICS_EXPORT_TIMEOUT = "analysisd.metrics_export_timeout";
 
 constexpr std::string_view STREAMLOG_BASE_PATH = "analysisd.streamlog_base_path";
 constexpr std::string_view STREAMLOG_SHOULD_COMPRESS = "analysisd.streamlog_compress";
