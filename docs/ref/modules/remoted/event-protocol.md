@@ -19,14 +19,14 @@ HTTP POST over Unix socket at `/var/ossec/queue/sockets/queue` with content-type
 
 Batch structure:
 ```
-H<TAB><JSON_HEADER><LF>
-E<TAB><EVENT_1><LF>
-E<TAB><EVENT_2><LF>
+H <JSON_HEADER><LF>
+E <EVENT_1><LF>
+E <EVENT_2><LF>
 ```
 
 - `H` = Header line (JSON metadata, once per batch)
 - `E` = Event line (raw event data)
-- `<TAB>` = Tab character (0x09)
+- ` ` = Space character (0x20)
 - `<LF>` = Line feed (0x0A)
 
 ## Header Line (H)
@@ -34,7 +34,7 @@ E<TAB><EVENT_2><LF>
 ### Format
 
 ```
-H<TAB><JSON_HEADER><LF>
+H <JSON_HEADER><LF>
 ```
 
 ### Header JSON Schema
@@ -105,7 +105,7 @@ H	{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web"
 
 ## Event Line (E)
 
-Format: `E<TAB><EVENT_PAYLOAD><LF>`
+Format: `E <EVENT_PAYLOAD><LF>`
 
 Payload is raw event data (JSON or text), UTF-8 encoded. Newlines must be escaped. Max 64KB per event.
 
@@ -137,7 +137,7 @@ E	{"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/
 
 ## Parsing
 
-Split by `\n`, check first char (`H` or `E`), extract payload after tab (index 2).
+Split by `\n`, check first char (`H` or `E`), extract payload after space (index 2).
 
 ## Error Handling
 

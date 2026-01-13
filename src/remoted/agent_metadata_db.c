@@ -20,7 +20,22 @@ void agent_metadata_init(void) {
 
 void agent_metadata_teardown(void) {
     if (!agent_meta_map) return;
-    /* Optionally iterate and free entries… */
+
+    pthread_rwlock_wrlock(&agent_meta_lock);
+
+    // Iterate and free all entries
+    unsigned int i = 0;
+    OSHashNode *node = OSHash_Begin(agent_meta_map, &i);
+    while (node) {
+        agent_meta_t *meta = (agent_meta_t *)node->data;
+        if (meta) {
+            agent_meta_free(meta);
+        }
+        node = OSHash_Next(agent_meta_map, &i, node);
+    }
+
+    pthread_rwlock_unlock(&agent_meta_lock);
+
     OSHash_Free(agent_meta_map);
     agent_meta_map = NULL;
     pthread_rwlock_destroy(&agent_meta_lock);
@@ -86,21 +101,24 @@ agent_meta_t *agent_meta_from_agent_info(const char *id_str,
 int agent_meta_upsert_locked(const char *agent_id_str, agent_meta_t *fresh) {
     if (!agent_id_str || !fresh) return -1;
 
+    pthread_rwlock_wrlock(&agent_meta_lock);
+
     // Set the lastmsg timestamp to current time
     fresh->lastmsg = time(NULL);
 
-    pthread_rwlock_wrlock(&agent_meta_lock);
     agent_meta_t *old = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id_str);
 
-    int rc = OSHash_Add(agent_meta_map, agent_id_str, fresh);
-    if (rc == 1) {
-        (void)OSHash_Delete(agent_meta_map, agent_id_str);
-        rc = OSHash_Add(agent_meta_map, agent_id_str, fresh);
+    if (old) {
+        OSHash_Delete(agent_meta_map, agent_id_str);
     }
+
+    int rc = OSHash_Add(agent_meta_map, agent_id_str, fresh);
 
     pthread_rwlock_unlock(&agent_meta_lock);
 
-    if (old && old != fresh) agent_meta_free(old);
+    if (old && old != fresh) {
+        agent_meta_free(old);
+    }
 
     return (rc == 2) ? 0 : -1;
 }
