@@ -1840,13 +1840,13 @@ async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mo
 @patch('wazuh.core.agent.Agent.get_agents_overview')
 async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_get_agents, mock_wdb_conn, get_ossec_conf_mock):
     """Test DisconnectedAgentGroupSyncTask _get_disconnected_agents method."""
-    
+
     cluster_items_with_sync = cluster_items.copy()
     cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
     cluster_items_with_sync['sync_disconnected_agent_groups_batch_size'] = 100
     cluster_items_with_sync['sync_disconnected_agent_groups_min_offline'] = 600
     cluster_items_with_sync['disconnected_agent_sync'] = {'enabled': True}
-    
+
     server_mock = MagicMock()
     server_mock.setup_task_logger.return_value = MagicMock()
 
@@ -1882,13 +1882,13 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_g
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
 async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, get_ossec_conf_mock):
     """Test DisconnectedAgentGroupSyncTask run method when disabled."""
-    
+
     cluster_items_with_sync = cluster_items.copy()
     cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
     cluster_items_with_sync['sync_disconnected_agent_groups_batch_size'] = 100
     cluster_items_with_sync['sync_disconnected_agent_groups_min_offline'] = 600
     cluster_items_with_sync['disconnected_agent_sync'] = {'enabled': False}
-    
+
     server_mock = MagicMock()
     server_mock.setup_task_logger.return_value = MagicMock()
 
@@ -1906,4 +1906,3 @@ async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wd
             await task.run()
 
     server_mock.setup_task_logger.return_value.info.assert_called()
-

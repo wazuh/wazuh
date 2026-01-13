@@ -1,12 +1,12 @@
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
-
-from wazuh.core.indexer.base import IndexerKey
-from opensearchpy import AsyncOpenSearch
 import logging
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from opensearchpy import AsyncOpenSearch
+from wazuh.core.indexer.base import IndexerKey
 
 
-class MaxVersionIndex():
+class MaxVersionIndex:
     """
     Indexer client for disconnected agents operations.
     """
@@ -87,9 +87,6 @@ class MaxVersionIndex():
             from_=offset,
             sort=sort,
         )
-        logging.getLogger("wazuh").debug(
-            f"Max version search query executed: {results}"
-        )
         return results
 
     async def update_agent_groups(
@@ -104,7 +101,7 @@ class MaxVersionIndex():
         """
 
         body = {
-    "query": {
+            "query": {
                 "bool": {
                     "must": [{"term": {"agent.id": agent_id}}],
                     "should": [
@@ -145,7 +142,7 @@ class MaxVersionIndex():
         }
 
         results: Dict[str, dict] = {}
-        summary: Dict[str, Any] = {"index": []}
+        summary: Dict[str, Any] = {"index": [], "updated_documents": 0}
 
         for module, indices in self.MODULE_INDICES_MAP.items():
             for index in indices:
@@ -159,11 +156,11 @@ class MaxVersionIndex():
                     results[index] = response
                     summary["module"] = module
                     summary["index"].append(index)
-                    summary["updated_documents"] = response["updated"]
+                    documents_updated = response.get("updated", 0)
+                    summary["updated_documents"] += documents_updated
 
                     logging.getLogger("wazuh").debug(
-                        f"[{module}] Updated agent_id={agent_id} "
-                        f"index={index}"
+                        f"[{module}] Updated agent_id={agent_id} " f"index={index}"
                     )
 
                 except Exception as e:
@@ -174,5 +171,6 @@ class MaxVersionIndex():
                     results[index] = {"error": str(e)}
             logging.getLogger("wazuh").info(f"Summary: {summary}")
             summary["index"] = []
+            summary["updated_documents"] = 0
 
         return results

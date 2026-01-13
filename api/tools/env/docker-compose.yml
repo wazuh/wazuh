@@ -28,28 +28,24 @@ services:
 
             # Network
             network.host: 0.0.0.0
-            http.port: 9200
 
             # JVM
             OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx2g -XX:MaxDirectMemorySize=512m"
 
             # Security
             plugins.security.disabled: "false"
-            plugins.security.allow_default_init_securityindex: "true"
 
             # HTTP TLS
             plugins.security.ssl.http.enabled: "true"
             plugins.security.ssl.http.pemcert_filepath: certs/indexer.pem
             plugins.security.ssl.http.pemkey_filepath: certs/indexer-key.pem
             plugins.security.ssl.http.pemtrustedcas_filepath: certs/root-ca.pem
-            plugins.security.ssl.http.clientauth_mode: NONE
 
             # Transport TLS
             plugins.security.ssl.transport.enabled: "true"
             plugins.security.ssl.transport.pemcert_filepath: certs/indexer.pem
             plugins.security.ssl.transport.pemkey_filepath: certs/indexer-key.pem
             plugins.security.ssl.transport.pemtrustedcas_filepath: certs/root-ca.pem
-            plugins.security.ssl.transport.enforce_hostname_verification: "false"
 
         depends_on:
             certs-generator:

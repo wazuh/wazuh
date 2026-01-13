@@ -8,8 +8,12 @@ from typing import Generator, List
 from wazuh.core.agent import get_agents_info
 from wazuh.core.cluster import master
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import (WazuhError, WazuhException,
-                                  WazuhInternalError, WazuhResourceNotFound)
+from wazuh.core.exception import (
+    WazuhError,
+    WazuhException,
+    WazuhInternalError,
+    WazuhResourceNotFound,
+)
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -41,11 +45,14 @@ class DisconnectedAgentGroupSyncTask:
         Minimum time in seconds an agent must be offline to be processed.
     """
 
+    DEFAULT_SYNC_DISCONNECT_AGENT_GROUP = 300
+    DEFAULT_SYNC_DISCONNECT_AGENT_GROUPS_BATCH_SIZE = 100
+    DEFAULT_SYNC_DISCONNECT_AGENT_GROUPS_MIN_OFFLINE = 600
+
     def __init__(
         self,
         server: master.Master = None,
         cluster_items: dict = None,
-        manager: object = None,
         logger: object = None,
         indexer_client: object = None,
     ):
@@ -85,13 +92,16 @@ class DisconnectedAgentGroupSyncTask:
         self.logger.debug(f"Ossec config for indexer section: {ossec_config}")
 
         master_interval = cluster_items.get("intervals", {}).get("master", {})
-        self.sync_interval = master_interval.get("sync_disconnected_agent_groups",
-                                                 300)
+        self.sync_interval = master_interval.get(
+            "sync_disconnected_agent_groups", self.DEFAULT_SYNC_DISCONNECT_AGENT_GROUP
+        )
         self.batch_size = master_interval.get(
-            "sync_disconnected_agent_groups_batch_size", 100
+            "sync_disconnected_agent_groups_batch_size",
+            self.DEFAULT_SYNC_DISCONNECT_AGENT_GROUPS_BATCH_SIZE,
         )
         self.min_disconnection_time = master_interval.get(
-            "sync_disconnected_agent_groups_min_offline", 600
+            "sync_disconnected_agent_groups_min_offline",
+            self.DEFAULT_SYNC_DISCONNECT_AGENT_GROUPS_MIN_OFFLINE,
         )
 
     async def run(self) -> None:
@@ -201,9 +211,14 @@ class DisconnectedAgentGroupSyncTask:
 
             for agent in all_agents:
                 # If no disconnection_time provided, include the agent (tests expect this)
-                if "disconnection_time" not in agent or agent.get("disconnection_time") is None:
+                if (
+                    "disconnection_time" not in agent
+                    or agent.get("disconnection_time") is None
+                ):
                     filtered_agents.append(agent)
-                    self.logger.debug(f"Agent {agent.get('id')} included: no disconnection_time provided")
+                    self.logger.debug(
+                        f"Agent {agent.get('id')} included: no disconnection_time provided"
+                    )
                     continue
 
                 disconnection_time = agent.get("disconnection_time")
@@ -224,7 +239,8 @@ class DisconnectedAgentGroupSyncTask:
                     filtered_agents.append(agent)
                     self.logger.debug(
                         f"Agent {agent.get('id')} included: disconnected for "
-                        f"{time_disconnected} (min required: {self.min_disconnection_time}s)"
+                        f"{time_disconnected}"
+                        f"(min required: {self.min_disconnection_time}s)"
                     )
                 else:
                     self.logger.debug(
@@ -268,7 +284,7 @@ class DisconnectedAgentGroupSyncTask:
 
         exclusion_filter = {"bool": {"must_not": [{"term": {"agent.id": "000"}}]}}
 
-        if len(agent_ids) == 1:
+        if len(agent_ids):
             query = {
                 "size": 0,
                 "aggs": {
@@ -292,7 +308,6 @@ class DisconnectedAgentGroupSyncTask:
 
         try:
             if self._indexer_client_override:
-                # Tests may inject an AsyncMock client with a `search` coroutine.
                 client = self._indexer_client_override
                 result = await client.search(query=query, exclude=exclusion_filter)
             else:
@@ -302,7 +317,7 @@ class DisconnectedAgentGroupSyncTask:
                     )
 
             max_versions = {}
-            if len(agent_ids) == 1 and result:
+            if len(agent_ids) and result:
                 max_version = result["aggregations"]["max_document_version"]["value"]
                 if max_version is not None:
                     max_versions[agent_ids[0]] = int(max_version)
@@ -428,53 +443,6 @@ class DisconnectedAgentGroupSyncTask:
 
         return {"processed": processed, "failed": failed}
 
-    async def _get_max_version_from_indexer(self, agent_id: str) -> int:
-        """Fetch max version for a single agent from the indexer.
-
-        This convenience wrapper is used by tests that expect a single-agent
-        helper named `_get_max_version_from_indexer`.
-        """
-        if not agent_id:
-            return 0
-
-        # Try to use injected client for tests
-        exclusion_filter = {"bool": {"must_not": [{"term": {"agent.id": "000"}}]}}
-        query = {
-            "size": 0,
-            "aggs": {"max_version": {"max": {"field": "state.document_version"}}},
-        }
-
-        try:
-            if self._indexer_client_override:
-                client = self._indexer_client_override
-                result = await client.search(query=query, exclude=exclusion_filter)
-            else:
-                # Fallback to batch implementation for real client
-                versions = await self._get_max_versions_batch_from_indexer([agent_id])
-                return versions.get(agent_id, 0)
-
-            if not result:
-                return 0
-
-            # Accept both `max_version` and `max_document_version` aggregation names
-            aggs = result.get("aggregations", {})
-            value = None
-            if "max_version" in aggs:
-                value = aggs["max_version"].get("value")
-                # Inform when no version found
-                if value is None:
-                    self.logger.debug(f"No version found for agent {agent_id} in indexer")
-            elif "max_document_version" in aggs:
-                value = aggs["max_document_version"].get("value")
-                if value is None:
-                    self.logger.debug(f"No version found for agent {agent_id} in indexer")
-
-            return int(value) if value is not None else 0
-
-        except Exception as e:
-            self.logger.warning(f"Failed to fetch max version for agent {agent_id}: {e}")
-            return 0
-
     async def disconnected_agent_group_sync(
         self, agent_list: list = None, group_list: list = None, external_gte: int = None
     ) -> AffectedItemsWazuhResult:
@@ -546,31 +514,32 @@ class DisconnectedAgentGroupSyncTask:
             f"with external_gte={external_gte}"
         )
 
-        for agent_id in valid_agents:
-            try:
-                async with get_indexer_client() as client:
-                    _ = await client.max_version_components.update_agent_groups(
+        async with get_indexer_client() as client:
+            for agent_id in valid_agents:
+                try:
+                    await client.max_version_components.update_agent_groups(
                         agent_id=agent_id,
                         groups=group_list,
                         global_version=external_gte,
                     )
-                result.affected_items.append(agent_id)
-                self.logger.info(
-                    f"Successfully synchronized agent {agent_id} "
-                    f"with groups {group_list}"
-                )
+                    result.affected_items.append(agent_id)
+                    self.logger.info(
+                        f"Successfully synchronized agent {agent_id} "
+                        f"with groups {group_list}"
+                    )
 
-            except WazuhException as e:
-                self.logger.error(f"Error synchronizing agent {agent_id}: {str(e)}")
-                result.add_failed_item(id_=agent_id, error=e)
-            except Exception as e:
-                self.logger.error(
-                    f"Unexpected error synchronizing agent {agent_id}: {str(e)}",
-                    exc_info=True,
-                )
-                result.add_failed_item(
-                    id_=agent_id, error=WazuhInternalError(1000, extra_message=str(e))
-                )
+                except WazuhException as e:
+                    self.logger.error(f"Error synchronizing agent {agent_id}: {str(e)}")
+                    result.add_failed_item(id_=agent_id, error=e)
+                except Exception as e:
+                    self.logger.error(
+                        f"Unexpected error synchronizing agent {agent_id}: {str(e)}",
+                        exc_info=True,
+                    )
+                    result.add_failed_item(
+                        id_=agent_id,
+                        error=WazuhInternalError(1000, extra_message=str(e)),
+                    )
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)

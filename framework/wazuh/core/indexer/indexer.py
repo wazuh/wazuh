@@ -9,12 +9,12 @@ from urllib.parse import urlparse
 from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import ImproperlyConfigured, TransportError
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import WazuhIndexerError
+from wazuh.core.exception import WazuhException, WazuhIndexerError
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.max_version_components import MaxVersionIndex
 
 
-class Indexer():
+class Indexer:
     """
     Interface to connect with Wazuh Indexer.
 
@@ -71,8 +71,7 @@ class Indexer():
     ) -> None:
         if len(hosts) != len(ports):
             raise WazuhIndexerError(
-                2001,
-                extra_message="Hosts and ports lists must have the same length"
+                2001, extra_message="Hosts and ports lists must have the same length"
             )
 
         self.hosts = hosts
@@ -104,8 +103,7 @@ class Indexer():
         WazuhIndexerError
             If SSL is enabled but certificate paths are missing.
         """
-        nodes = [{"host": h, "port": p}
-                 for h, p in zip(self.hosts, self.ports)]
+        nodes = [{"host": h, "port": p} for h, p in zip(self.hosts, self.ports)]
         parameters = {
             "hosts": nodes,
             "http_compress": True,
@@ -125,8 +123,7 @@ class Indexer():
         if self.use_ssl:
             if self.client_cert and self.client_key:
                 parameters.update(
-                    {"client_cert": self.client_cert,
-                     "client_key": self.client_key}
+                    {"client_cert": self.client_cert, "client_key": self.client_key}
                 )
             else:
                 raise WazuhIndexerError(
@@ -151,7 +148,6 @@ class Indexer():
             If there is a connection error, transport error, SSL failure,
             or improper configuration.
         """
-        getLogger("wazuh").debug("Connecting to the indexer client.")
         try:
             return await self._client.info()
         except (ConnectionError, TransportError) as e:
@@ -162,7 +158,7 @@ class Indexer():
             raise WazuhIndexerError(
                 2200,
                 extra_message=f"{e}. Check your indexer configuration"
-                              f"and SSL certificates",
+                f"and SSL certificates",
             )
 
     async def close(self) -> None:
@@ -173,9 +169,7 @@ class Indexer():
         await self._client.close()
 
 
-async def create_indexer(retries: int = 5,
-                         backoff: int = 1,
-                         **kwargs) -> Indexer:
+async def create_indexer(retries: int = 5, backoff: int = 1, **kwargs) -> Indexer:
     """
     Create and initialize the Indexer instance with a retry mechanism.
 
@@ -216,10 +210,6 @@ async def create_indexer(retries: int = 5,
 
             # Exponential backoff with jitter to avoid "thundering herd"
             wait_time = (backoff * 2**attempt) + random.random()
-            getLogger("wazuh").warning(
-                f"Connection failed (Attempt {attempt+1}/{retries+1})."
-                f" Retrying in {wait_time:.2f}s..."
-            )
             await sleep(wait_time)
 
 
@@ -241,38 +231,127 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     ------
     WazuhIndexerError
         If initialization or connection fails.
+    ConfigurationError
+        If configuration is missing or malformed.
+    CredentialsError
+        If credentials are missing or invalid.
     """
-    ossec_config = get_ossec_conf(section="indexer")
-    indexer_section = ossec_config.get("indexer", {})
-    ssl_config = indexer_section.get("ssl", {})
-
-    ks_client = KeystoreClient(getLogger("wazuh"))
+    MAX_RETRIES = 3
     try:
-        indexer_user = ks_client.get("indexer", "username")["value"]
-        indexer_pass = ks_client.get("indexer", "password")["value"]
-    finally:
-        ks_client.disconnect()
+        ossec_config = get_ossec_conf(section="indexer")
+        if not ossec_config:
+            raise WazuhException(
+                code=1002, message="Missing indexer configuration in OSSEC config"
+            )
+    except Exception as e:
+        raise WazuhException(
+            code=1003, message=f"Failed to parse OSSEC configuration: {e}"
+        )
 
+    indexer_section = ossec_config.get("indexer", {})
+    if not indexer_section:
+        raise WazuhException(
+            code=1004, message="Empty indexer section in configuration"
+        )
+
+    ssl_config = indexer_section.get("ssl", {})
+    if not ssl_config:
+        raise WazuhException(code=1005, message="Missing SSL configuration")
+
+    try:
+        with KeystoreClient() as ks_client:
+            try:
+                user_response = ks_client.get("indexer", "username")
+                pass_response = ks_client.get("indexer", "password")
+            except KeyError as e:
+                raise WazuhException(
+                    code=1006, message=f"Missing credential entry in keystore: {e}"
+                )
+            except Exception as e:
+                raise WazuhException(
+                    code=1007, message=f"Keystore operation failed: {e}"
+                )
+
+            indexer_user = user_response.get("value") if user_response else None
+            indexer_pass = pass_response.get("value") if pass_response else None
+
+            if not indexer_user:
+                raise WazuhException(
+                    code=1008, message="Empty or missing username in keystore"
+                )
+            if not indexer_pass:
+                raise WazuhException(
+                    code=1009, message="Empty or missing password in keystore"
+                )
+    except WazuhException:
+        raise
+    except Exception as e:
+        raise WazuhException(
+            code=1010, message=f"Failed to retrieve indexer credentials: {e}"
+        )
+
+    # Parse host URLs
     hosts_raw = indexer_section.get("hosts", [])
-    parsed_urls = [urlparse(h) for h in hosts_raw]
+    if not hosts_raw:
+        raise WazuhException(
+            code=1011, message="No hosts specified in indexer configuration"
+        )
 
-    list_of_hosts = [p.hostname for p in parsed_urls]
-    list_of_ports = [p.port for p in parsed_urls]
+    try:
+        parsed_urls = [urlparse(h) for h in hosts_raw]
+        list_of_hosts = []
+        list_of_ports = []
 
-    client = await create_indexer(
-        hosts=list_of_hosts,
-        ports=list_of_ports,
-        user=indexer_user,
-        password=indexer_pass,
-        use_ssl=True,
-        verify_certs=True,
-        retries=3,
-        client_cert_path=ssl_config["certificate"][0],
-        client_key_path=ssl_config["key"][0],
-        ca_certs_path=ssl_config["certificate_authorities"][0]["ca"][0],
-    )
+        for i, p in enumerate(parsed_urls):
+            if not p.hostname:
+                raise WazuhException(
+                    code=1012,
+                    message=f"Invalid host URL at position {i}: {hosts_raw[i]}",
+                )
+            list_of_hosts.append(p.hostname)
+            list_of_ports.append(p.port)
+    except Exception as e:
+        raise WazuhException(code=1013, message=f"Failed to parse host URLs: {e}")
+
+    # Validate SSL certificate paths
+    required_cert_paths = [
+        ("client_cert", ssl_config.get("certificate", [])),
+        ("client_key", ssl_config.get("key", [])),
+        ("ca_certs", ssl_config.get("certificate_authorities", [{}])[0].get("ca", [])),
+    ]
+
+    for cert_name, cert_path_list in required_cert_paths:
+        if not cert_path_list or not cert_path_list[0]:
+            raise WazuhException(
+                code=1014, message=f"Missing or empty {cert_name} path"
+            )
+
+    # Create indexer client
+    try:
+        client = await create_indexer(
+            hosts=list_of_hosts,
+            ports=list_of_ports,
+            user=indexer_user,
+            password=indexer_pass,
+            use_ssl=True,
+            verify_certs=True,
+            retries=MAX_RETRIES,
+            client_cert_path=ssl_config["certificate"][0],
+            client_key_path=ssl_config["key"][0],
+            ca_certs_path=ssl_config["certificate_authorities"][0]["ca"][0],
+        )
+    except Exception as e:
+        raise WazuhException(code=1015, message=f"Failed to create indexer client: {e}")
 
     try:
         yield client
+    except Exception as e:
+        getLogger("wazuh").logger.error(f"Error in indexer client context: {e}")
+        raise
     finally:
-        await client.close()
+        try:
+            await client.close()
+        except Exception as e:
+            getLogger("wazuh").logger.warning(
+                f"Failed to close indexer client gracefully: {e}"
+            )
