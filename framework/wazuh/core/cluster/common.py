@@ -36,6 +36,13 @@ _ALLOWED_PREFIXES = (
     os.path.join(common.WAZUH_PATH, "queue/cluster"),
 )
 
+# Strict allowlist of safe internal modules used by DAPI
+_SAFE_CALLABLE_MODULES = {
+    "wazuh.manager",
+    "wazuh.stats",
+    "wazuh.analysis",
+}
+
 class Response:
     """
     Define and store a response from a request.
@@ -1843,29 +1850,31 @@ def as_wazuh_object(dct: Dict):
     try:
         if '__callable__' in dct:
             encoded_callable = dct['__callable__']
-
-            try:
-                logging.getLogger('wazuh').getChild('cluster').warning(
-                    f"[DEBUG] as_wazuh_object blocked __callable__: "
-                    f"module={encoded_callable.get('__module__')}, "
-                    f"qualname={encoded_callable.get('__qualname__')}, "
-                    f"name={encoded_callable.get('__name__')}, "
-                    f"keys={list(encoded_callable.keys()) if isinstance(encoded_callable, dict) else type(encoded_callable)}"
-                )
-            except Exception:
-                pass
-            
             funcname = encoded_callable['__name__']
             if '__wazuh__' in encoded_callable:
                 # Encoded Wazuh instance method.
                 wazuh = Wazuh()
                 return getattr(wazuh, funcname)
-            
-            raise exception.WazuhInternalError(
-                1000,
-                extra_message="Decoding non-internal callable from JSON is not allowed",
-                cmd_error=True
-            )
+            else:
+                # Encoded function or static method (restricted to allowlisted internal modules).
+                qualname = encoded_callable.get['__qualname__'].split('.')
+                classname = qualname[0] if len(qualname) > 1 else None
+                module_path = encoded_callable.get['__module__']
+
+                # Restrict dynamic imports to a strictly defined set of safe internal modules
+                if module_path not in _SAFE_CALLABLE_MODULES:
+                    raise exception.WazuhInternalError(
+                        1000,
+                        extra_message=f"Decoding callable from module '{module_path}' is not allowed",
+                        cmd_error=True
+                    )
+
+                module = import_module(module_path)
+
+                if classname is None:
+                    return getattr(module, funcname)
+                else:
+                    return getattr(getattr(module, classname), funcname)
         
         elif '__wazuh_exception__' in dct:
             wazuh_exception = dct['__wazuh_exception__']
@@ -1881,7 +1890,7 @@ def as_wazuh_object(dct: Dict):
             return ast.literal_eval(json.dumps(exc_dict))
         return dct
 
-    except (KeyError, AttributeError):
+    except (KeyError, AttributeError, TypeError, ValueError):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
                                            cmd_error=True)
