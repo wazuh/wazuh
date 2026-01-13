@@ -1843,6 +1843,18 @@ def as_wazuh_object(dct: Dict):
     try:
         if '__callable__' in dct:
             encoded_callable = dct['__callable__']
+
+            try:
+                logging.getLogger('wazuh').getChild('cluster').warning(
+                    f"[DEBUG] as_wazuh_object blocked __callable__: "
+                    f"module={encoded_callable.get('__module__')}, "
+                    f"qualname={encoded_callable.get('__qualname__')}, "
+                    f"name={encoded_callable.get('__name__')}, "
+                    f"keys={list(encoded_callable.keys()) if isinstance(encoded_callable, dict) else type(encoded_callable)}"
+                )
+            except Exception:
+                pass
+            
             funcname = encoded_callable['__name__']
             if '__wazuh__' in encoded_callable:
                 # Encoded Wazuh instance method.

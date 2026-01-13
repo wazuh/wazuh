@@ -747,7 +747,10 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 continue
 
             try:
+                self.logger.error(f"[DEBUG] Raw SendSync request: {request!r}")
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
+                self.logger.error(f"[DEBUG] Decoded SendSync request keys: {list(request.keys())}")
+                self.logger.error(f"[DEBUG] Decoded SendSync request f type: {type(request.get('f'))} value: {request.get('f')}")
                 self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(result.encode())
