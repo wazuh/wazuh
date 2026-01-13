@@ -62,58 +62,40 @@ INSTANTIATE_TEST_SUITE_P(
     Policy,
     ValidatePolicy,
     ::testing::Values(
-        // Missing default parent
+        // Root decoder does not exist
         ValidatePol("policy_test_0",
                     dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                     "550e8400-e29b-41d4-a716-446655440002", // default parent
-                                     "550e8400-e29b-41d4-a716-446655440003"  // root decoder
+                                     "550e8400-e29b-41d4-a716-446655440003" // root decoder UUID
                                      ),
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
-                            EXPECT_CALL(*reader, assetExistsByUUID("550e8400-e29b-41d4-a716-446655440002"))
-                                .WillOnce(testing::Return(false));
-                            EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440002"))
-                                .WillOnce(testing::Return(std::make_tuple("decoder/parent/0", ResourceType::DECODER)));
-                            return "Default parent 'decoder/parent/0' does not exist";
-                        }})),
-        // Missing root decoder
-        ValidatePol("policy_test_0",
-                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                     "550e8400-e29b-41d4-a716-446655440002",
-                                     "550e8400-e29b-41d4-a716-446655440003"),
-                    FAILURE(FailureExpected::Behaviour {
-                        [](const auto& store, const auto& reader)
-                        {
-                            EXPECT_CALL(*reader, assetExistsByUUID("550e8400-e29b-41d4-a716-446655440002"))
-                                .WillOnce(testing::Return(true));
                             EXPECT_CALL(*reader, assetExistsByUUID("550e8400-e29b-41d4-a716-446655440003"))
                                 .WillOnce(testing::Return(false));
                             EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
                                 .WillOnce(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
                             return "Root decoder 'decoder/root/0' does not exist";
                         }})),
-        // Invalid integration UUID
+        // Root decoder exists but integration UUID is invalid
         ValidatePol("policy_test_0",
-                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                     "550e8400-e29b-41d4-a716-446655440002",
-                                     "550e8400-e29b-41d4-a716-446655440003"),
+                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003"),
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
-                            EXPECT_CALL(*reader, assetExistsByUUID("550e8400-e29b-41d4-a716-446655440002"))
-                                .WillOnce(testing::Return(true));
                             EXPECT_CALL(*reader, assetExistsByUUID("550e8400-e29b-41d4-a716-446655440003"))
-                                .WillOnce(testing::Return(true));
+                                .WillRepeatedly(testing::Return(true));
+                            EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                                .WillRepeatedly(
+                                    testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+                            EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
+                                .WillRepeatedly(testing::Return(json::Json(R"({"name": "decoder/root/0"})")));
                             EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
                                 .WillOnce(testing::Throw(std::runtime_error("Integration not found")));
                             return "Failed to resolve integration";
                         }})),
-        // Valid policy
+        // Valid policy with root decoder and integration
         ValidatePol("policy_test_0",
-                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                     "550e8400-e29b-41d4-a716-446655440002",
-                                     "550e8400-e29b-41d4-a716-446655440003"),
+                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003"),
                     SUCCESS(SuccessExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -127,10 +109,13 @@ INSTANTIATE_TEST_SUITE_P(
                                                                      {},
                                                                      false);
 
-                            EXPECT_CALL(*reader, assetExistsByUUID("550e8400-e29b-41d4-a716-446655440002"))
-                                .WillOnce(testing::Return(true));
                             EXPECT_CALL(*reader, assetExistsByUUID("550e8400-e29b-41d4-a716-446655440003"))
-                                .WillOnce(testing::Return(true));
+                                .WillRepeatedly(testing::Return(true));
+                            EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                                .WillRepeatedly(
+                                    testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+                            EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
+                                .WillRepeatedly(testing::Return(json::Json(R"({"name": "decoder/root/0"})")));
                             EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
                                 .WillOnce(testing::Return(integration));
                             return None {};

@@ -280,6 +280,164 @@ INSTANTIATE_TEST_SUITE_P(
 
 } // namespace buildexpressiontest
 
+namespace buildsubgraphortest
+{
+using buildgraphtest::assetExpr;
+
+struct SubgraphCase
+{
+    Graph<base::Name, Asset> subgraph;
+    std::shared_ptr<base::Operation> expected;
+};
+
+static Graph<base::Name, Asset> makeEmptyGraph()
+{
+    Graph<base::Name, Asset> g {"decoder/Input", Asset {}};
+    return g;
+}
+
+class BuildSubgraphOr : public ::testing::TestWithParam<SubgraphCase>
+{
+};
+
+TEST_P(BuildSubgraphOr, OrOperation)
+{
+    const auto& param = GetParam();
+    const auto& graph = param.subgraph;
+
+    base::Expression got;
+    ASSERT_NO_THROW({ got = factory::buildSubgraphExpression<base::Or>(graph); });
+
+    builder::test::assertEqualExpr(got, param.expected);
+}
+
+using namespace base;
+INSTANTIATE_TEST_SUITE_P(OrOperation,
+                         BuildSubgraphOr,
+                         ::testing::Values(
+                             // A single child "H" under the root
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aH("H", assetExpr("H"), std::vector<base::Name> {});
+                                               g.addNode("H", std::move(aH));
+                                               g.addEdge("decoder/Input", "H");
+                                               return g;
+                                           }(),
+                                           /* expected */ Or::create("decoder/Input", {assetExpr("H")})},
+
+                             // Parent "P" with one child "C"
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("decoder/Input", "P");
+                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P"});
+                                               g.addNode("C", std::move(aC));
+                                               g.addEdge("P", "C");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("decoder/Input", {impl});
+                                           }()},
+
+                             // Parent "P" with two children "C1" and "C2" in that order
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("decoder/Input", "P");
+                                               Asset aC1("C1", assetExpr("C1"), std::vector<base::Name> {"P"});
+                                               g.addNode("C1", std::move(aC1));
+                                               g.addEdge("P", "C1");
+                                               Asset aC2("C2", assetExpr("C2"), std::vector<base::Name> {"P"});
+                                               g.addNode("C2", std::move(aC2));
+                                               g.addEdge("P", "C2");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C1"));
+                                               children->getOperands().push_back(assetExpr("C2"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("decoder/Input", {impl});
+                                           }()},
+
+                             // Two parents "P1" and "P2" sharing child "C"
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP1("P1", assetExpr("P1"), std::vector<base::Name> {});
+                                               g.addNode("P1", std::move(aP1));
+                                               g.addEdge("decoder/Input", "P1");
+                                               Asset aP2("P2", assetExpr("P2"), std::vector<base::Name> {});
+                                               g.addNode("P2", std::move(aP2));
+                                               g.addEdge("decoder/Input", "P2");
+                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P1", "P2"});
+                                               g.addNode("C", std::move(aC));
+                                               g.addEdge("P1", "C");
+                                               g.addEdge("P2", "C");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children1 = Or::create("P1/Children", {});
+                                               children1->getOperands().push_back(assetExpr("C"));
+                                               auto impl1 = Implication::create("P1/Node", assetExpr("P1"), children1);
+
+                                               auto children2 = Or::create("P2/Children", {});
+                                               children2->getOperands().push_back(assetExpr("C"));
+                                               auto impl2 = Implication::create("P2/Node", assetExpr("P2"), children2);
+
+                                               return Or::create("decoder/Input", {impl1, impl2});
+                                           }()},
+
+                             // Complex hierarchy: Root -> P1 -> C1 -> GC1
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP1("P1", assetExpr("P1"), std::vector<base::Name> {});
+                                               g.addNode("P1", std::move(aP1));
+                                               g.addEdge("decoder/Input", "P1");
+                                               Asset aC1("C1", assetExpr("C1"), std::vector<base::Name> {"P1"});
+                                               g.addNode("C1", std::move(aC1));
+                                               g.addEdge("P1", "C1");
+                                               Asset aGC1("GC1", assetExpr("GC1"), std::vector<base::Name> {"C1"});
+                                               g.addNode("GC1", std::move(aGC1));
+                                               g.addEdge("C1", "GC1");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               // GC1 is a leaf (no children), so it's just the asset expression
+                                               auto gc1Expr = assetExpr("GC1");
+
+                                               // C1 children
+                                               auto c1Children = Or::create("C1/Children", {gc1Expr});
+                                               auto c1Impl =
+                                                   Implication::create("C1/Node", assetExpr("C1"), c1Children);
+
+                                               // P1 children
+                                               auto p1Children = Or::create("P1/Children", {c1Impl});
+                                               auto p1Impl =
+                                                   Implication::create("P1/Node", assetExpr("P1"), p1Children);
+
+                                               return Or::create("decoder/Input", {p1Impl});
+                                           }()}));
+
+} // namespace buildsubgraphortest
+
 namespace cycledetectiontest
 {
 using buildgraphtest::assetExpr;
@@ -397,6 +555,142 @@ TEST(CycleDetection, ComplexNoCycle)
             RT::DECODER, "decoder/asset4/0", "decoder/asset3/0", "decoder/asset2/0");
     auto graph = factory::buildGraph(data.builtAssets);
     EXPECT_NO_THROW(graph.subgraphs.at(RT::DECODER).validateAcyclic("decoder"));
+}
+
+TEST(CycleDetection, DetectsReachableCycleWithExtraParents)
+{
+    // Cycle: a -> b -> c -> a, with additional edge d -> b
+    Graph<base::Name, Asset> subgraph {"decoder/Input", Asset {}};
+
+    base::Name aRef("decoder/a");
+    Asset a {base::Name("decoder/a"), std::move(assetExpr(aRef)), std::vector<base::Name> {}};
+
+    base::Name bRef("decoder/b");
+    Asset b {base::Name("decoder/b"), std::move(assetExpr(bRef)), std::vector<base::Name> {}};
+
+    base::Name cRef("decoder/c");
+    Asset c {base::Name("decoder/c"), std::move(assetExpr(cRef)), std::vector<base::Name> {}};
+
+    base::Name dRef("decoder/d");
+    Asset d {base::Name("decoder/d"), std::move(assetExpr(dRef)), std::vector<base::Name> {}};
+
+    subgraph.addNode(aRef, a);
+    subgraph.addNode(bRef, b);
+    subgraph.addNode(cRef, c);
+    subgraph.addNode(dRef, d);
+
+    subgraph.addEdge("decoder/Input", aRef);
+    subgraph.addEdge(aRef, bRef);
+    subgraph.addEdge(bRef, cRef);
+    subgraph.addEdge(cRef, aRef); // cycle closes
+
+    subgraph.addEdge("decoder/Input", dRef);
+    subgraph.addEdge(dRef, bRef); // additional incoming edge
+
+    EXPECT_THROW(subgraph.validateAcyclic("decoder"), std::runtime_error);
+}
+
+TEST(CycleDetection, DetectsDisconnectedCycle)
+{
+    // Linear path: Input -> a -> b, plus disconnected cycle: x -> y -> x
+    Graph<base::Name, Asset> subgraph {"decoder/Input", Asset {}};
+
+    base::Name aRef("decoder/a");
+    Asset a {base::Name("decoder/a"), std::move(assetExpr(aRef)), std::vector<base::Name> {}};
+
+    base::Name bRef("decoder/b");
+    Asset b {base::Name("decoder/b"), std::move(assetExpr(bRef)), std::vector<base::Name> {}};
+
+    base::Name xRef("decoder/x");
+    Asset x {base::Name("decoder/x"), std::move(assetExpr(xRef)), std::vector<base::Name> {}};
+
+    base::Name yRef("decoder/y");
+    Asset y {base::Name("decoder/y"), std::move(assetExpr(yRef)), std::vector<base::Name> {}};
+
+    subgraph.addNode(aRef, a);
+    subgraph.addNode(bRef, b);
+    subgraph.addNode(xRef, x);
+    subgraph.addNode(yRef, y);
+
+    subgraph.addEdge("decoder/Input", aRef);
+    subgraph.addEdge(aRef, bRef);
+
+    subgraph.addEdge(xRef, yRef);
+    subgraph.addEdge(yRef, xRef); // disconnected cycle
+
+    EXPECT_THROW(subgraph.validateAcyclic("decoder"), std::runtime_error);
+}
+
+TEST(CycleDetection, DetectsCycleThroughInjectedFilter)
+{
+    // Cycle through a filter: Input -> b -> filter/f -> c -> b
+    Graph<base::Name, Asset> subgraph {"decoder/Input", Asset {}};
+
+    base::Name bRef("decoder/b");
+    Asset b {base::Name("decoder/b"), std::move(assetExpr(bRef)), std::vector<base::Name> {}};
+
+    base::Name fRef("filter/f");
+    Asset f {base::Name("filter/f"), std::move(assetExpr(fRef)), std::vector<base::Name> {}};
+
+    base::Name cRef("decoder/c");
+    Asset c {base::Name("decoder/c"), std::move(assetExpr(cRef)), std::vector<base::Name> {}};
+
+    subgraph.addNode(bRef, b);
+    subgraph.addNode(fRef, f);
+    subgraph.addNode(cRef, c);
+
+    subgraph.addEdge("decoder/Input", bRef);
+    subgraph.addEdge(bRef, fRef);
+    subgraph.addEdge(fRef, cRef);
+    subgraph.addEdge(cRef, bRef); // cycle closes through filter
+
+    EXPECT_THROW(subgraph.validateAcyclic("decoder"), std::runtime_error);
+}
+
+TEST(CycleDetection, DetectsFilterOnlyCycle)
+{
+    // Cycle only involving filters: filter/x -> filter/y -> filter/x
+    Graph<base::Name, Asset> subgraph {"decoder/Input", Asset {}};
+
+    base::Name xRef("filter/x");
+    Asset x {base::Name("filter/x"), std::move(assetExpr(xRef)), std::vector<base::Name> {}};
+
+    base::Name yRef("filter/y");
+    Asset y {base::Name("filter/y"), std::move(assetExpr(yRef)), std::vector<base::Name> {}};
+
+    subgraph.addNode(xRef, x);
+    subgraph.addNode(yRef, y);
+
+    subgraph.addEdge(xRef, yRef);
+    subgraph.addEdge(yRef, xRef); // filter-only cycle
+
+    EXPECT_THROW(subgraph.validateAcyclic("decoder"), std::runtime_error);
+}
+
+TEST(CycleDetection, AllowsDiamondShapeWithoutCycle)
+{
+    // Diamond shape (no cycle): Input -> a -> b, Input -> c -> b
+    Graph<base::Name, Asset> subgraph {"decoder/Input", Asset {}};
+
+    base::Name aRef("decoder/a");
+    Asset a {base::Name("decoder/a"), std::move(assetExpr(aRef)), std::vector<base::Name> {}};
+
+    base::Name bRef("decoder/b");
+    Asset b {base::Name("decoder/b"), std::move(assetExpr(bRef)), std::vector<base::Name> {}};
+
+    base::Name cRef("decoder/c");
+    Asset c {base::Name("decoder/c"), std::move(assetExpr(cRef)), std::vector<base::Name> {}};
+
+    subgraph.addNode(aRef, a);
+    subgraph.addNode(bRef, b);
+    subgraph.addNode(cRef, c);
+
+    subgraph.addEdge("decoder/Input", aRef);
+    subgraph.addEdge(aRef, bRef);
+    subgraph.addEdge("decoder/Input", cRef);
+    subgraph.addEdge(cRef, bRef);
+
+    EXPECT_NO_THROW(subgraph.validateAcyclic("decoder"));
 }
 
 } // namespace cycledetectiontest
@@ -565,7 +859,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         // Test: KVDB availability map is correctly built
         BuildAssetsT(
-            dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "default-parent-uuid", "default-asset-uuid"),
+            dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003"),
             SUCCESS(SuccessExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -585,6 +879,8 @@ INSTANTIATE_TEST_SUITE_P(
                     dataType::KVDB kvdb2(
                         "550e8400-e29b-41d4-a716-446655440012", "kvdb_disabled", json::Json(R"({})"), false, false);
 
+                    EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                        .WillOnce(testing::Return(std::make_tuple("decoder/root/0", cm::store::ResourceType::DECODER)));
                     EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
                         .WillOnce(testing::Return(integration));
                     EXPECT_CALL(*reader, getKVDBByUUID("550e8400-e29b-41d4-a716-446655440011"))
@@ -596,7 +892,7 @@ INSTANTIATE_TEST_SUITE_P(
                 }})),
         // Test: Duplicate KVDB names throw error
         BuildAssetsT(
-            dataType::Policy({"550e8400-e29b-41d4-a716-446655440002"}, "default-parent-uuid", "default-asset-uuid"),
+            dataType::Policy({"550e8400-e29b-41d4-a716-446655440002"}, "550e8400-e29b-41d4-a716-446655440003"),
             FAILURE(FailureExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -616,6 +912,8 @@ INSTANTIATE_TEST_SUITE_P(
                     dataType::KVDB kvdb2(
                         "550e8400-e29b-41d4-a716-446655440022", "duplicate_name", json::Json(R"({})"), true, false);
 
+                    EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                        .WillOnce(testing::Return(std::make_tuple("decoder/root/0", cm::store::ResourceType::DECODER)));
                     EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440002"))
                         .WillOnce(testing::Return(integration));
                     EXPECT_CALL(*reader, getKVDBByUUID("550e8400-e29b-41d4-a716-446655440021"))
@@ -626,49 +924,53 @@ INSTANTIATE_TEST_SUITE_P(
                     return std::string("Duplicate KVDB title");
                 }})),
         // Test: Disabled integration skips KVDB processing
-        BuildAssetsT(
-            dataType::Policy({"550e8400-e29b-41d4-a716-446655440003"}, "default-parent-uuid", "default-asset-uuid"),
-            SUCCESS(SuccessExpected::Behaviour {
-                [](const auto& reader, const auto& buildCtx)
-                {
-                    dataType::Integration integration("550e8400-e29b-41d4-a716-446655440003",
-                                                      "disabled_integration",
-                                                      false,
-                                                      "system-activity",
-                                                      std::nullopt,
-                                                      {"550e8400-e29b-41d4-a716-446655440031"},
-                                                      {},
-                                                      {},
-                                                      false);
+        BuildAssetsT(dataType::Policy({"550e8400-e29b-41d4-a716-446655440003"}, "550e8400-e29b-41d4-a716-446655440003"),
+                     SUCCESS(SuccessExpected::Behaviour {
+                         [](const auto& reader, const auto& buildCtx)
+                         {
+                             dataType::Integration integration("550e8400-e29b-41d4-a716-446655440003",
+                                                               "disabled_integration",
+                                                               false,
+                                                               "system-activity",
+                                                               std::nullopt,
+                                                               {"550e8400-e29b-41d4-a716-446655440031"},
+                                                               {},
+                                                               {},
+                                                               false);
 
-                    EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440003"))
-                        .WillOnce(testing::Return(integration));
-                    EXPECT_CALL(*reader, getKVDBByUUID(testing::_)).Times(0);
+                             EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                                 .WillOnce(testing::Return(
+                                     std::make_tuple("decoder/root/0", cm::store::ResourceType::DECODER)));
+                             EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440003"))
+                                 .WillOnce(testing::Return(integration));
+                             EXPECT_CALL(*reader, getKVDBByUUID(testing::_)).Times(0);
 
-                    return None {};
-                }})),
+                             return None {};
+                         }})),
         // Test: KVDB loading error throws with message
-        BuildAssetsT(
-            dataType::Policy({"550e8400-e29b-41d4-a716-446655440004"}, "default-parent-uuid", "default-asset-uuid"),
-            FAILURE(FailureExpected::Behaviour {
-                [](const auto& reader, const auto& buildCtx)
-                {
-                    dataType::Integration integration("550e8400-e29b-41d4-a716-446655440004",
-                                                      "test_integration",
-                                                      true,
-                                                      "system-activity",
-                                                      std::nullopt,
-                                                      {"550e8400-e29b-41d4-a716-446655440041"},
-                                                      {},
-                                                      {},
-                                                      false);
+        BuildAssetsT(dataType::Policy({"550e8400-e29b-41d4-a716-446655440004"}, "550e8400-e29b-41d4-a716-446655440005"),
+                     FAILURE(FailureExpected::Behaviour {
+                         [](const auto& reader, const auto& buildCtx)
+                         {
+                             dataType::Integration integration("550e8400-e29b-41d4-a716-446655440004",
+                                                               "test_integration",
+                                                               true,
+                                                               "system-activity",
+                                                               std::nullopt,
+                                                               {"550e8400-e29b-41d4-a716-446655440041"},
+                                                               {},
+                                                               {},
+                                                               false);
 
-                    EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440004"))
-                        .WillOnce(testing::Return(integration));
-                    EXPECT_CALL(*reader, getKVDBByUUID("550e8400-e29b-41d4-a716-446655440041"))
-                        .WillOnce(testing::Throw(std::runtime_error("KVDB not found")));
+                             EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440005"))
+                                 .WillOnce(testing::Return(
+                                     std::make_tuple("decoder/root/0", cm::store::ResourceType::DECODER)));
+                             EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440004"))
+                                 .WillOnce(testing::Return(integration));
+                             EXPECT_CALL(*reader, getKVDBByUUID("550e8400-e29b-41d4-a716-446655440041"))
+                                 .WillOnce(testing::Throw(std::runtime_error("KVDB not found")));
 
-                    return std::string("Failed to load KVDB");
-                }}))));
+                             return std::string("Failed to load KVDB");
+                         }}))));
 
 } // namespace buildassettest

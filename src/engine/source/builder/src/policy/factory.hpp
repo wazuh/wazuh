@@ -134,9 +134,9 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
 
             if (subgraph.hasChildren(current))
             {
-                auto assetChildren = ChildOperator::create(asset.name() + "Children", {});
+                auto assetChildren = ChildOperator::create(asset.name() + "/Children", {});
 
-                assetNode = base::Implication::create(asset.name() + "Node", asset.expression(), assetChildren);
+                assetNode = base::Implication::create(asset.name() + "/Node", asset.expression(), assetChildren);
 
                 // Visit children and add them to the children node
                 for (auto& child : subgraph.children(current))
