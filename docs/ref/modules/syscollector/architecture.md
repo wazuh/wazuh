@@ -716,3 +716,300 @@ For Each Syscollector Table:
          ▼
 Return Total Rows Updated
 ```
+
+---
+
+## Schema Validation Integration
+
+Syscollector integrates with the [Schema Validator](../utils/schema-validator/README.md) module to ensure all inventory data conforms to the expected Wazuh indexer schema before transmission.
+
+### Purpose
+
+- **Prevent Indexing Errors**: Validate data before it reaches the indexer
+- **Prevent Integrity Sync Loops**: Invalid data is removed from local databases to avoid repeated sync attempts
+- **Improve Data Quality**: Ensure all indexed data conforms to expected types and structures
+- **Provide Detailed Error Reporting**: Specific field paths and validation failures for debugging
+
+### Validation Points
+
+Schema validation occurs at three critical points in the Syscollector lifecycle:
+
+#### 1. During Scans (notifyChange)
+
+When inventory data changes are detected during scans, validation occurs before queuing to the sync protocol:
+
+```cpp
+// Validate data against schema before queuing
+bool validationPassed = validateSchemaAndLog(statefulToSend, indexIt->second, context);
+
+if (!validationPassed)
+{
+    // Don't queue invalid message
+    m_logFunction(LOG_ERROR, "Discarding invalid Syscollector message (table: " + table + ")");
+
+    // Mark for deferred deletion from DBSync to prevent integrity sync loops
+    if (result == INSERTED || result == MODIFIED)
+    {
+        m_logFunction(LOG_DEBUG, "Marking entry from table " + table + " for deferred deletion");
+
+        // Store the failed item for deletion after transaction completes
+        if (m_failedItems)
+        {
+            m_failedItems->push_back({table, aux});
+        }
+    }
+
+    shouldQueue = false;
+}
+```
+
+**Key characteristics:**
+- Validation happens inside DBSync callback (cannot delete immediately)
+- Failed items are accumulated in `m_failedItems` vector
+- Items marked with INSERT or MODIFIED operations are candidates for deletion
+
+#### 2. After Scan Completion (scan)
+
+Failed items are deleted in a single batch transaction after all scans complete:
+
+```cpp
+// Delete all items that failed schema validation inside a DBSync transaction
+deleteFailedItemsFromDB(failedItems);
+```
+
+**Implementation:**
+```cpp
+void Syscollector::deleteFailedItemsFromDB(
+    const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const
+{
+    if (failedItems.empty() || !m_spDBSync)
+    {
+        return;
+    }
+
+    try
+    {
+        // Create a transaction scope
+        DBSyncTxn deleteTxn(m_spDBSync->handle(), nlohmann::json::array(), 0, 1,
+                           [](ReturnTypeCallback, const nlohmann::json&) {});
+
+        // Execute all deletions within the transaction scope
+        for (const auto& [tableName, data] : failedItems)
+        {
+            m_logFunction(LOG_DEBUG, "Deleting entry from table " + tableName +
+                         " due to validation failure");
+
+            auto deleteQuery = DeleteQuery::builder()
+                               .table(tableName)
+                               .data(data)
+                               .rowFilter("")
+                               .build();
+
+            m_spDBSync->deleteRows(deleteQuery.query());
+        }
+
+        // Finalize transaction to commit changes
+        deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
+
+        m_logFunction(LOG_DEBUG, "Deleted " + std::to_string(failedItems.size()) +
+                     " item(s) from DBSync due to validation failure");
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to create DBSync transaction for deletion: " +
+                     std::string(e.what()));
+    }
+}
+```
+
+**Key characteristics:**
+- Uses DBSync transaction for atomicity
+- All deletions committed together
+- Prevents integrity sync loops
+
+#### 3. During Recovery (runRecoveryProcess)
+
+When performing integrity recovery, only valid items are synchronized:
+
+```cpp
+// Validate stateful event before persisting for recovery
+bool validationPassed = validateSchemaAndLog(statefulToSend, index, context);
+
+if (!validationPassed)
+{
+    m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
+    shouldPersist = false;
+}
+
+if (shouldPersist)
+{
+    m_spSyncProtocol->persistDifferenceInMemory(
+        calculateHashId(item, tableName),
+        Operation::CREATE,
+        index,
+        statefulToSend,
+        item["version"].get<uint64_t>()
+    );
+}
+```
+
+**Key characteristics:**
+- Validation before in-memory persistence
+- Invalid items are skipped (not persisted)
+- Prevents synchronizing invalid recovery data
+
+### Helper Functions
+
+Two helper functions encapsulate common validation and deletion patterns:
+
+#### validateSchemaAndLog()
+
+Validates a JSON message against a schema and logs detailed error information:
+
+```cpp
+bool Syscollector::validateSchemaAndLog(const std::string& data,
+                                        const std::string& index,
+                                        const std::string& context) const;
+```
+
+**Behavior:**
+- Returns `true` if validation passed or validator not initialized
+- Returns `false` if validation failed
+- Logs detailed error messages with field paths and expected types
+- Logs raw event data for debugging
+
+#### deleteFailedItemsFromDB()
+
+Deletes failed items from DBSync in a batch transaction:
+
+```cpp
+void Syscollector::deleteFailedItemsFromDB(
+    const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const;
+```
+
+**Behavior:**
+- Creates DBSync transaction for atomicity
+- Deletes all failed items in a single transaction
+- Logs number of items deleted
+- Handles deletion errors gracefully
+
+### Supported Indices
+
+Syscollector validates data for the following Wazuh indices:
+
+| Table Name | Index Pattern | Description |
+|------------|---------------|-------------|
+| `dbsync_hwinfo` | `wazuh-states-inventory-hardware` | Hardware information |
+| `dbsync_osinfo` | `wazuh-states-inventory-system` | Operating system details |
+| `dbsync_netinfo_iface` | `wazuh-states-inventory-network` | Network interfaces |
+| `dbsync_netinfo_proto` | `wazuh-states-inventory-network` | Network protocols |
+| `dbsync_netinfo_addr` | `wazuh-states-inventory-network` | Network addresses |
+| `dbsync_packages` | `wazuh-states-inventory-packages` | Installed packages |
+| `dbsync_hotfixes` | `wazuh-states-inventory-hotfixes` | System hotfixes (Windows) |
+| `dbsync_ports` | `wazuh-states-inventory-ports` | Open network ports |
+| `dbsync_processes` | `wazuh-states-inventory-processes` | Running processes |
+
+### Deferred Deletion Pattern
+
+Syscollector uses a deferred deletion pattern to safely remove invalid entries:
+
+**Flow:**
+
+```
+1. Initialize Scan
+   │
+   ├─► Create failedItems vector
+   │
+   ├─► Set m_failedItems = &failedItems
+   │
+   ▼
+2. Process Scans
+   │
+   ├─► For each inventory change:
+   │   │
+   │   ├─► Validate against schema
+   │   │
+   │   ├─► If validation fails:
+   │   │   │
+   │   │   ├─► Log error
+   │   │   │
+   │   │   └─► Add to failedItems vector
+   │   │
+   │   └─► If validation passes:
+   │       │
+   │       └─► Queue to sync protocol
+   │
+   ▼
+3. After All Scans
+   │
+   ├─► Set m_failedItems = nullptr
+   │
+   ├─► deleteFailedItemsFromDB(failedItems)
+   │   │
+   │   ├─► Create DBSync transaction
+   │   │
+   │   ├─► Delete all failed items
+   │   │
+   │   └─► Commit transaction
+   │
+   ▼
+4. Complete
+```
+
+**Why Deferred?**
+- **Avoids nested transactions**: Cannot delete during DBSync callback
+- **Improves performance**: Single batch transaction instead of multiple deletes
+- **Ensures atomicity**: All deletions committed together or rolled back
+
+### Error Handling
+
+**Initialization:**
+```
+[INFO] Schema validator initialized successfully from embedded resources
+```
+
+**Validation Failure:**
+```
+[ERROR] Schema validation failed for Syscollector message (table: dbsync_packages, index: wazuh-states-inventory-packages). Errors:
+  - Field 'package.version' expected type 'keyword', got 'object'
+[ERROR] Raw event that failed validation: {"package":{"version":{"major":1}}}
+[ERROR] Discarding invalid Syscollector message (table: dbsync_packages)
+[DEBUG] Marking entry from table dbsync_packages for deferred deletion due to validation failure
+```
+
+**Batch Deletion:**
+```
+[DEBUG] Deleted 3 item(s) from DBSync due to validation failure
+```
+
+**Graceful Degradation:**
+
+If the schema validator is not initialized:
+- Validation is skipped
+- Data is processed normally
+- A warning is logged on startup:
+  ```
+  [WARNING] Failed to initialize schema validator. Schema validation will be disabled.
+  ```
+
+### Performance Considerations
+
+- **Deferred Deletion**: Batch transaction minimizes database overhead
+- **Validation Caching**: Validators are obtained once per scan and reused
+- **Early Exit**: Validation happens before queuing (saves sync protocol overhead)
+- **Graceful Degradation**: Validation can be disabled without affecting core functionality
+
+### Integration Status
+
+**Integration points:**
+- Module initialization (`syscollectorImp.cpp`)
+- Scan processing (`syscollectorImp.cpp`)
+- Batch deletion (`syscollectorImp.cpp`)
+- VD DataContext processing (`syscollectorImp.cpp`)
+- Recovery process (`syscollectorImp.cpp`)
+
+### References
+
+- [Schema Validator Overview](../utils/schema-validator/README.md)
+- [Schema Validator API Reference](../utils/schema-validator/api-reference.md)
+- [Schema Validator Integration Guide](../utils/schema-validator/integration-guide.md)
