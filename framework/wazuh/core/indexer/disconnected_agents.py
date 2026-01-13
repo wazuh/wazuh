@@ -284,14 +284,7 @@ class DisconnectedAgentGroupSyncTask:
 
         exclusion_filter = {"bool": {"must_not": [{"term": {"agent.id": "000"}}]}}
 
-        if len(agent_ids):
-            query = {
-                "size": 0,
-                "aggs": {
-                    "max_document_version": {"max": {"field": "state.document_version"}}
-                },
-            }
-        else:
+        if len(agent_ids) > 1:
             query = {
                 "size": 0,
                 "aggs": {
@@ -303,6 +296,13 @@ class DisconnectedAgentGroupSyncTask:
                             }
                         },
                     }
+                },
+            }
+        else:
+            query = {
+                "size": 0,
+                "aggs": {
+                    "max_document_version": {"max": {"field": "state.document_version"}}
                 },
             }
 
@@ -317,26 +317,28 @@ class DisconnectedAgentGroupSyncTask:
                     )
 
             max_versions = {}
-            if len(agent_ids) and result:
-                max_version = result["aggregations"]["max_document_version"]["value"]
-                if max_version is not None:
-                    max_versions[agent_ids[0]] = int(max_version)
+            if result:
+                if len(agent_ids) > 1:
+                    for bucket in result["aggregations"]["by_agent"]["buckets"]:
+                        agent_id = bucket.get("key")
+                        max_version = bucket["max_document_version"]["value"]
+                        if agent_id and max_version is not None:
+                            max_versions[agent_id] = int(max_version)
                 else:
-                    self.logger.debug(
-                        f"No version found for agent {agent_ids[0]} in indexer"
-                    )
+                    max_version = result["aggregations"]["max_document_version"]["value"]
+                    if max_version is not None:
+                        max_versions[agent_ids[0]] = int(max_version)
+                    else:
+                        self.logger.debug(
+                            f"No version found for agent {agent_ids[0]} in indexer"
+                        )
+                self.logger.info(
+                    f"Batch max version query completed for {len(max_versions)} agents "
+                    f"out of {len(agent_ids)} requested"
+                )
+                return max_versions
             else:
-                for bucket in result["aggregations"]["by_agent"]["buckets"]:
-                    agent_id = bucket.get("key")
-                    max_version = bucket["max_document_version"]["value"]
-                    if agent_id and max_version is not None:
-                        max_versions[agent_id] = int(max_version)
-
-            self.logger.info(
-                f"Batch max version query completed for {len(max_versions)} agents "
-                f"out of {len(agent_ids)} requested"
-            )
-            return max_versions
+                raise Exception("Failed query to wazuh-indexer")
 
         except Exception as e:
             self.logger.exception(
