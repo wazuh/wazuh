@@ -268,7 +268,7 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
     {
         try
         {
-            cmcrudPtr->deleteNamespace(dstNamespace.toStr());
+            cmcrudPtr->deleteNamespace(dstNamespace);
         }
         catch (const std::exception& ex)
         {
@@ -318,14 +318,14 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
         // TODO
 
         // [FILTERS]: Necesary filter for the route to work
-        cmcrudPtr->upsertResource(newNs.toStr(), cm::store::ResourceType::FILTER, createAllowAllFilter().str());
+        cmcrudPtr->upsertResource(newNs, cm::store::ResourceType::FILTER, createAllowAllFilter().str());
     }
     catch (const std::exception& e)
     {
         // Rollback temporary namespace
         try
         {
-            cmcrudPtr->deleteNamespace(newNs.toStr());
+            cmcrudPtr->deleteNamespace(newNs);
         }
         catch (const std::exception& ex)
         {
@@ -351,9 +351,7 @@ void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::stor
         if (auto err = routerPtr->hotSwapNamespace(nsState.getRouteName(), newNamespaceId); base::isError(err))
         {
             throw std::runtime_error(
-                fmt::format("Failed to hot-swap namespace in route '{}': {}",
-                            nsState.getRouteName(),
-                            err->message));
+                fmt::format("Failed to hot-swap namespace in route '{}': {}", nsState.getRouteName(), err->message));
         }
         return;
     }
@@ -383,9 +381,8 @@ void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::stor
 
     if (auto err = routerPtr->postEntry(newEntry); base::isError(err))
     {
-        throw std::runtime_error(fmt::format("Failed to create new route '{}': {}",
-                                             nsState.getRouteName(),
-                                             err->message));
+        throw std::runtime_error(
+            fmt::format("Failed to create new route '{}': {}", nsState.getRouteName(), err->message));
     }
 }
 
@@ -521,7 +518,7 @@ void CMSync::synchronize()
                 auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
                 try
                 {
-                    cmcrudPtr->deleteNamespace(newNsId.toStr());
+                    cmcrudPtr->deleteNamespace(newNsId);
                 }
                 catch (const std::exception& ex)
                 {
@@ -544,7 +541,7 @@ void CMSync::synchronize()
                 auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
                 try
                 {
-                    cmcrudPtr->deleteNamespace(oldNsId.toStr());
+                    cmcrudPtr->deleteNamespace(oldNsId);
                 }
                 catch (const std::exception& e)
                 {

@@ -27,10 +27,10 @@ public:
 
     /******************************* Namespaces *******************************/
     std::vector<cm::store::NamespaceId> listNamespaces() const override;
-    void createNamespace(std::string_view nsName) override;
+    void createNamespace(const cm::store::NamespaceId& nsId) override;
     bool existsNamespace(const cm::store::NamespaceId& nsId) const override;
-    void deleteNamespace(std::string_view nsName) override;
-    void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) override;
+    void deleteNamespace(const cm::store::NamespaceId& nsId) override;
+    void importNamespace(const cm::store::NamespaceId& nsId, std::string_view jsonDocument, bool force) override;
     void importNamespace(const cm::store::NamespaceId& nsId,
                          const std::vector<json::Json>& kvdbs,
                          const std::vector<json::Json>& decoders,
@@ -39,14 +39,18 @@ public:
                          bool softValidation) override;
 
     /********************************* Policy *********************************/
-    void upsertPolicy(std::string_view nsName, std::string_view policyDocument) override;
-    void deletePolicy(std::string_view nsName) override;
+    void upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view policyDocument) override;
+    void deletePolicy(const cm::store::NamespaceId& nsId) override;
 
     /***************************** Generic resources **************************/
-    std::vector<ResourceSummary> listResources(std::string_view nsName, cm::store::ResourceType type) const override;
-    std::string getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson) const override;
-    void upsertResource(std::string_view nsName, cm::store::ResourceType type, std::string_view document) override;
-    void deleteResourceByUUID(std::string_view nsName, const std::string& uuid) override;
+    std::vector<ResourceSummary> listResources(const cm::store::NamespaceId& nsId,
+                                               cm::store::ResourceType type) const override;
+    std::string
+    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const override;
+    void upsertResource(const cm::store::NamespaceId& nsId,
+                        cm::store::ResourceType type,
+                        std::string_view document) override;
+    void deleteResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) override;
 
     // Public validate
     void validateResource(cm::store::ResourceType type, const json::Json& payload) override;

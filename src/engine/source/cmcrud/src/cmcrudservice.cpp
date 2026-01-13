@@ -128,37 +128,32 @@ bool CrudService::existsNamespace(const cm::store::NamespaceId& nsId) const
     return getStore()->existsNamespace(nsId);
 }
 
-void CrudService::createNamespace(std::string_view nsName)
+void CrudService::createNamespace(const cm::store::NamespaceId& nsId)
 {
     try
     {
-        // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
-        cm::store::NamespaceId nsId {nsName};
         getStore()->createNamespace(nsId);
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Failed to create namespace '{}': {}", nsName, e.what()));
+        throw std::runtime_error(fmt::format("Failed to create namespace '{}': {}", nsId.toStr(), e.what()));
     }
 }
 
-void CrudService::deleteNamespace(std::string_view nsName)
+void CrudService::deleteNamespace(const cm::store::NamespaceId& nsId)
 {
     try
     {
-        // If the namespace name is invalid, this will throw an exception in the NamespaceId constructor
-        cm::store::NamespaceId nsId {nsName};
         getStore()->deleteNamespace(nsId);
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Failed to delete namespace '{}': {}", nsName, e.what()));
+        throw std::runtime_error(fmt::format("Failed to delete namespace '{}': {}", nsId.toStr(), e.what()));
     }
 }
 
-void CrudService::importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force)
+void CrudService::importNamespace(const cm::store::NamespaceId& nsId, std::string_view jsonDocument, bool force)
 {
-    const cm::store::NamespaceId nsId {nsName};
     auto store = getStore();
 
     auto bestEffortDelete = [store, functionName = logging::getLambdaName(__FUNCTION__, "bestEffortDelete")](
@@ -181,8 +176,8 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
         // Reject if destination namespace already exists
         if (store->existsNamespace(nsId))
         {
-            throw std::runtime_error(
-                fmt::format("Namespace '{}' already exists. Import is only allowed into a new namespace.", nsName));
+            throw std::runtime_error(fmt::format(
+                "Namespace '{}' already exists. Import is only allowed into a new namespace.", nsId.toStr()));
         }
 
         // Parse input JSON
@@ -297,7 +292,7 @@ void CrudService::importNamespace(std::string_view nsName, std::string_view json
         {
             bestEffortDelete(nsId);
         }
-        throw std::runtime_error(fmt::format("Failed to import namespace '{}': {}", nsName, e.what()));
+        throw std::runtime_error(fmt::format("Failed to import namespace '{}': {}", nsId.toStr(), e.what()));
     }
 }
 
@@ -320,7 +315,6 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     // Create empty destination namespace
     auto ns = store->createNamespace(nsId);
     auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(ns);
-
 
     for (const auto& jkvdb : kvdbs)
     {
@@ -364,14 +358,12 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     }
 
     ns->upsertPolicy(pol);
-
 }
 
-void CrudService::upsertPolicy(std::string_view nsName, std::string_view policyDocument)
+void CrudService::upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view policyDocument)
 {
     try
     {
-        const auto nsId = cm::store::NamespaceId {nsName};
         auto ns = getNamespaceStore(nsId);
 
         auto policy = policyFromDocument(policyDocument);
@@ -383,29 +375,28 @@ void CrudService::upsertPolicy(std::string_view nsName, std::string_view policyD
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Failed to upsert policy in namespace '{}': {}", nsName, e.what()));
+        throw std::runtime_error(fmt::format("Failed to upsert policy in namespace '{}': {}", nsId.toStr(), e.what()));
     }
 }
 
-void CrudService::deletePolicy(std::string_view nsName)
+void CrudService::deletePolicy(const cm::store::NamespaceId& nsId)
 {
     try
     {
-        const auto nsId = cm::store::NamespaceId {nsName};
         auto ns = getNamespaceStore(nsId);
         ns->deletePolicy();
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Failed to delete policy in namespace '{}': {}", nsName, e.what()));
+        throw std::runtime_error(fmt::format("Failed to delete policy in namespace '{}': {}", nsId.toStr(), e.what()));
     }
 }
 
-std::vector<ResourceSummary> CrudService::listResources(std::string_view nsName, cm::store::ResourceType type) const
+std::vector<ResourceSummary> CrudService::listResources(const cm::store::NamespaceId& nsId,
+                                                        cm::store::ResourceType type) const
 {
     try
     {
-        const auto nsId = cm::store::NamespaceId {nsName};
         auto nsReader = getNamespaceStoreView(nsId);
 
         std::vector<ResourceSummary> result;
@@ -428,16 +419,16 @@ std::vector<ResourceSummary> CrudService::listResources(std::string_view nsName,
     {
         throw std::runtime_error(fmt::format("Failed to list resources of type '{}' in namespace '{}': {}",
                                              cm::store::resourceTypeToString(type),
-                                             nsName,
+                                             nsId.toStr(),
                                              e.what()));
     }
 }
 
-std::string CrudService::getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson) const
+std::string
+CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const
 {
     try
     {
-        auto nsId = cm::store::NamespaceId {nsName};
         auto nsView = getNamespaceStoreView(nsId);
 
         // Resolve name and type from UUID
@@ -484,15 +475,16 @@ std::string CrudService::getResourceByUUID(std::string_view nsName, const std::s
     catch (const std::exception& e)
     {
         throw std::runtime_error(
-            fmt::format("Failed to get resource with UUID '{}' in namespace '{}': {}", uuid, nsName, e.what()));
+            fmt::format("Failed to get resource with UUID '{}' in namespace '{}': {}", uuid, nsId.toStr(), e.what()));
     }
 }
 
-void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceType type, std::string_view document)
+void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
+                                 cm::store::ResourceType type,
+                                 std::string_view document)
 {
     try
     {
-        const auto nsId = cm::store::NamespaceId {nsName};
         auto ns = getNamespaceStore(nsId);
         auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(ns);
 
@@ -574,24 +566,23 @@ void CrudService::upsertResource(std::string_view nsName, cm::store::ResourceTyp
     {
         throw std::runtime_error(fmt::format("Failed to upsert resource of type '{}' in namespace '{}': {}",
                                              cm::store::resourceTypeToString(type),
-                                             nsName,
+                                             nsId.toStr(),
                                              e.what()));
     }
 }
 
-void CrudService::deleteResourceByUUID(std::string_view nsName, const std::string& uuid)
+void CrudService::deleteResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid)
 {
     try
     {
-        cm::store::NamespaceId nsId {nsName};
         auto ns = getNamespaceStore(nsId);
 
         ns->deleteResourceByUUID(uuid);
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(
-            fmt::format("Failed to delete resource with UUID '{}' in namespace '{}': {}", uuid, nsName, e.what()));
+        throw std::runtime_error(fmt::format(
+            "Failed to delete resource with UUID '{}' in namespace '{}': {}", uuid, nsId.toStr(), e.what()));
     }
 }
 
