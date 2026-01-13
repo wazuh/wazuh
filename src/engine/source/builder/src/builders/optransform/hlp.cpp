@@ -37,6 +37,10 @@ enum class HLPParserType
     DSV,
     CSV,
     KV,
+    UNSIGNED_LONG,
+    INTEGER,
+    SHORT,
+    HALF_FLOAT
 };
 
 auto parserGetter(HLPParserType parserType)
@@ -65,6 +69,10 @@ auto parserGetter(HLPParserType parserType)
         case HLPParserType::DSV: return hlp::parsers::getDSVParser;
         case HLPParserType::CSV: return hlp::parsers::getCSVParser;
         case HLPParserType::KV: return hlp::parsers::getKVParser;
+        case HLPParserType::UNSIGNED_LONG: return hlp::parsers::getUnsignedLongParser;
+        case HLPParserType::INTEGER: return hlp::parsers::getIntegerParser;
+        case HLPParserType::SHORT: return hlp::parsers::getShortParser;
+        case HLPParserType::HALF_FLOAT: return hlp::parsers::getHalfFloatParser;
         default: throw std::logic_error("Invalid HLP parser type");
     }
 }
@@ -326,4 +334,37 @@ TransformOp alphanumericParseBuilder(const Reference& targetField,
 {
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::ALPHANUMERIC));
 }
+
+// +parse_unsigned_long/[$ref|value]
+TransformOp unsignedLongParseBuilder(const Reference& targetField,
+                                     const std::vector<OpArg>& opArgs,
+                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::UNSIGNED_LONG));
+}
+
+// +parse_integer/[$ref|value]
+TransformOp integerParseBuilder(const Reference& targetField,
+                                const std::vector<OpArg>& opArgs,
+                                const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::INTEGER));
+}
+
+// +parse_short/[$ref|value]
+TransformOp shortParseBuilder(const Reference& targetField,
+                              const std::vector<OpArg>& opArgs,
+                              const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::SHORT));
+}
+
+// +parse_half_float/[$ref|value]
+TransformOp halfFloatParseBuilder(const Reference& targetField,
+                                  const std::vector<OpArg>& opArgs,
+                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::HALF_FLOAT));
+}
+
 } // namespace builder::builders::optransform

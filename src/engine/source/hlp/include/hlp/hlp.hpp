@@ -70,6 +70,10 @@ Parser getLongParser(const Params& params);
 Parser getFloatParser(const Params& params);
 Parser getDoubleParser(const Params& params);
 Parser getScaledFloatParser(const Params& params);
+Parser getUnsignedLongParser(const Params& params);
+Parser getIntegerParser(const Params& params);
+Parser getShortParser(const Params& params);
+Parser getHalfFloatParser(const Params& params);
 
 /**
  * Returns a parser which will accept any text until it finds the

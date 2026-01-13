@@ -120,11 +120,14 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [parse_file](#parse_file)
 - [parse_float](#parse_float)
 - [parse_fqdn](#parse_fqdn)
+- [parse_integer](#parse_integer)
 - [parse_ip](#parse_ip)
 - [parse_json](#parse_json)
 - [parse_key_value](#parse_key_value)
 - [parse_long](#parse_long)
 - [parse_quoted](#parse_quoted)
+- [parse_short](#parse_short)
+- [parse_unsigned_long](#parse_unsigned_long)
 - [parse_uri](#parse_uri)
 - [parse_useragent](#parse_useragent)
 - [parse_xml](#parse_xml)
@@ -18024,6 +18027,172 @@ normalize:
 
 
 ---
+# parse_integer
+
+## Signature
+
+```
+
+field: parse_integer(input_field)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| input_field | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Evaluates if the content of the input field is a string that can be successfully converted into an integer
+number. It converts and stores the integer number in `field` with truncation.
+
+
+## Keywords
+
+- `parser`
+
+## Examples
+
+### Example 1
+
+Success integer parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_integer($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": -2
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Success integer parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_integer($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "12345",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "12345",
+  "target_field": 12345
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Succesfull integer parse with truncation
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_integer($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": 23
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Failure integer parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_integer($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
 # parse_ip
 
 ## Signature
@@ -18831,6 +19000,338 @@ normalize:
 ```json
 {
   "input_field": "don't start with quotes \"here",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# parse_short
+
+## Signature
+
+```
+
+field: parse_short(input_field)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| input_field | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Evaluates if the content of the input field is a string that can be successfully converted into an short integer
+number. It converts and stores the short integer number in `field` with truncation.
+
+
+## Keywords
+
+- `parser`
+
+## Examples
+
+### Example 1
+
+Success short parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_short($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": -2
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Failure short parse (out of range)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_short($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "32768",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "32768",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Success short parse (with truncation)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_short($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": 23
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+Failure unsigned long parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_short($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# parse_unsigned_long
+
+## Signature
+
+```
+
+field: parse_unsigned_long(input_field)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| input_field | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Evaluates if the content of the input field is a string that can be successfully converted into an unsigned long
+number. It converts and stores the unsigned long number in `field` with truncation.
+
+
+## Keywords
+
+- `parser` 
+
+## Examples
+
+### Example 1
+
+Failure unsigned long parse (negative integer)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_unsigned_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "-2",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 2
+
+Succesfull unsigned long parse with truncation
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_unsigned_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "23.45",
+  "target_field": 23
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Success unsigned long parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_unsigned_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "2345",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "2345",
+  "target_field": 2345
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Failure unsigned long parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_unsigned_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "hello",
   "target_field": "any_value"
 }
 ```
