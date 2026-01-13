@@ -917,7 +917,8 @@ nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& origin
     {
         const nlohmann::json::json_pointer pointer("/network/metric");
 
-        if (originalData.contains("network_metric") && !originalData["network_metric"].is_null())
+        if (originalData.contains("network_metric") && !originalData["network_metric"].is_null()
+                && originalData["network_metric"] != EMPTY_VALUE && originalData["network_metric"] != UNKNOWN_VALUE)
         {
             const auto& value = originalData["network_metric"];
 
