@@ -456,6 +456,114 @@ Output after parse
   "output_field": 0.01
 }
 ```
+
+## Half Float parser
+
+The `half_float` parser handles strings that represent half precision floating-point values, interpreting them without applying the
+scaling factor during the initial parsing phase. This approach allows for high-precision data capture while deferring
+scaling to later stages of data processing
+
+### Behavior
+
+- Accepts both integers and decimals, with or without a negative sign.
+- Efficiently processes numbers expressed in scientific notation (e.g., 2.5E3).
+- Does not require a specific end token.
+
+### Signature
+
+```yaml
+<field/half_float>
+```
+
+### Examples
+
+**Parser configuration**
+
+For the following examples, the parser configuration is as follows:
+```yaml
+parse|input_field:
+  - <output_field/half_float>
+```
+
+**Example 1**
+
+Event input
+```json
+{
+  "input_field": "123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123",
+  "output_field": 123.0
+}
+```
+
+**Example 2**
+
+Event input
+```json
+{
+  "input_field": "-123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "-123",
+  "output_field": -123.0
+}
+```
+
+**Example 3**
+
+Event input
+```json
+{
+  "input_field": "2.5E3"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "2.5E3",
+  "output_field": 2500.0
+}
+```
+
+**Example 4**
+
+Event input
+```json
+{
+  "input_field": "Not a number"
+}
+```
+
+Failed parsing, the input is not a valid scaled float.
+
+**Example 5**
+
+Event input
+```json
+{
+  "input_field": "1.0E-2"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "1.0E-2",
+  "output_field": 0.01
+}
+```
+
 ## Byte parser
 
 The `byte` parser interprets strings as 8-bit signed integers, handling values from -128 to 127. This parser is crucial
@@ -467,6 +575,8 @@ Automatically used for schema fields defined as type `byte`.
 - Strictly limits the accepted values to the defined byte range, rejecting inputs outside -128 to 127.
 - Does not require a specific end token.
 - Accepts numeric strings that may optionally include a '-' sign to indicate negative values.
+- This parser can process numbers with decimal points but discards any fractional part,
+  effectively rounding down to the nearest whole number.
 
 ### Signature
 
@@ -539,6 +649,312 @@ Event input
 ```
 
 Failed parsing, the input is not a valid byte.
+
+## Integer parser
+
+The `integer` parser interprets strings as 32-bit signed integers, handling values from -2,147,483,648 to 2,147,483,647.
+This parser is essential for processing standard integer values commonly used in various applications.
+Automatically used for schema fields defined as type `integer`.
+
+### Behavior
+
+- Strictly limits the accepted values to the defined integer range, rejecting inputs outside -2^31 to 2^31-1.
+- Does not require a specific end token.
+- Accepts numeric strings that may optionally include a '-' sign to indicate negative values.
+- This parser can process numbers with decimal points but discards any fractional part, effectively rounding down to the nearest whole number.
+
+### Signature
+
+```yaml
+<field/integer>
+```
+
+### Examples
+
+**Parser configuration**
+
+For the following examples, the parser configuration is as follows:
+```yaml
+parse|input_field:
+  - <status_code/integer>
+```
+
+**Example 1**
+
+Event input
+```json
+{
+  "input_field": "123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123",
+  "status_code": 123
+}
+```
+
+**Example 2**
+
+Event input
+```json
+{
+  "input_field": "-123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "-123",
+  "status_code": -123
+}
+```
+
+**Example 3**
+
+Event input
+```json
+{
+  "input_field": "2147483648"
+}
+```
+
+Failed parsing, the input is not a valid integer (out of range).
+
+**Example 4**
+
+Event input
+```json
+{
+  "input_field": "Not a number"
+}
+```
+
+Failed parsing, the input is not a valid integer.
+
+**Example 5**
+
+Event input
+```json
+{
+  "input_field": "123.456"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123.456",
+  "status_code": 123
+}
+```
+
+Success with rounding.
+
+## Short parser
+
+The `short` parser interprets strings as 16-bit signed integers, handling values from -32,768 to 32,767.
+This parser is useful for processing data that fits within a moderate numerical range.
+Automatically used for schema fields defined as type `short`.
+
+### Behavior
+
+- Strictly limits the accepted values to the defined short range, rejecting inputs outside -2^15 to 2^15-1.
+- Does not require a specific end token.
+- Accepts numeric strings that may optionally include a '-' sign to indicate negative values.
+- This parser can process numbers with decimal points but discards any fractional part, effectively rounding down to the nearest whole number.
+
+### Signature
+
+```yaml
+<field/short>
+```
+
+### Examples
+
+**Parser configuration**
+
+For the following examples, the parser configuration is as follows:
+```yaml
+parse|input_field:
+  - <status_code/short>
+```
+
+**Example 1**
+
+Event input
+```json
+{
+  "input_field": "123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123",
+  "status_code": 123
+}
+```
+
+**Example 2**
+
+Event input
+```json
+{
+  "input_field": "-123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "-123",
+  "status_code": -123
+}
+```
+
+**Example 3**
+
+Event input
+```json
+{
+  "input_field": "32768"
+}
+```
+
+Failed parsing, the input is not a valid short (out of range).
+
+**Example 4**
+
+Event input
+```json
+{
+  "input_field": "Not a number"
+}
+```
+
+Failed parsing, the input is not a valid short.
+
+**Example 5**
+
+Event input
+```json
+{
+  "input_field": "123.456"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123.456",
+  "status_code": 123
+}
+```
+
+Success with rounding.
+
+## Unsigned long parser
+
+The `unsigned_long` parser interprets strings as 64-bit unsigned integers, handling values from 0 to 18,446,744,073,709,551,615 (2^64-1).
+This parser is essential for processing large positive integer values, such as counters, IDs, or timestamps.
+Automatically used for schema fields defined as type `unsigned_long`.
+
+### Behavior
+
+- Strictly limits the accepted values to the defined unsigned long range, rejecting inputs outside 0 to 2^64-1.
+- Does not require a specific end token.
+- Accepts only non-negative numeric strings (no '-' sign allowed).
+- This parser can process numbers with decimal points but discards any fractional part, effectively rounding down to the nearest whole number.
+
+### Signature
+
+```yaml
+<field/unsigned_long>
+```
+
+### Examples
+
+**Parser configuration**
+
+For the following examples, the parser configuration is as follows:
+```yaml
+parse|input_field:
+  - <status_code/unsigned_long>
+```
+
+**Example 1**
+
+Event input
+```json
+{
+  "input_field": "123"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123",
+  "status_code": 123
+}
+```
+
+**Example 2**
+
+Event input
+```json
+{
+  "input_field": "-123"
+}
+```
+
+Failed parsing, the input is not a valid unsigned long (negative values not allowed).
+
+**Example 3**
+
+Event input
+```json
+{
+  "input_field": "18446744073709551616"
+}
+```
+
+Failed parsing, the input is not a valid unsigned long (out of range).
+
+**Example 4**
+
+Event input
+```json
+{
+  "input_field": "Not a number"
+}
+```
+
+Failed parsing, the input is not a valid unsigned long.
+
+**Example 5**
+
+Event input
+```json
+{
+  "input_field": "123.456"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "123.456",
+  "status_code": 123
+}
+```
+
+Success with rounding.
 
 ## Text parser
 

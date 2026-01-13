@@ -1587,6 +1587,33 @@ TEST_F(JsonSettersTest, SetInt64)
     ASSERT_THROW(jObjInt64.setInt64(9223372036854775808ull, "object/key"), std::runtime_error);
 }
 
+TEST_F(JsonSettersTest, SetUint64)
+{
+    Json jObjUint64 {R"({
+        "nested": 18446744073709551615
+    })"};
+    Json jUint {"18446744073709551615"};
+    Json jEmpty {};
+    Json jObjEmpty {};
+
+    // Maximum uint64_t value
+    ASSERT_NO_THROW(jObjUint64.setUint64(18446744073709551615ULL, "/nested"));
+    ASSERT_EQ(18446744073709551615ULL, jObjUint64.getUint64("/nested").value());
+    ASSERT_NO_THROW(jUint.setUint64(18446744073709551615ULL));
+    ASSERT_EQ(18446744073709551615ULL, jUint.getUint64().value());
+    ASSERT_NO_THROW(jEmpty.setUint64(18446744073709551615ULL));
+    ASSERT_EQ(18446744073709551615ULL, jEmpty.getUint64().value());
+    ASSERT_NO_THROW(jObjEmpty.setUint64(18446744073709551615ULL, "/nested"));
+    ASSERT_EQ(18446744073709551615ULL, jObjEmpty.getUint64("/nested").value());
+
+    // Zero value
+    ASSERT_NO_THROW(jObjUint64.setUint64(0, "/nested"));
+    ASSERT_EQ(0ULL, jObjUint64.getUint64("/nested").value());
+
+    // Invalid pointer
+    ASSERT_THROW(jObjUint64.setUint64(12345, "object/key"), std::runtime_error);
+}
+
 TEST_F(JsonSettersTest, SetFloat)
 {
     Json jObjFloat {R"({

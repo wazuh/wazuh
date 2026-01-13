@@ -1,6 +1,7 @@
 #include <base/json.hpp>
 
 #include <exception>
+#include <limits>
 #include <unordered_set>
 
 #include "rapidjson/schema.h"
@@ -264,6 +265,28 @@ std::optional<int64_t> Json::getInt64(std::string_view path) const
         if (value && value->IsInt64())
         {
             return value->GetInt64();
+        }
+        else
+        {
+            return std::nullopt;
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] Invalid json path: '{}'", path));
+    }
+}
+
+std::optional<uint64_t> Json::getUint64(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value && value->IsUint64())
+        {
+            return value->GetUint64();
         }
         else
         {
@@ -651,6 +674,24 @@ bool Json::isInt(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
+bool Json::isUint64(std::string_view path) const
+{
+    const auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value)
+        {
+            return value->IsUint64();
+        }
+
+        return false;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
 bool Json::isInt64(std::string_view path) const
 {
     auto pp = rapidjson::Pointer(path.data());
@@ -896,6 +937,20 @@ void Json::setInt64(int64_t value, std::string_view path)
     else
     {
         throw std::runtime_error(fmt::format("[Json::setInt(basePointerPath)] Invalid json path: '{}'", path));
+    }
+}
+
+void Json::setUint64(uint64_t value, std::string_view path)
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        pp.Set(m_document, value);
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::setUint64(basePointerPath)] Invalid json path: '{}'", path));
     }
 }
 

@@ -92,6 +92,19 @@ inline ValueValidator getDoubleValidator()
     };
 }
 
+inline ValueValidator getUnsignedLongValidator()
+{
+    return [](const json::Json& value) -> base::OptError
+    {
+        if (!value.isUint64())
+        {
+            return base::Error {"Value is not an unsigned long"};
+        }
+
+        return base::noError();
+    };
+}
+
 inline ValueValidator getStringValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -183,6 +196,14 @@ inline ValueValidator getObjectValidator()
         }
 
         return base::noError();
+    };
+}
+
+inline ValueValidator getIncompatibleValidator()
+{
+    return [](const json::Json& value) -> base::OptError
+    {
+        return base::Error {"Incompatible type"};
     };
 }
 

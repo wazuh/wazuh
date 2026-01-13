@@ -27,6 +27,23 @@ jobs:
     name: inventory-sync-integration-tests
     runs-on: ubuntu-22.04
 
+    # Service containers to run alongside the job
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:latest
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: true
+          action.auto_create_index: "true"
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
@@ -39,6 +56,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Free disk space (safe cleanup)
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          echo "Disk space after cleanup:"
+          df -h
 
       - name: Wait for specific deb amd64 check to be created
         if: github.event_name == 'pull_request'

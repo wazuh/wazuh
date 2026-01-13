@@ -1,10 +1,10 @@
 # Name of the helper function
-name: parse_long
+name: parse_unsigned_long
 
 metadata:
   description: |
-    Evaluates if the content of the input field is a string that can be successfully converted into a 64-bit
-    integer (long). It converts and stores the integer value in `field`.
+    Evaluates if the content of the input field is a string that can be successfully converted into an unsigned long
+    number. It converts and stores the unsigned long number in `field` with truncation.
   keywords:
     - parser
 
@@ -21,36 +21,36 @@ arguments:
     source: reference # includes only references (their names start with $)
 
 skipped:
-  - success_cases # avoid random auto-generated successes on arbitrary strings
+  - success_cases # parser failed
 
 target_field:
   type: object
 
 test:
   - arguments:
-      input_field: "12345"
-    target_field: any_value
-    should_pass: true
-    expected: 12345
-    description: Success long parse (positive integer)
-
-  - arguments:
-      input_field: "-42"
-    target_field: any_value
-    should_pass: true
-    expected: -42
-    description: Success long parse (negative integer)
-
-  - arguments:
-      input_field: "42.23"
-    target_field: any_value
-    should_pass: true
-    expected: 42
-    description: Success long parse with truncation
-
-  - arguments:
-      input_field: "12a3"
+      input_field: "-2"
     target_field: any_value
     should_pass: false
     expected: any_value
-    description: Failure long parse (non-numeric characters)
+    description: Failure unsigned long parse (negative integer)
+
+  - arguments:
+      input_field: "23.45"
+    target_field: any_value
+    should_pass: true
+    expected: 23
+    description: Success unsigned long parse with truncation
+
+  - arguments:
+      input_field: "2345"
+    target_field: any_value
+    should_pass: true
+    expected: 2345
+    description: Success unsigned long parse
+
+  - arguments:
+      input_field: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure unsigned long parse

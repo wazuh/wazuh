@@ -64,7 +64,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                                                json::Json::Type& valueType,
                                                const base::Event& event) -> base::OptError
                     {
-                        if (json::Json::Type::Unknow == valueType)
+                        if (json::Json::Type::Unknown == valueType)
                         {
                             if (!isInSchema)
                             {
@@ -132,7 +132,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                             return base::Error {refNotFound};
                         }
 
-                        if (json::Json::Type::Unknow == valueType)
+                        if (json::Json::Type::Unknown == valueType)
                         {
                             if (!isInSchema)
                             {
@@ -206,7 +206,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 targetArray = std::vector<json::Json>(resp.value());
             }
 
-            auto valueType = json::Json::Type::Unknow;
+            auto valueType = json::Json::Type::Unknown;
             auto initialSize = targetArray.size();
             for (auto i = 0; i < appendOps.size(); i++)
             {

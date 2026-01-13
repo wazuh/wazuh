@@ -18,8 +18,13 @@ build_dir="/build_wazuh"
 
 make -C /workspace/wazuh/src deps TARGET=server
 
-if [${BUILD_TYPE} == "debug" ]; then
+if [ "${BUILD_TYPE}" = "debug" ]; then
     make -j2 -C /workspace/wazuh/src TARGET=server DEBUG="yes"
 else
     make -j2 -C /workspace/wazuh/src TARGET=server
+fi
+
+if [ -d "/opt/gcc-14/lib64" ]; then
+    mkdir -p /workspace/wazuh/gcc-libs
+    cp /opt/gcc-14/lib64/libstdc++.so.6* /workspace/wazuh/gcc-libs/
 fi

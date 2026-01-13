@@ -33,6 +33,39 @@ inline FilterOp makeFilterNoOp(const std::shared_ptr<const IBuildCtx>& buildCtx,
         RETURN_SUCCESS(runState, pass, trace)
     };
 }
+
+/**
+ * @brief Validates KVDB availability when building from integration/policy context.
+ *
+ * Throws runtime_error if KVDB is not declared or is disabled in the integration.
+ * Does nothing if not in integration context (availableKvdbs is nullopt).
+ *
+ * @param buildCtx Build context
+ * @param dbName Name of the KVDB to validate
+ * @throws std::runtime_error if KVDB is not declared or disabled
+ */
+inline void validateKvdbAvailability(const std::shared_ptr<const IBuildCtx>& buildCtx, const std::string& dbName)
+{
+    // Only validate when building from integration/policy context.
+    // When validating assets individually, availableKvdbs is nullopt.
+    if (buildCtx->context().availableKvdbs.has_value())
+    {
+        const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
+
+        if (!exists)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is not declared in the integration. "
+                                                 "Add it to the integration's KVDB list before using it.",
+                                                 dbName));
+        }
+        if (!enabled)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' is disabled in the integration. "
+                                                 "Enable it to use this helper.",
+                                                 dbName));
+        }
+    }
+}
 } // namespace
 
 using namespace kvdbstore;
@@ -62,6 +95,9 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                                              std::static_pointer_cast<Value>(opArgs[0])->value().str()));
     }
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
+
+    // Validate KVDB availability in integration/policy context
+    validateKvdbAvailability(buildCtx, dbName);
 
     // Second argument is key
     auto key = opArgs[1];
@@ -318,6 +354,9 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
 
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
+    // Validate KVDB availability in integration/policy context
+    validateKvdbAvailability(buildCtx, dbName);
+
     const auto name = buildCtx->context().opName;
 
     if (buildCtx->allowMissingDependencies())
@@ -431,6 +470,9 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                                                  std::static_pointer_cast<Value>(opArgs[0])->value().str()));
         }
         const auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
+
+        // Validate KVDB availability in integration/policy context
+        validateKvdbAvailability(buildCtx, dbName);
 
         // Second argument is key array
         auto keyArray = opArgs[1];
@@ -736,6 +778,9 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     const auto dbName = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
     const auto keyMap = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
     const auto& maskRef = *std::static_pointer_cast<const Reference>(opArgs[2]);
+
+    // Validate KVDB availability in integration/policy context
+    validateKvdbAvailability(buildCtx, dbName);
 
     // Verify the schema fields
     if (buildCtx->validator().hasField(targetField.dotPath()))

@@ -1,11 +1,11 @@
 # Name of the helper function
-name: parse_byte
+name: parse_half_float
 
 metadata:
   description: |
-    Evaluates if the content of the input field is a string representing a numeric value.
-    If the numeric value is within the range of -128 to 127 (inclusive)
-    it truncates the number to fit into a byte data type and stores the result in `field`. The operation is case-sensitive.
+    Evaluates if the content of the input field is a string that can be successfully converted into a half precision
+    floating-point number. It converts and stores the floating-point number in `field`, as floating-point numbers 
+    inherently support decimals.
   keywords:
     - parser
 
@@ -25,43 +25,32 @@ skipped:
   - success_cases # parser failed - string generation is random
 
 target_field:
-  type:
-    - object
-    - array
-    - string
-    - number
-    - boolean
+  type: object
 
 test:
   - arguments:
-      input_field: "127"
+      input_field: "23.45234"
     target_field: any_value
     should_pass: true
-    expected: 127
-    description: Success byte parse
+    expected: 23.45233917236328
+    description: Success half float parse
   - arguments:
       input_field: hello
     target_field: any_value
     should_pass: false
     expected: any_value
-    description: Failure byte parse
+    description: Failure half float parse
   - arguments:
-      input_field: "130"
+      input_field: hello
     target_field: [any_value]
     should_pass: false
     expected: [any_value]
-    description: Failure byte parse
+    description: Failure half float parse
   - arguments:
-      input_field: "130"
+      input_field: hello
     target_field:
       key: value
     should_pass: false
     expected:
       key: value
-    description: Failure byte parse
-  - arguments:
-      input_field: "3.14"
-    target_field: any_value
-    should_pass: true
-    expected: 3
-    description: Success byte parse
+    description: Failure half float parse

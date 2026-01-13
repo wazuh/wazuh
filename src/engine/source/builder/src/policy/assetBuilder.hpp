@@ -82,6 +82,19 @@ public:
      * @copydoc IAssetBuilder::operator()
      */
     Asset operator()(const json::Json& document) const override;
+
+    /**
+     * @copydoc IAssetBuilder::setAvailableKvdbs
+     */
+    void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) override
+    {
+        m_buildCtx->context().availableKvdbs = kvdbs;
+    }
+
+    /**
+     * @copydoc IAssetBuilder::clearAvailableKvdbs
+     */
+    void clearAvailableKvdbs() override { m_buildCtx->context().availableKvdbs = std::nullopt; }
 };
 
 } // namespace builder::policy

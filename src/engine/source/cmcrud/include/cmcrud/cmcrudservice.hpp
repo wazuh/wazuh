@@ -45,8 +45,12 @@ public:
     void validateResource(cm::store::ResourceType type, const json::Json& payload) override;
 
 private:
-    std::shared_ptr<cm::store::ICMStore> m_store;
-    std::shared_ptr<builder::IValidator> m_validator;
+    std::weak_ptr<cm::store::ICMStore> m_store;
+    std::weak_ptr<builder::IValidator> m_validator;
+
+    // Helper methods to safely access weak_ptr resources
+    std::shared_ptr<cm::store::ICMStore> getStore() const;
+    std::shared_ptr<builder::IValidator> getValidator() const;
 
     void validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                         const cm::store::dataType::Policy& policy) const;

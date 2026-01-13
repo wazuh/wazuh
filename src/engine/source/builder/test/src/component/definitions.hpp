@@ -4,14 +4,14 @@
 #include <base/behaviour.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
+#include <cmstore/mockcmstore.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/ivalidator.hpp>
 #include <schemf/mockSchema.hpp>
-#include <store/mockStore.hpp>
 
 using namespace base::test;
-using namespace store::mocks;
+using namespace cm::store;
 using namespace schemf::mocks;
 using namespace defs::mocks;
 
@@ -317,7 +317,8 @@ auto constexpr DEFECTIVE_ASSET_POLICY_NOT_STRING_NAME_JSON = R"({
 
 struct Mocks
 {
-    std::shared_ptr<MockStore> m_spStore;
+    std::shared_ptr<MockICMstore> m_spStore;
+    std::shared_ptr<MockICMStoreNSReader> m_spNSReader;
     std::shared_ptr<MockSchema> m_spSchemf;
     std::shared_ptr<MockDefinitionsBuilder> m_spDefBuilder;
     std::shared_ptr<MockDefinitions> m_spDef;
@@ -333,7 +334,8 @@ public:
     void SetUp() override
     {
         m_spMocks = std::make_shared<Mocks>();
-        m_spMocks->m_spStore = std::make_shared<MockStore>();
+        m_spMocks->m_spStore = std::make_shared<MockICMstore>();
+        m_spMocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
         m_spMocks->m_spSchemf = std::make_shared<MockSchema>();
         m_spMocks->m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
         m_spMocks->m_spDef = std::make_shared<MockDefinitions>();
