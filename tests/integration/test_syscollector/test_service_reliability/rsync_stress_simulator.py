@@ -94,7 +94,7 @@ class RsyncStressSimulator:
             return
         self.__mitm.start()
         self.running = True
-        print(f"[RSYNC_STRESS] Simulator started on {self.server_ip}:{self.port}")
+        print(f"[RSYNC_STRESS] Simulator started on {self.server_ip}:{self.port}", flush=True)
 
     def shutdown(self) -> None:
         """Shutdown the simulator."""
@@ -102,7 +102,7 @@ class RsyncStressSimulator:
             return
         self.__mitm.shutdown()
         self.running = False
-        print(f"[RSYNC_STRESS] Simulator stopped. Stats: integrity_checks={self.integrity_check_counter}, checksum_fails={self.checksum_fail_counter}")
+        print(f"[RSYNC_STRESS] Simulator stopped. Stats: integrity_checks={self.integrity_check_counter}, checksum_fails={self.checksum_fail_counter}", flush=True)
 
     def clear(self) -> None:
         """Clear the message queue."""
@@ -141,34 +141,46 @@ class RsyncStressSimulator:
         more rsync traffic and create mutex contention.
         """
         self.request_counter += 1
+        print(f"[RSYNC_STRESS] Request #{self.request_counter} received ({len(request) if request else 0} bytes)", flush=True)
 
         if not request:
             self.__mitm.event.set()
             return _RESPONSE_EMPTY
 
         if b'#ping' in request:
+            print(f"[RSYNC_STRESS] Received ping, sending pong", flush=True)
             return b'#pong'
 
-        # Save header values and decrypt
-        self.__save_encryption_values(request)
-        message = self.__decrypt_received_message(request)
+        try:
+            # Save header values and decrypt
+            self.__save_encryption_values(request)
+            message = self.__decrypt_received_message(request)
 
-        # Check if this is an integrity_check message
-        response = self.__handle_message(message)
+            # Check if this is an integrity_check message
+            response = self.__handle_message(message)
 
-        # Save context
-        self.__save_message_context(request, message, response)
+            # Save context
+            self.__save_message_context(request, message, response)
 
-        if response == _RESPONSE_EMPTY:
+            if response == _RESPONSE_EMPTY:
+                return response
+
+            # Encrypt the response
+            response = self.__encrypt_response_message(response)
+
+            if self.protocol == "tcp":
+                return secure_message.pack(len(response)) + response
+
             return response
 
-        # Encrypt the response
-        response = self.__encrypt_response_message(response)
-
-        if self.protocol == "tcp":
-            return secure_message.pack(len(response)) + response
-
-        return response
+        except Exception as e:
+            print(f"[RSYNC_STRESS] Error processing message: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            import sys
+            sys.stdout.flush()
+            sys.stderr.flush()
+            return _RESPONSE_ACK
 
     def __handle_message(self, message: str) -> bytes:
         """
@@ -176,6 +188,10 @@ class RsyncStressSimulator:
 
         For integrity_check messages, return checksum_fail to trigger more traffic.
         """
+        # Debug: Log all received messages (truncated)
+        msg_preview = message[:200] if len(message) > 200 else message
+        print(f"[RSYNC_STRESS] Received message: {msg_preview}", flush=True)
+
         # Check for integrity_check messages (rsync protocol)
         integrity_match = self._integrity_check_pattern.search(message)
         if integrity_match:
@@ -187,7 +203,7 @@ class RsyncStressSimulator:
                 try:
                     self.on_integrity_check(check_type, message)
                 except Exception as e:
-                    print(f"[RSYNC_STRESS] Callback error: {e}")
+                    print(f"[RSYNC_STRESS] Callback error: {e}", flush=True)
 
             # Only respond with checksum_fail if we haven't exceeded the limit
             with self._lock:
@@ -196,7 +212,7 @@ class RsyncStressSimulator:
                     response = self.__build_checksum_fail_response(message)
                     if response:
                         self.checksum_fail_counter += 1
-                        print(f"[RSYNC_STRESS] Sending checksum_fail #{self.checksum_fail_counter} for {check_type}")
+                        print(f"[RSYNC_STRESS] Sending checksum_fail #{self.checksum_fail_counter} for {check_type}", flush=True)
                         return response
 
             # Once we've sent enough checksum_fails, just ACK to let sync complete
@@ -265,7 +281,7 @@ class RsyncStressSimulator:
             return checksum_fail.encode()
 
         except Exception as e:
-            print(f"[RSYNC_STRESS] Error building checksum_fail: {e}")
+            print(f"[RSYNC_STRESS] Error building checksum_fail: {e}", flush=True)
             return None
 
     def __get_client_keys(self):

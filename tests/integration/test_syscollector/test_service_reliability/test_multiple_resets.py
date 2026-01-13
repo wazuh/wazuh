@@ -555,6 +555,10 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
             remoted_server.destroy()
             remoted_server = None
 
+            # Wait for port to be released by OS before next cycle
+            print(f"[{cycle_id}] Waiting for port release...")
+            time.sleep(2)
+
         # Report results
         total_time = time.time() - test_start_time
         print(f"\n{'='*70}")
@@ -577,15 +581,44 @@ def test_multiple_resets(test_metadata, configure_local_internal_options, trunca
             for f in failures:
                 print(f"    - Cycle {f['cycle']}: {f['error']} at {f['phase']} ({f['duration']:.2f}s)")
 
-        # Only count stop-phase failures as test failures (not event detection failures)
+        # Count different types of failures
         stop_failures = [f for f in failures if f['phase'] == 'stop']
+        connection_failures = [f for f in failures if f['error'] == 'NO_CONNECTION']
 
         print(f"\n  Stop-phase failures (deadlock indicators): {len(stop_failures)}")
+        print(f"  Connection failures: {len(connection_failures)}")
+
+        # Calculate success rate
+        success_rate = len(results) / cycles if cycles > 0 else 0
+        min_success_rate = 0.5  # Require at least 50% success rate
+
+        print(f"  Success rate: {success_rate:.1%} (minimum required: {min_success_rate:.0%})")
         print(f"{'='*70}")
-        print(f"[TEST END] Result: {'FAILED' if stop_failures else 'PASSED'}")
+
+        # Determine test result
+        test_failed = False
+        failure_reasons = []
+
+        if stop_failures:
+            test_failed = True
+            failure_reasons.append(f"Deadlock detected in {len(stop_failures)} cycles")
+
+        if success_rate < min_success_rate:
+            test_failed = True
+            failure_reasons.append(f"Success rate {success_rate:.1%} below minimum {min_success_rate:.0%}")
+
+        print(f"[TEST END] Result: {'FAILED' if test_failed else 'PASSED'}")
+        if failure_reasons:
+            for reason in failure_reasons:
+                print(f"  -> {reason}")
         print(f"{'='*70}\n")
 
-        assert len(stop_failures) == 0, f"Service stop failures detected: {stop_failures}"
+        # Assert with detailed message
+        if test_failed:
+            error_msg = "; ".join(failure_reasons)
+            if stop_failures:
+                error_msg += f"\nStop failures: {stop_failures}"
+            pytest.fail(error_msg)
 
     finally:
         if monitor is not None:
