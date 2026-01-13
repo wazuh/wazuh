@@ -50,11 +50,22 @@ jobs:
   # Execute the tests on windows.
   run-test:
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        windows-version: [windows-2019, windows-2022, windows-2025]
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: windows-2025
+    runs-on: ${{ matrix.windows-version }}
     steps:
+      - name: Display Windows version info
+        run: |
+          Write-Host "=== Windows Version Information ==="
+          Write-Host "Runner: ${{ matrix.windows-version }}"
+          systeminfo | Select-String "OS Name","OS Version"
+          Write-Host "==================================="
+
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Set up Python
@@ -194,6 +205,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: syscollector-test-logs
+          name: syscollector-test-logs-${{ matrix.windows-version }}
           path: C:\test_logs\
           retention-days: 30
