@@ -89,39 +89,7 @@ void SCAEventHandler::ReportPoliciesDelta(
     }
 
     // Delete checks that failed schema validation (batch delete with transaction)
-    if (!failedChecks.empty() && m_dBSync)
-    {
-        // LCOV_EXCL_START
-        try
-        {
-            DBSyncTxn deleteTxn(m_dBSync->handle(),
-                                nlohmann::json::array(),
-                                0, 1,
-            [](ReturnTypeCallback, const nlohmann::json&) {});
-
-            for (const auto& failedCheck : failedChecks)
-            {
-                auto deleteQuery = DeleteQuery::builder()
-                                   .table("sca_check")
-                                   .data(failedCheck)
-                                   .build();
-
-                m_dBSync->deleteRows(deleteQuery.query());
-            }
-
-            // Finalize transaction to commit changes
-            deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
-
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Deleted " + std::to_string(failedChecks.size()) +
-                                             " SCA check(s) from DBSync due to validation failure");
-        }
-        catch (const std::exception& e)
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
-        }
-
-        // LCOV_EXCL_STOP
-    }
+    DeleteFailedChecksFromDB(failedChecks);
 }
 
 void SCAEventHandler::ReportCheckResult(const std::string& policyId,
@@ -141,7 +109,8 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     // Check if the check exists in DB (may have been deleted due to validation failure)
     if (checkData.empty() || !checkData.contains("id"))
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "Check " + checkId + " not found in DB, skipping report");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Check " + checkId + " not found in DB (may have been deleted due to validation failure), skipping report");
         return;
     }
 
@@ -224,39 +193,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     m_dBSync->syncRow(updateResultQuery.query(), callback);
 
     // Delete checks that failed schema validation (batch delete with transaction)
-    if (!failedChecks.empty())
-    {
-        // LCOV_EXCL_START
-        try
-        {
-            DBSyncTxn deleteTxn(m_dBSync->handle(),
-                                nlohmann::json::array(),
-                                0, 1,
-            [](ReturnTypeCallback, const nlohmann::json&) {});
-
-            for (const auto& failedCheck : failedChecks)
-            {
-                auto deleteQuery = DeleteQuery::builder()
-                                   .table("sca_check")
-                                   .data(failedCheck)
-                                   .build();
-
-                m_dBSync->deleteRows(deleteQuery.query());
-            }
-
-            // Finalize transaction to commit changes
-            deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
-
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Deleted " + std::to_string(failedChecks.size()) +
-                                             " SCA check(s) from DBSync due to validation failure");
-        }
-        catch (const std::exception& e)
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
-        }
-
-        // LCOV_EXCL_STOP
-    }
+    DeleteFailedChecksFromDB(failedChecks);
 }
 
 nlohmann::json
@@ -796,4 +733,43 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
     }
 
     return false;
+}
+
+void SCAEventHandler::DeleteFailedChecksFromDB(const std::vector<nlohmann::json>& failedChecks) const
+{
+    if (failedChecks.empty() || !m_dBSync)
+    {
+        return;
+    }
+
+    // LCOV_EXCL_START
+    try
+    {
+        DBSyncTxn deleteTxn(m_dBSync->handle(),
+                            nlohmann::json::array(),
+                            0, 1,
+        [](ReturnTypeCallback, const nlohmann::json&) {});
+
+        for (const auto& failedCheck : failedChecks)
+        {
+            auto deleteQuery = DeleteQuery::builder()
+                               .table("sca_check")
+                               .data(failedCheck)
+                               .build();
+
+            m_dBSync->deleteRows(deleteQuery.query());
+        }
+
+        // Finalize transaction to commit changes
+        deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Deleted " + std::to_string(failedChecks.size()) +
+                                         " SCA check(s) from DBSync due to validation failure");
+    }
+    catch (const std::exception& e)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
+    }
+
+    // LCOV_EXCL_STOP
 }

@@ -156,6 +156,15 @@ class SCAEventHandler
                                               const nlohmann::json& checkData = nlohmann::json(),
                                               std::vector<nlohmann::json>* failedChecks = nullptr) const;
 
+        /// @brief Deletes failed checks from DBSync in a batch transaction.
+        ///
+        /// This function encapsulates the common pattern of deleting checks that failed
+        /// schema validation using a DBSync transaction. It logs the number of deleted
+        /// checks on success or errors on failure.
+        ///
+        /// @param failedChecks Vector of check JSON objects to delete (must contain id, policy_id fields)
+        void DeleteFailedChecksFromDB(const std::vector<nlohmann::json>& failedChecks) const;
+
     private:
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;
