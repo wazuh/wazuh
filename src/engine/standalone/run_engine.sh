@@ -19,6 +19,7 @@ export WAZUH_SERVER_ENABLE_EVENT_PROCESSING="false"
 
 # If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
+mkdir -p "${WAZUH_OUTPUTS_PATH}" # For cmsync output files
 mkdir -p "${WAZUH_CM_RULESET_PATH}" # For Ruleset store
 
 "${SCRIPT_DIR}/bin/wazuh-engine" -f
