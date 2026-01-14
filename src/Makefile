@@ -2045,7 +2045,17 @@ ifeq (,${INSTALLDIR})
 endif
 
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && \
+	export LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export SQLITE3_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_SQLITE}" && \
+	export SQLITE3_LIBS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export LIBFFI_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_LIBFFI}/include" && \
+	export LIBFFI_LIBS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export OPENSSL_INCLUDES="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}/include" && \
+	export OPENSSL_LIBS="-lwazuhext" && \
+	export OPENSSL_LDFLAGS="-L${ROUTE_PATH} -Wl,-rpath,'${WPATH_LIB}'" && \
+	export LD_LIBRARY_PATH=${ROUTE_PATH} && \
+	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 
 build_python: $(WAZUHEXT_LIB)
