@@ -13,6 +13,13 @@ RUN echo "deb http://archive.debian.org/debian/ wheezy contrib main non-free" > 
     libaudit-dev selinux-basics util-linux libdb5.1=5.1.29-5 libdb5.1-dev \
     libssl1.0.0=1.0.1e-2+deb7u20 gawk libsigsegv2 procps
 
+# -------------------------------------------------------------------
+# Install certificates for https
+# -------------------------------------------------------------------
+COPY certificates/cacert.pem /etc/ssl/certs/ca-certificates.crt
+
+ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
 # Add Debian's source repository
 RUN apt-get update && apt-get build-dep python3.2 -y --force-yes
 RUN sed -i "s;/\* To add :#define SO_REUSEPORT 15 \*/;#define SO_REUSEPORT 15;g" /usr/include/asm-generic/socket.h
