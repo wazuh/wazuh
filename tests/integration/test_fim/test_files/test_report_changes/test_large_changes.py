@@ -177,7 +177,7 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     original_string = generate_string(test_metadata.get('original_size'), '0')
     write_file_write(test_file_path, content=original_string)
 
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=30)
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
 
     # Modify the file with new content

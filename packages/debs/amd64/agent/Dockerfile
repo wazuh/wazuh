@@ -13,6 +13,13 @@ RUN echo "deb http://archive.debian.org/debian/ wheezy contrib main non-free" > 
     cdbs devscripts equivs automake autoconf libtool libaudit-dev selinux-basics \
     libdb5.1=5.1.29-5 libdb5.1-dev libssl1.0.0=1.0.1e-2+deb7u20 procps gawk libsigsegv2
 
+# -------------------------------------------------------------------
+# Install certificates for https
+# -------------------------------------------------------------------
+COPY certificates/cacert.pem /etc/ssl/certs/ca-certificates.crt
+
+ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
 RUN apt-get update && apt-get build-dep python3.2 -y --force-yes && rm -rf /var/lib/apt/lists/*
 
 # -------------------------------------------------------------------

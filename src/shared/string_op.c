@@ -158,6 +158,10 @@ size_t os_strcnt(const char *haystack, char needle) {
     size_t count = 0;
     char *ptr;
 
+    if (haystack == NULL) {
+        return 0;
+    }
+
     for (ptr = strchr(haystack, needle); ptr; ptr = strchr(ptr + 1, needle))
         count++;
 

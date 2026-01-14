@@ -1442,10 +1442,14 @@ endif
 # Shared tools
 HTTP_REQUEST_URL := https://github.com/wazuh/wazuh-http-request/tarball/$(HTTP_REQUEST_BRANCH)
 
+# Certificate bundle path for HTTPS connections (only if exists)
+CA_BUNDLE := /etc/ssl/certs/ca-certificates.crt
+CACERT_OPT := $(shell test -f $(CA_BUNDLE) && echo "--cacert $(CA_BUNDLE)" || echo "")
+
 .PHONY: shared_modules/http-request.tar.gz
 
 shared_modules/http-request.tar.gz:
-	test -f $@ || $(CURL) $@ -L $(HTTP_REQUEST_URL) &&\
+	test -f $@ || $(CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL) &&\
 	($(GUNZIP) -f $@ || (rm -f $@ && echo "Error decompressing $@ maybe wrong branch was supplied!" && false)) && \
 	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) && \
 	rm $(patsubst %.gz,%,$@)

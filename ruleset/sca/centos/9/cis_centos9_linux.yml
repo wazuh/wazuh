@@ -3857,8 +3857,8 @@ checks:
       - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 900'
       - 'c:sshd -T -> r:clientalivecountmax\s*\t*0'
       - 'not f:/etc/ssh/sshd_config -> r:^ClientAliveInterval\s*\t*0'
-      - 'not f:/etc/ssh/sshd_config -> n:^ClientAliveInterval\s*\t*(\d+) > 900'
-      - 'not f:/etc/ssh/sshd_config -> n:^clientalivecountmax\s*\t*(\d+) > 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^ClientAliveInterval\s*\t*(\d+) compare > 900'
+      - 'not f:/etc/ssh/sshd_config -> n:^clientalivecountmax\s*\t*(\d+) compare > 0'
 
   # 5.3.1 Ensure sudo is installed. (Automated)
   - id: 39179

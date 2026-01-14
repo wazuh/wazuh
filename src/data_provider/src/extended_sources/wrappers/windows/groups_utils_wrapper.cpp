@@ -15,9 +15,21 @@
 #include "windows_api_wrapper.hpp"
 #include "encodingWindowsHelper.h"
 
-thread_local std::vector<Group> GroupsHelper::s_cachedGroups;
-thread_local std::chrono::steady_clock::time_point GroupsHelper::s_cacheTimestamp;
-thread_local bool GroupsHelper::s_cacheValid = false;
+namespace
+{
+    struct GroupsCacheState final
+    {
+        std::vector<Group> cachedGroups;
+        std::chrono::steady_clock::time_point cacheTimestamp{};
+        bool cacheValid = false;
+    };
+
+    GroupsCacheState& getCacheState()
+    {
+        thread_local auto* state = new GroupsCacheState();
+        return *state;
+    }
+}
 
 GroupsHelper::GroupsHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper, std::shared_ptr<IUsersHelper> usersHelper)
     : m_winapiWrapper(std::move(winapiWrapper))
@@ -37,9 +49,11 @@ std::vector<Group> GroupsHelper::processLocalGroups()
     validateCache();
 
     // Check if cache is valid and return cached data
-    if (s_cacheValid)
+    auto& cache = getCacheState();
+
+    if (cache.cacheValid)
     {
-        return s_cachedGroups;
+        return cache.cachedGroups;
     }
 
     std::vector<Group> groups;
@@ -105,7 +119,7 @@ std::vector<Group> GroupsHelper::processLocalGroups()
     while (ret == ERROR_MORE_DATA);
 
     // Update cache with fresh data
-    s_cachedGroups = groups;
+    cache.cachedGroups = groups;
     updateCacheTimestamp();
 
     return groups;
@@ -115,22 +129,26 @@ void GroupsHelper::validateCache()
 {
     auto now = std::chrono::steady_clock::now();
 
-    if (s_cacheValid && (now - s_cacheTimestamp) >= s_cacheTimeout)
+    auto& cache = getCacheState();
+
+    if (cache.cacheValid && (now - cache.cacheTimestamp) >= s_cacheTimeout)
     {
         // Cache expired, clear it
-        s_cachedGroups.clear();
-        s_cacheValid = false;
+        cache.cachedGroups.clear();
+        cache.cacheValid = false;
     }
 }
 
 void GroupsHelper::updateCacheTimestamp()
 {
-    s_cacheTimestamp = std::chrono::steady_clock::now();
-    s_cacheValid = true;
+    auto& cache = getCacheState();
+    cache.cacheTimestamp = std::chrono::steady_clock::now();
+    cache.cacheValid = true;
 }
 
 void GroupsHelper::resetCache()
 {
-    s_cachedGroups.clear();
-    s_cacheValid = false;
+    auto& cache = getCacheState();
+    cache.cachedGroups.clear();
+    cache.cacheValid = false;
 }

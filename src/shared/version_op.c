@@ -123,7 +123,14 @@ os_info *get_win_version()
                     merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
                 }
                 else {
-                    snprintf(vn_temp, 63, "%s", wincomp);
+                    DWORD ubr = 0;
+                    DWORD ubr_size = sizeof(DWORD);
+                    // Try to read UBR (Update Build Revision) for full patch version
+                    if (RegQueryValueEx(RegistryKey, TEXT("UBR"), NULL, &type, (LPBYTE)&ubr, &ubr_size) == ERROR_SUCCESS) {
+                        snprintf(vn_temp, 63, "%s.%u", wincomp, (unsigned int)ubr);
+                    } else {
+                        snprintf(vn_temp, 63, "%s", wincomp);
+                    }
                     info->os_build = strdup(vn_temp);
                 }
             }
@@ -169,6 +176,14 @@ os_info *get_win_version()
 
         snprintf(version, 63, "%s.%s.%s", info->os_major, info->os_minor, info->os_build);
         info->os_version = strdup(version);
+
+        // Detect Windows 11 based on build number (Windows 11 starts at build 22000)
+        if (info->os_name && strstr(info->os_name, "Windows 10") && atoi(info->os_build) >= 22000) {
+            char *pos = strstr(info->os_name, "Windows 10");
+            if (pos) {
+                pos[9] = '1'; // Change "Windows 10" to "Windows 11"
+            }
+        }
     }
     else {
         if (osvi.dwMajorVersion == 5) {
