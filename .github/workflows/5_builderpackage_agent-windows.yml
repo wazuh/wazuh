@@ -109,6 +109,29 @@ jobs:
             exit 1
           }
 
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: windows
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+
+      - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_windows-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+
       - name: Copy MSI and debug symbols to temp location
         shell: bash
         run: |
