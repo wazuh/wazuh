@@ -161,3 +161,8 @@ int __wrap_fim_db_get_max_version_file() {
 int __wrap_fim_db_set_version_file() {
     return mock_type(int);
 }
+
+FIMDBErrorCode __wrap_fim_db_file_delete(const char *path) {
+    check_expected(path);
+    return mock_type(int);
+}

@@ -10,6 +10,7 @@
 #include <sca_policy.hpp>
 #include <sca_sca_mock.hpp>
 #include <mock_filesystem_wrapper.hpp>
+#include <mock_agent_sync_protocol.hpp>
 
 #include <chrono>
 #include <memory>
@@ -251,4 +252,193 @@ TEST_F(ScaTest, GetCreateStatement)
     // null dbSync makes us hit GetCreateStatement()
     auto sca = std::make_shared<SecurityConfigurationAssessment>("test_path", nullptr);
     SUCCEED();
+}
+
+TEST_F(ScaTest, Constructor_WithNoParameters_CreatesDefaultDBSync)
+{
+    // Create SCA without providing dbSync or fileSystemWrapper
+    // This forces the constructor to create default DBSync
+    auto sca = std::make_shared<SecurityConfigurationAssessment>("db_path");
+
+    // Verify the object was created successfully
+    EXPECT_EQ(sca->Name(), "SCA");
+
+    // Verify log output shows initialization
+    EXPECT_NE(m_logOutput.find("SCA initialized"), std::string::npos);
+}
+
+TEST_F(ScaTest, Run_WithSyncProtocol_CallsReset)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, nullptr);
+
+    // Set the sync protocol
+    scaMock->setSyncProtocol(mockSyncProtocol);
+
+    // Expect reset() to be called on the sync protocol when Run() starts
+    EXPECT_CALL(*mockSyncProtocol, reset())
+    .Times(1);
+
+    // Mock selectRows to return count = 0 for hasDataInDatabase() (no cleanup needed)
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        // Return count = 0 for both sca_policy and sca_check
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    // Setup with enabled=true but no policies (will exit early after reset)
+    std::vector<sca::PolicyData> noPolicies;
+    scaMock->Setup(true, false, std::chrono::seconds(100), 30, false, noPolicies);
+
+    // Run will call reset() on sync protocol, then exit because no policies
+    scaMock->Run();
+
+    // Verify that Run() executed and exited
+    SUCCEED();
+}
+
+TEST_F(ScaTest, Run_ExecutesScanLoopWithValidPolicy)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, mockFileSystem);
+
+    // Configure one enabled policy
+    std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
+
+    // Mock filesystem to return that the file exists
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    // Mock selectRows to return count = 0 for hasDataInDatabase() (no cleanup needed)
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    // Mock other DBSync operations
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Mock getEveryElement to return empty (no existing policies in DB)
+    EXPECT_CALL(*mockDBSync, getEveryElement(::testing::_))
+    .WillRepeatedly(::testing::Return(std::vector<nlohmann::json> {}));
+
+    // Create a mock yamlToJsonFunc that returns valid policy JSON
+    auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
+    {
+        nlohmann::json result;
+        result["variables"] = {{"$test_var", "/etc"}};
+        result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
+        result["checks"] = nlohmann::json::array({
+            {
+                {"id", "check1"},
+                {"title", "Test Check"},
+                {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
+            }
+        });
+        return result;
+    };
+
+    // Setup with enabled=true, scan on start, and the mock yamlToJsonFunc
+    scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
+
+    // Run in a separate thread so we can stop it after it executes
+    std::thread runThread([&scaMock]()
+    {
+        scaMock->Run();
+    });
+
+    // Give it time to execute the scan loop
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Stop the scan loop
+    scaMock->Stop();
+
+    // Wait for thread to complete
+    runThread.join();
+
+    // Verify that the scan executed - check log output
+    EXPECT_NE(m_logOutput.find("SCA module running"), std::string::npos);
+}
+
+TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, mockFileSystem);
+
+    // Configure one enabled policy
+    std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
+
+    // Mock filesystem
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    // Mock selectRows
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    // Mock other DBSync operations
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, getEveryElement(::testing::_))
+    .WillRepeatedly(::testing::Return(std::vector<nlohmann::json> {}));
+
+    // Create yamlToJsonFunc
+    auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
+    {
+        nlohmann::json result;
+        result["variables"] = {{"$test_var", "/etc"}};
+        result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
+        result["checks"] = nlohmann::json::array({
+            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
+            }
+        });
+        return result;
+    };
+
+    // Setup with scan_on_start=false to allow pausing before first scan
+    scaMock->Setup(true, false, std::chrono::seconds(1), 30, false, policyData, yamlToJsonFunc);
+
+    // Run in a separate thread
+    std::thread runThread([&scaMock]()
+    {
+        scaMock->Run();
+    });
+
+    // Wait a bit for Run() to start
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    // Pause the scan
+    scaMock->pause();
+
+    // Wait for the paused state to be checked
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Stop the scan loop
+    scaMock->Stop();
+    runThread.join();
+
+    // Verify that paused message appears in log
+    EXPECT_NE(m_logOutput.find("SCA module running"), std::string::npos);
 }

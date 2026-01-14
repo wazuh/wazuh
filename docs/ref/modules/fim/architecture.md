@@ -669,3 +669,400 @@ All coordination commands are thread-safe:
 - **Mutexes** coordinate between command handlers and FIM threads
 - **Lock-free polling** allows non-blocking status checks
 - **Idempotent operations** allow safe retries
+
+---
+
+## Schema Validation Integration
+
+FIM integrates with the [Schema Validator](../utils/schema-validator/README.md) module to ensure all events conform to the expected Wazuh indexer schema before transmission.
+
+### Purpose
+
+- **Prevent Indexing Errors**: Validate file/registry events before they reach the indexer
+- **Prevent Integrity Sync Loops**: Invalid events are removed from local databases to avoid repeated sync attempts
+- **Improve Data Quality**: Ensure all indexed data conforms to expected types and structures
+- **Provide Detailed Error Reporting**: Specific field paths and validation failures for debugging
+
+### Validation Points
+
+Schema validation occurs at two critical points in the FIM lifecycle:
+
+#### 1. During Event Processing (fim_process_event)
+
+When file or registry changes are detected, validation occurs before sending to the sync protocol:
+
+```c
+// Validate and handle stateful message
+validation_passed = fim_validate_and_handle_stateful(
+    stateful_event,
+    fim_index,
+    context,
+    failed_list,
+    failed_item_data
+);
+
+if (validation_passed)
+{
+    // Send valid event to sync protocol
+    fim_send_sync(stateful_event, operation, index);
+}
+```
+
+**Key characteristics:**
+- Validation before sync protocol transmission
+- Failed items are accumulated in `failed_list`
+- Item data is marked for deferred deletion
+
+#### 2. During Recovery (fim_recovery_process)
+
+When performing integrity recovery, only valid items are synchronized:
+
+```c
+if (schema_validator_is_initialized())
+{
+    char* errorMessage = NULL;
+
+    if (!schema_validator_validate(index, stateful_event_str, &errorMessage))
+    {
+        // Validation failed - log but don't persist
+        if (errorMessage)
+        {
+            mdebug2("Schema validation failed for FIM recovery message (index: %s). Error: %s",
+                   index, errorMessage);
+            mdebug2("Raw recovery event that failed validation: %s", stateful_event_str);
+            free(errorMessage);
+        }
+        validation_passed = false;
+    }
+}
+
+if (validation_passed)
+{
+    // Persist for recovery
+    asp_persist_diff_in_memory(sync_handle, id, operation, index, data, version);
+}
+```
+
+**Key characteristics:**
+- Validation before in-memory persistence
+- Invalid items are skipped (not persisted)
+- Prevents synchronizing invalid recovery data
+
+### C API Functions
+
+FIM uses the C wrapper API for schema validation:
+
+#### schema_validator_initialize()
+
+Initialize the schema validator factory during FIM startup:
+
+```c
+if (!schema_validator_is_initialized())
+{
+    if (schema_validator_initialize())
+    {
+        minfo("Schema validator initialized successfully from embedded resources");
+    }
+    else
+    {
+        mwarn("Failed to initialize schema validator. Schema validation will be disabled.");
+    }
+}
+```
+
+#### schema_validator_is_initialized()
+
+Check if the validator is ready:
+
+```c
+if (schema_validator_is_initialized())
+{
+    // Proceed with validation
+}
+```
+
+#### schema_validator_validate()
+
+Validate a JSON message:
+
+```c
+char* errorMessage = NULL;
+const char* index = "wazuh-states-fim-file";
+const char* message = "{\"file\":{\"path\":\"/etc/passwd\"}}";
+
+if (!schema_validator_validate(index, message, &errorMessage))
+{
+    // Validation failed
+    if (errorMessage)
+    {
+        merror("Validation failed: %s", errorMessage);
+        free(errorMessage);  // Caller must free
+    }
+
+    // Delete from database
+    delete_from_database(data);
+}
+```
+
+### Deferred Deletion Pattern
+
+FIM uses a deferred deletion pattern to safely remove invalid entries:
+
+**Flow:**
+
+```
+1. Start Event Processing
+   │
+   ├─► Create failed_list (OSList)
+   │
+   ▼
+2. Process Events
+   │
+   ├─► For each file/registry event:
+   │   │
+   │   ├─► Validate against schema
+   │   │
+   │   ├─► If validation fails:
+   │   │   │
+   │   │   ├─► Log error
+   │   │   │
+   │   │   └─► Add to failed_list
+   │   │
+   │   └─► If validation passes:
+   │       │
+   │       └─► Send to sync protocol
+   │
+   ▼
+3. After All Events
+   │
+   ├─► fim_delete_failed_items(failed_list)
+   │   │
+   │   ├─► For each failed item:
+   │   │   │
+   │   │   └─► fim_db_remove_path()
+   │   │
+   │   └─► Log deletion count
+   │
+   ├─► OSList_Destroy(failed_list)
+   │
+   ▼
+4. Complete
+```
+
+**Why Deferred?**
+- **Avoids nested transactions**: Cannot delete during database callbacks
+- **Improves performance**: Batch deletion instead of multiple deletes
+- **Better error recovery**: Failures don't affect validation process
+
+### Supported Schemas
+
+FIM validates data for the following Wazuh indices:
+
+| Event Type | Index Pattern | Description |
+|------------|---------------|-------------|
+| File events | `wazuh-states-fim-file` | File creation, modification, deletion |
+| Registry events | `wazuh-states-fim-registry` | Registry key/value changes (Windows) |
+
+#### File Event Structure
+
+- `file.*`: File attributes (path, size, permissions, ownership, timestamps)
+- `file.hash.*`: File checksums (md5, sha1, sha256)
+- `event.*`: Event metadata (action, type, category)
+- `agent.*`: Agent information
+- `host.*`: Host information
+
+#### Registry Event Structure
+
+- `registry.*`: Registry key/value information (path, value_name, value_type, value_data)
+- `registry.hash.*`: Registry checksums
+- `event.*`: Event metadata
+- `agent.*`: Agent information
+- `host.*`: Host information
+
+### Error Handling
+
+**Initialization:**
+```
+INFO: Schema validator initialized successfully from embedded resources
+```
+
+**Validation Failure (File):**
+```
+DEBUG2: Schema validation failed for FIM message (file: /etc/passwd, index: wazuh-states-fim-file). Error: Field 'file.size' expected type 'long', got 'string'
+DEBUG2: Raw event that failed validation: {"file":{"path":"/etc/passwd","size":"1024"}}
+DEBUG: Discarding invalid FIM message (file: /etc/passwd)
+DEBUG: Marking FIM entry for deferred deletion due to validation failure
+```
+
+**Validation Failure (Registry):**
+```
+DEBUG2: Schema validation failed for FIM message (registry: HKEY_LOCAL_MACHINE\Software\Test, index: wazuh-states-fim-registry). Error: Field 'registry.value_type' expected type 'keyword', got 'integer'
+DEBUG2: Raw event that failed validation: {"registry":{"path":"HKEY_LOCAL_MACHINE\\Software\\Test","value_type":1}}
+DEBUG: Discarding invalid FIM message (registry: HKEY_LOCAL_MACHINE\Software\Test)
+```
+
+**Batch Deletion:**
+```
+DEBUG: Deleted 3 FIM item(s) from database due to validation failure
+```
+
+**Graceful Degradation:**
+
+If the schema validator is not initialized:
+- Validation is skipped
+- Events are processed normally
+- A warning is logged on startup:
+  ```
+  WARN: Failed to initialize schema validator. Schema validation will be disabled.
+  ```
+
+### Memory Management
+
+**Important:** The C API requires manual memory management for error messages:
+
+```c
+char* errorMessage = NULL;
+
+if (!schema_validator_validate(index, message, &errorMessage))
+{
+    if (errorMessage)
+    {
+        // Use error message
+        merror("Validation error: %s", errorMessage);
+
+        // MUST free the error message
+        free(errorMessage);
+    }
+}
+```
+
+**Do not forget to free the error message** - memory leak will occur otherwise.
+
+### Integration with FIM Database
+
+FIM's database integration with schema validation:
+
+```
+┌─────────────────────────────────────┐
+│     File System Monitoring         │
+│  (inotify/fanotify/FIM eBPF)       │
+└─────────────┬───────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────┐
+│      Event Generation               │
+│  (calculate checksums, diffs)       │
+└─────────────┬───────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────┐
+│   Schema Validation                 │◄──── Schema Validator Module
+│   (schema_validator_validate)       │
+└─────────────┬───────────────────────┘
+              │
+         Valid │ Invalid
+              ▼     ▼
+┌──────────────────────────────┐
+│  FIM Database (FIMDB)        │
+│  - Valid events stored       │
+│  - Invalid events marked     │
+└──────────┬───────────────────┘
+           │
+           ▼
+┌──────────────────────────────┐
+│  Batch Deletion              │
+│  (fim_delete_failed_items)   │
+└──────────┬───────────────────┘
+           │
+           ▼
+┌──────────────────────────────┐
+│  Agent Sync Protocol         │
+│  (Send to Manager)           │
+└──────────────────────────────┘
+```
+
+### Performance Considerations
+
+- **Deferred Deletion**: Batch deletion minimizes database overhead
+- **Validation Caching**: Validator initialization is done once
+- **Early Exit**: Validation happens before sync protocol (saves queuing overhead)
+- **Real-time Impact**: Validation adds ~0.1-1ms per event (minimal impact on real-time monitoring)
+- **Graceful Degradation**: Validation can be disabled without affecting monitoring
+
+### Integration Status
+
+**Integration points:**
+- Module initialization (`syscheck.c`)
+- Event processing (`run_check.c`)
+- Recovery process (`recovery.c`)
+- File monitoring (`file.c`)
+- Registry monitoring (`registry.c`)
+
+### Real-time Monitoring Impact
+
+Schema validation is designed to have minimal impact on real-time file monitoring:
+
+| Monitoring Mode | Validation Impact |
+|----------------|------------------|
+| inotify/fanotify | < 1ms per event |
+| FIM eBPF | < 0.5ms per event |
+| Scheduled scans | Negligible (batch processing) |
+| Who-data | < 1ms per event |
+
+### Troubleshooting
+
+#### Validation Always Fails
+
+**Symptom:** All events fail validation
+
+**Possible Causes:**
+1. Schema mismatch between agent and manager
+2. Incorrect data format from file system monitoring
+3. Schema validator not properly initialized
+
+**Solution:**
+```c
+// Check initialization
+if (!schema_validator_is_initialized())
+{
+    mwarn("Schema validator not initialized");
+}
+
+// Check for specific validation errors
+char* errorMessage = NULL;
+if (!schema_validator_validate(index, message, &errorMessage))
+{
+    if (errorMessage)
+    {
+        merror("Validation error: %s", errorMessage);
+        merror("Raw message: %s", message);
+        free(errorMessage);
+    }
+}
+```
+
+#### Memory Leaks
+
+**Symptom:** Increasing memory usage over time
+
+**Possible Cause:** Not freeing error messages
+
+**Solution:**
+```c
+// Always free error messages
+char* errorMessage = NULL;
+if (!schema_validator_validate(index, message, &errorMessage))
+{
+    if (errorMessage)
+    {
+        // Use error message
+        free(errorMessage);  // MUST free
+    }
+}
+```
+
+### References
+
+- [Schema Validator Overview](../utils/schema-validator/README.md)
+- [Schema Validator API Reference](../utils/schema-validator/api-reference.md)
+- [Schema Validator Integration Guide](../utils/schema-validator/integration-guide.md)

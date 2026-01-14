@@ -12,6 +12,10 @@
 #define _SYSCOLLECTOR_IMP_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include <memory>
+
+// Forward declaration
+class MockSchemaValidatorEngine;
 
 class SyscollectorImpTest : public ::testing::Test
 {
@@ -22,6 +26,9 @@ class SyscollectorImpTest : public ::testing::Test
 
         void SetUp() override;
         void TearDown() override;
+
+        // Store mock validator to keep it alive during test execution
+        std::shared_ptr<MockSchemaValidatorEngine> m_mockValidator;
 };
 
 #endif //_SYSCOLLECTOR_IMP_TEST_H

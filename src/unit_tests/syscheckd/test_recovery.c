@@ -23,6 +23,7 @@
 #include "../../shared_modules/sync_protocol/include/agent_sync_protocol_c_interface.h"
 #include "../config/syscheck-config.h"
 #include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/schema_validator_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/posix/time_wrappers.h"
 
@@ -182,6 +183,9 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     cJSON_AddStringToObject(mock_event, "type", "file");
     will_return(__wrap_build_stateful_event_file, mock_event);
 
+    // Schema validator is not initialized (no validation)
+    will_return(__wrap_schema_validator_is_initialized, false);
+
     // Expect asp_persist_diff_in_memory call - validate all parameters
     expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
     expect_any(__wrap_asp_persist_diff_in_memory, id);
@@ -234,6 +238,9 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     cJSON* mock_event = cJSON_CreateObject();
     cJSON_AddStringToObject(mock_event, "type", "file");
     will_return(__wrap_build_stateful_event_file, mock_event);
+
+    // Schema validator is not initialized (no validation)
+    will_return(__wrap_schema_validator_is_initialized, false);
 
     // Expect asp_persist_diff_in_memory call - validate all parameters
     expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);

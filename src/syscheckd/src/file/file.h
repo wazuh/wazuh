@@ -21,6 +21,7 @@ typedef struct callback_ctx
     event_data_t* event;
     const directory_t* config;
     fim_entry* entry;
+    OSList* failed_paths;  // List of paths that failed schema validation (to be deleted after transaction)
 } callback_ctx;
 
 /**

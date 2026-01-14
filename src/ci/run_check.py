@@ -531,6 +531,8 @@ def runTestToolForWindows(moduleName, testToolConfig):
                             path=utils.rootPath())
     agent_sync_protocol = utils.findFile(name="libagent_sync_protocol.dll",
                                         path=utils.rootPath())
+    schema_validator = utils.findFile(name="schema_validator.dll",
+                                      path=utils.rootPath())
     stdcpp = utils.findFile(name="libstdc++-6.dll",
                             path=utils.rootPath())
     shutil.copyfile(libgcc,
@@ -539,6 +541,8 @@ def runTestToolForWindows(moduleName, testToolConfig):
                     os.path.join(rootPath, "dbsync.dll"))
     shutil.copyfile(agent_sync_protocol,
                     os.path.join(rootPath, "libagent_sync_protocol.dll"))
+    shutil.copyfile(schema_validator,
+                    os.path.join(rootPath, "schema_validator.dll"))
     shutil.copyfile(stdcpp,
                     os.path.join(rootPath, "libstdc++-6.dll"))
 
@@ -601,8 +605,10 @@ def runTests(moduleName):
                     "/usr/i686-w64-mingw32/lib",
                     utils.currentPath(),
                     currentDir,  # already chdir'ed to this later
-                    os.path.join(utils.moduleDirPathBuild("shared_modules/dbsync"), "build", "bin"),
-                    os.path.join(utils.moduleDirPathBuild("data_provider"), "build", "bin"),
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/dbsync"), "bin"),
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/sync_protocol"), "bin"),
+                    os.path.join(utils.moduleDirPathBuild("data_provider"), "bin"),
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/schema_validator"), "bin"),
                 ]
 
                 # Add GCC runtime DLL paths - prioritize -posix variant
@@ -622,7 +628,8 @@ def runTests(moduleName):
                                 dll_dirs.append(p)
 
                 for _name in ("libstdc++-6.dll", "libgcc_s_dw2-1.dll", "libwinpthread-1.dll",
-                              "dbsync.dll", "sysinfo.dll", "libwazuhext.dll", "libagent_sync_protocol.dll"):
+                              "dbsync.dll", "sysinfo.dll", "libwazuhext.dll", "libagent_sync_protocol.dll",
+                              "schema_validator.dll"):
                     try:
                         _p = utils.findFile(name=_name, path=utils.rootPath())
                         if _p:

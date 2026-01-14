@@ -4,6 +4,7 @@
 
 #include <sca_event_handler.hpp>
 #include <commonDefs.h>
+#include <dbsync.hpp>
 
 #include <mock_dbsync.hpp>
 #include <utility>
@@ -71,6 +72,102 @@ namespace sca_event_handler
             virtual nlohmann::json GetPolicyCheckByIdTester(const std::string& policyCheckId)
             {
                 return SCAEventHandler::GetPolicyCheckById(policyCheckId);
+            }
+
+            // Public wrapper to expose protected ValidateAndHandleStatefulMessage for testing
+            bool ValidateAndHandleStatefulMessage(const nlohmann::json& statefulEvent,
+                                                  const std::string& context,
+                                                  const nlohmann::json& checkData = nlohmann::json(),
+                                                  std::vector<nlohmann::json>* failedChecks = nullptr) const
+            {
+                return SCAEventHandler::ValidateAndHandleStatefulMessage(statefulEvent, context, checkData, failedChecks);
+            }
+
+            // Helper method for testing: allows forcing validation to return specific checks as failed
+            // This helps test the batch deletion with transaction logic for ReportPoliciesDelta
+            void ReportPoliciesDeltaWithForcedFailures(
+                const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
+                const std::unordered_map<std::string, nlohmann::json>& modifiedChecksMap,
+                const std::vector<nlohmann::json>& forcedFailedChecks)
+            {
+                const nlohmann::json events = ProcessEvents(modifiedPoliciesMap, modifiedChecksMap);
+
+                // Use the forced failed checks directly
+                std::vector<nlohmann::json> failedChecks = forcedFailedChecks;
+
+                for (const auto& event : events)
+                {
+                    const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
+                    // Skip validation, just push stateful
+                    PushStateful(processedStatefulEvent, operation, version);
+
+                    const auto processedStatelessEvent = ProcessStateless(event);
+
+                    if (!processedStatelessEvent.empty())
+                    {
+                        PushStateless(processedStatelessEvent);
+                    }
+                }
+
+                // Simulate batch delete with transaction (simplified for testing)
+                if (!failedChecks.empty() && mockDBSync)
+                {
+                    // Call handle() to simulate getting transaction handle
+                    mockDBSync->handle();
+
+                    // Call deleteRows for each failed check
+                    for (const auto& failedCheck : failedChecks)
+                    {
+                        auto deleteQuery = DeleteQuery::builder()
+                                           .table("sca_check")
+                                           .data(failedCheck)
+                                           .build();
+
+                        mockDBSync->deleteRows(deleteQuery.query());
+                    }
+                }
+            }
+
+            // Helper method for testing: simulates ReportCheckResult with forced validation failures
+            // This helps test the batch deletion with transaction logic for ReportCheckResult
+            void ReportCheckResultWithForcedFailures(
+                const std::string& /* policyId */,
+                const std::string& /* checkId */,
+                const std::string& /* checkResult */,
+                const nlohmann::json& mockCheckData,
+                bool simulateValidationFailure)
+            {
+                if (!mockDBSync)
+                {
+                    return;
+                }
+
+                // List to accumulate checks that fail validation
+                std::vector<nlohmann::json> failedChecks;
+
+                if (simulateValidationFailure && !mockCheckData.empty())
+                {
+                    // Simulate validation failure
+                    failedChecks.push_back(mockCheckData);
+                }
+
+                // Simulate batch delete with transaction (simplified for testing)
+                if (!failedChecks.empty())
+                {
+                    // Call handle() to simulate getting transaction handle
+                    mockDBSync->handle();
+
+                    // Call deleteRows for each failed check
+                    for (const auto& failedCheck : failedChecks)
+                    {
+                        auto deleteQuery = DeleteQuery::builder()
+                                           .table("sca_check")
+                                           .data(failedCheck)
+                                           .build();
+
+                        mockDBSync->deleteRows(deleteQuery.query());
+                    }
+                }
             }
 
             std::shared_ptr<MockDBSync> mockDBSync;

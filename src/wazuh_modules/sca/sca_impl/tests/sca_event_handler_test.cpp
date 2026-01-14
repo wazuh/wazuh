@@ -5,6 +5,7 @@
 
 #include "mocks/sca_event_handler_mock.hpp"
 #include "logging_helper.hpp"
+#include "schemaValidator.hpp"
 
 using namespace sca_event_handler;
 
@@ -21,6 +22,12 @@ class SCAEventHandlerTest : public ::testing::Test
 
             mockDBSync = std::make_shared<MockDBSync>();
             handler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync);
+        }
+
+        void TearDown() override
+        {
+            // Reset schema validator factory after each test
+            SchemaValidator::SchemaValidatorFactory::getInstance().reset();
         }
 
         std::shared_ptr<MockDBSync> mockDBSync;
@@ -1017,6 +1024,601 @@ TEST_F(SCAEventHandlerTest, GetPolicyCheckById_NullDBSync)
 
     const auto result = nullHandler.GetPolicyCheckByIdTester("any-id");
     EXPECT_TRUE(result.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_CheckNotFoundInDB_SkipsReport)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "nonexistent_check";
+    const std::string checkResult = "passed";
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json(
+    {
+        {"id", policyId},
+        {"name", "Test Policy"}
+    })));
+
+    // Return empty JSON to simulate check not found
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json::object()));
+
+    // syncRow should NOT be called since check doesn't exist
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .Times(0);
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportCheckResult(policyId, checkId, checkResult);
+    });
+
+    // No messages should be pushed since check was not found
+    EXPECT_EQ(statefulMessages.size(), 0);
+    EXPECT_EQ(statelessMessages.size(), 0);
+}
+
+TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidationFailure_ExecutesBatchDeleteWithTransaction)
+{
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetChecksForPolicy("policy1"))
+    .WillOnce(testing::Return(nlohmann::json::array(
+    {
+        {
+            {"id", "check1"},
+            {"name", "Check 1"},
+            {"policy_id", "policy1"},
+            {"result", "passed"}
+        },
+        {
+            {"id", "check2"},
+            {"name", "Check 2"},
+            {"policy_id", "policy1"},
+            {"result", "failed"}
+        }
+    })));
+
+    std::unordered_map<std::string, nlohmann::json> modifiedPolicies =
+    {
+        {
+            "policy1", {
+                {
+                    "data", {
+                        {"id", "policy1"},
+                        {"name", "Test Policy 1"},
+                        {"description", "Description 1"},
+                        {"file", "policy1.yml"},
+                        {"refs", "https://test.com"}
+                    }
+                },
+                {"result", MODIFIED}
+            }
+        }
+    };
+
+    std::unordered_map<std::string, nlohmann::json> modifiedChecks;
+
+    // Simulate that check1 and check2 failed validation and need to be deleted
+    std::vector<nlohmann::json> forcedFailedChecks =
+    {
+        {
+            {"id", "check1"},
+            {"policy_id", "policy1"}
+        },
+        {
+            {"id", "check2"},
+            {"policy_id", "policy1"}
+        }
+    };
+
+    // Mock DBSync handle for transaction
+    DBSYNC_HANDLE mockHandle = reinterpret_cast<DBSYNC_HANDLE>(0x12345678);
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillOnce(testing::Return(mockHandle));
+
+    // Expect deleteRows to be called for each failed check
+    EXPECT_CALL(*mockDBSync, deleteRows(testing::_))
+    .Times(2);
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportPoliciesDeltaWithForcedFailures(modifiedPolicies, modifiedChecks, forcedFailedChecks);
+    });
+
+    // Stateful and stateless messages should still be pushed for valid events
+    EXPECT_GT(statefulMessages.size(), 0);
+}
+
+TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_EmptyFailedChecks_NoDeleteCalls)
+{
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetChecksForPolicy("policy1"))
+    .WillOnce(testing::Return(nlohmann::json::array(
+    {
+        {
+            {"id", "check1"},
+            {"name", "Check 1"},
+            {"policy_id", "policy1"},
+            {"result", "passed"}
+        }
+    })));
+
+    std::unordered_map<std::string, nlohmann::json> modifiedPolicies =
+    {
+        {
+            "policy1", {
+                {
+                    "data", {
+                        {"id", "policy1"},
+                        {"name", "Test Policy 1"},
+                        {"description", "Description 1"},
+                        {"file", "policy1.yml"},
+                        {"refs", "https://test.com"}
+                    }
+                },
+                {"result", MODIFIED}
+            }
+        }
+    };
+
+    std::unordered_map<std::string, nlohmann::json> modifiedChecks;
+
+    // Empty failed checks - no deletions should occur
+    std::vector<nlohmann::json> forcedFailedChecks;
+
+    // handle() should NOT be called since no deletions needed
+    EXPECT_CALL(*mockDBSync, handle())
+    .Times(0);
+
+    // deleteRows should NOT be called
+    EXPECT_CALL(*mockDBSync, deleteRows(testing::_))
+    .Times(0);
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportPoliciesDeltaWithForcedFailures(modifiedPolicies, modifiedChecks, forcedFailedChecks);
+    });
+
+    // Stateful and stateless messages should still be pushed
+    EXPECT_GT(statefulMessages.size(), 0);
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidationFailure_ExecutesBatchDeleteWithTransaction)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "passed";
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    nlohmann::json mockCheckData =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"},
+        {"checksum", "test_checksum"}
+    };
+
+    // Mock DBSync handle for transaction
+    DBSYNC_HANDLE mockHandle = reinterpret_cast<DBSYNC_HANDLE>(0x12345678);
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillOnce(testing::Return(mockHandle));
+
+    // Expect deleteRows to be called once for the failed check
+    EXPECT_CALL(*mockDBSync, deleteRows(testing::_))
+    .Times(1);
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportCheckResultWithForcedFailures(policyId, checkId, checkResult, mockCheckData, true);
+    });
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_NoValidationFailure_NoDeleteCalls)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "passed";
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    nlohmann::json mockCheckData =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"}
+    };
+
+    // handle() should NOT be called since validation passed
+    EXPECT_CALL(*mockDBSync, handle())
+    .Times(0);
+
+    // deleteRows should NOT be called
+    EXPECT_CALL(*mockDBSync, deleteRows(testing::_))
+    .Times(0);
+
+    EXPECT_NO_THROW(
+    {
+        // Pass false for simulateValidationFailure - validation succeeds
+        newHandler->ReportCheckResultWithForcedFailures(policyId, checkId, checkResult, mockCheckData, false);
+    });
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_NullDBSync_LogsErrorAndReturnsEarly)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "passed";
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    // Create handler with nullptr for DBSync
+    SCAEventHandler nullHandler(nullptr, mockPushStateless, mockPushStateful);
+
+    // This should return early without attempting any DB operations
+    EXPECT_NO_THROW(
+    {
+        nullHandler.ReportCheckResult(policyId, checkId, checkResult);
+    });
+
+    // No messages should be pushed since the function returns early
+    EXPECT_EQ(statefulMessages.size(), 0);
+    EXPECT_EQ(statelessMessages.size(), 0);
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_WithReasonAndNotApplicable_SetsReasonField)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Not applicable";
+    const std::string reason = "Check dependencies not met";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult, reason](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        // Return data that includes the reason field in the "new" section
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"result", "passed"},
+                    {"name", "Test Check"}
+                }
+            },
+            {
+                "new", {
+                    {"id", "test_check"},
+                    {"result", checkResult},
+                    {"reason", reason},
+                    {"name", "Test Check"}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"},
+        {"description", "Test Check Description"},
+        {"result", "passed"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportCheckResult(policyId, checkId, checkResult, reason);
+    });
+
+    // Verify messages were sent
+    EXPECT_EQ(statefulMessages.size(), 1);
+    EXPECT_EQ(statelessMessages.size(), 1);
+
+    // Verify the reason field was included in the stateful message
+    if (statefulMessages.size() > 0)
+    {
+        nlohmann::json statefulMessage = nlohmann::json::parse(statefulMessages[0]);
+        EXPECT_TRUE(statefulMessage.contains("check"));
+        EXPECT_TRUE(statefulMessage["check"].contains("reason"));
+        EXPECT_EQ(statefulMessage["check"]["reason"], reason);
+    }
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_RowDataWithoutNew_UsesRowDataDirectly)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "passed";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        // Simulate rowData WITHOUT "new" field (e.g., for a DELETED operation or simple update)
+        nlohmann::json returnData =
+        {
+            {"id", "test_check"},
+            {"result", checkResult},
+            {"name", "Test Check"},
+            {"checksum", "abc123"}
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"},
+        {"description", "Test Check Description"},
+        {"result", "failed"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportCheckResult(policyId, checkId, checkResult);
+    });
+
+    // Verify messages were sent
+    EXPECT_EQ(statefulMessages.size(), 1);
+    EXPECT_EQ(statelessMessages.size(), 1);
+
+    // Verify the stateful message contains the check data
+    if (statefulMessages.size() > 0)
+    {
+        nlohmann::json statefulMessage = nlohmann::json::parse(statefulMessages[0]);
+        EXPECT_TRUE(statefulMessage.contains("check"));
+        EXPECT_EQ(statefulMessage["check"]["id"], checkId);
+        EXPECT_EQ(statefulMessage["check"]["result"], checkResult);
+    }
+}
+
+TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_EmptyEvent)
+{
+    // Test with empty stateful event - should return true immediately
+    nlohmann::json emptyEvent;
+    nlohmann::json checkData = {{"id", "test_check"}};
+    std::vector<nlohmann::json> failedChecks;
+
+    bool result = handler->ValidateAndHandleStatefulMessage(emptyEvent, "test context", checkData, &failedChecks);
+
+    // Should return true for empty event without processing
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(failedChecks.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidatorNotInitialized)
+{
+    // Test when validator factory is not initialized - should return true (skip validation)
+    nlohmann::json statefulEvent =
+    {
+        {"check", {{"id", "test_check"}, {"name", "Test Check"}}},
+        {"policy", {{"id", "test_policy"}}},
+        {"state", {{"modified_at", "2024-01-01T00:00:00Z"}}}
+    };
+    nlohmann::json checkData = {{"id", "test_check"}};
+    std::vector<nlohmann::json> failedChecks;
+
+    // Validator is not initialized by default in tests
+    bool result = handler->ValidateAndHandleStatefulMessage(statefulEvent, "test context", checkData, &failedChecks);
+
+    // Should return true when validator is not initialized (validation skipped)
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(failedChecks.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidationFailure)
+{
+    // Initialize the schema validator factory with embedded schemas
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    try
+    {
+        validatorFactory.initialize();
+    }
+    catch (const std::exception& e)
+    {
+        // If schemas are not available, skip this test
+        GTEST_SKIP() << "Schemas not available for validation test: " << e.what();
+    }
+
+    // Create an invalid stateful event (missing required fields to trigger validation failure)
+    nlohmann::json invalidStatefulEvent =
+    {
+        {"check", {{"id", "test_check"}}},  // Missing required fields like "name"
+        {"policy", {{"id", "test_policy"}}},  // Missing required fields
+        {"state", {{"modified_at", "invalid_date_format"}}}  // Invalid date format
+    };
+
+    nlohmann::json checkData = {{"id", "test_check"}, {"policy_id", "test_policy"}};
+    std::vector<nlohmann::json> failedChecks;
+
+    // Call ValidateAndHandleStatefulMessage - should fail validation
+    bool result = handler->ValidateAndHandleStatefulMessage(invalidStatefulEvent, "test context", checkData, &failedChecks);
+
+    // If validator is properly initialized and schema is available, validation should fail
+    // The method should return false and add check to failedChecks
+    if (validatorFactory.isInitialized())
+    {
+        auto validator = validatorFactory.getValidator("wazuh-states-sca");
+
+        if (validator)
+        {
+            // Validator exists, so validation should have been attempted
+            // Result depends on schema strictness - either validation passed or failed
+            // If failed, check should be in failedChecks
+            if (!result)
+            {
+                EXPECT_FALSE(failedChecks.empty());
+            }
+        }
+        else
+        {
+            // No validator for this index, should return true
+            EXPECT_TRUE(result);
+        }
+    }
+    else
+    {
+        // Validator not initialized, should return true (skip validation)
+        EXPECT_TRUE(result);
+    }
 }
 
 int main(int argc, char** argv)

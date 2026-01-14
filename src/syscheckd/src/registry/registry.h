@@ -14,10 +14,24 @@
 
 #include "../../include/syscheck.h"
 
+// Structure to hold failed registry key information for deferred deletion
+typedef struct failed_registry_key_s {
+    char *path;
+    int arch;
+} failed_registry_key_t;
+
+// Structure to hold failed registry value information for deferred deletion
+typedef struct failed_registry_value_s {
+    char *path;
+    char *value;
+    int arch;
+} failed_registry_value_t;
+
 typedef struct fim_key_txn_context_s {
     event_data_t *evt_data;
     registry_t *config;
     fim_registry_key *key;
+    OSList *failed_keys;  // List of failed_registry_key_t* for deferred deletion
 } fim_key_txn_context_t;
 
 typedef struct fim_val_txn_context_s {
@@ -25,6 +39,7 @@ typedef struct fim_val_txn_context_s {
     registry_t *config;
     fim_registry_value_data *data;
     char* diff;
+    OSList *failed_values;  // List of failed_registry_value_t* for deferred deletion
 } fim_val_txn_context_t;
 
 /**
