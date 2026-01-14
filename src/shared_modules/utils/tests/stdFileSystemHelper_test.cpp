@@ -17,7 +17,7 @@ void StdFileSystemHelperTest::TearDown() {};
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandSimpleWildcard)
 {
-    constexpr auto PATH_MATCH_SIZE { 2u };
+    constexpr auto PATH_MATCH_SIZE {2u};
     std::deque<std::string> output;
     std::unordered_map<std::string, uint32_t> outputMap;
 
@@ -35,7 +35,7 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandSimpleWildcard)
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcard)
 {
-    constexpr auto PATH_MATCH_SIZE { 4u };
+    constexpr auto PATH_MATCH_SIZE {4u};
     std::deque<std::string> output;
     std::unordered_map<std::string, uint32_t> outputMap;
 
@@ -55,7 +55,7 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcard)
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithPrefix)
 {
-    constexpr auto PATH_MATCH_SIZE { 4u };
+    constexpr auto PATH_MATCH_SIZE {4u};
     std::deque<std::string> output;
     std::unordered_map<std::string, uint32_t> outputMap;
 
@@ -75,7 +75,7 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithPrefix)
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithSuffix)
 {
-    constexpr auto PATH_MATCH_SIZE { 2u };
+    constexpr auto PATH_MATCH_SIZE {2u};
     std::deque<std::string> output;
     std::unordered_map<std::string, uint32_t> outputMap;
     Utils::expandAbsolutePath(PATH_TO_EXPAND_4, output);
@@ -92,7 +92,7 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithSuffix)
 }
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark)
 {
-    constexpr auto PATH_MATCH_SIZE { 2u };
+    constexpr auto PATH_MATCH_SIZE {2u};
     std::deque<std::string> output;
     std::unordered_map<std::string, uint32_t> outputMap;
     Utils::expandAbsolutePath(PATH_TO_EXPAND_5, output);
@@ -109,7 +109,7 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark)
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark2)
 {
-    constexpr auto PATH_MATCH_SIZE { 2u };
+    constexpr auto PATH_MATCH_SIZE {2u};
     std::deque<std::string> output;
     std::unordered_map<std::string, uint32_t> outputMap;
     Utils::expandAbsolutePath(PATH_TO_EXPAND_6, output);
@@ -123,4 +123,3 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark2)
     EXPECT_TRUE(outputMap.at(EXPAND_PATH_3) == 1);
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
-

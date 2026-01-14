@@ -42,7 +42,7 @@ TEST_F(AsyncValueDispatcherTest, Ctor)
     std::atomic<size_t> counter {0};
     std::promise<void> promise;
 
-    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string&&)>> dispatcher(
+    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string &&)>> dispatcher(
         [&counter, &promise](std::string&&)
         {
             counter++;
@@ -206,7 +206,7 @@ TEST_F(AsyncValueDispatcherTest, DifferentDataTypes)
     std::atomic<size_t> counter {0};
     std::promise<void> promise;
 
-    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string&&)>> dispatcher(
+    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string &&)>> dispatcher(
         [&counter, &promise](std::string&&)
         {
             counter++;

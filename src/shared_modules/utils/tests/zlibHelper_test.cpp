@@ -143,12 +143,10 @@ TEST_F(ZlibHelperTest, GzCompressFileDefault)
 TEST_F(ZlibHelperTest, GzCompressFileWithDifferentLevels)
 {
     const auto decompressedFile = OUTPUT_DIR / "test_decompressed.json";
-    std::vector<std::pair<int, std::filesystem::path>> testCases = {
-        {0, OUTPUT_DIR / "test_compressed_level0.gz"},
-        {1, OUTPUT_DIR / "test_compressed_level1.gz"},
-        {6, OUTPUT_DIR / "test_compressed_level6.gz"},
-        {9, OUTPUT_DIR / "test_compressed_level9.gz"}
-    };
+    std::vector<std::pair<int, std::filesystem::path>> testCases = {{0, OUTPUT_DIR / "test_compressed_level0.gz"},
+                                                                    {1, OUTPUT_DIR / "test_compressed_level1.gz"},
+                                                                    {6, OUTPUT_DIR / "test_compressed_level6.gz"},
+                                                                    {9, OUTPUT_DIR / "test_compressed_level9.gz"}};
 
     for (const auto& [level, outputFile] : testCases)
     {

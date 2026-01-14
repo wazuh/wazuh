@@ -5,6 +5,9 @@ project(content_manager_utest)
 # Copy input files to the build directory
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+# Include directories
+include_directories(${CMAKE_SOURCE_DIR}/../http-request/include)
+
 file(GLOB PROJECT_SOURCES
     *.cpp
     ${CMAKE_SOURCE_DIR}/content_manager/src/*[!main]*.cpp

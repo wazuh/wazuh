@@ -15,6 +15,5 @@
             "key": "/var/ossec/etc/certs/server-key.pem"
         }
     },
-    "clusterName": "cluster01",
-    "clusterEnabled": false
+    "clusterName": "cluster01"
 }

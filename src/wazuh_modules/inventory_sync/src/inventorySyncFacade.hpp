@@ -42,7 +42,7 @@ constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
 constexpr auto WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
-constexpr auto SOCKET_KEYSTORE_PATH {"/var/ossec/queue/sockets/keystore"};
+constexpr auto SOCKET_KEYSTORE_PATH {"queue/sockets/keystore"};
 
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
