@@ -820,25 +820,26 @@ TestConfig parseArgs(int argc, char* argv[])
     return config;
 }
 
-void sendEvent(bool verbose, const std::string& input, uint32_t waitTime, RouterProvider& routerProvider)
+void sendEvent(bool verbose,
+               const std::string& input,
+               uint32_t waitTime,
+               RouterProvider& routerProvider,
+               FakeReportServer& fakeReportServer,
+               uint64_t& sessionId,
+               std::promise<void>& startAckPromise,
+               std::promise<void>& endAckPromise,
+               std::atomic<bool>& receivedStartAck,
+               std::atomic<bool>& receivedEndAck)
 {
-    // Initialize report server
-    FakeReportServer fakeReportServer(DEFAULT_QUEUE_PATH);
-    fakeReportServer.start();
+    // Reset promises for new iteration
+    startAckPromise = std::promise<void>();
+    endAckPromise = std::promise<void>();
+    receivedStartAck = false;
+    receivedEndAck = false;
+    sessionId = 0;
 
-    uint64_t sessionId = 0;
-    std::promise<void> startAckPromise;
     auto startAckFuture = startAckPromise.get_future();
-    std::atomic<bool> receivedStartAck {false};
-
-    std::promise<void> endAckPromise;
     auto endAckFuture = endAckPromise.get_future();
-    std::atomic<bool> receivedEndAck {false};
-
-    ResponseServer responseServer(
-        DEFAULT_ARQUEUE, sessionId, startAckPromise, endAckPromise, receivedStartAck, receivedEndAck, verbose);
-    responseServer.start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // Load test data
     AgentTestData testData;
@@ -949,9 +950,6 @@ void sendEvent(bool verbose, const std::string& input, uint32_t waitTime, Router
 
     std::cout << "\n[INFO] Waiting " << waitTime << " seconds for VD processing..." << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(waitTime));
-
-    // cleanup
-    fakeReportServer.stop();
 }
 
 // Main
@@ -1053,6 +1051,26 @@ int main(int argc, char* argv[])
         {
             throw std::runtime_error("Cannot access input: " + config.input);
         }
+
+        FakeReportServer fakeReportServer(DEFAULT_QUEUE_PATH);
+        fakeReportServer.start();
+
+        uint64_t sessionId = 0;
+        std::promise<void> startAckPromise;
+        std::promise<void> endAckPromise;
+        std::atomic<bool> receivedStartAck {false};
+        std::atomic<bool> receivedEndAck {false};
+
+        ResponseServer responseServer(DEFAULT_ARQUEUE,
+                                      sessionId,
+                                      startAckPromise,
+                                      endAckPromise,
+                                      receivedStartAck,
+                                      receivedEndAck,
+                                      config.verbose);
+        responseServer.start();
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
         if (info.st_mode & S_IFDIR)
         {
             // Directory: process all .json files
@@ -1061,17 +1079,40 @@ int main(int argc, char* argv[])
                 if (entry.is_regular_file() && entry.path().extension() == ".json")
                 {
                     std::cout << "\n[INFO] Processing file: " << entry.path().string() << std::endl;
-                    sendEvent(config.verbose, entry.path().string(), config.waitTime, routerProvider);
+                    sendEvent(config.verbose,
+                              entry.path().string(),
+                              config.waitTime,
+                              routerProvider,
+                              fakeReportServer,
+                              sessionId,
+                              startAckPromise,
+                              endAckPromise,
+                              receivedStartAck,
+                              receivedEndAck);
                 }
             }
         }
         else
         {
             // Single file
-            sendEvent(config.verbose, config.input, config.waitTime, routerProvider);
+            sendEvent(config.verbose,
+                      config.input,
+                      config.waitTime,
+                      routerProvider,
+                      fakeReportServer,
+                      sessionId,
+                      startAckPromise,
+                      endAckPromise,
+                      receivedStartAck,
+                      receivedEndAck);
         }
 
         // Cleanup
+        std::cout << "\n[INFO] Cleaning up servers..." << std::endl;
+        fakeReportServer.stop();
+        responseServer.stop();
+        fakeReportServer.waitForStop();
+        responseServer.waitForStop();
         std::cout << "\n[INFO] Stopping modules..." << std::endl;
         vulnerabilityScanner.stop();
         inventorySync.stop();
