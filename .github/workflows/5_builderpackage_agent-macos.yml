@@ -94,6 +94,39 @@ jobs:
             exit 1
           fi
 
+      - name: Uninstall package
+        run: |
+          sudo /bin/rm -r /Library/Ossec
+          sudo /bin/rm -f /Library/LaunchDaemons/com.wazuh.agent.plist
+          sudo /bin/rm -rf /Library/StartupItems/WAZUH
+          sudo /usr/bin/dscl . -delete "/Users/wazuh"
+          sudo /usr/bin/dscl . -delete "/Groups/wazuh"
+          sudo /usr/sbin/pkgutil --forget com.wazuh.pkg.wazuh-agent
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: macos
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_macos-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+
       - name: Upload PKG as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -175,6 +208,39 @@ jobs:
             echo "The installation could not be completed."
             exit 1
           fi
+
+      - name: Uninstall package
+        run: |
+          sudo /bin/rm -r /Library/Ossec
+          sudo /bin/rm -f /Library/LaunchDaemons/com.wazuh.agent.plist
+          sudo /bin/rm -rf /Library/StartupItems/WAZUH
+          sudo /usr/bin/dscl . -delete "/Users/wazuh"
+          sudo /usr/bin/dscl . -delete "/Groups/wazuh"
+          sudo /usr/sbin/pkgutil --forget com.wazuh.pkg.wazuh-agent
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: macos
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_macos-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
 
       - name: Upload PKG as artifact
         uses: actions/upload-artifact@v4
