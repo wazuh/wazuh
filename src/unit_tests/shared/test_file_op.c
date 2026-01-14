@@ -1026,6 +1026,8 @@ void test_get_UTC_modification_time_fail_get_handle(void **state) {
     char buffer[OS_SIZE_128];
     char *path = "C:\\a\\path";
 
+    SetLastError(2);
+
     expect_string(__wrap_utf8_CreateFile, utf8_path, path);
     will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
 
@@ -1047,6 +1049,8 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
 
     expect_string(__wrap_utf8_CreateFile, utf8_path, path);
     will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
+
+    SetLastError(2);
 
     expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
     will_return(wrap_GetFileTime, &modification_date);
