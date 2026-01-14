@@ -1,0 +1,156 @@
+run-name: Build Wazuh agent Windows i686 - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+name: 5.X - Build Wazuh agent Windows (MSI)
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/5_builderpackage_agent-windows.yml"
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+        default: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+        default: false
+
+jobs:
+  build-windows-i686:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    name: Build Windows wazuh-agent MSI (i686)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set VERSION and PKG_NAME
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          COMMIT_HASH="$(git rev-parse --short=7 HEAD)"
+          REVISION="${{ inputs.revision }}"
+          if [ -z "$REVISION" ]; then REVISION="0"; fi
+          PKG_NAME="wazuh-agent_${VERSION}-${REVISION}_windows_${COMMIT_HASH}"
+          echo "PKG_NAME=$PKG_NAME" >> $GITHUB_ENV
+          echo "PKG_NAME_SYMBOLS_SHORT=wazuh-agent-debug-symbols_${VERSION}-${REVISION}_windows_${COMMIT_HASH}" >> $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=wazuh-agent-debug-symbols_${VERSION}-${REVISION}_windows_${COMMIT_HASH}" >> $GITHUB_ENV
+
+      - name: Install mingw
+        shell: bash
+        run: |
+          choco install mingw --version=11.2.0.07112021 -y
+
+      - name: Install CMake
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build Windows dependencies
+        shell: bash
+        run: |
+          make -C src deps TARGET=winagent -j2
+
+      - name: Build Windows agent
+        shell: bash
+        run: |
+          make -C src TARGET=winagent -j2
+
+      - name: Disable signing in MSI script
+        shell: bash
+        run: |
+          sed -i 's+signtool+::signtool+g' src/win32/wazuh-installer-build-msi.bat
+          sed -i 's+pause+::pause+g' src/win32/wazuh-installer-build-msi.bat
+
+      - name: Copy generation script
+        shell: bash
+        run: |
+          cp packages/windows/generate_wazuh_msi.ps1 src/win32/
+
+      - name: Append short commit to VERSION file
+        shell: bash
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Generate MSI package (without signing)
+        shell: pwsh
+        run: |
+          cd src/win32
+          ./generate_wazuh_msi.ps1 -MSI_NAME ${{ env.PKG_NAME }}.msi -SIGN no
+
+      - name: Test install Windows agent
+        shell: pwsh
+        run: |
+          Start-Process -FilePath "src/win32/${{ env.PKG_NAME }}.msi" -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l installer.log' -Wait
+          $installerfile = Get-Content installer.log
+          if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
+            Write-Output "Installation successfully."
+          } else {
+            Write-Output "The installation could not be completed."
+            exit 1
+          }
+
+      - name: Copy MSI and debug symbols to temp location
+        shell: bash
+        run: |
+          mkdir -p /tmp
+          cp src/win32/${{ env.PKG_NAME }}.msi /tmp/
+          if [ -f src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip ]; then
+            cp src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
+          fi
+
+      - name: Upload MSI as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}.msi
+          path: /tmp/${{ env.PKG_NAME }}.msi
+
+      - name: Upload debug symbols as artifact
+        if: hashFiles('/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.zip
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
+
+      - name: Generate checksum
+        if: inputs.checksum == true
+        shell: bash
+        run: |
+          cd /tmp
+          sha512sum "${{ env.PKG_NAME }}.msi" > "${{ env.PKG_NAME }}.msi.sha512"
+          if [ -f "${{ env.PACKAGE_SYMBOLS_NAME }}.zip" ]; then
+            sha512sum "${{ env.PACKAGE_SYMBOLS_NAME }}.zip" > "${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512"
+          fi
+
+      - name: Upload checksum as artifact
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}.msi.sha512
+          path: /tmp/${{ env.PKG_NAME }}.msi.sha512
+
+      - name: Upload debug symbols checksum as artifact
+        if: inputs.checksum == true && hashFiles('/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512
