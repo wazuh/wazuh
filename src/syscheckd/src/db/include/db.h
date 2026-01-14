@@ -246,6 +246,24 @@ EXPORTED int64_t fim_db_get_last_sync_time(const char* table_name);
  */
 EXPORTED void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 
+
+/**
+ * @brief Get the sync flag for a file document.
+ *
+ * @param file_path The file path to query.
+ * @return 1 if sync is enabled, 0 if sync is disabled, -1 on error or if entry not found.
+ */
+EXPORTED int fim_db_get_sync_flag(const char* file_path);
+
+/**
+ * @brief Set the sync flag for a file document.
+ *
+ * @param file_path The file path to update.
+ * @param sync_value The sync value to set (0 or 1).
+ * @return 0 on success, -1 on error or if entry not found.
+ */
+EXPORTED int fim_db_set_sync_flag(const char* file_path, int sync_value);
+
 #ifdef WIN32
 
 // Registry functions.

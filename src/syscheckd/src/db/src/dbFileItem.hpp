@@ -50,6 +50,8 @@ class FileItem final : public DBItem
             m_group = fim->file_entry.data->group == NULL ? "" : fim->file_entry.data->group;
             m_permissions = fim->file_entry.data->permissions == NULL ? "" : fim->file_entry.data->permissions;
 
+            m_sync = fim->file_entry.data->sync;
+
             FIMDBCreator<OS_TYPE>::encodeString(m_attributes);
             FIMDBCreator<OS_TYPE>::encodeString(m_owner);
             FIMDBCreator<OS_TYPE>::encodeString(m_group);
@@ -81,6 +83,7 @@ class FileItem final : public DBItem
             m_sha256 = fim.at("hash_sha256");
             m_uid = fim.at("uid");
             m_owner = fim.at("owner");
+            m_sync = fim.at("sync");
 
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
@@ -114,6 +117,7 @@ class FileItem final : public DBItem
         std::string m_owner;
         std::unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry;
         std::unique_ptr<nlohmann::json> m_statementConf;
+        bool m_sync;
 #ifdef WIN32
         std::string m_pathAnsi;
 #endif

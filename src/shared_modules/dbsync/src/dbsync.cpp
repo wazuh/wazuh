@@ -862,7 +862,7 @@ std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
                       .table(tableName)
                       .columnList({"checksum"})
                       .orderByOpt({"checksum"})
-                      .rowFilter("")
+                      .rowFilter("sync = 1")
                       .distinctOpt(false)
                       .build()};
 
@@ -900,8 +900,7 @@ void DBSync::increaseEachEntryVersion(const std::string& tableName)
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({"*"})
-                      .rowFilter("")
-                      .orderByOpt("")
+                      .rowFilter("sync = 1")
                       .distinctOpt(false)
                       .build()};
 
@@ -959,6 +958,7 @@ std::vector<nlohmann::json> DBSync::getEveryElement(const std::string& tableName
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({"*"})
+                      .rowFilter("sync = 1")
                       .build()};
 
     selectRows(selectQuery.query(), callback);

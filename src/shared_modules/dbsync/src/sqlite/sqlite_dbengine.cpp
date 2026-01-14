@@ -1477,6 +1477,14 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                     }
 
                     updatedData[value.first] = *it;
+
+                    // j: see if this is even needed at all
+                    // Special handling for sync field: always mark as modified if sync is in input data
+                    // This ensures sync updates are not discarded even when checksum hasn't changed
+                    if (value.first == "sync" && *it != object.at(value.first))
+                    {
+                        isModified = true;
+                    }
                 }
                 else if (value.first == "version")
                 {
@@ -1484,6 +1492,11 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                     // The DB does version=version+1, so we add 1 to the current value
                     updatedData["version"] = object["version"].get<int>() + 1;
                     oldData["version"] = object["version"];
+                }
+                else if (value.first == "sync")
+                {
+                    // Sync was in DB but not in input data - don't update it
+                    // (This branch shouldn't normally be hit for sync)
                 }
             }
         }

@@ -49,6 +49,7 @@ constexpr auto CREATE_FILE_DB_STATEMENT
     hash_sha256 TEXT,
     mtime INTEGER,
     version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY(path)) WITHOUT ROWID;
     CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);
     CREATE INDEX IF NOT EXISTS inode_index ON file_entry (device, inode);)"

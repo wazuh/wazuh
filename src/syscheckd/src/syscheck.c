@@ -27,6 +27,7 @@ syscheck_config syscheck;
 int notify_scan = 0;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
+int synced_docs = 0;
 
 #ifdef USE_MAGIC
 #include <magic.h>

@@ -9,6 +9,7 @@
 
 #include <cJSON.h>
 #include "file.h"
+#include "debug_op.h"
 #include "shared.h"
 #include "../../include/syscheck.h"
 #include "../../config/syscheck-config.h"
@@ -218,11 +219,13 @@ STATIC void handle_orphaned_delete(const char* path,
 
     // Validate and persist the orphaned delete event
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
+    // Orphaned deletes are always synced (sync_flag=1) to ensure cleanup on manager
+    // j: see if this is necesary
     char item_desc[PATH_MAX + 32];
     snprintf(item_desc, sizeof(item_desc), "file %s", path);
     validate_and_persist_fim_event(stateful_event, file_path_sha1, OPERATION_DELETE,
                                     FIM_FILES_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL);
+                                    item_desc, false, NULL, NULL, 1);
 
     cJSON_Delete(stateful_event);
 }
@@ -246,6 +249,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
+    int sync_flag = 0; // Default to sync disabled
 
     callback_ctx *txn_context = (callback_ctx *) user_data;
 
@@ -280,11 +284,52 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         case INSERTED:
             txn_context->event->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
+            // For CREATE events: determine if within limit and defer sync flag update
+            if (syscheck.sync_limit > 0) {
+                sync_flag = (synced_docs < syscheck.sync_limit) ? 1 : 0;
+                minfo("INSERTED: synced_docs=%d, sync_limit=%d, sync_flag=%d, path=%s",
+                        synced_docs, syscheck.sync_limit, sync_flag, path);
+            } else {
+                sync_flag = 1;
+                minfo("INSERTED: sync_limit=0 (unlimited), sync_flag=1, path=%s", path);
+            }
+            // Add to deferred list if sync_flag should be 1
+            if (sync_flag == 1 && txn_context->deferred_paths != NULL) {
+                synced_docs++;
+                OSList_AddData(txn_context->deferred_paths, strdup(path));
+                mdebug2("Added path to deferred sync list: %s", path);
+            }
             break;
 
         case MODIFIED:
             txn_context->event->type = FIM_MODIFICATION;
             sync_operation = OPERATION_MODIFY;
+            // For MODIFY events: check current sync flag from DB (in "old" object)
+            {
+                cJSON *sync_json = NULL;
+                cJSON *old_data = cJSON_GetObjectItem(result_json, "old");
+                if (old_data != NULL) {
+                    sync_json = cJSON_GetObjectItem(old_data, "sync");
+                }
+
+                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                    sync_flag = sync_json->valueint;
+                }
+
+                mdebug2("MODIFIED: current sync_flag=%d, synced_docs=%d, sync_limit=%d, path=%s",
+                        sync_flag, synced_docs, syscheck.sync_limit, path);
+
+                // If currently sync=0 but now within limits, defer update to sync=1
+                if (sync_flag == 0 && syscheck.sync_limit > 0 && synced_docs < syscheck.sync_limit) {
+                    sync_flag = 1;
+                    // Add to deferred list for update after transaction commit
+                    if (txn_context->deferred_paths != NULL) {
+                        synced_docs++;
+                        OSList_AddData(txn_context->deferred_paths, strdup(path));
+                        mdebug2("Added MODIFIED path to deferred sync list: %s", path);
+                    }
+                }
+            }
             break;
 
         case DELETED:
@@ -293,6 +338,17 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             }
             txn_context->event->type = FIM_DELETE;
             sync_operation = OPERATION_DELETE;
+            minfo("files in db: %d",  synced_docs);
+            // For DELETE events: entry is NULL, read sync flag from DB result
+            {
+                cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
+                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                    sync_flag = sync_json->valueint;
+                    if (sync_flag == 1) {
+                        synced_docs--;
+                    }
+                }
+            }
             break;
 
         case MAX_ROWS:
@@ -424,7 +480,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     bool validation_passed = validate_and_persist_fim_event(stateful_event, file_path_sha1, sync_operation,
                                                              FIM_FILES_SYNC_INDEX, document_version,
                                                              item_desc, mark_for_deletion,
-                                                             txn_context->failed_paths, path_copy);
+                                                             txn_context->failed_paths, path_copy, sync_flag);
 
     // If validation passed, we need to free path_copy (it wasn't added to the list)
     // If validation failed, path_copy was added to the list and will be freed later
@@ -1015,6 +1071,9 @@ void fim_file(const char *path,
         return;
     }
 
+    // Start with sync=false - deferred mechanism will update to 1 for files within limit
+    new_entry.file_entry.data->sync = false;
+
     if (txn_handle != NULL) {
         txn_context->entry = &new_entry;
         txn_context->config = configuration;
@@ -1050,8 +1109,6 @@ void fim_file(const char *path,
         OSList_Destroy(failed_paths);
         free_file_data(new_entry.file_entry.data);
     }
-
-    return;
 }
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
@@ -1128,6 +1185,7 @@ void fim_handle_delete_by_path(const char *path,
         .entry = NULL,
         .failed_paths = NULL
     };
+    // j: should defered paths be here?
 
     callback_context_t cb = {
         .context = &ctx
@@ -1152,6 +1210,30 @@ void fim_handle_delete_by_path(const char *path,
         fim_db_file_pattern_search(pattern, cb);
     }
 }
+
+/**
+ * @brief Process deferred sync flag updates after transaction commit.
+ *
+ * @param deferred_paths OSList of paths (char*) to update sync flag to 1.
+ */
+STATIC void process_deferred_sync_updates(OSList *deferred_paths) {
+    if (deferred_paths == NULL) {
+        return;
+    }
+
+    int count = 0;
+    OSListNode *node_it;
+    OSList_foreach(node_it, deferred_paths) {
+        char *path = (char *)node_it->data;
+        if (path != NULL) {
+            mdebug2("Setting sync=1 for deferred path: %s", path);
+            fim_db_set_sync_flag(path, 1);
+            count++;
+        }
+    }
+    mdebug1("Processed %d deferred sync flag updates", count);
+}
+
 
 void fim_file_scan() {
     OSListNode *node_it;
@@ -1196,12 +1278,22 @@ void fim_file_scan() {
     OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
 
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths };
+
+    // Initialize deferred paths list for sync flag updates after transaction commit
+    OSList *deferred_paths = OSList_Create();
+    if (!deferred_paths) {
+        merror("Failed to create deferred paths list for sync updates");
+        return;
+    }
+    OSList_SetFreeDataPointer(deferred_paths, free);
+
+    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths, .deferred_paths = deferred_paths };
 
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
         OSList_Destroy(failed_paths);
+        OSList_Destroy(deferred_paths);
         return;
     }
 
@@ -1224,6 +1316,18 @@ void fim_file_scan() {
         os_free(path);
     }
 
+    // j: maybe fim_db_transaction_deleted_rows to for delete case?
+
+
+    // Update sync flags based on limit
+    // j: at this point, new deletions can be seen in the db, but new deletion arent, those likely get updated on fim_db_transaction_deleted_rows later
+    // if (syscheck.sync_limit > 0) {
+    //     fim_db_update_sync_limits(FIMDB_FILE_TABLE_NAME, syscheck.sync_limit);
+    //     if (syscheck.enable_synchronization && syscheck.sync_handle) {
+    //         fim_update_persistent_queue_sync(syscheck.sync_handle, FIMDB_FILE_TABLE_NAME, syscheck.sync_limit);
+    //     }
+    // }
+
     w_rwlock_unlock(&syscheck.directories_lock);
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
@@ -1232,4 +1336,10 @@ void fim_file_scan() {
     // Delete files that failed schema validation (outside transaction)
     cleanup_failed_fim_files(failed_paths);
     OSList_Destroy(failed_paths);
+
+    // Process deferred sync flag updates now that transaction is committed
+    process_deferred_sync_updates(deferred_paths);
+
+    // Cleanup deferred paths list
+    OSList_Destroy(deferred_paths);
 }
