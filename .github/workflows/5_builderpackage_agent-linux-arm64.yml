@@ -150,6 +150,37 @@ jobs:
           echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
           echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
 
+      - name: Test uninstall built package
+        uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test
+        with:
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: linux
+          system: ${{ env.SYSTEM }}
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
       - name: Upload package as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -236,6 +267,37 @@ jobs:
           fi
           echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
           echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: Test uninstall built package
+        uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test
+        with:
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: linux
+          system: ${{ env.SYSTEM }}
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
 
       - name: Upload package as artifact
         uses: actions/upload-artifact@v4
