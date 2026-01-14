@@ -746,6 +746,22 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
+        if [ -f shared_modules/schema_validator/build/lib/libschema_validator.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/schema_validator/build/lib/libschema_validator.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libschema_validator.dylib ${INSTALLDIR}/lib/libschema_validator.dylib
+        fi
+    elif [ -f shared_modules/schema_validator/build/lib/libschema_validator.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/schema_validator/build/lib/libschema_validator.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libschema_validator.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
         if [ -f data_provider/build/lib/libsysinfo.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 data_provider/build/lib/libsysinfo.dylib ${INSTALLDIR}/lib
