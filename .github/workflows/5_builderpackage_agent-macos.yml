@@ -1,0 +1,204 @@
+run-name: Build Wazuh agent macOS - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.architecture || 'intel64,arm64' }}
+name: 5.X - Build Wazuh agent macOS (PKG)
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/5_builderpackage_agent-macos.yml"
+  workflow_dispatch:
+    inputs:
+      architecture:
+        type: choice
+        description: Package architecture [intel64, arm64].
+        required: true
+        default: intel64
+        options:
+          - intel64
+          - arm64
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '1'.
+        required: false
+        default: '1'
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+        default: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+        default: false
+
+jobs:
+  build-macos-intel64:
+    if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
+    runs-on: macos-14
+    timeout-minutes: 90
+    name: Build macOS wazuh-agent PKG (intel64)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set VERSION
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "ARCH=intel64" >> $GITHUB_ENV
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '' '/"stage":/s/$/,/; /}/{i\
+              "commit": "'"$SHORT_COMMIT"'"'$'\n''}' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Install dependencies
+        run: |
+          bash packages/macos/generate_wazuh_packages.sh -i
+
+      - name: Build macOS intel64 package (without notarization)
+        run: |
+          REVISION=${{ inputs.revision || '1' }}
+          FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_wazuh_packages.sh $FLAGS"
+          sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
+
+      - name: Get package name
+        run: |
+          PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
+          echo "PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_ENV
+
+      - name: Test install macOS package
+        run: |
+          sudo installer -pkg packages/macos/output/${{ env.PACKAGE_NAME }} -target / | sudo tee installer.log
+          if grep -q "The install was successful" "installer.log"; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+
+      - name: Upload PKG as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: packages/macos/output/${{ env.PACKAGE_NAME }}
+
+      - name: Upload debug symbols as artifact
+        if: env.PACKAGE_SYMBOLS_NAME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
+          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}
+
+      - name: Upload checksum as artifact
+        if: inputs.checksum == true && hashFiles('packages/macos/output/${{ env.PACKAGE_NAME }}.sha512') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}.sha512
+          path: packages/macos/output/${{ env.PACKAGE_NAME }}.sha512
+
+      - name: Upload debug symbols checksum as artifact
+        if: inputs.checksum == true && env.PACKAGE_SYMBOLS_NAME != '' && hashFiles('packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+
+  build-macos-arm64:
+    if: github.event_name == 'pull_request' || inputs.architecture == 'arm64'
+    runs-on: macos-14
+    timeout-minutes: 90
+    name: Build macOS wazuh-agent PKG (arm64)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set VERSION
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "ARCH=arm64" >> $GITHUB_ENV
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '' '/"stage":/s/$/,/; /}/{i\
+              "commit": "'"$SHORT_COMMIT"'"'$'\n''}' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Install dependencies
+        run: |
+          bash packages/macos/generate_wazuh_packages.sh -i
+
+      - name: Build macOS arm64 package (without notarization)
+        run: |
+          REVISION=${{ inputs.revision || '1' }}
+          FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_wazuh_packages.sh $FLAGS"
+          sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
+
+      - name: Get package name
+        run: |
+          PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
+          echo "PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_ENV
+
+      - name: Test install macOS package
+        run: |
+          sudo installer -pkg packages/macos/output/${{ env.PACKAGE_NAME }} -target / | sudo tee installer.log
+          if grep -q "The install was successful" "installer.log"; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+
+      - name: Upload PKG as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: packages/macos/output/${{ env.PACKAGE_NAME }}
+
+      - name: Upload debug symbols as artifact
+        if: env.PACKAGE_SYMBOLS_NAME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
+          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}
+
+      - name: Upload checksum as artifact
+        if: inputs.checksum == true && hashFiles('packages/macos/output/${{ env.PACKAGE_NAME }}.sha512') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}.sha512
+          path: packages/macos/output/${{ env.PACKAGE_NAME }}.sha512
+
+      - name: Upload debug symbols checksum as artifact
+        if: inputs.checksum == true && env.PACKAGE_SYMBOLS_NAME != '' && hashFiles('packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
