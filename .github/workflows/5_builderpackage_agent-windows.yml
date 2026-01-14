@@ -132,6 +132,48 @@ jobs:
           old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
           expected_upgrade_version: ${{ env.VERSION }}
 
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload MSI to S3
+        shell: bash
+        run: |
+          aws s3 cp src/win32/${{ env.PKG_NAME }}.msi s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PKG_NAME }}.msi"
+          echo "S3 URI: ${s3uri}"
+
+      - name: Upload checksum to S3
+        if: ${{ inputs.checksum }}
+        shell: bash
+        run: |
+          cd src/win32
+          sha512sum "${{ env.PKG_NAME }}.msi" > "${{ env.PKG_NAME }}.msi.sha512"
+          aws s3 cp "${{ env.PKG_NAME }}.msi.sha512" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PKG_NAME }}.msi.sha512"
+          echo "S3 sha512 URI: ${s3uri}"
+
+      - name: Upload debug symbols to S3
+        if: hashFiles('src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip') != ''
+        shell: bash
+        run: |
+          aws s3 cp src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
+          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.zip"
+          echo "S3 symbols URI: ${symbols}"
+
+      - name: Upload debug symbols checksum to S3
+        if: ${{ inputs.checksum && hashFiles('src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip') != '' }}
+        shell: bash
+        run: |
+          cd src/win32
+          sha512sum "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip" > "${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512"
+          aws s3 cp "${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512"
+          echo "S3 symbols sha512 URI: ${symbols}"
+
       - name: Copy MSI and debug symbols to temp location
         shell: bash
         run: |
