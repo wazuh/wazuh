@@ -733,7 +733,7 @@ public:
 
             if (connectInfo.type == SocketType::UNIX)
             {
-                if (T::fchmod(m_sock, 0666) != 0)
+                if (T::fchmod(m_sock, 0660) != 0)
                 {
                     closeSocket();
                     throw std::runtime_error {"Failed to fchmod socket " + std::string(std::strerror(errno))};
@@ -749,7 +749,7 @@ public:
             if (connectInfo.type == SocketType::UNIX)
             {
                 auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
-                if (T::chmod(sunAddr->sun_path, 0666) != 0)
+                if (T::chmod(sunAddr->sun_path, 0660) != 0)
                 {
                     closeSocket();
                     throw std::runtime_error {"Failed to chmod socket " + std::string(std::strerror(errno))};
