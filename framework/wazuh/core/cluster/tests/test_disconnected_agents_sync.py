@@ -10,16 +10,7 @@ import pytest
 
 with patch("wazuh.core.common.wazuh_uid"):
     with patch("wazuh.core.common.wazuh_gid"):
-        sys.modules["wazuh.rbac.orm"] = MagicMock()
-        sys.modules["api"] = MagicMock()
-        sys.modules["api.configuration"] = MagicMock()
-        sys.modules["api.validator"] = MagicMock()
         import wazuh.rbac.decorators
-
-        del sys.modules["wazuh.rbac.orm"]
-        del sys.modules["api"]
-        del sys.modules["api.configuration"]
-        del sys.modules["api.validator"]
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
