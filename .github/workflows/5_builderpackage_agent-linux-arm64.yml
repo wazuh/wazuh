@@ -1,0 +1,251 @@
+run-name: Build Wazuh agent Linux arm64 - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.system || 'deb,rpm' }} - ${{ inputs.architecture || 'arm64' }}
+name: 5.X - Build Wazuh agent Linux arm64 (DEB/RPM)
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/5_builderpackage_agent-linux-arm64.yml"
+  workflow_dispatch:
+    inputs:
+      architecture:
+        type: choice
+        description: Package architecture [arm64, aarch64].
+        required: true
+        default: arm64
+        options:
+          - arm64
+          - aarch64
+      system:
+        type: choice
+        description: Package OS [deb, rpm].
+        required: true
+        default: deb
+        options:
+          - deb
+          - rpm
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+        default: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+        default: false
+
+jobs:
+  build-deb-arm64:
+    if: github.event_name == 'pull_request' || inputs.system == 'deb'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Build DEB wazuh-agent on arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set ARCH
+        run: |
+          arch="arm64"
+          echo "ARCH=$arch" >> $GITHUB_ENV
+
+      - name: Set VERSION and CONTAINER_NAME
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "SYSTEM=deb" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Pre-download http-request for Debian 7 SSL compatibility
+        run: |
+          # Get HTTP_REQUEST_BRANCH from Makefile
+          HTTP_REQUEST_BRANCH=$(grep -m1 "^HTTP_REQUEST_BRANCH" src/Makefile | sed 's/.*?=\s*\(.*\)/\1/')
+          if [ -z "$HTTP_REQUEST_BRANCH" ]; then
+            echo "Could not determine HTTP_REQUEST_BRANCH from Makefile"
+            exit 1
+          fi
+          echo "HTTP_REQUEST_BRANCH: $HTTP_REQUEST_BRANCH"
+
+          # Download tarball
+          cd src/shared_modules
+
+          if [ -f http-request.tar.gz ]; then
+            echo "http-request tarball already exists, skipping download"
+          else
+            echo "Downloading http-request tarball from GitHub..."
+            curl -fsSL -o http-request.tar.gz \
+              "https://github.com/wazuh/wazuh-http-request/tarball/${HTTP_REQUEST_BRANCH}"
+
+            if [ -s http-request.tar.gz ]; then
+              SIZE=$(du -h http-request.tar.gz | cut -f1)
+              echo "Download complete (${SIZE})"
+            else
+              echo "Downloaded file is empty or missing"
+              exit 1
+            fi
+          fi
+
+      - name: Build DEB wazuh-agent on ${{ env.ARCH }}
+        run: |
+          REVISION=${{ inputs.revision || '0' }}
+          FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS+="-r $REVISION "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS"
+          bash packages/generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS
+
+          echo "PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-dbg")" | tee -a $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-dbg")" | tee -a $GITHUB_ENV
+
+      - name: Test install built package
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No package found matching the pattern!"
+            exit 1
+          fi
+          sudo docker run \
+            -v $TESTS_PATH/:/tests \
+            -v /tmp/:/packages \
+            -v /var/ossec:/var/ossec \
+            -e ARCH="${{ env.ARCH }}" \
+            -e SYSTEM="${{ env.SYSTEM }}" \
+            --entrypoint '/tests/install_component.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            ${{ env.PACKAGE_NAME }} agent
+          # Check if wazuh-agent was installed
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+
+      - name: Upload debug symbols as artifact
+        if: env.PACKAGE_SYMBOLS_NAME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
+
+  build-rpm-arm64:
+    if: github.event_name == 'pull_request' || inputs.system == 'rpm'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Build RPM wazuh-agent on arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set ARCH
+        run: |
+          arch="arm64"
+          echo "ARCH=$arch" >> $GITHUB_ENV
+
+      - name: Set VERSION and CONTAINER_NAME
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "SYSTEM=rpm" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build RPM wazuh-agent on ${{ env.ARCH }}
+        run: |
+          REVISION=${{ inputs.revision || '0' }}
+          FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS+="-r $REVISION "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS"
+          bash packages/generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS
+
+          echo "PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-debuginfo")" | tee -a $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-debuginfo")" | tee -a $GITHUB_ENV
+
+      - name: Test install built package
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No package found matching the pattern!"
+            exit 1
+          fi
+          sudo docker run \
+            -v $TESTS_PATH/:/tests \
+            -v /tmp/:/packages \
+            -v /var/ossec:/var/ossec \
+            -e ARCH="${{ env.ARCH }}" \
+            -e SYSTEM="${{ env.SYSTEM }}" \
+            --entrypoint '/tests/install_component.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            ${{ env.PACKAGE_NAME }} agent
+          # Check if wazuh-agent was installed
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+
+      - name: Upload debug symbols as artifact
+        if: env.PACKAGE_SYMBOLS_NAME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
