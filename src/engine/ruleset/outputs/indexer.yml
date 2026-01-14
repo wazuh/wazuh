@@ -12,14 +12,10 @@ outputs:
         (NOT starts_with($wazuh.integration.name, "aws")
         AND NOT starts_with($wazuh.integration.name, "azure")
         AND NOT starts_with($wazuh.integration.name, "gcp"))
+
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"
-
-    - check: starts_with($wazuh.integration.name, "aws")
-      then:
-        - wazuh-indexer:
-            index: "wazuh-events-v5-${wazuh.integration.category}-aws"
 
     - check: starts_with($wazuh.integration.name, "gcp")
       then:
@@ -30,3 +26,8 @@ outputs:
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}-azure"
+
+    - check: starts_with($wazuh.integration.name, "aws")
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}-aws"
