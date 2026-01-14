@@ -71,6 +71,8 @@ extern int sys_debug_level;
 extern int audit_queue_full_reported;
 extern int ebpf_kernel_queue_full_reported;
 
+extern int synced_docs;
+
 typedef enum fim_event_type
 {
     FIM_ADD,
@@ -349,7 +351,8 @@ bool validate_and_persist_fim_event(
     const char* item_description,
     bool mark_for_deletion,
     OSList* failed_list,
-    void* failed_item_data
+    void* failed_item_data,
+    int sync_flag
 ) __attribute__((nonnull(1,2,4,6)));
 
 /**

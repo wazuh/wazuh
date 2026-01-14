@@ -974,6 +974,7 @@ std::vector<nlohmann::json> DBSync::getEveryElement(const std::string& tableName
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({"*"})
+                      .rowFilter("sync = 1")
                       .build()};
 
     selectRows(selectQuery.query(), callback);

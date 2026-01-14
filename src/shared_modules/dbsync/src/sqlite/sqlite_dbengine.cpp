@@ -213,7 +213,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
             }
             else if (!result.empty())
             {
-                ret = result;
+                ret = result; // j: this seems to only get executed on real modifies, not just version only
             }
 
             return ret;
@@ -1489,7 +1489,6 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
         }
     }
 
-    // If the row is not modified, we clear the result to update the status field value only.
     if (!isModified)
     {
         updatedData.clear();
@@ -1658,6 +1657,7 @@ std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& ta
 
         // Auto-increment version if table has version column and actual data changed
         // Don't increment if only status field is being updated (status-only updates during scans)
+        // Don't increment if only sync field is being updated (sync-only updates)
         const auto& tableFields = m_tableFields[table];
         const bool hasVersion = std::any_of(tableFields.begin(), tableFields.end(),
                                             [](const auto & field)
@@ -1668,7 +1668,10 @@ std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& ta
         const bool onlyStatusUpdate = (data.size() == primaryKeyList.size() + 1) &&
                                       data.find(STATUS_FIELD_NAME) != data.end();
 
-        if (hasVersion && data.find("version") == data.end() && !onlyStatusUpdate)
+        // const bool onlySyncUpdate = (data.size() == primaryKeyList.size() + 1) &&
+        //                             data.find("sync") != data.end();
+
+        if (hasVersion && data.find("version") == data.end() && !onlyStatusUpdate /* && !onlySyncUpdate */)
         {
             sql += "version=version+1,";
         }

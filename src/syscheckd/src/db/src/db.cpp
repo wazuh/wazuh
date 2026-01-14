@@ -209,6 +209,30 @@ int DB::updateVersion(const std::string& tableName, int version)
     return retval;
 }
 
+int DB::countSyncedDocs(const std::string& tableName){
+    int syncedRows = 0;
+    auto callback {[&syncedRows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            syncedRows = jsonResult.at("count");
+        }
+    }};
+
+    // TODO: check out that SQL injection thing
+    const std::string filter = "WHERE sync = 1";
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList(COUNT_SELECT_TYPE_MAP.at(COUNT_SELECT_TYPE::COUNT_ALL))
+                      .rowFilter(filter)
+                      .orderByOpt("")
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    return syncedRows;
+}
 
 #ifdef __cplusplus
 extern "C"
@@ -507,6 +531,23 @@ void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestam
     try
     {
         DB::instance().updateLastSyncTime(table_name, timestamp);
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+}
+
+int fim_db_count_synced_docs(const char* table_name){
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+    // TODO: exception?
+        return 0;
+    }
+    try
+    {
+        return DB::instance().countSyncedDocs(table_name);
     }
     catch (const std::exception& err)
     {

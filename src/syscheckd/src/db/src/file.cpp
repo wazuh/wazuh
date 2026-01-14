@@ -59,7 +59,8 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
                                    "hash_sha1",
                                    "hash_sha256",
                                    "mtime",
-                                   "version"})
+                                   "version",
+                                   "sync"})
                       .rowFilter(std::string("WHERE path=\"") + encodedPath + "\"")
                       .orderByOpt(FILE_PRIMARY_KEY)
                       .distinctOpt(false)
@@ -456,6 +457,116 @@ void fim_db_clean_file_table()
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 
+    // LCOV_EXCL_STOP
+}
+
+int fim_db_get_sync_flag(const char* file_path)
+{
+    int retval {-1};
+
+    if (!file_path)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid file path provided to fim_db_get_sync_flag");
+        return retval;
+    }
+
+    try
+    {
+        DB::instance().getFile(
+            file_path,
+            [&retval](const nlohmann::json& resultJson)
+            {
+                if (resultJson.contains("sync"))
+                {
+                    retval = resultJson.at("sync").get<int>();
+                }
+            });
+    }
+    catch (const no_entry_found& err)
+    {
+        FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE, std::string("Entry not found: ") + err.what());
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+    // LCOV_EXCL_STOP
+
+    return retval;
+}
+
+int fim_db_set_sync_flag(const char* file_path, int sync_value, uint64_t version)
+{
+    if (!file_path)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid file path provided to fim_db_set_sync_flag");
+        return -1;
+    }
+
+    if (sync_value != 0 && sync_value != 1)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid sync value provided to fim_db_set_sync_flag");
+        return -1;
+    }
+
+    try
+    {
+        std::string encodedPath = file_path;
+        FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+        FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE,
+            std::string("Setting sync flag to ") + std::to_string(sync_value) + " for path: " + file_path +
+            " with version: " + std::to_string(version));
+
+        // Build update JSON with path, sync field, and version
+        nlohmann::json rowData;
+        rowData["path"] = encodedPath;
+        rowData["sync"] = sync_value;
+        rowData["version"] = version;
+
+        nlohmann::json updateData;
+        updateData["table"] = FIMDB_FILE_TABLE_NAME;
+        updateData["data"] = nlohmann::json::array();
+        updateData["data"].push_back(rowData);
+
+        // Execute update
+        bool updateSucceeded = false;
+        ReturnTypeCallback receivedType = ReturnTypeCallback::SELECTED; // Default value
+        FIMDB::instance().updateItem(updateData,
+            [&updateSucceeded, &receivedType](ReturnTypeCallback type, const nlohmann::json&) {
+                receivedType = type;
+                if (type == ReturnTypeCallback::MODIFIED)
+                {
+                    updateSucceeded = true;
+                }
+            });
+
+        if (updateSucceeded)
+        {
+            FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE,
+                std::string("Successfully updated sync flag to ") + std::to_string(sync_value) + " for path: " + file_path);
+        }
+        else
+        {
+            FIMDB::instance().logFunction(LOG_WARNING,
+                std::string("Failed to update sync flag for path: ") + file_path +
+                ", received callback type: " + std::to_string(static_cast<int>(receivedType)));
+        }
+
+        return updateSucceeded ? 0 : -1;
+    }
+    catch (const no_entry_found& err)
+    {
+        FIMDB::instance().logFunction(LOG_INFO, std::string("Entry not found: ") + err.what());
+        return -1;
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return -1;
+    }
     // LCOV_EXCL_STOP
 }
 

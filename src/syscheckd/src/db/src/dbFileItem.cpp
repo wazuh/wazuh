@@ -10,6 +10,7 @@
  */
 
 #include "dbFileItem.hpp"
+#include "json.hpp"
 
 void FileItem::createFimEntry()
 {
@@ -28,6 +29,7 @@ void FileItem::createFimEntry()
 
         if (data)
         {
+            data->sync = m_sync;
             data->size = m_size;
             data->permissions = const_cast<char*>(m_permissions.c_str());
             data->attributes = const_cast<char*>(m_attributes.c_str());
@@ -86,13 +88,32 @@ void FileItem::createJSON()
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;
     data["mtime"] = m_time;
+    // j: data[version] is not here for some reason
+
+
+    // Only include sync field during INSERT operations (when m_oldData is NULL)
+    // For MODIFIED operations, sync is managed separately by the deferred update mechanism
+    //if (!m_oldData)
+    //{
+        data["sync"] = m_sync ? 1 : 0;
+    //}
+
     conf["data"] = nlohmann::json::array({data});
+
+    nlohmann::json ignore;
+    ignore.push_back("sync");
+    ignore.push_back("version");
+
+    //options["ignore"] = nlohmann::json::array({ignore});
+    options["ignore"] = ignore;
+    //input["options"]["ignore"] = nlohmann::json::array({"synced"});
 
     if (m_oldData)
     {
         options["return_old_data"] = true;
         conf["options"] = options;
     }
+    conf["options"] = options;
 
     m_statementConf = std::make_unique<nlohmann::json>(conf);
 }

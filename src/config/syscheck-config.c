@@ -129,6 +129,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->comp_estimation_perc            = 0.9;         // 90%
     syscheck->disk_quota_full_msg             = true;
     syscheck->audit_key                       = NULL;
+    syscheck->sync_limit                      = 3;
 
     return OS_SUCCESS;
 }

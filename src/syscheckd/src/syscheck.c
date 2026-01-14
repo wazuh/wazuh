@@ -27,6 +27,7 @@ syscheck_config syscheck;
 int notify_scan = 0;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
+int synced_docs = 0;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -110,6 +111,9 @@ void fim_initialize() {
         syscheck.disabled = 1;
         return;
     }
+
+    // j: go thorugh all the entries and count the synched files
+    synced_docs = fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME);
 
     w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
