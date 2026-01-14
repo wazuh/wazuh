@@ -36,14 +36,6 @@ _ALLOWED_PREFIXES = (
     os.path.join(common.WAZUH_PATH, "queue/cluster"),
 )
 
-# # Strict allowlist of safe internal modules used by DAPI
-# _SAFE_CALLABLE_MODULES = {
-#     "wazuh.manager",
-#     "wazuh.stats",
-#     "wazuh.analysis",
-#     "wazuh.cluster",
-# }
-
 class Response:
     """
     Define and store a response from a request.
@@ -1847,55 +1839,6 @@ class WazuhJSONEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-# def as_wazuh_object(dct: Dict):
-#     try:
-#         if '__callable__' in dct:
-#             encoded_callable = dct['__callable__']
-#             funcname = encoded_callable['__name__']
-#             if '__wazuh__' in encoded_callable:
-#                 # Encoded Wazuh instance method.
-#                 wazuh = Wazuh()
-#                 return getattr(wazuh, funcname)
-#             else:
-#                 # Encoded function or static method (restricted to allowlisted internal modules).
-#                 qualname = encoded_callable.get['__qualname__'].split('.')
-#                 classname = qualname[0] if len(qualname) > 1 else None
-#                 module_path = encoded_callable.get['__module__']
-
-#                 # Restrict dynamic imports to a strictly defined set of safe internal modules
-#                 if module_path not in _SAFE_CALLABLE_MODULES:
-#                     raise exception.WazuhInternalError(
-#                         1000,
-#                         extra_message=f"Decoding callable from module '{module_path}' is not allowed",
-#                         cmd_error=True
-#                     )
-
-#                 module = import_module(module_path)
-
-#                 if classname is None:
-#                     return getattr(module, funcname)
-#                 else:
-#                     return getattr(getattr(module, classname), funcname)
-        
-#         elif '__wazuh_exception__' in dct:
-#             wazuh_exception = dct['__wazuh_exception__']
-#             return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
-#         elif '__wazuh_result__' in dct:
-#             wazuh_result = dct['__wazuh_result__']
-#             return getattr(wresults, wazuh_result['__class__']).decode_json(wazuh_result['__object__'])
-#         elif '__wazuh_datetime__' in dct:
-#             return datetime.datetime.fromisoformat(dct['__wazuh_datetime__'])
-#         elif '__unhandled_exc__' in dct:
-#             exc_data = dct['__unhandled_exc__']
-#             exc_dict = {exc_data['__class__']: exc_data['__args__']}
-#             return ast.literal_eval(json.dumps(exc_dict))
-#         return dct
-
-#     except (KeyError, AttributeError, TypeError, ValueError):
-#         raise exception.WazuhInternalError(1000,
-#                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
-#                                            cmd_error=True)
-
 def as_wazuh_object(dct: Dict):
     try:
         if '__callable__' in dct:
@@ -1912,14 +1855,13 @@ def as_wazuh_object(dct: Dict):
                 classname = qualname[0] if len(qualname) > 1 else None
                 module_path = encoded_callable['__module__']
 
-                if not module_path.startswith('wazuh'):
-                    raise exception.WazuhInternalError(
-                        1000,
-                        extra_message=f"Decoding callable from module '{module_path}' is not allowed",
-                        cmd_error=True
-                    )
-
-                module = import_module(module_path)
+                if not module_path.startswith('wazuh.'):
+                    raise exception.WazuhInternalError(1000,
+                                                       extra_message=f"Decoding callable from module '{module_path}' is not allowed",
+                                                       cmd_error=True)
+                
+                relative_mod = '.' + module_path[len('wazuh.'):]
+                module = import_module(relative_mod, package='wazuh')
 
                 if classname is None:
                     return getattr(module, funcname)
