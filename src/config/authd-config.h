@@ -64,6 +64,7 @@ typedef struct authd_config_t {
     bool worker_node;
     bool ipv6;
     bool allow_higher_versions;
+    unsigned int max_agents;
 } authd_config_t;
 
 /**

@@ -19,6 +19,8 @@
 #define ARGV0 "manage_agents"
 #endif
 
+#define OS_ADDAGENT_LIMIT_REACHED -2
+
 /** Prototypes **/
 
 /* Read any input from the user (stdin) */
@@ -41,8 +43,13 @@ int OS_IsValidID(const char *id);
 int IDExist(const char *id, int discard_removed);
 int NameExist(const char *u_name);
 char *IPExist(const char *u_ip);
-char *getNameById(const char *id);
-int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key);
+char* getNameById(const char* id);
+int OS_AddNewAgent(keystore *keys,
+                   const char *id,
+                   const char *name,
+                   const char *ip,
+                   const char *key,
+                   unsigned int max_agents);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
 void FormatID(char *id);

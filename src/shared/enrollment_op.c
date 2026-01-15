@@ -356,12 +356,22 @@ static int w_enrollment_process_response(SSL *ssl) {
         buf[ret] = '\0';
         if (strlen(buf) > 7 && !strncmp(buf, "ERROR: ", 7)) {
             // Process error message
-            char *tmpbuf;
-            tmpbuf = strchr(buf, ' ');
+            char *tmpbuf = strchr(buf, ' ');
             if (tmpbuf) {
                 tmpbuf++;
                 if (tmpbuf && tmpbuf[0] != '\0') {
-                    merror("%s (from manager)", tmpbuf);
+                    const char *limit_prefix = "Unable to add agent:";
+                    const char *limit_tag = "Agent limit (";
+                    const char *limit_pos = NULL;
+                    unsigned int max_agents = 0;
+
+                    if (strncmp(tmpbuf, limit_prefix, strlen(limit_prefix)) == 0 &&
+                        (limit_pos = strstr(tmpbuf, limit_tag)) &&
+                        sscanf(limit_pos, "Agent limit (%u)", &max_agents) == 1) {
+                        merror("Agent limit (%u) reached. Unable to add agent (from manager)", max_agents);
+                    } else {
+                        merror("%s (from manager)", tmpbuf);
+                    }
                     manager_error = 1;
                 }
             }

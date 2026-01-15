@@ -422,7 +422,13 @@ cJSON* local_add(const char *id,
         }
     }
 
-    if (index = OS_AddNewAgent(&keys, id, name, _ip, key), index < 0) {
+    index = OS_AddNewAgent(&keys, id, name, _ip, key, config.max_agents);
+    if (index == OS_ADDAGENT_LIMIT_REACHED) {
+        merror("Unable to add agent: %s. Agent limit (%u) reached.", name, config.max_agents);
+        ierror = EAGLIM;
+        goto fail;
+    }
+    if (index < 0) {
         ierror = EKEY;
         goto fail;
     }

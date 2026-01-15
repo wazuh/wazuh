@@ -366,9 +366,19 @@ w_err_t w_auth_validate_data(char *response,
 w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, char **id, char **key) {
 
     /* Add the new agent */
-    int index;
+    int index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL, config.max_agents);
 
-    if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
+    if (index == OS_ADDAGENT_LIMIT_REACHED) {
+        merror("Unable to add agent: %s. Agent limit (%u) reached.", agentname, config.max_agents);
+        snprintf(response,
+                 OS_SIZE_2048,
+                 "ERROR: Unable to add agent: %s. Agent limit (%u) reached.",
+                 agentname,
+                 config.max_agents);
+        return OS_INVALID;
+    }
+
+    if (index < 0) {
         merror("Unable to add agent: %s (internal error)", agentname);
         snprintf(response, OS_SIZE_2048, "ERROR: Internal manager error adding agent: %s", agentname);
         return OS_INVALID;
