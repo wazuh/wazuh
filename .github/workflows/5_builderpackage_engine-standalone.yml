@@ -43,8 +43,9 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - 'src/engine/**'
       - '.github/workflows/5_builderpackage_engine-standalone.yml'
+      - 'src/engine/**'
+      - 'packages/**'
 
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine

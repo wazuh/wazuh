@@ -55,11 +55,7 @@ public:
     MOCK_METHOD((base::OptError), upsertDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::OptError), deleteDoc, (const base::Name&), (override));
     MOCK_METHOD((base::RespOrError<Col>), readCol, (const base::Name&), (const, override));
-    MOCK_METHOD((base::RespOrError<Col>), readRoot, (), (const, override));
-    MOCK_METHOD((base::OptError), deleteCol, (const base::Name&), (override));
-    MOCK_METHOD((bool), exists, (const base::Name&), (const, override));
     MOCK_METHOD((bool), existsDoc, (const base::Name&), (const, override));
-    MOCK_METHOD((bool), existsCol, (const base::Name&), (const, override));
 };
 
 } // namespace store::mocks

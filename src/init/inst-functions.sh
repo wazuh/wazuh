@@ -1041,27 +1041,20 @@ installEngineStore()
     DEST_FULL_PATH=${INSTALLDIR}/engine
     ENGINE_SRC_PATH=./engine
 
-    # Fallback store installation
+    # Fallback store installation (flat layout with URL-encoded filenames)
     local STORE_PATH=${DEST_FULL_PATH}/store
     local KVDB_PATH=${DEST_FULL_PATH}/kvdb
-    local SCHEMA_PATH=${STORE_PATH}/schema
-    local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
-    local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-overrides
-    local ENGINE_ALLOWED_FIELDS_PATH=${SCHEMA_PATH}/allowed-fields
 
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_PATH}
     mkdir -p "${KVDB_PATH}"
-    mkdir -p "${ENGINE_SCHEMA_PATH}"
-    mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
-    mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
 
-    # Copying the store files
+    # Copying the store files (flat layout: / encoded as %2F)
     echo "Copying store files..."
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${ENGINE_ALLOWED_FIELDS_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${STORE_PATH}/schema%2Fengine-schema%2F0.json"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${STORE_PATH}/schema%2Fwazuh-logpar-overrides%2F0.json"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${STORE_PATH}/schema%2Fallowed-fields%2F0.json"
 
-    if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ] || [ ! -f "${ENGINE_ALLOWED_FIELDS_PATH}/0" ]; then
+    if [ ! -f "${STORE_PATH}/schema%2Fengine-schema%2F0.json" ] || [ ! -f "${STORE_PATH}/schema%2Fwazuh-logpar-overrides%2F0.json" ] || [ ! -f "${STORE_PATH}/schema%2Fallowed-fields%2F0.json" ]; then
         echo "Error: Failed to copy store files."
         exit 1
     fi

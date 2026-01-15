@@ -75,31 +75,6 @@ public:
     virtual base::RespOrError<Col> readCol(const base::Name& name) const = 0;
 
     /**
-     * @brief Read the root from the store.
-     *
-     * @param name full name of the collection.
-     * @return base::RespOrError<Col> with the collection or error.
-     */
-    virtual base::RespOrError<Col> readRoot() const = 0;
-
-    /**
-     * @brief Delete a collection from the store.
-     *
-     * @param name full name of the collection.
-     * @return base::OptError with the error or empty if no error.
-     */
-    virtual base::OptError deleteCol(const base::Name& name) = 0;
-
-    /**
-     * @brief Check if a document or collection exists in the store.
-     *
-     * @param name full name of the document or collection.
-     * @return true if exists.
-     * @return false otherwise.
-     */
-    virtual bool exists(const base::Name& name) const = 0;
-
-    /**
      * @brief Check if a document exists in the store.
      *
      * @param name full name of the document.
@@ -107,15 +82,6 @@ public:
      * @return false otherwise.
      */
     virtual bool existsDoc(const base::Name& name) const = 0;
-
-    /**
-     * @brief Check if a collection exists in the store.
-     *
-     * @param name full name of the collection.
-     * @return true if exists.
-     * @return false otherwise.
-     */
-    virtual bool existsCol(const base::Name& name) const = 0;
 };
 } // namespace store
 
