@@ -43,7 +43,11 @@ jobs:
     if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
     runs-on: macos-14
     timeout-minutes: 90
-    name: Build macOS wazuh-agent PKG (intel64)
+    name: Build PKG package (intel64)
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ steps.build.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -69,6 +73,7 @@ jobs:
           bash packages/macos/generate_wazuh_packages.sh -i
 
       - name: Build macOS intel64 package (without notarization)
+        id: build
         run: |
           REVISION=${{ inputs.revision || '1' }}
           FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
@@ -77,12 +82,59 @@ jobs:
           echo "generate_wazuh_packages.sh $FLAGS"
           sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
 
-      - name: Get package name
-        run: |
           PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
-          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
-          echo "PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_ENV
+
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-name }}
+          retention-days: 7
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-symbols-name }}
+          retention-days: 7
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            packages/macos/output/${{ steps.build.outputs.package-name }}.sha512
+            packages/macos/output/${{ steps.build.outputs.package-symbols-name }}.sha512
+          retention-days: 7
+
+  test-macos-intel64:
+    needs: build-macos-intel64
+    runs-on: macos-14
+    timeout-minutes: 30
+    name: Test PKG package (intel64)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-intel64.outputs.package-name }}
+          path: packages/macos/output
+
+      - name: Set environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ needs.build-macos-intel64.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.build-macos-intel64.outputs.version }}" >> $GITHUB_ENV
+          echo "ARCH=intel64" >> $GITHUB_ENV
 
       - name: Test install macOS package
         run: |
@@ -127,6 +179,34 @@ jobs:
           old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
           expected_upgrade_version: ${{ env.VERSION }}
 
+  upload-macos-intel64-to-s3:
+    needs: test-macos-intel64
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Upload PKG to S3 (intel64)
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-intel64.outputs.package-name }}
+          path: /tmp
+
+      - name: Download debug symbols artifacts
+        if: needs.build-macos-intel64.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-intel64.outputs.package-symbols-name }}
+          path: /tmp
+
+      - name: Download checksums
+        if: inputs.checksum == true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-intel64.outputs.package-name }}-checksums
+          path: /tmp
+
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -136,63 +216,33 @@ jobs:
 
       - name: Upload package to S3
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
-          echo "S3 URI: ${s3uri}"
+          aws s3 cp /tmp/${{ needs.build-macos-intel64.outputs.package-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          echo "S3 URI: s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ needs.build-macos-intel64.outputs.package-name }}"
 
       - name: Upload checksum to S3
-        if: ${{ inputs.checksum }}
+        if: inputs.checksum == true
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
-          echo "S3 sha512 URI: ${s3uri}"
+          aws s3 cp /tmp/${{ needs.build-macos-intel64.outputs.package-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
 
       - name: Upload debug symbols to S3
-        if: env.PACKAGE_SYMBOLS_NAME != ''
+        if: needs.build-macos-intel64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
-          echo "S3 symbols URI: ${symbols}"
+          aws s3 cp /tmp/${{ needs.build-macos-intel64.outputs.package-symbols-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
 
       - name: Upload debug symbols checksum to S3
-        if: ${{ inputs.checksum && env.PACKAGE_SYMBOLS_NAME != '' }}
+        if: inputs.checksum == true && needs.build-macos-intel64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
-          echo "S3 symbols sha512 URI: ${symbols}"
-
-      - name: Upload PKG as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          path: packages/macos/output/${{ env.PACKAGE_NAME }}
-
-      - name: Upload debug symbols as artifact
-        if: env.PACKAGE_SYMBOLS_NAME != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
-          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}
-
-      - name: Upload checksum as artifact
-        if: inputs.checksum == true && hashFiles('packages/macos/output/${{ env.PACKAGE_NAME }}.sha512') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_NAME }}.sha512
-          path: packages/macos/output/${{ env.PACKAGE_NAME }}.sha512
-
-      - name: Upload debug symbols checksum as artifact
-        if: inputs.checksum == true && env.PACKAGE_SYMBOLS_NAME != '' && hashFiles('packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
-          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+          aws s3 cp /tmp/${{ needs.build-macos-intel64.outputs.package-symbols-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
 
   build-macos-arm64:
     if: github.event_name == 'pull_request' || inputs.architecture == 'arm64'
     runs-on: macos-14
     timeout-minutes: 90
-    name: Build macOS wazuh-agent PKG (arm64)
+    name: Build PKG package (arm64)
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ steps.build.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -218,6 +268,7 @@ jobs:
           bash packages/macos/generate_wazuh_packages.sh -i
 
       - name: Build macOS arm64 package (without notarization)
+        id: build
         run: |
           REVISION=${{ inputs.revision || '1' }}
           FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
@@ -226,12 +277,59 @@ jobs:
           echo "generate_wazuh_packages.sh $FLAGS"
           sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
 
-      - name: Get package name
-        run: |
           PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
-          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
-          echo "PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_ENV
+
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-name }}
+          retention-days: 7
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-symbols-name }}
+          retention-days: 7
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            packages/macos/output/${{ steps.build.outputs.package-name }}.sha512
+            packages/macos/output/${{ steps.build.outputs.package-symbols-name }}.sha512
+          retention-days: 7
+
+  test-macos-arm64:
+    needs: build-macos-arm64
+    runs-on: macos-14
+    timeout-minutes: 30
+    name: Test PKG package (arm64)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-name }}
+          path: packages/macos/output
+
+      - name: Set environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ needs.build-macos-arm64.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.build-macos-arm64.outputs.version }}" >> $GITHUB_ENV
+          echo "ARCH=arm64" >> $GITHUB_ENV
 
       - name: Test install macOS package
         run: |
@@ -276,6 +374,34 @@ jobs:
           old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
           expected_upgrade_version: ${{ env.VERSION }}
 
+  upload-macos-arm64-to-s3:
+    needs: test-macos-arm64
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Upload PKG to S3 (arm64)
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-name }}
+          path: /tmp
+
+      - name: Download debug symbols artifacts
+        if: needs.build-macos-arm64.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-symbols-name }}
+          path: /tmp
+
+      - name: Download checksums
+        if: inputs.checksum == true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-name }}-checksums
+          path: /tmp
+
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -285,54 +411,20 @@ jobs:
 
       - name: Upload package to S3
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
-          echo "S3 URI: ${s3uri}"
+          aws s3 cp /tmp/${{ needs.build-macos-arm64.outputs.package-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          echo "S3 URI: s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ needs.build-macos-arm64.outputs.package-name }}"
 
       - name: Upload checksum to S3
-        if: ${{ inputs.checksum }}
+        if: inputs.checksum == true
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
-          echo "S3 sha512 URI: ${s3uri}"
+          aws s3 cp /tmp/${{ needs.build-macos-arm64.outputs.package-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
 
       - name: Upload debug symbols to S3
-        if: env.PACKAGE_SYMBOLS_NAME != ''
+        if: needs.build-macos-arm64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
-          echo "S3 symbols URI: ${symbols}"
+          aws s3 cp /tmp/${{ needs.build-macos-arm64.outputs.package-symbols-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
 
       - name: Upload debug symbols checksum to S3
-        if: ${{ inputs.checksum && env.PACKAGE_SYMBOLS_NAME != '' }}
+        if: inputs.checksum == true && needs.build-macos-arm64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
-          echo "S3 symbols sha512 URI: ${symbols}"
-
-      - name: Upload PKG as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          path: packages/macos/output/${{ env.PACKAGE_NAME }}
-
-      - name: Upload debug symbols as artifact
-        if: env.PACKAGE_SYMBOLS_NAME != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
-          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}
-
-      - name: Upload checksum as artifact
-        if: inputs.checksum == true && hashFiles('packages/macos/output/${{ env.PACKAGE_NAME }}.sha512') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_NAME }}.sha512
-          path: packages/macos/output/${{ env.PACKAGE_NAME }}.sha512
-
-      - name: Upload debug symbols checksum as artifact
-        if: inputs.checksum == true && env.PACKAGE_SYMBOLS_NAME != '' && hashFiles('packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
-          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+          aws s3 cp /tmp/${{ needs.build-macos-arm64.outputs.package-symbols-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/

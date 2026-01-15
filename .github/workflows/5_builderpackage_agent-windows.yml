@@ -34,7 +34,11 @@ jobs:
   build-windows-i686:
     runs-on: windows-2022
     timeout-minutes: 90
-    name: Build Windows wazuh-agent MSI (i686)
+    name: Build MSI package
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ steps.build.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -92,15 +96,83 @@ jobs:
           cat VERSION.json
 
       - name: Generate MSI package (without signing)
+        id: build
         shell: pwsh
         run: |
           cd src/win32
           ./generate_wazuh_msi.ps1 -MSI_NAME ${{ env.PKG_NAME }}.msi -SIGN no
 
+          $PACKAGE_NAME = "${{ env.PKG_NAME }}.msi"
+          $PACKAGE_SYMBOLS_NAME = ""
+          if (Test-Path "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip") {
+            $PACKAGE_SYMBOLS_NAME = "${{ env.PACKAGE_SYMBOLS_NAME }}.zip"
+          }
+
+          echo "package-name=$PACKAGE_NAME" >> $env:GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $env:GITHUB_OUTPUT
+          echo "version=${{ env.VERSION }}" >> $env:GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: src/win32/${{ steps.build.outputs.package-name }}
+          retention-days: 7
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip
+          retention-days: 7
+
+      - name: Generate checksums
+        if: inputs.checksum == true
+        shell: bash
+        run: |
+          cd src/win32
+          sha512sum "${{ steps.build.outputs.package-name }}" > "${{ steps.build.outputs.package-name }}.sha512"
+          if [ -f "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip" ]; then
+            sha512sum "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip" > "${{ steps.build.outputs.package-symbols-name }}.sha512"
+          fi
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            src/win32/${{ steps.build.outputs.package-name }}.sha512
+            src/win32/${{ steps.build.outputs.package-symbols-name }}.sha512
+          retention-days: 7
+
+  test-windows-i686:
+    needs: build-windows-i686
+    runs-on: windows-2022
+    timeout-minutes: 30
+    name: Test MSI package
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-windows-i686.outputs.package-name }}
+          path: src/win32
+
+      - name: Set environment variables
+        shell: bash
+        run: |
+          echo "PACKAGE_NAME=${{ needs.build-windows-i686.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.build-windows-i686.outputs.version }}" >> $GITHUB_ENV
+
       - name: Test install Windows agent
         shell: pwsh
         run: |
-          Start-Process -FilePath "src/win32/${{ env.PKG_NAME }}.msi" -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l installer.log' -Wait
+          Start-Process -FilePath "src/win32/${{ env.PACKAGE_NAME }}" -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l installer.log' -Wait
           $installerfile = Get-Content installer.log
           if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
             Write-Output "Installation successfully."
@@ -132,6 +204,34 @@ jobs:
           old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
           expected_upgrade_version: ${{ env.VERSION }}
 
+  upload-windows-i686-to-s3:
+    needs: test-windows-i686
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Upload MSI to S3
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-windows-i686.outputs.package-name }}
+          path: /tmp
+
+      - name: Download debug symbols artifacts
+        if: needs.build-windows-i686.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-windows-i686.outputs.package-symbols-name }}
+          path: /tmp
+
+      - name: Download checksums
+        if: inputs.checksum == true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-windows-i686.outputs.package-name }}-checksums
+          path: /tmp
+
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -139,83 +239,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Upload MSI to S3
-        shell: bash
+      - name: Upload package to S3
         run: |
-          aws s3 cp src/win32/${{ env.PKG_NAME }}.msi s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PKG_NAME }}.msi"
-          echo "S3 URI: ${s3uri}"
+          aws s3 cp /tmp/${{ needs.build-windows-i686.outputs.package-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          echo "S3 URI: s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ needs.build-windows-i686.outputs.package-name }}"
 
       - name: Upload checksum to S3
-        if: ${{ inputs.checksum }}
-        shell: bash
+        if: inputs.checksum == true
         run: |
-          cd src/win32
-          sha512sum "${{ env.PKG_NAME }}.msi" > "${{ env.PKG_NAME }}.msi.sha512"
-          aws s3 cp "${{ env.PKG_NAME }}.msi.sha512" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PKG_NAME }}.msi.sha512"
-          echo "S3 sha512 URI: ${s3uri}"
+          aws s3 cp /tmp/${{ needs.build-windows-i686.outputs.package-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
 
       - name: Upload debug symbols to S3
-        if: hashFiles('src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip') != ''
-        shell: bash
+        if: needs.build-windows-i686.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.zip"
-          echo "S3 symbols URI: ${symbols}"
+          aws s3 cp /tmp/${{ needs.build-windows-i686.outputs.package-symbols-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
 
       - name: Upload debug symbols checksum to S3
-        if: ${{ inputs.checksum && hashFiles('src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip') != '' }}
-        shell: bash
+        if: inputs.checksum == true && needs.build-windows-i686.outputs.package-symbols-name != ''
         run: |
-          cd src/win32
-          sha512sum "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip" > "${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512"
-          aws s3 cp "${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512"
-          echo "S3 symbols sha512 URI: ${symbols}"
-
-      - name: Copy MSI and debug symbols to temp location
-        shell: bash
-        run: |
-          mkdir -p /tmp
-          cp src/win32/${{ env.PKG_NAME }}.msi /tmp/
-          if [ -f src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip ]; then
-            cp src/win32/${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
-          fi
-
-      - name: Upload MSI as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PKG_NAME }}.msi
-          path: /tmp/${{ env.PKG_NAME }}.msi
-
-      - name: Upload debug symbols as artifact
-        if: hashFiles('/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.zip
-          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip
-
-      - name: Generate checksum
-        if: inputs.checksum == true
-        shell: bash
-        run: |
-          cd /tmp
-          sha512sum "${{ env.PKG_NAME }}.msi" > "${{ env.PKG_NAME }}.msi.sha512"
-          if [ -f "${{ env.PACKAGE_SYMBOLS_NAME }}.zip" ]; then
-            sha512sum "${{ env.PACKAGE_SYMBOLS_NAME }}.zip" > "${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512"
-          fi
-
-      - name: Upload checksum as artifact
-        if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PKG_NAME }}.msi.sha512
-          path: /tmp/${{ env.PKG_NAME }}.msi.sha512
-
-      - name: Upload debug symbols checksum as artifact
-        if: inputs.checksum == true && hashFiles('/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512
-          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.zip.sha512
+          aws s3 cp /tmp/${{ needs.build-windows-i686.outputs.package-symbols-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
