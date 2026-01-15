@@ -1000,8 +1000,8 @@ void test_w_enrollment_process_response_message_error_limit(void **state) {
     expect_any(__wrap_SSL_read, buf);
     expect_any(__wrap_SSL_read, num);
 
-    will_return(__wrap_SSL_read, "ERROR: Unable to add agent: agent1. Agent limit (2) reached.");
-    will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent: agent1. Agent limit (2) reached."));
+    will_return(__wrap_SSL_read, "ERROR: Agent limit (2) reached. Unable to add agent");
+    will_return(__wrap_SSL_read, strlen("ERROR: Agent limit (2) reached. Unable to add agent"));
 
     expect_string(__wrap__merror,
                   formatted_msg,

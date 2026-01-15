@@ -121,7 +121,7 @@ static void test_w_auth_add_agent_limit_reached(void **state) {
     expect_any(__wrap_OS_IsValidIP, ip_address);
     expect_any(__wrap_OS_IsValidIP, final_ip);
     will_return(__wrap_OS_IsValidIP, -1);
-    assert_true(OS_AddNewAgent(&keys, NULL, "existing", "192.0.0.1", NULL, config.max_agents) >= 0);
+    assert_true(OS_AddNewAgent(&keys, NULL, "existing", "192.0.0.1", NULL, 0) >= 0);
 
     new_id = NULL;
     new_key = NULL;
@@ -130,7 +130,7 @@ static void test_w_auth_add_agent_limit_reached(void **state) {
 
     err = w_auth_add_agent(response, "192.0.0.0", "agent1", &new_id, &new_key);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Unable to add agent: agent1. Agent limit (1) reached.");
+    assert_string_equal(response, "ERROR: Agent limit (1) reached");
     assert_null(new_id);
     assert_null(new_key);
 }

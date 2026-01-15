@@ -747,11 +747,7 @@ static void process_message(struct client *client) {
 
         minfo("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
     } else {
-        if (strstr(response, "Unable to add agent")) {
-            snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s", response);
-        } else {
-            snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
-        }
+        snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);
     }
 

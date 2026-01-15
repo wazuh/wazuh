@@ -372,8 +372,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
         merror("Unable to add agent: %s. Agent limit (%u) reached.", agentname, config.max_agents);
         snprintf(response,
                  OS_SIZE_2048,
-                 "ERROR: Unable to add agent: %s. Agent limit (%u) reached.",
-                 agentname,
+                 "ERROR: Agent limit (%u) reached",
                  config.max_agents);
         return OS_INVALID;
     }
