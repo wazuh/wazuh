@@ -76,7 +76,7 @@ download_wheels() {
     # Download wheels
     python3 -m pip download --requirement "$WAZUH_ROOT_DIR/framework/requirements.txt" --only-binary=:all: --dest "$CPYTHON_DIR/Dependencies"  --python-version "$PYTHON_VERSION" --no-cache-dir
     # Create index
-    python3 install simple503 && simple503 "$CPYTHON_DIR/Dependencies"
+    python3 -m pip install piprepo && piprepo build "$CPYTHON_DIR/Dependencies"
 }
 
 parse_args() {
