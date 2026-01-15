@@ -68,6 +68,8 @@ char* new_key = NULL;
 /* setup/teardowns */
 static int setup_group(void **state) {
     keys_init(&keys, 0, !config.flags.clear_removed);
+    config.max_agents = 0;
+    config.worker_node = false;
 
     /* Initialize queues */
     insert_tail = &queue_insert;
@@ -96,6 +98,8 @@ static void test_w_auth_add_agent(void **state) {
     char response[2048] = {0};
     w_err_t err;
 
+    config.max_agents = 0;
+
     expect_any(__wrap_OS_IsValidIP, ip_address);
     expect_any(__wrap_OS_IsValidIP, final_ip);
     will_return(__wrap_OS_IsValidIP, -1);
@@ -108,9 +112,33 @@ static void test_w_auth_add_agent(void **state) {
     assert_non_null(new_key);
 }
 
+static void test_w_auth_add_agent_limit_reached(void **state) {
+    char response[2048] = {0};
+    w_err_t err;
+
+    config.max_agents = 1;
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    assert_true(OS_AddNewAgent(&keys, NULL, "existing", "192.0.0.1", NULL, config.max_agents) >= 0);
+
+    new_id = NULL;
+    new_key = NULL;
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to add agent: agent1. Agent limit (1) reached.");
+
+    err = w_auth_add_agent(response, "192.0.0.0", "agent1", &new_id, &new_key);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Unable to add agent: agent1. Agent limit (1) reached.");
+    assert_null(new_id);
+    assert_null(new_key);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_w_auth_add_agent, teardown_add_agent),
+        cmocka_unit_test_teardown(test_w_auth_add_agent_limit_reached, teardown_add_agent),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

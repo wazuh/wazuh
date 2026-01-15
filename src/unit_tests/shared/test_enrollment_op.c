@@ -992,6 +992,36 @@ void test_w_enrollment_process_response_message_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
+void test_w_enrollment_process_response_message_error_limit(void **state) {
+    SSL *ssl = *state;
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
+
+    expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
+
+    will_return(__wrap_SSL_read, "ERROR: Unable to add agent: agent1. Agent limit (2) reached.");
+    will_return(__wrap_SSL_read, strlen("ERROR: Unable to add agent: agent1. Agent limit (2) reached."));
+
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Agent limit (2) reached. Unable to add agent (from manager)");
+
+    expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
+    will_return(__wrap_SSL_read, "");
+    will_return(__wrap_SSL_read, 0);
+
+    expect_value(__wrap_SSL_get_error, i, 0);
+    will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Connection closed.");
+
+    int ret = w_enrollment_process_response(ssl);
+    assert_int_equal(ret, -1);
+}
+
 void test_w_enrollment_process_response_success(void **state) {
     const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     SSL *ssl = *state;
@@ -1323,6 +1353,7 @@ int main() {
         cmocka_unit_test(test_w_enrollment_process_response_ssl_null),
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_ssl_error, test_setup_ssl_context, test_teardown_ssl_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_message_error, test_setup_ssl_context, test_teardown_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_message_error_limit, test_setup_ssl_context, test_teardown_ssl_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_success, test_setup_ssl_context, test_teardown_ssl_context),
         // w_enrollment_request_key (wrapper)
         cmocka_unit_test(test_w_enrollment_request_key_null_cfg),
