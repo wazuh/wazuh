@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 ## [v4.14.2]
 
 ### Manager
-
+### Test entry. To be removed.
 #### Fixed
 
 - Prevented Azure Log Analytics bookmarks from being overwritten across similar configurations. ([#33046](https://github.com/wazuh/wazuh/pull/33046))
