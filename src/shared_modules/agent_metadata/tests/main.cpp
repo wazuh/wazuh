@@ -4,14 +4,13 @@
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
+#include <gtest/gtest.h>
 
-#ifndef CLUSTER_UTILS_WRAPPERS_H
-#define CLUSTER_UTILS_WRAPPERS_H
-
-char* __wrap_get_node_name(void);
-char* __wrap_get_cluster_name(void);
-
-#endif
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

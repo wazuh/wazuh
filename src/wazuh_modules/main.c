@@ -158,6 +158,10 @@ void wm_setup()
         merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
+    }
+
     wm_setGroupID(gid);
 
     if (wm_check() < 0) {

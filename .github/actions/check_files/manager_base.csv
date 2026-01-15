@@ -105,6 +105,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,,
+/var/ossec/lib/libagent_metadata.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libinventory_sync.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libvulnerability_scanner.so,root,wazuh,750,file,-rwxr-x---,,
