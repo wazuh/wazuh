@@ -55,10 +55,34 @@ void parse_uname_string (char *uname,
 
     // [Ver: os_major.os_minor.os_build]
     if (str_tmp = strstr(uname, " [Ver: "), str_tmp) {
+        char *bracket_end = NULL;
+
         *str_tmp = '\0';
         str_tmp += 7;
         os_strdup(uname, osd->os_name);
-        *(str_tmp + strlen(str_tmp) - 1) = '\0';
+
+        // Find closing bracket to handle both old and new formats
+        if (bracket_end = strchr(str_tmp, ']'), bracket_end) {
+            char *arch_field = NULL;
+            *bracket_end = '\0';
+
+            // Extract architecture
+            if (arch_field = strrchr(bracket_end + 1, '|'), arch_field) {
+                arch_field++;
+                while (*arch_field == ' ') arch_field++;
+                if (*arch_field) {
+                    char *arch_end = arch_field;
+                    while (*arch_end && *arch_end != ' ') arch_end++;
+                    size_t arch_len = arch_end - arch_field;
+                    if (arch_len > 0) {
+                        os_malloc(arch_len + 1, osd->os_arch);
+                        snprintf(osd->os_arch, arch_len + 1, "%.*s", (int)arch_len, arch_field);
+                    }
+                }
+            }
+        } else {
+            *(str_tmp + strlen(str_tmp) - 1) = '\0';
+        }
 
         // Get os_major
         if (w_regexec("^([0-9]+)\\.*", str_tmp, 2, match)) {
@@ -113,6 +137,11 @@ void parse_uname_string (char *uname,
                 if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", osd->os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size +1, osd->os_minor);
+                    snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
+                } else if (w_regexec("^[0-9]+-[Ss][Pp]([0-9]+)\\.*", osd->os_version, 2, match)) {
+                    // SUSE: 15-SP7, 15-SPxx
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, osd->os_minor);
                     snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
                 }
 

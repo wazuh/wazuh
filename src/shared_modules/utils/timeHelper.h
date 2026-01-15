@@ -354,7 +354,7 @@ namespace Utils
                 // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
                 // if not, check if it is already ISO8601.
                 auto ISO8601Timestamp = timestampToISO8601(timestamp);
-                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(timestamp) : ISO8601Timestamp;
+                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(timestamp) : std::move(ISO8601Timestamp);
             }
             std::time_t time = std::stoi(timestamp);
             auto itt = std::chrono::system_clock::from_time_t(time);
@@ -382,7 +382,7 @@ namespace Utils
                 // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
                 // if not, check if it is already ISO8601.
                 auto ISO8601Timestamp = timestampToISO8601(std::string(timestamp));
-                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp)) : ISO8601Timestamp;
+                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp)) : std::move(ISO8601Timestamp);
             }
             std::time_t time;
             auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);

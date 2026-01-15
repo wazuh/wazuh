@@ -216,6 +216,15 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,control_check_co
                                 -Wl,--wrap,getpid,--wrap,fcntl")
 endif()
 
+list(APPEND shared_tests_names "test_labels_op")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags " ")
+endif()
+
 list(APPEND shared_tests_names "test_custom_output_search_replace")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
