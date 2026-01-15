@@ -4,7 +4,6 @@ aiosignal==1.4.0
 anyio==4.1.0
 asgiref==3.7.2
 async-timeout==5.0.1
-asyncinotify==4.3.2
 attrs==23.1.0
 azure-core==1.38.0
 azure-storage-blob==12.20.0
@@ -19,7 +18,10 @@ connexion==3.1.0
 content-size-limit-asgi==0.1.5
 cryptography==44.0.1
 defusedxml==0.6.0
+Events==0.5
+frozenlist==1.8.0
 greenlet==3.0.3
+grpcio==1.76.0
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.26.0
@@ -31,6 +33,7 @@ jsonschema-path==0.3.2
 jsonschema-specifications==2023.11.2
 lazy-object-proxy==1.10.0
 MarkupSafe==2.1.5
+multidict==6.7.0
 openapi-schema-validator==0.6.2
 openapi-spec-validator==0.7.1
 opensearch-protobufs==0.19.0
@@ -39,6 +42,8 @@ packaging==25.0
 pathable==0.4.3
 pathlib==1.0.1
 pip==25.3
+propcache==0.4.1
+protobuf==6.33.4
 psutil==5.9.8
 pycparser==2.21
 PyJWT==2.10.1
@@ -60,4 +65,4 @@ urllib3==2.6.3
 uvicorn==0.31.0
 uvloop==0.19.0
 Werkzeug==3.1.5
-yarl==1.9.4
+yarl==1.22.0
