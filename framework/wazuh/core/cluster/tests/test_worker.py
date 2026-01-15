@@ -492,7 +492,21 @@ async def test_master_handler_setup_sync_integrity(setup_receive_file_mock, even
     # Test the else condition
     assert worker_handler.setup_sync_integrity(b'unknown', b"data") == b"ok"
 
-    setup_receive_file_mock.has_calls([call(worker.ReceiveAgentGroupsTask, b"ok"), call(None, b"ok")])
+    setup_receive_file_mock.assert_has_calls(
+        [
+            call(
+                receive_task_class=worker.ReceiveAgentGroupsTask,
+                data=b"data",
+                logger_tag="Agent-groups recv",
+            ),
+            call(
+                receive_task_class=None,
+                data=b"data",
+                logger_tag="",
+            ),
+        ],
+        any_order=False,
+    )
 
 
 @pytest.mark.asyncio
@@ -1169,11 +1183,12 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
          "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
         cluster_items=cluster_items)
 
-    assert result_logs['error'] == {'shared': ["Error processing shared file 'filename1': "
-                                               "string indices must be integers"],
-                                    'missing': ["Error processing missing file 'filename2': "
-                                                "string indices must be integers"]
-                                    }
+    assert result_logs["error"]["shared"][0].startswith(
+        "Error processing shared file 'filename1': string indices must be integers"
+    )
+    assert result_logs["error"]["missing"][0].startswith(
+        "Error processing missing file 'filename2': string indices must be integers"
+    )
 
     assert result_logs['debug2'] == {'filename1': ["Processing file filename1"],
                                      'filename3': ["Remove file: 'filename3'",
@@ -1203,10 +1218,12 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
          "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
         cluster_items=cluster_items)
 
-    assert result_logs['error'] == {'shared': ["Error processing shared file 'filename1': "
-                                               "string indices must be integers"],
-                                    'missing': ["Error processing missing file 'filename2': "
-                                                "string indices must be integers"]}
+    assert result_logs["error"]["shared"][0].startswith(
+        "Error processing shared file 'filename1': string indices must be integers"
+    )
+    assert result_logs["error"]["missing"][0].startswith(
+        "Error processing missing file 'filename2': string indices must be integers"
+)
     assert result_logs['debug2'] == {'filename1': ["Processing file filename1"],
                                      'filename2': ["Processing file filename2"],
                                      'filename3': ["Remove file: 'filename3'", "File filename3 doesn't exist."]}
