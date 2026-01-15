@@ -9,6 +9,22 @@ All notable changes to this project will be documented in this file.
 
 - Scaped document ID when necessary before sending document to indexer. ([#33464](https://github.com/wazuh/wazuh/pull/33464))
 
+### Agent
+
+#### Fixed
+
+- Fixed UTF-16 casting when updating `report_changes`. ([#33495](https://github.com/wazuh/wazuh/pull/33495))
+- Improved Active Response key handling in wazuh-execd. ([#33665](https://github.com/wazuh/wazuh/pull/33665))
+- Hardened Logcollector multiline backup handling to use full-buffer copies. ([#33926](https://github.com/wazuh/wazuh/pull/33926))
+- Fixed label formatting edge cases in keep-alive notify messages. ([#33708](https://github.com/wazuh/wazuh/pull/33708))
+- Fixed incorrect permissions on router and socket UNIX sockets. ([#33922](https://github.com/wazuh/wazuh/pull/33922))
+- Fixed a false positive in vulnerability detection for Oracle Linux 8. ([#33583](https://github.com/wazuh/wazuh/pull/33583))
+
+### Ruleset
+
+#### Added
+
+- Added a CIS SCA policy for macOS 26 Tahoe. ([#33492](https://github.com/wazuh/wazuh/pull/33492))
 
 ## [v4.14.2]
 
