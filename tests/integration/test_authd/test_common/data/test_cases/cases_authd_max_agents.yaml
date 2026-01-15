@@ -1,0 +1,15 @@
+- name: "Max agents limit reached"
+  description: "Check that enrollment is rejected after reaching authd.max_agents"
+  configuration_parameters:
+  metadata:
+    stages:
+    -
+      input: "OSSEC A:'agent1'\n"
+      output: "OSSEC K:'"
+    -
+      input: "OSSEC A:'agent2'\n"
+      output: "ERROR: Agent limit (1) reached. Unable to add agent"
+      log:
+        - "Unable to add agent: agent2. Agent limit (1) reached."
+    groups:
+      -
