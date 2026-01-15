@@ -2195,8 +2195,8 @@ endif
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && \
 	export LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
-	export SQLITE3_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_SQLITE}" && \
-	export SQLITE3_LIBS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export LIBSQLITE3_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_SQLITE}" && \
+	export LIBSQLITE3_LIBS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
 	export LIBFFI_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_LIBFFI}/include" && \
 	export LIBFFI_LIBS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
 	export OPENSSL_INCLUDES="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}/include" && \
