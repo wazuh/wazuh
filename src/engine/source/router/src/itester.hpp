@@ -29,7 +29,7 @@ public:
      * @param ignoreFail If true, if the operation fails the entry is added in disabled state.
      * @return An optional error if the operation failed.
      */
-    virtual base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail = false) = 0;
+    virtual base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail) = 0;
 
     /**
      * @brief Removes a entry (testing policy) from the tester

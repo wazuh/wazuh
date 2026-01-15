@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "Clang-11-C++17",
+            "name": "gcc-C++17",
             "includePath": [
                 "${workspaceFolder}/wazuh/src/engine/**",
                 "${workspaceFolder}/wazuh/src/external/**",
@@ -10,7 +10,7 @@
             "defines": [],
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x64",
+            "intelliSenseMode": "gcc-x64",
             "configurationProvider": "ms-vscode.cmake-tools",
             "browse": {
                 "path": ["${workspaceFolder}/wazuh/src/"],

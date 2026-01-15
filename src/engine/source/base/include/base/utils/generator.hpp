@@ -102,6 +102,32 @@ inline bool isValidUUIDv4(const std::string& uuid)
 
     return true;
 }
+
+/**
+ * @brief Generates a random hexadecimal string of the specified length (thread-safe).
+ *
+ * @param length The length of the hexadecimal string to generate
+ * @return std::string The generated random hexadecimal string
+ */
+inline std::string randomHexString(const size_t length)
+{
+    constexpr char hexDigits[] = "0123456789abcdef";
+
+    thread_local std::random_device rd;
+    thread_local std::mt19937 gen(rd());
+    thread_local std::uniform_int_distribution<> hex_dist(0, 15);
+
+    std::string out;
+    out.reserve(length);
+
+    for (size_t i = 0; i < length; ++i)
+    {
+        out.push_back(hexDigits[hex_dist(gen)]);
+    }
+
+    return out;
+}
+
 } // namespace base::utils::generators
 
 #endif // _BASE_GENERATORS_HPP

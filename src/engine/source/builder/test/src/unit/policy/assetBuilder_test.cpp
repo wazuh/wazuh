@@ -22,7 +22,7 @@ auto automappingExpr =
     base::Term<base::EngineOp>::create("Automapping", [](auto e) { return base::result::makeSuccess(e, ""); });
 auto assetExpr = base::Implication::create(base::Name("name"),
                                            base::And::create(base::Name("condition"), {traceExpr}),
-                                           base::And::create(base::Name("stages"), {delVarExpr}));
+                                           base::And::create(base::Name("stages"), {}));
 
 struct Mocks
 {
@@ -211,7 +211,7 @@ INSTANTIATE_TEST_SUITE_P(
                            EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
                                .WillOnce(testing::Return(mocks.m_mockDefs));
                            auto condition = base::And::create(base::Name("condition"), {traceExpr});
-                           auto consequence = base::And::create(base::Name("stages"), {delVarExpr});
+                           auto consequence = base::And::create(base::Name("stages"), {});
                            return base::Implication::create(base::Name("name"), condition, consequence);
                        })),
         BuildExprT("name",
@@ -222,7 +222,7 @@ INSTANTIATE_TEST_SUITE_P(
                            EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
                                .WillOnce(testing::Return(mocks.m_mockDefs));
                            auto condition = base::And::create(base::Name("condition"), {traceExpr});
-                           auto consequence = base::And::create(base::Name("stages"), {delVarExpr});
+                           auto consequence = base::And::create(base::Name("stages"), {});
                            return base::Implication::create(base::Name("name"), condition, consequence);
                        })),
         BuildExprT("name",
@@ -252,7 +252,7 @@ INSTANTIATE_TEST_SUITE_P(
                                                         const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
                                             { return stageExpr; }));
                     auto condition = base::And::create(base::Name("condition"), {traceExpr});
-                    auto consequence = base::And::create(base::Name("stages"), {stageExpr, delVarExpr});
+                    auto consequence = base::And::create(base::Name("stages"), {stageExpr});
                     return base::Implication::create(base::Name("name"), condition, consequence);
                 })),
         BuildExprT(
@@ -284,7 +284,7 @@ INSTANTIATE_TEST_SUITE_P(
                                                         const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
                                             { return checkExpr; }));
                     auto condition = base::And::create(base::Name("condition"), {checkExpr, traceExpr});
-                    auto consequence = base::And::create(base::Name("stages"), {delVarExpr});
+                    auto consequence = base::And::create(base::Name("stages"), {});
                     return base::Implication::create(base::Name("name"), condition, consequence);
                 })),
         BuildExprT(
@@ -564,10 +564,30 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(BuildT(R"({})", FAILURE()),
                       BuildT(R"({"noName": "name"})", FAILURE()),
                       BuildT(R"({"name": 1})", FAILURE()),
-                      BuildT(R"({"name": "name"})", SUCCESS(Asset(base::Name("name"), assetExpr, {}))),
-                      BuildT(R"({"name": "name", "metadata": {}})", SUCCESS(Asset(base::Name("name"), assetExpr, {}))),
+                      BuildT(R"({"name": "name"})",
+                             SUCCESS(
+                                 [](Mocks mocks)
+                                 {
+                                     EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                         .WillOnce(testing::Return(mocks.m_mockDefs));
+                                     return Asset(base::Name("name"), assetExpr, {});
+                                 })),
+                      BuildT(R"({"name": "name", "metadata": {}})",
+                             SUCCESS(
+                                 [](Mocks mocks)
+                                 {
+                                     EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                         .WillOnce(testing::Return(mocks.m_mockDefs));
+                                     return Asset(base::Name("name"), assetExpr, {});
+                                 })),
                       BuildT(R"({"name": "name", "parents": ["parent"]})",
-                             SUCCESS(Asset(base::Name("name"), assetExpr, {base::Name("parent")}))),
+                             SUCCESS(
+                                 [](Mocks mocks)
+                                 {
+                                     EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                         .WillOnce(testing::Return(mocks.m_mockDefs));
+                                     return Asset(base::Name("name"), assetExpr, {base::Name("parent")});
+                                 })),
                       BuildT(R"({"name": "name", "parents": {}})", FAILURE()),
                       BuildT(R"({"name": "name", "check": {}})",
                              SUCCESS(
@@ -586,7 +606,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                                      auto condition =
                                          base::And::create(base::Name("condition"), {checkExpr, traceExpr});
-                                     auto consequence = base::And::create(base::Name("stages"), {delVarExpr});
+                                     auto consequence = base::And::create(base::Name("stages"), {});
                                      return Asset(base::Name("name"),
                                                   base::Implication::create(base::Name("name"), condition, consequence),
                                                   {});

@@ -325,7 +325,8 @@ public:
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("Failed to convert value '{}' for key '{}': {}", rawValue, key, e.what());
+                LOG_WARNING(
+                    "Failed to convert value '{}' for key '{}': {}. Using default value.", rawValue, key, e.what());
             }
         }
 

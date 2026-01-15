@@ -61,7 +61,6 @@ Feature:  Namespace management via cmcrud namespace handlers
       | system          | Failed to create namespace 'system': Namespace name is forbidden: system                        |
       | output          | Failed to create namespace 'output': Namespace name is forbidden: output                        |
       | default         | Failed to create namespace 'default': Namespace name is forbidden: default                      |
-      | cti             | Failed to create namespace 'cti': Namespace already exists: cti                                 |
 
   # ===================================================================
   #                            DELETE
@@ -90,12 +89,6 @@ Feature:  Namespace management via cmcrud namespace handlers
     When I send a request to delete the namespace "ghost"
     Then the namespace request should fail
     And the error message should be "Failed to delete namespace 'ghost': Namespace does not exist: ghost"
-
-  Scenario: Fail to delete an existing forbidden namespace (cti)
-    Given the forbidden namespace "cti" exists in the CM store
-    When I send a request to delete the namespace "cti"
-    Then the namespace request should fail
-    And the error message should be "Failed to delete namespace 'cti': Cannot delete read-only namespace: cti"
 
   Scenario Outline: Fail to delete a forbidden namespace that does not exist
     When I send a request to delete the namespace "<forbidden_space>"

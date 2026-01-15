@@ -107,10 +107,10 @@ base::Expression processSubBlock(std::tuple<std::string, json::Json>& keyValueTu
 {
     auto& [key, value] = keyValueTuple;
 
-    // Procesar casos especiales de parse|VARIABLE
+    // Process parse|$field format to legacy format
     json::Json stageParseValue = preProcessParseStage(key, value);
 
-    //
+    // If parse|$field was used, update value
     if (key == syntax::asset::PARSE_KEY && !stageParseValue.getArray().value().empty())
     {
         value = std::move(stageParseValue);
@@ -189,6 +189,7 @@ base::Expression processItem(const json::Json& block, const std::shared_ptr<cons
             lastOrder = it->second;
         }
 
+        // Restrict to only one parse subblock (external CTI limitation)
         if (normalizedKey == syntax::asset::PARSE_KEY)
         {
             ++parseCount;

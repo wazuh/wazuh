@@ -16,27 +16,66 @@ cd "$SCRIPT_DIR"
 function upsert_certs() {
     echo "==> Creating certificates..."
 
-    local tmp_crt_gen="tmp_gen_certs.sh"
-    local url_crt_gen="https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/main/apis/tools/env/certs/gen_certs.sh"
-
-    # if exists, remove the certs directory
+    # Check if certs directory already exists
     if [ -d certs ]; then
-        rm -rf certs/*
-    elif [ ! -d certs ]; then
-        mkdir certs
+        echo "==> Certificates directory already exists."
+        read -p "Do you want to regenerate the certificates? This will delete the existing certs directory. (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "==> Skipping certificate generation."
+            return 0
+        fi
+        echo "==> Removing existing certificates directory..."
+        rm -rf certs
     fi
-    curl -s -L -o "${tmp_crt_gen}" "${url_crt_gen}"
-    chmod +x "${tmp_crt_gen}"
-    bash "${tmp_crt_gen}"
-    rm "${tmp_crt_gen}"
 
-    echo "==> Certificates created."
+    local wazuh_install_script="wazuh-install.sh"
+    local wazuh_install_url="https://packages.wazuh.com/4.14/wazuh-install.sh"
+    local config_file="config.yml"
 
-    chmod 644 ./certs/root-ca.pem
-    chmod 644 ./certs/wazuh-indexer*
+    # Download wazuh-install.sh
+    echo "==> Downloading wazuh-install.sh..."
+    curl -sO "${wazuh_install_url}"
+    chmod +x "${wazuh_install_script}"
 
+    # Create config.yml
+    echo "==> Creating config.yml..."
+    cat > "${config_file}" << 'EOF'
+nodes:
+  # Wazuh indexer nodes
+  indexer:
+    - name: node-1
+      ip: "127.0.0.1"
+
+  # Wazuh server nodes
+  server:
+    - name: wazuh-1
+      ip: "127.0.0.1"
+
+  # Wazuh dashboard nodes
+  dashboard:
+    - name: dashboard
+      ip: "127.0.0.1"
+EOF
+
+    # Generate config files
+    echo "==> Generating configuration files..."
+    bash "${wazuh_install_script}" --generate-config-files
+
+    # Extract the tar file
+    echo "==> Extracting wazuh-install-files.tar..."
+    tar -xf wazuh-install-files.tar
+
+    # Rename wazuh-install-files to certs
+    echo "==> Renaming wazuh-install-files to certs..."
+    mv wazuh-install-files certs
+
+    # Clean up temporary files
+    echo "==> Cleaning up temporary files..."
+    rm -f "${wazuh_install_script}" "${config_file}" wazuh-install-files.tar
+
+    echo "==> Certificates created successfully."
 }
-
 
 # ==============================================================================
 #                          GitHub Token
@@ -300,10 +339,10 @@ function get_dashboard_artifact() {
 gh_token
 
 # Download the last version of the Wazuh Indexer and Dashboard
-# get_indexer_artifact
+get_indexer_artifact
 get_dashboard_artifact
 
 # Init certs
-# upsert_certs
+upsert_certs
 
 exit 0
