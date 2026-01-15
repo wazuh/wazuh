@@ -40,7 +40,7 @@ pathlib==1.0.1
 pip==25.3
 propcache==0.4.1
 protobuf==6.33.4
-psutil==5.9.8
+psutil==6.1.1
 pycparser==2.21
 PyJWT==2.10.1
 python-dateutil==2.8.1
