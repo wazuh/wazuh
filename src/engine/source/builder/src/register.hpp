@@ -27,6 +27,7 @@
 // Stage builders
 #include "builders/stage/check.hpp"
 #include "builders/stage/fileOutput.hpp"
+#include "builders/stage/first_of.hpp"
 #include "builders/stage/indexerOutput.hpp"
 #include "builders/stage/map.hpp"
 #include "builders/stage/normalize.hpp"
@@ -400,6 +401,7 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
     registry->template add<builders::StageBuilder>(syntax::asset::PARSE_KEY,
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
+    registry->template add<builders::StageBuilder>(syntax::asset::FIRST_OF_KEY, builders::firstOfBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY,
                                                    builders::getFileOutputBuilder(deps.logManager));
     registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,

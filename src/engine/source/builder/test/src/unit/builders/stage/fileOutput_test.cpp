@@ -5,7 +5,7 @@
 
 using namespace builder::builders;
 
-// Clase helper para manejar la creación lazy de mocks
+// Helper class for handling lazy mock creation
 class FileOutputTestHelper
 {
 public:
@@ -13,12 +13,12 @@ public:
     {
         return [callExpectations](const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx) -> base::Expression
         {
-            // Crear el mock solo cuando se necesita
+            // Create the mock only when needed
             auto logManager = std::make_shared<testing::NiceMock<streamlog::mocks::MockILogManager>>();
 
             if (callExpectations)
             {
-                // Poner expectativas si se indica
+                // Set expectations if indicated
                 EXPECT_CALL(*logManager, getWriter(testing::_)).Times(1);
             } else {
                 EXPECT_CALL(*logManager, getWriter(testing::_)).Times(0);

@@ -490,6 +490,20 @@ protected:
 
 class Broadcast : public Operation
 {
+    /**
+     * Description:
+     * Computes multiple formulas simultaneously, replicating the operation's
+     * effect across all targets in parallel.
+     *
+     * source_element -> broadcast() -> form1(Event)
+     *                                -> form2(Event)
+     *                                -> form3(Event)
+     *                                -> ...
+     *                                -> formN(Event)
+     *
+     * All targets receive the event regardless of individual outcomes.
+     * Returns true when all targets have been reached.
+     */
 public:
     /**
      * @brief Construct a new Broadcast operation object.

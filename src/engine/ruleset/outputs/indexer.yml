@@ -1,0 +1,33 @@
+name: output/indexer/0
+
+metadata:
+  module: wazuh
+  title: Indexer data stream outputs
+  description: Output integrations events to wazuh-indexer
+
+outputs:
+  - first_of:
+    - check: >-
+        $wazuh.integration.category != "cloud-services" OR
+        (NOT starts_with($wazuh.integration.name, "aws")
+        AND NOT starts_with($wazuh.integration.name, "azure")
+        AND NOT starts_with($wazuh.integration.name, "gcp"))
+
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}"
+
+    - check: starts_with($wazuh.integration.name, "gcp")
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}-gcp"
+
+    - check: starts_with($wazuh.integration.name, "azure")
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}-azure"
+
+    - check: starts_with($wazuh.integration.name, "aws")
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}-aws"
