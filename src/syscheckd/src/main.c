@@ -181,7 +181,7 @@ int main(int argc, char **argv)
     w_create_thread(syscom_main, NULL);
 
     /* Create pid */
-    if (CreatePID(ARGV0, getpid()) < 0) {
+    if (CreatePID(ARGV0, getpid(), true) < 0) {
         merror_exit(PID_ERROR);
     }
 

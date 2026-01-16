@@ -182,7 +182,7 @@ int main(int argc, char **argv)
     }
 
     /* Create PID file */
-    if (CreatePID(ARGV0, getpid()) < 0) {
+    if (CreatePID(ARGV0, getpid(), true) < 0) {
         merror_exit(PID_ERROR);
     }
 

@@ -96,7 +96,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     agt->sock = -1;
 
     /* Create PID file */
-    if (CreatePID(ARGV0, getpid()) < 0) {
+    if (CreatePID(ARGV0, getpid(), true) < 0) {
+        merror_exit(PID_ERROR);
+    }
+
+    if (CreatePID(ARGV0, getpid(), false) < 0) {
         merror_exit(PID_ERROR);
     }
 

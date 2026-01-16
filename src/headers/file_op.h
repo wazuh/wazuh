@@ -201,7 +201,7 @@ char *GetRandomNoise();
  * @param pid Service PID.
  * @return 0 if the file was created, -1 on error.
  */
-int CreatePID(const char *name, int pid) __attribute__((nonnull));
+int CreatePID(const char *name, int pid, bool append_to_name) __attribute__((nonnull));
 
 
 /**

@@ -170,7 +170,7 @@ void wm_setup()
 
     // Create PID file
 
-    if (CreatePID(ARGV0, getpid()) < 0)
+    if (CreatePID(ARGV0, getpid(), true) < 0)
         merror_exit("Couldn't create PID file: (%s)", strerror(errno));
 
     // Initialize children pool

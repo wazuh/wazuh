@@ -281,7 +281,7 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
     /* Create PID files */
-    if (CreatePID(ARGV0, getpid()) < 0) {
+    if (CreatePID(ARGV0, getpid(), true) < 0) {
         merror_exit(PID_ERROR);
     }
 

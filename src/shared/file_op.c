@@ -636,12 +636,16 @@ float DirSize(const char *path) {
     return folder_size;
 }
 
-int CreatePID(const char *name, int pid)
+int CreatePID(const char *name, int pid, bool append_to_name)
 {
     char file[256];
     FILE *fp;
 
-    snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
+    if(append_to_name){
+        snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
+    } else {
+        snprintf(file, 255, "%s/%s.pid", OS_PIDFILE, name);
+    }
 
     fp = wfopen(file, "a");
     if (!fp) {
