@@ -59,6 +59,20 @@
             "problemMatcher": []
         },
         {
+            "label": "E2E Scripts: Init setup (certs && pkg)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/init.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+                {
+            "label": "E2E Scripts: Copy wazuh-manger certs ",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
             "label": "Build MANAGER - debug",
             "type": "shell",
             "command": "/usr/bin/make",

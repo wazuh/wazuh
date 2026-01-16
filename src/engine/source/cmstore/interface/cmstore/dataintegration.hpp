@@ -311,6 +311,7 @@ public:
     // getters
     const std::string& getCategory() const { return m_category; }
     const std::optional<std::string>& getDefaultParent() const { return m_defaultParent; }
+    const bool hasDefaultParent() const { return m_defaultParent.has_value(); }
     const std::vector<std::string>& getKVDBsByUUID() const { return m_kvdbsByUUID; }
     const std::vector<std::string>& getDecodersByUUID() const { return m_decodersByUUID; }
     const std::vector<std::string>& getOutputsByUUID() const { return m_outputsByUUID; }

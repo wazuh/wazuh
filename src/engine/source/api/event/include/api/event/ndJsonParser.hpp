@@ -49,14 +49,14 @@ inline ProtocolHandler getNDJsonParser()
                 }
             }
 
-            // Helper: require exact "<tag>\t..."
-            auto is_tag_tab = [](std::string_view s, char tag) noexcept -> bool
+            // Helper: require exact "<tag> ..."
+            auto is_tag_space = [](std::string_view s, char tag) noexcept -> bool
             {
-                return s.size() >= 2 && s[0] == tag && s[1] == '\t';
+                return s.size() >= 2 && s[0] == tag && s[1] == ' ';
             };
 
-            // ---- Single header at the start: "H\t{json}" (assumed valid) ----
-            // We assume there's always JSON after "H\t"; no length checks here.
+            // ---- Single header at the start: "H {json}" (assumed valid) ----
+            // We assume there's always JSON after "H "; no length checks here.
             json::Json header(lines.front().substr(2).data());
 
             // ---- Event collection (supports multi-line payloads) ----
@@ -78,7 +78,7 @@ inline ProtocolHandler getNDJsonParser()
                 currentRaw.clear();
             };
 
-            // Parse from the second line onwards: "E\t..." starts an event;
+            // Parse from the second line onwards: "E ..." starts an event;
             // any other line is a continuation if an event is open, else ignored.
             for (std::size_t li = 1; li < lines.size(); ++li)
             {
@@ -86,7 +86,7 @@ inline ProtocolHandler getNDJsonParser()
                 if (ln.empty())
                     continue;
 
-                if (is_tag_tab(ln, 'E'))
+                if (is_tag_space(ln, 'E'))
                 {
                     if (inEvent)
                         flush_event();
@@ -105,7 +105,7 @@ inline ProtocolHandler getNDJsonParser()
                     continue;
                 }
 
-                // STRICT mode: any non-empty, non-"E\t" line outside an event is a protocol error.
+                // STRICT mode: any non-empty, non-"E " line outside an event is a protocol error.
                 throw std::runtime_error{"unexpected line outside of an event"};
             }
 

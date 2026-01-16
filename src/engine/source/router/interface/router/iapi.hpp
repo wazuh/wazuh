@@ -22,6 +22,22 @@ public:
     virtual base::OptError deleteEntry(const std::string& name) = 0;
     virtual base::RespOrError<prod::Entry> getEntry(const std::string& name) const = 0;
 
+    /**
+     * @brief Hot swap the namespace of an entry
+     *
+     * The method trays to change the namespace of an entry without
+     * deleting and recreating it. This is useful to minimize downtime.
+     * The method create the new route and only if it is successful, it
+     * deletes the old one.
+     * @param name Name of the entry
+     * @param newNamespace New namespace to set
+     * @return base::OptError Error if the route "name" does not exist or
+     * the new namespace is invalid.
+     */
+    virtual base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) = 0;
+
+    virtual bool existsEntry(const std::string& name) const = 0;
+
     virtual base::OptError reloadEntry(const std::string& name) = 0;
     virtual base::OptError changeEntryPriority(const std::string& name, size_t priority) = 0;
 

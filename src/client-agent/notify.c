@@ -12,6 +12,8 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "agentd.h"
+#include "metadata_provider.h"
+#include "cJSON.h"
 
 /* Keeps hash in memory until a change is identified */
 static char *g_shared_mg_file_hash = NULL;
@@ -30,10 +32,10 @@ char *getsharedfiles()
         md5sum[1] = '\0';
     }
 
-    /* We control these files, max size is m_size */
+    /* Return just the MD5 hash (used in JSON keepalives) */
     ret = (char *)calloc(m_size + 1, sizeof(char));
     if (ret) {
-        snprintf(ret, m_size, "%s merged.mg\n", md5sum);
+        snprintf(ret, m_size, "%s", md5sum);
     }
 
     return (ret);
@@ -75,17 +77,121 @@ void clear_merged_hash_cache() {
     os_free(g_shared_mg_file_hash);
 }
 
+/* Build JSON keepalive message from metadata_provider and additional fields */
+static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
+                                   const char *merged_sum, const char *labels) {
+    agent_metadata_t metadata = {0};
+    bool has_metadata = false;
+
+    // Get metadata from shared memory (may not be available yet)
+    if (metadata_provider_get(&metadata) == 0) {
+        has_metadata = true;
+    } else {
+        mdebug2("Metadata not yet available, using minimal keepalive");
+    }
+
+    // Build JSON
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        if (has_metadata) {
+            metadata_provider_free_metadata(&metadata);
+        }
+        return NULL;
+    }
+
+    cJSON_AddStringToObject(root, "version", "1.0");
+
+    // Agent fields
+    cJSON *agent = cJSON_CreateObject();
+    if (has_metadata) {
+        if (metadata.agent_id[0]) {
+            cJSON_AddStringToObject(agent, "id", metadata.agent_id);
+        }
+        if (metadata.agent_name[0]) {
+            cJSON_AddStringToObject(agent, "name", metadata.agent_name);
+        }
+        if (metadata.agent_version[0]) {
+            cJSON_AddStringToObject(agent, "version", metadata.agent_version);
+        }
+    }
+    if (config_sum && config_sum[0]) {
+        cJSON_AddStringToObject(agent, "config_sum", config_sum);
+    }
+    if (merged_sum && merged_sum[0]) {
+        cJSON_AddStringToObject(agent, "merged_sum", merged_sum);
+    }
+    if (agent_ip && agent_ip[0]) {
+        cJSON_AddStringToObject(agent, "ip", agent_ip);
+    }
+    const char *uname_str = getuname();
+    if (uname_str) {
+        cJSON_AddStringToObject(agent, "uname", uname_str);
+    }
+    if (labels && labels[0]) {
+        cJSON_AddStringToObject(agent, "labels", labels);
+    }
+
+    // Add groups array if available
+    if (has_metadata && metadata.groups_count > 0 && metadata.groups) {
+        cJSON *groups_array = cJSON_CreateArray();
+        for (size_t i = 0; i < metadata.groups_count; i++) {
+            if (metadata.groups[i] && metadata.groups[i][0]) {
+                cJSON_AddItemToArray(groups_array, cJSON_CreateString(metadata.groups[i]));
+            }
+        }
+        cJSON_AddItemToObject(agent, "groups", groups_array);
+    }
+
+    cJSON_AddItemToObject(root, "agent", agent);
+
+    // Host fields (only if metadata available)
+    if (has_metadata) {
+        cJSON *host = cJSON_CreateObject();
+        if (metadata.hostname[0]) {
+            cJSON_AddStringToObject(host, "hostname", metadata.hostname);
+        }
+        if (metadata.architecture[0]) {
+            cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+        }
+
+        // Host OS fields
+        cJSON *os = cJSON_CreateObject();
+        if (metadata.os_name[0]) {
+            cJSON_AddStringToObject(os, "name", metadata.os_name);
+        }
+        if (metadata.os_version[0]) {
+            cJSON_AddStringToObject(os, "version", metadata.os_version);
+        }
+        if (metadata.os_platform[0]) {
+            cJSON_AddStringToObject(os, "platform", metadata.os_platform);
+        }
+        if (metadata.os_type[0]) {
+            cJSON_AddStringToObject(os, "type", metadata.os_type);
+        }
+        cJSON_AddItemToObject(host, "os", os);
+        cJSON_AddItemToObject(root, "host", host);
+    }
+
+    // Convert to string
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (has_metadata) {
+        metadata_provider_free_metadata(&metadata);
+    }
+
+    return json_str;
+}
+
 /* Periodically send notification to server */
 void run_notify()
 {
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     static char tmp_labels[OS_MAXSTR - OS_SIZE_2048] = { '\0' };
     static wlabel_t *last_labels_ptr = NULL;
-    os_md5 md5sum;
+    os_md5 md5sum = {0};
     time_t curr_time;
     static char agent_ip[IPSIZE + 1] = { '\0' };
     static time_t last_update = 0;
-    static const char no_hash_value[] = "x merged.mg\n";
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
     curr_time = time(0);
@@ -161,29 +267,26 @@ void run_notify()
            *agent_ip = '\0';
         }
     }
-    /* Create message */
-    if (*agent_ip != '\0') {
-        char label_ip[60];
-        snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
-        if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
-                (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s%s\n", CONTROL_HEADER,
-                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
-        } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s%s\n", CONTROL_HEADER,
-                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
-        }
+
+    /* Compute client.keys MD5 sum if available */
+    if ((File_DateofChange(AGENTCONFIG) > 0) && (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) != 0)) {
+        md5sum[0] = '\0';  // Clear if failed
     }
-    else {
-        if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
-                (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s\n", CONTROL_HEADER,
-                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
-        } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s\n", CONTROL_HEADER,
-                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
-        }
+
+    /* Create JSON keepalive message */
+    char *json_keepalive = build_json_keepalive(
+        agent_ip[0] ? agent_ip : NULL,
+        md5sum[0] ? md5sum : NULL,
+        g_shared_mg_file_hash,
+        tmp_labels[0] ? tmp_labels : NULL
+    );
+    if (!json_keepalive) {
+        merror("Failed to build JSON keepalive");
+        return;
     }
+
+    snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s", CONTROL_HEADER, json_keepalive);
+    os_free(json_keepalive);
 
     /* Send status message */
     mdebug2("Sending keep alive: %s", tmp_msg);

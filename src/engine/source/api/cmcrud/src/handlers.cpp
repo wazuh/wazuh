@@ -107,7 +107,8 @@ adapter::RouteHandler namespaceCreate(std::shared_ptr<cm::crud::ICrudService> cr
 
         try
         {
-            service->createNamespace(protoReq.space());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            service->createNamespace(nsId);
         }
         catch (const std::exception& ex)
         {
@@ -145,7 +146,8 @@ adapter::RouteHandler namespaceDelete(std::shared_ptr<cm::crud::ICrudService> cr
 
         try
         {
-            service->deleteNamespace(protoReq.space());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            service->deleteNamespace(nsId);
         }
         catch (const std::exception& ex)
         {
@@ -189,7 +191,8 @@ adapter::RouteHandler namespaceImport(std::shared_ptr<cm::crud::ICrudService> cr
 
         try
         {
-            service->importNamespace(protoReq.space(), protoReq.jsoncontent(), protoReq.force());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            service->importNamespace(nsId, protoReq.jsoncontent(), protoReq.force());
         }
         catch (const std::exception& ex)
         {
@@ -237,7 +240,8 @@ adapter::RouteHandler policyUpsert(std::shared_ptr<cm::crud::ICrudService> crud)
 
         try
         {
-            service->upsertPolicy(protoReq.space(), protoReq.ymlcontent());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            service->upsertPolicy(nsId, protoReq.ymlcontent());
         }
         catch (const std::exception& ex)
         {
@@ -275,7 +279,8 @@ adapter::RouteHandler policyDelete(std::shared_ptr<cm::crud::ICrudService> crud)
 
         try
         {
-            service->deletePolicy(protoReq.space());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            service->deletePolicy(nsId);
         }
         catch (const std::exception& ex)
         {
@@ -319,8 +324,8 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         auto jsonOrErr = eMessage::eMessageToJson(protoReq.full_policy(), /*printPrimitiveFields=*/true);
         if (std::holds_alternative<base::Error>(jsonOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error converting full_policy to JSON object: {}", std::get<base::Error>(jsonOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(fmt::format(
+                "Error converting full_policy to JSON object: {}", std::get<base::Error>(jsonOrErr).message));
             return;
         }
 
@@ -351,6 +356,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         const auto nonce = fmt::format("{}_{}_{}", t, tid, s);
 
         const std::string tmpNsName = fmt::format("policy_validate_{}", nonce);
+        const cm::store::NamespaceId tmpNsId {tmpNsName};
         const std::string tmpSessionName = fmt::format("policy_validate_{}", nonce);
         const std::string finalSessionName = api::shared::constants::SESSION_NAME;
 
@@ -382,7 +388,8 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
             try
             {
-                service->deleteNamespace(name);
+                const cm::store::NamespaceId nsId {name};
+                service->deleteNamespace(nsId);
                 return std::nullopt;
             }
             catch (const std::exception& e)
@@ -408,12 +415,12 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         try
         {
             // Import into temp namespace
-            service->importNamespace(tmpNsName, fullPolicyStr, /*force=*/true);
+            service->importNamespace(tmpNsId, fullPolicyStr, /*force=*/true);
             tmpNamespaceCreated = true;
 
             // Create a tester entry to validate tester-loading path.
             const int lifetime = 0;
-            ::router::test::EntryPost entryPost(tmpSessionName, cm::store::NamespaceId(tmpNsName), lifetime);
+            ::router::test::EntryPost entryPost(tmpSessionName, tmpNsId, lifetime);
             entryPost.description("wazuh-indexer auto created session");
 
             // Post temp entry
@@ -552,7 +559,8 @@ adapter::RouteHandler resourceList(std::shared_ptr<cm::crud::ICrudService> crud)
 
         try
         {
-            const auto resources = service->listResources(protoReq.space(), rType);
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            const auto resources = service->listResources(nsId, rType);
 
             auto* out = eResponse.mutable_resources();
             out->Clear();
@@ -609,7 +617,8 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud)
 
         try
         {
-            const auto content = service->getResourceByUUID(protoReq.space(), protoReq.uuid(), protoReq.asjson());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            const auto content = service->getResourceByUUID(nsId, protoReq.uuid(), protoReq.asjson());
             eResponse.set_content(content);
             eResponse.set_status(eEngine::ReturnStatus::OK);
             res = adapter::userResponse(eResponse);
@@ -670,7 +679,8 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
 
         try
         {
-            service->upsertResource(protoReq.space(), rType, protoReq.ymlcontent());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            service->upsertResource(nsId, rType, protoReq.ymlcontent());
         }
         catch (const std::exception& ex)
         {
@@ -714,7 +724,8 @@ adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> cru
 
         try
         {
-            service->deleteResourceByUUID(protoReq.space(), protoReq.uuid());
+            const cm::store::NamespaceId nsId {protoReq.space()};
+            service->deleteResourceByUUID(nsId, protoReq.uuid());
         }
         catch (const std::exception& ex)
         {

@@ -72,7 +72,7 @@ base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
 {
     for (const auto& entry : entries)
     {
-        auto err = worker->get()->addEntry(test::EntryPost(entry), true);
+        auto err = worker->get()->addEntry(test::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
             return err;
@@ -88,7 +88,7 @@ base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
 {
     for (const auto& entry : entries)
     {
-        auto err = worker->get()->addEntry(prod::EntryPost(entry), true);
+        auto err = worker->get()->addEntry(prod::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
             return err;
@@ -390,7 +390,8 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachRouterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry); });
+    auto error = forEachRouterWorker([&entry](const auto& worker)
+                                     { return worker->get()->addEntry(entry, /*ignoreFail=*/false); });
 
     if (error)
     {
@@ -406,13 +407,79 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
     return std::nullopt;
 }
 
-base::OptError Orchestrator::deleteEntry(const std::string& name)
+base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace)
 {
-    std::unique_lock lock {m_syncMutex};
     if (name.empty())
     {
         return base::Error {"Name cannot be empty"};
     }
+
+    // Check if the entry exists in any worker
+    {
+        std::shared_lock lock {m_syncMutex};
+        if (m_isShutdown.load(std::memory_order_acquire) || m_routerWorkers.empty())
+        {
+            return base::Error {"Router is not available"};
+        }
+
+        auto resp = m_routerWorkers.front()->get()->getEntry(name);
+        if (base::isError(resp))
+        {
+            return base::getError(resp);
+        }
+    }
+
+    // Hot swap the namespace in all router workers
+    // Each router will:
+    // 1. Read entry info with shared lock
+    // 2. Create new environment WITHOUT lock
+    // 3. Swap atomically with unique lock (swap environment and enable it for each worker independently)
+    std::unique_lock lock {m_syncMutex};
+    auto error = forEachRouterWorker([&](const std::shared_ptr<IWorker<IRouter>>& worker)
+                                     { return worker->get()->hotSwapNamespace(name, newNamespace); });
+
+    if (error)
+    {
+        return error;
+    }
+
+    // Save the updated configuration (lock already held, use Internal version)
+    dumpRoutersInternal();
+
+    LOG_INFO("Router: Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
+    return std::nullopt;
+}
+
+bool Orchestrator::existsEntry(const std::string& name) const
+{
+    if (name.empty())
+    {
+        return false;
+    }
+
+    std::shared_lock lock {m_syncMutex};
+
+    if (m_isShutdown.load(std::memory_order_acquire))
+    {
+        return false;
+    }
+
+    if (m_routerWorkers.empty())
+    {
+        return false;
+    }
+
+    auto e = m_routerWorkers.front()->get()->getEntry(name);
+    return !base::isError(e);
+}
+
+base::OptError Orchestrator::deleteEntry(const std::string& name)
+{
+    if (name.empty())
+    {
+        return base::Error {"Name cannot be empty"};
+    }
+    std::unique_lock lock {m_syncMutex};
 
     auto error = forEachRouterWorker([&name](const auto& worker) { return worker->get()->removeEntry(name); });
     if (error)
@@ -430,12 +497,13 @@ base::RespOrError<prod::Entry> Orchestrator::getEntry(const std::string& name) c
         return base::Error {"Name cannot be empty"};
     }
 
+    std::shared_lock lock {m_syncMutex};
+
     if (m_isShutdown.load(std::memory_order_acquire))
     {
         return base::Error {"Orchestrator has been shutdown"};
     }
 
-    std::shared_lock lock {m_syncMutex};
     if (m_routerWorkers.empty())
     {
         return base::Error {"Orchestrator has been cleaned up, no workers available"};
@@ -480,11 +548,13 @@ base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t
 
 std::list<prod::Entry> Orchestrator::getEntries() const
 {
+    std::shared_lock lock {m_syncMutex};
+
     if (m_isShutdown.load(std::memory_order_acquire))
     {
         return {};
     }
-    std::shared_lock lock {m_syncMutex};
+
     if (m_routerWorkers.empty())
     {
         return {};
@@ -550,7 +620,8 @@ base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forTesterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry); });
+    auto error =
+        forTesterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry, /*ignoreFail=*/false); });
     if (error)
     {
         return error;

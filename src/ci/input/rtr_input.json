@@ -13,6 +13,10 @@
             "flags": "-r"
         },
         {
+            "name": "shared_modules/agent_metadata",
+            "flags": "-r"
+        },
+        {
             "name": "wazuh_modules/syscollector",
             "flags": "-r"
         },

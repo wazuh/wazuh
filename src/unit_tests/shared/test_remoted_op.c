@@ -211,6 +211,7 @@ void test_parse_uname_string_linux(void **state)
     assert_string_equal("buster", osd->os_codename);
     assert_string_equal("debian", osd->os_platform);
     assert_string_equal("x86_64", osd->os_arch);
+    assert_string_equal("debian10", osd->hostname);
     assert_string_equal("Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64",uname);
 
     os_free(osd->os_name);
@@ -221,6 +222,7 @@ void test_parse_uname_string_linux(void **state)
     os_free(osd->os_codename);
     os_free(osd->os_platform);
     os_free(osd->os_arch);
+    os_free(osd->hostname);
     os_free(osd);
     os_free(uname);
 }
@@ -244,6 +246,7 @@ root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina
     assert_string_equal("Catalina", osd->os_codename);
     assert_string_equal("darwin", osd->os_platform);
     assert_string_equal("x86_64", osd->os_arch);
+    assert_string_equal("TESTmac.local", osd->hostname);
     assert_string_equal("Darwin |TESTmac.local |19.6.0 |Darwin Kernel Version 19.6.0: Thu Jun 18 20:49:00 PDT 2020; root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64",uname);
 
     os_free(osd->os_name);
@@ -254,6 +257,7 @@ root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina
     os_free(osd->os_codename);
     os_free(osd->os_platform);
     os_free(osd->os_arch);
+    os_free(osd->hostname);
     os_free(osd);
     os_free(uname);
 }
@@ -520,6 +524,195 @@ void test_parse_agent_update_msg_ok_labels(void **state)
     wdb_free_agent_info_data(agent_data);
 }
 
+/* Tests parse_json_keepalive */
+
+void test_parse_json_keepalive_invalid_json(void **state)
+{
+    char* json = "not a json";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+
+    assert_int_equal(OS_INVALID, result);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_missing_agent(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"host\":{}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+
+    assert_int_equal(OS_INVALID, result);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_linux_complete(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"id\":\"001\",\"name\":\"agent1\",\"version\":\"v5.0.0\",\
+\"config_sum\":\"ab73af41699f13fdd81903b5f23d8d00\",\"merged_sum\":\"fd756ba04d9c32c8848d4608bec41251\",\
+\"ip\":\"192.168.1.100\",\
+\"uname\":\"Linux |ubuntu-test |5.4.0-42-generic |#46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 |x86_64 [Ubuntu 20.04|ubuntu: 20.04 (focal)]\",\
+\"labels\":\"key1:value1\\nkey2:value2\"},\
+\"host\":{\"hostname\":\"ubuntu-test\",\"architecture\":\"x86_64\",\
+\"os\":{\"name\":\"Ubuntu\",\"version\":\"20.04\",\"platform\":\"ubuntu\",\"type\":\"linux\"}}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+    assert_string_equal("ab73af41699f13fdd81903b5f23d8d00", agent_data->config_sum);
+    assert_string_equal("fd756ba04d9c32c8848d4608bec41251", agent_data->merged_sum);
+    assert_string_equal("192.168.1.100", agent_data->agent_ip);
+    assert_string_equal("key1:value1\nkey2:value2", agent_data->labels);
+    assert_string_equal("Ubuntu", agent_data->osd->os_name);
+    assert_string_equal("20.04", agent_data->osd->os_version);
+    assert_string_equal("ubuntu", agent_data->osd->os_platform);
+    assert_string_equal("linux", agent_data->osd->os_type);
+    assert_string_equal("x86_64", agent_data->osd->os_arch);
+    assert_string_equal("ubuntu-test", agent_data->osd->hostname);
+    assert_string_equal("20", agent_data->osd->os_major);
+    assert_string_equal("04", agent_data->osd->os_minor);
+    assert_string_equal("focal", agent_data->osd->os_codename);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_windows(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"config_sum\":\"abc123\",\
+\"merged_sum\":\"def456\",\"uname\":\"Microsoft Windows Server 2019 Datacenter [Ver: 10.0.17763.1879]\"},\
+\"host\":{\"hostname\":\"win-server\",\"architecture\":\"x86_64\",\
+\"os\":{\"name\":\"Microsoft Windows Server 2019\",\"version\":\"10.0.17763\",\"platform\":\"windows\",\
+\"type\":\"windows\"}}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+    assert_string_equal("abc123", agent_data->config_sum);
+    assert_string_equal("def456", agent_data->merged_sum);
+    assert_string_equal("Microsoft Windows Server 2019", agent_data->osd->os_name);
+    assert_string_equal("10.0.17763", agent_data->osd->os_version);
+    assert_string_equal("windows", agent_data->osd->os_platform);
+    assert_string_equal("windows", agent_data->osd->os_type);
+    assert_string_equal("x86_64", agent_data->osd->os_arch);
+    assert_string_equal("win-server", agent_data->osd->hostname);
+    assert_string_equal("10", agent_data->osd->os_major);
+    assert_string_equal("0", agent_data->osd->os_minor);
+    assert_string_equal("17763.1879", agent_data->osd->os_build);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_minimal(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\"}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+    assert_null(agent_data->config_sum);
+    assert_null(agent_data->merged_sum);
+    assert_null(agent_data->agent_ip);
+    assert_null(agent_data->labels);
+    assert_non_null(agent_data->osd);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_with_groups(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"groups\":[\"group1\",\"group2\",\"group3\"]}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    // Check groups were parsed
+    assert_non_null(groups);
+    assert_int_equal(3, groups_count);
+    assert_string_equal("group1", groups[0]);
+    assert_string_equal("group2", groups[1]);
+    assert_string_equal("group3", groups[2]);
+
+    // Free groups
+    for (size_t i = 0; i < groups_count; i++) {
+        os_free(groups[i]);
+    }
+    os_free(groups);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_empty_groups(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"groups\":[]}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    // Empty array should result in NULL groups
+    assert_null(groups);
+    assert_int_equal(0, groups_count);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_json_keepalive_no_groups(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\"}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    // No groups field should result in NULL groups
+    assert_null(groups);
+    assert_int_equal(0, groups_count);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -546,7 +739,16 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_archlinux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_macos, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_windows, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_labels, setup_remoted_op, teardown_remoted_op)
+        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_labels, setup_remoted_op, teardown_remoted_op),
+        // Tests parse_json_keepalive
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_invalid_json, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_missing_agent, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_linux_complete, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_windows, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_minimal, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_groups, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_empty_groups, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_no_groups, setup_remoted_op, teardown_remoted_op)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

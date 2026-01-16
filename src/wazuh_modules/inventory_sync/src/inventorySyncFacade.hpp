@@ -534,7 +534,7 @@ public:
             UNLIMITED_QUEUE_SIZE);
 
         m_inventorySubscription =
-            std::make_unique<TRouterSubscriber>(INVENTORY_SYNC_TOPIC, INVENTORY_SYNC_SUBSCRIBER_ID);
+            std::make_unique<TRouterSubscriber>(INVENTORY_SYNC_TOPIC, INVENTORY_SYNC_SUBSCRIBER_ID, false);
         m_inventorySubscription->subscribe(
             // coverity[copy_constructor_call]
             [queue = m_workersQueue.get()](const std::vector<char>& message)

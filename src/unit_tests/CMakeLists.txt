@@ -22,6 +22,7 @@ include_directories(${SRC_FOLDER}/external/msgpack/include)
 include_directories(${SRC_FOLDER}/shared_modules/common)
 include_directories(${SRC_FOLDER}/shared_modules/router/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/shared_modules/agent_metadata/include/)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
 # Wazuh libraries

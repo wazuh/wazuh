@@ -68,7 +68,7 @@ std::queue<base::Event> makeResult(Args&&... args)
 
 // Builds the expected queue for the H/E protocol (JSON header, OSSEC events "queue:location:message").
 // Accepts the same list of lines you pass to makeRawNdJson:
-//   "H\t{json}", "E\tqueue:location:message", "<continuation>", ...
+//   "H {json}", "E queue:location:message", "<continuation>", ...
 // Repeats the sequence 'multiplyOriginalJson' times (same as makeRawNdJson).
 template<size_t multiplyOriginalJson = 1, typename... Args>
 std::queue<base::Event> makeResultHE(Args&&... args)
@@ -201,11 +201,11 @@ TEST_P(NdJsonParserTest, Parse)
 // Raw line helpers
 static inline std::string H(std::string j)
 {
-    return "H\t" + std::move(j);
+    return "H " + std::move(j);
 }
 static inline std::string E(std::string p)
 {
-    return "E\t" + std::move(p);
+    return "E " + std::move(p);
 }
 
 // Example JSON headers
@@ -241,16 +241,16 @@ INSTANTIATE_TEST_SUITE_P(
         EventT(makeRawNdJson(E(EV1)), FAILURE()),
 
         // FAIL: header without JSON
-        EventT(makeRawNdJson("H\t   ", E(EV1)), FAILURE()),
+        EventT(makeRawNdJson("H    ", E(EV1)), FAILURE()),
 
         // FAIL: invalid JSON header
-        EventT(makeRawNdJson("H\t{invalid", E(EV1)), FAILURE()),
+        EventT(makeRawNdJson("H {invalid", E(EV1)), FAILURE()),
 
         // FAIL: unexpected line (neither H nor E) outside an event
         EventT(makeRawNdJson(H(HDR1), "stray line", E(EV1)), FAILURE()),
 
         // FAIL: E without payload (empty)
-        EventT(std::string(H(HDR1) + "\nE\t"), FAILURE()),
+        EventT(std::string(H(HDR1) + "\nE "), FAILURE()),
 
         // FAIL: event not compliant with OSSEC (missing ':')
         EventT(makeRawNdJson(H(HDR1), E("bad-payload-without-colons")), FAILURE())));

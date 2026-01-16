@@ -78,7 +78,6 @@ add_library(agent_sync_protocol SHARED
   src/agent_sync_protocol.cpp
   src/persistent_queue.cpp
   src/persistent_queue_storage.cpp
-  src/metadata_provider.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
   src/sync_message_transport.cpp
@@ -116,17 +115,20 @@ target_include_directories(agent_sync_protocol
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/
     ${CMAKE_SOURCE_DIR}/../../headers
     ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/filesystem/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../agent_metadata/include
 )
 
 target_link_directories(agent_sync_protocol
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/build/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/../agent_metadata/build/lib
 )
 
 target_link_libraries(agent_sync_protocol
   PRIVATE
   flatbuffers
   FilesystemWrapper
+  agent_metadata
   ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a
 )
 

@@ -70,7 +70,6 @@ jobs:
 
       - name: Build wazuh-engine in container
         run: |
-          sed -i "s/option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE \\\"Enable reverse order decoders\\\" OFF)/option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE \\\"Enable reverse order decoders\\\" ON)/" src/engine/CMakeLists.txt
           docker run --entrypoint /workspace/wazuh/src/engine/standalone/docker-entrypoint.sh \
             -e BUILD_TYPE="${BUILD_TYPE}" \
             -t -v ${{github.workspace}}:/workspace/wazuh:Z \

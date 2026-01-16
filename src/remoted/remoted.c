@@ -22,6 +22,7 @@
 keystore keys;
 remoted logr;
 char* node_name;
+char* cluster_name;
 
 /* Handle remote connections */
 void HandleRemote(int uid)

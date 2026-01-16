@@ -71,7 +71,6 @@ INSTANTIATE_TEST_SUITE_P(
                   [](const auto& store, const auto& reader, const auto& schemf)
                   {
                       auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                                     "550e8400-e29b-41d4-a716-446655440002",
                                                      "550e8400-e29b-41d4-a716-446655440003");
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "test-integration",
@@ -90,6 +89,8 @@ INSTANTIATE_TEST_SUITE_P(
                       EXPECT_CALL(*reader, getNamespaceId()).WillRepeatedly(testing::ReturnRef(nsId));
                       EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
                           .WillRepeatedly(testing::Return(integration));
+                      EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                          .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
                       EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440004"))
                           .WillRepeatedly(testing::Return(std::make_tuple("decoder/test/0", ResourceType::DECODER)));
                       EXPECT_CALL(*reader, getAssetByUUID(testing::_))
@@ -106,7 +107,6 @@ INSTANTIATE_TEST_SUITE_P(
                   [](const auto& store, const auto& reader, const auto& schemf)
                   {
                       auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                                     "550e8400-e29b-41d4-a716-446655440002",
                                                      "550e8400-e29b-41d4-a716-446655440003");
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "disabled-integration",
@@ -125,6 +125,8 @@ INSTANTIATE_TEST_SUITE_P(
                       EXPECT_CALL(*reader, getNamespaceId()).WillRepeatedly(testing::ReturnRef(nsId));
                       EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
                           .WillRepeatedly(testing::Return(integration));
+                      EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                          .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
                       EXPECT_CALL(*reader, getAssetByUUID(testing::_))
                           .WillRepeatedly(testing::Return(json::Json(R"({"name": "test"})")));
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
@@ -139,7 +141,6 @@ INSTANTIATE_TEST_SUITE_P(
                   {
                       auto policy = dataType::Policy(
                           {"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
-                          "550e8400-e29b-41d4-a716-446655440002",
                           "550e8400-e29b-41d4-a716-446655440003");
                       auto integration1 = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                 "integration-one",
@@ -169,6 +170,8 @@ INSTANTIATE_TEST_SUITE_P(
                           .WillRepeatedly(testing::Return(integration1));
                       EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440005"))
                           .WillRepeatedly(testing::Return(integration2));
+                      EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+                          .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
                       EXPECT_CALL(*reader, getAssetByUUID(testing::_))
                           .WillRepeatedly(testing::Return(json::Json(R"({"name": "test"})")));
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
@@ -295,7 +298,6 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
 
     // Create a simple policy with one integration
     auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, // integrations (valid UUIDv4)
-                                   "550e8400-e29b-41d4-a716-446655440002",   // default parent
                                    "550e8400-e29b-41d4-a716-446655440003"    // root decoder
     );
 
@@ -341,6 +343,9 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
     EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
         .WillRepeatedly(testing::Return(integration));
 
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+
     EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440004"))
         .WillRepeatedly(testing::Return(std::make_tuple("decoder/test/0", ResourceType::DECODER)));
 
@@ -375,9 +380,7 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
     // Setup namespace and policy data
     NamespaceId namespaceId("policy_test_0");
 
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                   "550e8400-e29b-41d4-a716-446655440002",
-                                   "550e8400-e29b-41d4-a716-446655440003");
+    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003");
 
     // Create a disabled integration
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -402,6 +405,9 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
         .WillRepeatedly(testing::Return(integration));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
 
     EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440002"))
         .WillRepeatedly(testing::Return(defaultParent));
@@ -619,7 +625,6 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
 
     // Create a policy with two integrations
     auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
-                                   "550e8400-e29b-41d4-a716-446655440002",
                                    "550e8400-e29b-41d4-a716-446655440003");
 
     // First integration
@@ -662,6 +667,12 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
     EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440005"))
         .WillRepeatedly(testing::Return(integration2));
 
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+
     EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440004"))
         .WillRepeatedly(testing::Return(std::make_tuple("decoder/one/0", ResourceType::DECODER)));
 
@@ -701,9 +712,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
     // Setup namespace and policy data
     NamespaceId namespaceId("policy_kvdb_0");
 
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                   "550e8400-e29b-41d4-a716-446655440002",
-                                   "550e8400-e29b-41d4-a716-446655440003");
+    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003");
 
     // Integration with KVDB
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -738,6 +747,9 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, getKVDBByUUID("550e8400-e29b-41d4-a716-446655440007"))
         .WillRepeatedly(testing::Return(kvdb));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
 
     EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440004"))
         .WillRepeatedly(testing::Return(std::make_tuple("decoder/test/0", ResourceType::DECODER)));
@@ -775,9 +787,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
     // Setup namespace and policy data
     NamespaceId namespaceId("policy_output_0");
 
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                   "550e8400-e29b-41d4-a716-446655440002",
-                                   "550e8400-e29b-41d4-a716-446655440003");
+    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003");
 
     // Integration with outputs
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -804,6 +814,9 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
         .WillRepeatedly(testing::Return(integration));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
 
     EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440004"))
         .WillRepeatedly(testing::Return(std::make_tuple("decoder/test/0", ResourceType::DECODER)));

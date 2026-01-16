@@ -7,8 +7,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <ctistore/icmreader.hpp>
-
 #include <cmstore/icmstore.hpp>
 
 namespace cm::store
@@ -21,7 +19,7 @@ namespace cm::store
 class CMStore : public ICMStore
 {
 
-    std::filesystem::path m_baseStoragePath; ///< Base path for all namespaces
+    std::filesystem::path m_baseStoragePath;    ///< Base path for all namespaces
     std::filesystem::path m_defaultOutputsPath; ///< Default Outputs path for all namespaces
     std::unordered_map<NamespaceId, std::shared_ptr<ICMstoreNS>>
         m_namespaces;                  ///< Map of NamespaceId to CMStoreNS instances
@@ -38,11 +36,8 @@ public:
      * @brief Create a CMStore instance at the given path
      * @param path the base path for all namespaces, should exist and be a directory
      * @param outputsPath the base path for all outputs, should exist and be a directory
-     * @param ctiReader shared pointer to the CTI reader
      */
-    CMStore(std::string_view path,
-            std::string_view outputsPath,
-            const std::shared_ptr<cti::store::ICMReader>& ctiReader);
+    CMStore(std::string_view path, std::string_view outputsPath);
     ~CMStore();
 
     /** @copydoc ICMStore::getNSReader */
