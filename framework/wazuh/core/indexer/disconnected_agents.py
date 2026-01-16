@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Generator, List
 
-from wazuh.core.agent import get_agents_info
+import wazuh.core.utils as core_utils
+from wazuh.core.agent import (WazuhDBQueryAgents, get_agents_info,
+                              get_rbac_filters)
 from wazuh.core.cluster import master
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import (
-    WazuhError,
-    WazuhException,
-    WazuhInternalError,
-    WazuhResourceNotFound,
-)
+from wazuh.core.exception import (WazuhError, WazuhException,
+                                  WazuhInternalError, WazuhResourceNotFound)
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -165,95 +163,48 @@ class DisconnectedAgentGroupSyncTask:
         self, wdb_conn: AsyncWazuhDBConnection
     ) -> List[dict]:
         """
-        Get list of non-connected agents from WazuhDB.
+        Retrieve non-connected agents filtered entirely at DB level.
 
-        Parameters
-        ----------
-        wdb_conn : AsyncWazuhDBConnection
-            WazuhDB connection instance.
-
-        Returns
-        -------
-        list of dict
-            List of non-connected agents meeting the minimum disconnection
-            time criteria.
+        Filtering rules:
+        - status in (disconnected, pending, never connected)
+        - agents without disconnection_time are always included
+        - agents with disconnection_time must exceed min_disconnection_time
         """
         try:
-            from wazuh.core.agent import Agent
-
-            agents_data = Agent.get_agents_overview(
-                filters={
-                    "status": ["disconnected", "pending", "never connected"],
-                },
-                limit=None,
-                get_data=True,
+            filters = {"status": ["disconnected", "pending", "never connected"]}
+            rbac_filters = (
+                get_rbac_filters(
+                    system_resources=get_agents_info(),
+                    permitted_resources=filters.pop("id"),
+                    filters=filters,
+                )
+                if filters and "id" in filters
+                else {"filters": filters}
             )
-            self.logger.debug(f"Agents data retrieved from WazuhDB: {agents_data}")
 
-            # Support multiple response shapes used across tests: {'items': [...]}
-            # or {'data': {'affected_items': [...]}}.
-            if isinstance(agents_data, dict):
-                if "items" in agents_data:
-                    all_agents = agents_data.get("items", [])
-                elif "data" in agents_data and isinstance(agents_data["data"], dict):
-                    all_agents = (
-                        agents_data["data"].get("affected_items")
-                        or agents_data["data"].get("items")
-                        or []
-                    )
-                else:
-                    all_agents = []
-            else:
-                all_agents = []
+            with WazuhDBQueryAgents(
+                select=["id", "name", "status", "lastKeepAlive", "group"],
+                query="status!=active",
+                **rbac_filters,
+            ) as db_query:
+                result = db_query.run()
 
-            current_time = datetime.now(timezone.utc)
-            filtered_agents = []
-
-            for agent in all_agents:
-                # If no disconnection_time provided, include the agent (tests expect this)
+            agents_not_filtered = result.get("items", [])
+            agents = []
+            for agent in agents_not_filtered:
                 if (
-                    "disconnection_time" not in agent
-                    or agent.get("disconnection_time") is None
+                    agent["lastKeepAlive"]
+                    + timedelta(seconds=self.min_disconnection_time)
+                    < core_utils.get_utc_now()
                 ):
-                    filtered_agents.append(agent)
-                    self.logger.debug(
-                        f"Agent {agent.get('id')} included: no disconnection_time provided"
-                    )
-                    continue
-
-                disconnection_time = agent.get("disconnection_time")
-                # Support timestamps (int) and datetime objects
-                if isinstance(disconnection_time, (int, float)):
-                    try:
-                        disconnection_time = datetime.fromtimestamp(
-                            int(disconnection_time), timezone.utc
-                        )
-                    except Exception:
-                        disconnection_time = current_time
-                elif not isinstance(disconnection_time, datetime):
-                    disconnection_time = current_time
-
-                time_disconnected = current_time - disconnection_time
-
-                if time_disconnected >= timedelta(seconds=self.min_disconnection_time):
-                    filtered_agents.append(agent)
-                    self.logger.debug(
-                        f"Agent {agent.get('id')} included: disconnected for "
-                        f"{time_disconnected}"
-                        f"(min required: {self.min_disconnection_time}s)"
-                    )
-                else:
-                    self.logger.debug(
-                        f"Agent {agent.get('id')} filtered out: disconnected for "
-                        f"{time_disconnected} (min required: {self.min_disconnection_time}s)"
-                    )
+                    agents.append(agent)
 
             self.logger.info(
-                f"Retrieved {len(all_agents)} non-connected agents from WazuhDB, "
-                f"filtered to {len(filtered_agents)} agents meeting "
-                f"minimum disconnection time"
+                f"Retrieved {len(agents)} non-connected agents from WazuhDB, "
+                f"meeting minimum disconnection time"
             )
-            return filtered_agents
+
+            return agents
 
         except Exception as e:
             self.logger.error(
@@ -282,13 +233,15 @@ class DisconnectedAgentGroupSyncTask:
         if not agent_ids:
             return {}
 
-        exclusion_filter = {"bool": {"must_not": [{"term": {"agent.id": "000"}}]}}
-
         query = {
             "size": 0,
             "aggs": {
                 "by_agent": {
-                    "terms": {"field": "agent.id"},
+                    "terms": {
+                        "field": "agent.id",
+                        "include": agent_ids,
+                        "exclude": ["000"],
+                    },
                     "aggs": {
                         "max_document_version": {
                             "max": {"field": "state.document_version"}
@@ -301,21 +254,19 @@ class DisconnectedAgentGroupSyncTask:
         try:
             if self._indexer_client_override:
                 client = self._indexer_client_override
-                result = await client.search(query=query, exclude=exclusion_filter)
+                result = await client.search(query=query)
             else:
                 async with get_indexer_client() as client:
-                    result = await client.max_version_components.search(
-                        query=query, exclude=exclusion_filter
-                    )
+                    result = await client.max_version_components.search(query=query)
 
             max_versions = {}
+
             if result:
                 for bucket in result["aggregations"]["by_agent"]["buckets"]:
                     agent_id = bucket.get("key")
                     max_version = bucket["max_document_version"]["value"]
                     if agent_id and max_version is not None:
                         max_versions[agent_id] = int(max_version)
-
                 self.logger.info(
                     f"Batch max version query completed for {len(max_versions)} agents "
                     f"out of {len(agent_ids)} requested"
@@ -345,7 +296,7 @@ class DisconnectedAgentGroupSyncTask:
             A batch of agents with size less than or equal to `self.batch_size`.
         """
         for i in range(0, len(agents), self.batch_size):
-            yield agents[i: i + self.batch_size]
+            yield agents[i : i + self.batch_size]
 
     async def _sync_agent_batch(self, agents: List[dict]) -> dict:
         """
