@@ -36,7 +36,7 @@ constexpr auto MIN_ARGS = 3;
  */
 struct TestConfig
 {
-    std::string inputFile;  ///< JSON file with Start + data_values + data_context
+    std::string input;      ///< JSON file or directory with Start + data_values + data_context
     std::string configFile; ///< VD configuration file
     uint32_t waitTime = 30; ///< seconds to wait after sending messages
     bool verbose = false;   ///< verbose logging
@@ -791,10 +791,10 @@ TestConfig parseArgs(int argc, char* argv[])
     if (argc < MIN_ARGS)
     {
         throw std::runtime_error("Usage: " + std::string(argv[0]) +
-                                 " <input.json> [--config <file>] [--wait <seconds>] [--verbose]\n");
+                                 " <input.json>|<directory> [--config <file>] [--wait <seconds>] [--verbose]\n");
     }
 
-    config.inputFile = argv[1];
+    config.input = argv[1];
 
     for (int i = MIN_ARGS - 1; i < argc; ++i)
     {
@@ -820,33 +820,150 @@ TestConfig parseArgs(int argc, char* argv[])
     return config;
 }
 
+void sendEvent(bool verbose,
+               const std::string& input,
+               uint32_t waitTime,
+               RouterProvider& routerProvider,
+               FakeReportServer& fakeReportServer,
+               uint64_t& sessionId,
+               std::promise<void>& startAckPromise,
+               std::promise<void>& endAckPromise,
+               std::atomic<bool>& receivedStartAck,
+               std::atomic<bool>& receivedEndAck)
+{
+    // Reset promises for new iteration
+    startAckPromise = std::promise<void>();
+    endAckPromise = std::promise<void>();
+    receivedStartAck = false;
+    receivedEndAck = false;
+    sessionId = 0;
+
+    auto startAckFuture = startAckPromise.get_future();
+    auto endAckFuture = endAckPromise.get_future();
+
+    // Load test data
+    AgentTestData testData;
+    {
+        testData = AgentTestData::loadFromFile(input);
+
+        const auto agentId = testData.start.value("agentid", std::string("000"));
+        const auto modeStr = testData.start.value("mode", std::string("delta"));
+        const auto optStr = testData.start.value("option", std::string("VDSync"));
+    }
+
+    // Calculate total messages
+    uint64_t totalMessages = testData.dataValues.size() + testData.dataContexts.size();
+
+    // Collect unique indices from data_values/data_context (auto-detection)
+    std::set<std::string> uniqueIndices;
+    for (const auto& dv : testData.dataValues)
+    {
+        const auto idx = inferIndex(dv);
+        if (!idx.empty())
+        {
+            uniqueIndices.insert(idx);
+        }
+    }
+    for (const auto& dc : testData.dataContexts)
+    {
+        const auto idx = inferIndex(dc);
+        if (!idx.empty())
+        {
+            uniqueIndices.insert(idx);
+        }
+    }
+
+    std::vector<std::string> indices(uniqueIndices.begin(), uniqueIndices.end());
+
+    std::cout << "\n[INFO] Sending " << totalMessages << " messages across " << indices.size() << " indices..."
+              << std::endl;
+
+    // Send START
+    std::cout << "[SEND] Start message" << std::endl;
+    auto startMsg = MessageBuilder::buildStart(testData.start, totalMessages, indices);
+    routerProvider.send(std::vector<char>(startMsg.begin(), startMsg.end()));
+
+    if (startAckFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+    {
+        throw std::runtime_error("Timeout waiting for StartAck");
+    }
+
+    // Send DataValue messages
+    uint64_t seq = 0;
+    for (const auto& dataValue : testData.dataValues)
+    {
+        std::string operation = dataValue.value("operation", "upsert");
+        auto op = (operation == "delete") ? Wazuh::SyncSchema::Operation_Delete : Wazuh::SyncSchema::Operation_Upsert;
+
+        auto payload = dataValue.value("payload", nlohmann::json::object());
+        std::string index = inferIndex(dataValue);
+        std::string id = dataValue.value("id", std::string());
+
+        if (index.empty())
+        {
+            std::cerr << "[WARN] DataValue without index could not be inferred, skipping" << std::endl;
+            continue;
+        }
+
+        std::string pkgName = "unknown";
+        if (payload.contains("package") && payload["package"].is_object())
+        {
+            pkgName = payload["package"].value("name", "unknown");
+        }
+
+        std::cout << "[SEND] DataValue (seq=" << seq << ", index=" << index << "): " << operation << " - " << pkgName
+                  << std::endl;
+
+        auto msg = MessageBuilder::buildDataValue(sessionId, seq++, payload, index, id, op);
+        routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
+    }
+
+    // Send DataContext messages
+    for (const auto& dataContext : testData.dataContexts)
+    {
+        auto payload = dataContext.value("payload", nlohmann::json::object());
+        std::string index = inferIndex(dataContext);
+        std::string id = dataContext.value("id", std::string());
+
+        if (index.empty())
+        {
+            std::cerr << "[WARN] DataContext without index could not be inferred, skipping" << std::endl;
+            continue;
+        }
+
+        std::string pkgName = "unknown";
+        if (payload.contains("package") && payload["package"].is_object())
+        {
+            pkgName = payload["package"].value("name", "unknown");
+        }
+
+        std::cout << "[SEND] DataContext (seq=" << seq << ", index=" << index << "): " << pkgName << std::endl;
+
+        auto msg = MessageBuilder::buildDataContext(sessionId, seq++, payload, index, id);
+        routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
+    }
+
+    // Send END
+    std::cout << "[SEND] End message" << std::endl;
+    auto endMsg = MessageBuilder::buildEnd(sessionId);
+    routerProvider.send(std::vector<char>(endMsg.begin(), endMsg.end()));
+
+    std::cout << "\n[INFO] Waiting " << waitTime << " seconds for VD processing..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(waitTime));
+}
+
 // Main
 int main(int argc, char* argv[])
 {
     try
     {
+        // Parse command line arguments
         auto config = parseArgs(argc, argv);
 
         std::cout << "\n=== InventorySync + VD testtool ===" << std::endl;
-        std::cout << "Input: " << config.inputFile << std::endl;
+        std::cout << "Loading test data from: " << config.input << std::endl;
 
-        // Load test data (new format)
-        AgentTestData testData;
-        {
-            std::cout << "Loading test data from: " << config.inputFile << std::endl;
-            testData = AgentTestData::loadFromFile(config.inputFile);
-
-            const auto agentId = testData.start.value("agentid", std::string("000"));
-            const auto modeStr = testData.start.value("mode", std::string("delta"));
-            const auto optStr = testData.start.value("option", std::string("VDSync"));
-
-            std::cout << "  Agent ID: " << agentId << std::endl;
-            std::cout << "  Mode: " << modeStr << "    Option: " << optStr << std::endl;
-            std::cout << "  Data values: " << testData.dataValues.size() << std::endl;
-            std::cout << "  Data contexts: " << testData.dataContexts.size() << std::endl;
-        }
-
-        // Initialize modules
+        // Initialize router
         auto& routerModule = RouterModule::instance();
         routerModule.start();
 
@@ -861,27 +978,6 @@ int main(int argc, char* argv[])
         {
             std::filesystem::create_directories(DEFAULT_ARQUEUE_DIR);
         }
-        FakeReportServer fakeReportServer(DEFAULT_QUEUE_PATH);
-        fakeReportServer.start();
-
-        uint64_t sessionId = 0;
-        std::promise<void> startAckPromise;
-        auto startAckFuture = startAckPromise.get_future();
-        std::atomic<bool> receivedStartAck {false};
-
-        std::promise<void> endAckPromise;
-        auto endAckFuture = endAckPromise.get_future();
-        std::atomic<bool> receivedEndAck {false};
-
-        ResponseServer responseServer(DEFAULT_ARQUEUE,
-                                      sessionId,
-                                      startAckPromise,
-                                      endAckPromise,
-                                      receivedStartAck,
-                                      receivedEndAck,
-                                      config.verbose);
-        responseServer.start();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         // Load config
         nlohmann::json vdConfig;
@@ -903,6 +999,7 @@ int main(int argc, char* argv[])
             }
         }
 
+        // Initialize InventorySync
         auto& inventorySync = InventorySync::instance();
         inventorySync.start(
             [&logFile](
@@ -923,6 +1020,7 @@ int main(int argc, char* argv[])
             },
             vdConfig);
 
+        // Initialize VulnerabilityDetector
         auto& vulnerabilityScanner = VulnerabilityScannerFacade::instance();
         vulnerabilityScanner.start(
             [&logFile](
@@ -948,112 +1046,76 @@ int main(int argc, char* argv[])
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        // Calculate total messages
-        uint64_t totalMessages = testData.dataValues.size() + testData.dataContexts.size();
-
-        // Collect unique indices from data_values/data_context (auto-detection)
-        std::set<std::string> uniqueIndices;
-        for (const auto& dv : testData.dataValues)
+        struct stat info;
+        if (stat(config.input.c_str(), &info) != 0)
         {
-            const auto idx = inferIndex(dv);
-            if (!idx.empty())
-            {
-                uniqueIndices.insert(idx);
-            }
-        }
-        for (const auto& dc : testData.dataContexts)
-        {
-            const auto idx = inferIndex(dc);
-            if (!idx.empty())
-            {
-                uniqueIndices.insert(idx);
-            }
+            throw std::runtime_error("Cannot access input: " + config.input);
         }
 
-        std::vector<std::string> indices(uniqueIndices.begin(), uniqueIndices.end());
+        FakeReportServer fakeReportServer(DEFAULT_QUEUE_PATH);
+        fakeReportServer.start();
 
-        std::cout << "\n[INFO] Sending " << totalMessages << " messages across " << indices.size() << " indices..."
-                  << std::endl;
+        uint64_t sessionId = 0;
+        std::promise<void> startAckPromise;
+        std::promise<void> endAckPromise;
+        std::atomic<bool> receivedStartAck {false};
+        std::atomic<bool> receivedEndAck {false};
 
-        // Send START
-        std::cout << "[SEND] Start message" << std::endl;
-        auto startMsg = MessageBuilder::buildStart(testData.start, totalMessages, indices);
-        routerProvider.send(std::vector<char>(startMsg.begin(), startMsg.end()));
+        ResponseServer responseServer(DEFAULT_ARQUEUE,
+                                      sessionId,
+                                      startAckPromise,
+                                      endAckPromise,
+                                      receivedStartAck,
+                                      receivedEndAck,
+                                      config.verbose);
+        responseServer.start();
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-        if (startAckFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+        if (info.st_mode & S_IFDIR)
         {
-            throw std::runtime_error("Timeout waiting for StartAck");
+            // Directory: process all .json files
+            for (const auto& entry : std::filesystem::directory_iterator(config.input))
+            {
+                if (entry.is_regular_file() && entry.path().extension() == ".json")
+                {
+                    std::cout << "\n[INFO] Processing file: " << entry.path().string() << std::endl;
+                    sendEvent(config.verbose,
+                              entry.path().string(),
+                              config.waitTime,
+                              routerProvider,
+                              fakeReportServer,
+                              sessionId,
+                              startAckPromise,
+                              endAckPromise,
+                              receivedStartAck,
+                              receivedEndAck);
+                }
+            }
         }
-
-        // Send DataValue messages
-        uint64_t seq = 0;
-        for (const auto& dataValue : testData.dataValues)
+        else
         {
-            std::string operation = dataValue.value("operation", "upsert");
-            auto op =
-                (operation == "delete") ? Wazuh::SyncSchema::Operation_Delete : Wazuh::SyncSchema::Operation_Upsert;
-
-            auto payload = dataValue.value("payload", nlohmann::json::object());
-            std::string index = inferIndex(dataValue);
-            std::string id = dataValue.value("id", std::string());
-
-            if (index.empty())
-            {
-                std::cerr << "[WARN] DataValue without index could not be inferred, skipping" << std::endl;
-                continue;
-            }
-
-            std::string pkgName = "unknown";
-            if (payload.contains("package") && payload["package"].is_object())
-            {
-                pkgName = payload["package"].value("name", "unknown");
-            }
-
-            std::cout << "[SEND] DataValue (seq=" << seq << ", index=" << index << "): " << operation << " - "
-                      << pkgName << std::endl;
-
-            auto msg = MessageBuilder::buildDataValue(sessionId, seq++, payload, index, id, op);
-            routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
+            // Single file
+            sendEvent(config.verbose,
+                      config.input,
+                      config.waitTime,
+                      routerProvider,
+                      fakeReportServer,
+                      sessionId,
+                      startAckPromise,
+                      endAckPromise,
+                      receivedStartAck,
+                      receivedEndAck);
         }
-
-        // Send DataContext messages
-        for (const auto& dataContext : testData.dataContexts)
-        {
-            auto payload = dataContext.value("payload", nlohmann::json::object());
-            std::string index = inferIndex(dataContext);
-            std::string id = dataContext.value("id", std::string());
-
-            if (index.empty())
-            {
-                std::cerr << "[WARN] DataContext without index could not be inferred, skipping" << std::endl;
-                continue;
-            }
-
-            std::string pkgName = "unknown";
-            if (payload.contains("package") && payload["package"].is_object())
-            {
-                pkgName = payload["package"].value("name", "unknown");
-            }
-
-            std::cout << "[SEND] DataContext (seq=" << seq << ", index=" << index << "): " << pkgName << std::endl;
-
-            auto msg = MessageBuilder::buildDataContext(sessionId, seq++, payload, index, id);
-            routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
-        }
-
-        // Send END
-        std::cout << "[SEND] End message" << std::endl;
-        auto endMsg = MessageBuilder::buildEnd(sessionId);
-        routerProvider.send(std::vector<char>(endMsg.begin(), endMsg.end()));
-
-        std::cout << "\n[INFO] Waiting " << config.waitTime << " seconds for VD processing..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(config.waitTime));
 
         // Cleanup
+        std::cout << "\n[INFO] Cleaning up servers..." << std::endl;
+        fakeReportServer.stop();
+        responseServer.stop();
+        fakeReportServer.waitForStop();
+        responseServer.waitForStop();
         std::cout << "\n[INFO] Stopping modules..." << std::endl;
         vulnerabilityScanner.stop();
         inventorySync.stop();
-        fakeReportServer.stop();
         routerProvider.stop();
         routerModule.stop();
 
