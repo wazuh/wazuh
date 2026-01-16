@@ -1452,13 +1452,12 @@ HTTP_REQUEST_URL := https://github.com/wazuh/wazuh-http-request/tarball/$(HTTP_R
 CA_BUNDLE := /etc/ssl/certs/ca-certificates.crt
 CACERT_OPT := $(shell test -f $(CA_BUNDLE) && echo "--cacert $(CA_BUNDLE)" || echo "")
 
-.PHONY: shared_modules/http-request.tar.gz
-
 shared_modules/http-request.tar.gz:
-	test -f $@ || $(CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL) &&\
-	($(GUNZIP) -f $@ || (rm -f $@ && echo "Error decompressing $@ maybe wrong branch was supplied!" && false)) && \
-	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) && \
-	rm $(patsubst %.gz,%,$@)
+	find $(patsubst %.tar.gz,%,$@) -type f -exec false {} + &&\
+	((test -e $(patsubst %.gz,%,$@) || $(CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL)) &&\
+	($(GUNZIP) $@ || (rm -f $@ && echo "Error decompressing $@ maybe wrong branch was supplied!" && false)) &&\
+	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) &&\
+	rm $(patsubst %.gz,%,$@)) || true
 
 # Indexer plugin templates download
 # Get refs from get_git_refs.sh if INDEXER_PLUGINS_REFS is not set
