@@ -24,5 +24,5 @@ fcntl fcntlmodule.c
 grp grpmodule.c
 
 # OpenSSL bindings
-_ssl _ssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) $(OPENSSL_LIBS)
-_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS)
+_ssl _ssl.c $(CUSTOM_OPENSSL_INCLUDES) $(CUSTOM_OPENSSL_LDFLAGS) $(CUSTOM_OPENSSL_LIBS)
+_hashlib _hashopenssl.c $(CUSTOM_OPENSSL_INCLUDES) $(CUSTOM_OPENSSL_LDFLAGS) $(CUSTOM_OPENSSL_LIBS)
