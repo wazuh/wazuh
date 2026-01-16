@@ -1,0 +1,20 @@
+name: Check CHANGELOG
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  check-changelog:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if CHANGELOG.md was modified
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          if ! git diff --name-only origin/${{ github.base_ref }} | grep -q "^CHANGELOG.md$"; then
+            echo "❌ CHANGELOG not modified. This check can be skipped if the PR changes should not be added to the changelog file."
+            exit 1
+          fi
