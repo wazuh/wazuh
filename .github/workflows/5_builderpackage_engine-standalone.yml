@@ -19,6 +19,20 @@ on:
           - debug
           - release
 
+  workflow_call:
+    inputs:
+      wazuh-branch:
+        description: 'Wazuh branch'
+        required: false
+        type: string
+        default: 'main'
+
+      build-type:
+        description: 'Choose the CMake build type (debug or release)'
+        required: false
+        type: string
+        default: 'release'
+
   # Triggers the workflow on pull request but only changes in the src/engine/ directory.
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -32,8 +46,8 @@ concurrency:
 
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
-  WAZUH_BRANCH: ${{ github.event.inputs.wazuh-branch || 'main' }}
-  BUILD_TYPE: ${{ github.event.inputs.build-type || 'release' }}
+  WAZUH_BRANCH: ${{ inputs.wazuh-branch || 'main' }}
+  BUILD_TYPE: ${{ inputs.build-type || 'release' }}
 
 jobs:
   build:
@@ -68,67 +82,19 @@ jobs:
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${CONTAINER_NAME} ${TAG}
 
-      - name: Build wazuh-engine in container
+      - name: Build standalone package
         run: |
-          docker run --entrypoint /workspace/wazuh/src/engine/standalone/docker-entrypoint.sh \
-            -e BUILD_TYPE="${BUILD_TYPE}" \
-            -t -v ${{github.workspace}}:/workspace/wazuh:Z \
-            ${CONTAINER_NAME}:${TAG}
-
-      - name: Generate engine schemas
-        run: |
-          python3 ${{ env.ENGINE_DIR }}/tools/engine-schema/engine_schema.py generate \
-            --output-dir ${{ env.ENGINE_DIR }}/ruleset/schemas/ \
-            --wcs-path ${{ github.workspace }}/src/external/wcs-flat-files/ \
-            --decoder-template ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-decoders.template.json
-
-      - name: Create standalone package
-        run: |
-          mkdir auxiliar_dir
-          cd auxiliar_dir
-          install -d -m 770 \
-            wazuh-engine-standalone/bin/lib \
-            wazuh-engine-standalone/default-security-policy \
-            wazuh-engine-standalone/data/store/schema \
-            wazuh-engine-standalone/data/store/schema/engine-schema \
-            wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides \
-            wazuh-engine-standalone/data/store/schema/allowed-fields \
-            wazuh-engine-standalone/data/kvdb \
-            wazuh-engine-standalone/data/tzdb \
-            wazuh-engine-standalone/data/cti \
-            wazuh-engine-standalone/schemas \
-            wazuh-engine-standalone/logs \
-            wazuh-engine-standalone/sockets
-          touch wazuh-engine-standalone/bin/lib/.keep
-          touch wazuh-engine-standalone/default-security-policy/.keep
-          touch wazuh-engine-standalone/data/kvdb/.keep
-          touch wazuh-engine-standalone/data/tzdb/.keep
-          touch wazuh-engine-standalone/data/cti/.keep
-          touch wazuh-engine-standalone/logs/.keep
-          touch wazuh-engine-standalone/sockets/.keep
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/engine-schema/0
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-logpar-overrides.json  wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides/0
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/allowed-fields.json  wazuh-engine-standalone/data/store/schema/allowed-fields/0
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-decoders.json  wazuh-engine-standalone/schemas/
-          cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-filters.json  wazuh-engine-standalone/schemas/
-          cp -r ${{ env.ENGINE_DIR }}/standalone/run_engine.sh wazuh-engine-standalone/
-          chmod +x wazuh-engine-standalone/run_engine.sh
-          cp ${{ env.ENGINE_DIR }}/standalone/README.md wazuh-engine-standalone/
-          cp ${{github.workspace}}/src/external/rocksdb/build/librocksdb.so.8 wazuh-engine-standalone/bin/lib
-          cp ${{github.workspace}}/src/libwazuhext.so wazuh-engine-standalone/bin/lib
-          cp ${{github.workspace}}/src/build/shared_modules/indexer_connector/libindexer_connector.so wazuh-engine-standalone/bin/lib
-          cp ${{github.workspace}}/src/build/shared_modules/content_manager/libcontent_manager.so wazuh-engine-standalone/bin/lib
-          cp ${{github.workspace}}/gcc-libs/libstdc++.so.6* wazuh-engine-standalone/bin/lib/
-          cp ${{github.workspace}}/src/build/engine/wazuh-engine wazuh-engine-standalone/bin/
-          chmod +x wazuh-engine-standalone/bin/wazuh-engine
-          cd ..
+          cd ${{ env.ENGINE_DIR }}/standalone
+          FLAGS="--dont-build-docker --tag ${TAG} -a ${{ matrix.arch }}"
+          if [ "${{ env.BUILD_TYPE }}" == "debug" ]; then FLAGS+=" -d"; fi
+          echo "Running: ./generate_package.sh $FLAGS"
+          bash generate_package.sh $FLAGS
 
       - name: Upload standalone package
         uses: actions/upload-artifact@v4
         with:
           name: wazuh-engine-${{ env.TAG }}-linux-${{ matrix.arch }}
-          path: auxiliar_dir
-          include-hidden-files: true
+          path: ${{ env.ENGINE_DIR }}/standalone/output/*.tar.gz
 
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
@@ -146,11 +112,17 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-    - name: Download compressed zip file
+    - name: Download compressed tar.gz file
       uses: actions/download-artifact@v4
       with:
         name: wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ matrix.arch }}
         path: /tmp/standalone-test
+
+    - name: Extract standalone package
+      run: |
+        cd /tmp/standalone-test
+        tar xzf wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ matrix.arch }}.tar.gz
+        mv wazuh-engine-standalone-${{ needs.build.outputs.version }} wazuh-engine-standalone
 
     - name: Verify artifact structure
       run: |
