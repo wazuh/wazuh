@@ -57,10 +57,19 @@ async def test_disconnected_agent_group_sync_task_get_max_version_from_indexer()
     manager_mock = MagicMock()
     logger_mock = MagicMock()
 
-    # Mock OpenSearch client
+    # Mock OpenSearch client - returns aggregations with by_agent buckets
     indexer_client_mock = AsyncMock()
     indexer_client_mock.search.return_value = {
-        "aggregations": {"max_document_version": {"value": 150}}
+        "aggregations": {
+            "by_agent": {
+                "buckets": [
+                    {
+                        "key": "001",
+                        "max_document_version": {"value": 150}
+                    }
+                ]
+            }
+        }
     }
 
     task = master.DisconnectedAgentGroupSyncTask(
@@ -87,7 +96,11 @@ async def test_disconnected_agent_group_sync_task_get_max_version_from_indexer_n
     # Mock OpenSearch client - no documents found
     indexer_client_mock = AsyncMock()
     indexer_client_mock.search.return_value = {
-        "aggregations": {"max_document_version": {"value": None}}
+        "aggregations": {
+            "by_agent": {
+                "buckets": []
+            }
+        }
     }
 
     task = master.DisconnectedAgentGroupSyncTask(
@@ -548,10 +561,10 @@ async def test_multimodule_version_consistency():
     # Mock OpenSearch client to return different versions for different modules
     indexer_client_mock = AsyncMock()
     indexer_client_mock.search.side_effect = [
-        {"aggregations": {"max_document_version": {"value": 1000}}},  # FIM
-        {"aggregations": {"max_document_version": {"value": 950}}},  # SCA
-        {"aggregations": {"max_document_version": {"value": 1100}}},  # IT Hygiene
-        {"aggregations": {"max_document_version": {"value": 1050}}},  # VD
+        {"aggregations": {"by_agent": {"buckets": [{"key": "001", "max_document_version": {"value": 1000}}]}}},  # FIM
+        {"aggregations": {"by_agent": {"buckets": [{"key": "001", "max_document_version": {"value": 950}}]}}},  # SCA
+        {"aggregations": {"by_agent": {"buckets": [{"key": "001", "max_document_version": {"value": 1100}}]}}},  # IT Hygiene
+        {"aggregations": {"by_agent": {"buckets": [{"key": "001", "max_document_version": {"value": 1050}}]}}},  # VD
     ]
 
     task = master.DisconnectedAgentGroupSyncTask(
@@ -598,7 +611,13 @@ async def test_external_gte_parameter_usage():
 
     indexer_client_mock = AsyncMock()
     indexer_client_mock.search.return_value = {
-        "aggregations": {"max_document_version": {"value": 1234}}
+        "aggregations": {
+            "by_agent": {
+                "buckets": [
+                    {"key": "001", "max_document_version": {"value": 1234}}
+                ]
+            }
+        }
     }
 
     task = master.DisconnectedAgentGroupSyncTask(
@@ -749,7 +768,13 @@ async def test_metrics_and_logging():
 
     indexer_mock = AsyncMock()
     indexer_mock.search.return_value = {
-        "aggregations": {"max_document_version": {"value": 1000}}
+        "aggregations": {
+            "by_agent": {
+                "buckets": [
+                    {"key": "001", "max_document_version": {"value": 1000}}
+                ]
+            }
+        }
     }
 
     task = master.DisconnectedAgentGroupSyncTask(
@@ -781,7 +806,13 @@ async def test_idempotent_synchronization():
 
     indexer_mock = AsyncMock()
     indexer_mock.search.return_value = {
-        "aggregations": {"max_document_version": {"value": 1000}}
+        "aggregations": {
+            "by_agent": {
+                "buckets": [
+                    {"key": "001", "max_document_version": {"value": 1000}}
+                ]
+            }
+        }
     }
 
     task = master.DisconnectedAgentGroupSyncTask(
