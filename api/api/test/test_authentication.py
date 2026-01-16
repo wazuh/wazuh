@@ -53,6 +53,9 @@ original_payload = {
     "rbac_mode": security_conf['rbac_mode']
 }
 
+@pytest.fixture(autouse=True)
+def clear_generate_keypair_cache():
+    authentication.generate_keypair.cache_clear()
 
 def test_check_user_master():
     result = authentication.check_user_master('test_user', 'test_pass')
@@ -92,6 +95,8 @@ def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair
              call(authentication._public_key_path, 0o640)]
     mock_chmod.assert_has_calls(calls)
 
+    authentication.generate_keypair.cache_clear()
+
     with patch('os.path.exists', return_value=True):
         authentication.generate_keypair()
         calls = [call(authentication._private_key_path, mode='r'),
@@ -106,6 +111,40 @@ def test_generate_keypair_ko():
             with patch('os.chown', side_effect=PermissionError):
                 assert authentication.generate_keypair()
 
+@patch("os.chmod")
+@patch("os.chown")
+@patch("api.authentication.change_keypair", return_value=("priv", "pub"))
+@patch("os.path.exists", return_value=False)
+def test_generate_keypair_cache_no_keys(mock_exists, mock_change_keypair, mock_chown, mock_chmod):
+
+    first = authentication.generate_keypair()
+    cached = authentication.generate_keypair()
+
+    assert first == ("priv", "pub")
+    assert first is cached
+
+    mock_exists.assert_called_once()
+    mock_change_keypair.assert_called_once()
+    assert mock_chown.call_count == 2
+    assert mock_chmod.call_count == 2
+
+@patch("builtins.open", return_value=MagicMock())
+@patch("os.path.exists", return_value=True)
+def test_generate_keypair_cache(mock_exists, mock_open,
+    clear_generate_keypair_cache):
+
+    file_mock = MagicMock()
+    file_mock.read.side_effect = ["priv", "pub"]
+    mock_open.return_value.__enter__.return_value = file_mock
+
+    first = authentication.generate_keypair()
+    cached = authentication.generate_keypair()
+
+    assert first == ("priv", "pub")
+    assert first is cached
+
+    assert mock_exists.call_count == 2
+    assert mock_open.call_count == 2
 
 @patch('builtins.open')
 def test_change_keypair(mock_open):

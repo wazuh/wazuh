@@ -972,6 +972,7 @@ Stages:
 - **Check/Allow**: Allows conditional operations to be made on the event. Cannot modify the event.
 - **Parse**: Parses fields on the event, acting both as a condition and normalization.
 - **Map**: Allows mapping and transformation operations on the event.
+- **First Of**: Allows defining multiple branches of operations, where only the first successful branch is executed.
 - **Normalize**: Defines blocks with a combination of check, parse, and map stages.
 - **Output**: Allows operations to communicate outside the Engine, typically used to send events outward. Cannot modify the event.
 
@@ -982,7 +983,7 @@ The type of asset is an allowed combination of certain stages. The following tab
 |-|-|
 |Decoders|check, parse, map, normalize|
 |Rules|check, map, normalize_rule|
-|Outputs|check, output|
+|Outputs|check, output, first_of|
 |Filters|allow|
 
 Each asset has a name and metadata, with custom metadata suited to its specific needs. Additionally, each asset can have parents.

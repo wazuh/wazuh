@@ -12,5 +12,6 @@
 #define CLUSTER_UTILS_WRAPPERS_H
 
 char* __wrap_get_node_name(void);
+char* __wrap_get_cluster_name(void);
 
 #endif

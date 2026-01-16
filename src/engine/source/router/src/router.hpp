@@ -58,7 +58,7 @@ public:
     /**
      * @copydoc IRouter::addEntry
      */
-    base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail = false) override;
+    base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail) override;
 
     /**
      * @copydoc IRouter::removeEntry
@@ -89,6 +89,11 @@ public:
      * @copydoc IRouter::getEntry
      */
     base::RespOrError<prod::Entry> getEntry(const std::string& name) const override;
+
+    /**
+     * @copydoc IRouter::hotSwapNamespace
+     */
+    base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) override;
 
     /**
      * @copydoc IRouter::ingest

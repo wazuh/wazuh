@@ -173,7 +173,7 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
         else
         {
             char offset[OFFSET_SIZE] = {0};
-            sprintf(offset, "%ld", reader->diff_max_size);
+            snprintf(offset, OFFSET_SIZE, "%ld", reader->diff_max_size);
             cJSON_AddStringToObject(file, "only-future-events", "no");
             cJSON_AddStringToObject(file, "max-size", offset);
         }

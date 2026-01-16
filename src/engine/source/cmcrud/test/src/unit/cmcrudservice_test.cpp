@@ -143,12 +143,12 @@ TEST(CrudService_Unit, CreateNamespace_Success)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
 
-    EXPECT_CALL(*store, createNamespace(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, createNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1);
 
-    EXPECT_NO_THROW(service.createNamespace(nsName));
+    EXPECT_NO_THROW(service.createNamespace(nsId));
 }
 
 TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
@@ -157,13 +157,13 @@ TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"low-level error"}));
 
     try
     {
-        service.createNamespace(nsName);
+        service.createNamespace(nsId);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -183,12 +183,12 @@ TEST(CrudService_Unit, DeleteNamespace_Success)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
 
-    EXPECT_CALL(*store, deleteNamespace(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, deleteNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1);
 
-    EXPECT_NO_THROW(service.deleteNamespace(nsName));
+    EXPECT_NO_THROW(service.deleteNamespace(nsId));
 }
 
 TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
@@ -197,13 +197,13 @@ TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, deleteNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"low-level error"}));
 
     try
     {
-        service.deleteNamespace(nsName);
+        service.deleteNamespace(nsId);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -223,20 +223,19 @@ TEST(CrudService_Unit, UpsertPolicy_Success)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    NamespaceId nsId {nsName};
     EXPECT_CALL(*nsPtr, getNamespaceId()).Times(1).WillOnce(testing::ReturnRef(nsId));
 
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service.upsertPolicy(nsName, kPolicyYAML));
+    EXPECT_NO_THROW(service.upsertPolicy(nsId, kPolicyYAML));
 }
 
 TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
@@ -245,13 +244,12 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    NamespaceId nsId {nsName};
     EXPECT_CALL(*nsPtr, getNamespaceId()).Times(1).WillOnce(testing::ReturnRef(nsId));
 
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -260,7 +258,7 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
 
     try
     {
-        service.upsertPolicy(nsName, kPolicyYAML);
+        service.upsertPolicy(nsId, kPolicyYAML);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -280,16 +278,16 @@ TEST(CrudService_Unit, DeletePolicy_Success)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
     EXPECT_CALL(*nsPtr, deletePolicy()).Times(1);
 
-    EXPECT_NO_THROW(service.deletePolicy(nsName));
+    EXPECT_NO_THROW(service.deletePolicy(nsId));
 }
 
 // ---------------------------------------------------------------------
@@ -302,10 +300,10 @@ TEST(CrudService_Unit, ListResources_Success)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsReader = std::make_shared<NiceMock<MockICMStoreNSReader>>();
 
-    EXPECT_CALL(*store, getNSReader(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNSReader(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsReader));
 
@@ -318,7 +316,7 @@ TEST(CrudService_Unit, ListResources_Success)
     EXPECT_CALL(*nsReader, resolveHashFromUUID("uuid-1")).Times(1).WillOnce(Return("hash-1"));
     EXPECT_CALL(*nsReader, resolveHashFromUUID("uuid-2")).Times(1).WillOnce(Return("hash-2"));
 
-    auto result = service.listResources(nsName, ResourceType::DECODER);
+    auto result = service.listResources(nsId, ResourceType::DECODER);
     ASSERT_EQ(result.size(), 2u);
 
     EXPECT_EQ(result[0].uuid, "uuid-1");
@@ -336,13 +334,13 @@ TEST(CrudService_Unit, ListResources_MissingNamespaceThrows)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
 
-    EXPECT_CALL(*store, getNSReader(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNSReader(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(std::shared_ptr<cm::store::ICMStoreNSReader> {}));
 
-    EXPECT_THROW(service.listResources(nsName, ResourceType::DECODER), std::runtime_error);
+    EXPECT_THROW(service.listResources(nsId, ResourceType::DECODER), std::runtime_error);
 }
 
 // ---------------------------------------------------------------------
@@ -357,7 +355,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     const std::string uuid {"5c1df6b6-1458-4b2e-9001-96f67a8b12c8"};
 
     auto nsReader = std::make_shared<NiceMock<MockICMStoreNSReader>>();
@@ -383,7 +381,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const std::string yaml = service.getResourceByUUID(nsName, uuid);
+    const std::string yaml = service.getResourceByUUID(nsId, uuid, false);
 
     EXPECT_THAT(yaml, HasSubstr("windows"));
     EXPECT_THAT(yaml, HasSubstr("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"));
@@ -399,12 +397,12 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     const std::string uuid {"82e215c4-988a-4f64-8d15-b98b2fc03a4f"};
 
     auto nsReader = std::make_shared<NiceMock<MockICMStoreNSReader>>();
 
-    EXPECT_CALL(*store, getNSReader(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNSReader(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsReader));
 
@@ -427,7 +425,7 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     EXPECT_CALL(*nsReader, getKVDBByUUID(uuid)).Times(1).WillOnce(Return(kvdb));
 
-    const std::string yaml = service.getResourceByUUID(nsName, uuid);
+    const std::string yaml = service.getResourceByUUID(nsId, uuid, false);
 
     EXPECT_THAT(yaml, ::testing::HasSubstr("windows_kerberos_status_code_to_code_name"));
     EXPECT_THAT(yaml, ::testing::HasSubstr("82e215c4-988a-4f64-8d15-b98b2fc03a4f"));
@@ -443,12 +441,12 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     const std::string uuid {"3f086ce2-32a4-42b0-be7e-40dcfb9c6160"};
 
     auto nsReader = std::make_shared<NiceMock<MockICMStoreNSReader>>();
 
-    EXPECT_CALL(*store, getNSReader(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNSReader(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsReader));
 
@@ -465,7 +463,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     EXPECT_CALL(*nsReader, getAssetByUUID(uuid)).Times(1).WillOnce(Return(assetJson));
 
-    const std::string yaml = service.getResourceByUUID(nsName, uuid);
+    const std::string yaml = service.getResourceByUUID(nsId, uuid, false);
 
     EXPECT_THAT(yaml, ::testing::HasSubstr("decoder/syslog/0"));
     EXPECT_THAT(yaml, ::testing::HasSubstr("3f086ce2-32a4-42b0-be7e-40dcfb9c6160"));
@@ -481,12 +479,11 @@ TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    NamespaceId nsId {nsName};
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -497,7 +494,7 @@ TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsName, ResourceType::INTEGRATION, kIntegrationYAML));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationYAML));
 }
 
 TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
@@ -506,12 +503,11 @@ TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    NamespaceId nsId {nsName};
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -522,7 +518,7 @@ TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsName, ResourceType::INTEGRATION, kIntegrationYAML));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationYAML));
 }
 
 // ---------------------------------------------------------------------
@@ -535,10 +531,10 @@ TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -547,7 +543,7 @@ TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsName, ResourceType::KVDB, kKVDBYAML));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, kKVDBYAML));
 }
 
 TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
@@ -556,10 +552,10 @@ TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -568,7 +564,7 @@ TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsName, ResourceType::KVDB, kKVDBYAML));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, kKVDBYAML));
 }
 
 // ---------------------------------------------------------------------
@@ -581,12 +577,11 @@ TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    NamespaceId nsId {nsName};
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -596,7 +591,7 @@ TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsName, ResourceType::DECODER, kDecoderYAML));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML));
 }
 
 TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
@@ -605,12 +600,11 @@ TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    NamespaceId nsId {nsName};
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -620,7 +614,7 @@ TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsName, ResourceType::DECODER, kDecoderYAML));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML));
 }
 
 // ---------------------------------------------------------------------
@@ -633,18 +627,18 @@ TEST(CrudService_Unit, DeleteResourceByUUID_Success)
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     const std::string uuid {"some-uuid"};
 
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    EXPECT_CALL(*store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
     EXPECT_CALL(*nsPtr, deleteResourceByUUID(uuid)).Times(1);
 
-    EXPECT_NO_THROW(service.deleteResourceByUUID(nsName, uuid));
+    EXPECT_NO_THROW(service.deleteResourceByUUID(nsId, uuid));
 }
 
 // ---------------------------------------------------------------------

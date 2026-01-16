@@ -344,7 +344,6 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
-    , m_syncLoopFinished { true }
     , m_initialized { false }
     , m_notify { false }
     , m_paused { false }
@@ -588,11 +587,6 @@ void Syscollector::destroy()
     m_stopping = true;
     m_cv.notify_all();
 
-    // Wait for syncLoop to finish completely, including cleanup of resources
-    m_cv.wait(lock, [this]()
-    {
-        return m_syncLoopFinished;
-    });
     lock.unlock();
 
     // Signal sync protocols to stop any ongoing operations
@@ -1731,7 +1725,6 @@ void Syscollector::scan()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
-    m_syncLoopFinished = false;
     m_logFunction(LOG_INFO, "Module started.");
 
     if (m_scanOnStart)
@@ -1753,7 +1746,6 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
         scan();
     }
     m_spDBSync.reset(nullptr);
-    m_syncLoopFinished = true;
     m_cv.notify_all();
 }
 

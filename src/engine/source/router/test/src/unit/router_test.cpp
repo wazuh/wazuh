@@ -35,7 +35,7 @@ public:
 
     void makeControllerNamePolicyFailture(router::prod::EntryPost entryPost)
     {
-        auto error = m_router->addEntry(entryPost);
+        auto error = m_router->addEntry(entryPost, /*ignoreFail=*/false);
         EXPECT_TRUE(error.has_value());
     }
 
@@ -43,7 +43,7 @@ public:
     {
         EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
             .WillOnce(::testing::Throw(std::runtime_error("error")));
-        auto error = m_router->addEntry(entryPost);
+        auto error = m_router->addEntry(entryPost, /*ignoreFail=*/false);
         EXPECT_TRUE(error.has_value());
     }
 
@@ -58,7 +58,7 @@ public:
         makeControllerBuildPolicySuccess();
         auto emptyNames = std::unordered_set<base::Name> {};
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(emptyNames));
-        auto error = m_router->addEntry(entryPost);
+        auto error = m_router->addEntry(entryPost, /*ignoreFail=*/false);
         EXPECT_TRUE(error.has_value());
     }
 
@@ -79,7 +79,7 @@ public:
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));
         stopControllerCall();
-        auto error = m_router->addEntry(entryPost);
+        auto error = m_router->addEntry(entryPost, /*ignoreFail=*/false);
         EXPECT_TRUE(error.has_value());
     }
 
@@ -101,7 +101,7 @@ public:
         EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_))
             .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
         stopControllerCall();
-        auto error = m_router->addEntry(entryPost);
+        auto error = m_router->addEntry(entryPost, /*ignoreFail=*/false);
         EXPECT_TRUE(error.has_value());
     }
 
@@ -110,7 +110,7 @@ public:
         makeControllerNameFilterSuccess();
         EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(::testing::Return(base::Expression {}));
 
-        auto error = m_router->addEntry(entryPost);
+        auto error = m_router->addEntry(entryPost, /*ignoreFail=*/false);
         if (stop)
         {
             stopControllerCall();
@@ -228,14 +228,14 @@ TEST_F(RouterTest, AddEntrySucess)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
 
-    auto result = addEntry(entryPost);
+    auto result = addEntry(entryPost, /*ignoreFail=*/false);
     EXPECT_TRUE(result);
 }
 
 TEST_F(RouterTest, AddEntrySameNameError)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    auto result = addEntry(entryPost);
+    auto result = addEntry(entryPost, /*ignoreFail=*/false);
     EXPECT_TRUE(result);
 
     auto entryPostSameName = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY + 1};
@@ -246,7 +246,7 @@ TEST_F(RouterTest, AddEntrySameNameError)
 TEST_F(RouterTest, AddEntrySamePriority)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    auto result = addEntry(entryPost);
+    auto result = addEntry(entryPost, /*ignoreFail=*/false);
     EXPECT_TRUE(result);
 
     auto entryPostSamePriority =
@@ -263,7 +263,7 @@ TEST_F(RouterTest, RemoveEntryNameNotFound)
 TEST_F(RouterTest, RemoveEntrySuccess)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    addEntry(entryPost);
+    addEntry(entryPost, /*ignoreFail=*/false);
 
     EXPECT_TRUE(removeEntry(ENVIRONMENT_NAME));
 }
@@ -276,7 +276,7 @@ TEST_F(RouterTest, RebuildEntryNameNotFound)
 TEST_F(RouterTest, RebuildEntryBuildPolicyError)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    addEntry(entryPost);
+    addEntry(entryPost, /*ignoreFail=*/false);
 
     rebuildEntryBuildPolicyFailture(ENVIRONMENT_NAME);
 }
@@ -297,7 +297,7 @@ TEST_F(RouterTest, EnableEntryNameNotFound)
 TEST_F(RouterTest, EnableEntrySuccess)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    addEntry(entryPost);
+    addEntry(entryPost, /*ignoreFail=*/false);
 
     EXPECT_TRUE(enableEntry(ENVIRONMENT_NAME));
 }
@@ -315,7 +315,7 @@ TEST_F(RouterTest, ChangePriorityNameNotFound)
 TEST_F(RouterTest, ChangePrioritySamePriority)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    addEntry(entryPost);
+    addEntry(entryPost, /*ignoreFail=*/false);
 
     EXPECT_TRUE(changePriority(ENVIRONMENT_NAME, PRIORITY));
 }
@@ -340,7 +340,7 @@ TEST_F(RouterTest, GetEntryNameNotFound)
 TEST_F(RouterTest, GetEntrySuccess)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    addEntry(entryPost);
+    addEntry(entryPost, /*ignoreFail=*/false);
 
     EXPECT_TRUE(getEntry(ENVIRONMENT_NAME));
 }
@@ -365,7 +365,7 @@ TEST_F(RouterTest, GetEntriesNotEmpty)
 TEST_F(RouterTest, IngestSuccess)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    addEntry(entryPost);
+    addEntry(entryPost, /*ignoreFail=*/false);
 
     enableEntry(ENVIRONMENT_NAME);
 

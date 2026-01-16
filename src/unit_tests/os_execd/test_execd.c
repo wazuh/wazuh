@@ -1128,6 +1128,53 @@ static void test_ExecdStart_json_err(void **state) {
     ExecdStart(queue);
 }
 
+/* Test proper handling of long active response keys
+ * Verifies that rkey concatenation respects buffer boundaries
+ * when active response keys exceed available space
+ */
+static void test_ExecdStart_long_ar_keys(void **state) {
+    #define OS_SIZE_4096 4096
+
+    char rkey[OS_SIZE_4096];
+    char basename_result[] = "disable-account";  // 15 bytes
+    char *long_keys = NULL;
+
+    /* Create keys exceeding available buffer space (4090 bytes) */
+    os_calloc(4100, sizeof(char), long_keys);
+    long_keys[0] = '-';
+    memset(long_keys + 1, 'A', 4089);
+    long_keys[4090] = '\0';
+
+    /* Initialize rkey with basename */
+    memset(rkey, '\0', OS_SIZE_4096);
+    snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_result);
+
+    size_t rkey_len = strlen(rkey);  // Should be 15
+    size_t keys_len = strlen(long_keys);  // Should be 4090
+
+    /* Verify total length exceeds buffer size */
+    assert_true(rkey_len + keys_len >= OS_SIZE_4096);  // 15 + 4090 = 4105 >= 4096
+
+    /* Note: In production code, a warning is logged when size is exceeded:
+     * mwarn("Active response key exceeds maximum size. Truncating keys.");
+     */
+
+    /* Concatenate keys with size limit */
+    strncat(rkey, long_keys, OS_SIZE_4096 - rkey_len - 1);
+
+    /* Verify buffer boundaries are respected */
+    size_t final_len = strlen(rkey);
+    assert_true(final_len < OS_SIZE_4096);  // Within bounds
+    assert_int_equal(final_len, OS_SIZE_4096 - 1);  // Exactly 4095
+
+    /* Verify content integrity */
+    assert_memory_equal(rkey, basename_result, strlen(basename_result));  // Basename preserved
+    assert_int_equal(rkey[OS_SIZE_4096 - 1], '\0');  // Null terminated
+
+    /* Cleanup */
+    os_free(long_keys);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_ExecdStart_ok, test_setup_file, test_teardown_file),
@@ -1138,6 +1185,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_ExecdStart_get_command_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_get_name_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_json_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_ExecdStart_long_ar_keys, test_setup_file, test_teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

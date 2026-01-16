@@ -27,6 +27,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 {
     BuiltAssets builtAssets;
 
+    const auto rootDecoderName = base::Name {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder()))};
+
     for (const auto& integUUID : policy.getIntegrationsUUIDs())
     {
         const auto integration = cmStoreNsReader->getIntegrationByUUID(integUUID);
@@ -35,6 +37,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             continue;
         }
 
+        // Set partial context for the asset builder
         assetBuilder->getContext().integrationName = integration.getName();
         assetBuilder->getContext().integrationCategory = integration.getCategory();
 
@@ -94,32 +97,35 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                                                      e.what()));
             }
 
-            const auto isRootDefault =
-                (asset.name() == std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder())));
+            // The root decoder cannot have parents (Avoid cycles)
+            const auto isRootDecoder = (asset.name() == rootDecoderName);
+            const auto hasParents = !asset.parents().empty();
 
-            if (isRootDefault && !asset.parents().empty())
+            if (isRootDecoder && hasParents)
             {
-                throw std::runtime_error(
-                    fmt::format("Root default decoder '{}' must not have parents", asset.name().toStr()));
+                throw std::runtime_error(fmt::format("The root decoder '{}' cannot have parents", rootDecoderName.toStr()));
             }
 
-            if (asset.parents().empty() && !isRootDefault)
+            // Add parent if no parents defined, the priority order is:
+            // local asset parent > integration default parent > policy root decoder
+            if (!isRootDecoder && !hasParents)
             {
-                const auto integrationDefaultParent = integration.getDefaultParent();
-                std::string defaultParentName;
-                if (integrationDefaultParent.has_value())
+                auto defaultParentUUID = [&]() -> std::string
                 {
-                    defaultParentName = integrationDefaultParent.value();
-                }
-                else
-                {
-                    defaultParentName = policy.getDefaultParent();
-                }
+                    if (integration.hasDefaultParent())
+
+                    {
+                        return integration.getDefaultParent().value_or("Error getting default parent");
+                    }
+
+                    return policy.getRootDecoder();
+                }();
 
                 asset.parents().emplace_back(
-                    std::move(std::get<0>(cmStoreNsReader->resolveNameFromUUID(defaultParentName))));
+                    std::move(std::get<0>(cmStoreNsReader->resolveNameFromUUID(defaultParentUUID))));
             }
 
+            // Store built asset
             auto& decodersData = builtAssets[cm::store::ResourceType::DECODER];
             if (decodersData.assets.find(asset.name()) == decodersData.assets.end())
             {

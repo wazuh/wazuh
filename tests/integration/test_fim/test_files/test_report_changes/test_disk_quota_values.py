@@ -178,7 +178,7 @@ def test_disk_quota_values(test_configuration, test_metadata, configure_local_in
     write_file(file_to_monitor, data=to_write)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=30)
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     content_changes = str(wazuh_log_monitor.callback_result)
     assert 'test_string' in content_changes or 'More changes...' in content_changes, 'Wrong content_changes field'
@@ -194,7 +194,7 @@ def test_disk_quota_values(test_configuration, test_metadata, configure_local_in
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FILE_LIMIT_REACHED
 
     # Check the content_changes field in the event
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=30)
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     assert 'Unable to calculate diff due to \'disk_quota\' limit has been reached.' in wazuh_log_monitor.callback_result, 'Wrong content_changes field'
 

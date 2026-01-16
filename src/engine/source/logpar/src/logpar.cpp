@@ -312,6 +312,7 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
         throw std::runtime_error("Field parser overrides file must have a fields object");
     }
 
+    // Overrdes default parser for a field
     auto asObj = fieldParserOverrides.getObject("/fields").value();
     for (const auto& [key, value] : asObj)
     {
