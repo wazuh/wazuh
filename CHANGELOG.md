@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.0]
 
+### Manager
+
+#### Fixed
+
+- Fixed incorrect permissions on router and socket UNIX sockets. ([#33922](https://github.com/wazuh/wazuh/pull/33922))
+
+
 ## [v4.14.3]
 
 ### Manager
@@ -10,7 +17,50 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Scaped document ID when necessary before sending document to indexer. ([#33464](https://github.com/wazuh/wazuh/pull/33464))
+- Extended timestamp conversion helpers to support additional input formats and normalize ISO8601 strings. ([#33551](https://github.com/wazuh/wazuh/pull/33551))
+- Restricted cluster file transfer write paths. ([#33705](https://github.com/wazuh/wazuh/pull/33705))
+- Hardened cluster deserialization by restricting callable decoding to Wazuh modules and improving error handling. ([#33910](https://github.com/wazuh/wazuh/pull/33910))
+- Added query size checks for syscollector delta sync SQL generation to prevent buffer overflows. ([#33803](https://github.com/wazuh/wazuh/pull/33803))
+- Replaced unsafe `sprintf` calls in the SCA decoder to prevent buffer overflows. ([#33756](https://github.com/wazuh/wazuh/pull/33756))
+- Fixed a memory leak in the CIS-CAT decoder when database operations fail. ([#33739](https://github.com/wazuh/wazuh/pull/33739))
 
+### Agent
+
+#### Added
+
+- Added hostname and architecture metadata to Windows keep-alive messages. ([#33831](https://github.com/wazuh/wazuh/pull/33831))
+
+#### Fixed
+
+- Fixed UTF-16 casting when updating `report_changes`. ([#33495](https://github.com/wazuh/wazuh/pull/33495))
+- Improved Active Response key handling in wazuh-execd. ([#33665](https://github.com/wazuh/wazuh/pull/33665))
+- Hardened Logcollector multiline backup handling to use full-buffer copies. ([#33926](https://github.com/wazuh/wazuh/pull/33926))
+- Fixed label formatting edge cases in keep-alive notify messages. ([#33708](https://github.com/wazuh/wazuh/pull/33708))
+- Fixed a false positive in vulnerability detection for Oracle Linux 8. ([#33583](https://github.com/wazuh/wazuh/pull/33583))
+
+### RESTful API
+
+#### Changed
+
+- Improved authentication performance by caching generated keypairs and clearing the cache when key files change. ([#33702](https://github.com/wazuh/wazuh/pull/33702))
+
+#### Fixed
+
+- Improved configuration upload validation by parsing and comparing Wazuh XML configurations more reliably. ([#33683](https://github.com/wazuh/wazuh/pull/33683))
+- Fixed protected settings checks when multiple `<ossec_config>` blocks are present. ([#33807](https://github.com/wazuh/wazuh/pull/33807))
+
+### Ruleset
+
+#### Added
+
+- Added a CIS SCA policy for macOS 26 Tahoe. ([#33492](https://github.com/wazuh/wazuh/pull/33492))
+
+### Other
+
+#### Changed
+
+- Updated the `werkzeug` dependency to 3.1.4. ([#33569](https://github.com/wazuh/wazuh/pull/33569))
+- Updated the `urllib3` dependency to 2.6.3. ([#33927](https://github.com/wazuh/wazuh/pull/33927))
 
 ## [v4.14.2]
 
