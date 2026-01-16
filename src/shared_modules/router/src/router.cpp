@@ -498,16 +498,22 @@ extern "C"
                         }
                         res.status = 500;
                     });
-
-                // Set umask to create socket with 0660 permissions
-                mode_t oldMask = umask(0117); // umask 0117 creates files with 0660
                 instance->running = instance->server->listen(path.c_str(), true);
-                umask(oldMask); // Restore original umask
 
                 if (instance->running == false)
                 {
                     logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
                     return;
+                }
+
+                if (chmod(path.c_str(), 0660) == 0)
+                {
+                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "API socket permissions set to 0660");
+                }
+                else
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Error setting API socket permissions: " + std::string(strerror(errno)));
                 }
             });
         // Spin lock until server is ready
