@@ -19,6 +19,20 @@ on:
           - debug
           - release
 
+  workflow_call:
+    inputs:
+      wazuh-branch:
+        description: 'Wazuh branch'
+        required: false
+        type: string
+        default: 'main'
+
+      build-type:
+        description: 'Choose the CMake build type (debug or release)'
+        required: false
+        type: string
+        default: 'release'
+
   # Triggers the workflow on pull request but only changes in the src/engine/ directory.
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -32,8 +46,8 @@ concurrency:
 
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
-  WAZUH_BRANCH: ${{ github.event.inputs.wazuh-branch || 'main' }}
-  BUILD_TYPE: ${{ github.event.inputs.build-type || 'release' }}
+  WAZUH_BRANCH: ${{ inputs.wazuh-branch || 'main' }}
+  BUILD_TYPE: ${{ inputs.build-type || 'release' }}
 
 jobs:
   build:
