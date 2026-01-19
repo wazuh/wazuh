@@ -917,3 +917,858 @@ INSTANTIATE_TEST_SUITE_P(
                          }}))));
 
 } // namespace buildassettest
+
+namespace orderpreservationtest
+{
+
+using buildgraphtest::assetExpr;
+using AD = buildgraphtest::AssetData;
+using RT = cm::store::ResourceType;
+
+// Test that verifies children order is preserved in expressions
+TEST(OrderPreservation, MultipleChildrenPreserveOrder)
+{
+    // Create subgraph with parent having 5 children in specific order: A, B, C, D, E
+    factory::SubgraphData subgraphData;
+
+    base::Name parentName("decoder/parent/0");
+    Asset parent {base::Name("decoder/parent/0"), assetExpr(parentName), {}};
+    subgraphData.orderedAssets.push_back(parentName);
+    subgraphData.assets.emplace(parentName, parent);
+
+    // Add children in specific order
+    std::vector<std::string> expectedOrder = {"A", "B", "C", "D", "E"};
+    for (const auto& childId : expectedOrder)
+    {
+        base::Name childName("decoder/" + childId);
+        Asset child {base::Name("decoder/" + childId), assetExpr(childName), {parentName}};
+        subgraphData.orderedAssets.push_back(childName);
+        subgraphData.assets.emplace(childName, child);
+    }
+
+    // Build subgraph
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+
+    // Verify graph preserves order
+    ASSERT_TRUE(subgraph.hasChildren(parentName));
+    const auto& graphChildren = subgraph.children(parentName);
+    ASSERT_EQ(graphChildren.size(), expectedOrder.size());
+
+    for (size_t i = 0; i < expectedOrder.size(); ++i)
+    {
+        EXPECT_EQ(graphChildren[i].toStr(), "decoder/" + expectedOrder[i])
+            << "Child at position " << i << " should be " << expectedOrder[i];
+    }
+
+    // Build expression and verify operands preserve order
+    auto expr = factory::buildSubgraphExpression<base::Or>(subgraph);
+    ASSERT_TRUE(expr->isOperation());
+
+    auto rootOp = expr->getPtr<base::Operation>();
+    ASSERT_EQ(rootOp->getOperands().size(), 1); // Parent node
+
+    auto parentNode = rootOp->getOperands()[0];
+    ASSERT_TRUE(parentNode->isImplication());
+
+    auto implNode = parentNode->getPtr<base::Implication>();
+    ASSERT_EQ(implNode->getOperands().size(), 2); // condition + consequence
+
+    auto childrenOp = implNode->getOperands()[1];
+    ASSERT_TRUE(childrenOp->isOperation());
+
+    auto childrenOpPtr = childrenOp->getPtr<base::Operation>();
+    ASSERT_EQ(childrenOpPtr->getOperands().size(), expectedOrder.size());
+
+    // Verify expression operands match expected order
+    for (size_t i = 0; i < expectedOrder.size(); ++i)
+    {
+        auto childExpr = childrenOpPtr->getOperands()[i];
+        EXPECT_EQ(childExpr->getName(), "decoder/" + expectedOrder[i])
+            << "Expression operand at position " << i << " should be decoder/" << expectedOrder[i];
+    }
+}
+
+// Test order preservation with complex hierarchy
+TEST(OrderPreservation, ComplexHierarchyPreservesOrder)
+{
+    // Build: Root -> P1 (children: C1, C2, C3) -> C1 (children: GC1, GC2)
+    factory::SubgraphData subgraphData;
+
+    base::Name p1Name("decoder/P1");
+    Asset p1 {base::Name("decoder/P1"), assetExpr(p1Name), {}};
+    subgraphData.orderedAssets.push_back(p1Name);
+    subgraphData.assets.emplace(p1Name, p1);
+
+    // Add P1's children in order: C1, C2, C3
+    std::vector<std::string> p1ChildrenOrder = {"C1", "C2", "C3"};
+    for (const auto& childId : p1ChildrenOrder)
+    {
+        base::Name childName("decoder/" + childId);
+        Asset child {base::Name("decoder/" + childId), assetExpr(childName), {p1Name}};
+        subgraphData.orderedAssets.push_back(childName);
+        subgraphData.assets.emplace(childName, child);
+    }
+
+    // Add C1's children in order: GC1, GC2
+    std::vector<std::string> c1ChildrenOrder = {"GC1", "GC2"};
+    base::Name c1Name("decoder/C1");
+    for (const auto& grandchildId : c1ChildrenOrder)
+    {
+        base::Name grandchildName("decoder/" + grandchildId);
+        Asset grandchild {base::Name("decoder/" + grandchildId), assetExpr(grandchildName), {c1Name}};
+        subgraphData.orderedAssets.push_back(grandchildName);
+        subgraphData.assets.emplace(grandchildName, grandchild);
+    }
+
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+
+    // Verify P1's children order in graph
+    const auto& p1Children = subgraph.children(p1Name);
+    ASSERT_EQ(p1Children.size(), p1ChildrenOrder.size());
+    for (size_t i = 0; i < p1ChildrenOrder.size(); ++i)
+    {
+        EXPECT_EQ(p1Children[i].toStr(), "decoder/" + p1ChildrenOrder[i]);
+    }
+
+    // Verify C1's children order in graph
+    const auto& c1Children = subgraph.children(c1Name);
+    ASSERT_EQ(c1Children.size(), c1ChildrenOrder.size());
+    for (size_t i = 0; i < c1ChildrenOrder.size(); ++i)
+    {
+        EXPECT_EQ(c1Children[i].toStr(), "decoder/" + c1ChildrenOrder[i]);
+    }
+
+    // Build expression and verify order preservation throughout
+    auto expr = factory::buildSubgraphExpression<base::Or>(subgraph);
+    ASSERT_TRUE(expr->isOperation());
+
+    // Navigation path: Root -> P1Node -> P1Children
+    auto rootOp = expr->getPtr<base::Operation>();
+    ASSERT_EQ(rootOp->getOperands().size(), 1);
+
+    auto p1Node = rootOp->getOperands()[0];
+    ASSERT_TRUE(p1Node->isImplication());
+
+    auto p1Impl = p1Node->getPtr<base::Implication>();
+    auto p1ChildrenOp = p1Impl->getOperands()[1]->getPtr<base::Operation>();
+    ASSERT_EQ(p1ChildrenOp->getOperands().size(), 3); // C1, C2, C3
+
+    // Verify P1's children are in correct order
+    EXPECT_EQ(p1ChildrenOp->getOperands()[0]->getName(), "decoder/C1/Node"); // C1 has children, so it's a Node
+    EXPECT_EQ(p1ChildrenOp->getOperands()[1]->getName(), "decoder/C2");      // C2 is leaf
+    EXPECT_EQ(p1ChildrenOp->getOperands()[2]->getName(), "decoder/C3");      // C3 is leaf
+
+    // Navigate to C1's children
+    auto c1Node = p1ChildrenOp->getOperands()[0];
+    ASSERT_TRUE(c1Node->isImplication());
+
+    auto c1Impl = c1Node->getPtr<base::Implication>();
+    auto c1ChildrenOp = c1Impl->getOperands()[1]->getPtr<base::Operation>();
+    ASSERT_EQ(c1ChildrenOp->getOperands().size(), 2); // GC1, GC2
+
+    // Verify C1's children are in correct order
+    EXPECT_EQ(c1ChildrenOp->getOperands()[0]->getName(), "decoder/GC1");
+    EXPECT_EQ(c1ChildrenOp->getOperands()[1]->getName(), "decoder/GC2");
+}
+
+// Test that order is preserved when building full policy expression
+TEST(OrderPreservation, FullPolicyPreservesDecoderOrder)
+{
+    // Create policy with multiple decoders in specific order
+    auto data = AD()(RT::DECODER, "decoder/First", "decoder/Input")(RT::DECODER, "decoder/Second", "decoder/Input")(
+        RT::DECODER, "decoder/Third", "decoder/Input")(RT::DECODER, "decoder/Fourth", "decoder/Input")(
+        RT::DECODER, "decoder/Fifth", "decoder/Input");
+
+    auto graph = factory::buildGraph(data.builtAssets);
+    ASSERT_TRUE(graph.subgraphs.find(RT::DECODER) != graph.subgraphs.end());
+
+    auto& decoderSubgraph = graph.subgraphs.at(RT::DECODER);
+    const auto& rootChildren = decoderSubgraph.children("decoder/Input");
+
+    std::vector<std::string> expectedOrder = {
+        "decoder/First", "decoder/Second", "decoder/Third", "decoder/Fourth", "decoder/Fifth"};
+    ASSERT_EQ(rootChildren.size(), expectedOrder.size());
+
+    for (size_t i = 0; i < expectedOrder.size(); ++i)
+    {
+        EXPECT_EQ(rootChildren[i].toStr(), expectedOrder[i])
+            << "Decoder at position " << i << " should be " << expectedOrder[i];
+    }
+
+    // Build expression and verify order
+    auto expr = factory::buildExpression(graph, "test");
+    ASSERT_TRUE(expr->isChain()); // Top level is Chain
+
+    auto chain = expr->getPtr<base::Chain>();
+    ASSERT_EQ(chain->getOperands().size(), 1); // Only decoder subgraph
+
+    auto decoderOp = chain->getOperands()[0]->getPtr<base::Operation>();
+    ASSERT_EQ(decoderOp->getOperands().size(), expectedOrder.size());
+
+    for (size_t i = 0; i < expectedOrder.size(); ++i)
+    {
+        EXPECT_EQ(decoderOp->getOperands()[i]->getName(), expectedOrder[i]);
+    }
+}
+
+// Test order preservation with parent-child relationships
+TEST(OrderPreservation, ParentChildOrderingIsConsistent)
+{
+    // Parent with 3 children, where middle child also has 2 children
+    // Structure: P -> [C1, C2(GC1, GC2), C3]
+    factory::SubgraphData subgraphData;
+
+    base::Name pName("decoder/P");
+    Asset p {base::Name("decoder/P"), assetExpr(pName), {}};
+    subgraphData.orderedAssets.push_back(pName);
+    subgraphData.assets.emplace(pName, p);
+
+    // Add C1
+    base::Name c1Name("decoder/C1");
+    Asset c1 {base::Name("decoder/C1"), assetExpr(c1Name), {pName}};
+    subgraphData.orderedAssets.push_back(c1Name);
+    subgraphData.assets.emplace(c1Name, c1);
+
+    // Add C2 (will have children)
+    base::Name c2Name("decoder/C2");
+    Asset c2 {base::Name("decoder/C2"), assetExpr(c2Name), {pName}};
+    subgraphData.orderedAssets.push_back(c2Name);
+    subgraphData.assets.emplace(c2Name, c2);
+
+    // Add C3
+    base::Name c3Name("decoder/C3");
+    Asset c3 {base::Name("decoder/C3"), assetExpr(c3Name), {pName}};
+    subgraphData.orderedAssets.push_back(c3Name);
+    subgraphData.assets.emplace(c3Name, c3);
+
+    // Add C2's children: GC1, GC2
+    base::Name gc1Name("decoder/GC1");
+    Asset gc1 {base::Name("decoder/GC1"), assetExpr(gc1Name), {c2Name}};
+    subgraphData.orderedAssets.push_back(gc1Name);
+    subgraphData.assets.emplace(gc1Name, gc1);
+
+    base::Name gc2Name("decoder/GC2");
+    Asset gc2 {base::Name("decoder/GC2"), assetExpr(gc2Name), {c2Name}};
+    subgraphData.orderedAssets.push_back(gc2Name);
+    subgraphData.assets.emplace(gc2Name, gc2);
+
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+
+    // Verify P's children are C1, C2, C3 in that order
+    const auto& pChildren = subgraph.children(pName);
+    ASSERT_EQ(pChildren.size(), 3);
+    EXPECT_EQ(pChildren[0].toStr(), "decoder/C1");
+    EXPECT_EQ(pChildren[1].toStr(), "decoder/C2");
+    EXPECT_EQ(pChildren[2].toStr(), "decoder/C3");
+
+    // Verify C2's children are GC1, GC2 in that order
+    const auto& c2Children = subgraph.children(c2Name);
+    ASSERT_EQ(c2Children.size(), 2);
+    EXPECT_EQ(c2Children[0].toStr(), "decoder/GC1");
+    EXPECT_EQ(c2Children[1].toStr(), "decoder/GC2");
+
+    // Build expression and verify structure
+    auto expr = factory::buildSubgraphExpression<base::Or>(subgraph);
+    auto rootOp = expr->getPtr<base::Operation>();
+    auto pNode = rootOp->getOperands()[0]->getPtr<base::Implication>();
+    auto pChildrenOp = pNode->getOperands()[1]->getPtr<base::Operation>();
+
+    ASSERT_EQ(pChildrenOp->getOperands().size(), 3);
+    EXPECT_EQ(pChildrenOp->getOperands()[0]->getName(), "decoder/C1");      // Leaf
+    EXPECT_EQ(pChildrenOp->getOperands()[1]->getName(), "decoder/C2/Node"); // Has children
+    EXPECT_EQ(pChildrenOp->getOperands()[2]->getName(), "decoder/C3");      // Leaf
+
+    // Verify C2's children in expression
+    auto c2Node = pChildrenOp->getOperands()[1]->getPtr<base::Implication>();
+    auto c2ChildrenOp = c2Node->getOperands()[1]->getPtr<base::Operation>();
+    ASSERT_EQ(c2ChildrenOp->getOperands().size(), 2);
+    EXPECT_EQ(c2ChildrenOp->getOperands()[0]->getName(), "decoder/GC1");
+    EXPECT_EQ(c2ChildrenOp->getOperands()[1]->getName(), "decoder/GC2");
+}
+
+// Test that different resource types maintain their own ordering
+TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
+{
+    auto data = AD()(RT::DECODER, "decoder/D1", "decoder/Input")(RT::DECODER, "decoder/D2", "decoder/Input")(
+        RT::DECODER, "decoder/D3", "decoder/Input")(RT::RULE, "rule/R1", "rule/Input")(
+        RT::RULE, "rule/R2", "rule/Input")(RT::OUTPUT, "output/O1", "output/Input")(
+        RT::OUTPUT, "output/O2", "output/Input")(RT::OUTPUT, "output/O3", "output/Input");
+
+    auto graph = factory::buildGraph(data.builtAssets);
+
+    // Verify decoder order
+    auto& decoderSubgraph = graph.subgraphs.at(RT::DECODER);
+    const auto& decoderChildren = decoderSubgraph.children("decoder/Input");
+    ASSERT_EQ(decoderChildren.size(), 3);
+    EXPECT_EQ(decoderChildren[0].toStr(), "decoder/D1");
+    EXPECT_EQ(decoderChildren[1].toStr(), "decoder/D2");
+    EXPECT_EQ(decoderChildren[2].toStr(), "decoder/D3");
+
+    // Verify rule order
+    auto& ruleSubgraph = graph.subgraphs.at(RT::RULE);
+    const auto& ruleChildren = ruleSubgraph.children("rule/Input");
+    ASSERT_EQ(ruleChildren.size(), 2);
+    EXPECT_EQ(ruleChildren[0].toStr(), "rule/R1");
+    EXPECT_EQ(ruleChildren[1].toStr(), "rule/R2");
+
+    // Verify output order
+    auto& outputSubgraph = graph.subgraphs.at(RT::OUTPUT);
+    const auto& outputChildren = outputSubgraph.children("output/Input");
+    ASSERT_EQ(outputChildren.size(), 3);
+    EXPECT_EQ(outputChildren[0].toStr(), "output/O1");
+    EXPECT_EQ(outputChildren[1].toStr(), "output/O2");
+    EXPECT_EQ(outputChildren[2].toStr(), "output/O3");
+
+    // Build full expression and verify each subgraph maintains its order
+    auto expr = factory::buildExpression(graph, "test");
+    auto chain = expr->getPtr<base::Chain>();
+
+    // Chain order is: DECODER, OUTPUT, RULE (based on ResourceType enum order in std::map)
+    ASSERT_EQ(chain->getOperands().size(), 3);
+
+    // Verify decoder subgraph
+    auto decoderExpr = chain->getOperands()[0]->getPtr<base::Operation>();
+    ASSERT_EQ(decoderExpr->getOperands().size(), 3);
+    EXPECT_EQ(decoderExpr->getOperands()[0]->getName(), "decoder/D1");
+    EXPECT_EQ(decoderExpr->getOperands()[1]->getName(), "decoder/D2");
+    EXPECT_EQ(decoderExpr->getOperands()[2]->getName(), "decoder/D3");
+
+    // Verify output subgraph
+    auto outputExpr = chain->getOperands()[1]->getPtr<base::Operation>();
+    ASSERT_EQ(outputExpr->getOperands().size(), 3);
+    EXPECT_EQ(outputExpr->getOperands()[0]->getName(), "output/O1");
+    EXPECT_EQ(outputExpr->getOperands()[1]->getName(), "output/O2");
+    EXPECT_EQ(outputExpr->getOperands()[2]->getName(), "output/O3");
+
+    // Verify rule subgraph
+    auto ruleExpr = chain->getOperands()[2]->getPtr<base::Operation>();
+    ASSERT_EQ(ruleExpr->getOperands().size(), 2);
+    EXPECT_EQ(ruleExpr->getOperands()[0]->getName(), "rule/R1");
+    EXPECT_EQ(ruleExpr->getOperands()[1]->getName(), "rule/R2");
+}
+
+// Negative test: Verify that wrong order is detected
+TEST(OrderPreservation, DetectsIncorrectChildOrder)
+{
+    factory::SubgraphData subgraphData;
+
+    base::Name parentName("decoder/parent/0");
+    Asset parent {base::Name("decoder/parent/0"), assetExpr(parentName), {}};
+    subgraphData.orderedAssets.push_back(parentName);
+    subgraphData.assets.emplace(parentName, parent);
+
+    // Add children in order: A, B, C
+    std::vector<std::string> actualOrder = {"A", "B", "C"};
+    for (const auto& childId : actualOrder)
+    {
+        base::Name childName("decoder/" + childId);
+        Asset child {base::Name("decoder/" + childId), assetExpr(childName), {parentName}};
+        subgraphData.orderedAssets.push_back(childName);
+        subgraphData.assets.emplace(childName, child);
+    }
+
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    const auto& graphChildren = subgraph.children(parentName);
+
+    // Verify that the actual order is NOT in a different order
+    std::vector<std::string> wrongOrder = {"A", "C", "B"}; // Intentionally wrong
+    bool orderMatches = true;
+    if (graphChildren.size() == wrongOrder.size())
+    {
+        for (size_t i = 0; i < graphChildren.size(); ++i)
+        {
+            if (graphChildren[i].toStr() != "decoder/" + wrongOrder[i])
+            {
+                orderMatches = false;
+                break;
+            }
+        }
+    }
+
+    // This should NOT match (negative test)
+    EXPECT_FALSE(orderMatches) << "Wrong order should not match the actual insertion order";
+
+    // Verify the actual correct order
+    EXPECT_EQ(graphChildren[0].toStr(), "decoder/A");
+    EXPECT_EQ(graphChildren[1].toStr(), "decoder/B");
+    EXPECT_EQ(graphChildren[2].toStr(), "decoder/C");
+}
+
+// Negative test: Verify expression operands don't match wrong order
+TEST(OrderPreservation, ExpressionDoesNotMatchWrongOrder)
+{
+    factory::SubgraphData subgraphData;
+
+    base::Name parentName("decoder/parent/0");
+    Asset parent {base::Name("decoder/parent/0"), assetExpr(parentName), {}};
+    subgraphData.orderedAssets.push_back(parentName);
+    subgraphData.assets.emplace(parentName, parent);
+
+    // Add children in specific order: First, Second, Third
+    std::vector<std::string> correctOrder = {"First", "Second", "Third"};
+    for (const auto& childId : correctOrder)
+    {
+        base::Name childName("decoder/" + childId);
+        Asset child {base::Name("decoder/" + childId), assetExpr(childName), {parentName}};
+        subgraphData.orderedAssets.push_back(childName);
+        subgraphData.assets.emplace(childName, child);
+    }
+
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto expr = factory::buildSubgraphExpression<base::Or>(subgraph);
+
+    auto rootOp = expr->getPtr<base::Operation>();
+    auto parentNode = rootOp->getOperands()[0]->getPtr<base::Implication>();
+    auto childrenOp = parentNode->getOperands()[1]->getPtr<base::Operation>();
+
+    // Verify the expression does NOT match wrong order
+    std::vector<std::string> wrongOrder = {"Third", "First", "Second"};
+    bool wrongOrderMatches = true;
+    for (size_t i = 0; i < wrongOrder.size(); ++i)
+    {
+        if (childrenOp->getOperands()[i]->getName() != "decoder/" + wrongOrder[i])
+        {
+            wrongOrderMatches = false;
+            break;
+        }
+    }
+
+    EXPECT_FALSE(wrongOrderMatches) << "Expression should not match incorrect order";
+
+    // Verify correct order is actually present
+    EXPECT_EQ(childrenOp->getOperands()[0]->getName(), "decoder/First");
+    EXPECT_EQ(childrenOp->getOperands()[1]->getName(), "decoder/Second");
+    EXPECT_EQ(childrenOp->getOperands()[2]->getName(), "decoder/Third");
+}
+
+// Negative test: Reversed order should not match
+TEST(OrderPreservation, ReversedOrderDoesNotMatch)
+{
+    auto data = AD()(RT::DECODER, "decoder/D1", "decoder/Input")(RT::DECODER, "decoder/D2", "decoder/Input")(
+        RT::DECODER, "decoder/D3", "decoder/Input")(RT::DECODER, "decoder/D4", "decoder/Input");
+
+    auto graph = factory::buildGraph(data.builtAssets);
+    auto& decoderSubgraph = graph.subgraphs.at(RT::DECODER);
+    const auto& children = decoderSubgraph.children("decoder/Input");
+
+    std::vector<std::string> reversedOrder = {"decoder/D4", "decoder/D3", "decoder/D2", "decoder/D1"};
+
+    bool reversedMatches = true;
+    if (children.size() == reversedOrder.size())
+    {
+        for (size_t i = 0; i < children.size(); ++i)
+        {
+            if (children[i].toStr() != reversedOrder[i])
+            {
+                reversedMatches = false;
+                break;
+            }
+        }
+    }
+
+    EXPECT_FALSE(reversedMatches) << "Reversed order should not match actual order";
+
+    // Verify actual order is forward
+    EXPECT_EQ(children[0].toStr(), "decoder/D1");
+    EXPECT_EQ(children[1].toStr(), "decoder/D2");
+    EXPECT_EQ(children[2].toStr(), "decoder/D3");
+    EXPECT_EQ(children[3].toStr(), "decoder/D4");
+}
+
+// Negative test: Partial order mismatch detection
+TEST(OrderPreservation, DetectsPartialOrderMismatch)
+{
+    factory::SubgraphData subgraphData;
+
+    base::Name parentName("decoder/parent/0");
+    Asset parent {base::Name("decoder/parent/0"), assetExpr(parentName), {}};
+    subgraphData.orderedAssets.push_back(parentName);
+    subgraphData.assets.emplace(parentName, parent);
+
+    // Add 5 children: A, B, C, D, E
+    std::vector<std::string> correctOrder = {"A", "B", "C", "D", "E"};
+    for (const auto& childId : correctOrder)
+    {
+        base::Name childName("decoder/" + childId);
+        Asset child {base::Name("decoder/" + childId), assetExpr(childName), {parentName}};
+        subgraphData.orderedAssets.push_back(childName);
+        subgraphData.assets.emplace(childName, child);
+    }
+
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    const auto& children = subgraph.children(parentName);
+
+    // First 3 elements correct, last 2 swapped
+    std::vector<std::string> partiallyWrongOrder = {"A", "B", "C", "E", "D"};
+
+    bool partialOrderMatches = true;
+    for (size_t i = 0; i < children.size(); ++i)
+    {
+        if (children[i].toStr() != "decoder/" + partiallyWrongOrder[i])
+        {
+            partialOrderMatches = false;
+            break;
+        }
+    }
+
+    EXPECT_FALSE(partialOrderMatches) << "Partially wrong order should not match";
+
+    // Verify D comes before E (not after)
+    EXPECT_EQ(children[3].toStr(), "decoder/D");
+    EXPECT_EQ(children[4].toStr(), "decoder/E");
+}
+
+// Negative test: Shuffled order detection
+TEST(OrderPreservation, DetectsShuffledOrder)
+{
+    auto data = AD()(RT::DECODER, "decoder/Alpha", "decoder/Input")(RT::DECODER, "decoder/Beta", "decoder/Input")(
+        RT::DECODER, "decoder/Gamma", "decoder/Input")(RT::DECODER, "decoder/Delta", "decoder/Input")(
+        RT::DECODER, "decoder/Epsilon", "decoder/Input");
+
+    auto graph = factory::buildGraph(data.builtAssets);
+    auto expr = factory::buildExpression(graph, "test");
+
+    auto chain = expr->getPtr<base::Chain>();
+    auto decoderOp = chain->getOperands()[0]->getPtr<base::Operation>();
+
+    // Create a shuffled version of the expected order
+    std::vector<std::string> shuffledOrder = {
+        "decoder/Gamma", "decoder/Alpha", "decoder/Epsilon", "decoder/Beta", "decoder/Delta"};
+
+    bool shuffledMatches = true;
+    if (decoderOp->getOperands().size() == shuffledOrder.size())
+    {
+        for (size_t i = 0; i < shuffledOrder.size(); ++i)
+        {
+            if (decoderOp->getOperands()[i]->getName() != shuffledOrder[i])
+            {
+                shuffledMatches = false;
+                break;
+            }
+        }
+    }
+
+    EXPECT_FALSE(shuffledMatches) << "Shuffled order should not match actual insertion order";
+
+    // Verify actual order is as inserted
+    EXPECT_EQ(decoderOp->getOperands()[0]->getName(), "decoder/Alpha");
+    EXPECT_EQ(decoderOp->getOperands()[1]->getName(), "decoder/Beta");
+    EXPECT_EQ(decoderOp->getOperands()[2]->getName(), "decoder/Gamma");
+    EXPECT_EQ(decoderOp->getOperands()[3]->getName(), "decoder/Delta");
+    EXPECT_EQ(decoderOp->getOperands()[4]->getName(), "decoder/Epsilon");
+}
+
+// Negative test: Empty subgraph children order
+TEST(OrderPreservation, EmptySubgraphHasNoOrder)
+{
+    factory::SubgraphData subgraphData;
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+
+    EXPECT_FALSE(subgraph.hasChildren("decoder/Input"));
+    EXPECT_THROW(subgraph.children("decoder/Input"), std::runtime_error);
+}
+
+// Negative test: Single child cannot have wrong position
+TEST(OrderPreservation, SingleChildHasOnlyOnePosition)
+{
+    factory::SubgraphData subgraphData;
+
+    base::Name parentName("decoder/parent/0");
+    Asset parent {base::Name("decoder/parent/0"), assetExpr(parentName), {}};
+    subgraphData.orderedAssets.push_back(parentName);
+    subgraphData.assets.emplace(parentName, parent);
+
+    base::Name childName("decoder/OnlyChild");
+    Asset child {base::Name("decoder/OnlyChild"), assetExpr(childName), {parentName}};
+    subgraphData.orderedAssets.push_back(childName);
+    subgraphData.assets.emplace(childName, child);
+
+    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    const auto& children = subgraph.children(parentName);
+
+    ASSERT_EQ(children.size(), 1);
+    EXPECT_EQ(children[0].toStr(), "decoder/OnlyChild");
+
+    // Verify we cannot compare with index > 0 for a single child
+    EXPECT_THROW(
+        {
+            // This would be out of bounds
+            if (children.size() > 1)
+            {
+                auto secondChild = children[1];
+            }
+            else
+            {
+                throw std::out_of_range("Only one child exists");
+            }
+        },
+        std::out_of_range);
+}
+
+} // namespace orderpreservationtest
+
+namespace buildassetsordertest
+{
+using namespace base::test;
+using RT = cm::store::ResourceType;
+
+struct OrderCheck
+{
+    RT type;
+    std::string parent;
+    std::vector<std::string> children;
+};
+
+// return Success or Failure expected values
+using SuccessExpected = InnerExpected<OrderCheck,
+                                      const std::shared_ptr<MockICMStoreNSReader>&,
+                                      const std::shared_ptr<builder::builders::IBuildCtx>&>;
+using FailureExpected = InnerExpected<std::string,
+                                      const std::shared_ptr<MockICMStoreNSReader>&,
+                                      const std::shared_ptr<builder::builders::IBuildCtx>&>;
+
+using Expc = Expected<SuccessExpected, FailureExpected>;
+auto SUCCESS = Expc::success();
+auto FAILURE = Expc::failure();
+
+using BuildAssetsT = std::tuple<cm::store::dataType::Policy, Expc>;
+
+static json::Json mkAssetJson(const std::string& name, bool enabled = true)
+{
+    const auto s = fmt::format(
+        R"({{
+            "name":"{0}",
+            "enabled":{1},
+            "asset":{{"name":"{0}","enabled":{1}}}
+        }})",
+        name,
+        enabled ? "true" : "false");
+
+    return json::Json(s.c_str());
+}
+
+// AssetBuilder
+class PassthroughAssetBuilder final : public builder::policy::IAssetBuilder
+{
+public:
+    Asset operator()(const json::Json& document) const override
+    {
+        const auto nameOpt = document.getString(json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY));
+
+        if (!nameOpt)
+        {
+            throw std::runtime_error("Test asset json missing name");
+        }
+
+        base::Name n {*nameOpt};
+        auto expr = buildgraphtest::assetExpr(n); // assetExpr(const base::Name&) -> Expression
+
+        return Asset {std::move(n), std::move(expr), std::vector<base::Name> {}};
+    }
+
+    builder::builders::Context& getContext() const override { return m_ctx; }
+
+    void setAvailableKvdbs(std::unordered_map<std::string, bool>&& kvdbs) override
+    {
+        (void)kvdbs; // no-op
+    }
+
+    void clearAvailableKvdbs() override {}
+
+private:
+    mutable builder::builders::Context m_ctx {};
+};
+
+class BuildAssetsOrder : public testing::TestWithParam<BuildAssetsT>
+{
+};
+
+TEST_P(BuildAssetsOrder, DecoderOrderPreservedInGraph)
+{
+    auto [policy, expected] = GetParam();
+
+    auto cmStoreNSReader = std::make_shared<MockICMStoreNSReader>();
+    auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
+    auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
+                                                     builder::builders::StageBuilder>::createMock();
+    auto definitionsBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
+    buildCtx->setRegistry(registry);
+
+    auto assetBuilder = std::make_shared<PassthroughAssetBuilder>();
+
+    if (expected)
+    {
+        const auto orderCheck = expected.succCase()(cmStoreNSReader, buildCtx);
+
+        factory::BuiltAssets built;
+        EXPECT_NO_THROW(built = factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*sandbox=*/true));
+
+        factory::PolicyGraph graph;
+        EXPECT_NO_THROW(graph = factory::buildGraph(built));
+
+        const auto& sg = graph.subgraphs.at(orderCheck.type);
+        const auto gotChildren = sg.children(base::Name {orderCheck.parent});
+
+        ASSERT_EQ(gotChildren.size(), orderCheck.children.size());
+        for (size_t i = 0; i < orderCheck.children.size(); ++i)
+        {
+            EXPECT_EQ(gotChildren[i].toStr(), orderCheck.children[i]) << "Mismatch at index " << i;
+        }
+    }
+    else
+    {
+        auto errorMsg = expected.failCase()(cmStoreNSReader, buildCtx);
+        EXPECT_THROW(
+            {
+                try
+                {
+                    (void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*sandbox=*/true);
+                }
+                catch (const std::runtime_error& e)
+                {
+                    EXPECT_THAT(e.what(), testing::HasSubstr(errorMsg));
+                    throw;
+                }
+            },
+            std::runtime_error);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    OrderPreservation,
+    BuildAssetsOrder,
+    ::testing::Values(
+        // 1) Decoders order: decoders in the order defined in the integration
+        BuildAssetsT(
+            cm::store::dataType::Policy({"550e8400-e29b-41d4-a716-446655440101"}, // integration UUID
+                                        "550e8400-e29b-41d4-a716-446655440199"    // root decoder UUID
+                                        ),
+            SUCCESS(SuccessExpected::Behaviour {
+                [](const auto& reader, const auto&)
+                {
+                    const std::string integUUID = "550e8400-e29b-41d4-a716-446655440101";
+                    const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440199";
+
+                    const std::string uC2 = "550e8400-e29b-41d4-a716-446655440201";
+                    const std::string uR = rootUUID;
+                    const std::string uC1 = "550e8400-e29b-41d4-a716-446655440202";
+                    const std::string uC3 = "550e8400-e29b-41d4-a716-446655440203";
+
+                    cm::store::dataType::Integration integration(integUUID,
+                                                                 "test_integration",
+                                                                 true,
+                                                                 "system-activity",
+                                                                 std::nullopt,
+                                                                 /* kvdb uuids */ {},
+                                                                 /* decoders uuids */ {uC2, uR, uC1, uC3},
+                                                                 /* outputs uuids */ {},
+                                                                 false);
+
+                    // resolveNameFromUUID(rootUUID) is used:
+                    // - once for rootDecoderName
+                    // - multiple times to inject parent to each decoder without parents
+                    EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
+                        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", RT::DECODER)));
+
+                    EXPECT_CALL(*reader, getIntegrationByUUID(integUUID)).WillOnce(testing::Return(integration));
+
+                    // getAssetByUUID in the SAME order as the vector
+                    EXPECT_CALL(*reader, getAssetByUUID(uC2))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/child2/0", true)));
+                    EXPECT_CALL(*reader, getAssetByUUID(uR))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/root/0", true)));
+                    EXPECT_CALL(*reader, getAssetByUUID(uC1))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/child1/0", true)));
+                    EXPECT_CALL(*reader, getAssetByUUID(uC3))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/child3/0", true)));
+
+                    return OrderCheck {
+                        RT::DECODER, "decoder/root/0", {"decoder/child2/0", "decoder/child1/0", "decoder/child3/0"}};
+                }})),
+
+        // 2) Order BETWEEN integrations: first assets seen in integ1, then integ2
+        BuildAssetsT(cm::store::dataType::Policy({"550e8400-e29b-41d4-a716-446655440111",
+                                                  "550e8400-e29b-41d4-a716-446655440112"},
+                                                 "550e8400-e29b-41d4-a716-446655440299"),
+                     SUCCESS(SuccessExpected::Behaviour {
+                         [](const auto& reader, const auto&)
+                         {
+                             const std::string integ1 = "550e8400-e29b-41d4-a716-446655440111";
+                             const std::string integ2 = "550e8400-e29b-41d4-a716-446655440112";
+                             const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440299";
+
+                             // integ1 decoders: A, ROOT, B
+                             const std::string uA = "550e8400-e29b-41d4-a716-446655440301";
+                             const std::string uR = rootUUID;
+                             const std::string uB = "550e8400-e29b-41d4-a716-446655440302";
+
+                             // integ2 decoders: C, D
+                             const std::string uC = "550e8400-e29b-41d4-a716-446655440303";
+                             const std::string uD = "550e8400-e29b-41d4-a716-446655440304";
+
+                             cm::store::dataType::Integration i1(
+                                 integ1, "i1", true, "system-activity", std::nullopt, {}, {uA, uR, uB}, {}, false);
+                             cm::store::dataType::Integration i2(
+                                 integ2, "i2", true, "system-activity", std::nullopt, {}, {uC, uD}, {}, false);
+
+                             EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
+                                 .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", RT::DECODER)));
+
+                             EXPECT_CALL(*reader, getIntegrationByUUID(integ1)).WillOnce(testing::Return(i1));
+                             EXPECT_CALL(*reader, getIntegrationByUUID(integ2)).WillOnce(testing::Return(i2));
+
+                             // Assets in the exact iteration order: integ1 (A,R,B) then integ2 (C,D)
+                             EXPECT_CALL(*reader, getAssetByUUID(uA))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/A/0", true)));
+                             EXPECT_CALL(*reader, getAssetByUUID(uR))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/root/0", true)));
+                             EXPECT_CALL(*reader, getAssetByUUID(uB))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/B/0", true)));
+
+                             EXPECT_CALL(*reader, getAssetByUUID(uC))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/C/0", true)));
+                             EXPECT_CALL(*reader, getAssetByUUID(uD))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/D/0", true)));
+
+                             return OrderCheck {RT::DECODER,
+                                                "decoder/root/0",
+                                                {"decoder/A/0", "decoder/B/0", "decoder/C/0", "decoder/D/0"}};
+                         }})),
+
+        // 3) Disabled decoder is skipped and does not “break” the relative order of the others
+        BuildAssetsT(
+            cm::store::dataType::Policy({"550e8400-e29b-41d4-a716-446655440121"},
+                                        "550e8400-e29b-41d4-a716-446655440399"),
+            SUCCESS(SuccessExpected::Behaviour {
+                [](const auto& reader, const auto&)
+                {
+                    const std::string integUUID = "550e8400-e29b-41d4-a716-446655440121";
+                    const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440399";
+
+                    const std::string uX = "550e8400-e29b-41d4-a716-446655440401"; // enabled
+                    const std::string uY = "550e8400-e29b-41d4-a716-446655440402"; // disabled
+                    const std::string uR = rootUUID;
+                    const std::string uZ = "550e8400-e29b-41d4-a716-446655440403"; // enabled
+
+                    cm::store::dataType::Integration integration(
+                        integUUID, "i", true, "system-activity", std::nullopt, {}, {uX, uY, uR, uZ}, {}, false);
+
+                    EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
+                        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", RT::DECODER)));
+
+                    EXPECT_CALL(*reader, getIntegrationByUUID(integUUID)).WillOnce(testing::Return(integration));
+
+                    EXPECT_CALL(*reader, getAssetByUUID(uX))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/X/0", true)));
+                    EXPECT_CALL(*reader, getAssetByUUID(uY))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/Y/0", false))); // disabled
+                    EXPECT_CALL(*reader, getAssetByUUID(uR))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/root/0", true)));
+                    EXPECT_CALL(*reader, getAssetByUUID(uZ))
+                        .WillOnce(testing::Return(mkAssetJson("decoder/Z/0", true)));
+
+                    // Y does not appear
+                    return OrderCheck {RT::DECODER, "decoder/root/0", {"decoder/X/0", "decoder/Z/0"}};
+                }}))));
+
+} // namespace buildassetsordertest
