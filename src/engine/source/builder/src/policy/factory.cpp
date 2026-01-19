@@ -71,6 +71,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     const auto rootDecoderName =
         base::Name {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder()))};
 
+    // NOTE: The order of integrations and their decoders defines the final evaluation order for
+    // sibling decoders in the expression. We preserve insertion order via orderedAssets.
     for (const auto& integUUID : policy.getIntegrationsUUIDs())
     {
         const auto integration = cmStoreNsReader->getIntegrationByUUID(integUUID);
@@ -86,6 +88,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         // Set availability map in the build context (integration-scoped).
         assetBuilder->setAvailableKvdbs(buildKvdbsMap(integration, cmStoreNsReader, integUUID));
 
+        // Decoder order inside the integration is preserved to keep deterministic evaluation.
         for (const auto& decUUID : integration.getDecodersByUUID())
         {
             const auto decoder = cmStoreNsReader->getAssetByUUID(decUUID);
@@ -141,6 +144,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             auto& decodersData = builtAssets[cm::store::ResourceType::DECODER];
             if (decodersData.assets.find(asset.name()) == decodersData.assets.end())
             {
+                // orderedAssets preserves the first-seen order across integrations.
                 decodersData.orderedAssets.push_back(asset.name());
             }
 
@@ -210,6 +214,7 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName, const Su
     Graph<base::Name, Asset> subgraph {subgraphName, Asset {}};
 
     // 2. For each asset in the subgraph:
+    // orderedAssets preserves the insertion order that defines sibling evaluation.
     for (const auto& name : assetsData.orderedAssets)
     {
         const auto it = assetsData.assets.find(name);
@@ -228,6 +233,7 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName, const Su
             // 2.3. If parents, connect to each parent
             for (const auto& parent : asset.parents())
             {
+                // Edge insertion order is preserved in Graph children vectors.
                 subgraph.addEdge(parent, name);
             }
         }

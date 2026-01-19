@@ -36,6 +36,7 @@ using BuiltAssets = std::map<cm::store::ResourceType, SubgraphData>;
  * @param data Policy data.
  * @param store The store interface to query assets and namespaces.
  * @param assetBuilder The asset builder instance to build each asset.
+ * @param sandbox Flag indicating sandbox mode.
  *
  * @return BuiltAssets
  *
@@ -69,7 +70,7 @@ struct PolicyGraph
  * @brief Build a subgraph of the policy.
  *
  * @param subgraphName Name of the subgraph.
- * @param assetsData Asset data of the subgraph containing ordered assets and asset map.
+ * @param assetsData Assets of the subgraph (ordered and indexed).
  *
  * @return Graph<base::Name, Asset>
  *
@@ -91,6 +92,10 @@ PolicyGraph buildGraph(const BuiltAssets& assets);
 
 /**
  * @brief Generates the expression of a subgraph.
+ *
+ * @note Child evaluation order follows the insertion order of edges in the graph.
+ * For decoders this means siblings are evaluated in the same order they were declared
+ * across integrations (see buildAssets/buildSubgraph).
  *
  * @tparam ChildOperator Expression type of the children nodes and the root node.
  * @param subgraph Subgraph to generate the expression from.
@@ -155,7 +160,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
         }
     };
 
-    // Visit root childs and add them to the root expression
+    // Visit root children and add them to the root expression in graph insertion order.
     for (auto& child : subgraph.children(subgraph.rootId()))
     {
         root->getOperands().push_back(visit(child, subgraph.rootId(), visit));

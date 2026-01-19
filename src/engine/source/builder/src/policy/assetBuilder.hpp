@@ -59,7 +59,7 @@ public:
     /**
      * @brief Get the build context.
      *
-     * @return const std::shared_ptr<builders::BuildCtx>&
+     * @return builder::builders::Context&
      */
     builder::builders::Context& getContext() const;
 
