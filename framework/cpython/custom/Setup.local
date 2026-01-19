@@ -1,3 +1,9 @@
+*disabled*
+
+_gdbm
+_dbm
+nis
+
 *static*
 
 _asyncio _asynciomodule.c
