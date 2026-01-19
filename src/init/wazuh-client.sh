@@ -143,6 +143,35 @@ check_folders()
     fi
 }
 
+# Check if the system uses systemd
+is_systemd() {
+    [ -d /run/systemd/system ]
+}
+
+# Add daemons to agentd cgroup if systemd is used in legacy systems
+add_to_cgroup()
+{
+    AGENTD_PID=$(head -n 1 ${DIR}/var/run/wazuh-agentd-*.pid 2>/dev/null)
+    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-agent.service/cgroup.procs"
+
+    # Check if cgroup path exists
+    if [ ! -f "$CGROUP_PATH" ]; then
+        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
+    else
+        for pidfile in ${DIR}/var/run/wazuh-*.pid; do
+            [ -f "$pidfile" ] || continue
+            pid=$(cat "$pidfile" 2>/dev/null)
+            [ -z "$pid" ] && continue
+            [ "$pid" = "$AGENTD_PID" ] && continue
+
+            # Try to write to cgroup, capture any errors
+            if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
+                echo "Warning: Failed to add PID $pid to cgroup ($(basename "$pidfile"))" >&2
+            fi
+        done
+    fi
+}
+
 # Start function
 start_service()
 {
@@ -158,7 +187,19 @@ start_service()
         pstatus ${i};
         if [ $? = 0 ]; then
             failed=false
-            ${DIR}/bin/${i};
+
+            if [ ! -z "$LEGACY_RELOAD" ]; then
+                if command -v systemd-run >/dev/null 2>&1; then
+                    # safe to use systemd-run
+                    systemd-run --scope --slice=system.slice ${DIR}/bin/${i};
+                else
+                    echo "ERROR: systemd is in use but systemd-run is not available" >&2
+                    exit 1
+                fi
+            else
+                ${DIR}/bin/${i};
+            fi
+
             if [ $? != 0 ]; then
                 failed=true
             else
@@ -189,6 +230,11 @@ start_service()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
+
+    if [ ! -z "$LEGACY_RELOAD" ]; then
+        add_to_cgroup
+    fi
+
     echo "Completed."
 }
 
@@ -321,6 +367,12 @@ restart)
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-agentd//')
+    if is_systemd; then
+        SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
+        if [ "$SYSTEMD_VERSION" -le 237 ]; then
+            LEGACY_RELOAD=1
+        fi
+    fi
     restart_service
     # Signal agentd (SIGUSR1) to reload (reconnects execd)
     pid=`cat ${DIR}/var/run/wazuh-agentd-*.pid`
