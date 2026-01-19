@@ -181,9 +181,23 @@ services:
         networks:
             custom-network:
 
+    dashboard:
+        image: portainer/portainer-ce:latest
+        container_name: dev-docker-dashboard
+        restart: unless-stopped
+        profiles: ["dashboard"]
+        ports:
+            - "9000:9000"
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - portainer_data:/data
+        networks:
+            custom-network:
+
 volumes:
   wazuh-indexer-data:
   wazuh-certs:
+  portainer_data:
 
 networks:
   custom-network:
