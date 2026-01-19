@@ -27,7 +27,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 {
     BuiltAssets builtAssets;
 
-    const auto rootDecoderName = base::Name {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder()))};
+    const auto rootDecoderName =
+        base::Name {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder()))};
 
     for (const auto& integUUID : policy.getIntegrationsUUIDs())
     {
@@ -103,7 +104,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 
             if (isRootDecoder && hasParents)
             {
-                throw std::runtime_error(fmt::format("The root decoder '{}' cannot have parents", rootDecoderName.toStr()));
+                throw std::runtime_error(
+                    fmt::format("The root decoder '{}' cannot have parents", rootDecoderName.toStr()));
             }
 
             // Add parent if no parents defined, the priority order is:
@@ -192,9 +194,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     return builtAssets;
 }
 
-Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
-                                       const SubgraphData& assetsData,
-                                       const std::unordered_map<base::Name, Asset>& filters)
+Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName, const SubgraphData& assetsData)
 {
     // 1. Add input node of the subgraph
     Graph<base::Name, Asset> subgraph {subgraphName, Asset {}};
@@ -223,22 +223,7 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
         }
     }
 
-    // 3. Add filters
-    // 3.1. For each filter in the policy:
-    for (const auto& [fName, fAsset] : filters)
-    {
-        for (const auto& parent : fAsset.parents())
-        {
-            // 3.1.1. If the parent is present in the subgraph, inject the filter between the asset and the
-            // children
-            if (subgraph.hasNode(parent))
-            {
-                subgraph.injectNode(fName, fAsset, parent);
-            }
-        }
-    }
-
-    // 4. Check integrity
+    // 3. Check integrity
     for (auto& [parent, children] : subgraph.edges())
     {
         if (!subgraph.hasNode(parent))
@@ -271,12 +256,7 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
 {
     PolicyGraph graph;
 
-    // 1) Get filters
-    const auto itFilters = assets.find(cm::store::ResourceType::FILTER);
-    const auto filters =
-        (itFilters == assets.end()) ? std::unordered_map<base::Name, Asset> {} : itFilters->second.assets;
-
-    // 2) Build subgraphs for each type (except Filter)
+    // Build subgraphs for each type (except Filter)
     for (const auto& [rtype, data] : assets)
     {
         if ((rtype == cm::store::ResourceType::FILTER) || data.assets.empty())
@@ -285,7 +265,7 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
         }
 
         const auto subgraphName = std::string(resourceTypeToString(rtype)) + GRAPH_INPUT_SUFFIX;
-        auto subgraph = buildSubgraph(subgraphName, data, filters);
+        auto subgraph = buildSubgraph(subgraphName, data);
         subgraph.validateAcyclic(std::string(resourceTypeToString(rtype)));
         graph.subgraphs.emplace(rtype, std::move(subgraph));
     }

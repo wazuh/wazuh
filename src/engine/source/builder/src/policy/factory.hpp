@@ -69,18 +69,13 @@ struct PolicyGraph
  * @brief Build a subgraph of the policy.
  *
  * @param subgraphName Name of the subgraph.
- * @param subgraphData Asset names of the subgraph.
- * @param filtersData Filter names of the policy.
- * @param assets Assets of the subgraph.
- * @param filters Filters of the policy.
+ * @param assetsData Asset data of the subgraph containing ordered assets and asset map.
  *
  * @return Graph<base::Name, Asset>
  *
  * @throw std::runtime_error If any error occurs.
  */
-Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
-                                       const SubgraphData& assetsData,
-                                       const std::unordered_map<base::Name, Asset>& filters);
+Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName, const SubgraphData& assetsData);
 
 /**
  * @brief Build the policy graph from the built assets and the relations defined in the policy data.

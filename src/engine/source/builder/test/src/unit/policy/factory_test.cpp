@@ -107,21 +107,16 @@ INSTANTIATE_TEST_SUITE_P(
             RT::OUTPUT, "output/child2/0", "output/parent1/0", "output/parent2/0")(
             RT::OUTPUT, "output/child3/0", "output/child1/0")(RT::OUTPUT, "output/parent1/0", "output/Input")(
             RT::OUTPUT, "output/parent2/0", "output/Input")(RT::OUTPUT, "output/child4/0", "output/Input"))),
-        // Filter injection in decoder
-        BuildT(SUCCESS(AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(
-            RT::DECODER, "decoder/child/0", "decoder/parent/0")(RT::FILTER, "filter/test/0", "decoder/parent/0"))),
-        // Filter injection in rule
-        BuildT(SUCCESS(AD()(RT::RULE, "rule/parent/0", "rule/Input")(RT::RULE, "rule/child/0", "rule/parent/0")(
-            RT::FILTER, "filter/test/0", "rule/parent/0"))),
-        // Filter injection in output
-        BuildT(SUCCESS(AD()(RT::OUTPUT, "output/parent/0", "output/Input")(
-            RT::OUTPUT, "output/child/0", "output/parent/0")(RT::FILTER, "filter/test/0", "output/parent/0"))),
         // Parent does not exist
         BuildT(FAILURE(AD()(RT::DECODER, "decoder/child/0", "decoder/nonexistent/0"))),
         // Parent does not exist (rule)
         BuildT(FAILURE(AD()(RT::RULE, "rule/child/0", "rule/nonexistent/0"))),
         // Parent does not exist (output)
-        BuildT(FAILURE(AD()(RT::OUTPUT, "output/child/0", "output/nonexistent/0")))));
+        BuildT(FAILURE(AD()(RT::OUTPUT, "output/child/0", "output/nonexistent/0"))),
+        // Filters are completely ignored - not injected into any subgraph
+        BuildT(SUCCESS(AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(
+            RT::DECODER, "decoder/child/0", "decoder/parent/0")(RT::FILTER, "filter/ignored/0", "decoder/parent/0")(
+            RT::OUTPUT, "output/test/0", "output/Input")(RT::FILTER, "filter/ignored2/0", "output/test/0")))));
 
 } // namespace buildgraphtest
 
@@ -621,52 +616,6 @@ TEST(CycleDetection, DetectsDisconnectedCycle)
     EXPECT_THROW(subgraph.validateAcyclic("decoder"), std::runtime_error);
 }
 
-TEST(CycleDetection, DetectsCycleThroughInjectedFilter)
-{
-    // Cycle through a filter: Input -> b -> filter/f -> c -> b
-    Graph<base::Name, Asset> subgraph {"decoder/Input", Asset {}};
-
-    base::Name bRef("decoder/b");
-    Asset b {base::Name("decoder/b"), std::move(assetExpr(bRef)), std::vector<base::Name> {}};
-
-    base::Name fRef("filter/f");
-    Asset f {base::Name("filter/f"), std::move(assetExpr(fRef)), std::vector<base::Name> {}};
-
-    base::Name cRef("decoder/c");
-    Asset c {base::Name("decoder/c"), std::move(assetExpr(cRef)), std::vector<base::Name> {}};
-
-    subgraph.addNode(bRef, b);
-    subgraph.addNode(fRef, f);
-    subgraph.addNode(cRef, c);
-
-    subgraph.addEdge("decoder/Input", bRef);
-    subgraph.addEdge(bRef, fRef);
-    subgraph.addEdge(fRef, cRef);
-    subgraph.addEdge(cRef, bRef); // cycle closes through filter
-
-    EXPECT_THROW(subgraph.validateAcyclic("decoder"), std::runtime_error);
-}
-
-TEST(CycleDetection, DetectsFilterOnlyCycle)
-{
-    // Cycle only involving filters: filter/x -> filter/y -> filter/x
-    Graph<base::Name, Asset> subgraph {"decoder/Input", Asset {}};
-
-    base::Name xRef("filter/x");
-    Asset x {base::Name("filter/x"), std::move(assetExpr(xRef)), std::vector<base::Name> {}};
-
-    base::Name yRef("filter/y");
-    Asset y {base::Name("filter/y"), std::move(assetExpr(yRef)), std::vector<base::Name> {}};
-
-    subgraph.addNode(xRef, x);
-    subgraph.addNode(yRef, y);
-
-    subgraph.addEdge(xRef, yRef);
-    subgraph.addEdge(yRef, xRef); // filter-only cycle
-
-    EXPECT_THROW(subgraph.validateAcyclic("decoder"), std::runtime_error);
-}
-
 TEST(CycleDetection, AllowsDiamondShapeWithoutCycle)
 {
     // Diamond shape (no cycle): Input -> a -> b, Input -> c -> b
@@ -705,9 +654,8 @@ using RT = cm::store::ResourceType;
 TEST(BuildSubgraph, Empty)
 {
     factory::SubgraphData subgraphData;
-    std::unordered_map<base::Name, Asset> filters;
 
-    auto subgraph = factory::buildSubgraph("test", subgraphData, filters);
+    auto subgraph = factory::buildSubgraph("test", subgraphData);
 
     EXPECT_EQ(subgraph.rootId(), "test");
     EXPECT_FALSE(subgraph.hasChildren("test"));
@@ -721,9 +669,7 @@ TEST(BuildSubgraph, SingleAsset)
     subgraphData.orderedAssets.push_back(assetName);
     subgraphData.assets.emplace(assetName, asset);
 
-    std::unordered_map<base::Name, Asset> filters;
-
-    auto subgraph = factory::buildSubgraph("test", subgraphData, filters);
+    auto subgraph = factory::buildSubgraph("test", subgraphData);
 
     EXPECT_TRUE(subgraph.hasNode(assetName));
     EXPECT_TRUE(subgraph.hasChildren("test"));
@@ -744,9 +690,7 @@ TEST(BuildSubgraph, WithParent)
     subgraphData.orderedAssets.push_back(childName);
     subgraphData.assets.emplace(childName, child);
 
-    std::unordered_map<base::Name, Asset> filters;
-
-    auto subgraph = factory::buildSubgraph("test", subgraphData, filters);
+    auto subgraph = factory::buildSubgraph("test", subgraphData);
 
     EXPECT_TRUE(subgraph.hasNode(parentName));
     EXPECT_TRUE(subgraph.hasNode(childName));
@@ -754,8 +698,22 @@ TEST(BuildSubgraph, WithParent)
     EXPECT_EQ(subgraph.children(parentName).size(), 1);
 }
 
-TEST(BuildSubgraph, WithFilter)
+TEST(BuildSubgraph, ParentNotFound)
 {
+    factory::SubgraphData subgraphData;
+
+    base::Name childName("decoder/child/0");
+    Asset child {base::Name("decoder/child/0"), assetExpr(childName), {base::Name("decoder/nonexistent/0")}};
+    subgraphData.orderedAssets.push_back(childName);
+    subgraphData.assets.emplace(childName, child);
+
+    EXPECT_THROW(factory::buildSubgraph("test", subgraphData), std::runtime_error);
+}
+
+TEST(BuildSubgraph, FiltersNotInSubgraph)
+{
+    // Verify that filters present in BuiltAssets do NOT appear as nodes in the subgraph
+    // This test documents the removal of filter injection from decoder trees
     factory::SubgraphData subgraphData;
 
     base::Name parentName("decoder/parent/0");
@@ -768,32 +726,17 @@ TEST(BuildSubgraph, WithFilter)
     subgraphData.orderedAssets.push_back(childName);
     subgraphData.assets.emplace(childName, child);
 
-    base::Name filterName("filter/test/0");
-    Asset filter {base::Name("filter/test/0"), assetExpr(filterName), {parentName}};
-    std::unordered_map<base::Name, Asset> filters;
-    filters.emplace(filterName, filter);
+    auto subgraph = factory::buildSubgraph("test", subgraphData);
 
-    auto subgraph = factory::buildSubgraph("test", subgraphData, filters);
-
+    // Verify expected nodes exist
     EXPECT_TRUE(subgraph.hasNode(parentName));
     EXPECT_TRUE(subgraph.hasNode(childName));
-    EXPECT_TRUE(subgraph.hasNode(filterName));
     EXPECT_TRUE(subgraph.hasChildren(parentName));
-    EXPECT_TRUE(subgraph.hasChildren(filterName));
-}
+    EXPECT_EQ(subgraph.children(parentName).size(), 1);
+    EXPECT_EQ(subgraph.children(parentName)[0], childName);
 
-TEST(BuildSubgraph, ParentNotFound)
-{
-    factory::SubgraphData subgraphData;
-
-    base::Name childName("decoder/child/0");
-    Asset child {base::Name("decoder/child/0"), assetExpr(childName), {base::Name("decoder/nonexistent/0")}};
-    subgraphData.orderedAssets.push_back(childName);
-    subgraphData.assets.emplace(childName, child);
-
-    std::unordered_map<base::Name, Asset> filters;
-
-    EXPECT_THROW(factory::buildSubgraph("test", subgraphData, filters), std::runtime_error);
+    // Verify filters do NOT exist in subgraph (they are never injected)
+    EXPECT_FALSE(subgraph.hasNode(base::Name("filter/any/0")));
 }
 
 } // namespace buildsubgraphtest
