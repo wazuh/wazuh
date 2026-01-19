@@ -15,6 +15,47 @@
 namespace
 {
 auto constexpr GRAPH_INPUT_SUFFIX = "/Input";
+
+std::unordered_map<std::string, bool> buildKvdbsMap(const cm::store::dataType::Integration& integration,
+                                                    const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
+                                                    const std::string& integUUID)
+{
+    const auto& kvdbUUIDs = integration.getKVDBsByUUID();
+
+    return [&]() -> std::unordered_map<std::string, bool>
+    {
+        std::unordered_map<std::string, bool> result;
+        result.reserve(kvdbUUIDs.size());
+
+        for (const auto& kvdbUUID : kvdbUUIDs)
+        {
+            try
+            {
+                const auto kvdb = cmStoreNsReader->getKVDBByUUID(kvdbUUID);
+                const auto& kvdbName = kvdb.getName();
+                const bool kvdbEnabled = kvdb.isEnabled();
+
+                const auto [it, inserted] = result.emplace(kvdbName, kvdbEnabled);
+                if (!inserted)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Duplicate KVDB title '{}' in integration '{}'. KVDB titles must be unique within "
+                                    "an integration.",
+                                    kvdbName,
+                                    integration.getName()));
+                }
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format(
+                    "Failed to load KVDB with UUID '{}' from integration '{}': {}", kvdbUUID, integUUID, e.what()));
+            }
+        }
+
+        return result;
+    }();
+}
+
 } // namespace
 
 namespace builder::policy::factory
@@ -42,39 +83,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         assetBuilder->getContext().integrationName = integration.getName();
         assetBuilder->getContext().integrationCategory = integration.getCategory();
 
-        std::unordered_map<std::string, bool> kvdbs;
-        {
-            const auto& kvdbUUIDs = integration.getKVDBsByUUID();
-            kvdbs.reserve(kvdbUUIDs.size());
-
-            for (const auto& kvdbUUID : kvdbUUIDs)
-            {
-                try
-                {
-                    const auto kvdb = cmStoreNsReader->getKVDBByUUID(kvdbUUID);
-                    const auto& kvdbName = kvdb.getName();
-                    const bool kvdbEnabled = kvdb.isEnabled();
-
-                    const auto [it, inserted] = kvdbs.emplace(kvdbName, kvdbEnabled);
-                    if (!inserted)
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "Duplicate KVDB title '{}' in integration '{}'. KVDB titles must be unique within an "
-                            "integration.",
-                            kvdbName,
-                            integration.getName()));
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Failed to load KVDB with UUID '{}' from integration '{}': {}", kvdbUUID, integUUID, e.what()));
-                }
-            }
-        }
-
         // Set availability map in the build context (integration-scoped).
-        assetBuilder->setAvailableKvdbs(kvdbs);
+        assetBuilder->setAvailableKvdbs(buildKvdbsMap(integration, cmStoreNsReader, integUUID));
 
         for (const auto& decUUID : integration.getDecodersByUUID())
         {

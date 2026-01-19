@@ -21,7 +21,8 @@ namespace cm::crud
 class CrudService final : public ICrudService
 {
 public:
-    CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator);
+    CrudService(const std::shared_ptr<cm::store::ICMStore>& store,
+                const std::shared_ptr<builder::IValidator>& validator);
 
     ~CrudService() override = default;
 
