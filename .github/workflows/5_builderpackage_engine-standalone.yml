@@ -42,7 +42,8 @@ on:
 
 # Ensures only one instance of this workflow is running per PR
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_call' && 'called' || 'trigger' }}
+  cancel-in-progress: true
 
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
