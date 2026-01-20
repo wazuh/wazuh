@@ -11,6 +11,7 @@
 #ifndef AGENT_METADATA_DB_H
 #define AGENT_METADATA_DB_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <time.h>
 
@@ -28,6 +29,7 @@ typedef struct agent_meta
     char** groups;
     size_t groups_count;
     time_t lastmsg;  // Last time a keepalive was received
+    bool shutdown_pending;  // Agent has sent shutdown, waiting for queue to drain
 } agent_meta_t;
 
 /* Forward declaration is OK in the header (we only need the pointer type here) */
@@ -43,11 +45,17 @@ int agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh);
 /* Snapshot helpers (copian strings; el caller libera con agent_meta_free) */
 int agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out);
 
-/* Cleanup expired cache entries based on lastmsg timestamp */
-void agent_meta_cleanup_expired(time_t expire_threshold);
+/* Forward declaration for events queue type */
+struct w_rr_queue;
+
+/* Cleanup expired cache entries based on lastmsg timestamp and shutdown agents */
+void agent_meta_cleanup_expired(time_t expire_threshold, struct w_rr_queue *events_queue);
+
+/* Mark agent metadata for deletion after shutdown (pending queue drain) */
+void agent_meta_mark_shutdown(const char* agent_id_str);
 
 /* Periodic cleanup thread */
-void* agent_meta_cleanup_thread(void* arg);
+void* agent_meta_cleanup_thread(void* events_queue);
 
 void agent_meta_free(agent_meta_t* m);
 void agent_meta_clear(agent_meta_t* m);
