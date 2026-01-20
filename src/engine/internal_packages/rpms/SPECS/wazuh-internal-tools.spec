@@ -5,7 +5,6 @@ Summary:        Wazuh Internal Engine Tools (runtime venv + offline wheels)
 License:        GPL-2.0-only
 URL:            https://wazuh.com
 Source0:        %{name}-%{version}.tar.gz
-BuildArch:      x86_64
 
 # ------------------------------
 # Debug subpackages disabled
@@ -188,11 +187,29 @@ ensure_charset_normalizer_universal_no_sdist
 # Download PyYAML/lxml manylinux builds for multiple Python ABIs
 download_manylinux() {
   local spec="$1"
+  local platform
+
+  # Detect architecture for manylinux platform
+  case "$(uname -m)" in
+    x86_64)
+      platform="manylinux2014_x86_64"
+      ;;
+    aarch64)
+      platform="manylinux2014_aarch64"
+      ;;
+    *)
+      echo "[build][ERROR] Unsupported architecture: $(uname -m)" >&2
+      exit 1
+      ;;
+  esac
+
+  echo "[build] Downloading $spec for platform: $platform"
+
   for ver in 38 39 310 311 312; do
     $PY -m pip download "$spec" \
       --only-binary=:all: \
       --dest dist/wheels \
-      --platform manylinux2014_x86_64 \
+      --platform "$platform" \
       --implementation cp \
       --python-version "$ver" \
       --abi "cp${ver}"

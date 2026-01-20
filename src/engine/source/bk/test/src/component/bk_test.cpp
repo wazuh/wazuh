@@ -1025,13 +1025,16 @@ TEST(BKTraceTest, ChainForcesSuccessTrue)
     auto output = builder.build(chain, traces, traceables, input);
 
     RxEvent outEv;
-    output.subscribe([&](const RxEvent& ev) { outEv = ev; });
+    auto subscription = output.subscribe([&](const RxEvent& ev) { outEv = ev; });
 
     auto event = std::make_shared<json::Json>();
     auto rxEv = std::make_shared<base::result::Result<base::Event>>(base::result::makeSuccess(event));
 
     subj.get_subscriber().on_next(rxEv);
+    subj.get_subscriber().on_completed();
 
     ASSERT_TRUE(outEv != nullptr);
     ASSERT_TRUE(outEv->success()) << "Chain should force success=true even if the operand fails";
+
+    subscription.unsubscribe();
 }
