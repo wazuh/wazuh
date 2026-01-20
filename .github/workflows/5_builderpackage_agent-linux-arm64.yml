@@ -89,30 +89,6 @@ jobs:
           sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
           cat VERSION.json
 
-      - name: Pre-download http-request for Debian 7 SSL compatibility
-        run: |
-          HTTP_REQUEST_BRANCH=$(grep -m1 "^HTTP_REQUEST_BRANCH" src/Makefile | sed 's/.*?=\s*\(.*\)/\1/')
-          if [ -z "$HTTP_REQUEST_BRANCH" ]; then
-            echo "Could not determine HTTP_REQUEST_BRANCH from Makefile"
-            exit 1
-          fi
-          echo "HTTP_REQUEST_BRANCH: $HTTP_REQUEST_BRANCH"
-          cd src/shared_modules
-          if [ -f http-request.tar.gz ]; then
-            echo "http-request tarball already exists, skipping download"
-          else
-            echo "Downloading http-request tarball from GitHub..."
-            curl -fsSL -o http-request.tar.gz \
-              "https://github.com/wazuh/wazuh-http-request/tarball/${HTTP_REQUEST_BRANCH}"
-            if [ -s http-request.tar.gz ]; then
-              SIZE=$(du -h http-request.tar.gz | cut -f1)
-              echo "Download complete (${SIZE})"
-            else
-              echo "Downloaded file is empty or missing"
-              exit 1
-            fi
-          fi
-
       - name: Build DEB package
         id: build
         run: |
