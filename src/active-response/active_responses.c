@@ -258,6 +258,15 @@ const char* get_srcip_from_json(const cJSON *input) {
         return srcip_json->valuestring;
     }
 
+    // Detect srcaddr from data.aws
+    cJSON *aws_json = cJSON_GetObjectItem(data_json, "aws");
+    if (cJSON_IsObject(aws_json)) {
+        srcip_json = cJSON_GetObjectItem(aws_json, "srcaddr");
+        if (cJSON_IsString(srcip_json)) {
+            return srcip_json->valuestring;
+        }
+    }
+
     return NULL;
 }
 
