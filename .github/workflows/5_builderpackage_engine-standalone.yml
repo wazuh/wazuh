@@ -42,7 +42,7 @@ on:
 
 # Ensures only one instance of this workflow is running per PR
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_call' && 'called' || 'trigger' }}
 
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
@@ -68,6 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          repository: wazuh/wazuh
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || env.WAZUH_BRANCH }}
 
       - name: Set tag and container name
