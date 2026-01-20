@@ -16,8 +16,8 @@ namespace store::drivers
 /**
  * @brief File driver.
  *
- * This driver stores the jsons in the filesystem as flat files. Starting from the base path,
- * it encodes the full name into a single filename and stores each document as <encoded>.json.
+ * This driver stores the jsons in the filesystem using a directory hierarchy based on base::Name.
+ * Starting from the base path, each part of the name becomes a directory/file segment.
  *
  */
 class FileDriver : public IDriver
@@ -26,6 +26,7 @@ private:
     std::filesystem::path m_path;
 
     std::filesystem::path nameToPath(const base::Name& name) const;
+    base::OptError removeEmptyParentDirs(const std::filesystem::path& path, const base::Name& name);
 
 public:
     /**

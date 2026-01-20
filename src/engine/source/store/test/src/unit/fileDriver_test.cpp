@@ -189,35 +189,6 @@ TEST_F(FileDriverTest, GetCollection)
     ASSERT_TRUE(std::find(expected.begin(), expected.end(), val2.fullName()) != expected.end());
 }
 
-TEST_F(FileDriverTest, EncodedFlatPath)
-{
-    FileDriver fDriver(m_path);
-    base::OptError error;
-    base::Name name {"a/b%20"};
-
-    ASSERT_NO_THROW(error = fDriver.createDoc(name, TEST_JSON));
-    ASSERT_FALSE(error);
-
-    const auto expectedPath = m_path / "a%2Fb%2520.json";
-    ASSERT_TRUE(std::filesystem::exists(expectedPath));
-    ASSERT_TRUE(std::filesystem::is_regular_file(expectedPath));
-    ASSERT_FALSE(std::filesystem::exists(m_path / "a"));
-}
-
-TEST_F(FileDriverTest, ReadColExactDocIsNotDirectory)
-{
-    FileDriver fDriver(m_path);
-    base::OptError error;
-    base::Name name {"a/b/0"};
-
-    ASSERT_NO_THROW(error = fDriver.createDoc(name, TEST_JSON));
-    ASSERT_FALSE(error);
-
-    base::RespOrError<store::Col> result;
-    ASSERT_NO_THROW(result = fDriver.readCol(name));
-    ASSERT_TRUE(base::isError(result));
-}
-
 TEST_F(FileDriverTest, GetFailNotExisting)
 {
     FileDriver fDriver(m_path);

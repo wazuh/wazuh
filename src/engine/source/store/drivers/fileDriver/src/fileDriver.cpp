@@ -3,76 +3,8 @@
 #include <base/logging.hpp>
 #include <fmt/format.h>
 
-#include <cctype>
-#include <set>
-
 namespace store::drivers
 {
-namespace
-{
-constexpr auto JSON_EXTENSION = ".json";
-constexpr char HEX_DIGITS[] = "0123456789ABCDEF";
-
-std::string encodeName(const base::Name& name)
-{
-    const auto& fullName = name.fullName();
-    std::string encoded;
-    encoded.reserve(fullName.size() * 3);
-
-    for (unsigned char ch : fullName)
-    {
-        if (ch == '%' || ch == base::Name::SEPARATOR_C)
-        {
-            encoded += '%';
-            encoded += HEX_DIGITS[ch >> 4];
-            encoded += HEX_DIGITS[ch & 0x0F];
-        }
-        else
-        {
-            encoded += ch;
-        }
-    }
-    return encoded;
-}
-
-bool decodeName(const std::string& encoded, std::string& decoded)
-{
-    decoded.clear();
-    decoded.reserve(encoded.size());
-
-    for (std::size_t i = 0; i < encoded.size(); ++i)
-    {
-        if (encoded[i] != '%')
-        {
-            decoded += encoded[i];
-            continue;
-        }
-
-        if (i + 2 >= encoded.size())
-        {
-            return false;
-        }
-
-        auto hi = std::find(HEX_DIGITS, HEX_DIGITS + 16, std::toupper(encoded[i + 1]));
-        auto lo = std::find(HEX_DIGITS, HEX_DIGITS + 16, std::toupper(encoded[i + 2]));
-
-        if (hi == HEX_DIGITS + 16 || lo == HEX_DIGITS + 16)
-        {
-            return false;
-        }
-
-        decoded += static_cast<char>((hi - HEX_DIGITS) << 4 | (lo - HEX_DIGITS));
-        i += 2;
-    }
-    return true;
-}
-
-bool startsWith(const std::string& value, const std::string& prefix)
-{
-    return value.compare(0, prefix.size(), prefix) == 0;
-}
-
-} // namespace
 
 FileDriver::FileDriver(const std::filesystem::path& path, bool create)
 {
@@ -103,7 +35,13 @@ FileDriver::FileDriver(const std::filesystem::path& path, bool create)
 
 std::filesystem::path FileDriver::nameToPath(const base::Name& name) const
 {
-    return m_path / (encodeName(name) + JSON_EXTENSION);
+    std::filesystem::path path {m_path};
+    for (const auto& part : name.parts())
+    {
+        path /= part;
+    }
+
+    return path;
 }
 
 base::OptError FileDriver::createDoc(const base::Name& name, const Doc& content)
@@ -126,14 +64,23 @@ base::OptError FileDriver::createDoc(const base::Name& name, const Doc& content)
     }
     else
     {
-        std::ofstream file(path);
-        if (!file.is_open())
+        std::error_code ec;
+        if (!std::filesystem::create_directories(path.parent_path(), ec) && ec.value() != 0)
         {
-            error = base::Error {fmt::format("File '{}' could not be opened on writing mode", path.string())};
+            error = base::Error {fmt::format(
+                "Directory '{}' could not be created: ({}) {}", path.parent_path().string(), ec.value(), ec.message())};
         }
         else
         {
-            file << content.prettyStr();
+            std::ofstream file(path);
+            if (!file.is_open())
+            {
+                error = base::Error {fmt::format("File '{}' could not be opened on writing mode", path.string())};
+            }
+            else
+            {
+                file << content.prettyStr();
+            }
         }
     }
     return error;
@@ -227,6 +174,29 @@ base::OptError FileDriver::upsertDoc(const base::Name& name, const Doc& content)
     }
 }
 
+base::OptError FileDriver::removeEmptyParentDirs(const std::filesystem::path& path, const base::Name& name)
+{
+    base::OptError error = base::noError();
+    std::error_code ec;
+    bool next = true;
+    auto current = path;
+    for (current = current.parent_path(); next && current != m_path && std::filesystem::is_empty(current);
+         current = current.parent_path())
+    {
+        if (!std::filesystem::remove(current, ec))
+        {
+            error = base::Error {fmt::format(
+                "File '{}' was successfully removed but its parent directory '{}' could not be removed: ({}) {}",
+                name.fullName(),
+                path.string(),
+                ec.value(),
+                ec.message())};
+            next = false;
+        }
+    }
+
+    return error;
+}
 
 base::OptError FileDriver::deleteDoc(const base::Name& name)
 {
@@ -235,7 +205,7 @@ base::OptError FileDriver::deleteDoc(const base::Name& name)
 
     LOG_DEBUG("FileDriver deleteDoc name: '{}'.", name.fullName());
 
-    if (!std::filesystem::exists(path))
+    if (!existsDoc(name))
     {
         error = base::Error {fmt::format("File '{}' does not exist", path.string())};
     }
@@ -247,6 +217,9 @@ base::OptError FileDriver::deleteDoc(const base::Name& name)
             error = base::Error {
                 fmt::format("File '{}' could not be removed: ({}) {}", path.string(), ec.value(), ec.message())};
         }
+
+        // Remove empty parent directories
+        error = removeEmptyParentDirs(path, name);
     }
     return error;
 }
@@ -254,79 +227,31 @@ base::OptError FileDriver::deleteDoc(const base::Name& name)
 base::RespOrError<Col> FileDriver::readCol(const base::Name& name) const
 {
     base::RespOrError<Col> result;
-    const auto prefix = name.fullName();
-    const auto prefixWithSep = prefix + base::Name::SEPARATOR_S;
+    auto path = nameToPath(name);
 
     LOG_DEBUG("FileDriver readCol name: '{}'.", name.fullName());
 
-    if (std::filesystem::exists(m_path))
+    if (std::filesystem::exists(path))
     {
-        if (!std::filesystem::is_directory(m_path))
+        if (!std::filesystem::is_directory(path))
         {
-            result = base::Error {fmt::format("File '{}' is not a directory", m_path.string())};
+            result = base::Error {fmt::format("File '{}' is not a directory", path.string())};
         }
         else
         {
-            std::set<base::Name> names;
-            bool hasExact = false;
-            std::string decoded;
+            std::vector<base::Name> names;
 
-            for (const auto& entry : std::filesystem::directory_iterator(m_path))
+            for (const auto& entry : std::filesystem::directory_iterator(path))
             {
-                if (!entry.is_regular_file() || entry.path().extension() != JSON_EXTENSION)
-                {
-                    continue;
-                }
-
-                const auto filename = entry.path().filename().string();
-                const auto encoded = filename.substr(0, filename.size() - std::string(JSON_EXTENSION).size());
-                if (!decodeName(encoded, decoded))
-                {
-                    continue;
-                }
-
-                if (decoded == prefix)
-                {
-                    hasExact = true;
-                    continue;
-                }
-
-                if (!startsWith(decoded, prefixWithSep))
-                {
-                    continue;
-                }
-
-                const auto remainder = decoded.substr(prefixWithSep.size());
-                const auto nextSep = remainder.find(base::Name::SEPARATOR_C);
-                const auto child = remainder.substr(0, nextSep);
-                if (child.empty())
-                {
-                    continue;
-                }
-
-                names.emplace(base::Name(prefixWithSep + child));
+                names.emplace_back(base::Name(name) + entry.path().filename().string());
             }
 
-            if (names.empty())
-            {
-                if (hasExact)
-                {
-                    result = base::Error {fmt::format("File '{}' is not a directory", prefix)};
-                }
-                else
-                {
-                    result = base::Error {fmt::format("Collection '{}' does not exist", prefix)};
-                }
-            }
-            else
-            {
-                result = Col(names.begin(), names.end());
-            }
+            result = std::move(names);
         }
     }
     else
     {
-        result = base::Error {fmt::format("File '{}' does not exist", m_path.string())};
+        result = base::Error {fmt::format("File '{}' does not exist", path.string())};
     }
 
     return result;

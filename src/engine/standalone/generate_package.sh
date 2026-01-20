@@ -95,7 +95,10 @@ build_standalone() {
     install -d -m 770 \
         ${TEMP_DIR}/bin/lib \
         ${TEMP_DIR}/default-security-policy \
-        ${TEMP_DIR}/data/store \
+        ${TEMP_DIR}/data/store/schema \
+        ${TEMP_DIR}/data/store/schema/engine-schema \
+        ${TEMP_DIR}/data/store/schema/wazuh-logpar-overrides \
+        ${TEMP_DIR}/data/store/schema/allowed-fields \
         ${TEMP_DIR}/data/kvdb \
         ${TEMP_DIR}/data/tzdb \
         ${TEMP_DIR}/data/cti \
@@ -113,9 +116,9 @@ build_standalone() {
     touch ${TEMP_DIR}/sockets/.keep
 
     # Copy schemas
-    cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/engine-schema.json "${TEMP_DIR}/data/store/schema%2Fengine-schema%2F0.json"
-    cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-logpar-overrides.json "${TEMP_DIR}/data/store/schema%2Fwazuh-logpar-overrides%2F0.json"
-    cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/allowed-fields.json "${TEMP_DIR}/data/store/schema%2Fallowed-fields%2F0.json"
+    cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/engine-schema.json ${TEMP_DIR}/data/store/schema/engine-schema/0
+    cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-logpar-overrides.json ${TEMP_DIR}/data/store/schema/wazuh-logpar-overrides/0
+    cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/allowed-fields.json ${TEMP_DIR}/data/store/schema/allowed-fields/0
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-decoders.json ${TEMP_DIR}/schemas/
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-filters.json ${TEMP_DIR}/schemas/
 
