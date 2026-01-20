@@ -1041,14 +1041,14 @@ installEngineStore()
     DEST_FULL_PATH=${INSTALLDIR}/engine
     ENGINE_SRC_PATH=./engine
 
-    # Fallback store installation (flat layout with URL-encoded filenames)
+    # Fallback store installation
     local STORE_PATH=${DEST_FULL_PATH}/store
     local KVDB_PATH=${DEST_FULL_PATH}/kvdb
 
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_PATH}
     mkdir -p "${KVDB_PATH}"
 
-    # Copying the store files (flat layout: / encoded as %2F)
+    # Copying the store files
     echo "Copying store files..."
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${STORE_PATH}/schema%2Fengine-schema%2F0.json"
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${STORE_PATH}/schema%2Fwazuh-logpar-overrides%2F0.json"

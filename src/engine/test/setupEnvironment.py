@@ -9,12 +9,15 @@ from pathlib import Path
 def setup_engine(engine_src_dir, environment_dir):
     schemas = ["wazuh-logpar-overrides", "engine-schema", "allowed-fields"]
 
+    # Create store directory
+    store_dir = os.path.join(environment_dir, 'store')
+    os.makedirs(store_dir, exist_ok=True)
+
     for schema in schemas:
         print(f"Copying schema {schema}")
-        schema_dir = os.path.join(environment_dir, 'store/schema', schema)
-        os.makedirs(schema_dir, exist_ok=True)
+        flat_filename = f"schema%2F{schema}%2F0.json"
         schema_json_path = os.path.join(engine_src_dir, 'ruleset/schemas', f'{schema}.json')
-        shutil.copy(schema_json_path, os.path.join(schema_dir, '0'))
+        shutil.copy(schema_json_path, os.path.join(store_dir, flat_filename))
 
     dirs_to_create = [
         os.path.join(environment_dir, 'queue/sockets'),

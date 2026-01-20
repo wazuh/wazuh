@@ -112,7 +112,7 @@ build_standalone() {
     touch ${TEMP_DIR}/logs/.keep
     touch ${TEMP_DIR}/sockets/.keep
 
-    # Copy schemas (flat layout: / encoded as %2F)
+    # Copy schemas
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/engine-schema.json "${TEMP_DIR}/data/store/schema%2Fengine-schema%2F0.json"
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-logpar-overrides.json "${TEMP_DIR}/data/store/schema%2Fwazuh-logpar-overrides%2F0.json"
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/allowed-fields.json "${TEMP_DIR}/data/store/schema%2Fallowed-fields%2F0.json"

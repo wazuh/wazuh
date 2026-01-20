@@ -691,13 +691,9 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh) %{_localstatedir}/engine
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/kvdb
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/allowed-fields
-%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/allowed-fields/0
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema
-%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema/0
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides
-%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides/0
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema%%2Fallowed-fields%%2F0.json
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema%%2Fengine-schema%%2F0.json
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema%%2Fwazuh-logpar-overrides%%2F0.json
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/outputs
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/outputs/*.yml
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework
