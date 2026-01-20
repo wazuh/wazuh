@@ -36,6 +36,8 @@ _ALLOWED_PREFIXES = (
     os.path.join(common.WAZUH_PATH, "queue/cluster"),
 )
 
+ALLOWED_CALLABLES_PACKAGES = ["wazuh", "api"]
+
 class Response:
     """
     Define and store a response from a request.
@@ -1854,13 +1856,14 @@ def as_wazuh_object(dct: Dict):
                 classname = qualname[0] if len(qualname) > 1 else None
                 module_path = encoded_callable['__module__']
 
-                if not module_path.startswith('wazuh.'):
+                package_name = module_path.split('.')[0]
+                if package_name not in ALLOWED_CALLABLES_PACKAGES:
                     raise exception.WazuhInternalError(1000,
                                                        extra_message=f"Decoding callable from module '{module_path}' is not allowed",
                                                        cmd_error=True)
                 
-                relative_mod = '.' + module_path[len('wazuh.'):]
-                module = import_module(relative_mod, package='wazuh')
+                relative_mod = module_path.removeprefix(package_name)
+                module = import_module(relative_mod, package=package_name)
 
                 if classname is None:
                     return getattr(module, funcname)
