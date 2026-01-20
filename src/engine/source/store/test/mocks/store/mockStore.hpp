@@ -49,25 +49,25 @@ inline base::RespOrError<Doc> storeReadDocResp(const Doc& doc)
 class MockStoreInternal : public store::IStoreInternal
 {
 public:
-    MOCK_METHOD((base::OptError), createInternalDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::RespOrError<Doc>), readInternalDoc, (const base::Name&), (const, override));
-    MOCK_METHOD((base::OptError), updateInternalDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::OptError), upsertInternalDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::OptError), deleteInternalDoc, (const base::Name&), (override));
-    MOCK_METHOD((base::RespOrError<Col>), readInternalCol, (const base::Name&), (const, override));
-    MOCK_METHOD((bool), existsInternalDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::OptError), createDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::RespOrError<Doc>), readDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::OptError), updateDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), upsertDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), deleteDoc, (const base::Name&), (override));
+    MOCK_METHOD((base::RespOrError<Col>), readCol, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), existsDoc, (const base::Name&), (const, override));
 };
 
 class MockStore : public store::IStore
 {
 public:
-    MOCK_METHOD((base::OptError), createInternalDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::RespOrError<Doc>), readInternalDoc, (const base::Name&), (const, override));
-    MOCK_METHOD((base::OptError), updateInternalDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::OptError), upsertInternalDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::OptError), deleteInternalDoc, (const base::Name&), (override));
-    MOCK_METHOD((base::RespOrError<Col>), readInternalCol, (const base::Name&), (const, override));
-    MOCK_METHOD((bool), existsInternalDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::OptError), createDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::RespOrError<Doc>), readDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::OptError), updateDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), upsertDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), deleteDoc, (const base::Name&), (override));
+    MOCK_METHOD((base::RespOrError<Col>), readCol, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), existsDoc, (const base::Name&), (const, override));
 };
 
 } // namespace store::mocks

@@ -51,7 +51,7 @@ protected:
         auto internalName =
             base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
 
-        EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
             .WillOnce(testing::Return(storeReadColResp({internalName})));
 
         json::Json docJson;
@@ -59,7 +59,7 @@ protected:
         docJson.setString(typeName(Type::CITY), TYPE_PATH);
         docJson.setString("hash", HASH_PATH);
 
-        EXPECT_CALL(*mockStore, readInternalDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
+        EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
 
         manager = std::make_shared<Manager>(mockStore, mockDownloader);
 
@@ -81,7 +81,7 @@ protected:
         {
             auto internalName =
                 base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(file).filename().string()));
-            EXPECT_CALL(*mockStore, deleteInternalDoc(internalName)).WillOnce(testing::Return(storeOk()));
+            EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillOnce(testing::Return(storeOk()));
             manager->removeDb(file);
         }
     }

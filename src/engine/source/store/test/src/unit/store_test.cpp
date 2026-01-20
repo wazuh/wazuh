@@ -45,103 +45,103 @@ TEST_F(StoreBuildTest, ValidDriver)
 }
 
 /*******************************************************************************
-                        Store::createInternalDoc
+                        Store::createDoc
 *******************************************************************************/
-TEST_F(StoreTest, createInternalDoc_fail)
+TEST_F(StoreTest, createDoc_fail)
 {
     // Fail driver
     EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(driverError()));
-    ASSERT_TRUE(base::isError(store->createInternalDoc("x", jdoc_1A)));
+    ASSERT_TRUE(base::isError(store->createDoc("x", jdoc_1A)));
 }
 
-TEST_F(StoreTest, createInternalDoc_ok)
+TEST_F(StoreTest, createDoc_ok)
 {
     EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
-    ASSERT_FALSE(base::isError(store->createInternalDoc("x", jdoc_1A)));
+    ASSERT_FALSE(base::isError(store->createDoc("x", jdoc_1A)));
 }
 
 /*******************************************************************************
-                        Store::readInternalDoc
+                        Store::readDoc
 *******************************************************************************/
-TEST_F(StoreTest, readInternalDoc_fail)
+TEST_F(StoreTest, readDoc_fail)
 {
     // Fail driver
     EXPECT_CALL(*driver, readDoc(base::Name("x"))).WillOnce(testing::Return(driverReadError<Doc>()));
-    ASSERT_TRUE(base::isError(store->readInternalDoc("x")));
+    ASSERT_TRUE(base::isError(store->readDoc("x")));
 }
 
-TEST_F(StoreTest, readInternalDoc_ok)
+TEST_F(StoreTest, readDoc_ok)
 {
     EXPECT_CALL(*driver, readDoc(base::Name("x"))).WillOnce(testing::Return(driverReadDocResp(Doc(jdoc_1A))));
-    auto res = store->readInternalDoc("x");
+    auto res = store->readDoc("x");
 
     ASSERT_FALSE(base::isError(res));
     ASSERT_EQ(std::get<Doc>(res), jdoc_1A);
 }
 
 /*******************************************************************************
-                        Store::updateInternalDoc
+                        Store::updateDoc
 *******************************************************************************/
-TEST_F(StoreTest, updateInternalDoc_fail)
+TEST_F(StoreTest, updateDoc_fail)
 {
     // Fail driver
     EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(driverError()));
-    ASSERT_TRUE(base::isError(store->updateInternalDoc("x", jdoc_1A)));
+    ASSERT_TRUE(base::isError(store->updateDoc("x", jdoc_1A)));
 }
 
-TEST_F(StoreTest, updateInternalDoc_ok)
+TEST_F(StoreTest, updateDoc_ok)
 {
     EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
-    ASSERT_FALSE(base::isError(store->updateInternalDoc("x", jdoc_1A)));
+    ASSERT_FALSE(base::isError(store->updateDoc("x", jdoc_1A)));
 }
 
 /*******************************************************************************
-                        Store::upsertInternalDoc
+                        Store::upsertDoc
 *******************************************************************************/
-TEST_F(StoreTest, upsertInternalDoc_update_ok)
+TEST_F(StoreTest, upsertDoc_update_ok)
 {
     EXPECT_CALL(*driver, existsDoc(base::Name("x"))).WillOnce(testing::Return(true));
     EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
-    ASSERT_FALSE(base::isError(store->upsertInternalDoc("x", jdoc_1A)));
+    ASSERT_FALSE(base::isError(store->upsertDoc("x", jdoc_1A)));
 }
 
-TEST_F(StoreTest, upsertInternalDoc_create_ok)
+TEST_F(StoreTest, upsertDoc_create_ok)
 {
     EXPECT_CALL(*driver, existsDoc(base::Name("x"))).WillOnce(testing::Return(false));
     EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
-    ASSERT_FALSE(base::isError(store->upsertInternalDoc("x", jdoc_1A)));
+    ASSERT_FALSE(base::isError(store->upsertDoc("x", jdoc_1A)));
 }
 
 /*******************************************************************************
-                        Store::deleteInternalDoc
+                        Store::deleteDoc
 *******************************************************************************/
-TEST_F(StoreTest, deleteInternalDoc_fail)
+TEST_F(StoreTest, deleteDoc_fail)
 {
     // Fail driver
     EXPECT_CALL(*driver, deleteDoc(base::Name("x"))).WillOnce(testing::Return(driverError()));
-    ASSERT_TRUE(base::isError(store->deleteInternalDoc("x")));
+    ASSERT_TRUE(base::isError(store->deleteDoc("x")));
 }
 
-TEST_F(StoreTest, deleteInternalDoc_ok)
+TEST_F(StoreTest, deleteDoc_ok)
 {
     EXPECT_CALL(*driver, deleteDoc(base::Name("x"))).WillOnce(testing::Return(std::nullopt));
-    ASSERT_FALSE(base::isError(store->deleteInternalDoc("x")));
+    ASSERT_FALSE(base::isError(store->deleteDoc("x")));
 }
 
 /*******************************************************************************
-                        Store::readInternalCol
+                        Store::readCol
 *******************************************************************************/
-TEST_F(StoreTest, readInternalCol_fail)
+TEST_F(StoreTest, readCol_fail)
 {
     // Fail driver
     EXPECT_CALL(*driver, readCol(base::Name("x"))).WillOnce(testing::Return(driverReadError<Col>()));
-    ASSERT_TRUE(base::isError(store->readInternalCol("x")));
+    ASSERT_TRUE(base::isError(store->readCol("x")));
 }
 
-TEST_F(StoreTest, readInternalCol_ok)
+TEST_F(StoreTest, readCol_ok)
 {
     EXPECT_CALL(*driver, readCol(base::Name("x"))).WillOnce(testing::Return(driverReadColResp(Col {base::Name("a")})));
-    auto res = store->readInternalCol("x");
+    auto res = store->readCol("x");
 
     ASSERT_FALSE(base::isError(res));
     ASSERT_EQ(std::get<Col>(res).size(), 1);
@@ -149,16 +149,16 @@ TEST_F(StoreTest, readInternalCol_ok)
 }
 
 /*******************************************************************************
-                        Store::existsInternalDoc
+                        Store::existsDoc
 *******************************************************************************/
-TEST_F(StoreTest, existsInternalDoc_false)
+TEST_F(StoreTest, existsDoc_false)
 {
     EXPECT_CALL(*driver, existsDoc(base::Name("x"))).WillOnce(testing::Return(false));
-    ASSERT_FALSE(store->existsInternalDoc("x"));
+    ASSERT_FALSE(store->existsDoc("x"));
 }
 
-TEST_F(StoreTest, existsInternalDoc_true)
+TEST_F(StoreTest, existsDoc_true)
 {
     EXPECT_CALL(*driver, existsDoc(base::Name("x"))).WillOnce(testing::Return(true));
-    ASSERT_TRUE(store->existsInternalDoc("x"));
+    ASSERT_TRUE(store->existsDoc("x"));
 }

@@ -111,12 +111,12 @@ protected:
         // Set up default mock store
         mockStore = std::make_shared<store::mocks::MockStore>();
 
-        // Default mock store behavior - allow any readInternalDoc call to return empty
-        EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+        // Default mock store behavior - allow any readDoc call to return empty
+        EXPECT_CALL(*mockStore, readDoc(testing::_))
             .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
 
-        // Allow any upsertInternalDoc call to succeed
-        EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+        // Allow any upsertDoc call to succeed
+        EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_))
             .WillRepeatedly(testing::Return(store::mocks::storeOk()));
     }
 
@@ -1885,13 +1885,13 @@ TEST_F(ChannelHandlerTest, NoCompressionWhenDisabled)
 // Test store persistence functionality - initialization with no previous state
 TEST_F(ChannelHandlerTest, StorePersistenceInitializationNoState)
 {
-    // Configure mock store to return error (no previous state), readInternalDoc can be called multiple times
-    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+    // Configure mock store to return error (no previous state), readDoc can be called multiple times
+    EXPECT_CALL(*mockStore, readDoc(testing::_))
         .Times(2)
         .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
 
     // Try Save the new state
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_))
         .Times(1)
         .WillOnce(testing::Return(store::mocks::storeOk()));
 
@@ -1918,15 +1918,15 @@ TEST_F(ChannelHandlerTest, StorePersistenceInitializationWithPendingFile)
     json::Json previousState;
     previousState.setString(previousFilePath, "/last_current");
 
-    // readInternalDoc can be called multiple times during operation
-    EXPECT_CALL(*mockStore, readInternalDoc(testing::HasSubstr("store-test")))
+    // readDoc can be called multiple times during operation
+    EXPECT_CALL(*mockStore, readDoc(testing::HasSubstr("store-test")))
         .WillRepeatedly(testing::Return(store::mocks::storeReadDocResp(previousState)));
 
     // Expect compression task to be scheduled for the previous file
     EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(1);
 
     // Store save may or may not be called during initialization - make it optional
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::HasSubstr("store-test"), testing::_))
+    EXPECT_CALL(*mockStore, upsertDoc(testing::HasSubstr("store-test"), testing::_))
         .Times(testing::AnyNumber())
         .WillRepeatedly(testing::Return(store::mocks::storeOk()));
 
@@ -1948,14 +1948,14 @@ TEST_F(ChannelHandlerTest, StorePersistenceSaveDuringRotation)
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
 
     // Configure mock store to return no initial state - can be called multiple times
-    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+    EXPECT_CALL(*mockStore, readDoc(testing::_))
         .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
 
     // Expect compression task scheduling during rotation
     EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(1);
 
     // Expect save operation during rotation - can happen multiple times
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::HasSubstr("store-test"), testing::_))
+    EXPECT_CALL(*mockStore, upsertDoc(testing::HasSubstr("store-test"), testing::_))
         .Times(testing::AtLeast(1))
         .WillRepeatedly(testing::Return(store::mocks::storeOk()));
 
@@ -1979,12 +1979,12 @@ TEST_F(ChannelHandlerTest, StorePersistenceReadError)
 {
     // Configure mock store to return error, simulating read failure
     // Fail to read last state and fail to read the second time as well
-    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+    EXPECT_CALL(*mockStore, readDoc(testing::_))
         .Times(2)
         .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
 
     // Save the new state
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_))
         .Times(1)
         .WillOnce(testing::Return(store::mocks::storeOk()));
 
@@ -2003,13 +2003,13 @@ TEST_F(ChannelHandlerTest, StorePersistenceSaveError)
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
 
     // Configure mock store to return no initial state but fail on save - can be called multiple times
-    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+    EXPECT_CALL(*mockStore, readDoc(testing::_))
         .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
 
     EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(1);
 
     // Simulate save error - allow multiple calls
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_))
         .Times(testing::AtLeast(1))
         .WillRepeatedly(testing::Return(store::mocks::storeError()));
 
@@ -2035,12 +2035,12 @@ TEST_F(ChannelHandlerTest, StorePersistenceCorruptedState)
     json::Json corruptedState;
     corruptedState.setString("invalid_data", "/invalid");
 
-    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+    EXPECT_CALL(*mockStore, readDoc(testing::_))
         .Times(2) // Can be called multiple times
         .WillRepeatedly(testing::Return(store::mocks::storeReadDocResp(corruptedState)));
 
     //  save the new state
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_))
         .Times(1)
         .WillOnce(testing::Return(store::mocks::storeOk()));
 
@@ -2063,7 +2063,7 @@ TEST_F(ChannelHandlerTest, StorePersistencePreviousFileNotFound)
     state.setString(nonExistentFile, "/currentFilePath");
 
     // Expect call 2 times, 1 for try recover last state and 1 for save the current state
-    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+    EXPECT_CALL(*mockStore, readDoc(testing::_))
         .Times(2)
         .WillRepeatedly(testing::Return(store::mocks::storeReadDocResp(state)));
 
@@ -2071,7 +2071,7 @@ TEST_F(ChannelHandlerTest, StorePersistencePreviousFileNotFound)
     EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(0);
 
     // Should save current state without attempting compression
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_))
         .Times(1)
         .WillOnce(testing::Return(store::mocks::storeOk()));
 

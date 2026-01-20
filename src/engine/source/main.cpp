@@ -308,7 +308,7 @@ int main(int argc, char* argv[])
         // Schema
         {
             schema = std::make_shared<schemf::Schema>();
-            auto result = store->readInternalDoc("schema/engine-schema/0");
+            auto result = store->readDoc("schema/engine-schema/0");
             if (std::holds_alternative<base::Error>(result))
             {
                 LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
                 confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE));
 
             base::Name logparFieldOverrides({"schema", "wazuh-logpar-overrides", "0"});
-            auto res = store->readInternalDoc(logparFieldOverrides);
+            auto res = store->readDoc(logparFieldOverrides);
             if (std::holds_alternative<base::Error>(res))
             {
                 throw std::runtime_error(fmt::format("Could not retreive logpar field overrides [{}] needed by the "
@@ -450,7 +450,7 @@ int main(int argc, char* argv[])
 
             // Build allowed fields
             std::shared_ptr<builder::IAllowedFields> allowedFields;
-            auto allowedFieldsDoc = store->readInternalDoc("schema/allowed-fields/0");
+            auto allowedFieldsDoc = store->readDoc("schema/allowed-fields/0");
             if (std::holds_alternative<base::Error>(allowedFieldsDoc))
             {
                 LOG_DEBUG("Could not load 'schema/allowed-fields/0' document, {}",

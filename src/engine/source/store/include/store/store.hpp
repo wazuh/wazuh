@@ -23,39 +23,39 @@ public:
     ~Store();
 
     /**
-     * @copydoc IStoreInternal::createInternalDoc
+     * @copydoc IStoreInternal::createDoc
      */
-    base::OptError createInternalDoc(const base::Name& name, const Doc& content) override;
+    base::OptError createDoc(const base::Name& name, const Doc& content) override;
 
     /**
-     * @copydoc IStoreInternal::readInternalDoc
+     * @copydoc IStoreInternal::readDoc
      */
-    base::RespOrError<Doc> readInternalDoc(const base::Name& name) const override;
+    base::RespOrError<Doc> readDoc(const base::Name& name) const override;
 
     /**
-     * @copydoc IStoreInternal::updateInternalDoc
+     * @copydoc IStoreInternal::updateDoc
      */
-    base::OptError updateInternalDoc(const base::Name& name, const Doc& content) override;
+    base::OptError updateDoc(const base::Name& name, const Doc& content) override;
 
     /**
-     * @copydoc IStoreInternal::upsertInternalDoc
+     * @copydoc IStoreInternal::upsertDoc
      */
-    base::OptError upsertInternalDoc(const base::Name& name, const Doc& content) override;
+    base::OptError upsertDoc(const base::Name& name, const Doc& content) override;
 
     /**
-     * @copydoc IStoreInternal::deleteInternalDoc
+     * @copydoc IStoreInternal::deleteDoc
      */
-    base::OptError deleteInternalDoc(const base::Name& name) override;
+    base::OptError deleteDoc(const base::Name& name) override;
 
     /**
-     * @copydoc IStoreInternal::readInternalCol
+     * @copydoc IStoreInternal::readCol
      */
-    base::RespOrError<Col> readInternalCol(const base::Name& name) const override;
+    base::RespOrError<Col> readCol(const base::Name& name) const override;
 
     /**
-     * @copydoc IStoreInternal::existsInternalDoc
+     * @copydoc IStoreInternal::existsDoc
      */
-    bool existsInternalDoc(const base::Name& name) const override;
+    bool existsDoc(const base::Name& name) const override;
 };
 
 } // namespace store

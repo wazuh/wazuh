@@ -38,7 +38,7 @@ public:
      * @param content document content.
      * @return base::OptError with the error or empty if no error.
      */
-    virtual base::OptError createInternalDoc(const base::Name& name, const Doc& content) = 0;
+    virtual base::OptError createDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
      * @brief Read a Internal document from the store.
@@ -46,7 +46,7 @@ public:
      * @param name name of the document.
      * @return base::RespOrError<Doc> with the document or error.
      */
-    virtual base::RespOrError<Doc> readInternalDoc(const base::Name& name) const = 0;
+    virtual base::RespOrError<Doc> readDoc(const base::Name& name) const = 0;
 
     /**
      * @brief Update a Internal document in the store.
@@ -55,7 +55,7 @@ public:
      * @param content document content.
      * @return base::OptError with the error or empty if no error.
      */
-    virtual base::OptError updateInternalDoc(const base::Name& name, const Doc& content) = 0;
+    virtual base::OptError updateDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
      * @brief Upsert a Internal document in the store.
@@ -64,7 +64,7 @@ public:
      * @param content document content.
      * @return base::OptError with the error or empty if no error.
      */
-    virtual base::OptError upsertInternalDoc(const base::Name& name, const Doc& content) = 0;
+    virtual base::OptError upsertDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
      * @brief Delete a Internal document from the store.
@@ -72,14 +72,14 @@ public:
      * @param name name of the document.
      * @return base::OptError with the error or empty if no error.
      */
-    virtual base::OptError deleteInternalDoc(const base::Name& name) = 0;
+    virtual base::OptError deleteDoc(const base::Name& name) = 0;
 
     /**
      * @brief Get collection of Internal documents from the store.
      *
      * @param name name of the collection.
      */
-    virtual base::RespOrError<Col> readInternalCol(const base::Name& name) const = 0;
+    virtual base::RespOrError<Col> readCol(const base::Name& name) const = 0;
 
     /**
      * @brief Check if a Internal document exists in the store.
@@ -87,7 +87,7 @@ public:
      * @param name name of the document.
      * @return true if the document exists, false otherwise.
      */
-    virtual bool existsInternalDoc(const base::Name& name) const = 0;
+    virtual bool existsDoc(const base::Name& name) const = 0;
 };
 
 class IStore : public IStoreInternal

@@ -773,7 +773,7 @@ std::optional<std::filesystem::path> ChannelHandler::getPreviousCurrentFilePathF
     try
     {
         // Get the last state document from the store
-        const auto state = m_store->readInternalDoc(getStoreBaseName());
+        const auto state = m_store->readDoc(getStoreBaseName());
         if (base::isError(state))
         {
             // Missing document is not an error, just means no previous state, fist time run
@@ -812,7 +812,7 @@ void ChannelHandler::savePreviousCurrentFilePathFromStore() const
     try
     {
         // Get the last state document from the store
-        auto state = m_store->readInternalDoc(getStoreBaseName());
+        auto state = m_store->readDoc(getStoreBaseName());
 
         if (base::isError(state))
         {
@@ -828,7 +828,7 @@ void ChannelHandler::savePreviousCurrentFilePathFromStore() const
         jState.setString(m_stateData.currentFile.string(), STORE_POSFIX_PATH_TO_CURRENT);
 
         // Save the updated document back to the store
-        const auto res = m_store->upsertInternalDoc(getStoreBaseName(), jState);
+        const auto res = m_store->upsertDoc(getStoreBaseName(), jState);
         if (base::isError(res))
         {
             LOG_WARNING(
@@ -853,7 +853,7 @@ void ChannelHandler::clearPreviousCurrentFilePathFromStore() const
     {
         // Remove the document from the store
         // Get the last state document from the store
-        auto state = m_store->readInternalDoc(getStoreBaseName());
+        auto state = m_store->readDoc(getStoreBaseName());
 
         if (base::isError(state))
         {
@@ -867,7 +867,7 @@ void ChannelHandler::clearPreviousCurrentFilePathFromStore() const
         jState.erase(STORE_POSFIX_PATH_TO_CURRENT);
 
         // Save the updated document back to the store
-        const auto res = m_store->upsertInternalDoc(getStoreBaseName(), jState);
+        const auto res = m_store->upsertDoc(getStoreBaseName(), jState);
         if (base::isError(res))
         {
             LOG_WARNING(
