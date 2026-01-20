@@ -28,13 +28,13 @@ public:
     /**
      * @brief Construct a new Policy object
      *
-     * @param doc Store document with the policy data
-     * @param store Store reader instance
-     * @param definitionsBuilder Definitions builder
-     * @param registry Registry instance
-     * @param schema Schema validator instance
-     * @param allowedFields Allowed fields instance
-     * @param trace Indicates whether to enable or disable the trace
+     * @param namespaceId Namespace identifier.
+     * @param cmStore CM store interface.
+     * @param definitionsBuilder Definitions builder.
+     * @param registry Registry instance.
+     * @param schema Schema validator instance.
+     * @param allowedFields Allowed fields instance.
+     * @param trace Indicates whether to enable or disable the trace.
      * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
      * production environment.
      */
@@ -52,10 +52,10 @@ public:
      */
     inline const base::Name& name() const override { return m_name; }
 
-    /*
+    /**
      * @brief Get the policy hash.
      *
-     * @return std::string Hash of the policy.
+     * @return const std::string& Hash of the policy.
      */
     inline const std::string& hash() const override { return m_hash; }
 

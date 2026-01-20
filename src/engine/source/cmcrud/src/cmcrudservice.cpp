@@ -84,7 +84,8 @@ base::Name assetNameFromJson(const json::Json& jsonDoc)
 namespace cm::crud
 {
 
-CrudService::CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator)
+CrudService::CrudService(const std::shared_ptr<cm::store::ICMStore>& store,
+                         const std::shared_ptr<builder::IValidator>& validator)
     : m_store(store)
     , m_validator(validator)
 {

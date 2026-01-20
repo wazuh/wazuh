@@ -59,7 +59,7 @@ public:
     /**
      * @brief Get the build context.
      *
-     * @return const std::shared_ptr<builders::BuildCtx>&
+     * @return builder::builders::Context&
      */
     builder::builders::Context& getContext() const;
 
@@ -86,9 +86,9 @@ public:
     /**
      * @copydoc IAssetBuilder::setAvailableKvdbs
      */
-    void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) override
+    void setAvailableKvdbs(std::unordered_map<std::string, bool>&& kvdbs) override
     {
-        m_buildCtx->context().availableKvdbs = kvdbs;
+        m_buildCtx->context().availableKvdbs = std::move(kvdbs);
     }
 
     /**

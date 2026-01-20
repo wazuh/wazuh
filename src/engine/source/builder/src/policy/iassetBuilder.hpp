@@ -37,9 +37,9 @@ public:
     /**
      * @brief Set the available KVDBs for validation during asset building.
      *
-     * @param kvdbs Map of KVDB names to their enabled/disabled status.
+     * @param kvdbs Map of KVDB names to their enabled/disabled status (moved).
      */
-    virtual void setAvailableKvdbs(const std::unordered_map<std::string, bool>& kvdbs) = 0;
+    virtual void setAvailableKvdbs(std::unordered_map<std::string, bool>&& kvdbs) = 0;
 
     /**
      * @brief Clear the available KVDBs (disables KVDB validation).

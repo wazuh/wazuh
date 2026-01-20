@@ -7,6 +7,13 @@
 namespace builder::builders
 {
 
+/**
+ * @brief Build the map stage expression.
+ *
+ * @param definition Json definition of the stage.
+ * @param buildCtx Build context.
+ * @return base::Expression The built stage expression.
+ */
 base::Expression mapBuilder(const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 } // namespace builder::builders
