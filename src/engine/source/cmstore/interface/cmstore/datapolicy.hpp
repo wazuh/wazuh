@@ -22,8 +22,7 @@
  * {
  *   "type": "policy",
  *   "title": "Development 0.0.1",
- *   "default_parent": "2321h312-015f-27h2-1771-d88h2ns2h6s8", --> Should be mandatory
- *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8", --> Should be mandatory
+ *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
  *   "integrations":
  *   [
  *     "42e28392-4f5e-473d-89e8-c9030e6fedc2", --> Intration UUIDs

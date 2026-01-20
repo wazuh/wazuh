@@ -61,15 +61,11 @@ INSTANTIATE_TEST_SUITE_P(
         BuildT(SUCCESS(AD())),
         // Single decoder
         BuildT(SUCCESS(AD()(RT::DECODER, "decoder/asset/0", "decoder/Input"))),
-        // Single rule
-        BuildT(SUCCESS(AD()(RT::RULE, "rule/asset/0", "rule/Input"))),
         // Single output
         BuildT(SUCCESS(AD()(RT::OUTPUT, "output/asset/0", "output/Input"))),
         // Decoder with children
         BuildT(SUCCESS(AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(
             RT::DECODER, "decoder/child/0", "decoder/parent/0"))),
-        // Rule with children
-        BuildT(SUCCESS(AD()(RT::RULE, "rule/parent/0", "rule/Input")(RT::RULE, "rule/child/0", "rule/parent/0"))),
         // Output with children
         BuildT(SUCCESS(
             AD()(RT::OUTPUT, "output/parent/0", "output/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"))),
@@ -85,11 +81,6 @@ INSTANTIATE_TEST_SUITE_P(
             RT::DECODER, "decoder/child2/0", "decoder/parent1/0", "decoder/parent2/0")(
             RT::DECODER, "decoder/child3/0", "decoder/child1/0")(RT::DECODER, "decoder/parent1/0", "decoder/Input")(
             RT::DECODER, "decoder/parent2/0", "decoder/Input")(RT::DECODER, "decoder/child4/0", "decoder/Input"))),
-        // Complex rule graph
-        BuildT(SUCCESS(AD()(RT::RULE, "rule/child1/0", "rule/parent1/0")(
-            RT::RULE, "rule/child2/0", "rule/parent1/0", "rule/parent2/0")(RT::RULE, "rule/child3/0", "rule/child1/0")(
-            RT::RULE, "rule/parent1/0", "rule/Input")(RT::RULE, "rule/parent2/0", "rule/Input")(
-            RT::RULE, "rule/child4/0", "rule/Input"))),
         // Complex output graph
         BuildT(SUCCESS(AD()(RT::OUTPUT, "output/child1/0", "output/parent1/0")(
             RT::OUTPUT, "output/child2/0", "output/parent1/0", "output/parent2/0")(
@@ -100,17 +91,12 @@ INSTANTIATE_TEST_SUITE_P(
             RT::DECODER, "decoder/child2/0", "decoder/parent1/0", "decoder/parent2/0")(
             RT::DECODER, "decoder/child3/0", "decoder/child1/0")(RT::DECODER, "decoder/parent1/0", "decoder/Input")(
             RT::DECODER, "decoder/parent2/0", "decoder/Input")(RT::DECODER, "decoder/child4/0", "decoder/Input")(
-            RT::RULE, "rule/child1/0", "rule/parent1/0")(RT::RULE, "rule/child2/0", "rule/parent1/0", "rule/parent2/0")(
-            RT::RULE, "rule/child3/0", "rule/child1/0")(RT::RULE, "rule/parent1/0", "rule/Input")(
-            RT::RULE, "rule/parent2/0", "rule/Input")(RT::RULE, "rule/child4/0", "rule/Input")(
             RT::OUTPUT, "output/child1/0", "output/parent1/0")(
             RT::OUTPUT, "output/child2/0", "output/parent1/0", "output/parent2/0")(
             RT::OUTPUT, "output/child3/0", "output/child1/0")(RT::OUTPUT, "output/parent1/0", "output/Input")(
             RT::OUTPUT, "output/parent2/0", "output/Input")(RT::OUTPUT, "output/child4/0", "output/Input"))),
         // Parent does not exist
         BuildT(FAILURE(AD()(RT::DECODER, "decoder/child/0", "decoder/nonexistent/0"))),
-        // Parent does not exist (rule)
-        BuildT(FAILURE(AD()(RT::RULE, "rule/child/0", "rule/nonexistent/0"))),
         // Parent does not exist (output)
         BuildT(FAILURE(AD()(RT::OUTPUT, "output/child/0", "output/nonexistent/0"))),
         // Filters are completely ignored - not injected into any subgraph
@@ -173,14 +159,6 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("decoder/Input", {assetExpr("decoder/asset/0")});
                        return Chain::create("test", {decoder});
                    })),
-        // Single rule
-        BuildT(AD()(RT::RULE, "rule/asset/0", "rule/Input"),
-               SUCCESS(
-                   [](None)
-                   {
-                       auto rule = Broadcast::create("rule/Input", {assetExpr("rule/asset/0")});
-                       return Chain::create("test", {rule});
-                   })),
         // Single output
         BuildT(AD()(RT::OUTPUT, "output/asset/0", "output/Input"),
                SUCCESS(
@@ -202,18 +180,6 @@ INSTANTIATE_TEST_SUITE_P(
                     auto decoder = Or::create("decoder/Input", {parentExpr});
                     return Chain::create("test", {decoder});
                 })),
-        // Rule with child
-        BuildT(AD()(RT::RULE, "rule/parent/0", "rule/Input")(RT::RULE, "rule/child/0", "rule/parent/0"),
-               SUCCESS(
-                   [](None)
-                   {
-                       auto childExpr = assetExpr("rule/child/0");
-                       auto childrenOp = Broadcast::create("rule/parent/0/Children", {childExpr});
-                       auto parentExpr =
-                           Implication::create("rule/parent/0/Node", assetExpr("rule/parent/0"), childrenOp);
-                       auto rule = Broadcast::create("rule/Input", {parentExpr});
-                       return Chain::create("test", {rule});
-                   })),
         // Output with child
         BuildT(AD()(RT::OUTPUT, "output/parent/0", "output/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"),
                SUCCESS(
@@ -244,7 +210,6 @@ INSTANTIATE_TEST_SUITE_P(
         // All types
         BuildT(
             AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(RT::DECODER, "decoder/child/0", "decoder/parent/0")(
-                RT::RULE, "rule/parent/0", "rule/Input")(RT::RULE, "rule/child/0", "rule/parent/0")(
                 RT::OUTPUT, "output/parent/0", "output/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"),
             SUCCESS(
                 [](None)
@@ -263,14 +228,7 @@ INSTANTIATE_TEST_SUITE_P(
                         Implication::create("output/parent/0/Node", assetExpr("output/parent/0"), outputChildren);
                     auto output = Broadcast::create("output/Input", {outputParent});
 
-                    // Rule
-                    auto ruleChild = assetExpr("rule/child/0");
-                    auto ruleChildren = Broadcast::create("rule/parent/0/Children", {ruleChild});
-                    auto ruleParent =
-                        Implication::create("rule/parent/0/Node", assetExpr("rule/parent/0"), ruleChildren);
-                    auto rule = Broadcast::create("rule/Input", {ruleParent});
-
-                    return Chain::create("test", {decoder, output, rule});
+                     return Chain::create("test", {decoder, output});
                 }))));
 
 } // namespace buildexpressiontest
@@ -1190,8 +1148,7 @@ TEST(OrderPreservation, ParentChildOrderingIsConsistent)
 TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
 {
     auto data = AD()(RT::DECODER, "decoder/D1", "decoder/Input")(RT::DECODER, "decoder/D2", "decoder/Input")(
-        RT::DECODER, "decoder/D3", "decoder/Input")(RT::RULE, "rule/R1", "rule/Input")(
-        RT::RULE, "rule/R2", "rule/Input")(RT::OUTPUT, "output/O1", "output/Input")(
+        RT::DECODER, "decoder/D3", "decoder/Input")(RT::OUTPUT, "output/O1", "output/Input")(
         RT::OUTPUT, "output/O2", "output/Input")(RT::OUTPUT, "output/O3", "output/Input");
 
     auto graph = factory::buildGraph(data.builtAssets);
@@ -1203,13 +1160,6 @@ TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
     EXPECT_EQ(decoderChildren[0].toStr(), "decoder/D1");
     EXPECT_EQ(decoderChildren[1].toStr(), "decoder/D2");
     EXPECT_EQ(decoderChildren[2].toStr(), "decoder/D3");
-
-    // Verify rule order
-    auto& ruleSubgraph = graph.subgraphs.at(RT::RULE);
-    const auto& ruleChildren = ruleSubgraph.children("rule/Input");
-    ASSERT_EQ(ruleChildren.size(), 2);
-    EXPECT_EQ(ruleChildren[0].toStr(), "rule/R1");
-    EXPECT_EQ(ruleChildren[1].toStr(), "rule/R2");
 
     // Verify output order
     auto& outputSubgraph = graph.subgraphs.at(RT::OUTPUT);
@@ -1223,8 +1173,8 @@ TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
     auto expr = factory::buildExpression(graph, "test");
     auto chain = expr->getPtr<base::Chain>();
 
-    // Chain order is: DECODER, OUTPUT, RULE (based on ResourceType enum order in std::map)
-    ASSERT_EQ(chain->getOperands().size(), 3);
+    // Chain order is: DECODER, OUTPUT (based on ResourceType enum order in std::map)
+    ASSERT_EQ(chain->getOperands().size(), 2);
 
     // Verify decoder subgraph
     auto decoderExpr = chain->getOperands()[0]->getPtr<base::Operation>();
@@ -1240,11 +1190,6 @@ TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
     EXPECT_EQ(outputExpr->getOperands()[1]->getName(), "output/O2");
     EXPECT_EQ(outputExpr->getOperands()[2]->getName(), "output/O3");
 
-    // Verify rule subgraph
-    auto ruleExpr = chain->getOperands()[2]->getPtr<base::Operation>();
-    ASSERT_EQ(ruleExpr->getOperands().size(), 2);
-    EXPECT_EQ(ruleExpr->getOperands()[0]->getName(), "rule/R1");
-    EXPECT_EQ(ruleExpr->getOperands()[1]->getName(), "rule/R2");
 }
 
 // Negative test: Verify that wrong order is detected

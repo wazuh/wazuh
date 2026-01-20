@@ -62,10 +62,6 @@ void CMStoreNS::rebuildCacheFromStorage()
         {
             rType = ResourceType::OUTPUT;
         }
-        else if (dirName == pathns::RULES_DIR)
-        {
-            rType = ResourceType::RULE;
-        }
         else if (dirName == pathns::FILTERS_DIR)
         {
             rType = ResourceType::FILTER;
@@ -109,9 +105,9 @@ void CMStoreNS::rebuildCacheFromStorage()
                 }
                 std::string resourceName = fileName.substr(0, fileName.size() - pathns::ASSET_EXTENSION.size());
 
-                // If resource type is DECODER, OUTPUT, RULE or FILTER, revert only the first and last '_' to '/'
+                // If resource type is DECODER, OUTPUT or FILTER, revert only the first and last '_' to '/'
                 // TODO: Find a better way to handle this case, this is a workaround for legacy naming
-                if (rType == ResourceType::DECODER || rType == ResourceType::OUTPUT || rType == ResourceType::RULE
+                if (rType == ResourceType::DECODER || rType == ResourceType::OUTPUT
                     || rType == ResourceType::FILTER)
                 {
                     // Revert only the first and last '_' to '/'
@@ -225,7 +221,7 @@ std::filesystem::path CMStoreNS::getResourcePaths(const std::string& name, Resou
     std::filesystem::path rPath = m_storagePath;
 
     auto fileName = name;
-    if (type == ResourceType::DECODER || type == ResourceType::OUTPUT || type == ResourceType::RULE
+    if (type == ResourceType::DECODER || type == ResourceType::OUTPUT
         || type == ResourceType::FILTER || type == ResourceType::INTEGRATION || type == ResourceType::KVDB)
     {
         // Replace '/' with '_' to avoid directory traversal on assets names
@@ -246,7 +242,6 @@ std::filesystem::path CMStoreNS::getResourcePaths(const std::string& name, Resou
         {
             case ResourceType::DECODER: return pathns::DECODERS_DIR;
             case ResourceType::OUTPUT: return pathns::OUTPUTS_DIR;
-            case ResourceType::RULE: return pathns::RULES_DIR;
             case ResourceType::FILTER: return pathns::FILTERS_DIR;
             case ResourceType::INTEGRATION: return pathns::INTEGRATIONS_DIR;
             case ResourceType::KVDB: return pathns::KVDBS_DIR;

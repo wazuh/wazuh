@@ -459,7 +459,6 @@ CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::st
 
             case cm::store::ResourceType::DECODER:
             case cm::store::ResourceType::OUTPUT:
-            case cm::store::ResourceType::RULE:
             case cm::store::ResourceType::FILTER:
             {
                 auto assetJson = nsView->getAssetByUUID(uuid);
@@ -532,7 +531,6 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
 
             case cm::store::ResourceType::DECODER:
             case cm::store::ResourceType::OUTPUT:
-            case cm::store::ResourceType::RULE:
             case cm::store::ResourceType::FILTER:
             {
                 json::Json assetJson = yamlToJson(document);

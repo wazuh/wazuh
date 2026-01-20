@@ -33,7 +33,6 @@ constexpr auto PARENTS_KEY = "parents";               ///< Key for the parents f
 constexpr auto CHECK_KEY = "check";                   ///< Key for the check stage in an asset.
 constexpr auto PARSE_KEY = "parse";                   ///< Key for the parse stage in an asset.
 constexpr auto NORMALIZE_KEY = "normalize";           ///< Key for the normalize stage in an asset.
-constexpr auto RULE_NORMALIZE_KEY = "rule_normalize"; ///< Key for the normalize stage in an asset.
 constexpr auto MAP_KEY = "map";                       ///< Key for the map stage in an asset.
 constexpr auto DEFINITIONS_KEY = "definitions";       ///< Key for the definitions stage in an asset.
 constexpr auto OUTPUTS_KEY = "outputs";               ///< Key for the outputs stage in an asset.
@@ -90,7 +89,6 @@ namespace name
 {
 // Resource names
 constexpr auto DECODER_PART = "decoder";         ///< The name of the decoder resource.
-constexpr auto RULE_PART = "rule";               ///< The name of the rule resource.
 constexpr auto OUTPUT_PART = "output";           ///< The name of the output resource.
 constexpr auto FILTER_PART = "filter";           ///< The name of the filter resource.
 constexpr auto INTEGRATION_PART = "integration"; ///< The name of the integration resource.
@@ -110,21 +108,6 @@ inline bool isDecoder(const base::Name& name, bool verifyParts = true)
         return (name.parts().front() == DECODER_PART) && (name.parts().size() == NUM_PARTS);
     }
     return name.parts().front() == DECODER_PART;
-}
-
-/**
- * @brief Check if a name corresponds to a rule resource.
- * @param name The name to check.
- * @param verifyParts Flag indicating whether to verify the parts of the name.
- * @return True if the name corresponds to a rule resource, false otherwise.
- */
-inline bool isRule(const base::Name& name, bool verifyParts = true)
-{
-    if (verifyParts)
-    {
-        return (name.parts().front() == RULE_PART) && (name.parts().size() == NUM_PARTS);
-    }
-    return name.parts().front() == RULE_PART;
 }
 
 /**
@@ -164,7 +147,7 @@ inline bool isFilter(const base::Name& name, bool verifyParts = true)
  */
 inline bool isAsset(const base::Name& name)
 {
-    return isDecoder(name) || isRule(name) || isOutput(name) || isFilter(name);
+    return isDecoder(name) || isOutput(name) || isFilter(name);
 }
 
 /**
@@ -192,45 +175,10 @@ namespace integration
 {
 // Integration sections
 constexpr auto DECODER_PATH = "/decoders";         ///< The name of the decoders section in an integration.
-constexpr auto RULE_PATH = "/rules";               ///< The name of the rules section in an integration.
 constexpr auto OUTPUT_PATH = "/outputs";           ///< The name of the outputs section in an integration.
 constexpr auto FILTER_PATH = "/filters";           ///< The name of the filters section in an integration.
 constexpr auto INTEGRATION_PATH = "/integrations"; ///< The name of the integrations section in an integration.
 } // namespace integration
-
-/**
- * @brief Get the section name of a resource in an integration.
- * @param name The name of the resource.
- * @return The name of the section where the resource belongs.
- * @throws std::runtime_error if the name does not correspond to a known resource type.
- */
-// inline std::string getIntegrationSection(const base::Name& name)
-// {
-//     if (isDecoder(name))
-//     {
-//         return INTEGRATION_DECODERS;
-//     }
-//     else if (isRule(name))
-//     {
-//         return INTEGRATION_RULES;
-//     }
-//     else if (isOutput(name))
-//     {
-//         return INTEGRATION_OUTPUTS;
-//     }
-//     else if (isFilter(name))
-//     {
-//         return INTEGRATION_FILTERS;
-//     }
-//     else if (isIntegration(name))
-//     {
-//         return INTEGRATION_INTEGRATIONS;
-//     }
-//     else
-//     {
-//         throw std::runtime_error(fmt::format("Unknown integration section for name '{}'", name.toStr()));
-//     }
-// }
 
 } // namespace builder::syntax
 

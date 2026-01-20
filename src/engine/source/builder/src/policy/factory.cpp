@@ -16,6 +16,15 @@ namespace
 {
 auto constexpr GRAPH_INPUT_SUFFIX = "/Input";
 
+/**
+ * @brief Build a map of KVDB names to their enabled status for the given integration.
+ *
+ * @param integration Integration where the aviable KVDBs are defined
+ * @param cmStoreNsReader CMStore namespace reader to load the KVDBs status and ensure they exist
+ * @param integUUID Integration UUID (for error messages)
+ * @return std::unordered_map<std::string, bool> Map of KVDB names to their enabled status
+ * @throw std::runtime_error if any KVDB UUID does not exist or if there are duplicate KVDB names
+ */
 std::unordered_map<std::string, bool> buildKvdbsMap(const cm::store::dataType::Integration& integration,
                                                     const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                                                     const std::string& integUUID)
@@ -81,10 +90,9 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             continue;
         }
 
-        // Set partial context for the asset builder
+        // Configure partial build context for the integration.
         assetBuilder->getContext().integrationName = integration.getName();
         assetBuilder->getContext().integrationCategory = integration.getCategory();
-
         // Set availability map in the build context (integration-scoped).
         assetBuilder->setAvailableKvdbs(buildKvdbsMap(integration, cmStoreNsReader, integUUID));
 
@@ -305,7 +313,6 @@ base::Expression buildExpression(const PolicyGraph& graph, const std::string& na
         switch (assetType)
         {
             case cm::store::ResourceType::DECODER: subgraphExpr = buildSubgraphExpression<base::Or>(subgraph); break;
-            case cm::store::ResourceType::RULE:
             case cm::store::ResourceType::OUTPUT:
                 subgraphExpr = buildSubgraphExpression<base::Broadcast>(subgraph);
                 break;

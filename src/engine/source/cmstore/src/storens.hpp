@@ -25,7 +25,6 @@ constexpr std::string_view POLICY_FILE = "policy.json";
 constexpr std::string_view KVDBS_DIR = "kvdbs";
 constexpr std::string_view DECODERS_DIR = "decoders";
 constexpr std::string_view OUTPUTS_DIR = "outputs";
-constexpr std::string_view RULES_DIR = "rules";
 constexpr std::string_view FILTERS_DIR = "filters";
 constexpr std::string_view INTEGRATIONS_DIR = "integrations";
 
