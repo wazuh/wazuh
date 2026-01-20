@@ -243,9 +243,6 @@ void HandleSecure()
     /* Create shared file updating thread */
     w_create_thread(update_shared_files, NULL);
 
-    /* Create agent metadata cache cleanup thread */
-    w_create_thread(agent_meta_cleanup_thread, NULL);
-
     /* Create Active Response forwarder thread */
     w_create_thread(AR_Forward, NULL);
 
@@ -292,8 +289,11 @@ void HandleSecure()
     // Create upsert control message thread
     w_create_thread(save_control_thread, (void *) control_msg_queue);
 
-    // Create upsert control message thread
+    // Create dispatch events thread
     w_create_thread(dispach_events_thread, (void *) events_queue);
+
+    /* Create agent metadata cache cleanup thread (after events_queue is initialized) */
+    w_create_thread(agent_meta_cleanup_thread, events_queue);
 
     rem_handler_args_t *worker_args;
     os_malloc(sizeof(*worker_args), worker_args);
@@ -914,7 +914,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                                 groups = NULL;  // Transfer ownership to fresh
                             }
                             if (agent_meta_upsert_locked(key->id, fresh) != 0) {
-                                mwarn("Error upsert metadata from agent ID '%s'.", key->id);
+                                mwarn("Failed to update metadata cache for agent ID '%s'", key->id);
                                 agent_meta_free(fresh);
                             }
                         } else if (groups) {
@@ -945,6 +945,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 ctrl_msg_data->is_startup = is_startup;
                 ctrl_msg_data->is_shutdown = is_shutdown;
                 ctrl_msg_data->post_startup = post_startup;
+
+                // Mark metadata for cleanup on shutdown (will be deleted when queue drains)
+                if (is_shutdown) {
+                    agent_meta_mark_shutdown(key->id);
+                }
 
                 // Use upsert to allow updating existing control messages for the same agent
                 int res = indexed_queue_upsert_ex(control_msg_queue, key->id, ctrl_msg_data);

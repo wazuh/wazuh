@@ -1,6 +1,7 @@
 #include "agent_metadata_db.h"
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "remoted.h"
+#include "../headers/batch_queue_op.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -173,7 +174,7 @@ oom_unlock:
     return -1;
 }
 
-void agent_meta_cleanup_expired(time_t expire_threshold) {
+void agent_meta_cleanup_expired(time_t expire_threshold, w_rr_queue_t *events_queue) {
     if (expire_threshold <= 0) return;
     if (!agent_meta_map) return;
 
@@ -182,29 +183,50 @@ void agent_meta_cleanup_expired(time_t expire_threshold) {
 
     time_t now = time(NULL);
     size_t deleted_count = 0;
+    size_t shutdown_deleted_count = 0;
     unsigned int i = 0;
     OSHashNode *node = OSHash_Begin(agent_meta_map, &i);
 
     while (node) {
         if (node->key && node->data) {
             agent_meta_t *meta = (agent_meta_t *)node->data;
+            const char *agent_id = (const char *)node->key;
+            bool should_delete = false;
 
-            // Check if this entry has expired
-            if (now - meta->lastmsg > expire_threshold) {
+            // Check if agent has shutdown_pending flag and queue is empty
+            if (meta->shutdown_pending && events_queue) {
+                size_t queue_size = batch_queue_agent_size(events_queue, agent_id);
+                if (queue_size == 0) {
+                    should_delete = true;
+                    shutdown_deleted_count++;
+                } else {
+                    mdebug2("Agent ID '%s' has %zu pending events, waiting before cleanup", agent_id, queue_size);
+                }
+            }
+            // Otherwise check if this entry has expired based on time
+            else if (now - meta->lastmsg > expire_threshold) {
+                should_delete = true;
+                deleted_count++;
+            }
+
+            if (should_delete) {
                 // Copy the agent ID before deleting
                 char agent_id_copy[64];
-                strncpy(agent_id_copy, (const char *)node->key, sizeof(agent_id_copy) - 1);
+                strncpy(agent_id_copy, agent_id, sizeof(agent_id_copy) - 1);
                 agent_id_copy[sizeof(agent_id_copy) - 1] = '\0';
 
                 // Move to next node before deleting current one
                 node = OSHash_Next(agent_meta_map, &i, node);
 
-                // Delete the expired entry
+                // Delete the entry
                 agent_meta_t *old = (agent_meta_t *)OSHash_Delete(agent_meta_map, agent_id_copy);
                 if (old) {
-                    mdebug2("Cleaned up expired metadata cache for agent ID '%s'", agent_id_copy);
+                    if (old->shutdown_pending) {
+                        mdebug2("Cleaned up metadata cache for shutdown agent ID '%s' (queue drained)", agent_id_copy);
+                    } else {
+                        mdebug2("Cleaned up expired metadata cache for agent ID '%s'", agent_id_copy);
+                    }
                     agent_meta_free(old);
-                    deleted_count++;
                 }
                 continue;
             }
@@ -217,20 +239,37 @@ void agent_meta_cleanup_expired(time_t expire_threshold) {
     if (deleted_count > 0) {
         minfo("Agent metadata cache cleanup: removed %zu expired entries", deleted_count);
     }
+    if (shutdown_deleted_count > 0) {
+        minfo("Agent metadata cache cleanup: removed %zu shutdown entries", shutdown_deleted_count);
+    }
 }
 
-/* Thread that periodically cleans up expired cache entries */
-void* agent_meta_cleanup_thread(void* arg) {
-    (void)arg;
+void agent_meta_mark_shutdown(const char* agent_id_str) {
+    if (!agent_id_str || !agent_meta_map) return;
+
+    pthread_rwlock_wrlock(&agent_meta_lock);
+
+    agent_meta_t *meta = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id_str);
+    if (meta) {
+        meta->shutdown_pending = true;
+        mdebug2("Marked agent ID '%s' for metadata cleanup after queue drain", agent_id_str);
+    }
+
+    pthread_rwlock_unlock(&agent_meta_lock);
+}
+
+/* Thread that periodically cleans up expired cache entries and shutdown agents */
+void* agent_meta_cleanup_thread(void* events_queue) {
+    w_rr_queue_t *queue = (w_rr_queue_t*)events_queue;
 
     mdebug1("Agent metadata cache cleanup thread started");
 
     while (1) {
-        // Sleep for 60 seconds between cleanup runs
-        sleep(60);
+        // Sleep for 5 seconds between cleanup runs
+        sleep(5);
 
-        // Perform cleanup using the configured expiration threshold
-        agent_meta_cleanup_expired(enrich_cache_expire_time);
+        // Perform cleanup: both expired entries and shutdown agents with empty queues
+        agent_meta_cleanup_expired(enrich_cache_expire_time, queue);
     }
 
     return NULL;
