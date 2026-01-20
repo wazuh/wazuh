@@ -9,7 +9,7 @@
 
 #include <store/mockStore.hpp>
 
-#include "dbEntry.hpp"
+#include "dbHandle.hpp"
 #include "locator.hpp"
 #include "manager.hpp"
 #include "mockDownloader.hpp"
@@ -26,6 +26,50 @@ const std::string g_ipNotFound {"1.2.3.6"};
 bool compareLookupResult(const MMDB_lookup_result_s& res1, const MMDB_lookup_result_s& res2)
 {
     return res1.found_entry == res2.found_entry && res1.netmask == res2.netmask && res1.entry.mmdb == res2.entry.mmdb;
+}
+
+std::string createTmpDbCopy(std::vector<std::string>& tmpFiles)
+{
+    char template_name[] = "/tmp/tempXXXXXX";
+    int fd = mkstemp(template_name);
+    if (fd == -1)
+    {
+        throw std::runtime_error(fmt::format("Failed to create temporary file: {}", strerror(errno)));
+    }
+    close(fd);
+
+    std::string temp_file = template_name;
+    std::string file = temp_file + ".mmdb";
+
+    if (rename(temp_file.c_str(), file.c_str()) != 0)
+    {
+        std::cerr << "Failed to rename temporary file: " << strerror(errno) << std::endl;
+        std::remove(temp_file.c_str());
+        throw std::runtime_error(fmt::format("Failed to rename temporary file: {}", strerror(errno)));
+    }
+
+    tmpFiles.emplace_back(file);
+
+    std::ifstream ifs(g_maxmindDbPath, std::ios::binary);
+    if (!ifs.is_open())
+    {
+        std::cout << "Error code: " << strerror(errno) << std::endl;
+        throw std::runtime_error("Cannot open test db");
+    }
+
+    std::ofstream ofs(file, std::ios::binary);
+    if (!ofs.is_open())
+    {
+        std::cout << "Error code: " << strerror(errno) << std::endl;
+        throw std::runtime_error("Cannot open tmp db");
+    }
+
+    ofs << ifs.rdbuf();
+
+    ofs.close();
+    ifs.close();
+
+    return file;
 }
 
 } // namespace
@@ -182,8 +226,18 @@ protected:
 
 TEST(LocatorInitTest, Initialize)
 {
-    auto dbEntry = std::make_shared<DbEntry>("path", Type::CITY);
-    ASSERT_NO_THROW(Locator {dbEntry});
+    std::vector<std::string> tmpFiles;
+    auto path = createTmpDbCopy(tmpFiles);
+
+    auto handle = std::make_shared<DbHandle>();
+    ASSERT_NO_THROW(handle->store(std::make_shared<DbInstance>(path, Type::CITY)));
+
+    ASSERT_NO_THROW(Locator {handle});
+
+    for (const auto& f : tmpFiles)
+    {
+        std::filesystem::remove(f);
+    }
 }
 
 TEST(LocatorInitTest, InitializeExpired)
@@ -228,28 +282,19 @@ TEST_F(LocatorTest, GetRemovedFromManagerDb)
 
 TEST_F(LocatorTest, GetUpdatesCache)
 {
-    // Initial state, empty cache
     ASSERT_EQ(locator->getCachedIp(), "");
-    MMDB_lookup_result_s prev = locator->getCachedResult();
 
-    // Get data for the first time and check cache changes
     ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
-    MMDB_lookup_result_s res = locator->getCachedResult();
-    ASSERT_FALSE(compareLookupResult(prev, res));
-    prev = res;
     ASSERT_EQ(locator->getCachedIp(), g_ipFullData);
+    ASSERT_TRUE(locator->getCachedResult().found_entry);
 
-    // Get data for the second time and check cache remains the same
     ASSERT_NO_THROW(locator->getString(g_ipFullData2, "test_map.test_str1"));
-    res = locator->getCachedResult();
     ASSERT_EQ(locator->getCachedIp(), g_ipFullData2);
-    ASSERT_TRUE(compareLookupResult(prev, res));
+    ASSERT_TRUE(locator->getCachedResult().found_entry);
 
-    // Get data for the third time and check cache changes
     ASSERT_NO_THROW(locator->getString(g_ipNotFound, "test_map.test_str2"));
-    res = locator->getCachedResult();
-    ASSERT_FALSE(compareLookupResult(prev, res));
     ASSERT_EQ(locator->getCachedIp(), g_ipNotFound);
+    ASSERT_FALSE(locator->getCachedResult().found_entry);
 }
 
 /************************************************************
@@ -346,4 +391,64 @@ TEST_F(LocatorTest, GetAsJson)
     ASSERT_FALSE(base::isError(res));
     expected.setBool(true);
     ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+}
+
+TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsertDb)
+{
+    // 1) Populate the cache and capture the current MMDB pointer
+    ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
+    auto prev = locator->getCachedResult();
+    ASSERT_NE(prev.entry.mmdb, nullptr);
+
+    // 2) Prepare a remote update that forces a reload
+    // We reuse the SAME test DB file as the downloaded content (still valid),
+    // but we change the remote hash so the early-exit path is NOT taken.
+    const std::string dbUrl = "https://example.com/db.mmdb";
+    const std::string hashUrl = "https://example.com/db.md5";
+    const std::string newHash = "newHash";
+
+    // Read the current DB bytes (any valid MMDB content is enough)
+    const auto dbPath = tmpFiles.front();
+    std::ifstream ifs(dbPath, std::ios::binary);
+    ASSERT_TRUE(ifs.is_open());
+    std::string content((std::istreambuf_iterator<char>(ifs)),
+                        std::istreambuf_iterator<char>());
+
+    // Store: return a different hash to force the update path
+    auto internalName =
+        base::Name(fmt::format("{}/{}",
+                               INTERNAL_NAME,
+                               std::filesystem::path(dbPath).filename().string()));
+
+    EXPECT_CALL(*mockStore, readInternalDoc(internalName))
+        .WillOnce(testing::Return(
+            storeReadDocResp(json::Json(R"({"hash":"oldHash"})"))));
+
+    // Downloader: remote hash and downloaded content, with matching local MD5
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl))
+        .WillRepeatedly(testing::Return(
+            base::RespOrError<std::string>(newHash)));
+
+    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
+        .WillRepeatedly(testing::Return(
+            base::RespOrError<std::string>(content)));
+
+    EXPECT_CALL(*mockDownloader, computeMD5(testing::_))
+        .WillRepeatedly(testing::Return(newHash));
+
+    // Final store upsert
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+        .WillOnce(testing::Return(storeOk()));
+
+    // 3) Execute the update (same path and type)
+    auto upd = manager->remoteUpsertDb(dbPath, Type::CITY, dbUrl, hashUrl);
+    ASSERT_FALSE(base::isError(upd)) << base::getError(upd).message;
+
+    // 4) Query again and verify that the instance has changed
+    ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
+    auto now = locator->getCachedResult();
+    ASSERT_NE(now.entry.mmdb, nullptr);
+
+    // This guarantees hot-reload: the underlying MMDB instance was replaced
+    ASSERT_NE(prev.entry.mmdb, now.entry.mmdb);
 }

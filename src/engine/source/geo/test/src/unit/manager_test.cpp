@@ -590,3 +590,154 @@ TEST_F(GeoManagerTest, RemoteUpsertDbFailInternalStore)
     ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
     ASSERT_EQ(manager.listDbs()[0].type, dbType);
 }
+
+TEST_F(GeoManagerTest, TSAN_LocatorsLookupWhileRemoteUpsert)
+{
+    // Arrange: start with an empty manager and load one DB via remoteUpsertDb()
+    auto manager = getEmptyManager();
+
+    const auto dbFile = getTmpDb();
+    const auto dbPath = std::filesystem::path(dbFile).string();
+    const auto dbType = Type::ASN;
+
+    const std::string dbUrl = "dbUrl";
+    const std::string hashUrl = "hashUrl";
+
+    // Use a valid MMDB payload (bytes from the temp db).
+    const auto content = getContentDb(dbFile);
+
+    // Internal name used by store ops in this module
+    const auto internalName =
+        base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
+
+    // First upsert must succeed to make the DB available for readers
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl))
+        .WillRepeatedly(testing::Return(base::RespOrError<std::string>("hash0")));
+    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
+        .WillRepeatedly(testing::Return(base::RespOrError<std::string>(content)));
+    EXPECT_CALL(*mockDownloader, computeMD5(testing::_))
+        .WillRepeatedly(testing::Return("hash0"));
+    EXPECT_CALL(*mockStore, readInternalDoc(internalName))
+        .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_))
+        .WillRepeatedly(testing::Return(storeOk()));
+
+    {
+        base::OptError err;
+        ASSERT_NO_THROW(err = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
+        ASSERT_FALSE(base::isError(err)) << base::getError(err).message;
+    }
+
+    // Now we want subsequent upserts to ALWAYS go through the update path (no early exit).
+    // Achieve it by returning changing remote hashes: hash1, hash2, hash3, ...
+    std::atomic_uint32_t hashCounter{1};
+
+    // We override only downloadMD5/computeMD5 behavior to match the changing hash,
+    // keeping downloadHTTPS returning the same valid content.
+    // This increases the frequency of instance swaps.
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl))
+        .WillRepeatedly(testing::Invoke([&hashCounter]() -> base::RespOrError<std::string>
+        {
+            auto n = hashCounter.fetch_add(1, std::memory_order_relaxed);
+            return base::RespOrError<std::string>(fmt::format("hash{}", n));
+        }));
+
+    EXPECT_CALL(*mockDownloader, computeMD5(testing::_))
+        .WillRepeatedly(testing::Invoke([&hashCounter](const std::string&) -> std::string
+        {
+            // computeMD5 should match the value returned by downloadMD5 for the same iteration.
+            // Since both are called during remoteUpsertDb, we reuse (counter-1).
+            // This is good enough for the test; if your implementation calls computeMD5 multiple
+            // times per iteration, it's still consistent.
+            auto n = hashCounter.load(std::memory_order_relaxed);
+            return fmt::format("hash{}", (n == 0 ? 0 : n - 1));
+        }));
+
+    // Stress parameters (tune if needed)
+    const int readerThreads = 8;
+    const int upsertIterations = 4000;
+    const int lookupIterationsPerReader = 20000;
+
+    std::atomic_bool stop{false};
+    std::atomic_bool failed{false};
+    std::string failureMsg;
+
+    auto failOnce = [&](const std::string& msg)
+    {
+        bool expected = false;
+        if (failed.compare_exchange_strong(expected, true))
+        {
+            failureMsg = msg;
+        }
+    };
+
+    // Reader: each thread gets its own locator ONCE (important: Locator cache is not thread-safe)
+    auto readerFn = [&](int /*id*/)
+    {
+        base::RespOrError<std::shared_ptr<ILocator>> locResp = manager.getLocator(dbType);
+        if (base::isError(locResp))
+        {
+            failOnce(fmt::format("Reader could not get locator: {}", base::getError(locResp).message));
+            return;
+        }
+        auto loc = base::getResponse(locResp);
+
+        for (int i = 0; i < lookupIterationsPerReader && !stop.load(std::memory_order_relaxed); ++i)
+        {
+            auto res = loc->getString("1.2.3.4", "test_map.test_str1");
+
+            if (base::isError(res))
+            {
+                const auto& msg = base::getError(res).message;
+
+                // During hot swap, depending on your semantics, these can be transient/acceptable:
+                // - "Database is not available" (if handle->load() can be null briefly)
+                // - "Database handle expired" (only if manager/db removed; should NOT happen here)
+                //
+                // If you expect strictly zero errors during upsert, replace this block with failOnce(msg).
+                if (msg != "Database is not available")
+                {
+                    failOnce(fmt::format("Reader got unexpected error: {}", msg));
+                    return;
+                }
+            }
+            else
+            {
+                if (base::getResponse(res) != "Wazuh")
+                {
+                    failOnce(fmt::format("Reader got unexpected value: {}", base::getResponse(res)));
+                    return;
+                }
+            }
+        }
+    };
+
+    // Writer: repeatedly upsert the same DB, forcing instance swaps
+    auto writerFn = [&]()
+    {
+        for (int i = 0; i < upsertIterations && !failed.load(std::memory_order_relaxed); ++i)
+        {
+            base::OptError err = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl);
+            if (base::isError(err))
+            {
+                failOnce(fmt::format("Upsert failed: {}", base::getError(err).message));
+                break;
+            }
+        }
+        stop.store(true, std::memory_order_relaxed);
+    };
+
+    std::thread writer(writerFn);
+
+    std::vector<std::thread> readers;
+    readers.reserve(readerThreads);
+    for (int i = 0; i < readerThreads; ++i)
+    {
+        readers.emplace_back(readerFn, i);
+    }
+
+    writer.join();
+    for (auto& t : readers) t.join();
+
+    ASSERT_FALSE(failed.load()) << failureMsg;
+}

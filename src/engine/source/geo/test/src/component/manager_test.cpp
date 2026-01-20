@@ -161,12 +161,13 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddLookup)
             auto res = locator->getString(g_ipFullData, "test_map.test_str1");
             if (base::isError(res))
             {
-                if (base::getError(res).message != "Database is not available")
+                const auto& msg = base::getError(res).message;
+                if (msg != "Database is not available" && msg != "Database handle expired")
                 {
                     setError(error,
-                             errorMsg,
-                             fmt::format("Locator thread got error '{}' which is not 'Database is not available'",
-                                         base::getError(res).message));
+                            errorMsg,
+                            fmt::format("Locator thread got error '{}' which is not an expected transient error",
+                                        msg));
                 }
             }
             else
@@ -455,12 +456,13 @@ TEST_F(GeoManagerTest, ComplexUseCase)
                 auto res = locator->getString(g_ipFullData, "test_map.test_str1");
                 if (base::isError(res))
                 {
-                    if (base::getError(res).message != "Database is not available")
+                    const auto& msg = base::getError(res).message;
+                    if (msg != "Database is not available" && msg != "Database handle expired")
                     {
                         setError(error,
-                                 errorMsg,
-                                 fmt::format("Locator thread got error '{}' which is not 'Database is not available'",
-                                             base::getError(res).message));
+                                errorMsg,
+                                fmt::format("Locator thread got error '{}' which is not an expected transient error",
+                                            msg));
                     }
                 }
                 else

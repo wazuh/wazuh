@@ -16,7 +16,7 @@ namespace geo
 /**
  * @brief Class to hold the needed information for a database.
  */
-class DbEntry;
+class DbHandle;
 
 auto constexpr MAX_RETRIES = 3;
 static const std::string INTERNAL_NAME = "geo";
@@ -27,7 +27,7 @@ static const std::string TYPE_PATH = "/type";
 class Manager final : public IManager
 {
 private:
-    std::map<std::string, std::shared_ptr<DbEntry>> m_dbs; ///< The databases that have been added.
+    std::map<std::string, std::shared_ptr<DbHandle>> m_dbs; ///< The databases that have been added.
     std::map<Type, std::string> m_dbTypes;  ///< Map by Types for quick access to the db name. (only one db per type)
     mutable std::shared_mutex m_rwMapMutex; ///< Mutex to avoid simultaneous updates on the db map
 
@@ -38,9 +38,10 @@ private:
      * @brief Upsert the internal store entry for a database.
      *
      * @param path The path to the database.
+     * @param type The type of the database.
      * @return base::OptError An error if the store entry could not be upserted.
      */
-    base::OptError upsertStoreEntry(const std::string& path);
+    base::OptError upsertStoreEntry(const std::string& path, Type type);
 
     /**
      * @brief Remove the internal store entry for a database.

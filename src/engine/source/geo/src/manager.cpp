@@ -10,7 +10,7 @@
 #include <base/logging.hpp>
 #include <store/istore.hpp>
 
-#include "dbEntry.hpp"
+#include "dbHandle.hpp"
 #include "locator.hpp"
 
 namespace geo
@@ -61,7 +61,7 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
     }
 }
 
-base::OptError Manager::upsertStoreEntry(const std::string& path)
+base::OptError Manager::upsertStoreEntry(const std::string& path, Type type)
 {
     std::filesystem::path dbPath(path);
 
@@ -83,7 +83,7 @@ base::OptError Manager::upsertStoreEntry(const std::string& path)
     auto doc = store::Doc();
     doc.setString(path, PATH_PATH);
     doc.setString(hash, HASH_PATH);
-    doc.setString(typeName(m_dbs.at(dbPath.filename().string())->type), TYPE_PATH);
+    doc.setString(typeName(type), TYPE_PATH);
 
     return m_store->upsertDoc(internalName, doc);
 }
@@ -98,7 +98,7 @@ base::OptError Manager::removeInternalEntry(const std::string& path)
 
 base::OptError Manager::addDbUnsafe(const std::string& path, Type type, bool upsertStore)
 {
-    auto name = std::filesystem::path(path).filename().string();
+    const auto name = std::filesystem::path(path).filename().string();
 
     // Check if the type has already a database
     if (m_dbTypes.find(type) != m_dbTypes.end())
@@ -112,20 +112,26 @@ base::OptError Manager::addDbUnsafe(const std::string& path, Type type, bool ups
         return base::Error {fmt::format("Database with name '{}' already exists", name)};
     }
 
-    // Add the database
-    auto entry = std::make_shared<DbEntry>(path, type);
-    int status = MMDB_open(path.c_str(), MMDB_MODE_MMAP, entry->mmdb.get());
-    if (MMDB_SUCCESS != status)
+    // Create stable handle + immutable instance (MMDB_open is done inside DbInstance)
+    auto handle = std::make_shared<DbHandle>();
+    try
     {
-        return base::Error {fmt::format("Cannot add database '{}': {}", path, MMDB_strerror(status))};
+        auto inst = std::make_shared<DbInstance>(path, type);
+        handle->store(std::move(inst));
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Cannot add database '{}': {}", path, e.what())};
     }
 
-    m_dbs.emplace(name, std::move(entry));
+    // Publish
+    m_dbs.emplace(name, handle);
     m_dbTypes.emplace(type, name);
 
     if (upsertStore)
     {
-        auto internalResp = upsertStoreEntry(path);
+        // IMPORTANT: no local hashing; store the REMOTE hash
+        auto internalResp = upsertStoreEntry(path, type);
         if (base::isError(internalResp))
         {
             LOG_WARNING("Cannot update internal store for '{}': {}", path, base::getError(internalResp).message);
@@ -137,32 +143,15 @@ base::OptError Manager::addDbUnsafe(const std::string& path, Type type, bool ups
 
 base::OptError Manager::removeDbUnsafe(const std::string& path)
 {
-    auto name = std::filesystem::path(path).filename().string();
+    const auto name = std::filesystem::path(path).filename().string();
 
-    // Check if the database is already added
     if (m_dbs.find(name) == m_dbs.end())
     {
         return base::Error {fmt::format("Database '{}' not found", name)};
     }
 
-    {
-        // We need to hold the entry so the lock is not released after the entry is removed
-        auto entry = m_dbs.at(name);
+    m_dbs.erase(name);
 
-        // Lock the database entry internal mutex for write
-        std::unique_lock<std::shared_mutex> lockEntry(entry->rwMutex);
-
-        // Remove the database
-        m_dbs.erase(name);
-
-        // Unlock the entry mutex
-        lockEntry.unlock();
-
-        // Freed the entry
-        entry.reset();
-    }
-
-    // Remove the type from the map if it was the one in use
     for (auto it = m_dbTypes.begin(); it != m_dbTypes.end(); ++it)
     {
         if (it->second == name)
@@ -227,15 +216,16 @@ base::OptError Manager::removeDb(const std::string& path)
     return resp;
 }
 
-base::OptError
-Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& dbUrl, const std::string& hashUrl)
+base::OptError Manager::remoteUpsertDb(const std::string& path,
+                                      Type type,
+                                      const std::string& dbUrl,
+                                      const std::string& hashUrl)
 {
-    auto name = std::filesystem::path(path).filename().string();
+    const auto name = std::filesystem::path(path).filename().string();
 
-    // Hold write lock on the map
+    // Lock map only for validating and obtaining/creating handle
     std::unique_lock lock(m_rwMapMutex);
 
-    // If the type has a different database, fail
     if (m_dbTypes.find(type) != m_dbTypes.end() && m_dbTypes.at(type) != name)
     {
         return base::Error {fmt::format(
@@ -245,47 +235,66 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
             typeName(type))};
     }
 
-    // Download the database hash
+    // Download remote hash (MD5) - unchanged
     auto hashResp = m_downloader->downloadMD5(hashUrl);
     if (base::isError(hashResp))
     {
-        return base::Error {
-            fmt::format("Cannot download hash from '{}': {}", hashUrl, base::getError(hashResp).message)};
+        return base::Error {fmt::format("Cannot download hash from '{}': {}",
+                                        hashUrl,
+                                        base::getError(hashResp).message)};
     }
-    auto hash = base::getResponse(hashResp);
+    const auto remoteHash = base::getResponse(hashResp);
 
-    // Check if it is already updated
-    auto entry = m_dbs.find(name);
-    if (entry != m_dbs.end())
+    // early-exit si store dice que ya está actualizado (misma lógica que antes)
     {
         auto internalResp =
             m_store->readDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
         if (!base::isError(internalResp))
         {
-            auto storedHash = base::getResponse(internalResp).getString(HASH_PATH).value();
-            if (storedHash == hash)
+            const auto storedHash = base::getResponse(internalResp).getString(HASH_PATH).value_or("");
+            if (!storedHash.empty() && storedHash == remoteHash)
             {
                 return base::noError();
             }
         }
     }
 
-    // Download the database while MAX_RETRIES if failed
+    // Get/create stable handle
+    std::shared_ptr<DbHandle> handle;
+    auto it = m_dbs.find(name);
+    if (it != m_dbs.end())
+    {
+        handle = it->second;
+    }
+    else
+    {
+        handle = std::make_shared<DbHandle>();
+        m_dbs.emplace(name, handle);
+        m_dbTypes.emplace(type, name);
+    }
+
+    // Already have the handle; release the map lock so as not to block
+    lock.unlock();
+
+    // Download DB with retries and validate with local hash
     std::string content;
-    base::OptError error;
+    base::OptError error = base::Error {fmt::format("Cannot download database from '{}'", dbUrl)};
+
     for (int i = 0; i < MAX_RETRIES; ++i)
     {
         auto dbResp = m_downloader->downloadHTTPS(dbUrl);
         if (base::isError(dbResp))
         {
-            error = base::Error {
-                fmt::format("Cannot download database from '{}': {}", dbUrl, base::getError(dbResp).message)};
+            error = base::Error {fmt::format("Cannot download database from '{}': {}",
+                                             dbUrl,
+                                             base::getError(dbResp).message)};
             continue;
         }
 
         content = base::getResponse(dbResp);
-        auto computedHash = m_downloader->computeMD5(content);
-        if (computedHash == hash)
+
+        const auto computedHash = m_downloader->computeMD5(content);
+        if (computedHash == remoteHash)
         {
             error = base::noError();
             break;
@@ -299,49 +308,41 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
         return error;
     }
 
-    // Write the database to the file
-    // If the database is already added, hold the internal mutex for write
-    if (entry != m_dbs.end())
+    // Atomic write to disk
+    const auto tmpPath = path + ".tmp";
+    auto writeResp = writeDb(tmpPath, content);
+    if (base::isError(writeResp))
     {
-        std::unique_lock lockEntry(entry->second->rwMutex);
-        auto writeResp = writeDb(path, content);
-        if (base::isError(writeResp))
-        {
-            return base::getError(writeResp);
-        }
-
-        // Close the MMDB and reopen it
-        MMDB_close(entry->second->mmdb.get());
-        int status = MMDB_open(path.c_str(), MMDB_MODE_MMAP, entry->second->mmdb.get());
-        if (MMDB_SUCCESS != status)
-        {
-            // Remove the database
-            lockEntry.unlock();
-            removeDbUnsafe(path);
-
-            return base::Error {fmt::format("Cannot add database '{}': {}", path, MMDB_strerror(status))};
-        }
-    }
-    else
-    {
-        auto writeResp = writeDb(path, content);
-        if (base::isError(writeResp))
-        {
-            return base::getError(writeResp);
-        }
-
-        auto addResp = addDbUnsafe(path, type, false);
-        if (base::isError(addResp))
-        {
-            return base::getError(addResp);
-        }
+        return base::getError(writeResp);
     }
 
-    // Update the internal store
-    auto internalResp = upsertStoreEntry(path);
-    if (base::isError(internalResp))
+    try
     {
-        LOG_WARNING("Cannot update internal store for '{}': {}", path, base::getError(internalResp).message);
+        std::filesystem::rename(tmpPath, path);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Cannot replace db '{}': {}", path, e.what())};
+    }
+
+    // Open a new instance and perform an atomic swap (real hot reload)
+    std::shared_ptr<const DbInstance> newInst;
+    try
+    {
+        newInst = std::make_shared<DbInstance>(path, type);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Cannot open updated db '{}': {}", path, e.what())};
+    }
+
+    handle->store(std::move(newInst));
+
+    // Persist remote hash in store
+    auto internalUpsert = upsertStoreEntry(path, type);
+    if (base::isError(internalUpsert))
+    {
+        LOG_WARNING("Cannot update internal store for '{}': {}", path, base::getError(internalUpsert).message);
     }
 
     return base::noError();
@@ -358,9 +359,9 @@ base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) cons
         return base::Error {fmt::format("Type '{}' does not have a database", typeName(type))};
     }
 
-    // Get the database entry and return the locator
-    auto entry = m_dbs.at(m_dbTypes.at(type));
-    auto locator = std::make_shared<Locator>(entry);
+    // Get the database handle and return the locator
+    auto handle = m_dbs.at(m_dbTypes.at(type));
+    auto locator = std::make_shared<Locator>(handle);
 
     return locator;
 }
@@ -368,10 +369,17 @@ base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) cons
 std::vector<DbInfo> Manager::listDbs() const
 {
     std::shared_lock lock(m_rwMapMutex);
+
     std::vector<DbInfo> dbs;
-    for (const auto& [name, entry] : m_dbs)
+    for (const auto& [name, handle] : m_dbs)
     {
-        dbs.emplace_back(DbInfo {name, entry->path, entry->type});
+        auto inst = handle->load();
+        if (!inst)
+        {
+            continue;
+        }
+
+        dbs.emplace_back(DbInfo {name, inst->path(), inst->type()});
     }
     return dbs;
 }

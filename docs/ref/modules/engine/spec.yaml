@@ -6,7 +6,9 @@ info:
 
 servers:
   - url: "http+unix:/run/wazuh-server/analysis"
-    description: "Wazuh server using Unix socket over HTTP"
+    description: "Wazuh server using Unix socket over HTTP (for Router, Tester, Geo, Content, Archiver, and Logtest APIs)"
+  - url: "http+unix:/var/ossec/queue/sockets/queue-http.sock"
+    description: "Events ingestion socket"
 
 tags:
   - name: Events
@@ -196,7 +198,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_jsoncontent:
                   summary: Missing jsonContent
@@ -358,7 +360,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 invalid_queue:
                   summary: Queue out of allowed range (1..255)
@@ -423,7 +425,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_route_field:
                   summary: Missing /route field
@@ -494,7 +496,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Missing name field
@@ -546,7 +548,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name field is empty
@@ -582,7 +584,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name field is empty
@@ -623,7 +625,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name field is empty
@@ -727,7 +729,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_fields:
                   summary: Missing required fields
@@ -799,7 +801,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 eps_already_active:
                   summary: EPS already active
@@ -830,7 +832,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 eps_already_inactive:
                   summary: EPS already inactive
@@ -864,7 +866,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_session:
                   summary: Missing /session
@@ -915,7 +917,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name cannot be empty
@@ -955,7 +957,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name cannot be empty
@@ -986,7 +988,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Missing name field
@@ -1031,7 +1033,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_fields:
                   summary: Empty request
@@ -1115,7 +1117,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missingField:
                   summary: Missing required field
@@ -1166,7 +1168,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missingField:
                   summary: Missing required field
@@ -1227,7 +1229,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missingPath:
                   summary: Missing path
@@ -1280,7 +1282,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /archiver/deactivate:
@@ -1304,7 +1306,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /archiver/status:
@@ -1345,7 +1347,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   ################################
@@ -1603,7 +1605,6 @@ components:
           properties:
             route:
               $ref: "#/components/schemas/RouterEntry"
-              description: "Details of the route"
 
     RouteReload_Request:
       type: object
@@ -1676,7 +1677,7 @@ components:
       required: [full_policy]
       properties:
         load_in_tester:
-          type: bool
+          type: boolean
           description: "If true, load testing policies into the Tester environment."
         full_policy:
           type: object
@@ -1791,7 +1792,7 @@ components:
       required: [queue, location, agent_metadata, event, trace_level]
       properties:
         queue:
-          type: uint8
+          type: integer
           minimum: 1
           maximum: 255
           description: "Queue number where the event will be injected (engine/input queue)"
@@ -1844,7 +1845,6 @@ components:
           properties:
             session:
               $ref: "#/components/schemas/TesterSession"
-              description: "Details of the session"
 
     TesterSessionDelete_Request:
       type: object
@@ -1939,6 +1939,18 @@ components:
         hashUrl:
           type: string
           description: "Hash URL for integrity verification"
+
+    #################################
+    # Archiver
+    #################################
+    ArchiverStatus_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            active:
+              type: boolean
+              description: "Indicates whether the archiver is active"
 
   #################################################################################
   # Responses

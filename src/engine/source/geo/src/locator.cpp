@@ -7,7 +7,8 @@
 #include <shared_mutex>
 #include <sstream>
 
-#include "dbEntry.hpp"
+#include "dbInstance.hpp"
+#include "dbHandle.hpp"
 #include "manager.hpp"
 
 namespace
@@ -247,17 +248,19 @@ static const std::string LIBMMD_ERROR = "Error from libmaxminddb: ";
 namespace geo
 {
 
-base::OptError Locator::lookup(const std::string& ip, const std::shared_ptr<DbEntry>& entry)
+base::OptError Locator::lookup(const std::string& ip, const std::shared_ptr<const DbInstance>& db)
 {
-    // Check if the IP address is the same as the cached one
     if (ip == m_cachedIp)
     {
         return base::noError();
     }
 
-    // Lookup the IP address in the database
     int gai_error, mmdb_error;
-    MMDB_lookup_result_s result = MMDB_lookup_string(entry->mmdb.get(), ip.c_str(), &gai_error, &mmdb_error);
+    MMDB_lookup_result_s result = MMDB_lookup_string(
+        const_cast<MMDB_s*>(&db->mmdb()),
+        ip.c_str(),
+        &gai_error,
+        &mmdb_error);
 
     if (0 != gai_error) // translation error
     {
@@ -297,25 +300,28 @@ base::RespOrError<MMDB_entry_data_s> Locator::getEData(const DotPath& path)
 base::RespOrError<std::string> Locator::getString(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    auto handle = m_handle.lock();
+    if (!handle)
+    {
+        return base::Error {"Database handle expired"};
+    }
+
+    auto db = handle->load();
+    if (!db)
     {
         return base::Error {"Database is not available"};
     }
 
-    // Hold read lock on the map
-    std::shared_lock lock(entry->rwMutex);
-
-    // Check the entry is not expired while holding the lock
-    entry.reset();
-    entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    // If the instance changed, invalidate the cache
+    if (db != m_cachedDb)
     {
-        return base::Error {"Database is not available"};
+        m_cachedDb = db;
+        m_cachedIp.clear();
+        m_cachedResult = MMDB_lookup_result_s{};
     }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry);
+    auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
@@ -341,25 +347,28 @@ base::RespOrError<std::string> Locator::getString(const std::string& ip, const D
 base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    auto handle = m_handle.lock();
+    if (!handle)
+    {
+        return base::Error {"Database handle expired"};
+    }
+
+    auto db = handle->load();
+    if (!db)
     {
         return base::Error {"Database is not available"};
     }
 
-    // Hold read lock on the map
-    std::shared_lock lock(entry->rwMutex);
-
-    // Check the entry is not expired while holding the lock
-    entry.reset();
-    entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    // If the instance changed, invalidate the cache
+    if (db != m_cachedDb)
     {
-        return base::Error {"Database is not available"};
+        m_cachedDb = db;
+        m_cachedIp.clear();
+        m_cachedResult = MMDB_lookup_result_s{};
     }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry);
+    auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
@@ -385,25 +394,28 @@ base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotP
 base::RespOrError<double> Locator::getDouble(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    auto handle = m_handle.lock();
+    if (!handle)
+    {
+        return base::Error {"Database handle expired"};
+    }
+
+    auto db = handle->load();
+    if (!db)
     {
         return base::Error {"Database is not available"};
     }
 
-    // Hold read lock on the map
-    std::shared_lock lock(entry->rwMutex);
-
-    // Check the entry is not expired while holding the lock
-    entry.reset();
-    entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    // If the instance changed, invalidate the cache
+    if (db != m_cachedDb)
     {
-        return base::Error {"Database is not available"};
+        m_cachedDb = db;
+        m_cachedIp.clear();
+        m_cachedResult = MMDB_lookup_result_s{};
     }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry);
+    auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
@@ -429,25 +441,28 @@ base::RespOrError<double> Locator::getDouble(const std::string& ip, const DotPat
 base::RespOrError<json::Json> Locator::getAsJson(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    auto handle = m_handle.lock();
+    if (!handle)
+    {
+        return base::Error {"Database handle expired"};
+    }
+
+    auto db = handle->load();
+    if (!db)
     {
         return base::Error {"Database is not available"};
     }
 
-    // Hold read lock on the map
-    std::shared_lock lock(entry->rwMutex);
-
-    // Check the entry is not expired while holding the lock
-    entry.reset();
-    entry = m_weakDbEntry.lock();
-    if (entry == nullptr)
+    // If the instance changed, invalidate the cache
+    if (db != m_cachedDb)
     {
-        return base::Error {"Database is not available"};
+        m_cachedDb = db;
+        m_cachedIp.clear();
+        m_cachedResult = MMDB_lookup_result_s{};
     }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry);
+    auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);

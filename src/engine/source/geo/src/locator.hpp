@@ -8,13 +8,14 @@
 namespace geo
 {
 
-class DbEntry; ///< Forward declaration
+class DbHandle; ///< Forward declaration
+class DbInstance; ///< Forward declaration
 
 class Locator final : public ILocator
 {
 private:
-    std::weak_ptr<DbEntry> m_weakDbEntry; ///< The weak pointer to the database entry.
-
+    std::weak_ptr<DbHandle> m_handle;
+    std::shared_ptr<const DbInstance> m_cachedDb; // To invalidate cache if the database changes
     std::string m_cachedIp;              ///< The cached IP address.
     MMDB_lookup_result_s m_cachedResult; ///< The cached lookup result.
 
@@ -30,10 +31,10 @@ private:
      * @brief Looks up the given IP address in the database if it is not already cached.
      *
      * @param ip The IP address to look up.
-     * @param dbEntry The database entry to use for the lookup.
+     * @param db The database instance to use for the lookup.
      * @return A base::OptError object containing an error message if the lookup failed.
      */
-    base::OptError lookup(const std::string& ip, const std::shared_ptr<DbEntry>& dbEntry);
+    base::OptError lookup(const std::string& ip, const std::shared_ptr<const DbInstance>& db);
 
 public:
     virtual ~Locator() = default;
@@ -43,14 +44,14 @@ public:
     /**
      * @brief Construct a new Locator object
      *
-     * @param dbEntry The database entry to use for the locator.
+     * @param handle The database handle to use for the locator.
      */
-    Locator(const std::shared_ptr<DbEntry>& dbEntry)
-        : m_weakDbEntry(dbEntry)
+    Locator(const std::shared_ptr<DbHandle>& handle)
+    : m_handle(handle)
     {
-        if (m_weakDbEntry.expired())
+        if (!handle)
         {
-            throw std::runtime_error("Cannot build a maxmind locator with an expired db entry");
+            throw std::runtime_error("Cannot build locator with null db handle");
         }
     }
 
