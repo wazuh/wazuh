@@ -32,7 +32,6 @@ The scheduled task will execute the following integration tests every Wednesday:
 |4_testintegration_remoted-tier-2         |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_remoted-tier-2.yml        |
 |4_testintegration_wazuh_db-tier-0-1      |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_wazuh_db-tier-0-1.yml     |
 |4_testcomponent_vulnerability-scanner    |https://github.com/wazuh/wazuh/actions/workflows/4_testcomponent_vulnerability-scanner.yml    |
-```
 
 <!--
 **INSTRUCTIONS:**
