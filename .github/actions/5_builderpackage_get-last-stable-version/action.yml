@@ -30,10 +30,11 @@ runs:
       if [ -d "venv" ]; then
         echo "Using Python venv"
         source venv/bin/activate
+        python3 -m pip install requests packaging
       else
         echo "Using global Python"
+        python3 -m pip install --break-system-packages requests packaging
       fi
-      python3 -m pip install requests packaging
       script_path=$(find . -name "get_last_stable_version.py")
       version=$($script_path \
           -o "${{ inputs.repo_owner }}" \
