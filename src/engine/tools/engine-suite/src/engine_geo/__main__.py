@@ -27,6 +27,11 @@ def parse_args():
     configure_list(subparsers)
     configure_upsert(subparsers)
 
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser, always_complete_options=False)
+    except ImportError:
+        pass
 
     return parser.parse_args()
 

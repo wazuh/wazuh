@@ -59,6 +59,7 @@ python -m pip install lxml
 python -m pip install docker
 python -m pip install requests
 python -m pip install graphviz
+python -m pip install argcomplete
 
 # --- Helper: install a local package if pyproject/setup is present -------------
 # Arguments:

@@ -8,7 +8,7 @@ Homepage: https://wazuh.com
 
 Package: wazuh-internal-tools
 Architecture: any
-Depends: ${misc:Depends}, python3 (>= 3.10)
+Depends: ${misc:Depends}, python3 (>= 3.10), bash-completion
 Description: Wazuh internal CLI tools (embedded Python virtual environment)
  Wazuh’s internal command-line tools packaged for Debian/Ubuntu systems.
  .

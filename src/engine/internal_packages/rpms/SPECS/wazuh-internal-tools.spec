@@ -32,6 +32,7 @@ BuildRequires:  rsync
 # Runtime dependencies
 # ------------------------------
 Requires:       python3
+Requires:       bash-completion
 
 # ------------------------------
 # Installation paths
@@ -146,6 +147,7 @@ graphviz
 behave
 websocket-client>=1.6,<2
 packaging>=23
+argcomplete
 EOF
 
 $PY -m pip download --only-binary=:all: --dest dist/wheels -r "$REQS"
@@ -365,6 +367,14 @@ echo "[post] pip list (summary):"
 
 # Create python3 alias inside venv
 [ -x "$VENV/bin/python3" ] || ln -sf python "$VENV/bin/python3" 2>/dev/null || true
+
+# Enable argcomplete for each tool in bash
+if [ -x "$VENV/bin/register-python-argcomplete" ]; then
+  echo "[post] Registering bash completion for engine tools..."
+  for tool in engine-private engine-public engine-archiver engine-geo engine-test engine-helper-test engine-it engine-router; do
+    "$VENV/bin/register-python-argcomplete" "$tool" > "/etc/bash_completion.d/$tool" 2>/dev/null || true
+  done
+fi
 
 # Smoke test (non-fatal)
 "$PY" - <<'PY' >/dev/null 2>&1 || echo "[post] WARNING: engine_public import failed."

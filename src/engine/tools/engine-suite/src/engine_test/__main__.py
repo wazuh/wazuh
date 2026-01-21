@@ -37,6 +37,12 @@ def parse_args():
     # Session commands
     configure_session(subparsers)
 
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser, always_complete_options=False)
+    except ImportError:
+        pass
+
     return parser.parse_args()
 
 
