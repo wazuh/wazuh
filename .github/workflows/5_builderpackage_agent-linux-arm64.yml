@@ -218,7 +218,7 @@ jobs:
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
 
   upload-deb-arm64-to-s3:
-    needs: test-deb-arm64
+    needs: [build-deb-arm64, test-deb-arm64]
     if: success()
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
@@ -254,23 +254,48 @@ jobs:
 
       - name: Upload package to S3
         run: |
-          aws s3 cp /tmp/${{ needs.build-deb-arm64.outputs.package-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          echo "S3 URI: s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ needs.build-deb-arm64.outputs.package-name }}"
+          PACKAGE_NAME="${{ needs.build-deb-arm64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+          else
+            echo "Package file is empty or does not exist."
+            exit 1
+          fi
 
       - name: Upload checksum to S3
         if: inputs.checksum == true
         run: |
-          aws s3 cp /tmp/${{ needs.build-deb-arm64.outputs.package-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          PACKAGE_NAME="${{ needs.build-deb-arm64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Checksum file not found, skipping"
+          fi
 
       - name: Upload debug symbols to S3
         if: needs.build-deb-arm64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp /tmp/${{ needs.build-deb-arm64.outputs.package-symbols-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          SYMBOLS_NAME="${{ needs.build-deb-arm64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+          else
+            echo "Warning: Debug symbols file not found, skipping"
+          fi
 
       - name: Upload debug symbols checksum to S3
         if: inputs.checksum == true && needs.build-deb-arm64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp /tmp/${{ needs.build-deb-arm64.outputs.package-symbols-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          SYMBOLS_NAME="${{ needs.build-deb-arm64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
+          fi
 
   # ===================== RPM JOBS =====================
   build-rpm-arm64:
@@ -443,7 +468,7 @@ jobs:
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
 
   upload-rpm-arm64-to-s3:
-    needs: test-rpm-arm64
+    needs: [build-rpm-arm64, test-rpm-arm64]
     if: success()
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
@@ -479,20 +504,45 @@ jobs:
 
       - name: Upload package to S3
         run: |
-          aws s3 cp /tmp/${{ needs.build-rpm-arm64.outputs.package-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          echo "S3 URI: s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ needs.build-rpm-arm64.outputs.package-name }}"
+          PACKAGE_NAME="${{ needs.build-rpm-arm64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+          else
+            echo "Package file is empty or does not exist."
+            exit 1
+          fi
 
       - name: Upload checksum to S3
         if: inputs.checksum == true
         run: |
-          aws s3 cp /tmp/${{ needs.build-rpm-arm64.outputs.package-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          PACKAGE_NAME="${{ needs.build-rpm-arm64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Checksum file not found, skipping"
+          fi
 
       - name: Upload debug symbols to S3
         if: needs.build-rpm-arm64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp /tmp/${{ needs.build-rpm-arm64.outputs.package-symbols-name }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          SYMBOLS_NAME="${{ needs.build-rpm-arm64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+          else
+            echo "Warning: Debug symbols file not found, skipping"
+          fi
 
       - name: Upload debug symbols checksum to S3
         if: inputs.checksum == true && needs.build-rpm-arm64.outputs.package-symbols-name != ''
         run: |
-          aws s3 cp /tmp/${{ needs.build-rpm-arm64.outputs.package-symbols-name }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          SYMBOLS_NAME="${{ needs.build-rpm-arm64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
+          fi
