@@ -503,9 +503,9 @@ void Syscollector::start()
     if (!m_vdSyncEnabled)
     {
 #ifdef _WIN32
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages, OS, or hotfixes scanning is enabled in the configuration.");
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS, packages, and hotfixes are required to be enabled.");
 #else
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages or OS scanning is enabled in the configuration.");
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS and packages are required to be enabled.");
 #endif
     }
 
