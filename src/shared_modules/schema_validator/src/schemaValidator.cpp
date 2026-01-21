@@ -19,15 +19,17 @@
 
 namespace SchemaValidator
 {
+    namespace
+    {
+        const std::regex iso8601Pattern(
+            R"(^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})?)?$)");
+    }
 
     // Helper function to check if a string is a valid ISO8601 date
     static bool isValidISO8601Date(const std::string& dateStr)
     {
         // Basic ISO8601 format check: YYYY-MM-DDTHH:MM:SS.sssZ or similar
         // Also accepts formats like: YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS, etc.
-        // Use static const to compile regex only once
-        static const std::regex iso8601Pattern(
-            R"(^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})?)?$)");
         return std::regex_match(dateStr, iso8601Pattern);
     }
 
