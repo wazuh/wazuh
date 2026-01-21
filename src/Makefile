@@ -1011,8 +1011,7 @@ os_zlib/%.o: os_zlib/%.c
 #### minizip ##########
 
 $(MINIZIP_LIB): $(ZLIB_LIB)
-	${QUIET_CC}
-	cd ${EXTERNAL_ZLIB}/contrib/minizip && ${MING_BASE}${CC} -fPIC -c unzip.c ioapi.c -I../../ && ar rcs libminizip.a unzip.o ioapi.o
+	${QUIET_CC}cd ${EXTERNAL_ZLIB}/contrib/minizip && ${MING_BASE}${CC} -fPIC -c unzip.c ioapi.c -I../../ && ar rcs libminizip.a unzip.o ioapi.o
 
 #### bzip2 ##########
 
