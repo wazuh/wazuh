@@ -1430,6 +1430,12 @@ public:
             m_stopping = true;
             m_sessionTimeoutCv.notify_all();
         }
+
+        if (m_sessionTimeoutThread.joinable())
+        {
+            m_sessionTimeoutThread.join();
+        }
+
         m_inventorySubscription.reset();
         m_workersQueue.reset();
         m_indexerQueue.reset();

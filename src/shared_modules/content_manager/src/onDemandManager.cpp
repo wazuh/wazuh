@@ -88,15 +88,25 @@ void OnDemandManager::startServer()
 /**
  * @brief Stop the server
  */
-
 void OnDemandManager::stopServer()
 {
-    m_server.stop();
+    if (m_server.is_running())
+    {
+        m_server.stop();
+    }
     if (m_serverThread.joinable())
     {
         m_serverThread.join();
     }
     logDebug1(WM_CONTENTUPDATER, "Server stopped");
+}
+
+/**
+ * @brief OnDemandManager destructor. Ensures server is stopped and thread is joined.
+ */
+OnDemandManager::~OnDemandManager()
+{
+    stopServer();
 }
 
 void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void(ActionOrchestrator::UpdateData)> func)
