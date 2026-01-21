@@ -38,7 +38,6 @@ if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
-set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 ## Mocks
 add_library(store_mocks INTERFACE)

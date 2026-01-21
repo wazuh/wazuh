@@ -23,37 +23,37 @@ public:
     ~Store();
 
     /**
-     * @copydoc IStoreInternal::createDoc
+     * @copydoc IStore::createDoc
      */
     base::OptError createDoc(const base::Name& name, const Doc& content) override;
 
     /**
-     * @copydoc IStoreInternal::readDoc
+     * @copydoc IStore::readDoc
      */
     base::RespOrError<Doc> readDoc(const base::Name& name) const override;
 
     /**
-     * @copydoc IStoreInternal::updateDoc
+     * @copydoc IStore::updateDoc
      */
     base::OptError updateDoc(const base::Name& name, const Doc& content) override;
 
     /**
-     * @copydoc IStoreInternal::upsertDoc
+     * @copydoc IStore::upsertDoc
      */
     base::OptError upsertDoc(const base::Name& name, const Doc& content) override;
 
     /**
-     * @copydoc IStoreInternal::deleteDoc
+     * @copydoc IStore::deleteDoc
      */
     base::OptError deleteDoc(const base::Name& name) override;
 
     /**
-     * @copydoc IStoreInternal::readCol
+     * @copydoc IStore::readCol
      */
     base::RespOrError<Col> readCol(const base::Name& name) const override;
 
     /**
-     * @copydoc IStoreInternal::existsDoc
+     * @copydoc IStore::existsDoc
      */
     bool existsDoc(const base::Name& name) const override;
 };

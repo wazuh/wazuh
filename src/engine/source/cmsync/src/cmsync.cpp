@@ -204,7 +204,7 @@ public:
 
 CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                const std::shared_ptr<cm::crud::ICrudService>& cmcrudPt,
-               const std::shared_ptr<::store::IStoreInternal>& storePtr,
+               const std::shared_ptr<::store::IStore>& storePtr,
                const std::shared_ptr<router::IRouterAPI>& routerPtr)
     : m_indexerPtr(indexerPtr)
     , m_cmcrudPtr(cmcrudPt)

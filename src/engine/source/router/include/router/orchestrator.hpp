@@ -52,7 +52,7 @@ protected:
     std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
 
     // Configuration options
-    std::weak_ptr<store::IStoreInternal> m_wStore; ///< Read and store configurations
+    std::weak_ptr<store::IStore> m_wStore; ///< Read and store configurations
     base::Name m_storeTesterName;                  ///< Path of internal configuration state for testers
     base::Name m_storeRouterName;                  ///< Path of internal configuration state for routers
     std::size_t m_testTimeout;                     ///< Timeout for the tests
@@ -69,7 +69,7 @@ protected:
     void dumpTesters() const;                                                ///< Dump the testers to the store
     void dumpRouters() const;                                                ///< Dump the routers to the store
     void dumpEps() const;                                                    ///< Dump the EPS to the store
-    void loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wStore); ///< Load the EPS counter from the store
+    void loadEpsCounter(const std::weak_ptr<store::IStore>& wStore); ///< Load the EPS counter from the store
 
     /**
      * @brief Initialize a worker

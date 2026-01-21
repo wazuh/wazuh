@@ -36,7 +36,7 @@ using namespace geo;
 class LocatorTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<store::mocks::MockStoreInternal> mockStore;
+    std::shared_ptr<store::mocks::MockStore> mockStore;
     std::shared_ptr<mocks::MockDownloader> mockDownloader;
     std::shared_ptr<Manager> manager;
     std::shared_ptr<Locator> locator;
@@ -44,7 +44,7 @@ protected:
 
     void SetUp() override
     {
-        mockStore = std::make_shared<store::mocks::MockStoreInternal>();
+        mockStore = std::make_shared<store::mocks::MockStore>();
         mockDownloader = std::make_shared<mocks::MockDownloader>();
 
         auto path = getTmpDb();

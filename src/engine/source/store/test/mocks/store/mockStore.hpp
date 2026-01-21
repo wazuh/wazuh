@@ -46,18 +46,6 @@ inline base::RespOrError<Doc> storeReadDocResp(const Doc& doc)
 /******************************************************************************/
 // Mock classes
 /******************************************************************************/
-class MockStoreInternal : public store::IStoreInternal
-{
-public:
-    MOCK_METHOD((base::OptError), createDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::RespOrError<Doc>), readDoc, (const base::Name&), (const, override));
-    MOCK_METHOD((base::OptError), updateDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::OptError), upsertDoc, (const base::Name&, const Doc&), (override));
-    MOCK_METHOD((base::OptError), deleteDoc, (const base::Name&), (override));
-    MOCK_METHOD((base::RespOrError<Col>), readCol, (const base::Name&), (const, override));
-    MOCK_METHOD((bool), existsDoc, (const base::Name&), (const, override));
-};
-
 class MockStore : public store::IStore
 {
 public:

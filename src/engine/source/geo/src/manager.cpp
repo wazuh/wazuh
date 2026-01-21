@@ -15,7 +15,7 @@
 
 namespace geo
 {
-Manager::Manager(const std::shared_ptr<store::IStoreInternal>& store, const std::shared_ptr<IDownloader>& downloader)
+Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_ptr<IDownloader>& downloader)
     : m_store(store)
     , m_downloader(downloader)
 {

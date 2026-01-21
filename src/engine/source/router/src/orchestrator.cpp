@@ -98,7 +98,7 @@ base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
     return std::nullopt;
 }
 
-void saveConfig(const std::weak_ptr<store::IStoreInternal>& wStore, const base::Name& storeName, const json::Json& dump)
+void saveConfig(const std::weak_ptr<store::IStore>& wStore, const base::Name& storeName, const json::Json& dump)
 {
     auto store = wStore.lock();
     if (!store)
@@ -156,7 +156,7 @@ void Orchestrator::dumpEps() const
     dumpEpsInternal();
 }
 
-void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wStore)
+void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStore>& wStore)
 {
     auto store = wStore.lock();
     if (!store)
@@ -202,7 +202,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
 /**************************************************************************
  * Manage configuration - Loader
  *************************************************************************/
-std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::IStoreInternal>& store,
+std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::IStore>& store,
                                                 const base::Name& tableName)
 {
     const auto jsonEntry = store->readDoc(tableName);

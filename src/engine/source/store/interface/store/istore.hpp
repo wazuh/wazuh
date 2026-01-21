@@ -8,31 +8,24 @@
 #include <store/idriver.hpp>
 
 /**
- * @brief Document Namespace Manager Interface
+ * @brief Document Store Interface
  *
- * Manages the document storage and namespaces, which are used to group documents together
- * The document name (virtual name) are unique regardless of the namespace.
- * The namespace is used to group documents together, a document must be assigned to a namespace.
- *
+ * Manages the document storage using a key-value approach.
  * The Key (base::Name) is used to identify a document or collection in the store.
  */
 namespace store
 {
 
 /**
- * @brief Internal Document manager interface. Stores documents that are not accessible from the outside.
- *
- * @details The documents managed by this interface are stored under a special namespace, only accessible
- * from the internal interface.
- *
+ * @brief Document store interface.
  */
-class IStoreInternal
+class IStore
 {
 public:
-    virtual ~IStoreInternal() = default;
+    virtual ~IStore() = default;
 
     /**
-     * @brief Create a Internal Document in the store.
+     * @brief Create a document in the store.
      *
      * @param name name of the document.
      * @param content document content.
@@ -41,7 +34,7 @@ public:
     virtual base::OptError createDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
-     * @brief Read a Internal document from the store.
+     * @brief Read a document from the store.
      *
      * @param name name of the document.
      * @return base::RespOrError<Doc> with the document or error.
@@ -49,7 +42,7 @@ public:
     virtual base::RespOrError<Doc> readDoc(const base::Name& name) const = 0;
 
     /**
-     * @brief Update a Internal document in the store.
+     * @brief Update a document in the store.
      *
      * @param name name of the document.
      * @param content document content.
@@ -58,7 +51,7 @@ public:
     virtual base::OptError updateDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
-     * @brief Upsert a Internal document in the store.
+     * @brief Upsert a document in the store.
      *
      * @param name name of the document.
      * @param content document content.
@@ -67,7 +60,7 @@ public:
     virtual base::OptError upsertDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
-     * @brief Delete a Internal document from the store.
+     * @brief Delete a document from the store.
      *
      * @param name name of the document.
      * @return base::OptError with the error or empty if no error.
@@ -75,25 +68,20 @@ public:
     virtual base::OptError deleteDoc(const base::Name& name) = 0;
 
     /**
-     * @brief Get collection of Internal documents from the store.
+     * @brief Get collection of documents from the store.
      *
      * @param name name of the collection.
+     * @return base::RespOrError<Col> with the collection or error.
      */
     virtual base::RespOrError<Col> readCol(const base::Name& name) const = 0;
 
     /**
-     * @brief Check if a Internal document exists in the store.
+     * @brief Check if a document exists in the store.
      *
      * @param name name of the document.
      * @return true if the document exists, false otherwise.
      */
     virtual bool existsDoc(const base::Name& name) const = 0;
-};
-
-class IStore : public IStoreInternal
-{
-public:
-    virtual ~IStore() = default;
 };
 
 } // namespace store
