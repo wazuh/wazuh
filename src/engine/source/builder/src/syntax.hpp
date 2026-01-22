@@ -25,22 +25,24 @@ const auto ALLOWED_FIELDS_PATH =
 // Asset syntax
 namespace asset
 {
-constexpr auto NAME_KEY = "name";                     ///< Key for the name field in an asset.
-constexpr auto METADATA_KEY = "metadata";             ///< Key for the metadata field in an asset.
-constexpr auto ID_KEY = "id";                         ///< Key for the id field in an asset.
-constexpr auto ENABLED_KEY = "enabled";               ///< Key for the enabled field in an asset.
-constexpr auto PARENTS_KEY = "parents";               ///< Key for the parents field in an asset.
-constexpr auto CHECK_KEY = "check";                   ///< Key for the check stage in an asset.
-constexpr auto PARSE_KEY = "parse";                   ///< Key for the parse stage in an asset.
-constexpr auto NORMALIZE_KEY = "normalize";           ///< Key for the normalize stage in an asset.
-constexpr auto MAP_KEY = "map";                       ///< Key for the map stage in an asset.
-constexpr auto DEFINITIONS_KEY = "definitions";       ///< Key for the definitions stage in an asset.
-constexpr auto OUTPUTS_KEY = "outputs";               ///< Key for the outputs stage in an asset.
-constexpr auto FIRST_OF_KEY = "first_of";             ///< Key for the first_of stage in an asset.
-constexpr auto THEN_KEY = "then";                     ///< Key for the then action in first_of items.
-constexpr auto FILE_OUTPUT_KEY = "file";              ///< Key for the file output stage in an asset.
-constexpr auto INDEXER_OUTPUT_KEY = "wazuh-indexer";  ///< Key for the INDEXER output stage in an asset.
-constexpr auto INDEXER_OUTPUT_INDEX_KEY = "index";    ///< Key for the INDEXER output stage in an asset.
+constexpr auto NAME_KEY = "name";                    ///< Key for the name field in an asset.
+constexpr auto METADATA_KEY = "metadata";            ///< Key for the metadata field in an asset.
+constexpr auto ID_KEY = "id";                        ///< Key for the id field in an asset.
+constexpr auto ENABLED_KEY = "enabled";              ///< Key for the enabled field in an asset.
+constexpr auto PARENTS_KEY = "parents";              ///< Key for the parents field in an asset.
+constexpr auto CHECK_KEY = "check";                  ///< Key for the check stage in an asset.
+constexpr auto PARSE_KEY = "parse";                  ///< Key for the parse stage in an asset.
+constexpr auto NORMALIZE_KEY = "normalize";          ///< Key for the normalize stage in an asset.
+constexpr auto MAP_KEY = "map";                      ///< Key for the map stage in an asset.
+constexpr auto DEFINITIONS_KEY = "definitions";      ///< Key for the definitions stage in an asset.
+constexpr auto OUTPUTS_KEY = "outputs";              ///< Key for the outputs stage in an asset.
+constexpr auto FIRST_OF_KEY = "first_of";            ///< Key for the first_of stage in an asset.
+constexpr auto THEN_KEY = "then";                    ///< Key for the then action in first_of items.
+constexpr auto FILE_OUTPUT_KEY = "file";             ///< Key for the file output stage in an asset.
+constexpr auto INDEXER_OUTPUT_KEY = "wazuh-indexer"; ///< Key for the INDEXER output stage in an asset.
+constexpr auto INDEXER_OUTPUT_INDEX_KEY = "index";   ///< Key for the INDEXER output stage in an asset.
+
+// TODO: Move and document this better
 const auto DECODERS_PATH = json::Json::formatJsonPath("wazuh.integration.decoders");
 const auto INTEGRATION_PATH = json::Json::formatJsonPath("wazuh.integration.name");
 const auto CATEGORY_PATH = json::Json::formatJsonPath("wazuh.integration.category");
@@ -50,6 +52,34 @@ constexpr auto CONDITION_NAME =
 constexpr auto CONSEQUENCE_NAME =
     "stages";                        ///< Name of the consequence expression in the asset to be displayed in traces.
 constexpr auto ASSET_NAME = "asset"; ///< Name of the asset expression to be displayed in traces.
+
+/**
+ * @brief Get the name of an asset from its JSON representation.
+ * @param assetJson The JSON representation of the asset.
+ * @return std::string The name of the asset.
+ * @throw std::runtime_error If the name field is missing.
+ */
+inline auto getAssetName(const json::Json& assetJson) -> std::string
+{
+    auto nameJson = assetJson.getString(json::Json::formatJsonPath(NAME_KEY));
+    if (!nameJson)
+    {
+        // TODO: Improve error message with asset identification.
+        throw std::runtime_error("Asset is missing the 'name' field");
+    }
+    return nameJson.value();
+}
+
+inline bool isEnabledResource(const json::Json& assetJson)
+{
+    auto enabledJson = assetJson.getBool(json::Json::formatJsonPath(ENABLED_KEY));
+    if (!enabledJson)
+    {
+        // TODO: Improve error message with asset identification.
+        throw std::runtime_error("Resource is missing the 'enabled' field");
+    }
+    return enabledJson.value();
+}
 } // namespace asset
 
 // Field syntax

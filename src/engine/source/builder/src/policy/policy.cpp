@@ -38,10 +38,13 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     buildCtx->setAllowedFields(allowedFields);
     buildCtx->setStoreNSReader(cmStoreNsReader);
 
+    // Build assets of policy
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
     auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder, sandbox);
 
+
     // Assign the assets
+    // TODO: Build a single unordered_set in factory::buildAssets to avoid this loop
     for (const auto& [type, subgraph] : builtAssets)
     {
         for (const auto& asset : subgraph.orderedAssets)

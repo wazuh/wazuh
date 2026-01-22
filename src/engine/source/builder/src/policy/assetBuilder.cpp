@@ -85,7 +85,7 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     newContext->context().assetName = name.fullName();
 
     // TODO: We should have resources with any name without indicating the asset type in the name
-    const bool isDecoder = !name.parts().empty() && name.parts()[0] == "decoder";
+    const bool isDecoder {syntax::name::isDecoder(name)};
 
     // Get definitions (optional, may appear anywhere in the asset)
     auto definitionsPos = std::find_if(
@@ -108,9 +108,9 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     std::vector<base::Expression> conditionExpressions;
     base::Expression condition;
 
-    // Check stage
     if (!objDoc.empty())
     {
+        // Check stage
         {
             const auto& [key, value] = *objDoc.begin();
             if (key == syntax::asset::CHECK_KEY)
@@ -210,13 +210,12 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
         consequenceExpressions.emplace_back(std::move(consequence));
     }
 
-    // Inject integration.categories from context (non-invasive, independent of "normalize")
-    const auto integrationName = newContext->context().integrationName;
-    const auto integrationCategory = newContext->context().integrationCategory;
-
     if (isDecoder)
     {
-        // Automapping term to set integration fields and decoder name
+        // Inject integration.categories from context (non-invasive, independent of "normalize")
+        const auto integrationName = newContext->context().integrationName;
+        const auto integrationCategory = newContext->context().integrationCategory;
+
         auto automapping =
             base::Term<base::EngineOp>::create("Automapping",
                                                [integrationCategory, integrationName, name](auto e)
