@@ -40,10 +40,6 @@ on:
       - 'src/engine/**'
       - '.github/workflows/5_builderpackage_engine-standalone.yml'
 
-# Ensures only one instance of this workflow is running per PR
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_call' && 'called' || 'trigger' }}
-
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
   WAZUH_BRANCH: ${{ inputs.wazuh-branch || 'main' }}
@@ -53,6 +49,9 @@ jobs:
   build:
     name: Build Server (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
+    # Groups builds by architecture to track concurrent executions
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.arch }}-${{ github.event_name == 'workflow_call' && 'called' || 'trigger' }}
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     strategy:
