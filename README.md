@@ -135,7 +135,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |[bzip2](https://github.com/libarchive/bzip2)|1.0.8|Julian Seward|BSD License|
 |[cJSON](https://github.com/DaveGamble/cJSON)|1.7.18|Dave Gamble|MIT License|
 |[cpp-httplib](https://github.com/yhirose/cpp-httplib)|0.25.0|yhirose|MIT License|
-|[cPython](https://github.com/python/cpython)|3.10.19|Guido van Rossum|Python Software Foundation License version 2|
+|[cPython](https://github.com/python/cpython)|3.12.12|Guido van Rossum|Python Software Foundation License version 2|
 |[cURL](https://github.com/curl/curl)|8.12.1|Daniel Stenberg|MIT License|
 |[dbus](https://gitlab.freedesktop.org/dbus/dbus)|1.14.10|freedesktop.org|GNU Public License version 2|
 |[Flatbuffers](https://github.com/google/flatbuffers/)|23.5.26|Google Inc.|Apache 2.0 License|
