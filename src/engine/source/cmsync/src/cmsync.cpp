@@ -431,7 +431,7 @@ void CMSync::removeSpaceFromSync(std::string_view space)
 void CMSync::loadStateFromStore()
 {
 
-    auto storePtr = lockWeakPtr(m_store, "StoreInternal");
+    auto storePtr = lockWeakPtr(m_store, "Store");
 
     auto optDoc = storePtr->readDoc(STORE_NAME_CMSYNC);
     if (base::isError(optDoc))
