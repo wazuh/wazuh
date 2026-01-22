@@ -1210,6 +1210,24 @@ void test_is_network_path_local(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_is_network_path_extended_length_unc(void **state) {
+    char *path = "\\\\?\\UNC\\server\\share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_device(void **state) {
+    char *path = "\\\\.\\device";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_extended_length_local(void **state) {
+    char *path = "\\\\?\\C:\\file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
 void test_wfopen_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -1817,6 +1835,9 @@ int main(void) {
         cmocka_unit_test(test_is_network_path_unc),
         cmocka_unit_test(test_is_network_path_network),
         cmocka_unit_test(test_is_network_path_local),
+        cmocka_unit_test(test_is_network_path_extended_length_unc),
+        cmocka_unit_test(test_is_network_path_device),
+        cmocka_unit_test(test_is_network_path_extended_length_local),
         cmocka_unit_test(test_wfopen_local_path),
         cmocka_unit_test(test_wfopen_network_path),
         cmocka_unit_test(test_waccess_local_path),
