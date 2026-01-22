@@ -346,7 +346,7 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             assert worker_handler.process_request(
                 command=b"syn_m_a_e", data=b'{"updated_chunks": 4, "error_messages": []}') == b"ok"
             sync_mock.assert_called_once_with(setup_task_logger_mock,
-                                              datetime.datetime(1970, 1, 1, 0, 0),
+                                              datetime.datetime(1970, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
                                               b'{"updated_chunks": 4, "error_messages": []}'.decode())
             logger_mock.assert_called_with("Command received: 'b'syn_m_a_e''")
     # Test the seventh condition
