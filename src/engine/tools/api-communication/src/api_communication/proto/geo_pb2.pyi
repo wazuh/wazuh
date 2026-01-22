@@ -14,12 +14,12 @@ class DbEntry(_message.Message):
     NAME_FIELD_NUMBER: _ClassVar[int]
     PATH_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
-    createdAt: str
+    createdAt: int
     hash: str
     name: str
     path: str
     type: str
-    def __init__(self, name: _Optional[str] = ..., path: _Optional[str] = ..., hash: _Optional[str] = ..., createdAt: _Optional[str] = ..., type: _Optional[str] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., path: _Optional[str] = ..., hash: _Optional[str] = ..., createdAt: _Optional[int] = ..., type: _Optional[str] = ...) -> None: ...
 
 class DbGet_Request(_message.Message):
     __slots__ = ["ip"]

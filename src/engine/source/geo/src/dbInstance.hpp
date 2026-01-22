@@ -14,10 +14,10 @@ namespace geo
 class DbInstance
 {
 public:
-    DbInstance(std::string path, std::string hash, std::string createdAt, Type type)
+    DbInstance(std::string path, std::string hash, int64_t createdAt, Type type)
         : m_path(std::move(path))
         , m_hash(std::move(hash))
-        , m_createdAt(std::move(createdAt))
+        , m_createdAt(createdAt)
         , m_type(type)
     {
         int status = MMDB_open(m_path.c_str(), MMDB_MODE_MMAP, &m_mmdb);
@@ -37,14 +37,14 @@ public:
     const MMDB_s& mmdb() const noexcept { return m_mmdb; }
     const std::string& path() const noexcept { return m_path; }
     const std::string& hash() const noexcept { return m_hash; }
-    const std::string& createdAt() const noexcept { return m_createdAt; }
+    const int64_t createdAt() const noexcept { return m_createdAt; }
     Type type() const noexcept { return m_type; }
 
 private:
-    MMDB_s m_mmdb{};
+    MMDB_s m_mmdb {};
     std::string m_path;
     std::string m_hash;
-    std::string m_createdAt;
+    int64_t m_createdAt;
     Type m_type;
 };
 

@@ -52,13 +52,13 @@ protected:
         asnJson.setString(asnPath, PATH_PATH);
         asnJson.setString(typeName(Type::ASN), TYPE_PATH);
         asnJson.setString("asnHash", HASH_PATH);
-        asnJson.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+        asnJson.setInt64(1769111225, GENERATED_AT_PATH);
 
         json::Json cityJson;
         cityJson.setString(cityPath, PATH_PATH);
         cityJson.setString(typeName(Type::CITY), TYPE_PATH);
         cityJson.setString("cityHash", HASH_PATH);
-        cityJson.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+        cityJson.setInt64(1769111225, GENERATED_AT_PATH);
 
         EXPECT_CALL(*mockStore, readDoc(asnName)).WillOnce(testing::Return(storeReadDocResp(asnJson)));
         EXPECT_CALL(*mockStore, readDoc(cityName)).WillOnce(testing::Return(storeReadDocResp(cityJson)));
@@ -290,7 +290,8 @@ TEST_F(GeoManagerTest, MultithreadGetLocator)
             auto locatorResp = manager->getLocator(type);
             if (base::isError(locatorResp))
             {
-                setError(error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
+                setError(
+                    error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
             }
         }
     };
@@ -329,7 +330,8 @@ TEST_F(GeoManagerTest, ComplexUseCase)
             auto locatorResp = manager->getLocator(type);
             if (base::isError(locatorResp))
             {
-                setError(error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
+                setError(
+                    error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
             }
             else
             {

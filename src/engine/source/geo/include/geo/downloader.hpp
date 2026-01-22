@@ -13,7 +13,7 @@ public:
 
     base::RespOrError<std::string> downloadHTTPS(const std::string& url) const override;
     base::RespOrError<json::Json> downloadManifest(const std::string& url) const override;
-    base::OptError extractMmdbFromTarGz(const std::string& tarGzContent, const std::string& outputPath) const override;
+    base::OptError extractMmdbFromGz(const std::string& tarGzContent, const std::string& outputPath) const override;
 };
 } // namespace geo
 

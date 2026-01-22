@@ -7,8 +7,8 @@
 #include <shared_mutex>
 #include <sstream>
 
-#include "dbInstance.hpp"
 #include "dbHandle.hpp"
+#include "dbInstance.hpp"
 #include "manager.hpp"
 
 namespace
@@ -267,7 +267,7 @@ base::RespOrError<std::shared_ptr<const DbInstance>> Locator::validateAndGetDb()
     {
         m_cachedDb = db;
         m_cachedIp.clear();
-        m_cachedResult = MMDB_lookup_result_s{};
+        m_cachedResult = MMDB_lookup_result_s {};
     }
 
     return db;
@@ -281,11 +281,8 @@ base::OptError Locator::lookup(const std::string& ip, const std::shared_ptr<cons
     }
 
     int gai_error, mmdb_error;
-    MMDB_lookup_result_s result = MMDB_lookup_string(
-        const_cast<MMDB_s*>(&db->mmdb()),
-        ip.c_str(),
-        &gai_error,
-        &mmdb_error);
+    MMDB_lookup_result_s result =
+        MMDB_lookup_string(const_cast<MMDB_s*>(&db->mmdb()), ip.c_str(), &gai_error, &mmdb_error);
 
     if (0 != gai_error) // translation error
     {

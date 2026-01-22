@@ -23,6 +23,7 @@
   - [Engine](ref/modules/engine/README.md)
     - [Architecture](ref/modules/engine/architecture.md)
     - [API Reference](ref/modules/engine/api-reference.md)
+    - [API Events Reference](ref/modules/engine/api-events-reference.md)
     - [Outputs Reference](ref/modules/engine/ref-output.md)
     - [Parsers Reference](ref/modules/engine/ref-parser.md)
     - [Helper Functions Reference](ref/modules/engine/ref-helper-functions.md)

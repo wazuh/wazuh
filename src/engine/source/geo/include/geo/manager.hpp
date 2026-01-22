@@ -23,7 +23,7 @@ static const std::string INTERNAL_NAME = "geo";
 static const std::string PATH_PATH = "/path";
 static const std::string HASH_PATH = "/hash";
 static const std::string TYPE_PATH = "/type";
-static const std::string CREATED_AT_PATH = "/created_at";
+static const std::string GENERATED_AT_PATH = "/generated_at";
 
 class Manager final : public IManager
 {
@@ -45,7 +45,7 @@ private:
      * @return base::OptError An error if the store entry could not be upserted.
      */
     base::OptError
-    upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const std::string& createdAt);
+    upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const int64_t createdAt);
 
     /**
      * @brief Check if a database needs to be updated by comparing stored hash with remote hash.
@@ -66,7 +66,7 @@ private:
      * @return base::OptError An error if the database could not be added.
      */
     base::OptError
-    addDbUnsafe(const std::string& path, const std::string& hash, const std::string& createdAt, Type type);
+    addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type);
 
     /**
      * @brief Write the MMDB database to the filesystem.
@@ -82,16 +82,16 @@ private:
      *
      * @param path Path to store the database.
      * @param type Type of the database.
-     * @param tarGzUrl URL to download the tar.gz database.
-     * @param expectedMd5 Expected MD5 hash of the tar.gz file.
+     * @param gzUrl URL to download the gz database.
+     * @param expectedMd5 Expected MD5 hash of the gz file.
      * @param createdAt Creation timestamp from manifest.
      * @return base::OptError An error if the database could not be processed.
      */
     base::OptError processDbEntry(const std::string& path,
                                   Type type,
-                                  const std::string& tarGzUrl,
+                                  const std::string& gzUrl,
                                   const std::string& expectedMd5,
-                                  const std::string& createdAt);
+                                  const int64_t createdAt);
 
 public:
     virtual ~Manager() = default;

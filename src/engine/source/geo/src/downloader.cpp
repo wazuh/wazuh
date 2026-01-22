@@ -1,7 +1,6 @@
 #include "downloader.hpp"
 
 #include <algorithm>
-#include <archiveHelper.hpp>
 #include <filesystem>
 #include <fstream>
 
@@ -9,7 +8,7 @@
 
 #include <HTTPRequest.hpp>
 #include <base/json.hpp>
-
+#include <zlibHelper.hpp>
 namespace
 {
 // This write callback function will be called by libcurl as soon as there is data received that needs to be saved.
@@ -69,48 +68,38 @@ base::RespOrError<json::Json> Downloader::downloadManifest(const std::string& ur
     }
 }
 
-base::OptError Downloader::extractMmdbFromTarGz(const std::string& tarGzContent, const std::string& outputPath) const
+base::OptError Downloader::extractMmdbFromGz(const std::string& gzContent, const std::string& outputPath) const
 {
-    // Get parent directory
     auto parentDir = std::filesystem::path(outputPath).parent_path();
 
     try
     {
-        // Create temporary extraction directory at the same level as outputPath, not inside it
-        const auto tmpExtractDir = parentDir / "tmp_extract";
-        std::filesystem::create_directories(tmpExtractDir);
+        // Create parent directory if it doesn't exist
+        std::filesystem::create_directories(parentDir);
 
-        // Extract only .mmdb files
-        std::vector<std::string> extractOnly {".mmdb"};
-        const std::atomic<bool> forceStop = false;
+        // Create temporary .gz file
+        const auto tmpGzFile = parentDir / "tmp_download.mmdb.gz";
 
-        Utils::ArchiveHelper::decompressTarGz(tarGzContent, tmpExtractDir.string(), extractOnly, forceStop);
-
-        // Find the extracted .mmdb file and move it to the final path
-        bool found = false;
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpExtractDir))
+        // Write compressed content to temporary file
+        std::ofstream outFile(tmpGzFile, std::ios::binary);
+        if (!outFile)
         {
-            if (entry.is_regular_file() && entry.path().extension() == ".mmdb")
-            {
-                std::filesystem::rename(entry.path(), outputPath);
-                found = true;
-                break;
-            }
+            return base::Error {fmt::format("Failed to create temporary file: {}", tmpGzFile.string())};
         }
+        outFile.write(gzContent.data(), gzContent.size());
+        outFile.close();
 
-        // Clean up temporary directory
-        std::filesystem::remove_all(tmpExtractDir);
+        // Decompress using zlibHelper
+        Utils::ZlibHelper::gzipDecompress(tmpGzFile, outputPath);
 
-        if (!found)
-        {
-            return base::Error {"No .mmdb file found in tar.gz archive"};
-        }
+        // Clean up temporary file
+        std::filesystem::remove(tmpGzFile);
 
         return base::noError();
     }
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Failed to extract tar.gz archive: {}", e.what())};
+        return base::Error {fmt::format("Failed to extract gz archive: {}", e.what())};
     }
 }
 } // namespace geo

@@ -24,13 +24,14 @@ public:
     virtual base::RespOrError<json::Json> downloadManifest(const std::string& url) const = 0;
 
     /**
-     * @brief Extract .mmdb file from a tar.gz archive.
+     * @brief Extract .mmdb file from a gz archive.
      *
-     * @param tarGzContent The content of the tar.gz file.
+     * @param gzContent The content of the gz file.
      * @param outputPath Path where to write the extracted .mmdb file.
      * @return base::OptError An error if extraction failed.
      */
-    virtual base::OptError extractMmdbFromTarGz(const std::string& tarGzContent, const std::string& outputPath) const = 0;
+    virtual base::OptError extractMmdbFromGz(const std::string& gzContent,
+                                                const std::string& outputPath) const = 0;
 };
 } // namespace geo
 

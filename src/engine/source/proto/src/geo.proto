@@ -8,40 +8,50 @@ package com.wazuh.api.engine.geo;
 /* Entry of a db in the geo manager */
 message DbEntry
 {
-    string name = 1;
-    string path = 2;
-    string hash = 3;
-    string createdAt = 4;
-    string type = 5;
+    string name = 1;     // Name of the database file
+    string path = 2;     // Full path to the database file
+    string hash = 3;     // MD5 hash of the database file
+    int64 createdAt = 4; // Timestamp of database creation
+    string type = 5;     // Type of database: "city" or "asn"
 }
 
 /***************************************************
- * Remove a mmddb from the geo manager
+ * Query geolocation data for an IP address
  *
- * command: geo.db/delete (<resource>/<action>)
+ * endpoint: POST geo/db/get
+ *
+ * Returns WCS-compliant geolocation data from both
+ * CITY and ASN databases. The response contains two
+ * objects: "geo" for city/location data and "as" for
+ * ASN data. If a database is not available or the IP
+ * is not found, empty objects are returned.
  **************************************************/
 message DbGet_Request
 {
-    string ip = 1;
+    string ip = 1; // IP address to query (IPv4 or IPv6)
 }
 
 message DbGet_Response
 {
-    ReturnStatus status = 1;
-    string error = 2;
-    google.protobuf.Struct data = 3; // JSON object with geo data
+    ReturnStatus status = 1;         // Status of the query
+    string error = 2;                // Error message if status is ERROR
+    google.protobuf.Struct data = 3; // WCS-compliant JSON: {"geo": {...}, "as": {...}}
 }
 
 /***************************************************
- * Get the list of mmddb used by the geo manager
+ * List all geolocation databases
  *
- * command: geo.db/list (<resource>/<action>)
+ * endpoint: POST geo/db/list
+ *
+ * Returns information about all databases currently
+ * loaded in the geo manager, including their paths,
+ * hashes, creation timestamps, and types.
  **************************************************/
 message DbList_Request {}
 
 message DbList_Response
 {
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
-    repeated DbEntry entries = 3;
+    ReturnStatus status = 1;      // Status of the query
+    optional string error = 2;    // Error message if status is ERROR
+    repeated DbEntry entries = 3; // List of loaded databases
 }

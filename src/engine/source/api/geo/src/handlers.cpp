@@ -65,8 +65,8 @@ adapter::RouteHandler getDb(const std::shared_ptr<::geo::IManager>& geoManager)
         auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(ecsJsonStr);
         if (std::holds_alternative<base::Error>(structOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error converting JSON to protobuf Struct: {}", std::get<base::Error>(structOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Error converting JSON to protobuf Struct: {}",
+                                                                       std::get<base::Error>(structOrErr).message));
             return;
         }
 

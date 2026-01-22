@@ -52,7 +52,7 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
         auto path = doc.getString(PATH_PATH).value();
         auto type = typeFromName(doc.getString(TYPE_PATH).value());
         auto hash = doc.getString(HASH_PATH).value();
-        auto createdAt = doc.getString(CREATED_AT_PATH).value();
+        auto createdAt = doc.getInt64(GENERATED_AT_PATH).value();
 
         auto addResp = addDbUnsafe(path, hash, createdAt, type);
         if (base::isError(addResp))
@@ -65,7 +65,7 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
 }
 
 base::OptError
-Manager::upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const std::string& createdAt)
+Manager::upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const int64_t createdAt)
 {
     // Create and upsert the internal document
     std::filesystem::path dbPath(path);
@@ -74,12 +74,9 @@ Manager::upsertStoreEntry(const std::string& path, Type type, const std::string&
     doc.setString(path, PATH_PATH);
     doc.setString(hash, HASH_PATH);
     doc.setString(typeName(type), TYPE_PATH);
-    if (!createdAt.empty())
-    {
-        doc.setString(createdAt, CREATED_AT_PATH);
-    }
+    doc.setInt64(createdAt, GENERATED_AT_PATH);
 
-    auto storeResp = m_store->upsertInternalDoc(internalName, doc);
+    auto storeResp = m_store->upsertDoc(internalName, doc);
     if (base::isError(storeResp))
     {
         base::Error {fmt::format("Cannot update internal store for '{}': {}", path, base::getError(storeResp).message)};
@@ -91,7 +88,7 @@ Manager::upsertStoreEntry(const std::string& path, Type type, const std::string&
 bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash) const
 {
     auto internalResp =
-        m_store->readInternalDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
+        m_store->readDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
 
     if (base::isError(internalResp))
     {
@@ -120,7 +117,7 @@ bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash
 }
 
 base::OptError
-Manager::addDbUnsafe(const std::string& path, const std::string& hash, const std::string& createdAt, Type type)
+Manager::addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type)
 {
     const auto name = std::filesystem::path(path).filename().string();
 
@@ -163,6 +160,10 @@ base::OptError Manager::writeDb(const std::string& path, const std::string& cont
     try
     {
         std::filesystem::create_directories(filePath.parent_path());
+        // Set permissions to 770 (rwxrwx---)
+        std::filesystem::permissions(filePath.parent_path(),
+                                    std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
+                                    std::filesystem::perm_options::replace);
     }
     catch (const std::exception& e)
     {
@@ -191,9 +192,9 @@ base::OptError Manager::writeDb(const std::string& path, const std::string& cont
 
 base::OptError Manager::processDbEntry(const std::string& path,
                                        Type type,
-                                       const std::string& tarGzUrl,
+                                       const std::string& gzUrl,
                                        const std::string& expectedMd5,
-                                       const std::string& createdAt)
+                                       const int64_t createdAt)
 {
     const auto name = std::filesystem::path(path).filename().string();
 
@@ -232,24 +233,24 @@ base::OptError Manager::processDbEntry(const std::string& path,
     // Already have the handle; release the map lock so as not to block
     lock.unlock();
 
-    // Download tar.gz with retries and validate MD5
-    std::string tarGzContent;
-    base::OptError error = base::Error {fmt::format("Cannot download database from '{}'", tarGzUrl)};
+    // Download gz with retries and validate MD5
+    std::string gzContent;
+    base::OptError error = base::Error {fmt::format("Cannot download database from '{}'", gzUrl)};
 
     for (int i = 0; i < MAX_RETRIES; ++i)
     {
-        auto downloadResp = m_downloader->downloadHTTPS(tarGzUrl);
+        auto downloadResp = m_downloader->downloadHTTPS(gzUrl);
         if (base::isError(downloadResp))
         {
             error = base::Error {
-                fmt::format("Cannot download database from '{}': {}", tarGzUrl, base::getError(downloadResp).message)};
+                fmt::format("Cannot download database from '{}': {}", gzUrl, base::getError(downloadResp).message)};
             continue;
         }
 
-        tarGzContent = base::getResponse(downloadResp);
+        gzContent = base::getResponse(downloadResp);
 
-        // Validate MD5 of the tar.gz file
-        const auto computedMd5 = base::utils::hash::md5(tarGzContent);
+        // Validate MD5 of the gz file
+        const auto computedMd5 = base::utils::hash::md5(gzContent);
         if (computedMd5 == expectedMd5)
         {
             error = base::noError();
@@ -257,7 +258,7 @@ base::OptError Manager::processDbEntry(const std::string& path,
         }
 
         error = base::Error {
-            fmt::format("MD5 mismatch for database '{}'. Expected: {}, Got: {}", tarGzUrl, expectedMd5, computedMd5)};
+            fmt::format("MD5 mismatch for database '{}'. Expected: {}, Got: {}", gzUrl, expectedMd5, computedMd5)};
     }
 
     if (base::isError(error))
@@ -265,9 +266,9 @@ base::OptError Manager::processDbEntry(const std::string& path,
         return error;
     }
 
-    // Extract .mmdb from tar.gz to temporary path
+    // Extract .mmdb from gz to temporary path
     const auto tmpPath = path + ".tmp";
-    auto extractResp = m_downloader->extractMmdbFromTarGz(tarGzContent, tmpPath);
+    auto extractResp = m_downloader->extractMmdbFromGz(gzContent, tmpPath);
     if (base::isError(extractResp))
     {
         // Clean up temporary file if extraction failed
@@ -286,6 +287,12 @@ base::OptError Manager::processDbEntry(const std::string& path,
             std::filesystem::remove(path);
         }
         std::filesystem::rename(tmpPath, path);
+
+        // Set permissions to 640 (rw-r-----)
+        std::filesystem::permissions(path,
+                                    std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+                                    std::filesystem::perms::group_read,
+                                    std::filesystem::perm_options::replace);
     }
     catch (const std::exception& e)
     {
@@ -306,7 +313,7 @@ base::OptError Manager::processDbEntry(const std::string& path,
 
     handle->store(std::move(newInst));
 
-    // Persist manifest MD5 hash and created_at in store
+    // Persist manifest MD5 hash and generated_at in store
     auto res = upsertStoreEntry(path, type, expectedMd5, createdAt);
     if (base::isError(res))
     {
@@ -333,7 +340,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     LOG_DEBUG("[Geo::Manager] Manifest downloaded successfully");
 
     // Extract manifest fields
-    auto createdAt = manifest.getString("/created_at").value_or("");
+    auto createdAt = manifest.getInt64(GENERATED_AT_PATH);
 
     // Process city database if present
     auto cityUrl = manifest.getString("/city/url");
@@ -350,7 +357,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         else
         {
             LOG_INFO("[Geo::Manager] Changes detected for CITY database '{}', updating...", cityName);
-            auto cityError = processDbEntry(cityPath, Type::CITY, cityUrl.value(), cityMd5.value(), createdAt);
+            auto cityError = processDbEntry(cityPath, Type::CITY, cityUrl.value(), cityMd5.value(), createdAt.value());
             if (base::isError(cityError))
             {
                 LOG_ERROR("[Geo::Manager] Failed to process CITY database '{}': {}",
@@ -384,7 +391,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         else
         {
             LOG_INFO("[Geo::Manager] Changes detected for ASN database '{}', updating...", asnName);
-            auto asnError = processDbEntry(asnPath, Type::ASN, asnUrl.value(), asnMd5.value(), createdAt);
+            auto asnError = processDbEntry(asnPath, Type::ASN, asnUrl.value(), asnMd5.value(), createdAt.value());
             if (base::isError(asnError))
             {
                 LOG_ERROR("[Geo::Manager] Failed to process ASN database '{}': {}",

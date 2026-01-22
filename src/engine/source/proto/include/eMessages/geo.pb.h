@@ -211,8 +211,8 @@ class DbEntry final :
     kNameFieldNumber = 1,
     kPathFieldNumber = 2,
     kHashFieldNumber = 3,
-    kCreatedAtFieldNumber = 4,
     kTypeFieldNumber = 5,
+    kCreatedAtFieldNumber = 4,
   };
   // string name = 1;
   void clear_name();
@@ -256,20 +256,6 @@ class DbEntry final :
   std::string* _internal_mutable_hash();
   public:
 
-  // string createdAt = 4;
-  void clear_createdat();
-  const std::string& createdat() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_createdat(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_createdat();
-  PROTOBUF_NODISCARD std::string* release_createdat();
-  void set_allocated_createdat(std::string* createdat);
-  private:
-  const std::string& _internal_createdat() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_createdat(const std::string& value);
-  std::string* _internal_mutable_createdat();
-  public:
-
   // string type = 5;
   void clear_type();
   const std::string& type() const;
@@ -284,6 +270,15 @@ class DbEntry final :
   std::string* _internal_mutable_type();
   public:
 
+  // int64 createdAt = 4;
+  void clear_createdat();
+  int64_t createdat() const;
+  void set_createdat(int64_t value);
+  private:
+  int64_t _internal_createdat() const;
+  void _internal_set_createdat(int64_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.geo.DbEntry)
  private:
   class _Internal;
@@ -295,8 +290,8 @@ class DbEntry final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr hash_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr createdat_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
+    int64_t createdat_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1107,54 +1102,24 @@ inline void DbEntry::set_allocated_hash(std::string* hash) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbEntry.hash)
 }
 
-// string createdAt = 4;
+// int64 createdAt = 4;
 inline void DbEntry::clear_createdat() {
-  _impl_.createdat_.ClearToEmpty();
+  _impl_.createdat_ = int64_t{0};
 }
-inline const std::string& DbEntry::createdat() const {
+inline int64_t DbEntry::_internal_createdat() const {
+  return _impl_.createdat_;
+}
+inline int64_t DbEntry::createdat() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbEntry.createdAt)
   return _internal_createdat();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void DbEntry::set_createdat(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.createdat_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+inline void DbEntry::_internal_set_createdat(int64_t value) {
+  
+  _impl_.createdat_ = value;
+}
+inline void DbEntry::set_createdat(int64_t value) {
+  _internal_set_createdat(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbEntry.createdAt)
-}
-inline std::string* DbEntry::mutable_createdat() {
-  std::string* _s = _internal_mutable_createdat();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbEntry.createdAt)
-  return _s;
-}
-inline const std::string& DbEntry::_internal_createdat() const {
-  return _impl_.createdat_.Get();
-}
-inline void DbEntry::_internal_set_createdat(const std::string& value) {
-  
-  _impl_.createdat_.Set(value, GetArenaForAllocation());
-}
-inline std::string* DbEntry::_internal_mutable_createdat() {
-  
-  return _impl_.createdat_.Mutable(GetArenaForAllocation());
-}
-inline std::string* DbEntry::release_createdat() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbEntry.createdAt)
-  return _impl_.createdat_.Release();
-}
-inline void DbEntry::set_allocated_createdat(std::string* createdat) {
-  if (createdat != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.createdat_.SetAllocated(createdat, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.createdat_.IsDefault()) {
-    _impl_.createdat_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbEntry.createdAt)
 }
 
 // string type = 5;

@@ -8,7 +8,7 @@
 namespace geo
 {
 
-class DbHandle; ///< Forward declaration
+class DbHandle;   ///< Forward declaration
 class DbInstance; ///< Forward declaration
 
 class Locator final : public ILocator
@@ -16,8 +16,8 @@ class Locator final : public ILocator
 private:
     std::weak_ptr<DbHandle> m_handle;
     std::shared_ptr<const DbInstance> m_cachedDb; // To invalidate cache if the database changes
-    std::string m_cachedIp;              ///< The cached IP address.
-    MMDB_lookup_result_s m_cachedResult; ///< The cached lookup result.
+    std::string m_cachedIp;                       ///< The cached IP address.
+    MMDB_lookup_result_s m_cachedResult;          ///< The cached lookup result.
 
     /**
      * @brief Retrieves the entry data for a given dot path.
@@ -55,7 +55,7 @@ public:
      * @param handle The database handle to use for the locator.
      */
     Locator(const std::shared_ptr<DbHandle>& handle)
-    : m_handle(handle)
+        : m_handle(handle)
     {
         if (!handle)
         {

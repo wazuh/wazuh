@@ -370,7 +370,7 @@ echo "[post] pip list (summary):"
 # Enable argcomplete for each tool in bash
 if [ -x "$VENV/bin/register-python-argcomplete" ]; then
   echo "[post] Registering bash completion for engine tools..."
-  for tool in engine-private engine-public engine-archiver engine-geo engine-test engine-helper-test engine-it engine-router; do
+  for tool in engine-private engine-public engine-archiver engine-test engine-helper-test engine-it engine-router; do
     "$VENV/bin/register-python-argcomplete" "$tool" > "/etc/bash_completion.d/$tool" 2>/dev/null || true
   done
 fi

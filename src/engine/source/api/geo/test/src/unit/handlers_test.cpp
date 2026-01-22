@@ -122,8 +122,8 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_status(eEngine::ReturnStatus::OK);
 
                 std::vector<::geo::DbInfo> dbs = {
-                    {"path0", "name0", "hash0", "2024-01-01T00:00:00Z", ::geo::Type::CITY},
-                    {"path1", "name1", "hash1", "2024-01-01T00:00:00Z", ::geo::Type::ASN}};
+                    {"path0", "name0", "hash0", 1769111225, ::geo::Type::CITY},
+                    {"path1", "name1", "hash1", 1769111225, ::geo::Type::ASN}};
 
                 for (const auto& db : dbs)
                 {
@@ -140,8 +140,8 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto& mock)
             {
                 std::vector<::geo::DbInfo> dbs = {
-                    {"path0", "name0", "hash0", "2024-01-01T00:00:00Z", ::geo::Type::CITY},
-                    {"path1", "name1", "hash1", "2024-01-01T00:00:00Z", ::geo::Type::ASN}};
+                    {"path0", "name0", "hash0", 1769111225, ::geo::Type::CITY},
+                    {"path1", "name1", "hash1", 1769111225, ::geo::Type::ASN}};
 
                 EXPECT_CALL(mock, listDbs()).WillOnce(testing::Return(dbs));
             }),

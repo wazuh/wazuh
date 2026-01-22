@@ -103,7 +103,7 @@ protected:
         docJson.setString(path, PATH_PATH);
         docJson.setString(typeName(Type::CITY), TYPE_PATH);
         docJson.setString("hash", HASH_PATH);
-        docJson.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+        docJson.setInt64(0, GENERATED_AT_PATH);
 
         EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
 
@@ -221,7 +221,7 @@ TEST(LocatorInitTest, Initialize)
     auto path = createTmpDbCopy(tmpFiles);
 
     auto handle = std::make_shared<DbHandle>();
-    ASSERT_NO_THROW(handle->store(std::make_shared<DbInstance>(path, "test-hash", "2024-01-01T00:00:00Z", Type::CITY)));
+    ASSERT_NO_THROW(handle->store(std::make_shared<DbInstance>(path, "test-hash", 1769111225, Type::CITY)));
 
     ASSERT_NO_THROW(Locator {handle});
 
@@ -484,12 +484,12 @@ TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsert)
     json::Json manifest;
     manifest.setString("https://example.com/city.tar.gz", "/city/url");
     manifest.setString(newHash, "/city/md5");
-    manifest.setString("2024-01-02T00:00:00Z", "/city/createdAt");
+    manifest.setInt64(0, GENERATED_AT_PATH);
 
     // Store: return old hash to trigger update
     auto internalName =
         base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(dbPath).filename().string()));
-    EXPECT_CALL(*mockStore, readInternalDoc(internalName))
+    EXPECT_CALL(*mockStore, readDoc(internalName))
         .WillRepeatedly(
             testing::Return(storeReadDocResp(json::Json(R"({"hash":"oldHash","createdAt":"2024-01-01T00:00:00Z"})"))));
 
@@ -500,9 +500,9 @@ TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsert)
     EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
         .WillRepeatedly(testing::Return(base::RespOrError<std::string>(content)));
 
-    // Mock extractMmdbFromTarGz to create temp file
+    // Mock extractMmdbFromGz to create temp file
     std::string tmpPath = dbPath + ".tmp";
-    EXPECT_CALL(*mockDownloader, extractMmdbFromTarGz(testing::_, testing::_))
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(testing::_, testing::_))
         .WillOnce(testing::Invoke(
             [tmpPath, &content](const std::string&, const std::string&)
             {
@@ -513,7 +513,7 @@ TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsert)
             }));
 
     // Store upsert
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_)).WillOnce(testing::Return(storeOk()));
 
     // 3) Execute the manifest-based update
     ASSERT_NO_THROW(manager->remoteUpsert(manifestUrl, dbPath, ""));

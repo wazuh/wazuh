@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: Wazuh-Engine Events Ingestion API
+  description: API for ingesting enriched security events into the Wazuh-Engine.
+  version: 1.0.0
+
+servers:
+  - url: "http+unix:/var/ossec/queue/sockets/queue-http.sock"
+    description: "Events ingestion socket"
+
+tags:
+  - name: Events
+    description: Event ingestion endpoints
+
+#################################################################################
+# Paths
+#################################################################################
+paths:
+  ################################
+  # Events
+  ################################
+  /events/enriched:
+    post:
+      tags:
+        - Events
+      summary: Ingest enriched events (NDJSON)
+      description: |
+        Accepts a newline-delimited JSON (NDJSON) stream of enriched events over HTTP via Unix domain socket.
+        Socket path: /var/ossec/queue/sockets/queue-http.sock
+      requestBody:
+        required: true
+        content:
+          application/x-ndjson:
+            schema:
+              type: string
+              description: Newline-delimited JSON; one JSON object per line.
+            examples:
+              sample:
+                value: |-
+                  {"ts":"2025-09-01T10:00:00Z","rule_id":1001,"agent_id":"001","data":{"k":"v"}}
+                  {"ts":"2025-09-01T10:00:01Z","rule_id":1002,"agent_id":"001","data":{"k2":"v2"}}
+      responses:
+        "200":
+          description: Events accepted. (Empty body)
+        "400":
+          description: Invalid NDJSON payload.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: integer
+                required: [error, code]
+              examples:
+                emptyBatch:
+                  value: {"error":"NDJson parser error, empty batch","code":400}
+                emptyLine:
+                  value: {"error":"NDJson parser error, empty line","code":400}
+                invalidLine:
+                  value: {"error":"NDJson parser error, invalid ndjson line or event: '...'", "code":400}
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: integer
+                required: [error, code]
+              examples:
+                orchestratorUnavailable:
+                  value: {"error":"Internal server error","code":500}

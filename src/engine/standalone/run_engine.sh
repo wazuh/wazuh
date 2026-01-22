@@ -8,6 +8,7 @@ SOCKET_PATH="$SCRIPT_DIR/sockets"
 LOG_PATH="$SCRIPT_DIR/logs"
 
 export WAZUH_TZDB_PATH="${DATA_PATH}/tzdb"
+export WAZUH_GEO_DB_PATH="${DATA_PATH}/mmdb"
 export WAZUH_ENGINE_STANDALONE="true"
 export WAZUH_STANDALONE_LOG_LEVEL="info"
 export WAZUH_STORE_PATH="${DATA_PATH}/store"

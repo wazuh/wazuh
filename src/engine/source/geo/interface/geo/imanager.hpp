@@ -69,7 +69,7 @@ struct DbInfo
     std::string name;
     std::string path;
     std::string hash;
-    std::string createdAt;
+    int64_t createdAt;
     Type type;
 };
 
@@ -101,16 +101,45 @@ public:
 
     /**
      * @brief Remote upsert databases from a manifest URL. Downloads, validates, and updates databases based on
-     * manifest metadata.
+     * manifest metadata with automatic hash-based update detection.
+     *
+     * Update Flow:
+     * 1. Download manifest JSON (contains generated_at, city.url, city.md5, asn.url, asn.md5)
+     * 2. For each database type (CITY / ASN):
+     *
+     *    Case A - Database doesn't exist in manager/store:
+     *      1. Download gz from manifest URL
+     *      2. Calculate MD5 hash of downloaded gz
+     *      3. Compare with manifest MD5 (retry up to N times on mismatch)
+     *      4. Decompress gz and extract .mmdb file
+     *      5. Write .mmdb to final path (cityPath or asnPath)
+     *      6. Hot-load database into manager (no restart required)
+     *      7. Store metadata in internal store: path, type, hash (MD5), generated_at
+     *
+     *    Case B - Database already exists:
+     *      1. Read stored hash from internal store
+     *      2. Compare stored_hash with manifest MD5
+     *      3. If equal => early-exit (already up-to-date, logged at DEBUG level)
+     *      4. If different => execute update:
+     *         - Download gz
+     *         - Validate MD5
+     *         - Decompress/extract .mmdb
+     *         - Replace file on disk
+     *         - Hot-reload in memory (atomic swap)
+     *         - Update store metadata with new hash and generated_at
+     *
+     * Logging:
+     * - LOG_DEBUG: Hash comparisons, early-exit decisions
+     * - LOG_INFO: Download progress, successful updates
+     * - LOG_ERROR: Download failures, MD5 mismatches, decompression errors
      *
      * @param manifestUrl URL to download the manifest JSON.
      * @param cityPath Path to store the city database (if present in manifest).
      * @param asnPath Path to store the ASN database (if present in manifest).
-     * @return base::OptError An error if the databases could not be downloaded or stored.
+     * @throws Logs errors but does not throw exceptions. Check logs for operation status.
      */
-virtual void remoteUpsert(const std::string& manifestUrl,
-                              const std::string& cityPath,
-                              const std::string& asnPath) = 0;
+    virtual void
+    remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath) = 0;
 
     /**
      * @brief Get a locator for querying the given type of database.

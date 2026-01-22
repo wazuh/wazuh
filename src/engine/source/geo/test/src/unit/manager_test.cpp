@@ -142,7 +142,7 @@ protected:
         docJson.setString(path, PATH_PATH);
         docJson.setString(typeName(type), TYPE_PATH);
         docJson.setString("hash", HASH_PATH);
-        docJson.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+        docJson.setInt64(1769111225, GENERATED_AT_PATH);
         auto internalName =
             base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
         EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
@@ -170,7 +170,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc1.setString(doc1File, PATH_PATH);
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
-    doc1.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+    doc1.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc1Name("geo/db1");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
@@ -179,7 +179,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc2.setString(doc2File, PATH_PATH);
     doc2.setString("city", TYPE_PATH);
     doc2.setString("hash2", HASH_PATH);
-    doc2.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+    doc2.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc2Name("geo/db2");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
 
@@ -213,7 +213,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
     doc1.setString(doc1File, PATH_PATH);
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
-    doc1.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+    doc1.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc1Name("geo/db1");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
@@ -243,7 +243,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc1.setString(doc1File, PATH_PATH);
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
-    doc1.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+    doc1.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc1Name("geo/db1");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
@@ -252,7 +252,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc2.setString(doc2File, PATH_PATH);
     doc2.setString("city", TYPE_PATH);
     doc2.setString("hash2", HASH_PATH);
-    doc2.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+    doc2.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc2Name("geo/db2");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
 
@@ -310,7 +310,7 @@ TEST_F(GeoManagerTest, RemoteUpsert)
 
     // Prepare manifest
     json::Json manifest;
-    manifest.setString("2024-01-01T00:00:00Z", "/created_at");
+    manifest.setInt64(1769111225, "/generated_at");
     manifest.setString("https://example.com/city.tar.gz", "/city/url");
     manifest.setString(cityHash, "/city/md5");
     manifest.setString("https://example.com/asn.tar.gz", "/asn/url");
@@ -325,7 +325,7 @@ TEST_F(GeoManagerTest, RemoteUpsert)
         .WillRepeatedly(testing::Return(base::RespOrError<std::string>(cityContent)));
     EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/asn.tar.gz"))
         .WillRepeatedly(testing::Return(base::RespOrError<std::string>(asnContent)));
-    EXPECT_CALL(*mockDownloader, extractMmdbFromTarGz(cityContent, cityPath + ".tmp"))
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(cityContent, cityPath + ".tmp"))
         .WillOnce(testing::Invoke(
             [cityContent, cityPath](const std::string&, const std::string&) -> base::OptError
             {
@@ -335,7 +335,7 @@ TEST_F(GeoManagerTest, RemoteUpsert)
                 ofs.close();
                 return base::noError();
             }));
-    EXPECT_CALL(*mockDownloader, extractMmdbFromTarGz(asnContent, asnPath + ".tmp"))
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(asnContent, asnPath + ".tmp"))
         .WillOnce(testing::Invoke(
             [asnContent, asnPath](const std::string&, const std::string&) -> base::OptError
             {
@@ -345,12 +345,12 @@ TEST_F(GeoManagerTest, RemoteUpsert)
                 ofs.close();
                 return base::noError();
             }));
-    EXPECT_CALL(*mockStore, readInternalDoc(cityInternalName))
+    EXPECT_CALL(*mockStore, readDoc(cityInternalName))
         .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
-    EXPECT_CALL(*mockStore, readInternalDoc(asnInternalName))
+    EXPECT_CALL(*mockStore, readDoc(asnInternalName))
         .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(cityInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(asnInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(cityInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(asnInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
 
     ASSERT_NO_THROW(manager.remoteUpsert(manifestUrl, cityPath, asnPath));
 
@@ -384,25 +384,25 @@ TEST_F(GeoManagerTest, RemoteUpsertAlreadyUpdated)
     auto cityInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(cityPath).filename().string());
     auto asnInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(asnPath).filename().string());
 
-    EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
         .WillOnce(testing::Return(storeReadColResp({cityInternalName, asnInternalName})));
 
     json::Json cityDoc;
     cityDoc.setString(cityPath, PATH_PATH);
     cityDoc.setString(typeName(Type::CITY), TYPE_PATH);
     cityDoc.setString(cityHash, HASH_PATH);
-    cityDoc.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+    cityDoc.setInt64(1769111225, GENERATED_AT_PATH);
 
     json::Json asnDoc;
     asnDoc.setString(asnPath, PATH_PATH);
     asnDoc.setString(typeName(Type::ASN), TYPE_PATH);
     asnDoc.setString(asnHash, HASH_PATH);
-    asnDoc.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
+    asnDoc.setInt64(1769111225, GENERATED_AT_PATH);
 
-    EXPECT_CALL(*mockStore, readInternalDoc(cityInternalName))
+    EXPECT_CALL(*mockStore, readDoc(cityInternalName))
         .WillOnce(testing::Return(storeReadDocResp(cityDoc)))
         .WillOnce(testing::Return(storeReadDocResp(cityDoc)));
-    EXPECT_CALL(*mockStore, readInternalDoc(asnInternalName))
+    EXPECT_CALL(*mockStore, readDoc(asnInternalName))
         .WillOnce(testing::Return(storeReadDocResp(asnDoc)))
         .WillOnce(testing::Return(storeReadDocResp(asnDoc)));
 
@@ -410,7 +410,7 @@ TEST_F(GeoManagerTest, RemoteUpsertAlreadyUpdated)
 
     // Prepare manifest with same hashes
     json::Json manifest;
-    manifest.setString("2024-01-01T00:00:00Z", "/created_at");
+    manifest.setInt64(1769111225, "/generated_at");
     manifest.setString("https://example.com/city.tar.gz", "/city/url");
     manifest.setString(cityHash, "/city/md5");
     manifest.setString("https://example.com/asn.tar.gz", "/asn/url");

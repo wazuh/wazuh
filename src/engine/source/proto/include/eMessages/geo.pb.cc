@@ -30,8 +30,8 @@ PROTOBUF_CONSTEXPR DbEntry::DbEntry(
     /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.path_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.hash_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.createdat_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.type_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.createdat_)*/int64_t{0}
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct DbEntryDefaultTypeInternal {
   PROTOBUF_CONSTEXPR DbEntryDefaultTypeInternal()
@@ -173,7 +173,7 @@ const char descriptor_table_protodef_geo_2eproto[] PROTOBUF_SECTION_VARIABLE(pro
   "\n\tgeo.proto\022\030com.wazuh.api.engine.geo\032\014e"
   "ngine.proto\032\034google/protobuf/struct.prot"
   "o\"T\n\007DbEntry\022\014\n\004name\030\001 \001(\t\022\014\n\004path\030\002 \001(\t"
-  "\022\014\n\004hash\030\003 \001(\t\022\021\n\tcreatedAt\030\004 \001(\t\022\014\n\004typ"
+  "\022\014\n\004hash\030\003 \001(\t\022\021\n\tcreatedAt\030\004 \001(\003\022\014\n\004typ"
   "e\030\005 \001(\t\"\033\n\rDbGet_Request\022\n\n\002ip\030\001 \001(\t\"z\n\016"
   "DbGet_Response\0222\n\006status\030\001 \001(\0162\".com.waz"
   "uh.api.engine.ReturnStatus\022\r\n\005error\030\002 \001("
@@ -228,8 +228,8 @@ DbEntry::DbEntry(const DbEntry& from)
       decltype(_impl_.name_){}
     , decltype(_impl_.path_){}
     , decltype(_impl_.hash_){}
-    , decltype(_impl_.createdat_){}
     , decltype(_impl_.type_){}
+    , decltype(_impl_.createdat_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -257,14 +257,6 @@ DbEntry::DbEntry(const DbEntry& from)
     _this->_impl_.hash_.Set(from._internal_hash(), 
       _this->GetArenaForAllocation());
   }
-  _impl_.createdat_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.createdat_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_createdat().empty()) {
-    _this->_impl_.createdat_.Set(from._internal_createdat(), 
-      _this->GetArenaForAllocation());
-  }
   _impl_.type_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.type_.Set("", GetArenaForAllocation());
@@ -273,6 +265,7 @@ DbEntry::DbEntry(const DbEntry& from)
     _this->_impl_.type_.Set(from._internal_type(), 
       _this->GetArenaForAllocation());
   }
+  _this->_impl_.createdat_ = from._impl_.createdat_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.geo.DbEntry)
 }
 
@@ -284,8 +277,8 @@ inline void DbEntry::SharedCtor(
       decltype(_impl_.name_){}
     , decltype(_impl_.path_){}
     , decltype(_impl_.hash_){}
-    , decltype(_impl_.createdat_){}
     , decltype(_impl_.type_){}
+    , decltype(_impl_.createdat_){int64_t{0}}
     , /*decltype(_impl_._cached_size_)*/{}
   };
   _impl_.name_.InitDefault();
@@ -299,10 +292,6 @@ inline void DbEntry::SharedCtor(
   _impl_.hash_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.hash_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.createdat_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.createdat_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.type_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -324,7 +313,6 @@ inline void DbEntry::SharedDtor() {
   _impl_.name_.Destroy();
   _impl_.path_.Destroy();
   _impl_.hash_.Destroy();
-  _impl_.createdat_.Destroy();
   _impl_.type_.Destroy();
 }
 
@@ -341,8 +329,8 @@ void DbEntry::Clear() {
   _impl_.name_.ClearToEmpty();
   _impl_.path_.ClearToEmpty();
   _impl_.hash_.ClearToEmpty();
-  _impl_.createdat_.ClearToEmpty();
   _impl_.type_.ClearToEmpty();
+  _impl_.createdat_ = int64_t{0};
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -382,13 +370,11 @@ const char* DbEntry::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // string createdAt = 4;
+      // int64 createdAt = 4;
       case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
-          auto str = _internal_mutable_createdat();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.createdat_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbEntry.createdAt"));
         } else
           goto handle_unusual;
         continue;
@@ -461,14 +447,10 @@ uint8_t* DbEntry::_InternalSerialize(
         3, this->_internal_hash(), target);
   }
 
-  // string createdAt = 4;
-  if (!this->_internal_createdat().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_createdat().data(), static_cast<int>(this->_internal_createdat().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbEntry.createdAt");
-    target = stream->WriteStringMaybeAliased(
-        4, this->_internal_createdat(), target);
+  // int64 createdAt = 4;
+  if (this->_internal_createdat() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt64ToArray(4, this->_internal_createdat(), target);
   }
 
   // string type = 5;
@@ -518,18 +500,16 @@ size_t DbEntry::ByteSizeLong() const {
         this->_internal_hash());
   }
 
-  // string createdAt = 4;
-  if (!this->_internal_createdat().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_createdat());
-  }
-
   // string type = 5;
   if (!this->_internal_type().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_type());
+  }
+
+  // int64 createdAt = 4;
+  if (this->_internal_createdat() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int64SizePlusOne(this->_internal_createdat());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -559,11 +539,11 @@ void DbEntry::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOB
   if (!from._internal_hash().empty()) {
     _this->_internal_set_hash(from._internal_hash());
   }
-  if (!from._internal_createdat().empty()) {
-    _this->_internal_set_createdat(from._internal_createdat());
-  }
   if (!from._internal_type().empty()) {
     _this->_internal_set_type(from._internal_type());
+  }
+  if (from._internal_createdat() != 0) {
+    _this->_internal_set_createdat(from._internal_createdat());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -597,13 +577,10 @@ void DbEntry::InternalSwap(DbEntry* other) {
       &other->_impl_.hash_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.createdat_, lhs_arena,
-      &other->_impl_.createdat_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.type_, lhs_arena,
       &other->_impl_.type_, rhs_arena
   );
+  swap(_impl_.createdat_, other->_impl_.createdat_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata DbEntry::GetMetadata() const {

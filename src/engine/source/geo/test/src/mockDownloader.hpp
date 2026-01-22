@@ -13,7 +13,7 @@ public:
     MOCK_METHOD((base::RespOrError<std::string>), downloadHTTPS, (const std::string& url), (const override));
     MOCK_METHOD((base::RespOrError<json::Json>), downloadManifest, (const std::string& url), (const override));
     MOCK_METHOD((base::OptError),
-                extractMmdbFromTarGz,
+                extractMmdbFromGz,
                 (const std::string& tarGzContent, const std::string& outputPath),
                 (const override));
 };

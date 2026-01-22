@@ -98,7 +98,7 @@ def init_geo_store(env_path: Path, test_path: Path):
     geo_store_path.mkdir(parents=True, exist_ok=True)
 
     # Current timestamp in ISO 8601 format
-    created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    generated_at = int(datetime.now(timezone.utc).timestamp() * 1000)
 
     db_name = "base.mmdb"
     db_type = "city"
@@ -114,7 +114,7 @@ def init_geo_store(env_path: Path, test_path: Path):
         "path": dest_db.as_posix(),
         "type": db_type,
         "hash": db_hash,
-        "created_at": created_at
+        "generated_at": generated_at
     }
 
     # Write JSON to store/geo/{db_name}.json
