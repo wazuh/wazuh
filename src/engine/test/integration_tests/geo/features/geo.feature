@@ -1,65 +1,35 @@
-Feature: Manage Geolocation Databases
+Feature: Query Geolocation Databases
     As a user of the Wazuh geo manager API
-    I want to be able to add, delete, list, and remotely upsert geolocation databases
-    So that I can manage databases effectively in the system
+    I want to be able to list databases and query IP addresses
+    So that I can retrieve geolocation information
 
     Background:
-        Given the engine is running with an empty geo manager
-
-    Scenario: Add a new geolocation database
-        Given an existing db file "testdb-city.mmdb"
-        When I send a request to add a database with path to "testdb-city.mmdb" and type "city"
-        Then the response should be a "success"
-        And the database list "should" include "testdb-city.mmdb"
-
-    Scenario: Attempt to add a database with invalid path
-        Given a non-existent db file "nonexistent.mmdb"
-        When I send a request to add a database with path to "nonexistent.mmdb" and type "city"
-        Then the response should be a "failure"
-        And the error message "Cannot add database '{nonexistent.mmdb}': Error opening the specified MaxMind DB file" is returned
-
-    Scenario: Attempt to add a database with an invalid type
-        Given an existing db file "testdb-city.mmdb"
-        When I send a request to add a database with path to "testdb-city.mmdb" and type "invalid"
-        Then the response should be a "failure"
-        And the error message "Invalid geo::Type name string 'invalid'" is returned
-
-    Scenario: Delete an existing database
-        Given an existing db file "testdb-city.mmdb"
-        And the database "testdb-city.mmdb" for type "asn" is already added to the geo manager
-        When I send a delete request for the path to "testdb-city.mmdb"
-        Then the response should be a "success"
-        And the database list "should not" include "testdb-city.mmdb"
-
-    Scenario: Attempt to delete a non-existent database
-        When I send a delete request for the path to "testdb-city.mmdb"
-        Then the response should be a "failure"
-        And the error message "Database 'testdb-city.mmdb' not found" is returned
+        Given the engine is running with geo manager
 
     Scenario: List all databases
-        Given an existing db file "testdb-asn.mmdb"
-        And an existing db file "testdb-city.mmdb"
-        And the database "testdb-asn.mmdb" for type "asn" is already added to the geo manager
-        And the database "testdb-city.mmdb" for type "city" is already added to the geo manager
         When I send a request to list all databases
         Then the response should be a "success"
-        Then the response should include "testdb-asn.mmdb"
-        And the response should include "testdb-city.mmdb"
+        And the response should contain a list of databases
 
-    Scenario: Remotely upsert a geolocation database
-        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.md5"
+    Scenario: Query IP address with both CITY and ASN data
+        When I query the IP address "1.2.3.4"
         Then the response should be a "success"
-        And the database list "should" include "testdb-city.mmdb"
+        And the response should contain "geo" data
+        And the response should contain "as" data
 
-    Scenario: Added db persists after restart
-        Given an existing db file "testdb-city.mmdb"
-        When I send a request to add a database with path to "testdb-city.mmdb" and type "city"
+    Scenario: Query IP address with only CITY data
+        When I query the IP address "1.2.3.4"
         Then the response should be a "success"
-        When I restart the engine
-        Then the database list "should" include "testdb-city.mmdb"
+        And the response should contain "geo" data
+        And the response should contain empty "as" data
 
-    Scenario: Remotely added db persists after restart
-        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.md5"
+    Scenario: Query IP address with empty IP
+        When I query the IP address "<empty>"
+        Then the response should be a "failure"
+        And the error message should contain "IP cannot be empty"
+
+    Scenario: Query IP address not in databases
+        When I query the IP address "127.0.0.1"
         Then the response should be a "success"
-        When I restart the engine
-        Then the database list "should" include "testdb-city.mmdb"
+        And the response should contain empty "geo" data
+        And the response should contain empty "as" data

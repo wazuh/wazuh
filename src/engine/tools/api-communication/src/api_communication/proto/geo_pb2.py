@@ -12,25 +12,24 @@ _sym_db = _symbol_database.Default()
 
 
 import api_communication.proto.engine_pb2 as _engine_pb2
+from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tgeo.proto\x12\x18\x63om.wazuh.api.engine.geo\x1a\x0c\x65ngine.proto\"3\n\x07\x44\x62\x45ntry\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04path\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\",\n\x0e\x44\x62Post_Request\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\" \n\x10\x44\x62\x44\x65lete_Request\x12\x0c\n\x04path\x18\x01 \x01(\t\"\x10\n\x0e\x44\x62List_Request\"\x97\x01\n\x0f\x44\x62List_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x32\n\x07\x65ntries\x18\x03 \x03(\x0b\x32!.com.wazuh.api.engine.geo.DbEntryB\x08\n\x06_error\"T\n\x16\x44\x62RemoteUpsert_Request\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\r\n\x05\x64\x62Url\x18\x03 \x01(\t\x12\x0f\n\x07hashUrl\x18\x04 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tgeo.proto\x12\x18\x63om.wazuh.api.engine.geo\x1a\x0c\x65ngine.proto\x1a\x1cgoogle/protobuf/struct.proto\"T\n\x07\x44\x62\x45ntry\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04path\x18\x02 \x01(\t\x12\x0c\n\x04hash\x18\x03 \x01(\t\x12\x11\n\tcreatedAt\x18\x04 \x01(\t\x12\x0c\n\x04type\x18\x05 \x01(\t\"\x1b\n\rDbGet_Request\x12\n\n\x02ip\x18\x01 \x01(\t\"z\n\x0e\x44\x62Get_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12%\n\x04\x64\x61ta\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\"\x10\n\x0e\x44\x62List_Request\"\x97\x01\n\x0f\x44\x62List_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x32\n\x07\x65ntries\x18\x03 \x03(\x0b\x32!.com.wazuh.api.engine.geo.DbEntryB\x08\n\x06_errorb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'geo_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _DBENTRY._serialized_start=53
-  _DBENTRY._serialized_end=104
-  _DBPOST_REQUEST._serialized_start=106
-  _DBPOST_REQUEST._serialized_end=150
-  _DBDELETE_REQUEST._serialized_start=152
-  _DBDELETE_REQUEST._serialized_end=184
-  _DBLIST_REQUEST._serialized_start=186
-  _DBLIST_REQUEST._serialized_end=202
-  _DBLIST_RESPONSE._serialized_start=205
-  _DBLIST_RESPONSE._serialized_end=356
-  _DBREMOTEUPSERT_REQUEST._serialized_start=358
-  _DBREMOTEUPSERT_REQUEST._serialized_end=442
+  _DBENTRY._serialized_start=83
+  _DBENTRY._serialized_end=167
+  _DBGET_REQUEST._serialized_start=169
+  _DBGET_REQUEST._serialized_end=196
+  _DBGET_RESPONSE._serialized_start=198
+  _DBGET_RESPONSE._serialized_end=320
+  _DBLIST_REQUEST._serialized_start=322
+  _DBLIST_REQUEST._serialized_end=338
+  _DBLIST_RESPONSE._serialized_start=341
+  _DBLIST_RESPONSE._serialized_end=492
 # @@protoc_insertion_point(module_scope)

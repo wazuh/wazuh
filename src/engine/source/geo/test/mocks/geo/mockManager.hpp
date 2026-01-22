@@ -10,11 +10,9 @@ namespace geo::mocks
 class MockManager : public IManager
 {
 public:
-    MOCK_METHOD(base::OptError, addDb, (const std::string& path, Type type), (override));
-    MOCK_METHOD(base::OptError, removeDb, (const std::string& path), (override));
-    MOCK_METHOD(base::OptError,
-                remoteUpsertDb,
-                (const std::string& path, Type type, const std::string& dbUrl, const std::string& hashUrl),
+    MOCK_METHOD(void,
+                remoteUpsert,
+                (const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath),
                 (override));
     MOCK_METHOD(std::vector<DbInfo>, listDbs, (), (const, override));
     MOCK_METHOD(base::RespOrError<std::shared_ptr<ILocator>>, getLocator, (Type type), (const, override));

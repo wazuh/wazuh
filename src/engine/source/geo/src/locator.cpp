@@ -248,6 +248,31 @@ static const std::string LIBMMD_ERROR = "Error from libmaxminddb: ";
 namespace geo
 {
 
+base::RespOrError<std::shared_ptr<const DbInstance>> Locator::validateAndGetDb()
+{
+    auto handle = m_handle.lock();
+    if (!handle)
+    {
+        return base::Error {"Database handle expired"};
+    }
+
+    auto db = handle->load();
+    if (!db)
+    {
+        return base::Error {"Database is not available"};
+    }
+
+    // If the instance changed, invalidate the cache
+    if (db != m_cachedDb)
+    {
+        m_cachedDb = db;
+        m_cachedIp.clear();
+        m_cachedResult = MMDB_lookup_result_s{};
+    }
+
+    return db;
+}
+
 base::OptError Locator::lookup(const std::string& ip, const std::shared_ptr<const DbInstance>& db)
 {
     if (ip == m_cachedIp)
@@ -299,35 +324,19 @@ base::RespOrError<MMDB_entry_data_s> Locator::getEData(const DotPath& path)
 
 base::RespOrError<std::string> Locator::getString(const std::string& ip, const DotPath& path)
 {
-    // Check if the database entry is still valid
-    auto handle = m_handle.lock();
-    if (!handle)
+    auto dbResp = validateAndGetDb();
+    if (base::isError(dbResp))
     {
-        return base::Error {"Database handle expired"};
+        return base::getError(dbResp);
     }
+    auto db = base::getResponse(dbResp);
 
-    auto db = handle->load();
-    if (!db)
-    {
-        return base::Error {"Database is not available"};
-    }
-
-    // If the instance changed, invalidate the cache
-    if (db != m_cachedDb)
-    {
-        m_cachedDb = db;
-        m_cachedIp.clear();
-        m_cachedResult = MMDB_lookup_result_s{};
-    }
-
-    // Lookup the IP address in the database
     auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
     }
 
-    // Retrieve the entry data for the given path
     auto eDataResp = getEData(path);
     if (base::isError(eDataResp))
     {
@@ -346,35 +355,19 @@ base::RespOrError<std::string> Locator::getString(const std::string& ip, const D
 
 base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotPath& path)
 {
-    // Check if the database entry is still valid
-    auto handle = m_handle.lock();
-    if (!handle)
+    auto dbResp = validateAndGetDb();
+    if (base::isError(dbResp))
     {
-        return base::Error {"Database handle expired"};
+        return base::getError(dbResp);
     }
+    auto db = base::getResponse(dbResp);
 
-    auto db = handle->load();
-    if (!db)
-    {
-        return base::Error {"Database is not available"};
-    }
-
-    // If the instance changed, invalidate the cache
-    if (db != m_cachedDb)
-    {
-        m_cachedDb = db;
-        m_cachedIp.clear();
-        m_cachedResult = MMDB_lookup_result_s{};
-    }
-
-    // Lookup the IP address in the database
     auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
     }
 
-    // Retrieve the entry data for the given path
     auto eDataResp = getEData(path);
     if (base::isError(eDataResp))
     {
@@ -393,35 +386,19 @@ base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotP
 
 base::RespOrError<double> Locator::getDouble(const std::string& ip, const DotPath& path)
 {
-    // Check if the database entry is still valid
-    auto handle = m_handle.lock();
-    if (!handle)
+    auto dbResp = validateAndGetDb();
+    if (base::isError(dbResp))
     {
-        return base::Error {"Database handle expired"};
+        return base::getError(dbResp);
     }
+    auto db = base::getResponse(dbResp);
 
-    auto db = handle->load();
-    if (!db)
-    {
-        return base::Error {"Database is not available"};
-    }
-
-    // If the instance changed, invalidate the cache
-    if (db != m_cachedDb)
-    {
-        m_cachedDb = db;
-        m_cachedIp.clear();
-        m_cachedResult = MMDB_lookup_result_s{};
-    }
-
-    // Lookup the IP address in the database
     auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
     }
 
-    // Retrieve the entry data for the given path
     auto eDataResp = getEData(path);
     if (base::isError(eDataResp))
     {
@@ -440,35 +417,19 @@ base::RespOrError<double> Locator::getDouble(const std::string& ip, const DotPat
 
 base::RespOrError<json::Json> Locator::getAsJson(const std::string& ip, const DotPath& path)
 {
-    // Check if the database entry is still valid
-    auto handle = m_handle.lock();
-    if (!handle)
+    auto dbResp = validateAndGetDb();
+    if (base::isError(dbResp))
     {
-        return base::Error {"Database handle expired"};
+        return base::getError(dbResp);
     }
+    auto db = base::getResponse(dbResp);
 
-    auto db = handle->load();
-    if (!db)
-    {
-        return base::Error {"Database is not available"};
-    }
-
-    // If the instance changed, invalidate the cache
-    if (db != m_cachedDb)
-    {
-        m_cachedDb = db;
-        m_cachedIp.clear();
-        m_cachedResult = MMDB_lookup_result_s{};
-    }
-
-    // Lookup the IP address in the database
     auto lookError = lookup(ip, db);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
     }
 
-    // Retrieve the entry data for the given path
     auto eDataResp = getEData(path);
     if (base::isError(eDataResp))
     {
@@ -495,6 +456,55 @@ base::RespOrError<json::Json> Locator::getAsJson(const std::string& ip, const Do
         default: break;
     }
 
+    return result;
+}
+
+base::RespOrError<json::Json> Locator::getAll(const std::string& ip)
+{
+    auto dbResp = validateAndGetDb();
+    if (base::isError(dbResp))
+    {
+        return base::getError(dbResp);
+    }
+    auto db = base::getResponse(dbResp);
+
+    auto lookError = lookup(ip, db);
+    if (base::isError(lookError))
+    {
+        return base::getError(lookError);
+    }
+
+    if (!m_cachedResult.found_entry)
+    {
+        return base::Error {"No data found for the IP address"};
+    }
+
+    // Get complete entry data list
+    MMDB_entry_data_list_s* entry_data_list = nullptr;
+    int status = MMDB_get_entry_data_list(&m_cachedResult.entry, &entry_data_list);
+    if (MMDB_SUCCESS != status)
+    {
+        return base::Error {fmt::format("Error getting entry data list: {}", MMDB_strerror(status))};
+    }
+
+    if (!entry_data_list)
+    {
+        return base::Error {"Entry data list is empty"};
+    }
+
+    // Build JSON from entry data list
+    json::Json result {};
+    try
+    {
+        dumpEntryDataList(entry_data_list, result, "");
+    }
+    catch (const std::exception& e)
+    {
+        MMDB_free_entry_data_list(entry_data_list);
+        return base::Error {fmt::format("Error dumping entry data: {}", e.what())};
+    }
+
+    MMDB_free_entry_data_list(entry_data_list);
     return result;
 }
 

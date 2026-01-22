@@ -56,6 +56,15 @@ public:
      * @note this method not supported array or object type.
      */
     virtual base::RespOrError<json::Json> getAsJson(const std::string& ip, const DotPath& path) = 0;
+
+    /**
+     * @brief Get all data for the given IP as a complete JSON object.
+     *
+     * @param ip Target ip to query
+     * @return base::RespOrError<json::Json> Either the complete data as a json object or an error if the data could
+     * not be retrieved.
+     */
+    virtual base::RespOrError<json::Json> getAll(const std::string& ip) = 0;
 };
 
 } // namespace geo

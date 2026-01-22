@@ -43,6 +43,11 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "etc/ruleset").c_str());
     addUnit<size_t>(key::CM_SYNC_INTERVAL, "WAZUH_CM_SYNC_INTERVAL", 360);
 
+    // Geo module
+    addUnit<size_t>(key::GEO_SYNC_INTERVAL, "WAZUH_GEO_SYNC_INTERVAL", 360);
+    addUnit<std::string>(key::GEO_DB_PATH, "WAZUH_GEO_DB_PATH", (wazuhRoot / "engine/mmdb").c_str());
+    addUnit<std::string>(key::GEO_MANIFEST_URL, "WAZUH_GEO_MANIFEST_URL", "");
+
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
     addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");

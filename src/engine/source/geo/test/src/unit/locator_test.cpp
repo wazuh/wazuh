@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/utils/hash.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -102,6 +103,7 @@ protected:
         docJson.setString(path, PATH_PATH);
         docJson.setString(typeName(Type::CITY), TYPE_PATH);
         docJson.setString("hash", HASH_PATH);
+        docJson.setString("2024-01-01T00:00:00Z", CREATED_AT_PATH);
 
         EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
 
@@ -116,17 +118,6 @@ protected:
         for (const auto& file : tmpFiles)
         {
             std::filesystem::remove(file);
-        }
-    }
-
-    void removeDbs()
-    {
-        for (const auto& file : tmpFiles)
-        {
-            auto internalName =
-                base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(file).filename().string()));
-            EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillOnce(testing::Return(storeOk()));
-            manager->removeDb(file);
         }
     }
 
@@ -230,7 +221,7 @@ TEST(LocatorInitTest, Initialize)
     auto path = createTmpDbCopy(tmpFiles);
 
     auto handle = std::make_shared<DbHandle>();
-    ASSERT_NO_THROW(handle->store(std::make_shared<DbInstance>(path, Type::CITY)));
+    ASSERT_NO_THROW(handle->store(std::make_shared<DbInstance>(path, "test-hash", "2024-01-01T00:00:00Z", Type::CITY)));
 
     ASSERT_NO_THROW(Locator {handle});
 
@@ -273,12 +264,8 @@ TEST_F(LocatorTest, GetDeletedDb)
     testAllGetBehavesEqual(g_ipFullData, true);
 }
 
-// Must fail as the weak reference is expired
-TEST_F(LocatorTest, GetRemovedFromManagerDb)
-{
-    removeDbs();
-    testAllGetBehavesEqual(g_ipFullData, false);
-}
+// Database removal functionality has been removed
+// This test validated behavior when databases were removed from manager
 
 TEST_F(LocatorTest, GetUpdatesCache)
 {
@@ -393,58 +380,145 @@ TEST_F(LocatorTest, GetAsJson)
     ASSERT_EQ(expected, base::getResponse<json::Json>(res));
 }
 
-TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsertDb)
+TEST_F(LocatorTest, GetAllReturnsCompleteJson)
+{
+    // Test getAll returns complete JSON structure for IP with all data
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll(g_ipFullData));
+    ASSERT_FALSE(base::isError(res)) << base::getError(res).message;
+
+    auto jsonData = base::getResponse<json::Json>(res);
+
+    // Verify it contains the expected top-level keys from test database
+    ASSERT_TRUE(jsonData.exists("/test_array"));
+    ASSERT_TRUE(jsonData.exists("/test_map"));
+    ASSERT_TRUE(jsonData.exists("/test_boolean"));
+    ASSERT_TRUE(jsonData.exists("/test_bytes"));
+    ASSERT_TRUE(jsonData.exists("/test_double"));
+    ASSERT_TRUE(jsonData.exists("/test_float"));
+    ASSERT_TRUE(jsonData.exists("/test_uint16"));
+    ASSERT_TRUE(jsonData.exists("/test_uint32"));
+    ASSERT_TRUE(jsonData.exists("/test_uint64"));
+    ASSERT_TRUE(jsonData.exists("/test_uint128"));
+
+    // Verify nested structure is preserved
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str1"));
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str2"));
+    ASSERT_TRUE(jsonData.exists("/test_array/0"));
+
+    // Verify data types and values match those from GetAsJson test
+    ASSERT_EQ(jsonData.getBool("/test_boolean").value(), true);
+    ASSERT_EQ(jsonData.getString("/test_map/test_str1").value(), "Wazuh");
+    ASSERT_EQ(jsonData.getInt("/test_uint32").value(), 94043);
+}
+
+TEST_F(LocatorTest, GetAllWithIpNoData)
+{
+    // Test getAll with IP that has no data (IP not found in database)
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll(g_ipNotFound));
+    ASSERT_TRUE(base::isError(res));
+    // IP not found in database should return "No data found" error
+    ASSERT_NE(base::getError(res).message.find("No data found"), std::string::npos);
+}
+
+TEST_F(LocatorTest, GetAllWithInvalidIp)
+{
+    // Test getAll with invalid IP returns error
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll("invalid_ip"));
+    ASSERT_TRUE(base::isError(res));
+    ASSERT_NE(base::getError(res).message.find("Error translating IP address"), std::string::npos);
+}
+
+TEST_F(LocatorTest, GetAllReturnsCompleteStructure)
+{
+    // Test that getAll returns the complete nested structure
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll(g_ipFullData));
+    ASSERT_FALSE(base::isError(res)) << base::getError(res).message;
+
+    auto jsonData = base::getResponse<json::Json>(res);
+
+    // Verify array structure
+    ASSERT_TRUE(jsonData.isArray("/test_array"));
+    auto arraySize = jsonData.getArray("/test_array");
+    ASSERT_TRUE(arraySize.has_value());
+    ASSERT_GT(arraySize->size(), 0);
+
+    // Verify map structure
+    ASSERT_TRUE(jsonData.isObject("/test_map"));
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str1"));
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str2"));
+
+    // Verify primitive types are present and have correct types
+    ASSERT_TRUE(jsonData.isBool("/test_boolean"));
+    ASSERT_TRUE(jsonData.isString("/test_bytes"));
+    ASSERT_TRUE(jsonData.isNumber("/test_double"));
+    ASSERT_TRUE(jsonData.isNumber("/test_float"));
+    ASSERT_TRUE(jsonData.isNumber("/test_uint16"));
+    ASSERT_TRUE(jsonData.isNumber("/test_uint32"));
+}
+
+TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsert)
 {
     // 1) Populate the cache and capture the current MMDB pointer
     ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
     auto prev = locator->getCachedResult();
     ASSERT_NE(prev.entry.mmdb, nullptr);
 
-    // 2) Prepare a remote update that forces a reload
-    // We reuse the SAME test DB file as the downloaded content (still valid),
-    // but we change the remote hash so the early-exit path is NOT taken.
-    const std::string dbUrl = "https://example.com/db.mmdb";
-    const std::string hashUrl = "https://example.com/db.md5";
-    const std::string newHash = "newHash";
-
-    // Read the current DB bytes (any valid MMDB content is enough)
+    // 2) Prepare a manifest-based remote update that forces a reload
+    const std::string manifestUrl = "https://example.com/manifest.json";
     const auto dbPath = tmpFiles.front();
+
+    // Read the current DB bytes
     std::ifstream ifs(dbPath, std::ios::binary);
     ASSERT_TRUE(ifs.is_open());
-    std::string content((std::istreambuf_iterator<char>(ifs)),
-                        std::istreambuf_iterator<char>());
+    std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    ifs.close();
 
-    // Store: return a different hash to force the update path
+    // Calculate real MD5 hash
+    std::string newHash = base::utils::hash::md5(content);
+
+    // Prepare manifest JSON
+    json::Json manifest;
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString(newHash, "/city/md5");
+    manifest.setString("2024-01-02T00:00:00Z", "/city/createdAt");
+
+    // Store: return old hash to trigger update
     auto internalName =
-        base::Name(fmt::format("{}/{}",
-                               INTERNAL_NAME,
-                               std::filesystem::path(dbPath).filename().string()));
-
+        base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(dbPath).filename().string()));
     EXPECT_CALL(*mockStore, readInternalDoc(internalName))
-        .WillOnce(testing::Return(
-            storeReadDocResp(json::Json(R"({"hash":"oldHash"})"))));
+        .WillRepeatedly(
+            testing::Return(storeReadDocResp(json::Json(R"({"hash":"oldHash","createdAt":"2024-01-01T00:00:00Z"})"))));
 
-    // Downloader: remote hash and downloaded content, with matching local MD5
-    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl))
-        .WillRepeatedly(testing::Return(
-            base::RespOrError<std::string>(newHash)));
+    // Downloader: return manifest
+    EXPECT_CALL(*mockDownloader, downloadManifest(manifestUrl))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
-        .WillRepeatedly(testing::Return(
-            base::RespOrError<std::string>(content)));
+    EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
+        .WillRepeatedly(testing::Return(base::RespOrError<std::string>(content)));
 
-    EXPECT_CALL(*mockDownloader, computeMD5(testing::_))
-        .WillRepeatedly(testing::Return(newHash));
+    // Mock extractMmdbFromTarGz to create temp file
+    std::string tmpPath = dbPath + ".tmp";
+    EXPECT_CALL(*mockDownloader, extractMmdbFromTarGz(testing::_, testing::_))
+        .WillOnce(testing::Invoke(
+            [tmpPath, &content](const std::string&, const std::string&)
+            {
+                std::ofstream ofs(tmpPath, std::ios::binary);
+                ofs.write(content.data(), content.size());
+                ofs.close();
+                return base::noError();
+            }));
 
-    // Final store upsert
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
-        .WillOnce(testing::Return(storeOk()));
+    // Store upsert
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).WillOnce(testing::Return(storeOk()));
 
-    // 3) Execute the update (same path and type)
-    auto upd = manager->remoteUpsertDb(dbPath, Type::CITY, dbUrl, hashUrl);
-    ASSERT_FALSE(base::isError(upd)) << base::getError(upd).message;
+    // 3) Execute the manifest-based update
+    ASSERT_NO_THROW(manager->remoteUpsert(manifestUrl, dbPath, ""));
 
-    // 4) Query again and verify that the instance has changed
+    // 4) Query again and verify that the MMDB instance changed (hot-reload)
     ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
     auto now = locator->getCachedResult();
     ASSERT_NE(now.entry.mmdb, nullptr);

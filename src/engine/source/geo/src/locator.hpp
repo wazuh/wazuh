@@ -28,6 +28,14 @@ private:
     base::RespOrError<MMDB_entry_data_s> getEData(const DotPath& path);
 
     /**
+     * @brief Validates the database handle and returns the current database instance.
+     *        Also invalidates the cache if the database instance has changed.
+     *
+     * @return A base::RespOrError object containing the database instance or an error message.
+     */
+    base::RespOrError<std::shared_ptr<const DbInstance>> validateAndGetDb();
+
+    /**
      * @brief Looks up the given IP address in the database if it is not already cached.
      *
      * @param ip The IP address to look up.
@@ -74,6 +82,11 @@ public:
      * @copydoc ILocator::getAsJson
      */
     base::RespOrError<json::Json> getAsJson(const std::string& ip, const DotPath& path) override;
+
+    /**
+     * @copydoc ILocator::getAll
+     */
+    base::RespOrError<json::Json> getAll(const std::string& ip) override;
 
     /**
      * @brief Retrieves the cached IP address.

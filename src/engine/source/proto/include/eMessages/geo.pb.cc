@@ -29,6 +29,8 @@ PROTOBUF_CONSTEXPR DbEntry::DbEntry(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.path_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.hash_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.createdat_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.type_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct DbEntryDefaultTypeInternal {
@@ -40,33 +42,34 @@ struct DbEntryDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DbEntryDefaultTypeInternal _DbEntry_default_instance_;
-PROTOBUF_CONSTEXPR DbPost_Request::DbPost_Request(
+PROTOBUF_CONSTEXPR DbGet_Request::DbGet_Request(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.path_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.type_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+    /*decltype(_impl_.ip_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_._cached_size_)*/{}} {}
-struct DbPost_RequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR DbPost_RequestDefaultTypeInternal()
+struct DbGet_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DbGet_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
-  ~DbPost_RequestDefaultTypeInternal() {}
+  ~DbGet_RequestDefaultTypeInternal() {}
   union {
-    DbPost_Request _instance;
+    DbGet_Request _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DbPost_RequestDefaultTypeInternal _DbPost_Request_default_instance_;
-PROTOBUF_CONSTEXPR DbDelete_Request::DbDelete_Request(
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DbGet_RequestDefaultTypeInternal _DbGet_Request_default_instance_;
+PROTOBUF_CONSTEXPR DbGet_Response::DbGet_Response(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.path_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+    /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.data_)*/nullptr
+  , /*decltype(_impl_.status_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
-struct DbDelete_RequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR DbDelete_RequestDefaultTypeInternal()
+struct DbGet_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DbGet_ResponseDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
-  ~DbDelete_RequestDefaultTypeInternal() {}
+  ~DbGet_ResponseDefaultTypeInternal() {}
   union {
-    DbDelete_Request _instance;
+    DbGet_Response _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DbDelete_RequestDefaultTypeInternal _DbDelete_Request_default_instance_;
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DbGet_ResponseDefaultTypeInternal _DbGet_Response_default_instance_;
 PROTOBUF_CONSTEXPR DbList_Request::DbList_Request(
     ::_pbi::ConstantInitialized) {}
 struct DbList_RequestDefaultTypeInternal {
@@ -94,28 +97,12 @@ struct DbList_ResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DbList_ResponseDefaultTypeInternal _DbList_Response_default_instance_;
-PROTOBUF_CONSTEXPR DbRemoteUpsert_Request::DbRemoteUpsert_Request(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.path_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.type_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.dburl_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.hashurl_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct DbRemoteUpsert_RequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR DbRemoteUpsert_RequestDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~DbRemoteUpsert_RequestDefaultTypeInternal() {}
-  union {
-    DbRemoteUpsert_Request _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DbRemoteUpsert_RequestDefaultTypeInternal _DbRemoteUpsert_Request_default_instance_;
 }  // namespace geo
 }  // namespace engine
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_geo_2eproto[6];
+static ::_pb::Metadata file_level_metadata_geo_2eproto[5];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_geo_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_geo_2eproto = nullptr;
 
@@ -128,22 +115,25 @@ const uint32_t TableStruct_geo_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(prot
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbEntry, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbEntry, _impl_.path_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbEntry, _impl_.hash_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbEntry, _impl_.createdat_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbEntry, _impl_.type_),
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbPost_Request, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbPost_Request, _impl_.path_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbPost_Request, _impl_.type_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbGet_Request, _impl_.ip_),
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbDelete_Request, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbGet_Response, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbDelete_Request, _impl_.path_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbGet_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbGet_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbGet_Response, _impl_.data_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbList_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -162,57 +152,47 @@ const uint32_t TableStruct_geo_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(prot
   ~0u,
   0,
   ~0u,
-  ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbRemoteUpsert_Request, _internal_metadata_),
-  ~0u,  // no _extensions_
-  ~0u,  // no _oneof_case_
-  ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbRemoteUpsert_Request, _impl_.path_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbRemoteUpsert_Request, _impl_.type_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbRemoteUpsert_Request, _impl_.dburl_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::geo::DbRemoteUpsert_Request, _impl_.hashurl_),
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbEntry)},
-  { 9, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbPost_Request)},
-  { 17, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbDelete_Request)},
-  { 24, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbList_Request)},
-  { 30, 39, -1, sizeof(::com::wazuh::api::engine::geo::DbList_Response)},
-  { 42, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbRemoteUpsert_Request)},
+  { 11, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbGet_Request)},
+  { 18, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbGet_Response)},
+  { 27, -1, -1, sizeof(::com::wazuh::api::engine::geo::DbList_Request)},
+  { 33, 42, -1, sizeof(::com::wazuh::api::engine::geo::DbList_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::geo::_DbEntry_default_instance_._instance,
-  &::com::wazuh::api::engine::geo::_DbPost_Request_default_instance_._instance,
-  &::com::wazuh::api::engine::geo::_DbDelete_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::geo::_DbGet_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::geo::_DbGet_Response_default_instance_._instance,
   &::com::wazuh::api::engine::geo::_DbList_Request_default_instance_._instance,
   &::com::wazuh::api::engine::geo::_DbList_Response_default_instance_._instance,
-  &::com::wazuh::api::engine::geo::_DbRemoteUpsert_Request_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_geo_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\tgeo.proto\022\030com.wazuh.api.engine.geo\032\014e"
-  "ngine.proto\"3\n\007DbEntry\022\014\n\004name\030\001 \001(\t\022\014\n\004"
-  "path\030\002 \001(\t\022\014\n\004type\030\003 \001(\t\",\n\016DbPost_Reque"
-  "st\022\014\n\004path\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\" \n\020DbDele"
-  "te_Request\022\014\n\004path\030\001 \001(\t\"\020\n\016DbList_Reque"
-  "st\"\227\001\n\017DbList_Response\0222\n\006status\030\001 \001(\0162\""
-  ".com.wazuh.api.engine.ReturnStatus\022\022\n\005er"
-  "ror\030\002 \001(\tH\000\210\001\001\0222\n\007entries\030\003 \003(\0132!.com.wa"
-  "zuh.api.engine.geo.DbEntryB\010\n\006_error\"T\n\026"
-  "DbRemoteUpsert_Request\022\014\n\004path\030\001 \001(\t\022\014\n\004"
-  "type\030\002 \001(\t\022\r\n\005dbUrl\030\003 \001(\t\022\017\n\007hashUrl\030\004 \001"
-  "(\tb\006proto3"
+  "ngine.proto\032\034google/protobuf/struct.prot"
+  "o\"T\n\007DbEntry\022\014\n\004name\030\001 \001(\t\022\014\n\004path\030\002 \001(\t"
+  "\022\014\n\004hash\030\003 \001(\t\022\021\n\tcreatedAt\030\004 \001(\t\022\014\n\004typ"
+  "e\030\005 \001(\t\"\033\n\rDbGet_Request\022\n\n\002ip\030\001 \001(\t\"z\n\016"
+  "DbGet_Response\0222\n\006status\030\001 \001(\0162\".com.waz"
+  "uh.api.engine.ReturnStatus\022\r\n\005error\030\002 \001("
+  "\t\022%\n\004data\030\003 \001(\0132\027.google.protobuf.Struct"
+  "\"\020\n\016DbList_Request\"\227\001\n\017DbList_Response\0222"
+  "\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.Re"
+  "turnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0222\n\007entrie"
+  "s\030\003 \003(\0132!.com.wazuh.api.engine.geo.DbEnt"
+  "ryB\010\n\006_errorb\006proto3"
   ;
-static const ::_pbi::DescriptorTable* const descriptor_table_geo_2eproto_deps[1] = {
+static const ::_pbi::DescriptorTable* const descriptor_table_geo_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
+  &::descriptor_table_google_2fprotobuf_2fstruct_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_geo_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_geo_2eproto = {
-    false, false, 450, descriptor_table_protodef_geo_2eproto,
+    false, false, 500, descriptor_table_protodef_geo_2eproto,
     "geo.proto",
-    &descriptor_table_geo_2eproto_once, descriptor_table_geo_2eproto_deps, 1, 6,
+    &descriptor_table_geo_2eproto_once, descriptor_table_geo_2eproto_deps, 2, 5,
     schemas, file_default_instances, TableStruct_geo_2eproto::offsets,
     file_level_metadata_geo_2eproto, file_level_enum_descriptors_geo_2eproto,
     file_level_service_descriptors_geo_2eproto,
@@ -247,6 +227,8 @@ DbEntry::DbEntry(const DbEntry& from)
   new (&_impl_) Impl_{
       decltype(_impl_.name_){}
     , decltype(_impl_.path_){}
+    , decltype(_impl_.hash_){}
+    , decltype(_impl_.createdat_){}
     , decltype(_impl_.type_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
@@ -267,6 +249,22 @@ DbEntry::DbEntry(const DbEntry& from)
     _this->_impl_.path_.Set(from._internal_path(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.hash_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.hash_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_hash().empty()) {
+    _this->_impl_.hash_.Set(from._internal_hash(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.createdat_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.createdat_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_createdat().empty()) {
+    _this->_impl_.createdat_.Set(from._internal_createdat(), 
+      _this->GetArenaForAllocation());
+  }
   _impl_.type_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.type_.Set("", GetArenaForAllocation());
@@ -285,6 +283,8 @@ inline void DbEntry::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_.name_){}
     , decltype(_impl_.path_){}
+    , decltype(_impl_.hash_){}
+    , decltype(_impl_.createdat_){}
     , decltype(_impl_.type_){}
     , /*decltype(_impl_._cached_size_)*/{}
   };
@@ -295,6 +295,14 @@ inline void DbEntry::SharedCtor(
   _impl_.path_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.path_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.hash_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.hash_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.createdat_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.createdat_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.type_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -315,6 +323,8 @@ inline void DbEntry::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.path_.Destroy();
+  _impl_.hash_.Destroy();
+  _impl_.createdat_.Destroy();
   _impl_.type_.Destroy();
 }
 
@@ -330,6 +340,8 @@ void DbEntry::Clear() {
 
   _impl_.name_.ClearToEmpty();
   _impl_.path_.ClearToEmpty();
+  _impl_.hash_.ClearToEmpty();
+  _impl_.createdat_.ClearToEmpty();
   _impl_.type_.ClearToEmpty();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -360,9 +372,29 @@ const char* DbEntry::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // string type = 3;
+      // string hash = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_hash();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbEntry.hash"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string createdAt = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_createdat();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbEntry.createdAt"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string type = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
           auto str = _internal_mutable_type();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -419,14 +451,34 @@ uint8_t* DbEntry::_InternalSerialize(
         2, this->_internal_path(), target);
   }
 
-  // string type = 3;
+  // string hash = 3;
+  if (!this->_internal_hash().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_hash().data(), static_cast<int>(this->_internal_hash().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.geo.DbEntry.hash");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_hash(), target);
+  }
+
+  // string createdAt = 4;
+  if (!this->_internal_createdat().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_createdat().data(), static_cast<int>(this->_internal_createdat().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.geo.DbEntry.createdAt");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_createdat(), target);
+  }
+
+  // string type = 5;
   if (!this->_internal_type().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_type().data(), static_cast<int>(this->_internal_type().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "com.wazuh.api.engine.geo.DbEntry.type");
     target = stream->WriteStringMaybeAliased(
-        3, this->_internal_type(), target);
+        5, this->_internal_type(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -459,7 +511,21 @@ size_t DbEntry::ByteSizeLong() const {
         this->_internal_path());
   }
 
-  // string type = 3;
+  // string hash = 3;
+  if (!this->_internal_hash().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_hash());
+  }
+
+  // string createdAt = 4;
+  if (!this->_internal_createdat().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_createdat());
+  }
+
+  // string type = 5;
   if (!this->_internal_type().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
@@ -489,6 +555,12 @@ void DbEntry::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOB
   }
   if (!from._internal_path().empty()) {
     _this->_internal_set_path(from._internal_path());
+  }
+  if (!from._internal_hash().empty()) {
+    _this->_internal_set_hash(from._internal_hash());
+  }
+  if (!from._internal_createdat().empty()) {
+    _this->_internal_set_createdat(from._internal_createdat());
   }
   if (!from._internal_type().empty()) {
     _this->_internal_set_type(from._internal_type());
@@ -521,6 +593,14 @@ void DbEntry::InternalSwap(DbEntry* other) {
       &other->_impl_.path_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.hash_, lhs_arena,
+      &other->_impl_.hash_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.createdat_, lhs_arena,
+      &other->_impl_.createdat_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.type_, lhs_arena,
       &other->_impl_.type_, rhs_arena
   );
@@ -534,65 +614,51 @@ void DbEntry::InternalSwap(DbEntry* other) {
 
 // ===================================================================
 
-class DbPost_Request::_Internal {
+class DbGet_Request::_Internal {
  public:
 };
 
-DbPost_Request::DbPost_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+DbGet_Request::DbGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
   SharedCtor(arena, is_message_owned);
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.geo.DbPost_Request)
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.geo.DbGet_Request)
 }
-DbPost_Request::DbPost_Request(const DbPost_Request& from)
+DbGet_Request::DbGet_Request(const DbGet_Request& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
-  DbPost_Request* const _this = this; (void)_this;
+  DbGet_Request* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_.path_){}
-    , decltype(_impl_.type_){}
+      decltype(_impl_.ip_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.path_.InitDefault();
+  _impl_.ip_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.path_.Set("", GetArenaForAllocation());
+    _impl_.ip_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_path().empty()) {
-    _this->_impl_.path_.Set(from._internal_path(), 
+  if (!from._internal_ip().empty()) {
+    _this->_impl_.ip_.Set(from._internal_ip(), 
       _this->GetArenaForAllocation());
   }
-  _impl_.type_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.type_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_type().empty()) {
-    _this->_impl_.type_.Set(from._internal_type(), 
-      _this->GetArenaForAllocation());
-  }
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.geo.DbPost_Request)
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.geo.DbGet_Request)
 }
 
-inline void DbPost_Request::SharedCtor(
+inline void DbGet_Request::SharedCtor(
     ::_pb::Arena* arena, bool is_message_owned) {
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_.path_){}
-    , decltype(_impl_.type_){}
+      decltype(_impl_.ip_){}
     , /*decltype(_impl_._cached_size_)*/{}
   };
-  _impl_.path_.InitDefault();
+  _impl_.ip_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.path_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.type_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.type_.Set("", GetArenaForAllocation());
+    _impl_.ip_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
-DbPost_Request::~DbPost_Request() {
-  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.geo.DbPost_Request)
+DbGet_Request::~DbGet_Request() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.geo.DbGet_Request)
   if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
   (void)arena;
     return;
@@ -600,50 +666,38 @@ DbPost_Request::~DbPost_Request() {
   SharedDtor();
 }
 
-inline void DbPost_Request::SharedDtor() {
+inline void DbGet_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.path_.Destroy();
-  _impl_.type_.Destroy();
+  _impl_.ip_.Destroy();
 }
 
-void DbPost_Request::SetCachedSize(int size) const {
+void DbGet_Request::SetCachedSize(int size) const {
   _impl_._cached_size_.Set(size);
 }
 
-void DbPost_Request::Clear() {
-// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.geo.DbPost_Request)
+void DbGet_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.geo.DbGet_Request)
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.path_.ClearToEmpty();
-  _impl_.type_.ClearToEmpty();
+  _impl_.ip_.ClearToEmpty();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* DbPost_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* DbGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // string path = 1;
+      // string ip = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_path();
+          auto str = _internal_mutable_ip();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbPost_Request.path"));
-        } else
-          goto handle_unusual;
-        continue;
-      // string type = 2;
-      case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          auto str = _internal_mutable_type();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbPost_Request.type"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbGet_Request.ip"));
         } else
           goto handle_unusual;
         continue;
@@ -670,116 +724,92 @@ failure:
 #undef CHK_
 }
 
-uint8_t* DbPost_Request::_InternalSerialize(
+uint8_t* DbGet_Request::_InternalSerialize(
     uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.geo.DbPost_Request)
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.geo.DbGet_Request)
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // string path = 1;
-  if (!this->_internal_path().empty()) {
+  // string ip = 1;
+  if (!this->_internal_ip().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_path().data(), static_cast<int>(this->_internal_path().length()),
+      this->_internal_ip().data(), static_cast<int>(this->_internal_ip().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbPost_Request.path");
+      "com.wazuh.api.engine.geo.DbGet_Request.ip");
     target = stream->WriteStringMaybeAliased(
-        1, this->_internal_path(), target);
-  }
-
-  // string type = 2;
-  if (!this->_internal_type().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_type().data(), static_cast<int>(this->_internal_type().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbPost_Request.type");
-    target = stream->WriteStringMaybeAliased(
-        2, this->_internal_type(), target);
+        1, this->_internal_ip(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.geo.DbPost_Request)
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.geo.DbGet_Request)
   return target;
 }
 
-size_t DbPost_Request::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.geo.DbPost_Request)
+size_t DbGet_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.geo.DbGet_Request)
   size_t total_size = 0;
 
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // string path = 1;
-  if (!this->_internal_path().empty()) {
+  // string ip = 1;
+  if (!this->_internal_ip().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_path());
-  }
-
-  // string type = 2;
-  if (!this->_internal_type().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_type());
+        this->_internal_ip());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DbPost_Request::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DbGet_Request::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    DbPost_Request::MergeImpl
+    DbGet_Request::MergeImpl
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DbPost_Request::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DbGet_Request::GetClassData() const { return &_class_data_; }
 
 
-void DbPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<DbPost_Request*>(&to_msg);
-  auto& from = static_cast<const DbPost_Request&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.geo.DbPost_Request)
+void DbGet_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DbGet_Request*>(&to_msg);
+  auto& from = static_cast<const DbGet_Request&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.geo.DbGet_Request)
   GOOGLE_DCHECK_NE(&from, _this);
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (!from._internal_path().empty()) {
-    _this->_internal_set_path(from._internal_path());
-  }
-  if (!from._internal_type().empty()) {
-    _this->_internal_set_type(from._internal_type());
+  if (!from._internal_ip().empty()) {
+    _this->_internal_set_ip(from._internal_ip());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
-void DbPost_Request::CopyFrom(const DbPost_Request& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.geo.DbPost_Request)
+void DbGet_Request::CopyFrom(const DbGet_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.geo.DbGet_Request)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool DbPost_Request::IsInitialized() const {
+bool DbGet_Request::IsInitialized() const {
   return true;
 }
 
-void DbPost_Request::InternalSwap(DbPost_Request* other) {
+void DbGet_Request::InternalSwap(DbGet_Request* other) {
   using std::swap;
   auto* lhs_arena = GetArenaForAllocation();
   auto* rhs_arena = other->GetArenaForAllocation();
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.path_, lhs_arena,
-      &other->_impl_.path_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.type_, lhs_arena,
-      &other->_impl_.type_, rhs_arena
+      &_impl_.ip_, lhs_arena,
+      &other->_impl_.ip_, rhs_arena
   );
 }
 
-::PROTOBUF_NAMESPACE_ID::Metadata DbPost_Request::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata DbGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_geo_2eproto_getter, &descriptor_table_geo_2eproto_once,
       file_level_metadata_geo_2eproto[1]);
@@ -787,51 +817,70 @@ void DbPost_Request::InternalSwap(DbPost_Request* other) {
 
 // ===================================================================
 
-class DbDelete_Request::_Internal {
+class DbGet_Response::_Internal {
  public:
+  static const ::PROTOBUF_NAMESPACE_ID::Struct& data(const DbGet_Response* msg);
 };
 
-DbDelete_Request::DbDelete_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+const ::PROTOBUF_NAMESPACE_ID::Struct&
+DbGet_Response::_Internal::data(const DbGet_Response* msg) {
+  return *msg->_impl_.data_;
+}
+void DbGet_Response::clear_data() {
+  if (GetArenaForAllocation() == nullptr && _impl_.data_ != nullptr) {
+    delete _impl_.data_;
+  }
+  _impl_.data_ = nullptr;
+}
+DbGet_Response::DbGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
   SharedCtor(arena, is_message_owned);
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.geo.DbDelete_Request)
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.geo.DbGet_Response)
 }
-DbDelete_Request::DbDelete_Request(const DbDelete_Request& from)
+DbGet_Response::DbGet_Response(const DbGet_Response& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
-  DbDelete_Request* const _this = this; (void)_this;
+  DbGet_Response* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_.path_){}
+      decltype(_impl_.error_){}
+    , decltype(_impl_.data_){nullptr}
+    , decltype(_impl_.status_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.path_.InitDefault();
+  _impl_.error_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.path_.Set("", GetArenaForAllocation());
+    _impl_.error_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_path().empty()) {
-    _this->_impl_.path_.Set(from._internal_path(), 
+  if (!from._internal_error().empty()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
       _this->GetArenaForAllocation());
   }
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.geo.DbDelete_Request)
+  if (from._internal_has_data()) {
+    _this->_impl_.data_ = new ::PROTOBUF_NAMESPACE_ID::Struct(*from._impl_.data_);
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.geo.DbGet_Response)
 }
 
-inline void DbDelete_Request::SharedCtor(
+inline void DbGet_Response::SharedCtor(
     ::_pb::Arena* arena, bool is_message_owned) {
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_.path_){}
+      decltype(_impl_.error_){}
+    , decltype(_impl_.data_){nullptr}
+    , decltype(_impl_.status_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
-  _impl_.path_.InitDefault();
+  _impl_.error_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.path_.Set("", GetArenaForAllocation());
+    _impl_.error_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
-DbDelete_Request::~DbDelete_Request() {
-  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.geo.DbDelete_Request)
+DbGet_Response::~DbGet_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.geo.DbGet_Response)
   if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
   (void)arena;
     return;
@@ -839,38 +888,61 @@ DbDelete_Request::~DbDelete_Request() {
   SharedDtor();
 }
 
-inline void DbDelete_Request::SharedDtor() {
+inline void DbGet_Response::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.path_.Destroy();
+  _impl_.error_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.data_;
 }
 
-void DbDelete_Request::SetCachedSize(int size) const {
+void DbGet_Response::SetCachedSize(int size) const {
   _impl_._cached_size_.Set(size);
 }
 
-void DbDelete_Request::Clear() {
-// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.geo.DbDelete_Request)
+void DbGet_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.geo.DbGet_Response)
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.path_.ClearToEmpty();
+  _impl_.error_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.data_ != nullptr) {
+    delete _impl_.data_;
+  }
+  _impl_.data_ = nullptr;
+  _impl_.status_ = 0;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* DbDelete_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* DbGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // string path = 1;
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_path();
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbDelete_Request.path"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbGet_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // .google.protobuf.Struct data = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          ptr = ctx->ParseMessage(_internal_mutable_data(), ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -897,92 +969,132 @@ failure:
 #undef CHK_
 }
 
-uint8_t* DbDelete_Request::_InternalSerialize(
+uint8_t* DbGet_Response::_InternalSerialize(
     uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.geo.DbDelete_Request)
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.geo.DbGet_Response)
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // string path = 1;
-  if (!this->_internal_path().empty()) {
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // string error = 2;
+  if (!this->_internal_error().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_path().data(), static_cast<int>(this->_internal_path().length()),
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbDelete_Request.path");
+      "com.wazuh.api.engine.geo.DbGet_Response.error");
     target = stream->WriteStringMaybeAliased(
-        1, this->_internal_path(), target);
+        2, this->_internal_error(), target);
+  }
+
+  // .google.protobuf.Struct data = 3;
+  if (this->_internal_has_data()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(3, _Internal::data(this),
+        _Internal::data(this).GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.geo.DbDelete_Request)
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.geo.DbGet_Response)
   return target;
 }
 
-size_t DbDelete_Request::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.geo.DbDelete_Request)
+size_t DbGet_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.geo.DbGet_Response)
   size_t total_size = 0;
 
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // string path = 1;
-  if (!this->_internal_path().empty()) {
+  // string error = 2;
+  if (!this->_internal_error().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_path());
+        this->_internal_error());
+  }
+
+  // .google.protobuf.Struct data = 3;
+  if (this->_internal_has_data()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.data_);
+  }
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DbDelete_Request::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DbGet_Response::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    DbDelete_Request::MergeImpl
+    DbGet_Response::MergeImpl
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DbDelete_Request::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DbGet_Response::GetClassData() const { return &_class_data_; }
 
 
-void DbDelete_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<DbDelete_Request*>(&to_msg);
-  auto& from = static_cast<const DbDelete_Request&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.geo.DbDelete_Request)
+void DbGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DbGet_Response*>(&to_msg);
+  auto& from = static_cast<const DbGet_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.geo.DbGet_Response)
   GOOGLE_DCHECK_NE(&from, _this);
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (!from._internal_path().empty()) {
-    _this->_internal_set_path(from._internal_path());
+  if (!from._internal_error().empty()) {
+    _this->_internal_set_error(from._internal_error());
+  }
+  if (from._internal_has_data()) {
+    _this->_internal_mutable_data()->::PROTOBUF_NAMESPACE_ID::Struct::MergeFrom(
+        from._internal_data());
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
-void DbDelete_Request::CopyFrom(const DbDelete_Request& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.geo.DbDelete_Request)
+void DbGet_Response::CopyFrom(const DbGet_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.geo.DbGet_Response)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool DbDelete_Request::IsInitialized() const {
+bool DbGet_Response::IsInitialized() const {
   return true;
 }
 
-void DbDelete_Request::InternalSwap(DbDelete_Request* other) {
+void DbGet_Response::InternalSwap(DbGet_Response* other) {
   using std::swap;
   auto* lhs_arena = GetArenaForAllocation();
   auto* rhs_arena = other->GetArenaForAllocation();
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.path_, lhs_arena,
-      &other->_impl_.path_, rhs_arena
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
   );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(DbGet_Response, _impl_.status_)
+      + sizeof(DbGet_Response::_impl_.status_)
+      - PROTOBUF_FIELD_OFFSET(DbGet_Response, _impl_.data_)>(
+          reinterpret_cast<char*>(&_impl_.data_),
+          reinterpret_cast<char*>(&other->_impl_.data_));
 }
 
-::PROTOBUF_NAMESPACE_ID::Metadata DbDelete_Request::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata DbGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_geo_2eproto_getter, &descriptor_table_geo_2eproto_once,
       file_level_metadata_geo_2eproto[2]);
@@ -1309,359 +1421,6 @@ void DbList_Response::InternalSwap(DbList_Response* other) {
       file_level_metadata_geo_2eproto[4]);
 }
 
-// ===================================================================
-
-class DbRemoteUpsert_Request::_Internal {
- public:
-};
-
-DbRemoteUpsert_Request::DbRemoteUpsert_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-}
-DbRemoteUpsert_Request::DbRemoteUpsert_Request(const DbRemoteUpsert_Request& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  DbRemoteUpsert_Request* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.path_){}
-    , decltype(_impl_.type_){}
-    , decltype(_impl_.dburl_){}
-    , decltype(_impl_.hashurl_){}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
-  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.path_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.path_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_path().empty()) {
-    _this->_impl_.path_.Set(from._internal_path(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.type_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.type_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_type().empty()) {
-    _this->_impl_.type_.Set(from._internal_type(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.dburl_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.dburl_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_dburl().empty()) {
-    _this->_impl_.dburl_.Set(from._internal_dburl(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.hashurl_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.hashurl_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_hashurl().empty()) {
-    _this->_impl_.hashurl_.Set(from._internal_hashurl(), 
-      _this->GetArenaForAllocation());
-  }
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-}
-
-inline void DbRemoteUpsert_Request::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.path_){}
-    , decltype(_impl_.type_){}
-    , decltype(_impl_.dburl_){}
-    , decltype(_impl_.hashurl_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
-  _impl_.path_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.path_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.type_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.type_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.dburl_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.dburl_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.hashurl_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.hashurl_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-}
-
-DbRemoteUpsert_Request::~DbRemoteUpsert_Request() {
-  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
-  SharedDtor();
-}
-
-inline void DbRemoteUpsert_Request::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.path_.Destroy();
-  _impl_.type_.Destroy();
-  _impl_.dburl_.Destroy();
-  _impl_.hashurl_.Destroy();
-}
-
-void DbRemoteUpsert_Request::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
-}
-
-void DbRemoteUpsert_Request::Clear() {
-// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-  uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void) cached_has_bits;
-
-  _impl_.path_.ClearToEmpty();
-  _impl_.type_.ClearToEmpty();
-  _impl_.dburl_.ClearToEmpty();
-  _impl_.hashurl_.ClearToEmpty();
-  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
-}
-
-const char* DbRemoteUpsert_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
-#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
-  while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
-    switch (tag >> 3) {
-      // string path = 1;
-      case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_path();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.path"));
-        } else
-          goto handle_unusual;
-        continue;
-      // string type = 2;
-      case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          auto str = _internal_mutable_type();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.type"));
-        } else
-          goto handle_unusual;
-        continue;
-      // string dbUrl = 3;
-      case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          auto str = _internal_mutable_dburl();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.dbUrl"));
-        } else
-          goto handle_unusual;
-        continue;
-      // string hashUrl = 4;
-      case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
-          auto str = _internal_mutable_hashurl();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.hashUrl"));
-        } else
-          goto handle_unusual;
-        continue;
-      default:
-        goto handle_unusual;
-    }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
-  }  // while
-message_done:
-  return ptr;
-failure:
-  ptr = nullptr;
-  goto message_done;
-#undef CHK_
-}
-
-uint8_t* DbRemoteUpsert_Request::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-  uint32_t cached_has_bits = 0;
-  (void) cached_has_bits;
-
-  // string path = 1;
-  if (!this->_internal_path().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_path().data(), static_cast<int>(this->_internal_path().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.path");
-    target = stream->WriteStringMaybeAliased(
-        1, this->_internal_path(), target);
-  }
-
-  // string type = 2;
-  if (!this->_internal_type().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_type().data(), static_cast<int>(this->_internal_type().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.type");
-    target = stream->WriteStringMaybeAliased(
-        2, this->_internal_type(), target);
-  }
-
-  // string dbUrl = 3;
-  if (!this->_internal_dburl().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_dburl().data(), static_cast<int>(this->_internal_dburl().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.dbUrl");
-    target = stream->WriteStringMaybeAliased(
-        3, this->_internal_dburl(), target);
-  }
-
-  // string hashUrl = 4;
-  if (!this->_internal_hashurl().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_hashurl().data(), static_cast<int>(this->_internal_hashurl().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.geo.DbRemoteUpsert_Request.hashUrl");
-    target = stream->WriteStringMaybeAliased(
-        4, this->_internal_hashurl(), target);
-  }
-
-  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
-        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
-  }
-  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-  return target;
-}
-
-size_t DbRemoteUpsert_Request::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-  size_t total_size = 0;
-
-  uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void) cached_has_bits;
-
-  // string path = 1;
-  if (!this->_internal_path().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_path());
-  }
-
-  // string type = 2;
-  if (!this->_internal_type().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_type());
-  }
-
-  // string dbUrl = 3;
-  if (!this->_internal_dburl().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_dburl());
-  }
-
-  // string hashUrl = 4;
-  if (!this->_internal_hashurl().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_hashurl());
-  }
-
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
-}
-
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DbRemoteUpsert_Request::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    DbRemoteUpsert_Request::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DbRemoteUpsert_Request::GetClassData() const { return &_class_data_; }
-
-
-void DbRemoteUpsert_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<DbRemoteUpsert_Request*>(&to_msg);
-  auto& from = static_cast<const DbRemoteUpsert_Request&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
-  (void) cached_has_bits;
-
-  if (!from._internal_path().empty()) {
-    _this->_internal_set_path(from._internal_path());
-  }
-  if (!from._internal_type().empty()) {
-    _this->_internal_set_type(from._internal_type());
-  }
-  if (!from._internal_dburl().empty()) {
-    _this->_internal_set_dburl(from._internal_dburl());
-  }
-  if (!from._internal_hashurl().empty()) {
-    _this->_internal_set_hashurl(from._internal_hashurl());
-  }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-}
-
-void DbRemoteUpsert_Request::CopyFrom(const DbRemoteUpsert_Request& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
-  if (&from == this) return;
-  Clear();
-  MergeFrom(from);
-}
-
-bool DbRemoteUpsert_Request::IsInitialized() const {
-  return true;
-}
-
-void DbRemoteUpsert_Request::InternalSwap(DbRemoteUpsert_Request* other) {
-  using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.path_, lhs_arena,
-      &other->_impl_.path_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.type_, lhs_arena,
-      &other->_impl_.type_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.dburl_, lhs_arena,
-      &other->_impl_.dburl_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.hashurl_, lhs_arena,
-      &other->_impl_.hashurl_, rhs_arena
-  );
-}
-
-::PROTOBUF_NAMESPACE_ID::Metadata DbRemoteUpsert_Request::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_geo_2eproto_getter, &descriptor_table_geo_2eproto_once,
-      file_level_metadata_geo_2eproto[5]);
-}
-
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace geo
 }  // namespace engine
@@ -1673,13 +1432,13 @@ template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbEntry*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbEntry >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::geo::DbEntry >(arena);
 }
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbPost_Request*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbPost_Request >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::geo::DbPost_Request >(arena);
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbGet_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbGet_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::geo::DbGet_Request >(arena);
 }
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbDelete_Request*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbDelete_Request >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::geo::DbDelete_Request >(arena);
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbGet_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbGet_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::geo::DbGet_Response >(arena);
 }
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbList_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbList_Request >(Arena* arena) {
@@ -1688,10 +1447,6 @@ Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbList_Request >(Aren
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbList_Response*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbList_Response >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::geo::DbList_Response >(arena);
-}
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::geo::DbRemoteUpsert_Request*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::geo::DbRemoteUpsert_Request >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::geo::DbRemoteUpsert_Request >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

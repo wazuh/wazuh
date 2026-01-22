@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "engine.proto";
+import "google/protobuf/struct.proto";
 
 package com.wazuh.api.engine.geo;
 
@@ -9,31 +10,27 @@ message DbEntry
 {
     string name = 1;
     string path = 2;
-    string type = 3;
+    string hash = 3;
+    string createdAt = 4;
+    string type = 5;
 }
-
-/***************************************************
- * Add a mmddb to the geo manager, the db must be in the specified path
- *
- * command: geo.db/post (<resource>/<action>)
- **************************************************/
-message DbPost_Request
-{
-    string path = 1;
-    string type = 2;
-}
-// message DbPost_Response -> Return a GenericStatus_Response
 
 /***************************************************
  * Remove a mmddb from the geo manager
  *
  * command: geo.db/delete (<resource>/<action>)
  **************************************************/
-message DbDelete_Request
+message DbGet_Request
 {
-    string path = 1;
+    string ip = 1;
 }
-// message DbDelete_Response -> Return a GenericStatus_Response
+
+message DbGet_Response
+{
+    ReturnStatus status = 1;
+    string error = 2;
+    google.protobuf.Struct data = 3; // JSON object with geo data
+}
 
 /***************************************************
  * Get the list of mmddb used by the geo manager
@@ -48,17 +45,3 @@ message DbList_Response
     optional string error = 2; // Error message if status is ERROR
     repeated DbEntry entries = 3;
 }
-
-/***************************************************
- * Remote upsert a mmddb to the geo manager, it downloads the db at the specified path
- *
- * command: geo.db/remoteUpsert (<resource>/<action>)
- **************************************************/
-message DbRemoteUpsert_Request
-{
-    string path = 1;
-    string type = 2;
-    string dbUrl = 3;
-    string hashUrl = 4;
-}
-// message DbRemoteUpsert_Response -> Return a GenericStatus_Response

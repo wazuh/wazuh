@@ -32,6 +32,7 @@
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
 #include <google/protobuf/unknown_field_set.h>
 #include "engine.pb.h"
+#include <google/protobuf/struct.pb.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_geo_2eproto
@@ -51,36 +52,32 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace geo {
-class DbDelete_Request;
-struct DbDelete_RequestDefaultTypeInternal;
-extern DbDelete_RequestDefaultTypeInternal _DbDelete_Request_default_instance_;
 class DbEntry;
 struct DbEntryDefaultTypeInternal;
 extern DbEntryDefaultTypeInternal _DbEntry_default_instance_;
+class DbGet_Request;
+struct DbGet_RequestDefaultTypeInternal;
+extern DbGet_RequestDefaultTypeInternal _DbGet_Request_default_instance_;
+class DbGet_Response;
+struct DbGet_ResponseDefaultTypeInternal;
+extern DbGet_ResponseDefaultTypeInternal _DbGet_Response_default_instance_;
 class DbList_Request;
 struct DbList_RequestDefaultTypeInternal;
 extern DbList_RequestDefaultTypeInternal _DbList_Request_default_instance_;
 class DbList_Response;
 struct DbList_ResponseDefaultTypeInternal;
 extern DbList_ResponseDefaultTypeInternal _DbList_Response_default_instance_;
-class DbPost_Request;
-struct DbPost_RequestDefaultTypeInternal;
-extern DbPost_RequestDefaultTypeInternal _DbPost_Request_default_instance_;
-class DbRemoteUpsert_Request;
-struct DbRemoteUpsert_RequestDefaultTypeInternal;
-extern DbRemoteUpsert_RequestDefaultTypeInternal _DbRemoteUpsert_Request_default_instance_;
 }  // namespace geo
 }  // namespace engine
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
-template<> ::com::wazuh::api::engine::geo::DbDelete_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbDelete_Request>(Arena*);
 template<> ::com::wazuh::api::engine::geo::DbEntry* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbEntry>(Arena*);
+template<> ::com::wazuh::api::engine::geo::DbGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbGet_Request>(Arena*);
+template<> ::com::wazuh::api::engine::geo::DbGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbGet_Response>(Arena*);
 template<> ::com::wazuh::api::engine::geo::DbList_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbList_Request>(Arena*);
 template<> ::com::wazuh::api::engine::geo::DbList_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbList_Response>(Arena*);
-template<> ::com::wazuh::api::engine::geo::DbPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbPost_Request>(Arena*);
-template<> ::com::wazuh::api::engine::geo::DbRemoteUpsert_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::geo::DbRemoteUpsert_Request>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace com {
 namespace wazuh {
@@ -213,7 +210,9 @@ class DbEntry final :
   enum : int {
     kNameFieldNumber = 1,
     kPathFieldNumber = 2,
-    kTypeFieldNumber = 3,
+    kHashFieldNumber = 3,
+    kCreatedAtFieldNumber = 4,
+    kTypeFieldNumber = 5,
   };
   // string name = 1;
   void clear_name();
@@ -243,7 +242,35 @@ class DbEntry final :
   std::string* _internal_mutable_path();
   public:
 
-  // string type = 3;
+  // string hash = 3;
+  void clear_hash();
+  const std::string& hash() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_hash(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_hash();
+  PROTOBUF_NODISCARD std::string* release_hash();
+  void set_allocated_hash(std::string* hash);
+  private:
+  const std::string& _internal_hash() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_hash(const std::string& value);
+  std::string* _internal_mutable_hash();
+  public:
+
+  // string createdAt = 4;
+  void clear_createdat();
+  const std::string& createdat() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_createdat(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_createdat();
+  PROTOBUF_NODISCARD std::string* release_createdat();
+  void set_allocated_createdat(std::string* createdat);
+  private:
+  const std::string& _internal_createdat() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_createdat(const std::string& value);
+  std::string* _internal_mutable_createdat();
+  public:
+
+  // string type = 5;
   void clear_type();
   const std::string& type() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -267,6 +294,8 @@ class DbEntry final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr hash_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr createdat_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
@@ -275,24 +304,24 @@ class DbEntry final :
 };
 // -------------------------------------------------------------------
 
-class DbPost_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.geo.DbPost_Request) */ {
+class DbGet_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.geo.DbGet_Request) */ {
  public:
-  inline DbPost_Request() : DbPost_Request(nullptr) {}
-  ~DbPost_Request() override;
-  explicit PROTOBUF_CONSTEXPR DbPost_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+  inline DbGet_Request() : DbGet_Request(nullptr) {}
+  ~DbGet_Request() override;
+  explicit PROTOBUF_CONSTEXPR DbGet_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
-  DbPost_Request(const DbPost_Request& from);
-  DbPost_Request(DbPost_Request&& from) noexcept
-    : DbPost_Request() {
+  DbGet_Request(const DbGet_Request& from);
+  DbGet_Request(DbGet_Request&& from) noexcept
+    : DbGet_Request() {
     *this = ::std::move(from);
   }
 
-  inline DbPost_Request& operator=(const DbPost_Request& from) {
+  inline DbGet_Request& operator=(const DbGet_Request& from) {
     CopyFrom(from);
     return *this;
   }
-  inline DbPost_Request& operator=(DbPost_Request&& from) noexcept {
+  inline DbGet_Request& operator=(DbGet_Request&& from) noexcept {
     if (this == &from) return *this;
     if (GetOwningArena() == from.GetOwningArena()
   #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
@@ -315,20 +344,20 @@ class DbPost_Request final :
   static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
     return default_instance().GetMetadata().reflection;
   }
-  static const DbPost_Request& default_instance() {
+  static const DbGet_Request& default_instance() {
     return *internal_default_instance();
   }
-  static inline const DbPost_Request* internal_default_instance() {
-    return reinterpret_cast<const DbPost_Request*>(
-               &_DbPost_Request_default_instance_);
+  static inline const DbGet_Request* internal_default_instance() {
+    return reinterpret_cast<const DbGet_Request*>(
+               &_DbGet_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
     1;
 
-  friend void swap(DbPost_Request& a, DbPost_Request& b) {
+  friend void swap(DbGet_Request& a, DbGet_Request& b) {
     a.Swap(&b);
   }
-  inline void Swap(DbPost_Request* other) {
+  inline void Swap(DbGet_Request* other) {
     if (other == this) return;
   #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
     if (GetOwningArena() != nullptr &&
@@ -341,7 +370,7 @@ class DbPost_Request final :
       ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
     }
   }
-  void UnsafeArenaSwap(DbPost_Request* other) {
+  void UnsafeArenaSwap(DbGet_Request* other) {
     if (other == this) return;
     GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
     InternalSwap(other);
@@ -349,14 +378,14 @@ class DbPost_Request final :
 
   // implements Message ----------------------------------------------
 
-  DbPost_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<DbPost_Request>(arena);
+  DbGet_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<DbGet_Request>(arena);
   }
   using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const DbPost_Request& from);
+  void CopyFrom(const DbGet_Request& from);
   using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const DbPost_Request& from) {
-    DbPost_Request::MergeImpl(*this, from);
+  void MergeFrom( const DbGet_Request& from) {
+    DbGet_Request::MergeImpl(*this, from);
   }
   private:
   static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
@@ -374,15 +403,15 @@ class DbPost_Request final :
   void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
   void SharedDtor();
   void SetCachedSize(int size) const final;
-  void InternalSwap(DbPost_Request* other);
+  void InternalSwap(DbGet_Request* other);
 
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.geo.DbPost_Request";
+    return "com.wazuh.api.engine.geo.DbGet_Request";
   }
   protected:
-  explicit DbPost_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+  explicit DbGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                        bool is_message_owned = false);
   public:
 
@@ -396,38 +425,23 @@ class DbPost_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kPathFieldNumber = 1,
-    kTypeFieldNumber = 2,
+    kIpFieldNumber = 1,
   };
-  // string path = 1;
-  void clear_path();
-  const std::string& path() const;
+  // string ip = 1;
+  void clear_ip();
+  const std::string& ip() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_path(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_path();
-  PROTOBUF_NODISCARD std::string* release_path();
-  void set_allocated_path(std::string* path);
+  void set_ip(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_ip();
+  PROTOBUF_NODISCARD std::string* release_ip();
+  void set_allocated_ip(std::string* ip);
   private:
-  const std::string& _internal_path() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_path(const std::string& value);
-  std::string* _internal_mutable_path();
+  const std::string& _internal_ip() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_ip(const std::string& value);
+  std::string* _internal_mutable_ip();
   public:
 
-  // string type = 2;
-  void clear_type();
-  const std::string& type() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_type(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_type();
-  PROTOBUF_NODISCARD std::string* release_type();
-  void set_allocated_type(std::string* type);
-  private:
-  const std::string& _internal_type() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
-  std::string* _internal_mutable_type();
-  public:
-
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.geo.DbPost_Request)
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.geo.DbGet_Request)
  private:
   class _Internal;
 
@@ -435,8 +449,7 @@ class DbPost_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr ip_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -444,24 +457,24 @@ class DbPost_Request final :
 };
 // -------------------------------------------------------------------
 
-class DbDelete_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.geo.DbDelete_Request) */ {
+class DbGet_Response final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.geo.DbGet_Response) */ {
  public:
-  inline DbDelete_Request() : DbDelete_Request(nullptr) {}
-  ~DbDelete_Request() override;
-  explicit PROTOBUF_CONSTEXPR DbDelete_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+  inline DbGet_Response() : DbGet_Response(nullptr) {}
+  ~DbGet_Response() override;
+  explicit PROTOBUF_CONSTEXPR DbGet_Response(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
-  DbDelete_Request(const DbDelete_Request& from);
-  DbDelete_Request(DbDelete_Request&& from) noexcept
-    : DbDelete_Request() {
+  DbGet_Response(const DbGet_Response& from);
+  DbGet_Response(DbGet_Response&& from) noexcept
+    : DbGet_Response() {
     *this = ::std::move(from);
   }
 
-  inline DbDelete_Request& operator=(const DbDelete_Request& from) {
+  inline DbGet_Response& operator=(const DbGet_Response& from) {
     CopyFrom(from);
     return *this;
   }
-  inline DbDelete_Request& operator=(DbDelete_Request&& from) noexcept {
+  inline DbGet_Response& operator=(DbGet_Response&& from) noexcept {
     if (this == &from) return *this;
     if (GetOwningArena() == from.GetOwningArena()
   #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
@@ -484,20 +497,20 @@ class DbDelete_Request final :
   static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
     return default_instance().GetMetadata().reflection;
   }
-  static const DbDelete_Request& default_instance() {
+  static const DbGet_Response& default_instance() {
     return *internal_default_instance();
   }
-  static inline const DbDelete_Request* internal_default_instance() {
-    return reinterpret_cast<const DbDelete_Request*>(
-               &_DbDelete_Request_default_instance_);
+  static inline const DbGet_Response* internal_default_instance() {
+    return reinterpret_cast<const DbGet_Response*>(
+               &_DbGet_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
     2;
 
-  friend void swap(DbDelete_Request& a, DbDelete_Request& b) {
+  friend void swap(DbGet_Response& a, DbGet_Response& b) {
     a.Swap(&b);
   }
-  inline void Swap(DbDelete_Request* other) {
+  inline void Swap(DbGet_Response* other) {
     if (other == this) return;
   #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
     if (GetOwningArena() != nullptr &&
@@ -510,7 +523,7 @@ class DbDelete_Request final :
       ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
     }
   }
-  void UnsafeArenaSwap(DbDelete_Request* other) {
+  void UnsafeArenaSwap(DbGet_Response* other) {
     if (other == this) return;
     GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
     InternalSwap(other);
@@ -518,14 +531,14 @@ class DbDelete_Request final :
 
   // implements Message ----------------------------------------------
 
-  DbDelete_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<DbDelete_Request>(arena);
+  DbGet_Response* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<DbGet_Response>(arena);
   }
   using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const DbDelete_Request& from);
+  void CopyFrom(const DbGet_Response& from);
   using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const DbDelete_Request& from) {
-    DbDelete_Request::MergeImpl(*this, from);
+  void MergeFrom( const DbGet_Response& from) {
+    DbGet_Response::MergeImpl(*this, from);
   }
   private:
   static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
@@ -543,15 +556,15 @@ class DbDelete_Request final :
   void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
   void SharedDtor();
   void SetCachedSize(int size) const final;
-  void InternalSwap(DbDelete_Request* other);
+  void InternalSwap(DbGet_Response* other);
 
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.geo.DbDelete_Request";
+    return "com.wazuh.api.engine.geo.DbGet_Response";
   }
   protected:
-  explicit DbDelete_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+  explicit DbGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                        bool is_message_owned = false);
   public:
 
@@ -565,23 +578,52 @@ class DbDelete_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kPathFieldNumber = 1,
+    kErrorFieldNumber = 2,
+    kDataFieldNumber = 3,
+    kStatusFieldNumber = 1,
   };
-  // string path = 1;
-  void clear_path();
-  const std::string& path() const;
+  // string error = 2;
+  void clear_error();
+  const std::string& error() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_path(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_path();
-  PROTOBUF_NODISCARD std::string* release_path();
-  void set_allocated_path(std::string* path);
+  void set_error(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_error();
+  PROTOBUF_NODISCARD std::string* release_error();
+  void set_allocated_error(std::string* error);
   private:
-  const std::string& _internal_path() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_path(const std::string& value);
-  std::string* _internal_mutable_path();
+  const std::string& _internal_error() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
+  std::string* _internal_mutable_error();
   public:
 
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.geo.DbDelete_Request)
+  // .google.protobuf.Struct data = 3;
+  bool has_data() const;
+  private:
+  bool _internal_has_data() const;
+  public:
+  void clear_data();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& data() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_data();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_data();
+  void set_allocated_data(::PROTOBUF_NAMESPACE_ID::Struct* data);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_data() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_data();
+  public:
+  void unsafe_arena_set_allocated_data(
+      ::PROTOBUF_NAMESPACE_ID::Struct* data);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_data();
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  void clear_status();
+  ::com::wazuh::api::engine::ReturnStatus status() const;
+  void set_status(::com::wazuh::api::engine::ReturnStatus value);
+  private:
+  ::com::wazuh::api::engine::ReturnStatus _internal_status() const;
+  void _internal_set_status(::com::wazuh::api::engine::ReturnStatus value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.geo.DbGet_Response)
  private:
   class _Internal;
 
@@ -589,7 +631,9 @@ class DbDelete_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* data_;
+    int status_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -902,207 +946,6 @@ class DbList_Response final :
   union { Impl_ _impl_; };
   friend struct ::TableStruct_geo_2eproto;
 };
-// -------------------------------------------------------------------
-
-class DbRemoteUpsert_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.geo.DbRemoteUpsert_Request) */ {
- public:
-  inline DbRemoteUpsert_Request() : DbRemoteUpsert_Request(nullptr) {}
-  ~DbRemoteUpsert_Request() override;
-  explicit PROTOBUF_CONSTEXPR DbRemoteUpsert_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  DbRemoteUpsert_Request(const DbRemoteUpsert_Request& from);
-  DbRemoteUpsert_Request(DbRemoteUpsert_Request&& from) noexcept
-    : DbRemoteUpsert_Request() {
-    *this = ::std::move(from);
-  }
-
-  inline DbRemoteUpsert_Request& operator=(const DbRemoteUpsert_Request& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline DbRemoteUpsert_Request& operator=(DbRemoteUpsert_Request&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const DbRemoteUpsert_Request& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const DbRemoteUpsert_Request* internal_default_instance() {
-    return reinterpret_cast<const DbRemoteUpsert_Request*>(
-               &_DbRemoteUpsert_Request_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    5;
-
-  friend void swap(DbRemoteUpsert_Request& a, DbRemoteUpsert_Request& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(DbRemoteUpsert_Request* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(DbRemoteUpsert_Request* other) {
-    if (other == this) return;
-    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  DbRemoteUpsert_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<DbRemoteUpsert_Request>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const DbRemoteUpsert_Request& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const DbRemoteUpsert_Request& from) {
-    DbRemoteUpsert_Request::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  uint8_t* _InternalSerialize(
-      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(DbRemoteUpsert_Request* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.geo.DbRemoteUpsert_Request";
-  }
-  protected:
-  explicit DbRemoteUpsert_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                       bool is_message_owned = false);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kPathFieldNumber = 1,
-    kTypeFieldNumber = 2,
-    kDbUrlFieldNumber = 3,
-    kHashUrlFieldNumber = 4,
-  };
-  // string path = 1;
-  void clear_path();
-  const std::string& path() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_path(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_path();
-  PROTOBUF_NODISCARD std::string* release_path();
-  void set_allocated_path(std::string* path);
-  private:
-  const std::string& _internal_path() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_path(const std::string& value);
-  std::string* _internal_mutable_path();
-  public:
-
-  // string type = 2;
-  void clear_type();
-  const std::string& type() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_type(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_type();
-  PROTOBUF_NODISCARD std::string* release_type();
-  void set_allocated_type(std::string* type);
-  private:
-  const std::string& _internal_type() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_type(const std::string& value);
-  std::string* _internal_mutable_type();
-  public:
-
-  // string dbUrl = 3;
-  void clear_dburl();
-  const std::string& dburl() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_dburl(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_dburl();
-  PROTOBUF_NODISCARD std::string* release_dburl();
-  void set_allocated_dburl(std::string* dburl);
-  private:
-  const std::string& _internal_dburl() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_dburl(const std::string& value);
-  std::string* _internal_mutable_dburl();
-  public:
-
-  // string hashUrl = 4;
-  void clear_hashurl();
-  const std::string& hashurl() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_hashurl(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_hashurl();
-  PROTOBUF_NODISCARD std::string* release_hashurl();
-  void set_allocated_hashurl(std::string* hashurl);
-  private:
-  const std::string& _internal_hashurl() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_hashurl(const std::string& value);
-  std::string* _internal_mutable_hashurl();
-  public:
-
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.geo.DbRemoteUpsert_Request)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr dburl_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr hashurl_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_geo_2eproto;
-};
 // ===================================================================
 
 
@@ -1214,7 +1057,107 @@ inline void DbEntry::set_allocated_path(std::string* path) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbEntry.path)
 }
 
-// string type = 3;
+// string hash = 3;
+inline void DbEntry::clear_hash() {
+  _impl_.hash_.ClearToEmpty();
+}
+inline const std::string& DbEntry::hash() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbEntry.hash)
+  return _internal_hash();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DbEntry::set_hash(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.hash_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbEntry.hash)
+}
+inline std::string* DbEntry::mutable_hash() {
+  std::string* _s = _internal_mutable_hash();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbEntry.hash)
+  return _s;
+}
+inline const std::string& DbEntry::_internal_hash() const {
+  return _impl_.hash_.Get();
+}
+inline void DbEntry::_internal_set_hash(const std::string& value) {
+  
+  _impl_.hash_.Set(value, GetArenaForAllocation());
+}
+inline std::string* DbEntry::_internal_mutable_hash() {
+  
+  return _impl_.hash_.Mutable(GetArenaForAllocation());
+}
+inline std::string* DbEntry::release_hash() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbEntry.hash)
+  return _impl_.hash_.Release();
+}
+inline void DbEntry::set_allocated_hash(std::string* hash) {
+  if (hash != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.hash_.SetAllocated(hash, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.hash_.IsDefault()) {
+    _impl_.hash_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbEntry.hash)
+}
+
+// string createdAt = 4;
+inline void DbEntry::clear_createdat() {
+  _impl_.createdat_.ClearToEmpty();
+}
+inline const std::string& DbEntry::createdat() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbEntry.createdAt)
+  return _internal_createdat();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DbEntry::set_createdat(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.createdat_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbEntry.createdAt)
+}
+inline std::string* DbEntry::mutable_createdat() {
+  std::string* _s = _internal_mutable_createdat();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbEntry.createdAt)
+  return _s;
+}
+inline const std::string& DbEntry::_internal_createdat() const {
+  return _impl_.createdat_.Get();
+}
+inline void DbEntry::_internal_set_createdat(const std::string& value) {
+  
+  _impl_.createdat_.Set(value, GetArenaForAllocation());
+}
+inline std::string* DbEntry::_internal_mutable_createdat() {
+  
+  return _impl_.createdat_.Mutable(GetArenaForAllocation());
+}
+inline std::string* DbEntry::release_createdat() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbEntry.createdAt)
+  return _impl_.createdat_.Release();
+}
+inline void DbEntry::set_allocated_createdat(std::string* createdat) {
+  if (createdat != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.createdat_.SetAllocated(createdat, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.createdat_.IsDefault()) {
+    _impl_.createdat_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbEntry.createdAt)
+}
+
+// string type = 5;
 inline void DbEntry::clear_type() {
   _impl_.type_.ClearToEmpty();
 }
@@ -1266,160 +1209,215 @@ inline void DbEntry::set_allocated_type(std::string* type) {
 
 // -------------------------------------------------------------------
 
-// DbPost_Request
+// DbGet_Request
 
-// string path = 1;
-inline void DbPost_Request::clear_path() {
-  _impl_.path_.ClearToEmpty();
+// string ip = 1;
+inline void DbGet_Request::clear_ip() {
+  _impl_.ip_.ClearToEmpty();
 }
-inline const std::string& DbPost_Request::path() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbPost_Request.path)
-  return _internal_path();
+inline const std::string& DbGet_Request::ip() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbGet_Request.ip)
+  return _internal_ip();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void DbPost_Request::set_path(ArgT0&& arg0, ArgT... args) {
+void DbGet_Request::set_ip(ArgT0&& arg0, ArgT... args) {
  
- _impl_.path_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbPost_Request.path)
+ _impl_.ip_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbGet_Request.ip)
 }
-inline std::string* DbPost_Request::mutable_path() {
-  std::string* _s = _internal_mutable_path();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbPost_Request.path)
+inline std::string* DbGet_Request::mutable_ip() {
+  std::string* _s = _internal_mutable_ip();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbGet_Request.ip)
   return _s;
 }
-inline const std::string& DbPost_Request::_internal_path() const {
-  return _impl_.path_.Get();
+inline const std::string& DbGet_Request::_internal_ip() const {
+  return _impl_.ip_.Get();
 }
-inline void DbPost_Request::_internal_set_path(const std::string& value) {
+inline void DbGet_Request::_internal_set_ip(const std::string& value) {
   
-  _impl_.path_.Set(value, GetArenaForAllocation());
+  _impl_.ip_.Set(value, GetArenaForAllocation());
 }
-inline std::string* DbPost_Request::_internal_mutable_path() {
+inline std::string* DbGet_Request::_internal_mutable_ip() {
   
-  return _impl_.path_.Mutable(GetArenaForAllocation());
+  return _impl_.ip_.Mutable(GetArenaForAllocation());
 }
-inline std::string* DbPost_Request::release_path() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbPost_Request.path)
-  return _impl_.path_.Release();
+inline std::string* DbGet_Request::release_ip() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbGet_Request.ip)
+  return _impl_.ip_.Release();
 }
-inline void DbPost_Request::set_allocated_path(std::string* path) {
-  if (path != nullptr) {
+inline void DbGet_Request::set_allocated_ip(std::string* ip) {
+  if (ip != nullptr) {
     
   } else {
     
   }
-  _impl_.path_.SetAllocated(path, GetArenaForAllocation());
+  _impl_.ip_.SetAllocated(ip, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.path_.IsDefault()) {
-    _impl_.path_.Set("", GetArenaForAllocation());
+  if (_impl_.ip_.IsDefault()) {
+    _impl_.ip_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbPost_Request.path)
-}
-
-// string type = 2;
-inline void DbPost_Request::clear_type() {
-  _impl_.type_.ClearToEmpty();
-}
-inline const std::string& DbPost_Request::type() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbPost_Request.type)
-  return _internal_type();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void DbPost_Request::set_type(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.type_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbPost_Request.type)
-}
-inline std::string* DbPost_Request::mutable_type() {
-  std::string* _s = _internal_mutable_type();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbPost_Request.type)
-  return _s;
-}
-inline const std::string& DbPost_Request::_internal_type() const {
-  return _impl_.type_.Get();
-}
-inline void DbPost_Request::_internal_set_type(const std::string& value) {
-  
-  _impl_.type_.Set(value, GetArenaForAllocation());
-}
-inline std::string* DbPost_Request::_internal_mutable_type() {
-  
-  return _impl_.type_.Mutable(GetArenaForAllocation());
-}
-inline std::string* DbPost_Request::release_type() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbPost_Request.type)
-  return _impl_.type_.Release();
-}
-inline void DbPost_Request::set_allocated_type(std::string* type) {
-  if (type != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.type_.SetAllocated(type, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.type_.IsDefault()) {
-    _impl_.type_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbPost_Request.type)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbGet_Request.ip)
 }
 
 // -------------------------------------------------------------------
 
-// DbDelete_Request
+// DbGet_Response
 
-// string path = 1;
-inline void DbDelete_Request::clear_path() {
-  _impl_.path_.ClearToEmpty();
+// .com.wazuh.api.engine.ReturnStatus status = 1;
+inline void DbGet_Response::clear_status() {
+  _impl_.status_ = 0;
 }
-inline const std::string& DbDelete_Request::path() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbDelete_Request.path)
-  return _internal_path();
+inline ::com::wazuh::api::engine::ReturnStatus DbGet_Response::_internal_status() const {
+  return static_cast< ::com::wazuh::api::engine::ReturnStatus >(_impl_.status_);
+}
+inline ::com::wazuh::api::engine::ReturnStatus DbGet_Response::status() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbGet_Response.status)
+  return _internal_status();
+}
+inline void DbGet_Response::_internal_set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  
+  _impl_.status_ = value;
+}
+inline void DbGet_Response::set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  _internal_set_status(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbGet_Response.status)
+}
+
+// string error = 2;
+inline void DbGet_Response::clear_error() {
+  _impl_.error_.ClearToEmpty();
+}
+inline const std::string& DbGet_Response::error() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbGet_Response.error)
+  return _internal_error();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void DbDelete_Request::set_path(ArgT0&& arg0, ArgT... args) {
+void DbGet_Response::set_error(ArgT0&& arg0, ArgT... args) {
  
- _impl_.path_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbDelete_Request.path)
+ _impl_.error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbGet_Response.error)
 }
-inline std::string* DbDelete_Request::mutable_path() {
-  std::string* _s = _internal_mutable_path();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbDelete_Request.path)
+inline std::string* DbGet_Response::mutable_error() {
+  std::string* _s = _internal_mutable_error();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbGet_Response.error)
   return _s;
 }
-inline const std::string& DbDelete_Request::_internal_path() const {
-  return _impl_.path_.Get();
+inline const std::string& DbGet_Response::_internal_error() const {
+  return _impl_.error_.Get();
 }
-inline void DbDelete_Request::_internal_set_path(const std::string& value) {
+inline void DbGet_Response::_internal_set_error(const std::string& value) {
   
-  _impl_.path_.Set(value, GetArenaForAllocation());
+  _impl_.error_.Set(value, GetArenaForAllocation());
 }
-inline std::string* DbDelete_Request::_internal_mutable_path() {
+inline std::string* DbGet_Response::_internal_mutable_error() {
   
-  return _impl_.path_.Mutable(GetArenaForAllocation());
+  return _impl_.error_.Mutable(GetArenaForAllocation());
 }
-inline std::string* DbDelete_Request::release_path() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbDelete_Request.path)
-  return _impl_.path_.Release();
+inline std::string* DbGet_Response::release_error() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbGet_Response.error)
+  return _impl_.error_.Release();
 }
-inline void DbDelete_Request::set_allocated_path(std::string* path) {
-  if (path != nullptr) {
+inline void DbGet_Response::set_allocated_error(std::string* error) {
+  if (error != nullptr) {
     
   } else {
     
   }
-  _impl_.path_.SetAllocated(path, GetArenaForAllocation());
+  _impl_.error_.SetAllocated(error, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.path_.IsDefault()) {
-    _impl_.path_.Set("", GetArenaForAllocation());
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbDelete_Request.path)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbGet_Response.error)
+}
+
+// .google.protobuf.Struct data = 3;
+inline bool DbGet_Response::_internal_has_data() const {
+  return this != internal_default_instance() && _impl_.data_ != nullptr;
+}
+inline bool DbGet_Response::has_data() const {
+  return _internal_has_data();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& DbGet_Response::_internal_data() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.data_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& DbGet_Response::data() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbGet_Response.data)
+  return _internal_data();
+}
+inline void DbGet_Response::unsafe_arena_set_allocated_data(
+    ::PROTOBUF_NAMESPACE_ID::Struct* data) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.data_);
+  }
+  _impl_.data_ = data;
+  if (data) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.geo.DbGet_Response.data)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* DbGet_Response::release_data() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.data_;
+  _impl_.data_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* DbGet_Response::unsafe_arena_release_data() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbGet_Response.data)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.data_;
+  _impl_.data_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* DbGet_Response::_internal_mutable_data() {
+  
+  if (_impl_.data_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.data_ = p;
+  }
+  return _impl_.data_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* DbGet_Response::mutable_data() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_data();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbGet_Response.data)
+  return _msg;
+}
+inline void DbGet_Response::set_allocated_data(::PROTOBUF_NAMESPACE_ID::Struct* data) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.data_);
+  }
+  if (data) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(data));
+    if (message_arena != submessage_arena) {
+      data = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, data, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.data_ = data;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbGet_Response.data)
 }
 
 // -------------------------------------------------------------------
@@ -1558,215 +1556,9 @@ DbList_Response::entries() const {
   return _impl_.entries_;
 }
 
-// -------------------------------------------------------------------
-
-// DbRemoteUpsert_Request
-
-// string path = 1;
-inline void DbRemoteUpsert_Request::clear_path() {
-  _impl_.path_.ClearToEmpty();
-}
-inline const std::string& DbRemoteUpsert_Request::path() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.path)
-  return _internal_path();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void DbRemoteUpsert_Request::set_path(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.path_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.path)
-}
-inline std::string* DbRemoteUpsert_Request::mutable_path() {
-  std::string* _s = _internal_mutable_path();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.path)
-  return _s;
-}
-inline const std::string& DbRemoteUpsert_Request::_internal_path() const {
-  return _impl_.path_.Get();
-}
-inline void DbRemoteUpsert_Request::_internal_set_path(const std::string& value) {
-  
-  _impl_.path_.Set(value, GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::_internal_mutable_path() {
-  
-  return _impl_.path_.Mutable(GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::release_path() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.path)
-  return _impl_.path_.Release();
-}
-inline void DbRemoteUpsert_Request::set_allocated_path(std::string* path) {
-  if (path != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.path_.SetAllocated(path, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.path_.IsDefault()) {
-    _impl_.path_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.path)
-}
-
-// string type = 2;
-inline void DbRemoteUpsert_Request::clear_type() {
-  _impl_.type_.ClearToEmpty();
-}
-inline const std::string& DbRemoteUpsert_Request::type() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.type)
-  return _internal_type();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void DbRemoteUpsert_Request::set_type(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.type_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.type)
-}
-inline std::string* DbRemoteUpsert_Request::mutable_type() {
-  std::string* _s = _internal_mutable_type();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.type)
-  return _s;
-}
-inline const std::string& DbRemoteUpsert_Request::_internal_type() const {
-  return _impl_.type_.Get();
-}
-inline void DbRemoteUpsert_Request::_internal_set_type(const std::string& value) {
-  
-  _impl_.type_.Set(value, GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::_internal_mutable_type() {
-  
-  return _impl_.type_.Mutable(GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::release_type() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.type)
-  return _impl_.type_.Release();
-}
-inline void DbRemoteUpsert_Request::set_allocated_type(std::string* type) {
-  if (type != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.type_.SetAllocated(type, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.type_.IsDefault()) {
-    _impl_.type_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.type)
-}
-
-// string dbUrl = 3;
-inline void DbRemoteUpsert_Request::clear_dburl() {
-  _impl_.dburl_.ClearToEmpty();
-}
-inline const std::string& DbRemoteUpsert_Request::dburl() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.dbUrl)
-  return _internal_dburl();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void DbRemoteUpsert_Request::set_dburl(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.dburl_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.dbUrl)
-}
-inline std::string* DbRemoteUpsert_Request::mutable_dburl() {
-  std::string* _s = _internal_mutable_dburl();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.dbUrl)
-  return _s;
-}
-inline const std::string& DbRemoteUpsert_Request::_internal_dburl() const {
-  return _impl_.dburl_.Get();
-}
-inline void DbRemoteUpsert_Request::_internal_set_dburl(const std::string& value) {
-  
-  _impl_.dburl_.Set(value, GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::_internal_mutable_dburl() {
-  
-  return _impl_.dburl_.Mutable(GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::release_dburl() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.dbUrl)
-  return _impl_.dburl_.Release();
-}
-inline void DbRemoteUpsert_Request::set_allocated_dburl(std::string* dburl) {
-  if (dburl != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.dburl_.SetAllocated(dburl, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.dburl_.IsDefault()) {
-    _impl_.dburl_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.dbUrl)
-}
-
-// string hashUrl = 4;
-inline void DbRemoteUpsert_Request::clear_hashurl() {
-  _impl_.hashurl_.ClearToEmpty();
-}
-inline const std::string& DbRemoteUpsert_Request::hashurl() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.hashUrl)
-  return _internal_hashurl();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void DbRemoteUpsert_Request::set_hashurl(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.hashurl_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.hashUrl)
-}
-inline std::string* DbRemoteUpsert_Request::mutable_hashurl() {
-  std::string* _s = _internal_mutable_hashurl();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.hashUrl)
-  return _s;
-}
-inline const std::string& DbRemoteUpsert_Request::_internal_hashurl() const {
-  return _impl_.hashurl_.Get();
-}
-inline void DbRemoteUpsert_Request::_internal_set_hashurl(const std::string& value) {
-  
-  _impl_.hashurl_.Set(value, GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::_internal_mutable_hashurl() {
-  
-  return _impl_.hashurl_.Mutable(GetArenaForAllocation());
-}
-inline std::string* DbRemoteUpsert_Request::release_hashurl() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.hashUrl)
-  return _impl_.hashurl_.Release();
-}
-inline void DbRemoteUpsert_Request::set_allocated_hashurl(std::string* hashurl) {
-  if (hashurl != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.hashurl_.SetAllocated(hashurl, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.hashurl_.IsDefault()) {
-    _impl_.hashurl_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.geo.DbRemoteUpsert_Request.hashUrl)
-}
-
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
-// -------------------------------------------------------------------
-
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

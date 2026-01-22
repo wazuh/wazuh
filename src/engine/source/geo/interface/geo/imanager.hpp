@@ -68,6 +68,8 @@ struct DbInfo
 {
     std::string name;
     std::string path;
+    std::string hash;
+    std::string createdAt;
     Type type;
 };
 
@@ -91,23 +93,6 @@ public:
     virtual ~IManager() = default;
 
     /**
-     * @brief Adds a database to the manager, it must be a valid MMDB database and already present in the filesystem.
-     *
-     * @param path The path to the MMDB database.
-     * @param type The type of the database.
-     * @return base::OptError An error if the database could not be added.
-     */
-    virtual base::OptError addDb(const std::string& path, Type type) = 0;
-
-    /**
-     * @brief Removes a database from the manager. The database will persist in the filesystem.
-     *
-     * @param path The path to the MMDB database.
-     * @return base::OptError An error if the database could not be removed.
-     */
-    virtual base::OptError removeDb(const std::string& path) = 0;
-
-    /**
      * @brief Get a list of databases.
      *
      * @return std::vector<DbInfo>
@@ -115,17 +100,17 @@ public:
     virtual std::vector<DbInfo> listDbs() const = 0;
 
     /**
-     * @brief Remote upsert a database from a given URL. The database will be downloaded and stored in the
-     * filesystem.
+     * @brief Remote upsert databases from a manifest URL. Downloads, validates, and updates databases based on
+     * manifest metadata.
      *
-     * @param path Path to store the database.
-     * @param type Type of the database.
-     * @param dbUrl URL to download the database.
-     * @param hashUrl URL to download the hash of the database.
-     * @return base::OptError An error if the database could not be downloaded or stored.
+     * @param manifestUrl URL to download the manifest JSON.
+     * @param cityPath Path to store the city database (if present in manifest).
+     * @param asnPath Path to store the ASN database (if present in manifest).
+     * @return base::OptError An error if the databases could not be downloaded or stored.
      */
-    virtual base::OptError
-    remoteUpsertDb(const std::string& path, Type type, const std::string& dbUrl, const std::string& hashUrl) = 0;
+virtual void remoteUpsert(const std::string& manifestUrl,
+                              const std::string& cityPath,
+                              const std::string& asnPath) = 0;
 
     /**
      * @brief Get a locator for querying the given type of database.

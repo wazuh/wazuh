@@ -1,6 +1,7 @@
 #include <atomic>
 #include <csignal>
 #include <exception>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -528,6 +529,36 @@ int main(int argc, char* argv[])
                                        {
                                            cmSyncService->synchronize();
                                        }});
+        }
+
+        // Geo sync
+        {
+            auto geoSyncInterval = confManager.get<std::size_t>(conf::key::GEO_SYNC_INTERVAL);
+            if (geoSyncInterval > 0)
+            {
+                auto geoDbPath = confManager.get<std::string>(conf::key::GEO_DB_PATH);
+                auto manifestUrl = confManager.get<std::string>(conf::key::GEO_MANIFEST_URL);
+
+                // Create database paths
+                auto cityPath = (std::filesystem::path(geoDbPath) / "GeoLite2-City.mmdb").string();
+                auto asnPath = (std::filesystem::path(geoDbPath) / "GeoLite2-ASN.mmdb").string();
+
+                scheduler->scheduleTask(
+                    "geo-sync-task",
+                    scheduler::TaskConfig {
+                        .interval = geoSyncInterval,
+                        .CPUPriority = 0,
+                        .timeout = 0,
+                        .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
+                        {
+                            geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
+                        }});
+                LOG_INFO("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
+            }
+            else
+            {
+                LOG_INFO("Geo sync DISABLED (interval is 0).");
+            }
         }
 
         // Archiver

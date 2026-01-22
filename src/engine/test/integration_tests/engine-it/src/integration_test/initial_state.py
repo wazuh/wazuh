@@ -1,7 +1,10 @@
 from shutil import copy
 import sys
+import json
+import hashlib
 from pathlib import Path
 from typing import Optional
+from datetime import datetime, timezone
 
 from google.protobuf.json_format import ParseDict
 
@@ -70,6 +73,56 @@ def send_recv(api_client: APIClient, request, expected_response):
     if status == api_engine.ERROR:
         raise RuntimeError(f"Engine API returned ERROR: {parsed.error}")
     return parsed
+
+
+def md5_file(path: Path) -> str:
+    """Calculate MD5 hash of a file."""
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def init_geo_store(env_path: Path, test_path: Path):
+    """
+    Initialize geo store structure and JSON metadata for databases.
+    Creates store/geo/ directory with JSON files describing each database.
+    """
+    geo_data_path = test_path / "geo" / "data"
+    geo_dest_path = env_path / "geo"
+    geo_store_path = env_path / "store" / "geo"
+
+    # Create directories
+    geo_dest_path.mkdir(parents=True, exist_ok=True)
+    geo_store_path.mkdir(parents=True, exist_ok=True)
+
+    # Current timestamp in ISO 8601 format
+    created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    db_name = "base.mmdb"
+    db_type = "city"
+
+    # Copy database to geo destination
+    dest_db = geo_data_path / db_name
+
+    # Calculate MD5 hash
+    db_hash = md5_file(dest_db)
+
+    # Create store metadata JSON
+    metadata = {
+        "path": dest_db.as_posix(),
+        "type": db_type,
+        "hash": db_hash,
+        "created_at": created_at
+    }
+
+    # Write JSON to store/geo/{db_name}.json
+    store_json_path = geo_store_path / f"{db_name}.json"
+    with open(store_json_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+
+    print(f"  Initialized {db_name} ({db_type}): hash={db_hash[:8]}...")
 
 
 # ===================================================================
@@ -215,6 +268,10 @@ def init(env_path: Path, test_path: Path):
         print(f"Copying configuration file to {env_path}...")
         config_path = cpy_conf(env_path, test_path)
         print("Configuration file copied.")
+
+        # Initialize geo databases and store metadata
+        print("Initializing geo databases and store...")
+        init_geo_store(env_path, test_path)
 
         # Binary path
         bin_path = env_path / "wazuh-engine"

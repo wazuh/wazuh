@@ -11,8 +11,11 @@ class MockDownloader : public IDownloader
 {
 public:
     MOCK_METHOD((base::RespOrError<std::string>), downloadHTTPS, (const std::string& url), (const override));
-    MOCK_METHOD(std::string, computeMD5, (const std::string& data), (const override));
-    MOCK_METHOD(base::RespOrError<std::string>, downloadMD5, (const std::string& url), (const override));
+    MOCK_METHOD((base::RespOrError<json::Json>), downloadManifest, (const std::string& url), (const override));
+    MOCK_METHOD((base::OptError),
+                extractMmdbFromTarGz,
+                (const std::string& tarGzContent, const std::string& outputPath),
+                (const override));
 };
 } // namespace geo::mocks
 #endif // _GEO_MOCK_DOWNLOADER_HPP

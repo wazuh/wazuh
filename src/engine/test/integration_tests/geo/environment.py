@@ -21,4 +21,15 @@ def after_feature(context, feature):
     engine_handler.stop()
 
     # Clean up data directory
-    shutil.rmtree(dbs_path)
+    if dbs_path.exists():
+        shutil.rmtree(dbs_path)
+    
+    # Clean up physical geo database files but keep store metadata
+    # This prevents geo databases from being loaded in other tests
+    # while preserving the rest of the store (namespaces, etc.)
+    env_dir = os.getenv('ENV_DIR', '')
+    if env_dir:
+        geo_db_path = Path(env_dir) / "geo"
+        if geo_db_path.exists():
+            shutil.rmtree(geo_db_path)
+            print(f"Cleaned up geo databases: {geo_db_path}")

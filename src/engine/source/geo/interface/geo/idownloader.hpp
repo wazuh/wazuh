@@ -4,6 +4,7 @@
 #include <string>
 
 #include <base/error.hpp>
+#include <base/json.hpp>
 
 namespace geo
 {
@@ -13,8 +14,23 @@ public:
     virtual ~IDownloader() = default;
 
     virtual base::RespOrError<std::string> downloadHTTPS(const std::string& url) const = 0;
-    virtual std::string computeMD5(const std::string& data) const = 0;
-    virtual base::RespOrError<std::string> downloadMD5(const std::string& url) const = 0;
+
+    /**
+     * @brief Download and parse a manifest JSON file.
+     *
+     * @param url URL to download the manifest from.
+     * @return base::RespOrError<json::Json> The parsed JSON manifest or an error.
+     */
+    virtual base::RespOrError<json::Json> downloadManifest(const std::string& url) const = 0;
+
+    /**
+     * @brief Extract .mmdb file from a tar.gz archive.
+     *
+     * @param tarGzContent The content of the tar.gz file.
+     * @param outputPath Path where to write the extracted .mmdb file.
+     * @return base::OptError An error if extraction failed.
+     */
+    virtual base::OptError extractMmdbFromTarGz(const std::string& tarGzContent, const std::string& outputPath) const = 0;
 };
 } // namespace geo
 

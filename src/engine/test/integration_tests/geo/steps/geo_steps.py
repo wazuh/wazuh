@@ -1,6 +1,5 @@
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 from pathlib import Path
-import shutil
 import os
 
 from google.protobuf.json_format import ParseDict
@@ -12,25 +11,8 @@ from api_communication.proto import engine_pb2 as api_engine
 
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = (Path(ENV_DIR) / "queue/sockets/engine-api.socket").as_posix()
-RULESET_DIR = (Path(ENV_DIR) / "engine").as_posix()
 
 api_client = APIClient(SOCKET_PATH)
-
-data_path = Path(__file__).resolve().parent.parent / "data"
-base_db_path = data_path / "base.mmdb"
-
-
-def get_db_path(name: str) -> Path:
-    return data_path / "dbs" / name
-
-
-def gen_db(name: str) -> Path:
-    src = base_db_path
-    dst = get_db_path(name)
-
-    shutil.copy(src, dst)
-
-    return dst
 
 
 def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
@@ -43,104 +25,57 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
     except Exception as e:
         assert False, f"{response}"
 
+
 ####################################################################################################
 # GIVEN
 ####################################################################################################
 
 
-@given('the engine is running with an empty geo manager')
+@given('the engine is running with geo manager')
 def step_impl(context):
+    # Just verify the engine is running by listing databases
     list_request = api_geo.DbList_Request()
     error, response = send_recv(list_request, api_geo.DbList_Response())
     assert error is None, f"{error}"
-
-    for db in response.entries:
-        delete_request = api_geo.DbDelete_Request()
-        delete_request.path = db.path
-        error, response = send_recv(
-            delete_request, api_engine.GenericStatus_Response())
-        assert error is None, f"{error}"
-        assert response.status == api_engine.OK, f"{response.error}"
-
-
-@given('an existing db file "{name}"')
-def step_impl(context, name: str):
-    db_path = gen_db(name)
-    assert db_path.exists(), f"File {db_path} does not exist"
-
-
-@given('a non-existent db file "{name}"')
-def step_impl(context, name: str):
-    db_path = get_db_path(name)
-    assert not db_path.exists(), f"File {db_path} exists"
-
-
-@given('the database "{name}" for type "{type}" is already added to the geo manager')
-def step_impl(context, name: str, type: str):
-    request = api_geo.DbPost_Request()
-    request.path = get_db_path(name).as_posix()
-    request.type = type
-
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
-    assert error is None, f"{error}"
     assert response.status == api_engine.OK, f"{response.error}"
+
 
 ####################################################################################################
 # WHEN
 ####################################################################################################
 
 
-@when('I send a request to add a database with path to "{name}" and type "{type}"')
-def step_impl(context, name: str, type: str):
-    request = api_geo.DbPost_Request()
-    request.path = get_db_path(name).as_posix()
-    request.type = type
-
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
-    assert error is None, f"{error}"
-
-    context.response = response
-
-
-@when('I send a delete request for the path to "{name}"')
-def step_impl(context, name: str):
-    request = api_geo.DbDelete_Request()
-    request.path = get_db_path(name).as_posix()
-
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
-    assert error is None, f"{error}"
-
-    context.response = response
-
-
 @when('I send a request to list all databases')
 def step_impl(context):
     request = api_geo.DbList_Request()
-
     error, response = send_recv(request, api_geo.DbList_Response())
     assert error is None, f"{error}"
-
     context.response = response
 
 
-@when('I send a request to remotely upsert a database with path to "{name}", type "{type}", db url "{dbUrl}" and hash url "{hashUrl}"')
-def step_impl(context, name: str, type: str, dbUrl: str, hashUrl: str):
-    request = api_geo.DbRemoteUpsert_Request()
-    request.path = get_db_path(name).as_posix()
-    request.type = type
-    request.dbUrl = dbUrl
-    request.hashUrl = hashUrl
+@when('I query the IP address "{ip}"')
+def step_impl(context, ip: str):
+    # Handle special placeholder for empty string
+    if ip == "<empty>":
+        ip = ""
 
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
-    assert error is None, f"{error}"
+    request = api_geo.DbGet_Request()
+    request.ip = ip
 
-    context.response = response
-
-
-@when('I restart the engine')
-def step_impl(context):
-    context.shared_data['engine_instance'].stop()
-    context.shared_data['engine_instance'].start()
+    # Don't assert on error here, let the response be checked in THEN steps
+    error, response = api_client.send_recv(request)
+    if error is not None:
+        # Store error for later verification
+        context.error = error
+        context.response = None
+        return
+    
+    try:
+        context.response = ParseDict(response, api_geo.DbGet_Response())
+        context.error = None
+    except Exception as e:
+        context.error = str(e)
+        context.response = None
 
 
 ####################################################################################################
@@ -151,39 +86,54 @@ def step_impl(context):
 @then('the response should be a "{status}"')
 def step_impl(context, status: str):
     if status == "success":
+        assert context.response is not None, f"Expected success but got error: {getattr(context, 'error', 'Unknown error')}"
         assert context.response.status == api_engine.OK, f"{context.response.status} -> {context.response.error}"
     else:
-        assert context.response.status == api_engine.ERROR, f"{context.response.status}"
+        # For failure, either we have an error or response.status == ERROR
+        if context.response is not None:
+            assert context.response.status == api_engine.ERROR, f"Expected ERROR status but got {context.response.status}"
+        else:
+            # We have a transport or parsing error
+            assert context.error is not None, "Expected error but got none"
 
 
-@then('the database list "{should}" include "{name}"')
-def step_impl(context, should: str, name: str):
-    list_request = api_geo.DbList_Request()
-    error, response = send_recv(list_request, api_geo.DbList_Response())
-    assert error is None, f"{error}"
-    if should == "should":
-        assert any(
-            db.name == name for db in response.entries), f"{name} not in {response.entries}"
+@then('the response should contain a list of databases')
+def step_impl(context):
+    assert hasattr(context.response, 'entries'), "Response does not have 'entries' field"
+    assert len(context.response.entries) > 0, f"Database list is empty. Expected at least one database"
+    # Verify each entry has required fields
+    for entry in context.response.entries:
+        assert hasattr(entry, 'name'), "Database entry missing 'name' field"
+        assert hasattr(entry, 'path'), "Database entry missing 'path' field"
+        assert hasattr(entry, 'hash'), "Database entry missing 'hash' field"
+        assert hasattr(entry, 'type'), "Database entry missing 'type' field"
+
+
+@then('the response should contain "{field}" data')
+def step_impl(context, field: str):
+    assert hasattr(context.response, 'data'), "Response does not have 'data' field"
+    assert field in context.response.data.keys(), f"'{field}' not found in response data"
+    # Verify it's not empty
+    field_data = context.response.data[field]
+    if isinstance(field_data, dict):
+        assert len(field_data) > 0, f"'{field}' data is empty"
+
+
+@then('the response should contain empty "{field}" data')
+def step_impl(context, field: str):
+    assert hasattr(context.response, 'data'), "Response does not have 'data' field"
+    assert field in context.response.data.keys(), f"'{field}' not found in response data"
+    # Verify it's empty
+    field_data = context.response.data[field]
+    if isinstance(field_data, dict):
+        assert len(field_data) == 0, f"'{field}' data is not empty: {field_data}"
+
+
+@then('the error message should contain "{text}"')
+def step_impl(context, text: str):
+    if context.response is not None and hasattr(context.response, 'error'):
+        assert text in context.response.error, f"Expected '{text}' in error message but got: {context.response.error}"
+    elif context.error is not None:
+        assert text in context.error, f"Expected '{text}' in error but got: {context.error}"
     else:
-        assert not any(
-            db.name == name for db in response.entries), f"{name} in {response.entries}"
-
-
-@then('the error message "{message}" is returned')
-def step_impl(context, message: str):
-    # find '{name}' and replace it with the db path
-    index = message.find("'{")
-    if index != -1:
-        index2 = message.find("}'", index)
-        assert index2 != -1, "missing '}}"
-        message = message[:index+1] + \
-            get_db_path(message[index+2:index2]
-                        ).as_posix() + message[index2+1:]
-
-    assert context.response.error == message, f'expected "{message}" but got "{context.response.error}"'
-
-
-@then('the response should include "{name}"')
-def step_impl(context, name: str):
-    assert any(
-        db.name == name for db in context.response.entries), f"{name} not in {context.response.entries}"
+        assert False, "No error message found in response"

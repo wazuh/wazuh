@@ -22,6 +22,11 @@ from engine_private.cmds.ns.create import configure as configure_ns_create
 from engine_private.cmds.ns.delete import configure as configure_ns_delete
 from engine_private.cmds.ns.import_ns import configure as configure_ns_import
 
+# ======================
+# Geo commands
+# ======================
+from engine_private.cmds.geo.get import configure as configure_geo_get
+from engine_private.cmds.geo.list import configure as configure_geo_list
 
 def parse_args():
     meta = metadata('engine-suite')
@@ -96,6 +101,23 @@ def parse_args():
     configure_ns_create(ns_subparsers)
     configure_ns_delete(ns_subparsers)
     configure_ns_import(ns_subparsers)
+
+    # ==========================================================
+    # Geo commands (global → do NOT require --space)
+    # ==========================================================
+    geo_parser = subparsers.add_parser(
+        'geo',
+        help='Geo management operations'
+    )
+
+    geo_subparsers = geo_parser.add_subparsers(
+        title='geo commands',
+        required=True,
+        dest='geo_command'
+    )
+
+    configure_geo_get(geo_subparsers)
+    configure_geo_list(geo_subparsers)
 
     try:
         import argcomplete
