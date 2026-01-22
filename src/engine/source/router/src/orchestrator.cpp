@@ -446,7 +446,7 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
     // Save the updated configuration (lock already held, use Internal version)
     dumpRoutersInternal();
 
-    LOG_INFO("Router: Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
+    LOG_INFO("[Router::hotSwapSpace] Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
     return std::nullopt;
 }
 

@@ -237,7 +237,7 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                            fmt::format("existSpaceInRemote('{}')", space),
+                            fmt::format("exist '{}' space in wazuh-indexer", space),
                             m_attemps,
                             m_waitSeconds);
 }
@@ -499,8 +499,24 @@ void CMSync::synchronize()
             // Get remote policy hash
             const auto remoteHash = getPolicyHashFromRemote(nsState.getOriginSpace());
 
-            // Check if the policy has changed and space exist locally
-            if (remoteHash == nsState.getLastPolicyHash() && cmcrudPtr->existsNamespace(nsState.getNamespaceId()))
+            // Check if has a valid route of cm_sync in the router
+            bool validRoute = [&]() -> bool
+            {
+                auto routerPtr = lockWeakPtr(m_router, "RouterAPI");
+                if (!routerPtr->existsEntry(nsState.getRouteName()))
+                {
+                    return false;
+                }
+                auto resp = routerPtr->getEntry(nsState.getRouteName());
+                if (base::isError(resp))
+                {
+                    return false;
+                }
+                const auto& entry = base::getResponse(resp);
+                return entry.namespaceId() == nsState.getNamespaceId() && entry.status() == ::router::env::State::ENABLED;
+            }();
+              // Check if the policy has changed
+            if (remoteHash == nsState.getLastPolicyHash() && cmcrudPtr->existsNamespace(nsState.getNamespaceId()) && validRoute)
             {
                 LOG_DEBUG("[CM::Sync] No changes detected for space '{}'", nsState.getOriginSpace());
                 continue;

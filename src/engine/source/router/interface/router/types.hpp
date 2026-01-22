@@ -104,6 +104,7 @@ public:
     // Setters and getters
     const std::string& name() const { return m_name; }
     const cm::store::NamespaceId& namespaceId() const { return m_namespace; }
+    void namespaceId(cm::store::NamespaceId namespaceId) { m_namespace = std::move(namespaceId); }
 
     const std::optional<std::string>& description() const { return m_description; }
     void description(std::string_view description) { m_description = description; }
