@@ -232,6 +232,7 @@ override_dh_install:
 override_dh_fixperms:
 	dh_fixperms
 	# Fix Python permissions
+	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/lib/libpython3.12.so.1.0
 	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/2to3-3.12
 	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/pydoc3.12
 	chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/python3-config
