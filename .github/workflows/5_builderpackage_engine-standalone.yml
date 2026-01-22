@@ -33,6 +33,12 @@ on:
         type: string
         default: 'release'
 
+      run-identifier:
+        description: 'Unique identifier for parallel runs'
+        required: false
+        type: string
+        default: ''
+
   # Triggers the workflow on pull request but only changes in the src/engine/ directory.
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -47,11 +53,12 @@ env:
 
 jobs:
   build:
-    name: Build Server (${{ matrix.arch }})
+    name: Build Server (${{ matrix.arch }}) 
     runs-on: ${{ matrix.runner }}
     # Groups builds by architecture to track concurrent executions
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.arch }}-${{ github.event_name == 'workflow_call' && 'called' || 'trigger' }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.arch }}-${{ github.event_name == 'workflow_call' && format('called-{0}', inputs.run-identifier) || 'trigger' }}
+      cancel-in-progress: true
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     strategy:
