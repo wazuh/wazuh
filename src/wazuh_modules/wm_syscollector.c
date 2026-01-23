@@ -451,6 +451,7 @@ void* wm_sys_main(wm_sys_t* sys)
 
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
+    need_shutdown_wait = false;
     w_cond_signal(&sys_stop_condition);
     w_mutex_unlock(&sys_stop_mutex);
     return 0;
@@ -485,6 +486,11 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
         shutdown_process_started = true;
         syscollector_stop_ptr();
     }
+    w_mutex_lock(&sys_stop_mutex);
+    while (need_shutdown_wait) {
+        w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
+    }
+    w_mutex_unlock(&sys_stop_mutex);
 }
 
 cJSON* wm_sys_dump(const wm_sys_t* sys)

@@ -622,11 +622,24 @@ char **expand_win32_wildcards(const char *path);
 /**
  * @brief Checks if a given path is located on network storage.
  *
- * This function detects both UNC paths (e.g. "\\\\server\\share\\...") and
- * paths on drives mapped to remote locations (e.g. "Z:\\folder\\file.txt").
+ * This function blocks all network paths to prevent security vulnerabilities
+ * such as NetNTLMv2 credential exposure and NTLM relay attacks.
+ *
+ * Detected network path types:
+ * - Standard UNC paths: \\\\server\\share\\...
+ * - Extended-length UNC paths: \\\\?\\UNC\\server\\share\\...
+ * - Device paths: \\\\.\\device
+ * - Extended-length paths: \\\\?\\C:\\...
+ * - Mapped network drives: Z:\\folder\\file.txt
+ *
+ * Any path starting with \\\\ is considered a network path, as there are no
+ * legitimate local file paths in Windows that begin with this prefix.
  *
  * @param path A null-terminated string containing the file path to check.
  * @return true if the path points to a network location, false otherwise.
+ *
+ * @note This function addresses CVE-2025-30201 and GHSA-5g2v-99vr-3hgw.
+ * @see https://github.com/wazuh/wazuh/pull/30060
  */
 bool is_network_path(const char *path);
 

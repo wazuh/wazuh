@@ -2854,12 +2854,12 @@ bool is_network_path(const char *path) {
         return false;
     }
 
-    // Case 1: UNC path (\\server\share\...)
-    if (PathIsUNCA(path)) {
+    // Block any path starting with \\ (UNC, extended-length UNC, device paths)
+    if (strlen(path) >= 2 && path[0] == '\\' && path[1] == '\\') {
         return true;
     }
 
-    // Case 2: Absolute path on mapped network drive
+    // Check for mapped network drives
     if (strlen(path) >= 2 && path[1] == ':') {
         char root[] = "X:";
         root[0] = toupper(path[0]);
