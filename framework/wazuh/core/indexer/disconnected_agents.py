@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import timedelta
+from datetime import timedelta, timezone
 from typing import Generator, List
 
 import wazuh.core.utils as core_utils
-from wazuh.core.agent import (WazuhDBQueryAgents, get_agents_info,
-                              get_rbac_filters)
+from wazuh.core.agent import WazuhDBQueryAgents, get_agents_info
 from wazuh.core.cluster import master
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import (WazuhError, WazuhException,
-                                  WazuhInternalError, WazuhResourceNotFound)
+from wazuh.core.exception import (
+    WazuhError,
+    WazuhException,
+    WazuhInternalError,
+    WazuhResourceNotFound,
+)
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -163,39 +166,84 @@ class DisconnectedAgentGroupSyncTask:
         self, wdb_conn: AsyncWazuhDBConnection
     ) -> List[dict]:
         """
-        Retrieve non-connected agents filtered entirely at DB level.
+        Retrieve non-connected agents filtered by disconnection time at DB level.
 
-        Filtering rules:
-        - status in (disconnected, pending, never connected)
-        - agents without disconnection_time are always included
-        - agents with disconnection_time must exceed min_disconnection_time
+        This method queries the Wazuh database for agents whose status is not
+        'active', normalizes their last heartbeat timestamp to UTC, and filters
+        them based on a minimum disconnection threshold.
+
+        Parameters
+        ----------
+        wdb_conn : AsyncWazuhDBConnection
+            The asynchronous connection object to the Wazuh database.
+
+        Returns
+        -------
+        List[dict]
+            A list of dictionaries, where each dictionary contains the
+            following agent information:
+            - id : str
+            - name : str
+            - status : str
+            - lastKeepAlive : datetime
+            - group : list
+
+        Raises
+        ------
+        Exception
+            If there is an error during the database query or the
+            processing of agent data.
+
+        Notes
+        -----
+        The filtering rules applied are:
+        1. status must be in ('disconnected', 'pending', 'never connected').
+        2. Agents without 'lastKeepAlive' are included by default (handled
+           within the normalization logic if applicable).
+        3. The time since 'lastKeepAlive' plus `min_disconnection_time` must
+           be less than the current UTC time.
+
+        Inside this method, an internal helper `_normalize_to_utc` is used to
+        ensure all datetime comparisons are offset-aware (UTC), avoiding
+        TypeErrors when comparing naive vs aware datetimes.
         """
         try:
-            filters = {"status": ["disconnected", "pending", "never connected"]}
-            rbac_filters = (
-                get_rbac_filters(
-                    system_resources=get_agents_info(),
-                    permitted_resources=filters.pop("id"),
-                    filters=filters,
-                )
-                if filters and "id" in filters
-                else {"filters": filters}
-            )
-
             with WazuhDBQueryAgents(
                 select=["id", "name", "status", "lastKeepAlive", "group"],
                 query="status!=active",
-                **rbac_filters,
             ) as db_query:
                 result = db_query.run()
 
-            agents_not_filtered = result.get("items", [])
+            def _normalize_to_utc(dt):
+                """
+                Convert a naive or aware datetime to UTC.
+
+                Parameters
+                ----------
+                dt : datetime or None
+                    The datetime object to normalize.
+
+                Returns
+                -------
+                datetime or None
+                    The UTC-aware datetime or None if input is None.
+                """
+                if dt is None:
+                    return None
+                if dt.tzinfo is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc)
+
+            agents_not_active = result.get("items", [])
             agents = []
-            for agent in agents_not_filtered:
+            now_utc = core_utils.get_utc_now()
+
+            for agent in agents_not_active:
+
                 if (
-                    agent["lastKeepAlive"]
+                    _normalize_to_utc(agent["lastKeepAlive"])
                     + timedelta(seconds=self.min_disconnection_time)
-                    < core_utils.get_utc_now()
+                    < now_utc
                 ):
                     agents.append(agent)
 
