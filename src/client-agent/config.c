@@ -32,6 +32,7 @@ int agent_debug_level;
 /* Agent's handshake globals */
 module_limits_t agent_module_limits;
 char agent_cluster_name[256] = {0};
+char agent_agent_groups[OS_SIZE_65536] = {0};
 
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)

@@ -140,13 +140,14 @@ size_t agcom_gethandshake(char ** output) {
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "cluster_name", agent_cluster_name);
+    cJSON_AddStringToObject(root, "agent_groups", agent_agent_groups);
 
     char *json_str = cJSON_PrintUnformatted(root);
     if (json_str) {
         os_strdup(json_str, *output);
         free(json_str);
     } else {
-        os_strdup("{\"cluster_name\":\"\"}", *output);
+        os_strdup("{\"cluster_name\":\"\",\"agent_groups\":\"\"}", *output);
     }
 
     cJSON_Delete(root);

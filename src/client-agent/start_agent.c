@@ -43,10 +43,13 @@ STATIC void send_msg_on_startup(void);
  * @param limits Pointer to module limits structure to populate
  * @param cluster_name Buffer to store cluster name (min 256 bytes)
  * @param cluster_name_size Size of cluster_name buffer
+ * @param agent_groups Buffer to store agent groups as CSV (can be NULL)
+ * @param agent_groups_size Size of agent_groups buffer
  * @return 0 on success, -1 on error
  */
 STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
-                                char *cluster_name, size_t cluster_name_size) {
+                                char *cluster_name, size_t cluster_name_size,
+                                char *agent_groups, size_t agent_groups_size) {
     cJSON *root = NULL;
     cJSON *limits_obj = NULL;
     cJSON *module = NULL;
@@ -144,6 +147,30 @@ STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
         if (cluster && cJSON_IsString(cluster) && cluster->valuestring) {
             strncpy(cluster_name, cluster->valuestring, cluster_name_size - 1);
             cluster_name[cluster_name_size - 1] = '\0';
+        }
+    }
+
+    /* Parse agent_groups array and convert to CSV */
+    if (agent_groups && agent_groups_size > 0) {
+        agent_groups[0] = '\0';
+        cJSON *groups_array = cJSON_GetObjectItem(root, "agent_groups");
+        if (groups_array && cJSON_IsArray(groups_array)) {
+            size_t offset = 0;
+            cJSON *group_item = NULL;
+            cJSON_ArrayForEach(group_item, groups_array) {
+                if (cJSON_IsString(group_item) && group_item->valuestring) {
+                    size_t group_len = strlen(group_item->valuestring);
+                    /* Check if there's space: group + comma + null terminator */
+                    if (offset + group_len + 2 < agent_groups_size) {
+                        if (offset > 0) {
+                            agent_groups[offset++] = ',';
+                        }
+                        strcpy(agent_groups + offset, group_item->valuestring);
+                        offset += group_len;
+                    }
+                }
+            }
+            agent_groups[offset] = '\0';
         }
     }
 
@@ -452,8 +479,10 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                         const char *json_start = strchr(tmp_msg, '{');
                         if (json_start) {
                             char cluster_name_buffer[256] = {0};
+                            char agent_groups_buffer[OS_SIZE_65536] = {0};
                             if (parse_handshake_json(json_start, &agent_module_limits,
-                                                      cluster_name_buffer, sizeof(cluster_name_buffer)) == 0) {
+                                                      cluster_name_buffer, sizeof(cluster_name_buffer),
+                                                      agent_groups_buffer, sizeof(agent_groups_buffer)) == 0) {
                                 minfo("Module limits received from manager");
 
                                 mdebug2("Received FIM limits: file=%d, registry_key=%d, registry_value=%d",
@@ -485,6 +514,16 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                     minfo("Connected to cluster: %s", agent_cluster_name);
                                 } else {
                                     mwarn("No cluster name received from manager");
+                                }
+
+                                /* Store agent_groups in global for agent-info module to query via agcom */
+                                if (agent_groups_buffer[0] != '\0') {
+                                    strncpy(agent_agent_groups, agent_groups_buffer,
+                                            sizeof(agent_agent_groups) - 1);
+                                    agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
+                                    minfo("Received agent groups from manager: %s", agent_agent_groups);
+                                } else {
+                                    mwarn("No agent groups received from manager");
                                 }
                             } else {
                                 mwarn("Error parsing handshake JSON, using defaults");
