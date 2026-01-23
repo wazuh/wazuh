@@ -143,7 +143,11 @@ const auto expected_syscollector_browser_extensions
 };
 
 
-void SyscollectorImpTest::SetUp() {};
+void SyscollectorImpTest::SetUp()
+{
+    // Reset singleton state to allow re-initialization after previous test's destroy()
+    Syscollector::instance().reset();
+};
 
 void SyscollectorImpTest::TearDown()
 {
