@@ -139,15 +139,8 @@ def verify_installation(expected_version):
             return False
 
         with open(version_file_path, "r", encoding="utf-8") as vf:
-            content = vf.read()
-            print(f"Version file content:\n{content}")
-            try:
-                data = json.loads(content)
-                installed_version = data.get("version", None)
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error: {e}")
-                print(f"File content (repr): {repr(content)}")
-                return False
+            data = json.load(vf)
+            installed_version = data.get("version", None)
 
         print(f"Installed version: {installed_version}, Expected: {expected_version}")
         if installed_version != expected_version:

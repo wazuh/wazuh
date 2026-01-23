@@ -33,8 +33,8 @@ on:
 jobs:
   build-windows-i686:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    name: Build Windows agent binaries (cross-compile)
+    timeout-minutes: 60
+    name: Build Windows agent binaries
     outputs:
       version: ${{ steps.set-version.outputs.version }}
 
@@ -42,7 +42,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install cross-compilation dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
@@ -62,22 +62,13 @@ jobs:
           sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
           cat VERSION.json
 
-      - name: Build Windows dependencies (cross-compile)
+      - name: Build Windows dependencies
         run: |
           make -C src deps TARGET=winagent -j$(nproc)
 
-      - name: Build Windows agent (cross-compile)
+      - name: Build Windows agent
         run: |
           make -C src TARGET=winagent -j$(nproc)
-
-      - name: List generated files for debugging
-        run: |
-          echo "=== Contents of src/win32/ ==="
-          ls -la src/win32/ | head -20
-          echo "=== Contents of src/data_provider/build/ ==="
-          find src/data_provider/build/ -type f 2>/dev/null | head -20 || echo "data_provider/build not found"
-          echo "=== Contents of src/syscheckd/build/ ==="
-          find src/syscheckd/build/ -type f 2>/dev/null | head -20 || echo "syscheckd/build not found"
 
       - name: Upload compiled binaries as artifact
         uses: actions/upload-artifact@v4
@@ -153,9 +144,9 @@ jobs:
           Copy-Item cv2pdb_temp/cv2pdb.exe src/win32/
           # Verify
           if (Test-Path "src/win32/cv2pdb.exe") {
-            Write-Host "✓ cv2pdb.exe downloaded successfully"
+            Write-Host "cv2pdb.exe downloaded successfully"
           } else {
-            Write-Host "✗ Failed to download cv2pdb.exe"
+            Write-Host "Failed to download cv2pdb.exe"
             exit 1
           }
 
