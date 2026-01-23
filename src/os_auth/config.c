@@ -41,6 +41,7 @@ int authd_read_config(const char *path) {
 
     config.timeout_sec = getDefine_Int("auth", "timeout_seconds", 0, INT_MAX);
     config.timeout_usec = getDefine_Int("auth", "timeout_microseconds", 0, 999999);
+    config.max_agents = (unsigned int)getDefine_Int("authd", "max_agents", 0, INT_MAX);
 
     return 0;
 }
@@ -87,6 +88,10 @@ cJSON *getAuthdConfig(void) {
     cJSON * agents = cJSON_CreateObject();
     cJSON_AddStringToObject(agents, "allow_higher_versions", config.allow_higher_versions ? "yes" : "no");
     cJSON_AddItemToObject(auth, "agents", agents);
+
+    if (config.max_agents > 0) {
+        cJSON_AddNumberToObject(auth, "max_agents", config.max_agents);
+    }
 
     cJSON_AddItemToObject(root,"auth",auth);
 

@@ -356,8 +356,7 @@ static int w_enrollment_process_response(SSL *ssl) {
         buf[ret] = '\0';
         if (strlen(buf) > 7 && !strncmp(buf, "ERROR: ", 7)) {
             // Process error message
-            char *tmpbuf;
-            tmpbuf = strchr(buf, ' ');
+            char *tmpbuf = strchr(buf, ' ');
             if (tmpbuf) {
                 tmpbuf++;
                 if (tmpbuf && tmpbuf[0] != '\0') {

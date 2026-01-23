@@ -32,7 +32,12 @@
 /* Global variables */
 fpos_t fp_pos;
 
-int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
+int OS_AddNewAgent(keystore *keys,
+                   const char *id,
+                   const char *name,
+                   const char *ip,
+                   const char *key,
+                   unsigned int max_agents)
 {
     os_md5 md1;
     os_md5 md2;
@@ -40,6 +45,10 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     char str2[STR_SIZE + 1];
     char _id[12] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
+
+    if (max_agents > 0 && keys->keysize >= max_agents) {
+        return OS_ADDAGENT_LIMIT_REACHED;
+    }
 
     if (!id) {
         snprintf(_id,sizeof(_id), "%03d", ++keys->id_counter);

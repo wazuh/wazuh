@@ -109,9 +109,9 @@ static int setup_group(void **state) {
     }
 
     keys_init(&keys, 0, !config.flags.clear_removed);
-    OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT1, EXISTENT_IP1, NULL);
-    OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT2, EXISTENT_IP2, NULL);
-    OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT3, ANY_IP, NULL);
+    OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT1, EXISTENT_IP1, NULL, 0);
+    OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT2, EXISTENT_IP2, NULL, 0);
+    OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT3, ANY_IP, NULL, 0);
 
     if (gethostname(shost, sizeof(shost) - 1) < 0) {
         strncpy(shost, "localhost", sizeof(shost) - 1);
