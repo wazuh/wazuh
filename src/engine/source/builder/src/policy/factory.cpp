@@ -88,7 +88,46 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         return subgraphData->second.assets.find(base::Name(name)) != subgraphData->second.assets.end();
     };
 
-    const base::Name rootDecoderName {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder()))};
+    // Helper to build and store an asset in the pipeline
+    const auto buildAndStoreAsset = [&](const auto& assetData,
+                                        const std::string& assetUUID,
+                                        AssetPipelineStage stage,
+                                        const std::string& assetType,
+                                        const std::string& contextInfo = "") -> void
+    {
+        auto assetName = syntax::asset::getAssetName(assetData);
+
+        if (!syntax::asset::isEnabledResource(assetData))
+        {
+            return;
+        }
+
+        // Check for duplicates
+        if (isAlreadyBuilt(assetName, stage))
+        {
+            throw std::runtime_error(
+                fmt::format("{} '{}' [id: '{}'] is duplicated{}", assetType, assetName, assetUUID, contextInfo));
+        }
+
+        // Build asset
+        Asset asset;
+        try
+        {
+            asset = (*assetBuilder)(assetData);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("Error building {} {}{}: {}", assetType, assetName, contextInfo, e.what()));
+        }
+
+        // Store asset
+        auto& stageData = builtAssets[stage];
+        stageData.orderedAssets.push_back(asset.name());
+        stageData.assets.emplace(asset.name(), std::move(asset));
+    };
+
+    const base::Name rootDecoderName {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoderUUID()))};
 
     // NOTE: The order of integrations and their decoders defines the final evaluation order for
     // sibling decoders in the expression. We preserve insertion order via orderedAssets.
@@ -100,6 +139,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             continue;
         }
 
+        // TODO: Only decoder should have the integration context
+        // TODO: The context integration should has the aviable KVDBs for validation
         // Configure partial build context for the integration.
         assetBuilder->getContext().integrationName = integration.getName();
         assetBuilder->getContext().integrationCategory = integration.getCategory();
@@ -111,6 +152,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         {
             const auto decoder = cmStoreNsReader->getAssetByUUID(decUUID);
             auto assetName = syntax::asset::getAssetName(decoder);
+
             if (!syntax::asset::isEnabledResource(decoder))
             {
                 continue;
@@ -155,12 +197,10 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                 auto defaultParentUUID = [&]() -> std::string
                 {
                     if (integration.hasDefaultParent())
-
                     {
                         return integration.getDefaultParent().value_or("Error getting default parent");
                     }
-
-                    return policy.getRootDecoder();
+                    return policy.getRootDecoderUUID();
                 }();
 
                 asset.parents().emplace_back(
@@ -172,68 +212,44 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             decodersData.orderedAssets.push_back(asset.name());
             decodersData.assets.emplace(asset.name(), std::move(asset));
         }
-
-        for (const auto& outUUID : integration.getOutputsByUUID())
-        {
-            const auto output = cmStoreNsReader->getAssetByUUID(outUUID);
-            auto assetName = syntax::asset::getAssetName(output);
-            if (!syntax::asset::isEnabledResource(output))
-            {
-                continue;
-            }
-
-            // Check if asset was already built (by previous integration)
-            if (isAlreadyBuilt(assetName, AssetPipelineStage::OUTPUTS_TREE))
-            {
-                throw std::runtime_error(fmt::format("Output '{}' [id: '{}'] from integration '{}' [id: '{}'] was "
-                                                     "already defined by another integration",
-                                                     assetName,
-                                                     outUUID,
-                                                     integration.getName(),
-                                                     integUUID));
-            }
-
-            // TODO: Implement the output by integration
-            Asset asset;
-            try
-            {
-                asset = (*assetBuilder)(output);
-            }
-            catch (const std::exception& e)
-            {
-                throw std::runtime_error(fmt::format(
-                    "Error building output {} from integration '{}': {}", assetName, integration.getName(), e.what()));
-            }
-
-            auto& outputsData = builtAssets[AssetPipelineStage::OUTPUTS_TREE];
-            outputsData.orderedAssets.push_back(asset.name());
-            outputsData.assets.emplace(asset.name(), std::move(asset));
-        }
     }
 
-    // Only available for production -->> Remove this, outputs should always be associated with a policy
+    // TODO: Should clear all integration related context
+    assetBuilder->clearAvailableKvdbs();
+
+    // Filters
+    for (const auto& filterUUID : policy.getFiltersUUIDs())
+    {
+        const auto filter = cmStoreNsReader->getAssetByUUID(filterUUID);
+
+        const auto pipelineStage = [&]() -> AssetPipelineStage
+        {
+            auto filterType = syntax::asset::filter::getFilterType(filter);
+            return (filterType == syntax::asset::filter::FilterType::PRE_FILTER)
+                       ? AssetPipelineStage::PRE_FILTERS_TREE
+                       : AssetPipelineStage::POST_FILTERS_TREE;
+        }();
+
+        buildAndStoreAsset(filter, filterUUID, pipelineStage, "Filter");
+    }
+
+    // Outputs
+    for (const auto& outUUID : policy.getOutputsUUIDs())
+    {
+        const auto output = cmStoreNsReader->getAssetByUUID(outUUID);
+        buildAndStoreAsset(output, outUUID, AssetPipelineStage::OUTPUTS_TREE, "Output");
+    }
+
+    // TODO: Only available for production -->> Remove this, outputs should always be associated with a policy
     if (!sandbox)
     {
         // Default outputs are not associated with an integration; clear KVDB validation.
         assetBuilder->clearAvailableKvdbs();
 
         const auto defaultOutputs = cmStoreNsReader->getDefaultOutputs();
-        auto& outputsData = builtAssets[AssetPipelineStage::OUTPUTS_TREE];
-
         for (const auto& output : defaultOutputs)
         {
-            auto assetName = syntax::asset::getAssetName(output);
-
-            // Check if asset was already built (by previous integration)
-            if (isAlreadyBuilt(assetName, AssetPipelineStage::OUTPUTS_TREE))
-            {
-                throw std::runtime_error(
-                    fmt::format("Default output '{}' was already defined by an integration", assetName));
-            }
-
-            Asset asset = (*assetBuilder)(output);
-            outputsData.orderedAssets.push_back(asset.name());
-            outputsData.assets.emplace(asset.name(), std::move(asset));
+            buildAndStoreAsset(output, "", AssetPipelineStage::OUTPUTS_TREE, "Output");
         }
     }
 

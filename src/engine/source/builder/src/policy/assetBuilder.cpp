@@ -310,6 +310,19 @@ Asset AssetBuilder::operator()(const json::Json& document) const
         objDoc.erase(enabledIt);
     }
 
+    // If is a filter, get type
+    if (syntax::name::isFilter(name))
+    {
+        const auto typeIt =
+            std::find_if(objDoc.begin(),
+                         objDoc.end(),
+                         [target = syntax::asset::TYPE_KEY](const auto& elem) { return std::get<0>(elem) == target; });
+        if (typeIt != objDoc.end())
+        {
+            objDoc.erase(typeIt);
+        }
+    }
+
     // Get parents (optional)
     std::vector<base::Name> parents;
     {

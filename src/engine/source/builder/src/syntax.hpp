@@ -30,6 +30,7 @@ constexpr auto METADATA_KEY = "metadata";            ///< Key for the metadata f
 constexpr auto ID_KEY = "id";                        ///< Key for the id field in an asset.
 constexpr auto ENABLED_KEY = "enabled";              ///< Key for the enabled field in an asset.
 constexpr auto PARENTS_KEY = "parents";              ///< Key for the parents field in an asset.
+constexpr auto TYPE_KEY = "type";                    ///< Key for the type field in an asset (Like filter type).
 constexpr auto CHECK_KEY = "check";                  ///< Key for the check stage in an asset.
 constexpr auto PARSE_KEY = "parse";                  ///< Key for the parse stage in an asset.
 constexpr auto NORMALIZE_KEY = "normalize";          ///< Key for the normalize stage in an asset.
@@ -70,6 +71,12 @@ inline auto getAssetName(const json::Json& assetJson) -> std::string
     return nameJson.value();
 }
 
+/**
+ * @brief Check if an asset is enabled from its JSON representation.
+ * @param assetJson The JSON representation of the asset.
+ * @return true if the asset is enabled false otherwise.
+ * @throw std::runtime_error If the enabled field is missing.
+ */
 inline bool isEnabledResource(const json::Json& assetJson)
 {
     auto enabledJson = assetJson.getBool(json::Json::formatJsonPath(ENABLED_KEY));
@@ -80,6 +87,47 @@ inline bool isEnabledResource(const json::Json& assetJson)
     }
     return enabledJson.value();
 }
+
+/************* FILTER  HELPERS *************/
+namespace filter
+{
+enum class FilterType
+{
+    PRE_FILTER,
+    POST_FILTER
+};
+
+inline std::string_view filterTypeToStr(const FilterType type)
+{
+    switch (type)
+    {
+        case FilterType::PRE_FILTER: return "pre-filter";
+        case FilterType::POST_FILTER: return "post-filter";
+        default: return "unknown";
+    }
+}
+
+inline FilterType strToFilterType(const std::string_view str)
+{
+    if (str == filterTypeToStr(FilterType::PRE_FILTER))
+        return FilterType::PRE_FILTER;
+    else if (str == filterTypeToStr(FilterType::POST_FILTER))
+        return FilterType::POST_FILTER;
+    else
+        throw std::runtime_error(fmt::format("Unknown filter type string: '{}'", str));
+}
+
+inline FilterType getFilterType(const json::Json& filterJson)
+{
+    auto typeJson = filterJson.getString(json::Json::formatJsonPath(TYPE_KEY));
+    if (!typeJson)
+    {
+        throw std::runtime_error("Filter is missing the 'type' field");
+    }
+    return strToFilterType(typeJson.value());
+}
+} // namespace filter
+
 } // namespace asset
 
 // Field syntax
