@@ -27,9 +27,11 @@ All notable changes to this project will be documented in this file.
 
 - Fixed UTF-16 casting when updating `report_changes`. ([#33495](https://github.com/wazuh/wazuh/pull/33495))
 - Improved Active Response key handling in wazuh-execd. ([#33665](https://github.com/wazuh/wazuh/pull/33665))
+- Added bounds checking to Logcollector `max-size` configuration serialization. ([#33704](https://github.com/wazuh/wazuh/pull/33704))
 - Hardened Logcollector multiline backup handling to use full-buffer copies. ([#33926](https://github.com/wazuh/wazuh/pull/33926))
 - Fixed label formatting edge cases in keep-alive notify messages. ([#33708](https://github.com/wazuh/wazuh/pull/33708))
 - Fixed a false positive in vulnerability detection for Oracle Linux 8. ([#33583](https://github.com/wazuh/wazuh/pull/33583))
+- Extended Windows network path restrictions to block extended-length UNC paths. ([#34115](https://github.com/wazuh/wazuh/pull/34115))
 
 ### RESTful API
 
