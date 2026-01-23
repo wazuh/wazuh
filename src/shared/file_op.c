@@ -32,6 +32,7 @@
 #else
 #include <aclapi.h>
 #include <winnetwk.h>
+#include <winreg.h>
 #endif
 
 /* Vista product information */
@@ -2954,15 +2955,32 @@ bool is_network_path(const char *path) {
 
     // Check for mapped network drives
     if (strlen(path) >= 2 && path[1] == ':') {
-        char root[] = "X:";
-        root[0] = toupper(path[0]);
+        char drive_letter = toupper(path[0]);
+        char device[] = "X:";
+        device[0] = drive_letter;
 
-        char remoteName[MAX_PATH] = {0};
-        DWORD bufferSize = sizeof(remoteName);
+        char target[MAX_PATH] = {0};
+        DWORD result = QueryDosDeviceA(device, target, sizeof(target));
 
-        DWORD result = WNetGetConnectionA(root, remoteName, &bufferSize);
+        if (result > 0) {
+            if (strncmp(target, "\\Device\\Mup\\", 12) == 0 ||
+                strncmp(target, "\\Device\\LanmanRedirector\\", 25) == 0 ||
+                strncmp(target, "\\DosDevices\\UNC\\", 16) == 0) {
+                return true;
+            }
 
-        if (result == NO_ERROR || result == ERROR_CONNECTION_UNAVAIL) {
+            if (strncmp(target, "\\Device\\", 8) == 0) {
+                return false;
+            }
+        }
+
+        // Fallback: check registry
+        char registry_path[64];
+        snprintf(registry_path, sizeof(registry_path), "Network\\%c", drive_letter);
+
+        HKEY hkey;
+        if (RegOpenKeyExA(HKEY_CURRENT_USER, registry_path, 0, KEY_READ, &hkey) == ERROR_SUCCESS) {
+            RegCloseKey(hkey);
             return true;
         }
     }
