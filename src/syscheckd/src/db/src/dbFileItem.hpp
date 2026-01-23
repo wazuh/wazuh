@@ -83,7 +83,7 @@ class FileItem final : public DBItem
             m_sha256 = fim.at("hash_sha256");
             m_uid = fim.at("uid");
             m_owner = fim.at("owner");
-            m_sync = fim.at("sync");
+            m_sync = fim.at("sync").get<int>() != 0;
 
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);

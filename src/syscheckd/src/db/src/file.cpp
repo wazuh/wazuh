@@ -478,7 +478,7 @@ int fim_db_get_sync_flag(const char* file_path)
             {
                 if (resultJson.contains("sync"))
                 {
-                    retval = resultJson.at("sync").get<bool>() ? 1 : 0;
+                    retval = resultJson.at("sync").get<int>();
                 }
             });
     }
@@ -515,34 +515,18 @@ int fim_db_set_sync_flag(const char* file_path, int sync_value)
         std::string encodedPath = file_path;
         FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
-        // First, fetch the complete row from the database
-        nlohmann::json completeRow;
-        bool entryFound = false;
-
-        DB::instance().getFile(encodedPath,
-            [&completeRow, &entryFound](const nlohmann::json& resultJson) {
-                completeRow = resultJson;
-                entryFound = true;
-            });
-
-        if (!entryFound)
-        {
-            FIMDB::instance().logFunction(LOG_INFO, std::string("Entry not found for path: ") + file_path);
-            return -1;
-        }
-
         FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE,
-            std::string("Fetched complete row for path: ") + file_path + ", current sync: " +
-            (completeRow.contains("sync") ? std::to_string(completeRow["sync"].get<int>()) : "unknown"));
+            std::string("Setting sync flag to ") + std::to_string(sync_value) + " for path: " + file_path);
 
-        // Modify the sync field (keep as integer)
-        completeRow["sync"] = sync_value;
+        // Build update JSON with only path and sync field
+        nlohmann::json rowData;
+        rowData["path"] = encodedPath;
+        rowData["sync"] = sync_value;
 
-        // Build the sync query with the complete row
         nlohmann::json updateData;
         updateData["table"] = FIMDB_FILE_TABLE_NAME;
         updateData["data"] = nlohmann::json::array();
-        updateData["data"].push_back(completeRow);
+        updateData["data"].push_back(rowData);
 
         // Execute update
         bool updateSucceeded = false;

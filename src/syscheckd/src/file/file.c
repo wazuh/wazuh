@@ -304,31 +304,11 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         case MODIFIED:
             txn_context->event->type = FIM_MODIFICATION;
             sync_operation = OPERATION_MODIFY;
-            // For MODIFY events: check current sync flag from DB (in "old" object)
+            // For MODIFY events: sync field is not included in update, so DB preserves current value
+            // Query the current sync flag to determine if event should be persisted
             {
-                cJSON *sync_json = NULL;
-                cJSON *old_data = cJSON_GetObjectItem(result_json, "old");
-                if (old_data != NULL) {
-                    sync_json = cJSON_GetObjectItem(old_data, "sync");
-                }
-
-                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
-                    sync_flag = sync_json->valueint;
-                }
-
-                mdebug2("MODIFIED: current sync_flag=%d, synced_docs=%d, sync_limit=%d, path=%s",
-                        sync_flag, synced_docs, syscheck.sync_limit, path);
-
-                // If currently sync=0 but now within limits, defer update to sync=1
-                if (sync_flag == 0 && syscheck.sync_limit > 0 && synced_docs < syscheck.sync_limit) {
-                    sync_flag = 1;
-                    // Add to deferred list for update after transaction commit
-                    if (txn_context->deferred_paths != NULL) {
-                        synced_docs++;
-                        OSList_AddData(txn_context->deferred_paths, strdup(path));
-                        mdebug2("Added MODIFIED path to deferred sync list: %s", path);
-                    }
-                }
+                int current_sync = fim_db_get_sync_flag(path);
+                sync_flag = (current_sync >= 0) ? current_sync : 1;
             }
             break;
 
@@ -1226,12 +1206,12 @@ STATIC void process_deferred_sync_updates(OSList *deferred_paths) {
     OSList_foreach(node_it, deferred_paths) {
         char *path = (char *)node_it->data;
         if (path != NULL) {
-            mdebug2("Setting sync=1 for deferred path: %s", path);
+            minfo("Setting sync=1 for deferred path: %s", path);
             fim_db_set_sync_flag(path, 1);
             count++;
         }
     }
-    mdebug1("Processed %d deferred sync flag updates", count);
+    minfo("Processed %d deferred sync flag updates", count);
 }
 
 

@@ -87,7 +87,13 @@ void FileItem::createJSON()
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;
     data["mtime"] = m_time;
-    data["sync"] = m_sync ? 1 : 0;
+
+    // Only include sync field during INSERT operations (when m_oldData is NULL)
+    // For MODIFIED operations, sync is managed separately by the deferred update mechanism
+    if (!m_oldData)
+    {
+        data["sync"] = m_sync ? 1 : 0;
+    }
 
     conf["data"] = nlohmann::json::array({data});
 
