@@ -23,6 +23,12 @@
 #include <thread>
 #include <vector>
 
+namespace Log
+{
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION;
+} // namespace Log
+
 constexpr auto MAX_LEN = 65536;
 constexpr auto DEFAULT_SOCKETS_PATH = "queue/sockets";
 constexpr auto DEFAULT_QUEUE_PATH = "queue/sockets/queue";

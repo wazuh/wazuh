@@ -18,6 +18,10 @@
 
 #include "utilsWrapperWin.hpp"
 
+// Define GUIDs for Windows Update API in this .cpp file to instantiate them
+#include <initguid.h>
+DEFINE_GUID(CLSID_UpdateSearcher, 0xB699E5E8, 0x67FF, 0x4177, 0x88, 0xB0, 0x36, 0x84, 0xA3, 0x38, 0x8F, 0x27);
+DEFINE_GUID(IID_IUpdateSearcher, 0x8F45ABF1, 0xF9AE, 0x4B95, 0xA9, 0x33, 0xF0, 0xF6, 0x6E, 0x50, 0x56, 0xEA);
 
 // Implement WMI functions
 HRESULT ComHelper::CreateWmiLocator(IWbemLocator*& pLoc)

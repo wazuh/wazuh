@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(unit_tests)
 
-get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+endif()
 
-include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${SRC_FOLDER}/data_provider)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
@@ -31,12 +33,5 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 add_subdirectory(sysInfoPackages)
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
-else()
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
 add_subdirectory(sysInfo)
 add_subdirectory(sysInfoPorts)

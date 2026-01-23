@@ -18,7 +18,7 @@ set_target_properties(
 )
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 target_link_libraries(OS_XML_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)

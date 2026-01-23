@@ -2,19 +2,17 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(unit_tests)
 
-include_directories(${CMAKE_SOURCE_DIR}/src/)
-include_directories(${CMAKE_SOURCE_DIR}/src/sqlite/)
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
+
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/)
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 link_directories(${SRC_FOLDER}/external/openssl/)
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
-else()
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(sqlite)
 add_subdirectory(interface)

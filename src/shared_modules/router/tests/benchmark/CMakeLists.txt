@@ -2,16 +2,16 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(router_benchmark_tests)
 
-include_directories(${CMAKE_SOURCE_DIR}/external/benchmark/include/)
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
 
-file(GLOB SOURCES
-        *.cpp
-        )
+include_directories(${SRC_FOLDER}/external/benchmark/include/)
+
+file(GLOB SOURCES *.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME}
-        benchmark router
-        )
+target_link_libraries(${PROJECT_NAME} benchmark router)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})

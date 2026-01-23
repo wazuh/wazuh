@@ -77,13 +77,14 @@ def runASAN(moduleName, testToolConfig):
     """
     utils.printHeader(moduleName,
                       headerKey="asan")
-    build_tools.cleanFolder(moduleName=moduleName,
-                            additionalFolder="build")
-    build_tools.configureCMake(moduleName=moduleName,
-                               debugMode=True,
-                               testMode=False,
-                               withAsan=True)
-    build_tools.makeLib(moduleName)
+
+    # Centralized build: rebuild test tools with ASAN
+    build_tools.cleanInternals()
+    build_tools.makeTarget(targetName="agent",
+                           tests=False,
+                           debug=True,
+                           fsanitize=True)
+
     module = testToolConfig[moduleName]
     if moduleName == "syscheckd":
         path = module[0]['smoke_tests_path']
@@ -93,9 +94,8 @@ def runASAN(moduleName, testToolConfig):
                             additionalFolder=os.path.join(path,
                                                           "output"))
     for element in module:
-        path = os.path.join(utils.moduleDirPathBuild(moduleName),
-                            "bin",
-                            element['test_tool_name'])
+        # Centralized build: test tools are in build/bin
+        path = os.path.join(utils.rootPath(), "build", "bin", element['test_tool_name'])
         args = ' '.join(element['args'])
         testToolCommand = "{} {}".format(path, args)
         runTestTool(moduleName=moduleName,
@@ -196,51 +196,13 @@ def runCoverage(moduleName):
         - ValueError: Raises an exception when fails for some reason.
     """
     currentDir = utils.moduleDirPath(moduleName=moduleName)
-    if moduleName == "shared_modules/utils":
-        reportFolder = os.path.join(moduleName,
-                                    "coverage_report")
-    else:
-        reportFolder = os.path.join(currentDir,
-                                    "coverage_report")
+    reportFolder = os.path.join(currentDir, "coverage_report")
 
     includeDir = Path(currentDir)
-    moduleCMakeFiles = ""
-    if moduleName == "shared_modules/utils":
-        moduleCMakeFiles = os.path.join(currentDir,
-                                        "*/CMakeFiles/*.dir")
-        includeDir = includeDir.parent
-        paths = glob.glob(moduleCMakeFiles)
-    elif moduleName == "shared_modules/sync_protocol":
-        paths = [root for root, _, _ in os.walk(
-            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
-    elif moduleName == "shared_modules/agent_metadata":
-        paths = [root for root, _, _ in os.walk(
-            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
-    elif moduleName == "shared_modules/file_helper":
-        build_dir = os.path.join(currentDir, "build")
-        paths = [root for root, _, _ in os.walk(build_dir) if root.endswith('.dir')]
-    elif moduleName == "syscheckd":
-        paths = [root for root, _, _ in os.walk(
-            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
-    elif moduleName in ["wazuh_modules/sca", "wazuh_modules/agent_info"]:
-        # Modules with nested structure (e.g., build/sca_impl/CMakeFiles/*.dir, build/agent_info_impl/CMakeFiles/*.dir)
-        # Only include directories that have .gcda coverage files
-        all_dirs = [root for root, _, _ in os.walk(
-            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
-        paths = []
-        for dir_path in all_dirs:
-            # Check if directory or its subdirectories have .gcda files
-            has_gcda = False
-            for root, _, files in os.walk(dir_path):
-                if any(f.endswith('.gcda') for f in files):
-                    has_gcda = True
-                    break
-            if has_gcda:
-                paths.append(dir_path)
-    else:
-        moduleCMakeFiles = os.path.join(currentDir,
-                                        "build/tests/*/CMakeFiles/*.dir")
-        paths = glob.glob(moduleCMakeFiles)
+
+    # Centralized build: find all .dir directories with coverage files under build/moduleName/
+    centralizedBuildDir = os.path.join(utils.rootPath(), "build", moduleName)
+    paths = [root for root, _, _ in os.walk(centralizedBuildDir) if root.endswith('.dir')]
     utils.printHeader(moduleName=moduleName,
                       headerKey="coverage")
     folders = ""
@@ -357,7 +319,6 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     runTests(moduleName=moduleName)
     # The coverage for these modules in 'winagent' target will be added in #17008
     if (target == 'winagent' and moduleName == 'data_provider') or \
-       (target == 'winagent' and moduleName == 'shared_modules/utils') or \
        (target == 'winagent' and moduleName == 'shared_modules/file_helper'):
         utils.printInfo(msg="Skipping coverage for {} in {} target".format(
                         moduleName, target))
@@ -389,7 +350,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
     # Running this type of check in Windows will be analyzed in #17019
-    if moduleName != "shared_modules/utils" and moduleName != "shared_modules/file_helper" and target != "winagent" and moduleName != "wazuh_modules/sca" and moduleName != "wazuh_modules/agent_info" and moduleName != "shared_modules/agent_metadata":
+    if target != "winagent" and moduleName != "shared_modules/agent_metadata" and moduleName != "shared_modules/file_helper" and moduleName != "wazuh_modules/agent_info" and moduleName != "wazuh_modules/sca":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
     if clean:
@@ -525,8 +486,9 @@ def runTestToolForWindows(moduleName, testToolConfig):
     utils.printHeader(moduleName, headerKey="wintesttool")
     winModuleName = "win" + moduleName
     module = testToolConfig[winModuleName]
-    rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
-                            "bin")
+
+    # Centralized build directory
+    rootPath = os.path.join(utils.rootPath(), "build", "bin")
 
     libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
                             path=utils.rootPath())
@@ -589,15 +551,19 @@ def runTests(moduleName):
                       headerKey="tests")
     tests = []
     reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)(?:\.exe)?$")
-    currentDir = utils.moduleDirPathBuild(moduleName=moduleName)
 
-    if not moduleName == "shared_modules/utils":
-        currentDir = os.path.join(utils.moduleDirPathBuild(moduleName),
-                                  "bin")
+    # Use centralized build directory
+    currentDir = os.path.join(utils.rootPath(), "build", "bin")
+    # Extract module base name for filtering tests
+    # e.g., "wazuh_modules/agent_info" -> "agent_info"
+    moduleBaseName = os.path.basename(moduleName)
 
     objects = os.scandir(currentDir)
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
+            # Filter by module name prefix
+            if not entry.name.startswith(moduleBaseName):
+                continue
             tests.append(entry.name)
 
     cwd = os.getcwd()
@@ -607,15 +573,14 @@ def runTests(moduleName):
             path = os.path.join(currentDir, test)
             if ".exe" in test:
                 # Don't copy DLLs!! Just add the correct paths
+                # For centralized build, all DLLs are in build/bin
+                centralizedBinDir = os.path.join(utils.rootPath(), "build", "bin")
                 dll_dirs = [
                     "/usr/i686-w64-mingw32/bin",
                     "/usr/i686-w64-mingw32/lib",
                     utils.currentPath(),
                     currentDir,  # already chdir'ed to this later
-                    os.path.join(utils.moduleDirPathBuild("shared_modules/dbsync"), "bin"),
-                    os.path.join(utils.moduleDirPathBuild("shared_modules/sync_protocol"), "bin"),
-                    os.path.join(utils.moduleDirPathBuild("data_provider"), "bin"),
-                    os.path.join(utils.moduleDirPathBuild("shared_modules/schema_validator"), "bin"),
+                    centralizedBinDir,
                 ]
 
                 # Add GCC runtime DLL paths - prioritize -posix variant
@@ -753,16 +718,17 @@ def runValgrind(moduleName):
 
     tests = []
     reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)(?:\.exe)?$")
-    currentDir = ""
-    if moduleName == "shared_modules/utils":
-        currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),
-                                  "build")
-    else:
-        currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),
-                                  "build/bin")
+
+    # Centralized build: tests are in build/bin/
+    currentDir = os.path.join(utils.rootPath(), "build", "bin")
+    moduleBaseName = os.path.basename(moduleName)
+
     objects = os.scandir(currentDir)
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
+            # Filter by module name prefix
+            if not entry.name.startswith(moduleBaseName):
+                continue
             tests.append(entry.name)
     valgrindCommand = "valgrind --leak-check=full --show-leak-kinds=all \
                        -q --error-exitcode=1 {}".format("./")

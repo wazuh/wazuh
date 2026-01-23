@@ -1,33 +1,41 @@
-get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-
-if(FSANITIZE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(CMAKE_CXX_FLAGS_DEBUG " -g --coverage -fsanitize=address,leak,undefined")
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
 include_directories(
-    ${SRC_FOLDER}/external/googletest/googletest/include/
-    ${SRC_FOLDER}/external/googletest/googlemock/include/
-    ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/src
-    ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/include
-    ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/tests
-    ${SRC_FOLDER}/shared_modules/dbsync/tests/mocks
-    ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
-    ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
-    ${SRC_FOLDER}/shared_modules/utils/tests/mocks
-    ${SRC_FOLDER}/data_provider/tests/mocks
-)
+  ${SRC_FOLDER}/external/googletest/googletest/include/
+  ${SRC_FOLDER}/external/googletest/googlemock/include/
+  ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/src
+  ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/include
+  ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/tests
+  ${SRC_FOLDER}/shared_modules/dbsync/tests/mocks
+  ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
+  ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
+  ${SRC_FOLDER}/shared_modules/utils/tests/mocks
+  ${SRC_FOLDER}/data_provider/tests/mocks)
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
+  link_directories(${SRC_FOLDER}/external/dbus/lib/)
+endif()
 link_libraries(
-    debug gtestd
-    debug gmockd
-    debug gtest_maind
-    debug gmock_maind
-    optimized gtest
-    optimized gmock
-    optimized gtest_main
-    optimized gmock_main
-)
+  debug
+  gtestd
+  debug
+  gmockd
+  debug
+  gtest_maind
+  debug
+  gmock_maind
+  optimized
+  gtest
+  optimized
+  gmock
+  optimized
+  gtest_main
+  optimized
+  gmock_main)
 
 # Agent Info Basic Tests (constructor, start/stop, lifecycle)
 add_executable(agent_info_basic_test agent_info_basic_test.cpp)
@@ -64,15 +72,19 @@ add_executable(agent_info_integration_test agent_info_integration_test.cpp)
 target_link_libraries(agent_info_integration_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoIntegrationTest COMMAND agent_info_integration_test)
 
-# Agent Info Coordination Tests (module coordination, query handling, resetSyncFlag)
+# Agent Info Coordination Tests (module coordination, query handling,
+# resetSyncFlag)
 add_executable(agent_info_coordination_test agent_info_coordination_test.cpp)
 target_link_libraries(agent_info_coordination_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoCoordinationTest COMMAND agent_info_coordination_test)
 
 # Agent Info Successful Coordination Tests (complete coordination flow)
-add_executable(agent_info_successful_coordination_test agent_info_successful_coordination_test.cpp)
-target_link_libraries(agent_info_successful_coordination_test PRIVATE AGENT_INFO_IMPL)
-add_test(NAME AgentInfoSuccessfulCoordinationTest COMMAND agent_info_successful_coordination_test)
+add_executable(agent_info_successful_coordination_test
+               agent_info_successful_coordination_test.cpp)
+target_link_libraries(agent_info_successful_coordination_test
+                      PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoSuccessfulCoordinationTest
+         COMMAND agent_info_successful_coordination_test)
 
 # Agent Info Integrity Check Tests (periodic integrity checks, CHECK modes)
 add_executable(agent_info_integrity_test agent_info_integrity_test.cpp)
