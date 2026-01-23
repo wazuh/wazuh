@@ -24,7 +24,7 @@ async def run_command(agents_list: str = '*', pretty: bool = False,
     Parameters
     ----------
     agents_list : str
-        List of agents IDs. All possible values from 000 onwards. Default: '*'
+        List of agents IDs. Default: '*'
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
