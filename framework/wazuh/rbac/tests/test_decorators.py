@@ -128,3 +128,65 @@ def test_expose_resourcesless(db_setup, decorator_params, rbac, allowed, mode):
         except WazuhError as e:
             assert (not allowed)
             assert (e.code == 4000)
+
+
+def _conf_payload():
+    return {
+        "auth": {
+            "use_password": "yes",
+            "ssl_manager_key": "etc/sslmanager.key",
+            "key_request": {"enabled": "no"}
+        },
+        "integration": {
+            "secret": "topsecret",
+            "token": "abcd-1234"
+        },
+        "authd.pass": "P4ssW0rd!"
+    }
+
+
+def _conf_result_payload():
+    r = AffectedItemsWazuhResult(all_msg="ok", some_msg="ok", none_msg="ok")
+    r.affected_items.append({
+        "auth": {"use_password": "no", "ssl_manager_key": "etc/sslmanager.key"},
+        "integration": {"secret": "topsecret"},
+        "authd.pass": "P4ssW0rd!"
+    })
+    r.total_affected_items = 1
+    return r
+
+
+def test_mask_sensitive_config_without_permissions(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return _conf_payload()
+
+    result = get_conf()
+    assert result["authd.pass"] == "*****"
+    assert result["integration"]["secret"] == "topsecret"
+
+
+def test_mask_sensitive_config_with_permissions(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return _conf_payload()
+
+    result = get_conf()
+    assert result["authd.pass"] == "P4ssW0rd!"
+
+
+def test_mask_sensitive_config_on_affected_items_result(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _conf_result_payload()
+
+    res = get_conf_result()
+    item = res.affected_items[0]
+    assert item["authd.pass"] == "*****"
+    assert item["integration"]["secret"] == "topsecret"
