@@ -45,6 +45,24 @@ EXPORTED bool agent_info_parse_response(const uint8_t* data, size_t data_len);
 
 EXPORTED void agent_info_set_query_module_function(query_module_callback_t query_module_callback);
 
+/**
+ * @brief Set the cluster name received from the manager during handshake
+ *
+ * This function stores the cluster name that will be used when populating
+ * agent metadata. Should be called from start_agent.c after parsing the
+ * handshake response.
+ *
+ * @param cluster_name The cluster name string (will be copied internally)
+ */
+EXPORTED void agent_info_set_cluster_name(const char* cluster_name);
+
+/**
+ * @brief Get the cluster name received from the manager during handshake
+ *
+ * @return The cluster name string (empty string if not set)
+ */
+EXPORTED const char* agent_info_get_cluster_name(void);
+
 #ifdef __cplusplus
 }
 #endif
@@ -57,5 +75,7 @@ typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
                                                    const MQ_Functions* mq_funcs);
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
 typedef void (*agent_info_set_query_module_function_func)(query_module_callback_t query_module_callback);
+typedef void (*agent_info_set_cluster_name_func)(const char* cluster_name);
+typedef const char* (*agent_info_get_cluster_name_func)(void);
 
 #endif //_AGENT_INFO_H

@@ -16,6 +16,7 @@
 #include "../config/config.h"
 #include "../config/client-config.h"
 #include "state.h"
+#include "module_limits.h"
 
 /* Buffer functions */
 #define full(i, j, n) ((i + 1) % (n) == j)
@@ -213,6 +214,8 @@ void clear_merged_hash_cache();
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
+size_t agcom_gethandshake(char ** output);
+cJSON *getDocumentLimits(const char *module);
 
 /*** Global variables ***/
 extern int agent_debug_level;
@@ -244,6 +247,9 @@ extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
 extern anti_tampering *atc;
+
+extern module_limits_t agent_module_limits;
+extern char agent_cluster_name[256];
 
 static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 

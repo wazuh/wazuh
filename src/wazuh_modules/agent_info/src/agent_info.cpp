@@ -6,6 +6,7 @@
 
 #include <dbsync.hpp>
 
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <string>
@@ -42,6 +43,9 @@ static query_module_callback_t g_query_module_callback = nullptr;
 // Global sync protocol parameters
 static const char* g_module_name = nullptr;
 static const MQ_Functions* g_mq_functions = nullptr;
+
+// Global cluster name storage (set from handshake, used by agent_info_impl)
+static char g_cluster_name[256] = {0};
 
 // Internal wrapper functions that capture the callbacks
 static std::function<void(const std::string&)> g_report_function_wrapper;
@@ -97,6 +101,29 @@ void agent_info_set_query_module_function(query_module_callback_t query_module_c
         };
     }
 
+}
+
+void agent_info_set_cluster_name(const char* cluster_name)
+{
+    if (cluster_name)
+    {
+        strncpy(g_cluster_name, cluster_name, sizeof(g_cluster_name) - 1);
+        g_cluster_name[sizeof(g_cluster_name) - 1] = '\0';
+
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_DEBUG, "Cluster name set", "agent-info");
+        }
+    }
+    else
+    {
+        g_cluster_name[0] = '\0';
+    }
+}
+
+const char* agent_info_get_cluster_name()
+{
+    return g_cluster_name;
 }
 
 void agent_info_start(const struct wm_agent_info_t* agent_info_config)

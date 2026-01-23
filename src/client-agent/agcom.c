@@ -36,6 +36,28 @@ size_t agcom_dispatch(char * command, char ** output){
     } else if (strcmp(rcv_comm, "getstate") == 0) {
         *output = w_agentd_state_get();
         return strlen(*output);
+    } else if (strcmp(rcv_comm, "gethandshake") == 0) {
+        return agcom_gethandshake(output);
+    } else if (strcmp(rcv_comm, "getdoclimits") == 0) {
+        if (!rcv_args) {
+            mdebug1("AGCOM getdoclimits needs arguments (module name).");
+            os_strdup("err AGCOM getdoclimits needs arguments", *output);
+            return strlen(*output);
+        }
+
+        cJSON *cfg = getDocumentLimits(rcv_args);
+        if (cfg) {
+            os_strdup("ok", *output);
+            char *json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_Delete(cfg);
+            return strlen(*output);
+        } else {
+            mdebug1("AGCOM Document limits not configured for module '%s'.", rcv_args);
+            os_strdup("err Document limits not configured", *output);
+            return strlen(*output);
+        }
     } else {
         mdebug1("AGCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
@@ -112,4 +134,61 @@ error:
     mdebug1("At AGCOM getconfig: Could not get '%s' section", section);
     os_strdup("err Could not get requested section", *output);
     return strlen(*output);
+}
+
+size_t agcom_gethandshake(char ** output) {
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, "cluster_name", agent_cluster_name);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    if (json_str) {
+        os_strdup(json_str, *output);
+        free(json_str);
+    } else {
+        os_strdup("{\"cluster_name\":\"\"}", *output);
+    }
+
+    cJSON_Delete(root);
+
+    mdebug1("Returning handshake data: %s", *output);
+    return strlen(*output);
+}
+
+cJSON *getDocumentLimits(const char *module) {
+    if (!module) {
+        return NULL;
+    }
+
+    cJSON *cfg = cJSON_CreateObject();
+    if (!cfg) {
+        return NULL;
+    }
+
+    if (strcmp(module, "fim") == 0) {
+        cJSON_AddNumberToObject(cfg, "file", agent_module_limits.fim.file);
+        cJSON_AddNumberToObject(cfg, "registry_key", agent_module_limits.fim.registry_key);
+        cJSON_AddNumberToObject(cfg, "registry_value", agent_module_limits.fim.registry_value);
+    } else if (strcmp(module, "syscollector") == 0) {
+        cJSON_AddNumberToObject(cfg, "hotfixes", agent_module_limits.syscollector.hotfixes);
+        cJSON_AddNumberToObject(cfg, "packages", agent_module_limits.syscollector.packages);
+        cJSON_AddNumberToObject(cfg, "processes", agent_module_limits.syscollector.processes);
+        cJSON_AddNumberToObject(cfg, "ports", agent_module_limits.syscollector.ports);
+        cJSON_AddNumberToObject(cfg, "network_iface", agent_module_limits.syscollector.network_iface);
+        cJSON_AddNumberToObject(cfg, "network_protocol", agent_module_limits.syscollector.network_protocol);
+        cJSON_AddNumberToObject(cfg, "network_address", agent_module_limits.syscollector.network_address);
+        cJSON_AddNumberToObject(cfg, "hardware", agent_module_limits.syscollector.hardware);
+        cJSON_AddNumberToObject(cfg, "os_info", agent_module_limits.syscollector.os_info);
+        cJSON_AddNumberToObject(cfg, "users", agent_module_limits.syscollector.users);
+        cJSON_AddNumberToObject(cfg, "groups", agent_module_limits.syscollector.groups);
+        cJSON_AddNumberToObject(cfg, "services", agent_module_limits.syscollector.services);
+        cJSON_AddNumberToObject(cfg, "browser_extensions", agent_module_limits.syscollector.browser_extensions);
+    } else if (strcmp(module, "sca") == 0) {
+        cJSON_AddNumberToObject(cfg, "checks", agent_module_limits.sca.checks);
+    } else {
+        cJSON_Delete(cfg);
+        return NULL;
+    }
+
+    return cfg;
 }
